@@ -904,7 +904,7 @@ test("processSeasonEnd keeps the board flow on the shared runtime path", async (
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
   assert.equal(supabase.state.updates.board_profiles.length, 1);
   assert.equal(supabase.state.board.negotiation_status, "pending");
-  assert.equal(supabase.state.board.satisfaction, 74);
+  assert.equal(supabase.state.board.satisfaction, 78);
   assert.equal(supabase.state.board.budget_modifier, 1.1);
   assert.equal(supabase.state.inserts.notifications.length, 1);
   assert.equal(supabase.state.inserts.board_plan_snapshots[0].goals_met, 1);
@@ -1766,7 +1766,7 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
   assert.equal(preview.needs_emergency_loan, true);
   assert.equal(preview.emergency_loan_amount, 39390);
   assert.equal(preview.current_board_satisfaction, 50);
-  assert.equal(preview.board_satisfaction, 74);
+  assert.equal(preview.board_satisfaction, 78);
   assert.equal(preview.sponsor_modifier, 1.1);
   assert.equal(preview.next_season_sponsor, 220);
   assert.equal(preview.board_goals_met, 1);
@@ -1823,15 +1823,16 @@ test("buildSeasonEndPreviewRows anker på sæson-start-satisfaction når weekend
     loanData: [],
   });
 
-  // Weekend-opdateringerne har konvergeret den løbende værdi til 74 (= 50 + 24).
-  // Med gyldigt anker skal previewet stadig lande på 74 — IKKE 74 + 24 = 98.
+  // Weekend-opdateringerne har konvergeret den løbende værdi til 78 (= 50 + 28,
+  // #2309 mål-kalibrering: ekspektations-baseline sænket + resultats-gulv hævet).
+  // Med gyldigt anker skal previewet stadig lande på 78 — IKKE 78 + 28 = 106(→100).
   const [anchored] = buildSeasonEndPreviewRows(makeArgs({
-    satisfaction: 74,
+    satisfaction: 78,
     season_start_satisfaction: 50,
     season_start_anchor_season_id: "season-1",
   }));
-  assert.equal(anchored.current_board_satisfaction, 74, "viser den løbende værdi som nuværende");
-  assert.equal(anchored.board_satisfaction, 74, "projektion = anker + delta, intet ekstra spring");
+  assert.equal(anchored.current_board_satisfaction, 78, "viser den løbende værdi som nuværende");
+  assert.equal(anchored.board_satisfaction, 78, "projektion = anker + delta, intet ekstra spring");
 
   // Anker fra en ANDEN sæson ignoreres → dagens adfærd (current + delta).
   const [stale] = buildSeasonEndPreviewRows(makeArgs({
@@ -1839,7 +1840,7 @@ test("buildSeasonEndPreviewRows anker på sæson-start-satisfaction når weekend
     season_start_satisfaction: 10,
     season_start_anchor_season_id: "season-0",
   }));
-  assert.equal(stale.board_satisfaction, 74, "stale anker ændrer intet ift. dagens adfærd");
+  assert.equal(stale.board_satisfaction, 78, "stale anker ændrer intet ift. dagens adfærd");
 });
 
 test("updateStandings stores division ranks and keeps zero-point teams in the canonical table", async () => {

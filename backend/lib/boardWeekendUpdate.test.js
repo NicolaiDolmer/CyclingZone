@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   CHECKPOINT_KINDS,
   WEEKEND_SATISFACTION_CLAMP,
+  WEEKEND_SATISFACTION_CLAMP_UP,
   computeWeekendSatisfactionUpdate,
   getConsequenceCheckpoint,
   isConsequenceCheckpoint,
@@ -18,9 +19,10 @@ import { satisfactionToModifier } from "./boardEvaluation.js";
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 // Minimal 1yr-plan med ét ranking-mål: scoren styres af rank_in_division alene,
 // så testene kan ramme kendte satisfaction_delta-værdier. 1yr-planen giver
-// personality med sports_ambition "high" → expectation-baseline 0.66:
-//   rank 1 / target 3  → score 1.133 → delta = round((1.133 − 0.66) · 55) = +26
-//   rank 12 / target 3 → score 0     → delta = round((0 − 0.66) · 55)     = −36
+// personality med sports_ambition "high" → expectation-baseline 0.60 (#2309 ·
+// mål-kalibrering, ned fra 0.66):
+//   rank 1 / target 3  → score 1.133 → delta = round((1.133 − 0.60) · 55) = +29
+//   rank 12 / target 3 → score 0     → delta = round((0 − 0.60) · 55)     = −33
 
 function makeBoard(overrides = {}) {
   return {
@@ -55,49 +57,64 @@ function runUpdate(overrides = {}) {
 }
 
 // ─── Clamp-grænser ────────────────────────────────────────────────────────────
+// #2309 · asymmetrisk clamp: opad-grænsen (WEEKEND_SATISFACTION_CLAMP_UP = 8)
+// er højere end nedad-grænsen (WEEKEND_SATISFACTION_CLAMP = 5) — boardet
+// reagerer hurtigere på fremgang uden at gøre nedturen hårdere.
 
-test("positiv bevægelse clampes til +5 pr. weekend (default)", () => {
+test("positiv bevægelse clampes til +8 pr. weekend (default op-grænse)", () => {
   const update = runUpdate();
-  assert.equal(update.seasonDelta, 26);
-  assert.equal(update.targetSatisfaction, 76);
-  assert.equal(update.newSatisfaction, 55);
-  assert.equal(update.appliedDelta, WEEKEND_SATISFACTION_CLAMP);
+  assert.equal(update.seasonDelta, 29);
+  assert.equal(update.targetSatisfaction, 79);
+  assert.equal(update.newSatisfaction, 58);
+  assert.equal(update.appliedDelta, WEEKEND_SATISFACTION_CLAMP_UP);
   assert.equal(update.clampedByLimit, true);
 });
 
-test("negativ bevægelse clampes til -5 pr. weekend (default)", () => {
+test("negativ bevægelse clampes til -5 pr. weekend (default ned-grænse, uændret)", () => {
   const update = runUpdate({ standing: badStanding() });
-  assert.equal(update.seasonDelta, -36);
-  assert.equal(update.targetSatisfaction, 14);
+  assert.equal(update.seasonDelta, -33);
+  assert.equal(update.targetSatisfaction, 17);
   assert.equal(update.newSatisfaction, 45);
   assert.equal(update.appliedDelta, -WEEKEND_SATISFACTION_CLAMP);
   assert.equal(update.clampedByLimit, true);
 });
 
 test("bevægelse inden for clampen lander præcis på target", () => {
-  // current 74, anker 50, target 76 → step +2 (ingen clamp).
+  // current 77, anker 50, target 79 → step +2 (ingen clamp, under begge grænser).
   const update = runUpdate({
-    board: makeBoard({ satisfaction: 74 }),
+    board: makeBoard({ satisfaction: 77 }),
     seasonStartSatisfaction: 50,
   });
-  assert.equal(update.targetSatisfaction, 76);
-  assert.equal(update.newSatisfaction, 76);
+  assert.equal(update.targetSatisfaction, 79);
+  assert.equal(update.newSatisfaction, 79);
   assert.equal(update.appliedDelta, 2);
   assert.equal(update.clampedByLimit, false);
 });
 
-test("clampLimit kan overstyres (±3 og ±10 til følsomhedsanalyse)", () => {
-  const tight = runUpdate({ clampLimit: 3 });
-  assert.equal(tight.newSatisfaction, 53);
-  const loose = runUpdate({ clampLimit: 10 });
-  assert.equal(loose.newSatisfaction, 60);
+test("clampLimit (nedad) kan overstyres uafhængigt af op-grænsen", () => {
+  // clampLimit ændrer kun downLimit — op-grænsen forbliver default (8) medmindre
+  // clampLimitUp også angives eksplicit.
   const tightDown = runUpdate({ standing: badStanding(), clampLimit: 3 });
   assert.equal(tightDown.newSatisfaction, 47);
+  assert.equal(tightDown.appliedDelta, -3);
+});
+
+test("clampLimit + clampLimitUp kan overstyres sammen (symmetrisk følsomhedsanalyse ±3/±10)", () => {
+  const tight = runUpdate({ clampLimit: 3, clampLimitUp: 3 });
+  assert.equal(tight.newSatisfaction, 53);
+  const loose = runUpdate({ clampLimit: 10, clampLimitUp: 10 });
+  assert.equal(loose.newSatisfaction, 60);
+});
+
+test("clampLimitUp kan overstyres uafhængigt af nedad-grænsen", () => {
+  const upOverride = runUpdate({ clampLimit: 5, clampLimitUp: 10 });
+  assert.equal(upOverride.newSatisfaction, 60);
+  assert.equal(upOverride.appliedDelta, 10);
 });
 
 test("satisfaction holder sig i [0, 100] uanset target", () => {
   const top = runUpdate({ board: makeBoard({ satisfaction: 98 }), seasonStartSatisfaction: 98 });
-  assert.equal(top.targetSatisfaction, 100); // 98 + 26 clampes til 100
+  assert.equal(top.targetSatisfaction, 100); // 98 + 29 clampes til 100
   assert.equal(top.newSatisfaction, 100);
 
   const bottom = runUpdate({
@@ -105,32 +122,33 @@ test("satisfaction holder sig i [0, 100] uanset target", () => {
     standing: badStanding(),
     seasonStartSatisfaction: 2,
   });
-  assert.equal(bottom.targetSatisfaction, 0); // 2 − 36 clampes til 0
+  assert.equal(bottom.targetSatisfaction, 0); // 2 − 33 clampes til 0
   assert.equal(bottom.newSatisfaction, 0);
 });
 
 // ─── Target-anker (sæson-start) ───────────────────────────────────────────────
 
 test("target ankres i seasonStartSatisfaction, ikke i den løbende værdi", () => {
-  // Løbende værdi 70, men sæson-start var 40 → target = 40 + 26 = 66 (UNDER current).
+  // Løbende værdi 70, men sæson-start var 40 → target = 40 + 29 = 69 (UNDER current).
   const update = runUpdate({
     board: makeBoard({ satisfaction: 70 }),
     seasonStartSatisfaction: 40,
   });
-  assert.equal(update.targetSatisfaction, 66);
-  assert.equal(update.newSatisfaction, 66);
-  assert.equal(update.appliedDelta, -4);
+  assert.equal(update.targetSatisfaction, 69);
+  assert.equal(update.newSatisfaction, 69);
+  assert.equal(update.appliedDelta, -1);
 });
 
 test("uden eksplicit anker bruges board.satisfaction (første weekend)", () => {
   const update = runUpdate({ board: makeBoard({ satisfaction: 60 }) });
   assert.equal(update.seasonStartSatisfaction, 60);
-  assert.equal(update.targetSatisfaction, 86);
-  assert.equal(update.newSatisfaction, 65);
+  assert.equal(update.targetSatisfaction, 89);
+  assert.equal(update.newSatisfaction, 68);
 });
 
 test("gentagne weekender konvergerer mod sæson-evalueringens tal (intet sæson-slut-spring)", () => {
-  // Samme standing hele vejen: target 76 fra anker 50 → 55, 60, 65, 70, 75, 76, 76.
+  // Samme standing hele vejen: target 79 fra anker 50, op-grænse 8 pr. weekend
+  // → 58, 66, 74, 79 (sidste step < 8), fladt derefter.
   let satisfaction = 50;
   const trajectory = [];
   for (let weekend = 1; weekend <= 7; weekend += 1) {
@@ -141,7 +159,7 @@ test("gentagne weekender konvergerer mod sæson-evalueringens tal (intet sæson-
     satisfaction = update.newSatisfaction;
     trajectory.push(satisfaction);
   }
-  assert.deepEqual(trajectory, [55, 60, 65, 70, 75, 76, 76]);
+  assert.deepEqual(trajectory, [58, 66, 74, 79, 79, 79, 79]);
 });
 
 // ─── Modifier-mapping ─────────────────────────────────────────────────────────
@@ -149,14 +167,14 @@ test("gentagne weekender konvergerer mod sæson-evalueringens tal (intet sæson-
 test("newModifier følger satisfactionToModifier af den NYE satisfaction", () => {
   const update = runUpdate();
   assert.equal(update.newModifier, satisfactionToModifier(update.newSatisfaction));
-  assert.equal(update.newModifier, 1.00); // 55 ligger i 40-59-båndet
+  assert.equal(update.newModifier, 1.00); // 58 ligger i 40-59-båndet
 
-  // Kør videre til 60 → 1.10-båndet.
+  // Kør videre fra 58 → 66 → 1.10-båndet.
   const next = runUpdate({
-    board: makeBoard({ satisfaction: 55 }),
+    board: makeBoard({ satisfaction: 58 }),
     seasonStartSatisfaction: 50,
   });
-  assert.equal(next.newSatisfaction, 60);
+  assert.equal(next.newSatisfaction, 66);
   assert.equal(next.newModifier, 1.10);
 });
 

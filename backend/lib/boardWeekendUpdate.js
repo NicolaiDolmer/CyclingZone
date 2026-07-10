@@ -30,8 +30,21 @@
 import { evaluateBoardSeason, satisfactionToModifier } from "./boardEvaluation.js";
 import { clamp, clampSatisfaction } from "./boardUtils.js";
 
-// Ejer-beslutning 11/6: ±5 point pr. løbsweekend.
+// Ejer-beslutning 11/6: ±5 point pr. løbsweekend (nedad-bevægelse). Bevaret som
+// downside-grænsen — hårde konsekvenser er checkpoint-gatede og kalibreret mod
+// denne værdi (boardSatisfactionHarness.js's konsekvens-rate-gate), så en
+// hurtigere NEDAD-bevægelse ville alene forøge antallet af hold der rammer
+// hårde lag (verificeret empirisk: ±8 symmetrisk gav 22-32% mod målet ≤10%).
 export const WEEKEND_SATISFACTION_CLAMP = 5;
+
+// #2309 · "Hurtigere tilfredsheds-respons" — ejer-ønske: boardet skal reagere
+// hurtigere på FREMGANG end den nuværende ±5-clamp tillader, uden at gøre
+// nedturen hårdere (det ville modarbejde konsekvens-rate-gaten, se ovenfor).
+// Asymmetrisk clamp: opad-bevægelse (holdet præsterer over sin løbende
+// tilfredshed) får en højere grænse end nedad. Effekt: et hold der vender en
+// dårlig start indhenter boardets tillid ~60% hurtigere, mens en katastrofe-
+// weekend stadig kun kan koste holdet op til ±5 point (uændret risiko-profil).
+export const WEEKEND_SATISFACTION_CLAMP_UP = 8;
 
 /**
  * #1451 · "Hvorfor"-kategori for et weekend-event. Positiv bevægelse drives af
@@ -67,7 +80,10 @@ export const CHECKPOINT_KINDS = {
  *                                  (anker for target). Default: board.satisfaction
  *                                  — korrekt ved første weekend; live-wiring skal
  *                                  give sæson-start-værdien eksplicit fra weekend 2.
- * @param {number} [args.clampLimit] — maks. bevægelse pr. weekend (default ±5).
+ * @param {number} [args.clampLimit] — maks. NEDAD-bevægelse pr. weekend (default ±5).
+ * @param {number} [args.clampLimitUp] — maks. OPAD-bevægelse pr. weekend
+ *                                  (default ±8, #2309 — hurtigere respons på
+ *                                  fremgang uden at forøge downside-risikoen).
  * @returns {object|null} update-resultat, eller null hvis board mangler.
  */
 export function computeWeekendSatisfactionUpdate({
@@ -77,12 +93,14 @@ export function computeWeekendSatisfactionUpdate({
   context = {},
   seasonStartSatisfaction = null,
   clampLimit = WEEKEND_SATISFACTION_CLAMP,
+  clampLimitUp = WEEKEND_SATISFACTION_CLAMP_UP,
 } = {}) {
   if (!board) return null;
 
   const current = toFiniteOr(board.satisfaction, 50);
   const anchor = toFiniteOr(seasonStartSatisfaction, current);
-  const limit = Math.max(0, toFiniteOr(clampLimit, WEEKEND_SATISFACTION_CLAMP));
+  const downLimit = Math.max(0, toFiniteOr(clampLimit, WEEKEND_SATISFACTION_CLAMP));
+  const upLimit = Math.max(downLimit, toFiniteOr(clampLimitUp, WEEKEND_SATISFACTION_CLAMP_UP));
 
   // Genbrug af den eksisterende sæson-evaluering 1:1. feedback.satisfaction_delta
   // er uafhængig af board.satisfaction (ren funktion af score vs. expectation),
@@ -92,7 +110,10 @@ export function computeWeekendSatisfactionUpdate({
   const targetSatisfaction = clampSatisfaction(anchor + seasonDelta);
 
   const rawStep = targetSatisfaction - current;
-  const appliedStep = clamp(rawStep, -limit, limit);
+  // #2309 · asymmetrisk grænse: opad-bevægelse (rawStep > 0) må bruge det
+  // højere upLimit, nedad-bevægelse holder sig til det uændrede downLimit.
+  const limit = rawStep >= 0 ? upLimit : downLimit;
+  const appliedStep = clamp(rawStep, -downLimit, upLimit);
   const newSatisfaction = clampSatisfaction(current + appliedStep);
 
   return {

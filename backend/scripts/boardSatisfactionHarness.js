@@ -33,6 +33,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   WEEKEND_SATISFACTION_CLAMP,
+  WEEKEND_SATISFACTION_CLAMP_UP,
   computeWeekendSatisfactionUpdate,
   getConsequenceCheckpoint,
   resolveWeekendEconomyModifier,
@@ -363,7 +364,7 @@ function hardLayersFor(satisfaction) {
   return layers;
 }
 
-function simulateMechanic({ fixture, timelineData, clampLimit, weekends }) {
+function simulateMechanic({ fixture, timelineData, clampLimit, clampLimitUp = clampLimit, weekends }) {
   const divisionManagerCounts = new Map();
   for (const team of fixture.teams) {
     divisionManagerCounts.set(team.division, (divisionManagerCounts.get(team.division) || 0) + 1);
@@ -413,6 +414,7 @@ function simulateMechanic({ fixture, timelineData, clampLimit, weekends }) {
           context,
           seasonStartSatisfaction: state.anchor,
           clampLimit,
+          clampLimitUp,
         });
         state.satisfaction = update.newSatisfaction;
         state.modifier = update.newModifier;
@@ -498,7 +500,7 @@ function simulateTodayBaseline({ fixture, timelineData, weekends }) {
       // clampLimit 1000 ⇒ ét frit spring direkte til target = evaluateBoardSeason's
       // newSatisfaction (samme anker = nuværende prod-satisfaction).
       const update = computeWeekendSatisfactionUpdate({
-        board, standing, team: teamWithRiders, context, clampLimit: 1000,
+        board, standing, team: teamWithRiders, context, clampLimit: 1000, clampLimitUp: 1000,
       });
       return { plan: board.plan_type, satisfaction: update.newSatisfaction, layers: hardLayersFor(update.newSatisfaction) };
     });
@@ -525,7 +527,7 @@ function simulateTodayBaseline({ fixture, timelineData, weekends }) {
 // 50 % → 25 % → 1, sejre akkumulerer). Gate: tilbage over genforhandlings-
 // tærsklen (50) på højst 3 gode weekender.
 
-function runRecoveryScenario({ fixture, clampLimit }) {
+function runRecoveryScenario({ fixture, clampLimit, clampLimitUp = clampLimit }) {
   const team = fixture.teams.find(
     (t) => (t.riders || []).length > 0 && (t.boards || []).some((b) => b.plan_type === "1yr"),
   );
@@ -576,6 +578,7 @@ function runRecoveryScenario({ fixture, clampLimit }) {
       context,
       seasonStartSatisfaction: anchor,
       clampLimit,
+      clampLimitUp,
     });
     satisfaction = update.newSatisfaction;
     trajectory.push(satisfaction);
@@ -656,7 +659,7 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
   lines.push("");
   lines.push(`> Genereret ${today} af \`node backend/scripts/boardSatisfactionHarness.js --seed ${seed} --weekends ${weekends}\` · Refs #1187, #805, #1147 · simulér-før-ship (ejer-accepteret 7/6)`);
   lines.push(`> Population: ${fixture.teams.length} aktive human-hold · ${boardCount} aktive planer (1yr/3yr/5yr) · fixture hentet ${fixture.fetched_at} (READ-ONLY, sæson ${fixture.season?.number ?? "?"})`);
-  lines.push(`> Mekanik: \`lib/boardWeekendUpdate.js\` — target-tracking mod \`evaluateBoardSeason\` (genbrug 1:1), clamp ±${WEEKEND_SATISFACTION_CLAMP}/weekend, modifier live via \`satisfactionToModifier\`, hårde lag kun ved checkpoints (mid + slut).`);
+  lines.push(`> Mekanik: \`lib/boardWeekendUpdate.js\` — target-tracking mod \`evaluateBoardSeason\` (genbrug 1:1), asymmetrisk clamp -${WEEKEND_SATISFACTION_CLAMP}/+${WEEKEND_SATISFACTION_CLAMP_UP} pr. weekend (#2309 — hurtigere respons på fremgang, uændret downside), modifier live via \`satisfactionToModifier\`, hårde lag kun ved checkpoints (mid + slut).`);
   if (regenGoals) {
     lines.push(`> **#1267 · \`--regen-goals\`:** mål er REGENERERET fra \`generateBoardGoals\` (relaunch-mål-kalibrering), IKKE de gemte prod-mål. Gate'r de mål relaunch faktisk ville sætte mod den realistiske trup-population (standing=null = friske hold).`);
   }
@@ -673,7 +676,7 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
   lines.push(`- **board_test_mode:** neutraliseres via \`resolveWeekendEconomyModifier\` (testet i unit-tests); prod-scenariet her kører med test-mode slået fra.`);
   lines.push("");
 
-  lines.push(`## 1. Scorecard (clamp ±${WEEKEND_SATISFACTION_CLAMP} — den låste beslutning)`);
+  lines.push(`## 1. Scorecard (clamp -${WEEKEND_SATISFACTION_CLAMP}/+${WEEKEND_SATISFACTION_CLAMP_UP} — den valgte mekanik, #2309)`);
   lines.push("");
   lines.push(`| Gate | Mål | Målt | Status |`);
   lines.push(`|---|---|---|:--:|`);
@@ -724,8 +727,10 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
   lines.push(`|---|---|---|---|---|---|---|`);
   for (const variant of variants) {
     const vs = variant.summary;
-    const marker = variant.clampLimit === WEEKEND_SATISFACTION_CLAMP ? " **(valgt)**" : "";
-    lines.push(`| ±${variant.clampLimit}${marker} | ${da(vs.dist.iqr)} | ${da(vs.dist.min, 0)}–${da(vs.dist.max, 0)} | ${da(vs.consequenceRatePct)} % | ${vs.midHitTeams}/${vs.endHitTeams} | ${vs.recovery?.recoveredAfterGoodWeekends ?? "> 3"} | ${pct(vs.econ.p10)} / ${pct(vs.econ.p50)} / ${pct(vs.econ.p90)} |`);
+    const isChosen = variant.clampLimit === WEEKEND_SATISFACTION_CLAMP;
+    const marker = isChosen ? " **(valgt)**" : "";
+    const label = isChosen ? `-${variant.clampLimit}/+${variant.clampLimitUp}` : `±${variant.clampLimit}`;
+    lines.push(`| ${label}${marker} | ${da(vs.dist.iqr)} | ${da(vs.dist.min, 0)}–${da(vs.dist.max, 0)} | ${da(vs.consequenceRatePct)} % | ${vs.midHitTeams}/${vs.endHitTeams} | ${vs.recovery?.recoveredAfterGoodWeekends ?? "> 3"} | ${pct(vs.econ.p10)} / ${pct(vs.econ.p50)} / ${pct(vs.econ.p90)} |`);
   }
   lines.push(`| Dagens mekanik (uclamped sæson-slut) | ${da(todayBaseline.dist.iqr)} | ${da(todayBaseline.dist.min, 0)}–${da(todayBaseline.dist.max, 0)} | ${da(todayBaseline.consequenceRatePct)} % | 0/${todayBaseline.teamsHit} | n/a (ingen mellem-trin) | 0 % (modifier låst hele sæsonen) |`);
   lines.push("");
@@ -789,9 +794,13 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
 function runOnce({ fixture, seed, weekends }) {
   const timelineData = buildPerformanceTimeline({ fixture, seed, weekends });
   return CLAMP_VARIANTS.map((clampLimit) => {
-    const teamResults = simulateMechanic({ fixture, timelineData, clampLimit, weekends });
-    const recovery = runRecoveryScenario({ fixture, clampLimit });
-    return { clampLimit, teamResults, summary: summarizeVariant({ teamResults, recovery }) };
+    // #2309 · den VALGTE mekanik (clampLimit === WEEKEND_SATISFACTION_CLAMP) er
+    // asymmetrisk (opad-grænse WEEKEND_SATISFACTION_CLAMP_UP > nedad-grænsen) —
+    // de øvrige varianter (±3/±10) forbliver symmetriske til ren clamp-følsomhed.
+    const clampLimitUp = clampLimit === WEEKEND_SATISFACTION_CLAMP ? WEEKEND_SATISFACTION_CLAMP_UP : clampLimit;
+    const teamResults = simulateMechanic({ fixture, timelineData, clampLimit, clampLimitUp, weekends });
+    const recovery = runRecoveryScenario({ fixture, clampLimit, clampLimitUp });
+    return { clampLimit, clampLimitUp, teamResults, summary: summarizeVariant({ teamResults, recovery }) };
   });
 }
 

@@ -190,7 +190,7 @@ export function calculateBoardPerformance({ board, standing, team, context = {} 
 // slutter i toppen af divisionen får ~fuldt results-gulv, et bundhold får ~0, så
 // kun hold der reelt slutter sidst falder gennem til hårde lag. Kalibreret mod
 // boardSatisfactionHarness.js --regen-goals (≤10 % konsekvens-rate).
-export const RESULTS_COMPETITIVENESS_FLOOR_SCALE = 1.0;
+export const RESULTS_COMPETITIVENESS_FLOOR_SCALE = 1.4;
 
 // → results-gulv i [0, SCALE] ud fra divisions-placering. 0 når data mangler
 // (intet gulv → uændret adfærd, fx pre-sæson uden standing).
@@ -577,11 +577,22 @@ function describeOverallStatusKey(score) {
   return "overallStatus.underPressure";
 }
 
+// #2309 · Mål-kalibrering (issue #2309-scope-udvidelse, ejer-godkendt 10/7):
+// sænket -0.06 pr. ambitions-niveau (fra 0.58/0.62/0.66) sammen med
+// RESULTS_COMPETITIVENESS_FLOOR_SCALE-hævningen ovenfor. Sammen bringer de to
+// justeringer boardSatisfactionHarness.js's konsekvens-rate-gate ned fra
+// baseline 22,7 % til 9-23 % på tværs af 5 seeds (median ~14 %) — se PR-body
+// for det fulde scorecard. Driveren var IKKE weekend-mekanikken (verificeret:
+// dagens uclamped sæson-slut-mekanik gav SAMME eller højere rate på samme
+// sæsonforløb), men at sæson-evalueringens forventnings-baseline var kalibreret
+// for stramt mod den ægte trup-population (mange bundplacerede hold — som er
+// tilsigtet spildesign, ikke fejlhåndtering — landede under salary-cap-
+// tærsklen selv ved korrekt spillet sæson).
 function getExpectationBaseline(personality) {
   const baselineByAmbition = {
-    low: 0.58,
-    medium: 0.62,
-    high: 0.66,
+    low: 0.52,
+    medium: 0.56,
+    high: 0.60,
   };
 
   return baselineByAmbition[personality.sports_ambition] ?? 0.62;
