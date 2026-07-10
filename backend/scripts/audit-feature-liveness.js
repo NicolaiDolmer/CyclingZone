@@ -131,6 +131,17 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
   // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
   "scout_actions",
+  // Talentspejder Fase 3 sweep-dedup (#2244, merged 2026-07-10): scoutSweep.js insert'er
+  // ÉN row pr. (team_id, tick_date) som reservation-mutex FØR den modner et holds
+  // scout_assignments (mirror af training_day_runs). Skrives KUN inde i sweep-vinduet
+  // (shouldSweepNow: Copenhagen-time ≥ 22) OG kun hvis holdet har modne assignments
+  // (matured.length > 0). Featuren merged samme dag, så tabellen er naturligt tom indtil
+  // cron'en rammer vinduet med et modent job — samme "write-but-no-data indtil sweep
+  // kører"-mønster som scout_actions/nps_responses ovenfor, ikke broken. Skriv-path
+  // verificeret i backend/lib/scoutSweep.js (runScoutSweep, reservation-insert).
+  // TODO(2026-07-10): fjern denne entry når tabellen har rows (tjek efter første
+  // sweep-vindue der rammer et modent scout_assignment).
+  "scout_sweep_runs",
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
   // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-
