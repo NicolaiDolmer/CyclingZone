@@ -65,6 +65,20 @@ test("loft-bånd er deterministiske og varierer på tværs af managere (seed)", 
   assert.ok(centers.size > 1, "forventede varierende bånd på tværs af managere");
 });
 
+test("loft-bånd: gulv fra dårlig spejder (#2244) gør fuldt-scoutet-bredden ≥ topspejder", () => {
+  const width = (scout) => {
+    const b = buildTypeCeilingBands({ nowAbilities: NOW, caps: CAPS, level: 3, riderId: "r1", teamId: "t1", scout });
+    return b[0].ceilHi - b[0].ceilLo;
+  };
+  assert.ok(width({ overall: 40 }) >= width({ overall: 99 }), "overall 40 skal give ≥ bånd end overall 99 ved fuldt niveau");
+});
+
+test("loft-bånd: default-scout (uden hyret spejder) matcher eksplicit overall 40", () => {
+  const withDefault = buildTypeCeilingBands({ nowAbilities: NOW, caps: CAPS, level: 3, riderId: "r1", teamId: "t1" });
+  const withExplicit = buildTypeCeilingBands({ nowAbilities: NOW, caps: CAPS, level: 3, riderId: "r1", teamId: "t1", scout: { overall: 40 } });
+  assert.deepEqual(withDefault, withExplicit);
+});
+
 test("loft-bånd lækker aldrig rå cap-værdier (kun key/now/ceilLo/ceilHi)", () => {
   const bands = buildTypeCeilingBands({ nowAbilities: NOW, caps: CAPS, level: 1, riderId: "r1", teamId: "t1" });
   for (const b of bands) {

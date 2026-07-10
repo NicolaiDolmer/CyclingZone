@@ -9,6 +9,7 @@
 import { blendedOutput } from "./riderValuation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { seededUnit } from "./scouting.js";
+import { DEFAULT_SCOUT, scoutHalfWidth } from "./scoutEngine.js";
 
 // Rating-ankre — SKAL matche frontend/src/lib/riderRating.js (SSOT for de tal;
 // fittet mod prod-populationen 2026-06-29, n=2.947). riderRating.test.js +
@@ -39,11 +40,12 @@ export function ratingFromAbilities(abilities, typeKey) {
 //   caps         : ability_caps-objektet (SANDHED — forlader aldrig serveren rå)
 //   level        : viewerens scout-niveau (egen rytter = maxLevel)
 //   riderId/teamId: seed for per-manager center-bias
+//   scout        : viewer-holdets spejder-objekt (#2244) — gulv-begrænser halvbredden
+//                  (CEIL_HALF_WIDTH_BY_LEVEL-skalaen matcher scoutEngine's gulv 1:1,
+//                  unitScale=1). Default DEFAULT_SCOUT (overall 40).
 // Returnerer [{ key, now, ceilLo, ceilHi }] — heltal, clamp [1,99], ceilLo>=now.
-export function buildTypeCeilingBands({ nowAbilities, caps, level, riderId, teamId }) {
-  const half = CEIL_HALF_WIDTH_BY_LEVEL[
-    Math.max(0, Math.min(Number(level) || 0, CEIL_HALF_WIDTH_BY_LEVEL.length - 1))
-  ];
+export function buildTypeCeilingBands({ nowAbilities, caps, level, riderId, teamId, scout = DEFAULT_SCOUT }) {
+  const half = scoutHalfWidth(level, scout, CEIL_HALF_WIDTH_BY_LEVEL);
   return RIDER_TYPE_KEYS.map((key) => {
     const now = ratingFromAbilities(nowAbilities, key);
     const ceilTruth = ratingFromAbilities(caps, key);

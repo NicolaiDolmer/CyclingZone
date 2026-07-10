@@ -156,10 +156,27 @@ const YEAR = 2026;
 test("buildScoutEstimate: egen rytter → smalt bånd, ikke eksakt (#1543 beslutning 4)", () => {
   const rider = { id: "r1", potentiale: 4.0, birthdate: "2004-03-01", team_id: "tMe" };
   const est = buildScoutEstimate(rider, 0, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.equal(est.exact, false);
+  assert.equal(est.exact, undefined, "exact-feltet må ikke findes i outputtet (#2244 A3)");
   assert.equal(est.level, SCOUTING_CONFIG.maxLevel);
   assert.ok(est.hi > est.lo, "egen rytter skal have et bånd");
   assert.ok(est.hi - est.lo <= 1.5, "egen-rytter-båndet skal være smalt");
+});
+
+test("buildScoutEstimate: egen rytter smallere end fremmed fuldt scoutet (#2244 A3, min-bånd × 0.8)", () => {
+  const own = buildScoutEstimate(
+    { id: "r1", potentiale: 4.0, birthdate: "2004-03-01", team_id: "tMe" }, 0, "tMe", SCOUTING_CONFIG, YEAR,
+  );
+  const foreign = buildScoutEstimate(
+    { id: "r1", potentiale: 4.0, birthdate: "2004-03-01", team_id: "tOther" }, SCOUTING_CONFIG.maxLevel, "tMe", SCOUTING_CONFIG, YEAR,
+  );
+  assert.ok((own.hi - own.lo) <= (foreign.hi - foreign.lo), "egen-rytter-bånd skal være ≤ fremmed fuldt scoutet bånd");
+});
+
+test("buildScoutEstimate: dårligere spejder (overall 40) giver bredere rest-bånd end topspejder (overall 99)", () => {
+  const rider = { id: "r1", potentiale: 4.0, birthdate: "1998-03-01", team_id: "tOther" };
+  const worseScout = buildScoutEstimate(rider, SCOUTING_CONFIG.maxLevel, "tMe", SCOUTING_CONFIG, YEAR, { overall: 40 });
+  const bestScout = buildScoutEstimate(rider, SCOUTING_CONFIG.maxLevel, "tMe", SCOUTING_CONFIG, YEAR, { overall: 99 });
+  assert.ok((worseScout.hi - worseScout.lo) >= (bestScout.hi - bestScout.lo), "overall 40 skal give ≥ bånd end overall 99");
 });
 
 test("buildScoutEstimate: fremmed uscoutet rytter → SKJULT (#1543), intet lo/hi-spænd", () => {
@@ -172,11 +189,11 @@ test("buildScoutEstimate: fremmed uscoutet rytter → SKJULT (#1543), intet lo/h
   assert.equal(est.hi, undefined, "hidden-estimat må ikke lække hi");
 });
 
-test("buildScoutEstimate: fremmed rytter scoutet (level 1) → usikkert interval, exact=false", () => {
+test("buildScoutEstimate: fremmed rytter scoutet (level 1) → usikkert interval, intet exact-felt", () => {
   // Post-scout (level > 0) afsløres estimatet uændret som før (#1543 rører kun level 0).
   const rider = { id: "r1", potentiale: 4.5, birthdate: "2006-03-01", team_id: "tOther" };
   const est = buildScoutEstimate(rider, 1, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.equal(est.exact, false);
+  assert.equal(est.exact, undefined);
   assert.equal(est.level, 1);
   assert.ok(est.hi - est.lo > 0, "scoutet rytter skal have spænd");
 });
@@ -184,7 +201,7 @@ test("buildScoutEstimate: fremmed rytter scoutet (level 1) → usikkert interval
 test("buildScoutEstimate: fuldt scoutet fremmed rytter → rest-bånd (#1543 beslutning 3)", () => {
   const rider = { id: "r1", potentiale: 3.5, birthdate: "1998-03-01", team_id: "tOther" };
   const est = buildScoutEstimate(rider, SCOUTING_CONFIG.maxLevel, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.equal(est.exact, false);
+  assert.equal(est.exact, undefined);
   assert.equal(est.level, SCOUTING_CONFIG.maxLevel);
   assert.ok(est.hi > est.lo, "fuldt scoutet skal stadig have et rest-bånd");
 });
@@ -194,8 +211,8 @@ test("buildScoutEstimate: rytter uden potentiale → null", () => {
   assert.equal(buildScoutEstimate(rider, 0, "tMe", SCOUTING_CONFIG, YEAR), null);
 });
 
-test("buildScoutEstimate: payloaden indeholder ALDRIG rå potentiale-felt", () => {
+test("buildScoutEstimate: payloaden indeholder ALDRIG rå potentiale-felt (og ikke `exact`, #2244 A3)", () => {
   const rider = { id: "r1", potentiale: 4.5, birthdate: "2006-03-01", team_id: "tOther" };
   const est = buildScoutEstimate(rider, 1, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.deepEqual(Object.keys(est).sort(), ["exact", "hi", "level", "lo"]);
+  assert.deepEqual(Object.keys(est).sort(), ["hi", "level", "lo"]);
 });

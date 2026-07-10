@@ -14,7 +14,14 @@
 // anchorBias 0.6 ("scout-anchor:"-seed, konstant på tværs af levels — det er
 // konstansen der gør at averaging/least-squares ikke kan fjerne den).
 // Scorecard ved validering: median 0.2641, p10 0.0522, fracBelow025 0.48.
+//
+// #2244 (Fase 3, Task A3): spejder-rating driver nu et gulv på rest-båndets
+// halvbredde (scoutEngine.scoutHalfWidth). GATEN gentages for hver rating i
+// {40,60,80,99} (default-spejder, to mellemtrin, topspejder) — et bedre
+// rest-bånd-gulv må ikke gøre inversionen lettere ved nogen rating.
 import { estimatePotentialRange, SCOUTING_CONFIG, seededUnit } from "../lib/scouting.js";
+
+const SCOUT_RATINGS_TO_GATE = [40, 60, 80, 99];
 
 const N = 2000;
 const maxLevel = SCOUTING_CONFIG.maxLevel;
@@ -42,42 +49,53 @@ const STRATEGIES = {
   },
 };
 
-const errsByStrategy = Object.fromEntries(Object.keys(STRATEGIES).map((k) => [k, []]));
-for (const r of riders) {
-  const mids = [];
-  for (let level = 1; level <= maxLevel; level++) {
-    const e = estimatePotentialRange(r.truth, level, r.age, r.id, "attacker-team", maxLevel);
-    mids.push((e.lo + e.hi) / 2);
-  }
-  for (const [name, fn] of Object.entries(STRATEGIES)) {
-    errsByStrategy[name].push(Math.abs(fn(mids) - r.truth));
-  }
-}
-
 const median = (arr) => {
   const s = [...arr].sort((a, b) => a - b);
   return s[Math.floor(0.5 * (s.length - 1))];
 };
-const perStrategy = Object.fromEntries(
-  Object.entries(errsByStrategy).map(([k, errs]) => [k, +median(errs).toFixed(4)])
-);
-const bestStrategy = Object.entries(perStrategy).sort((a, b) => a[1] - b[1])[0];
-const medianError = bestStrategy[1];
-const bestErrs = errsByStrategy[bestStrategy[0]].slice().sort((a, b) => a - b);
-const p10Error = bestErrs[Math.floor(0.1 * (bestErrs.length - 1))];
-const fracBelow025 = bestErrs.filter((e) => e < 0.25).length / bestErrs.length;
 
-const scorecard = {
-  n: N,
-  bestStrategy: bestStrategy[0],
-  perStrategy,
-  medianError,
-  p10Error: +p10Error.toFixed(4),
-  fracBelow025: +fracBelow025.toFixed(3),
-};
-
-if (medianError < 0.25) {
-  console.error("FAIL: rest-båndet er reelt inverterbart", scorecard);
-  process.exit(1);
+function runForScout(scout) {
+  const errsByStrategy = Object.fromEntries(Object.keys(STRATEGIES).map((k) => [k, []]));
+  for (const r of riders) {
+    const mids = [];
+    for (let level = 1; level <= maxLevel; level++) {
+      const e = estimatePotentialRange(r.truth, level, r.age, r.id, "attacker-team", maxLevel, scout);
+      mids.push((e.lo + e.hi) / 2);
+    }
+    for (const [name, fn] of Object.entries(STRATEGIES)) {
+      errsByStrategy[name].push(Math.abs(fn(mids) - r.truth));
+    }
+  }
+  const perStrategy = Object.fromEntries(
+    Object.entries(errsByStrategy).map(([k, errs]) => [k, +median(errs).toFixed(4)])
+  );
+  const bestStrategy = Object.entries(perStrategy).sort((a, b) => a[1] - b[1])[0];
+  const medianError = bestStrategy[1];
+  const bestErrs = errsByStrategy[bestStrategy[0]].slice().sort((a, b) => a - b);
+  const p10Error = bestErrs[Math.floor(0.1 * (bestErrs.length - 1))];
+  const fracBelow025 = bestErrs.filter((e) => e < 0.25).length / bestErrs.length;
+  return {
+    n: N,
+    bestStrategy: bestStrategy[0],
+    perStrategy,
+    medianError,
+    p10Error: +p10Error.toFixed(4),
+    fracBelow025: +fracBelow025.toFixed(3),
+  };
 }
-console.log("PASS", scorecard);
+
+const scorecardsByRating = {};
+let anyFail = false;
+for (const overall of SCOUT_RATINGS_TO_GATE) {
+  const scorecard = runForScout({ overall });
+  scorecardsByRating[overall] = scorecard;
+  if (scorecard.medianError < 0.25) {
+    console.error(`FAIL (scout overall=${overall}): rest-båndet er reelt inverterbart`, scorecard);
+    anyFail = true;
+  } else {
+    console.log(`PASS (scout overall=${overall})`, scorecard);
+  }
+}
+
+if (anyFail) process.exit(1);
+console.log("PASS — alle spejder-ratings", scorecardsByRating);
