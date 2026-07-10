@@ -78,6 +78,7 @@ const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
+const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
 
 function LoadingScreen() {
@@ -279,6 +280,7 @@ export default function App() {
             <Route path="training" element={<TrainingPage />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="klub" element={<KlubPage />} />
+            <Route path="scouting" element={<ScoutingCentralPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
