@@ -29,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_scout_assignments_ready
   ON scout_assignments (ready_on) WHERE status = 'active';
 
 ALTER TABLE scout_assignments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS scout_assignments_owner_select ON scout_assignments;
 CREATE POLICY scout_assignments_owner_select ON scout_assignments
   FOR SELECT TO authenticated
   USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));

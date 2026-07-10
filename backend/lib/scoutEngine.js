@@ -58,7 +58,7 @@ export function minHalfWidthByScoutRating(overall) {
 // (altid beregnet i rating-point) til den enhed. Default unitScale=1 (rating-point).
 export function scoutHalfWidth(level, scout = DEFAULT_SCOUT, baseHalfWidthByLevel, unitScale = 1) {
   if (!Array.isArray(baseHalfWidthByLevel) || baseHalfWidthByLevel.length === 0) {
-    throw new Error("scoutHalfWidth: baseHalfWidthByLevel skal være et ikke-tomt array");
+    throw new Error("scoutHalfWidth: baseHalfWidthByLevel must be a non-empty array");
   }
   const idx = Math.max(0, Math.min(Number(level) || 0, baseHalfWidthByLevel.length - 1));
   const base = baseHalfWidthByLevel[idx];
