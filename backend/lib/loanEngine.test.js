@@ -11,6 +11,7 @@ const {
   createLoan,
   processLoanAgreementSeasonFees,
   repayLoan,
+  repayLoansFromForcedSale,
   shouldChargeLoanAgreementSeasonFee,
 } = await import("./loanEngine.js");
 
@@ -1064,4 +1065,135 @@ test("repayLoan: RPC'ens 'Ikke nok midler'-afvisning propagerer som samme fejl-k
     () => repayLoan("loan-1", "team-1", 200, supabase.client),
     /Ikke nok midler/,
   );
+});
+
+// ── repayLoansFromForcedSale (#2303) ──────────────────────────────────────────
+
+function createForcedSaleSupabase({ teamId = "team-1", loans = [] } = {}) {
+  const state = {
+    loans: loans.map((l) => ({ ...l })),
+    rpcCalls: [],
+  };
+
+  return {
+    state,
+    client: {
+      rpc(name, params) {
+        assert.equal(name, "repay_loan_atomic");
+        state.rpcCalls.push(params);
+
+        const loan = state.loans.find((l) => l.id === params.p_loan_id && l.team_id === params.p_team_id);
+        if (!loan) return Promise.resolve({ data: null, error: { message: "Lån ikke fundet" } });
+
+        const actualAmount = Math.min(params.p_amount, loan.amount_remaining);
+        const newRemaining = loan.amount_remaining - actualAmount;
+        const isPaidOff = newRemaining <= 0;
+        loan.amount_remaining = isPaidOff ? 0 : newRemaining;
+        loan.status = isPaidOff ? "paid_off" : "active";
+
+        return Promise.resolve({
+          data: { paid: actualAmount, remaining: isPaidOff ? 0 : newRemaining, paid_off: isPaidOff },
+          error: null,
+        });
+      },
+      from(table) {
+        assert.equal(table, "loans");
+        return {
+          select(_cols) {
+            return {
+              eq(col1, val1) {
+                assert.equal(col1, "team_id");
+                assert.equal(val1, teamId);
+                return {
+                  eq(col2, val2) {
+                    assert.equal(col2, "status");
+                    assert.equal(val2, "active");
+                    return {
+                      order(col3, opts) {
+                        assert.equal(col3, "created_at");
+                        assert.deepEqual(opts, { ascending: true });
+                        return Promise.resolve({
+                          data: state.loans.filter((l) => l.status === "active"),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+test("repayLoansFromForcedSale: afdrager ældste lån først indtil provenuet er brugt", async () => {
+  const supabase = createForcedSaleSupabase({
+    loans: [
+      { id: "loan-old", team_id: "team-1", status: "active", amount_remaining: 300_000 },
+      { id: "loan-new", team_id: "team-1", status: "active", amount_remaining: 400_000 },
+    ],
+  });
+
+  const result = await repayLoansFromForcedSale("team-1", 500_000, supabase.client, "season-1");
+
+  // Ældste lån (loan-old) betales helt af først (300k), resten (200k) går til loan-new.
+  assert.equal(supabase.state.loans[0].amount_remaining, 0, "ældste lån skal være fuldt afdraget");
+  assert.equal(supabase.state.loans[0].status, "paid_off");
+  assert.equal(supabase.state.loans[1].amount_remaining, 200_000, "yngre lån skal afdrages med det resterende provenu");
+  assert.equal(result.totalRepaid, 500_000);
+  assert.equal(result.loans.length, 2, "begge lån skal have fået et repay-kald");
+});
+
+test("repayLoansFromForcedSale: provenu større end samlet gæld — afdrager alt, resten forbliver i kassen", async () => {
+  const supabase = createForcedSaleSupabase({
+    loans: [{ id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 300_000 }],
+  });
+
+  const result = await repayLoansFromForcedSale("team-1", 900_000, supabase.client, "season-1");
+
+  assert.equal(supabase.state.loans[0].amount_remaining, 0);
+  assert.equal(supabase.state.loans[0].status, "paid_off");
+  // Kun de faktiske 300k blev brugt til at afdrage gæld — resten (600k) er
+  // allerede krediteret holdets balance af forced-sale-kaldet i economyEngine
+  // (creditTeam sker FØR repayLoansFromForcedSale), så det forbliver i kassen.
+  assert.equal(result.totalRepaid, 300_000, "kan ikke afdrage mere end den faktiske gæld");
+});
+
+test("repayLoansFromForcedSale: ingen aktive lån → no-op uden RPC-kald", async () => {
+  const supabase = createForcedSaleSupabase({ loans: [] });
+
+  const result = await repayLoansFromForcedSale("team-1", 500_000, supabase.client, "season-1");
+
+  assert.deepEqual(result, { totalRepaid: 0, loans: [] });
+  assert.equal(supabase.state.rpcCalls.length, 0);
+});
+
+test("repayLoansFromForcedSale: 0 eller negativt provenu → no-op uden DB-kald", async () => {
+  const supabase = createForcedSaleSupabase({
+    loans: [{ id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 300_000 }],
+  });
+
+  const result = await repayLoansFromForcedSale("team-1", 0, supabase.client, "season-1");
+
+  assert.deepEqual(result, { totalRepaid: 0, loans: [] });
+  assert.equal(supabase.state.rpcCalls.length, 0, "loans-tabellen skal ikke engang forespørges");
+});
+
+test("repayLoansFromForcedSale: stempler metadata_code_final/remaining + FORCED_DEBT_REPAYMENT reason_code (spiller-historik #2303)", async () => {
+  const supabase = createForcedSaleSupabase({
+    loans: [{ id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 300_000 }],
+  });
+
+  await repayLoansFromForcedSale("team-1", 100_000, supabase.client, "season-1");
+
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  const payload = supabase.state.rpcCalls[0].p_finance_payload;
+  assert.equal(payload.metadata_code_final, "tx.forcedDebtRepaymentFinal");
+  assert.equal(payload.metadata_code_remaining, "tx.forcedDebtRepaymentRemaining");
+  assert.equal(payload.reason_code, "forced_debt_repayment");
+  assert.equal(payload.source_path, "loanEngine.repayLoansFromForcedSale");
+  assert.equal(payload.season_id, "season-1");
 });

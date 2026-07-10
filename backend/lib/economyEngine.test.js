@@ -25,6 +25,8 @@ const {
   FINANCE_REASON,
 } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
+const { getTotalDebt: realGetTotalDebt, repayLoansFromForcedSale: realRepayLoansFromForcedSale } =
+  await import("./loanEngine.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3055,6 +3057,10 @@ test("processTeamSeasonPayroll: breach-streak >= 2 fryser transfer + tvinger sal
     processLoanInterest: async () => ({ charged: [] }),
     createEmergencyLoan: async () => {},
     getTotalDebt: async (_teamId, _client) => 700_000, // over D3 ceiling (600k)
+    // #2303: forced-sale repayment nu en separat dep (repayLoansFromForcedSale
+    // kalder loans-tabellen + repay_loan_atomic-RPC'en, som denne testens
+    // simple mock ikke modellerer) — stubbes ud, dedikerede tests dækker den.
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
   });
 
   // (a) teams.update skal kalde med transfer_frozen:true + debt_breach_streak:2
@@ -3175,6 +3181,240 @@ test("processTeamSeasonPayroll: team under ceiling nulstiller breach-streak + fj
   // Ingen forced_debt_sale
   const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
   assert.equal(forcedSaleRows.length, 0, "Ingen forced_debt_sale ved recovery");
+});
+
+// ─── #2303 · Tvangssalg afdrager gælden DIREKTE (ikke bare et estimat) ────────
+
+function createForcedSaleDebtPaydownSupabase({ teamId, loans, initialLoanStatus = "active" }) {
+  const financeRows = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const loansState = loans.map((l) => ({ ...l, status: initialLoanStatus }));
+  const rpcCalls = [];
+
+  const supabase = {
+    rpc(name, params) {
+      rpcCalls.push({ name, params });
+      if (name === "increment_balance_with_audit") {
+        financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+        return Promise.resolve({ data: 0, error: null });
+      }
+      if (name === "repay_loan_atomic") {
+        const loan = loansState.find((l) => l.id === params.p_loan_id && l.team_id === params.p_team_id);
+        if (!loan) return Promise.resolve({ data: null, error: { message: "Lån ikke fundet" } });
+        const actualAmount = Math.min(params.p_amount, loan.amount_remaining);
+        const newRemaining = loan.amount_remaining - actualAmount;
+        const isPaidOff = newRemaining <= 0;
+        loan.amount_remaining = isPaidOff ? 0 : newRemaining;
+        loan.status = isPaidOff ? "paid_off" : "active";
+        return Promise.resolve({
+          data: { paid: actualAmount, remaining: isPaidOff ? 0 : newRemaining, paid_off: isPaidOff },
+          error: null,
+        });
+      }
+      throw new Error(`Unexpected rpc in forced-sale debt-paydown test: ${name}`);
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return { single: () => Promise.resolve({ data: { balance: 999_999 }, error: null }) };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) };
+            }
+            return { in: () => Promise.resolve({ data: [], error: null }) };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                riderUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "transfer_listings") {
+        return {
+          update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }),
+        };
+      }
+      if (table === "loans") {
+        return {
+          select(_cols) {
+            return {
+              eq(col1, val1) {
+                assert.equal(col1, "team_id");
+                assert.equal(val1, teamId);
+                return {
+                  eq(col2, val2) {
+                    assert.equal(col2, "status");
+                    assert.equal(val2, "active");
+                    // Skal virke BÅDE som en direkte awaitable (getTotalDebt:
+                    // `await ...eq().eq()`) OG som noget der kan chaine .order()
+                    // (repayLoansFromForcedSale: `await ...eq().eq().order()`).
+                    const activeLoans = loansState.filter((l) => l.status === "active");
+                    const result = Promise.resolve({ data: activeLoans, error: null });
+                    result.order = () => Promise.resolve({ data: activeLoans, error: null });
+                    return result;
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table in forced-sale debt-paydown test: ${table}`);
+    },
+  };
+
+  return { supabase, financeRows, teamUpdates, riderUpdates, loansState };
+}
+
+test("processTeamSeasonPayroll: tvangssalg afdrager loans.amount_remaining DIREKTE (ældste lån først), ikke kun et estimat (#2303)", async () => {
+  const seasonId = "season-forced-paydown-1";
+  const teamId = "team-forced-paydown";
+
+  // D3-ceiling er 600k (DEBT_CEILING_BY_DIVISION). To lån, ældste først (loan-old
+  // oprettet før loan-new — order("created_at",{ascending:true}) simuleres via
+  // rækkefølgen i loansState). Samlet gæld 800k > ceiling.
+  const ctx = createForcedSaleDebtPaydownSupabase({
+    teamId,
+    loans: [
+      { id: "loan-old", team_id: teamId, amount_remaining: 500_000 },
+      { id: "loan-new", team_id: teamId, amount_remaining: 300_000 },
+    ],
+  });
+
+  const team = {
+    id: teamId,
+    name: "Debt Spiral D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1, // allerede ét brud → dette bliver streak 2 → tvunget salg
+    transfer_frozen: false,
+    riders: [
+      { id: "rider-a", firstname: "Big", lastname: "Value", market_value: 400_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+      { id: "rider-b", firstname: "Small", lastname: "Value", market_value: 300_000, salary: 0, ai_team_id: "ai-2", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    // #2303: REAL implementations (ikke stubs) — beviser at tvangssalget rent
+    // faktisk skriver til loans.amount_remaining og at loopet stopper på ægte
+    // gæld, ikke det gamle runningDebt-estimat.
+    getTotalDebt: realGetTotalDebt,
+    repayLoansFromForcedSale: realRepayLoansFromForcedSale,
+  });
+
+  // (1) Kun rider-a (400k, højeste market_value) blev tvangssolgt — provenuet
+  //     (400k) betaler loan-old (500k) delvist ned til 100k, hvilket bringer
+  //     den ÆGTE gæld til 100k+300k=400k, under 600k-loftet → loopet stopper.
+  assert.equal(ctx.riderUpdates.length, 1, "kun ét salg skal være nødvendigt — loopet må ikke oversælge");
+  assert.equal(ctx.riderUpdates[0].id, "rider-a");
+
+  // (2) Ældste lån afdrages FØRST — loan-old falder med hele provenuet (400k
+  //     < 500k rest), loan-new er URØRT.
+  const loanOld = ctx.loansState.find((l) => l.id === "loan-old");
+  const loanNew = ctx.loansState.find((l) => l.id === "loan-new");
+  assert.equal(loanOld.amount_remaining, 100_000, "loan-old (ældste) skal falde med hele salgsprovenuet");
+  assert.equal(loanNew.amount_remaining, 300_000, "loan-new (yngre) skal være urørt — loan-old absorberede alt provenuet");
+
+  // (3) Loop-kriteriet er ÆGTE gæld, ikke et estimat: en frisk getTotalDebt-
+  //     forespørgsel efter tvangssalget viser 400k, under loftet.
+  const debtAfter = await realGetTotalDebt(teamId, ctx.supabase);
+  assert.equal(debtAfter, 400_000);
+
+  // (4) Breach ikke gentages ved næste season-start: samme deps, samme (nu
+  //     opdaterede) DB-tilstand — currentDebt < ceiling, ingen ny tvangssalg.
+  const secondSeasonTeam = {
+    ...team,
+    debt_breach_streak: 2,
+    transfer_frozen: true,
+    riders: [team.riders[1]], // rider-a er allerede solgt/væk fra holdet
+  };
+  const ctx2 = createForcedSaleDebtPaydownSupabase({
+    teamId,
+    loans: ctx.loansState.map((l) => ({ id: l.id, team_id: teamId, amount_remaining: l.amount_remaining })),
+  });
+  await processTeamSeasonPayroll(secondSeasonTeam, "season-forced-paydown-2", {
+    supabase: ctx2.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: realGetTotalDebt,
+    repayLoansFromForcedSale: realRepayLoansFromForcedSale,
+  });
+  assert.equal(ctx2.riderUpdates.length, 0, "ingen nyt tvangssalg — gælden er allerede under loftet efter afdraget");
+  const resetUpdate = ctx2.teamUpdates.find((u) => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.ok(resetUpdate, "breach-streak skal nulstilles på det andet kald");
+  assert.equal(resetUpdate.payload.debt_breach_streak, 0);
+  assert.equal(resetUpdate.payload.transfer_frozen, false);
+});
+
+test("processTeamSeasonPayroll: tvangssalgs-provenu > samlet gæld — afdrager alt, loopet stopper (ingen oversalg) (#2303)", async () => {
+  const seasonId = "season-forced-paydown-overpay";
+  const teamId = "team-forced-paydown-overpay";
+
+  // Gæld (700k) > D3-ceiling (600k), så tvangssalget udløses.
+  const ctx = createForcedSaleDebtPaydownSupabase({
+    teamId,
+    loans: [{ id: "loan-1", team_id: teamId, amount_remaining: 700_000 }],
+  });
+
+  const team = {
+    id: teamId,
+    name: "Overpay D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1,
+    transfer_frozen: false,
+    riders: [
+      { id: "rider-a", firstname: "Huge", lastname: "Value", market_value: 900_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+      { id: "rider-b", firstname: "Second", lastname: "Rider", market_value: 100_000, salary: 0, ai_team_id: "ai-2", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: realGetTotalDebt,
+    repayLoansFromForcedSale: realRepayLoansFromForcedSale,
+  });
+
+  // Kun rider-a sælges (900k proceeds >> 500k gæld) — loanet betales helt af,
+  // og loopet stopper med det samme (0 gæld <= ceiling), rider-b beholdes.
+  assert.equal(ctx.riderUpdates.length, 1);
+  assert.equal(ctx.riderUpdates[0].id, "rider-a");
+  const loan = ctx.loansState.find((l) => l.id === "loan-1");
+  assert.equal(loan.amount_remaining, 0);
+  assert.equal(loan.status, "paid_off");
+
+  const debtAfter = await realGetTotalDebt(teamId, ctx.supabase);
+  assert.equal(debtAfter, 0);
 });
 
 // ─── #2301 · Nødlån-idempotens + eskalering ───────────────────────────────────
