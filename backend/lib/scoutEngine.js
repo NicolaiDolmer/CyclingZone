@@ -5,8 +5,11 @@
 //
 // Ejer-låste defaults (docs/superpowers/plans/2026-07-10-talentspejder-fase-3.md):
 //   default-spejder overall 40 · kapacitet 1 (2 ved overall≥80)
-//   target: 3 dage/niveau-step, 15.000/niveau-step
-//   mission: 14 dage, 60.000 flat
+//   target: 3 dage/niveau-step, 1.000/niveau-step
+//   mission: 14 dage, 6.000 flat
+//   (rekalibreret 10/7 fra 15.000/60.000 efter scoutTravelScorecard-FAIL:
+//    85-177% af sæsonindkomst ved aktiv kadence, mål [2%,15%] —
+//    se docs/audits/2026-07-10-talentspejder-gates.md)
 //   gulv: lineær interp overall 40→5.0, 99→3.0 (rating-point-skala, CEIL_HALF_WIDTH_BY_LEVEL[3]=3)
 //   loft: middelmådig spejder (overall<60) kommer ALDRIG under gulv 4.5
 
@@ -17,8 +20,8 @@ export const DEFAULT_SCOUT = Object.freeze({
 });
 
 export const SCOUT_JOB_CONFIG = Object.freeze({
-  target: Object.freeze({ daysPerLevel: 3, costPerLevel: 15000 }),
-  mission: Object.freeze({ days: 14, cost: 60000, shortlistMin: 3, shortlistMax: 5 }),
+  target: Object.freeze({ daysPerLevel: 3, costPerLevel: 1000 }),
+  mission: Object.freeze({ days: 14, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
 });
 
 const CAPACITY_HIGH_THRESHOLD = 80;
