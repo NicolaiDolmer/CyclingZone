@@ -536,3 +536,33 @@ test("event-skrive-fejl tæller i errors uden at vælte mekanikken", async () =>
   assert.equal(state.board_profiles[0].satisfaction, 53, "satisfaction blev persisteret trods event-fejl");
   assert.equal(state.board_satisfaction_events.length, 0, "intet event-row blev skrevet på fejl");
 });
+
+// ─── #2308 · Kontekst-paritet: leagueDivisionId skal med i weekend-stien ──────
+
+test("#2308 · weekend-stien sender leagueDivisionId (pulje-id) videre til loadGoalContext", async () => {
+  // Før fixen kaldte weekend-stien loadGoalContextFn UDEN leagueDivisionId, så
+  // divisionManagerCount faldt tilbage til tier-bred tælling mens /board/status
+  // + season-end er pulje-baseret (#1608) → relative_rank-målet konvergerede
+  // mod et target season-end ikke reproducerede.
+  const state = makeState();
+  state.season_standings[0].league_division_id = 42;
+  const supabase = makeFakeSupabase(state);
+  const compute = stubComputeUpdate({ newSatisfaction: 45, newModifier: 1.0 });
+
+  const loadGoalContextCalls = [];
+  const loadGoalContext = async (args) => {
+    loadGoalContextCalls.push(args);
+    return { divisionManagerCount: 1 };
+  };
+
+  await processBoardWeekendFinalization({
+    supabase,
+    season: { ...SEASON },
+    previousRaceDaysCompleted: 6,
+    deps: baseDeps({ computeWeekendUpdate: compute, loadGoalContext }),
+  });
+
+  assert.equal(loadGoalContextCalls.length, 1);
+  assert.equal(loadGoalContextCalls[0].leagueDivisionId, 42,
+    "weekend-stien skal sende standing.league_division_id som leagueDivisionId");
+});
