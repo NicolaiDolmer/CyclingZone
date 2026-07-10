@@ -401,6 +401,25 @@ test("resetBetaSeasons nuller finance_transactions.season_id for ALLE hold (ogs�
   }
 });
 
+test("resetBetaSeasons nuller loans.last_interest_season_id før season-delete (#2304 FK)", async () => {
+  const state = createInitialState();
+  state.loans = [
+    { id: "loan-1", team_id: "team-1", status: "active", last_interest_season_id: "season-1" },
+    { id: "loan-2", team_id: "team-ai", status: "active", last_interest_season_id: null },
+  ];
+  const supabase = createBetaResetSupabase(state, [
+    { child: "loans", column: "last_interest_season_id", parent: "seasons" },
+  ]);
+
+  const result = await resetBetaSeasons(supabase);
+
+  assert.equal(result.seasons, 1);
+  assert.deepEqual(supabase.state.seasons, [], "sæsoner slettet");
+  for (const row of supabase.state.loans) {
+    assert.equal(row.last_interest_season_id, null, `loan ${row.id} har stadig last_interest_season_id`);
+  }
+});
+
 test("resetBetaSeasons nuller scout_assignments.season_id før season-delete (scout Fase 3 FK)", async () => {
   // Regression: scout_assignments.season_id -> seasons (NO ACTION, scout-migration 10/7)
   // blokerede season-delete og fik Reset-FK-audit'en til at fejle på alle database-PR'er.

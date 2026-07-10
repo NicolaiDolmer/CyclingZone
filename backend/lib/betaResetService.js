@@ -54,6 +54,7 @@ export const BLOCKING_FK_BASELINE = Object.freeze([
   // fordi resetBetaLoans kun rammer beta-manager-teams' loans.
   { child: "loans", column: "season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
   { child: "scout_assignments", column: "season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
+  { child: "loans", column: "last_interest_season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
 ]);
 // NB: board_profiles.tradeoff_active_until_season_id -> seasons står som NO ACTION i de
 // statiske dumps (schema.sql/supabase_setup.sql) men er SET NULL i prod (2026-05-05-board-
@@ -534,6 +535,9 @@ export async function resetBetaSeasons(supabase) {
   // scout_assignments: nullable NO ACTION FK til seasons (scout Fase 3, 10/7) — null før
   // sæson-delete, ellers blokerer opgaver med sæson-stempel DELETE FROM seasons.
   ensureOk(await supabase.from("scout_assignments").update({ season_id: null }).not("season_id", "is", null));
+  // loans.last_interest_season_id (#2304): nullable NO ACTION FK til seasons
+  // (rente-idempotency-guard) — null før sæson-delete, samme mønster som ovenfor.
+  ensureOk(await supabase.from("loans").update({ last_interest_season_id: null }).not("last_interest_season_id", "is", null));
   const seasons = ensureOk(await supabase.from("seasons").delete().not("id", "is", null).select("id"));
   return { seasons: countRows(seasons) };
 }
