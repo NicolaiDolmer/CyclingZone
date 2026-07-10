@@ -820,6 +820,30 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// POST /api/riders/names — batch-opslag af rytternavne (#2244 Slice C follow-up).
+// Scouting-centralen skal vise navne for op til ~100 rider-ids (aktive target-jobs
+// + shortlists); ét kald i stedet for N enkelt-GETs. Payload er KUN {id, name} —
+// potentiale/abilities forlader aldrig serveren her, så ingen admin-maskering nødvendig.
+router.post("/riders/names", requireAuth, async (req, res) => {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "ids must be a non-empty array" });
+  }
+  if (ids.length > 200) {
+    return res.status(400).json({ error: "max 200 ids per request" });
+  }
+  const validIds = [...new Set(ids.filter((id) => typeof id === "string" && UUID_RE.test(id)))];
+  if (validIds.length === 0) return res.json({ riders: [] });
+
+  const { data, error } = await supabase
+    .from("riders")
+    .select("id, name")
+    .in("id", validIds);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ riders: data ?? [] });
+});
+
 // Security-audit 2026-06-12: ruter der interpolerer URL-params ind i PostgREST
 // .or()-filterstrenge (riderHistory.js, teamTransferHistory.js) SKAL validere
 // param-formatet først — ellers kan en crafted :id injicere ekstra

@@ -42,7 +42,8 @@ function Eyebrow({ children }) {
   );
 }
 
-// Lazy rytternavn-opslag: en unik GET pr. rider-id, cached for sidens levetid.
+// Lazy rytternavn-opslag: ét batch-kald (POST /api/riders/names) for nye ids,
+// cached for sidens levetid.
 function useRiderNames(ids) {
   const [names, setNames] = useState({});
   const requestedRef = useRef(new Set());
@@ -55,18 +56,21 @@ function useRiderNames(ids) {
       const { data } = await getSession();
       const token = data?.session?.access_token;
       if (!token) return;
-      const headers = { Authorization: `Bearer ${token}` };
-      const results = await Promise.all(toFetch.map(async (id) => {
-        try {
-          const res = await fetch(`${API}/api/riders/${id}`, { headers });
-          if (!res.ok) return [id, null];
-          const rider = await res.json();
-          return [id, rider?.name ?? null];
-        } catch {
-          return [id, null];
+      const fetched = Object.fromEntries(toFetch.map((id) => [id, null]));
+      try {
+        const res = await fetch(`${API}/api/riders/names`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: toFetch }),
+        });
+        if (res.ok) {
+          const { riders } = await res.json();
+          for (const r of riders ?? []) fetched[r.id] = r.name ?? null;
         }
-      }));
-      setNames((prev) => ({ ...prev, ...Object.fromEntries(results) }));
+      } catch {
+        // navne forbliver null → UI viser fallback-label
+      }
+      setNames((prev) => ({ ...prev, ...fetched }));
     })();
   }, [ids]);
 

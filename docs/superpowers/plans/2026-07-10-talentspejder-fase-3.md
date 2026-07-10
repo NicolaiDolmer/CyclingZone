@@ -25,9 +25,9 @@
 | Default-spejder overall | 40 | teams uden hyret scouting-staff |
 | Kapacitet | 1 samtidig opgave (2 ved overall ≥ 80) | spec beslutning 2 |
 | Målrettet opgave: varighed | 3 dage pr. niveau-step | modnes via sweep |
-| Målrettet opgave: rejseomkostning | 15.000 × niveau-step | finance type `scout_travel` |
+| Målrettet opgave: rejseomkostning | ~~15.000~~ **1.000** × niveau-step (rekalibreret 10/7 efter scorecard-FAIL, se audit) | finance type `scout_travel` |
 | Mission: varighed | 14 dage | spec: "N uger" → 2 uger v1 |
-| Mission: rejseomkostning | 60.000 | flat v1 |
+| Mission: rejseomkostning | ~~60.000~~ **6.000** (rekalibreret 10/7) | flat v1 |
 | Mission-output | shortlist 3–5 + 1 gratis L1-rapport på topfund | spec beslutning 6 |
 | Half-width-gulv pr. spejder-overall | lineær interp: overall 40 → gulv 5.0, overall 99 → gulv 3.0 (rating-point, jf. `CEIL_HALF_WIDTH_BY_LEVEL[3]=3`) | ingen når 0 — residual `anchorBias` bevares |
 | Egne ryttere | bånd = spejderens minimums-bånd × 0.8 (aldrig eksakt) | spec beslutning 4, patch-note-pligtig |
