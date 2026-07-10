@@ -177,7 +177,7 @@ export default function AdminDataTab() {
       <AdminSection title="Løbskalender">
         {races.length > 0 && (
           <div className="mb-5 overflow-hidden rounded-lg border border-cz-border">
-            <table className="w-full text-xs">
+            <table data-sort-exempt="Admin loebskalender; sortering er opfoelgning" className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-3 py-2 text-left text-cz-3">Løb</th>
@@ -404,7 +404,7 @@ export default function AdminDataTab() {
 
         {engineStatus?.races?.length > 0 && (
           <div className="mb-4 overflow-hidden rounded-lg border border-cz-border">
-            <table className="w-full text-xs">
+            <table data-sort-exempt="Admin race-engine-liste; sortering er opfoelgning" className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-3 py-2 text-left text-cz-3">Løb</th>

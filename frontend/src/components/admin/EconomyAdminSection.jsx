@@ -351,7 +351,7 @@ function OverviewView({ getAuth, onMsg }) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sort-exempt="Admin oekonomi-oversigt; har filtre, kolonne-sort er opfoelgning" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Hold</th>
@@ -631,7 +631,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sort-exempt="Transaktions-log; server-ordnet + filtre/pagination" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Tid</th>
@@ -844,7 +844,7 @@ function AdminLogView({ getAuth, onMsg }) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sort-exempt="Admin-log; server-ordnet + filtre/pagination" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Tid</th>
@@ -991,7 +991,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sort-exempt="Korrelations-drilldown; server-ordnet" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Start</th>

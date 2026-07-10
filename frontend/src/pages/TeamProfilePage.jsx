@@ -259,7 +259,7 @@ export default function TeamProfilePage() {
           <div className="text-center py-12 text-cz-3"><p>{t("profile.noRiders")}</p></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table data-sortable className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}

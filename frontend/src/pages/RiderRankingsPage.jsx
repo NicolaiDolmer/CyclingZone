@@ -242,7 +242,7 @@ export default function RiderRankingsPage() {
       ) : (
         <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table data-sortable className="w-full text-sm">
               <thead>
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>

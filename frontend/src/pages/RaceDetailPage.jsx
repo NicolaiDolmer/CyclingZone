@@ -749,7 +749,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
       {rows.length === 0 ? (
         <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("detail.noResults")}</div>
       ) : (
-        <table className="w-full text-sm">
+        <table data-sort-exempt="Loebsresultat, sorteret paa placering (rank)" className="w-full text-sm">
           <tbody className="divide-y divide-cz-border">
             {visibleRows.map(r => {
               const isWinner = highlightWinner && r.rank === 1;

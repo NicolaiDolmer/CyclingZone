@@ -5,7 +5,7 @@
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
@@ -16,6 +16,12 @@ import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, in
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
+import SortTh from "../components/rider/RiderSortTh.jsx";
+import { useSortState, sortRows } from "../lib/useTableSort.js";
+
+// Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed (tal,
+// desc-først: "hvem er mest træt/i bedst form?" med ét klik).
+const ROSTER_DESC_FIRST = new Set(["form", "fatigue"]);
 
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
@@ -79,6 +85,7 @@ export default function TrainingPage() {
 
   // Gruppering + multi-select + bulk-apply (#1480).
   const [groupByType, setGroupByType] = useState(false);
+  const rosterSort = useSortState({ descFirstKeys: ROSTER_DESC_FIRST });
   const [selected, setSelected] = useState(() => new Set()); // valgte rider-id'er
   const [bulkFocus, setBulkFocus] = useState("");
   const [bulkIntensity, setBulkIntensity] = useState("normal");
@@ -149,8 +156,20 @@ export default function TrainingPage() {
   // colSpan på gruppe-header-rækker.
   const ROSTER_COLS = 9;
 
+  // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
+  // rytteren), så closure over condition — useMemo holder referencen stabil pr.
+  // condition-ændring så sorteringen ikke re-kører hver render.
+  const rosterAccessors = useMemo(() => ({
+    name: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
+    primary_type: (r) => r.primary_type ?? "",
+    form: (r) => condition[r.id]?.form ?? null,
+    fatigue: (r) => condition[r.id]?.fatigue ?? null,
+  }), [condition]);
+  const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
+  const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
+
   // Vis enten flade rækker eller type-grupper. Begge bruger samme allerede-hentede
-  // riders-array (ingen ny query).
+  // riders-array (ingen ny query) og den samme aktive sortering.
   const groups = groupByType ? groupRidersByType(riders) : null;
 
   const allSelected = riders.length > 0 && selected.size === riders.length;
@@ -494,7 +513,7 @@ export default function TrainingPage() {
           <div className="text-center py-10 text-cz-3 text-sm">{t("noRiders")}</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-sortable>
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-4 py-3 text-left w-8">
@@ -506,12 +525,14 @@ export default function TrainingPage() {
                       className="accent-cz-accent"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                  <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                    className="px-4 py-3 text-left font-medium text-xs uppercase">
                     {t("colRider")}
-                  </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                  </SortTh>
+                  <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                    className="px-4 py-3 text-left font-medium text-xs uppercase">
                     {t("colType")}
-                  </th>
+                  </SortTh>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {tRider("training.focus")}
                   </th>
@@ -521,12 +542,14 @@ export default function TrainingPage() {
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {t("colNextUp")}
                   </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                  <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                    className="px-4 py-3 text-left font-medium text-xs uppercase">
                     {t("form")}
-                  </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                  </SortTh>
+                  <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                    className="px-4 py-3 text-left font-medium text-xs uppercase">
                     {t("fatigue")}
-                  </th>
+                  </SortTh>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {t("colStatus")}
                   </th>
@@ -546,10 +569,10 @@ export default function TrainingPage() {
                             </span>
                           </td>
                         </tr>
-                        {group.riders.map((rider) => renderRosterRow(rider))}
+                        {sortRoster(group.riders).map((rider) => renderRosterRow(rider))}
                       </Fragment>
                     ))
-                  : riders.map((rider) => renderRosterRow(rider))}
+                  : sortRoster(riders).map((rider) => renderRosterRow(rider))}
               </tbody>
             </table>
           </div>
@@ -589,7 +612,7 @@ export default function TrainingPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-sort-exempt="Per-koersel traeningsrapport i rapport-orden">
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>

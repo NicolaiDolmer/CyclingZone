@@ -1814,7 +1814,7 @@ export default function TransfersPage() {
                    scroll til evnerne; pris/status/bud i en expander-række. */
                 <Card className="overflow-hidden">
                   <div className="overflow-auto max-h-[calc(100vh-260px)]">
-                    <table className="w-full text-xs">
+                    <table data-sortable className="w-full text-xs">
                       <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                         <tr className="border-b border-cz-border">
                           <th className="px-2 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-12 hidden sm:table-cell">{t("marketRow.nation")}</th>

@@ -14,7 +14,7 @@
     "intake": "intake-kvalitet", "growth": "vækstfart",
     "negotiation": "forhandling", "marketing": "marketing"
   },
-  "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Kun trænings-sporet har live effekt i dag; de øvrige viser deres mål og aktiveres når hver motor lander." },
+  "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Træningscentret er aktivt i spillet i dag; de øvrige kommer snart og viser hvad de vil gøre, når de går live." },
   "history": { "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander." },
   "switcher": { "count": "{index} / {total}" }
 }

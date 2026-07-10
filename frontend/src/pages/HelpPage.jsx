@@ -536,7 +536,7 @@ export default function HelpPage() {
                       )}
                       {block.rows && (
                         <div className="overflow-x-auto mt-2">
-                          <table className="w-full text-sm">
+                          <table data-sort-exempt="Statisk hjaelpe-reference (i18n rows)" className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-cz-border">
                                 {block.rows[0].map((h, j) => (

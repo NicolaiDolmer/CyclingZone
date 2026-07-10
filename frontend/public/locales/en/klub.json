@@ -24,9 +24,9 @@
   },
   "effect": {
     "label": "Effect",
-    "live": "live",
-    "target": "target",
-    "note": "Effect column shows the target model. Each track's in-game effect activates as its engine lands."
+    "live": "Active now",
+    "target": "Coming soon",
+    "note": "Not every effect is live yet"
   },
   "tracks": {
     "training": { "name": "Training Center", "effect": "training" },
@@ -35,7 +35,7 @@
     "academy": { "name": "Academy Expansion", "effect": "intake slots" },
     "commercial": { "name": "Commercial Department", "effect": "sponsor (capped)" }
   },
-  "commercial": { "sinkTag": "Pure sink · Phase 4 payoff", "sinkNote": "Never pays for itself by design." },
+  "commercial": { "sinkTag": "Long-term sponsor play", "sinkNote": "Builds sponsor income over time rather than paying for itself now." },
   "roles": {
     "training": "Sports Director",
     "scouting": "Chief Scout",

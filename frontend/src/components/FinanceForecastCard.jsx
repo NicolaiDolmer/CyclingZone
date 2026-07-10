@@ -197,7 +197,7 @@ export default function FinanceForecastCard({
             {t("forecast.multiSeason.title", { from: forecast.forecasts[1]?.season_number ?? "?" })}
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table data-sort-exempt="Multi-saeson fremskrivning i kronologisk orden (1-5 raekker)" className="w-full text-xs">
               <thead>
                 <tr className="text-cz-3 text-start">
                   <th className="py-1 pe-2">{t("forecast.multiSeason.headers.season")}</th>

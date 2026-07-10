@@ -169,7 +169,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
             Sponsor pr. hold ({preview.sponsor_breakdown.length})
           </summary>
           <div className="mt-3 max-h-60 overflow-y-auto">
-            <table className="w-full text-xs">
+            <table data-sort-exempt="Sponsor-detalje i details-panel, kort liste" className="w-full text-xs">
               <thead>
                 <tr className="text-cz-3 text-left">
                   <th className="py-1 pr-2">Hold</th>
@@ -338,7 +338,7 @@ function PayrollSummaryTable({ result }) {
       <p className="text-cz-2 font-medium text-sm mb-2">
         Payroll-summary ({teamsProcessed} hold behandlet)
       </p>
-      <table className="w-full text-xs">
+      <table data-sort-exempt="Payroll-opsummering, fast 4 raekker" className="w-full text-xs">
         <thead>
           <tr className="text-cz-3 text-left">
             <th className="py-1 pr-2">Kategori</th>

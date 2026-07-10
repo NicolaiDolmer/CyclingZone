@@ -7,7 +7,8 @@ import TierLadder from "./TierLadder";
 
 // Én facilitet-række: venstre = navn + tier-ladder + effekt + staff-linje;
 // højre = upgrade-knap + drift.
-// Kommerciel får venstre accent-border + ærligt "pure sink"-tag (Q2). Max tier
+// Kommerciel får venstre accent-border + ærligt sink-tag (Q2: rent minus-spor,
+// spiller-copy "Long-term sponsor play"). Max tier
 // (upgradePrice=null) → "Fully upgraded" i stedet for knap.
 export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy }) {
   const { t } = useTranslation("klub");

@@ -267,7 +267,7 @@ export default function AdminSprintMetricsPage() {
             {(metrics.top_features || []).length === 0 ? (
               <p className="text-cz-3 text-sm">Ingen feature-events i valgt vindue endnu. Tilføj instrumentering via <code className="text-cz-1">logEvent(&quot;feature_xxx_yyy&quot;)</code>.</p>
             ) : (
-              <table className="w-full text-sm">
+              <table data-sort-exempt="Fast top-5, server-sorteret" className="w-full text-sm">
                 <thead className="text-cz-3 text-xs uppercase">
                   <tr>
                     <th className="text-left py-1">Event</th>
@@ -296,7 +296,7 @@ export default function AdminSprintMetricsPage() {
             ) : cohorts.length === 0 ? (
               <p className="text-cz-3 text-sm">Ingen signups i de seneste 8 uger.</p>
             ) : (
-              <table className="w-full text-sm">
+              <table data-sort-exempt="Kohorte-retention, kronologisk lille tabel" className="w-full text-sm">
                 <thead className="text-cz-3 text-xs uppercase">
                   <tr>
                     <th className="text-left py-1">Signup-uge</th>
