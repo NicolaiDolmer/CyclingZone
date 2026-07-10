@@ -249,6 +249,30 @@ function createEmergencyLoanSupabase({
 
         if (table === "loans") {
           return {
+            // #2301 · app-guard: `.select("*").eq(team_id).eq(loan_type).eq(season_id).maybeSingle()`.
+            // Default mock = ingen eksisterende lån (caller kan override via state.existingEmergencyLoan).
+            select(columns) {
+              if (columns === "*") {
+                return {
+                  eq() {
+                    return {
+                      eq() {
+                        return {
+                          eq() {
+                            return {
+                              maybeSingle() {
+                                return Promise.resolve({ data: state.existingEmergencyLoan || null, error: null });
+                              },
+                            };
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              }
+              throw new Error(`Unexpected loans.select columns: ${columns}`);
+            },
             insert(row) {
               state.loans.push(row);
               return {
@@ -321,12 +345,37 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
       reason_code: "emergency_loan_received",
       related_entity_type: "loan",
       related_entity_id: "loan-1",
+      // #2301: idempotency_key stamped når seasonId er kendt.
+      idempotency_key: "emergency_loan:team-1:season-6",
       metadata: {
         code: "tx.emergencyLoan",
         params: { feeRate: 15, interestRate: 15 },
       },
     },
   ]);
+});
+
+// #2301 · App-guard: andet kald samme (team, season) er no-op — ingen ny loans-row,
+// ingen ny balance-kreditering.
+test("createEmergencyLoan er idempotent — andet kald samme sæson returnerer eksisterende lån uden ny kreditering", async () => {
+  const supabase = createEmergencyLoanSupabase();
+  supabase.state.existingEmergencyLoan = {
+    id: "loan-existing",
+    team_id: "team-1",
+    loan_type: "emergency",
+    season_id: "season-6",
+    principal: 100,
+    amount_remaining: 115,
+    status: "active",
+  };
+
+  const loan = await createEmergencyLoan("team-1", 100, supabase.client, "season-6");
+
+  assert.equal(loan.id, "loan-existing");
+  assert.equal(supabase.state.balance, 10, "balance uændret — ingen ny kreditering");
+  assert.equal(supabase.state.loans.length, 0, "ingen ny loans-row indsat");
+  assert.equal(supabase.state.financeRows.length, 0, "ingen ny finance_transactions-row");
+  assert.equal(supabase.state.notifications.length, 0, "ingen ny notifikation ved no-op");
 });
 
 function createCeilingSupabase({
@@ -611,7 +660,28 @@ function createCeilingEmergencySupabase({
         }
         if (table === "loans") {
           return {
-            select() {
+            // #2301 · to forskellige query-shapes rammer "loans": app-guardens
+            // `.select("*").eq×3.maybeSingle()` og getTotalDebt's `.select("amount_remaining").eq×2`.
+            select(columns) {
+              if (columns === "*") {
+                return {
+                  eq() {
+                    return {
+                      eq() {
+                        return {
+                          eq() {
+                            return {
+                              maybeSingle() {
+                                return Promise.resolve({ data: state.existingEmergencyLoan || null, error: null });
+                              },
+                            };
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              }
               return {
                 eq() {
                   return {

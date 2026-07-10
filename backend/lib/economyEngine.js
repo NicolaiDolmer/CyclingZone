@@ -567,7 +567,45 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     );
   }
 
-  // 2b. B3-eskalering: debt-breach-streak + transfer-fryse + tvunget salg (#1441/#97).
+  // 2b. #2301 · Eskalering: sammenhængende sæsoner med nødlån. board_consequences
+  //     (evaluateAndApplyConsequences, lag 2-6) evalueres først ved sæson-END —
+  //     for sent til at gribe ind i en payroll-cron der kører NU ved sæson-START.
+  //     Genbruger derfor SAMME mekanisme som B3 debt-breach-eskalering nedenfor
+  //     (transfer_frozen) i stedet for at opfinde et nyt konsekvens-system —
+  //     gentagne nødlån er i praksis samme signal (hold der ikke kan stå på egne
+  //     ben), bare en anden trigger end gælds-LOFT-brud. emergency_loan_streak er
+  //     en separat tæller (nulstilles når en sæson IKKE kræver nødlån).
+  const EMERGENCY_LOAN_ESCALATION_STREAK = 2;
+  const previousEmergencyLoanStreak = team.emergency_loan_streak || 0;
+  const emergencyLoanStreak = emergencyLoanAmount > 0 ? previousEmergencyLoanStreak + 1 : 0;
+  if (emergencyLoanStreak !== previousEmergencyLoanStreak) {
+    const { error: streakUpdateError } = await supabaseClient
+      .from("teams")
+      .update({ emergency_loan_streak: emergencyLoanStreak })
+      .eq("id", team.id);
+    throwIfSupabaseError(streakUpdateError, `Could not update emergency_loan_streak for team ${team.id}`);
+  }
+  if (emergencyLoanStreak >= EMERGENCY_LOAN_ESCALATION_STREAK) {
+    const { error: freezeError } = await supabaseClient
+      .from("teams")
+      .update({ transfer_frozen: true })
+      .eq("id", team.id);
+    throwIfSupabaseError(freezeError, `Could not freeze transfers for team ${team.id} (emergency loan escalation)`);
+    console.log(`  🔴🔴 ${team.name}: emergency_loan_streak=${emergencyLoanStreak} (>= ${EMERGENCY_LOAN_ESCALATION_STREAK}) — the board freezes transfers`);
+    await notifyManager(team.id, "board_critical",
+      "The board freezes transfers",
+      `Your team has needed an emergency loan ${emergencyLoanStreak} seasons in a row. The board freezes transfers until your finances stabilize.`,
+      { supabase: supabaseClient },
+      {
+        titleCode: "notif.emergencyLoanEscalation.title",
+        titleParams: {},
+        messageCode: "notif.emergencyLoanEscalation.message",
+        messageParams: { streak: emergencyLoanStreak },
+      }
+    );
+  }
+
+  // 2c. B3-eskalering: debt-breach-streak + transfer-fryse + tvunget salg (#1441/#97).
   //     Kører EFTER emergency-lån (gæld er nu finaliseret for sæsonen).
   //     Bruger DEBT_CEILING_BY_DIVISION (economyConstants) som kanonisk kilde.
   //     Springer over hold med ukendt division (ingen ceiling = ingen eskalering).

@@ -76,6 +76,10 @@
       "title": "🚨 Debt cap exceeded",
       "message": "Your emergency loan pushes the team's debt {breachAmount} CZ$ over the division cap of {ceiling} CZ$. You can keep operating, but you MUST cut costs (sell riders, drop star contracts) before the next season ends to avoid a debt spiral."
     },
+    "emergencyLoanEscalation": {
+      "title": "The board freezes transfers",
+      "message": "Your team has needed an emergency loan {streak} seasons in a row. The board freezes transfers until your finances stabilize."
+    },
     "loanPaidOff": {
       "title": "✅ Loan repaid",
       "message": "Congratulations! You've fully repaid your loan."

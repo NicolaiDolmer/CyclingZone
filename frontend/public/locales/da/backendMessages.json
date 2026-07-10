@@ -76,6 +76,10 @@
       "title": "🚨 Gældsloft overskredet",
       "message": "Dit nødlån presser holdets gæld {breachAmount} CZ$ over divisions-loftet på {ceiling} CZ$. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral."
     },
+    "emergencyLoanEscalation": {
+      "title": "Bestyrelsen fryser transfers",
+      "message": "Dit hold har haft brug for et nødlån {streak} sæsoner i træk. Bestyrelsen fryser transfers indtil din økonomi stabiliseres."
+    },
     "loanPaidOff": {
       "title": "✅ Lån tilbagebetalt",
       "message": "Tillykke! Du har fuldt tilbagebetalt dit lån."
