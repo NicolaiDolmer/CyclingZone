@@ -75,11 +75,18 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const [failed, setFailed] = useState(false);
 
   const riderId = rider?.id;
-  const { maxLevel, scout, scoutingId, slots, levels } = scouting;
+  const {
+    maxLevel, scout, scoutingId, slots, levels,
+    scoutSystemEnabled, jobCapacity, jobActiveCount, jobConfig, pendingFor,
+  } = scouting;
   // Scout-niveauet kan også stige via hero'ens scout-knap (useScouting er delt
   // side-state) — genindlæs rapporten når niveauet ændrer sig, uanset hvor der
   // blev scoutet fra.
   const hookLevel = levels?.[riderId] ?? 0;
+  // #2244: mens job-modellen er 'on' er der ingen slots — en aktiv målrettet
+  // opgave på DENNE rytter blokerer knappen ("Spejderen arbejder"), uanset
+  // holdets samlede kapacitet (det håndteres af knap-disable nedenfor).
+  const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
 
   const load = useCallback(async () => {
     if (!riderId) return;
@@ -102,29 +109,54 @@ export default function RiderScoutingTab({ rider, scouting }) {
   useEffect(() => { if (hookLevel > 0) load(); }, [hookLevel, load]);
 
   const level = report?.level ?? 0;
-  const remaining = slots?.remaining ?? 0;
+  const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
   const busy = scoutingId === riderId;
-  const canScout = remaining > 0 && level < maxLevel && !busy;
+  const canScout = remaining > 0 && level < maxLevel && !busy && !pending;
 
   const handleScout = async () => {
     if (!canScout) return;
     const r = await scout(riderId);
-    if (r?.ok) load();
+    // Job-model: niveauet ændrer sig først når opgaven modner (dagens sweep) —
+    // genindlæs IKKE rapporten her (intet nyt at vise endnu). Legacy-model:
+    // slot-brug ændrer niveauet med det samme → genindlæs.
+    if (r?.ok && !scoutSystemEnabled) load();
   };
 
-  const scoutButton = (labelKey) => (
-    <button
-      type="button"
-      onClick={handleScout}
-      disabled={!canScout}
-      title={remaining <= 0 ? t("scouting.noSlots") : t("scouting.scoutTitle")}
-      className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-1 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-    >
-      <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
-      {busy ? t("scouting.scouting") : t(labelKey)}
-      {slots && <span className="text-cz-3 font-mono text-[10.5px]">{slots.remaining}/{slots.total}</span>}
-    </button>
-  );
+  // #2244: job-model-knappen viser opgavens pris fra jobConfig i GET /scouting/me
+  // (SSOT: backend scoutEngine.SCOUT_JOB_CONFIG.target); fallbacks dækker kun
+  // vinduet før første fetch.
+  // TONE: "Send scout"/"Send spejder"-copy er plain/factual v1 — ejer-tone-session
+  // for scouting-job-copy er stadig åben (spec §Åbne detaljer); review pending.
+  const TARGET_JOB_DAYS = jobConfig?.targetDaysPerLevel ?? 3;
+  const TARGET_JOB_COST = jobConfig?.targetCostPerLevel ?? 1000;
+
+  const scoutButton = (labelKey) => {
+    if (pending) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-2 whitespace-nowrap">
+          <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
+          {t("scouting.pendingJob", { days: pending.days })}
+        </span>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={handleScout}
+        disabled={!canScout}
+        title={remaining <= 0 ? t("scouting.noSlots") : t("scouting.scoutTitle")}
+        className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-1 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+      >
+        <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
+        {busy
+          ? t("scouting.scouting")
+          : scoutSystemEnabled
+            ? t("scouting.sendScoutJob", { days: TARGET_JOB_DAYS, cost: TARGET_JOB_COST })
+            : t(labelKey)}
+        {!scoutSystemEnabled && slots && <span className="text-cz-3 font-mono text-[10.5px]">{slots.remaining}/{slots.total}</span>}
+      </button>
+    );
+  };
 
   if (failed) {
     return (

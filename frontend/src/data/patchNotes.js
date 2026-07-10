@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.73",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "The scout slots are gone: meet your talent scout",
+          "body": "Scouting is no longer a per-season pool of slots. Every team now has a talent scout (a real staff member, or a default scout if you have not hired one) who takes on real jobs: send him after a specific rider for a report in a few days, or send him on a longer mission to cover a division, a country, U23 riders, or a national championship for a shortlist of prospects. Jobs cost travel money and take time, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, but nobody, not even the best scout in the game, ever reaches 100% certainty. That includes your own riders: their potential is now shown as a narrow range instead of an exact number, same as everyone else's, just tighter. A new Scouting page lists your scout, his active jobs, and the shortlists his missions bring back.",
+        },
+        "da": {
+          "title": "Scout-slots er væk: mød din talentspejder",
+          "body": "Scouting er ikke længere en pulje af slots pr. sæson. Alle hold har nu en talentspejder (en rigtig staff-person, eller en standard-spejder hvis du ikke har ansat en), som tager rigtige opgaver: send ham efter en bestemt rytter for en rapport om få dage, eller send ham på en længere mission for at dække en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist af emner. Opgaver koster rejsepenge og tager tid, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, men ingen, heller ikke spillets bedste spejder, når nogensinde 100% sikkerhed. Det gælder også dine egne ryttere: deres potentiale vises nu som et smalt bånd i stedet for et eksakt tal, ligesom alle andres, blot snævrere. En ny Spejder-side viser din spejder, hans aktive opgaver og de shortlister hans missioner bringer hjem.",
+        },
+        "refs": [2244]
+      }
+    ]
+  },
+  {
     "version": "6.72",
     "date": "2026-07-10",
     "label": "Beta",

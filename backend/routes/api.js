@@ -820,6 +820,30 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// POST /api/riders/names — batch-opslag af rytternavne (#2244 Slice C follow-up).
+// Scouting-centralen skal vise navne for op til ~100 rider-ids (aktive target-jobs
+// + shortlists); ét kald i stedet for N enkelt-GETs. Payload er KUN {id, name} —
+// potentiale/abilities forlader aldrig serveren her, så ingen admin-maskering nødvendig.
+router.post("/riders/names", requireAuth, async (req, res) => {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "ids must be a non-empty array" });
+  }
+  if (ids.length > 200) {
+    return res.status(400).json({ error: "max 200 ids per request" });
+  }
+  const validIds = [...new Set(ids.filter((id) => typeof id === "string" && UUID_RE.test(id)))];
+  if (validIds.length === 0) return res.json({ riders: [] });
+
+  const { data, error } = await supabase
+    .from("riders")
+    .select("id, name")
+    .in("id", validIds);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ riders: data ?? [] });
+});
+
 // Security-audit 2026-06-12: ruter der interpolerer URL-params ind i PostgREST
 // .or()-filterstrenge (riderHistory.js, teamTransferHistory.js) SKAL validere
 // param-formatet først — ellers kan en crafted :id injicere ekstra
@@ -1184,7 +1208,7 @@ router.get("/scouting/me", requireAuth, async (req, res) => {
   try {
     const [{ state }, scoutSystemEnabled] = await Promise.all([
       loadScoutState(req.team.id),
-      isScoutSystemEnabled(),
+      isScoutSystemEnabled(req),
     ]);
     // #2244: mens job-modellen er 'on' rapporteres den ved siden af den gamle
     // slots-state (slots-tal er da uændrede/historiske — job-modellen er sandheden).
@@ -1229,9 +1253,13 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
 // et binært on/off, IKKE en beta-gate). Mens 'off' fungerer de gamle slots-endpoints
 // uændret; når 'on' erstattes POST /scouting/:riderId (slots) af job-modellen, og
 // GET /scouting/me rapporterer job-model-state ved siden af slots-state.
-async function isScoutSystemEnabled() {
+// A4b-mønster (#2220): admin-preview før flip — gate = flag 'on' ELLER requester
+// er admin, så ejeren kan teste end-to-end i prod mens spillere stadig ser slots.
+async function isScoutSystemEnabled(req = null) {
   const stage = await readFlagStage(supabase, "scout_system_enabled");
-  return evaluateFlagStage(stage);
+  if (evaluateFlagStage(stage)) return true;
+  if (req) return await isViewerAdmin(req);
+  return false;
 }
 
 async function resolveActiveSeasonId() {
@@ -1246,6 +1274,7 @@ async function resolveActiveSeasonId() {
 router.get("/scouting/central", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    if (!(await isScoutSystemEnabled(req))) return res.status(403).json({ error: "scout_system_disabled" });
     const state = await getScoutState(req.team.id, supabase);
     res.json({ teamId: req.team.id, ...state });
   } catch (err) {
@@ -1259,6 +1288,7 @@ router.post("/scouting/assignments", requireAuth, marketWriteLimiter, async (req
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const kind = req.body?.kind;
   try {
+    if (!(await isScoutSystemEnabled(req))) return res.status(403).json({ error: "scout_system_disabled" });
     const seasonId = await resolveActiveSeasonId();
     if (!seasonId) return res.status(409).json({ error: "no_active_season" });
 
@@ -1287,6 +1317,7 @@ router.post("/scouting/assignments", requireAuth, marketWriteLimiter, async (req
 router.post("/scouting/assignments/:id/cancel", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    if (!(await isScoutSystemEnabled(req))) return res.status(403).json({ error: "scout_system_disabled" });
     const result = await cancelAssignment({ teamId: req.team.id, assignmentId: req.params.id }, supabase);
     if (!result.ok) return res.status(404).json(result);
     res.json(result);
@@ -1305,7 +1336,7 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   try {
-    if (await isScoutSystemEnabled()) {
+    if (await isScoutSystemEnabled(req)) {
       return res.status(410).json({
         error: "slots_model_retired",
         message: "Scouting is now a job-based system — use POST /api/scouting/assignments.",

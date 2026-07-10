@@ -1,0 +1,57 @@
+{
+  "page": {
+    "title": "Spejder",
+    "subtitle": "Din spejders aktive arbejde, fund og missionsbriefinger."
+  },
+  "empty": {
+    "title": "Spejder-centralen er ikke åben endnu",
+    "description": "Siden låses op når spejder-jobsystemet er live for dit hold."
+  },
+  "scoutCard": {
+    "eyebrow": "Din spejder",
+    "defaultTitle": "Standard-spejder",
+    "defaultBody": "Du har ikke ansat en talentspejder. En standard-spejder (rating {overall}) dækker stadig dine målrettede opgaver og missioner, blot med et bredere skøn over hvad han finder.",
+    "ratingLabel": "Rating",
+    "capacityLabel": "{capacity, plural, one {1 opgave ad gangen} other {# opgaver ad gangen}}",
+    "viewProfile": "Se profil"
+  },
+  "queue": {
+    "title": "Aktive opgaver",
+    "empty": "Ingen opgaver kører lige nu.",
+    "kindTarget": "Målrettet opgave",
+    "kindMission": "Mission",
+    "reportIn": "Rapport om {days, plural, one {1 dag} other {# dage}}",
+    "reportToday": "Rapport klar i dag",
+    "loadingRider": "Indlæser rytter…",
+    "cancel": "Annullér"
+  },
+  "mission": {
+    "form": {
+      "title": "Start en mission",
+      "subtitle": "Send din spejder ud for at dække en scene og få en shortlist af emner.",
+      "scopeLabel": "Omfang",
+      "countryLabel": "Land",
+      "submit": "Start mission",
+      "costNote": "Missioner varer {days} dage og koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
+    },
+    "scope": {
+      "u23": "U23-ryttere",
+      "country": "Land",
+      "nm": "Nationale mesterskaber",
+      "division": "Min division"
+    }
+  },
+  "shortlist": {
+    "title": "Missions-shortlister",
+    "empty": "Ingen mission har meldt sig endnu.",
+    "topFind": "Topfund · gratis rapport"
+  },
+  "error": {
+    "capacity": "Din spejder er allerede fuldt booket.",
+    "insufficient_funds": "Ikke nok i kassen til at dække rejseomkostningen.",
+    "no_active_season": "Ingen aktiv sæson lige nu.",
+    "auth": "Du skal være logget ind.",
+    "network": "Netværksfejl. Prøv igen.",
+    "failed": "Noget gik galt. Prøv igen."
+  }
+}

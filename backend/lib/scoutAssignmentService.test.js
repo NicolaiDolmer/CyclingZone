@@ -170,6 +170,17 @@ test("getScoutState: no hired scout → DEFAULT_SCOUT + capacity 1", async () =>
   assert.deepEqual(result.completed, []);
 });
 
+test("getScoutState: exposes jobConfig (priser/varigheder) fra SCOUT_JOB_CONFIG", async () => {
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
+  const result = await getScoutState("team-1", supabase);
+  assert.deepEqual(result.jobConfig, {
+    targetDaysPerLevel: SCOUT_JOB_CONFIG.target.daysPerLevel,
+    targetCostPerLevel: SCOUT_JOB_CONFIG.target.costPerLevel,
+    missionDays: SCOUT_JOB_CONFIG.mission.days,
+    missionCost: SCOUT_JOB_CONFIG.mission.cost,
+  });
+});
+
 test("getScoutState: hired scouting-staff → real overall/roleSkills, capacity reflects overall", async () => {
   const supabase = createScoutSupabase({
     team: { id: "team-1", balance: 100_000 },

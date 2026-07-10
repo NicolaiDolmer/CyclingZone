@@ -1,0 +1,57 @@
+{
+  "page": {
+    "title": "Scouting",
+    "subtitle": "Your scout's active work, findings and mission briefs."
+  },
+  "empty": {
+    "title": "Scouting central is not open yet",
+    "description": "This page unlocks once the scout job system is live for your team."
+  },
+  "scoutCard": {
+    "eyebrow": "Your scout",
+    "defaultTitle": "Default scout",
+    "defaultBody": "You have not hired a talent scout. A baseline scout (rating {overall}) still covers your targeted jobs and missions, just with a wider read on what he finds.",
+    "ratingLabel": "Rating",
+    "capacityLabel": "{capacity, plural, one {1 job at a time} other {# jobs at a time}}",
+    "viewProfile": "View profile"
+  },
+  "queue": {
+    "title": "Active jobs",
+    "empty": "No jobs running right now.",
+    "kindTarget": "Targeted job",
+    "kindMission": "Mission",
+    "reportIn": "Report in {days, plural, one {1 day} other {# days}}",
+    "reportToday": "Report due today",
+    "loadingRider": "Loading rider…",
+    "cancel": "Cancel"
+  },
+  "mission": {
+    "form": {
+      "title": "Start a mission",
+      "subtitle": "Send your scout to cover a scene for a shortlist of prospects.",
+      "scopeLabel": "Scope",
+      "countryLabel": "Country",
+      "submit": "Start mission",
+      "costNote": "Missions run {days} days and cost {cost, number} in travel money from your budget. No refund if cancelled."
+    },
+    "scope": {
+      "u23": "U23 riders",
+      "country": "Country",
+      "nm": "National championships",
+      "division": "My division"
+    }
+  },
+  "shortlist": {
+    "title": "Mission shortlists",
+    "empty": "No mission has reported back yet.",
+    "topFind": "Top find · free report"
+  },
+  "error": {
+    "capacity": "Your scout is already at full capacity.",
+    "insufficient_funds": "Not enough balance to cover the travel cost.",
+    "no_active_season": "No active season right now.",
+    "auth": "You need to be logged in.",
+    "network": "Network error. Try again.",
+    "failed": "Something went wrong. Try again."
+  }
+}
