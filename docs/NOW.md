@@ -10,7 +10,7 @@
 
 > **Ejer-verify-kø:** #2100 loft-projektion (v6.68) på en ung rytter · scouting-fanen #2243 (v6.67) · #2206 rangliste+holdstilling · #2081 slice 1 (PR #2225). **Ejer-klikliste:** #2076 uptime-rest · #2085 mail-kapacitet · #1784 spend-cap · #929 · Alunta-tokens · #1903 CZ Pro testkøb.
 
-> **Økonomi Fase 3 (#1441):** A1+A2+A3+A4b merged; faciliteter admin-only bag `app_config.facilities_enabled=false`. **Pre-flip Plan B engine-slice (util-udvidelse + training-effekt-wiring + re-harness + flag-migration) skal være grøn FØR flip.** Staged announce: `docs/superpowers/drafts/2026-07-05-facilities-flip-announce.md`. Opfølgninger: #2217 staff-kontrakter · #2218 pension→staff · #2219 audit-whitelist. Vercel-preview har ikke mock (#1834) → ejer-gennemklik = lokal dev-server.
+> **Økonomi Fase 3 (#1441):** A1+A2+A3+A4b merged; faciliteter admin-only bag `app_config.facilities_enabled=false`. **Pre-flip Plan B engine-slice = #2287 (oprettet 10/7) — skal være grøn FØR flip.** Staged announce: `docs/superpowers/drafts/2026-07-05-facilities-flip-announce.md`. Opfølgninger: #2217 staff-kontrakter · #2218 pension→staff · #2219 audit-whitelist. Vercel-preview har ikke mock (#1834) → ejer-gennemklik = lokal dev-server.
 
 > **Talentspejder (spec låst 7/7):** Fase 1+2 merged · **Fase 3 (#2244) SHIPPED til prod 10/7 aften** (#2280+#2281+#2283 merged, migration verificeret applied; gates grønne — audit `docs/audits/2026-07-10-talentspejder-gates.md`); flag `scout_system_enabled` off = spillere ser slots; admin-preview on. #2284 delvist løst via chips (jobConfig-API + batch-navne shippet). Fase 4 gemte filtre #27. Kendt problem: test-konti wipes (#2245, bug/high).
 
