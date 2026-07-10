@@ -11,6 +11,20 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board now reacts faster to good results",
+          "body": "Board satisfaction used to move slowly no matter what happened on the road. It now climbs faster after strong race weekends, while bad weekends hit no harder than before. The board's expectations have also been recalibrated so fewer teams get stuck facing consequences they could not realistically avoid, and recovering from a satisfaction slump now takes fewer good weekends."
+        },
+        "da": {
+          "title": "Bestyrelsen reagerer nu hurtigere på gode resultater",
+          "body": "Bestyrelsens tilfredshed flyttede sig tidligere langsomt uanset hvad der skete på landevejen. Den stiger nu hurtigere efter stærke løbsweekender, mens dårlige weekender ikke rammer hårdere end før. Bestyrelsens forventninger er også re-kalibreret, så færre hold sidder fast i konsekvenser de ikke realistisk kunne undgå, og det kræver nu færre gode weekender at komme ud af en tilfredsheds-krise."
+        },
+        "refs": [2309]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
         "topic": "Finance",
         "en": {
           "title": "Prize money card now shows this season, with an all-time total below",
