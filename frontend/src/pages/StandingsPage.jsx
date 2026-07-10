@@ -401,7 +401,10 @@ export default function StandingsPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto">
+    // #2253: translate="no" — standings-tabellerne re-renderer hyppigt;
+    // browser-oversættere muterede tekst-noderne og udløste NotFoundError-crashes
+    // (Sentry-events med url=/standings). Se PR #2272.
+    <div translate="no" className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>

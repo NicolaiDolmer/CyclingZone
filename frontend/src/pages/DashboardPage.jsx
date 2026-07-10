@@ -442,7 +442,10 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto">
+    // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
+    // race-data, countdowns); browser-oversættere muterede dem og udløste
+    // NotFoundError-crashes (Sentry-events med url=/dashboard). Se PR #2272.
+    <div translate="no" className="max-w-6xl mx-auto">
       <SurveyBanner />
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-5">

@@ -14,11 +14,11 @@ export const PATCHES = [
         "topic": "Stability",
         "en": {
           "title": "Fewer crash-to-error-screen moments caused by browser auto-translate",
-          "body": "Browser translation tools (like Google Translate) sometimes rewrote page text behind the scenes in a way that confused React and crashed the page. Since Cycling Zone already has full English and Danish translations built in, auto-translate is now turned off for the app so it can no longer interfere with the page."
+          "body": "Browser translation tools (like Google Translate) sometimes rewrote live page text behind the scenes in a way that confused React and crashed the page. Auto-translate is now disabled only on the crash-prone dynamic pages (login, dashboard, profile, rider profiles, standings and race results). Everywhere else, browser translation keeps working as before, so you can still translate Cycling Zone into languages other than English and Danish."
         },
         "da": {
           "title": "Færre fejlskærme forårsaget af browser-auto-oversættelse",
-          "body": "Browser-oversættelsesværktøjer (som Google Translate) omskrev til tider sidens tekst i det skjulte på en måde der forvirrede React og fik siden til at crashe. Da Cycling Zone allerede har fuld engelsk og dansk oversættelse indbygget, er auto-oversættelse nu slået fra for appen, så den ikke længere kan forstyrre siden."
+          "body": "Browser-oversættelsesværktøjer (som Google Translate) omskrev til tider sidens live-tekst i det skjulte på en måde der forvirrede React og fik siden til at crashe. Auto-oversættelse er nu kun slået fra på de crash-udsatte dynamiske sider (login, dashboard, profil, rytterprofiler, stillinger og løbsresultater). Alle andre steder virker browser-oversættelse som før, så du stadig kan oversætte Cycling Zone til andre sprog end engelsk og dansk."
         },
         "refs": [2253]
       }

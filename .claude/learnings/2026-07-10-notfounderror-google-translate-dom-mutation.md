@@ -12,11 +12,16 @@ insert/remove a node it still thinks is there and throws, because the
 translator already replaced/detached it outside React's control. This is a
 well-documented class of React bug, not an app logic bug.
 
-**Fix:** Add `translate="no"` + `class="notranslate"` on `<html>`
-(`frontend/index.html`). Cycling Zone already ships full EN/DA translation via
-i18n (`LanguageProvider`), so browser auto-translate is redundant — disabling
-it removes the mutation vector entirely rather than trying to make React
-resilient to arbitrary external DOM writes.
+**Fix (owner decision, option B on PR #2272):** NOT a global `translate="no"`
+on `<html>` — players must still be able to browser-translate static content
+into languages beyond EN/DA (international accessibility). Instead,
+`translate="no"` is set on the root container of exactly the crash-evidenced
+dynamic surfaces (Sentry event URLs): `LoginPage.jsx` (/login),
+`DashboardPage.jsx` (/dashboard), `ProfilePage.jsx` (/profile),
+`RiderStatsPage.jsx` (/riders/:id), `StandingsPage.jsx` (/standings), plus
+`RaceDetailPage.jsx` (live-updating race result lists, same crash class).
+This removes the mutation vector where React re-commits text nodes frequently,
+while leaving static pages translatable.
 
 **Already in place (no new work needed):** `SentryBoundary`
 (`frontend/src/lib/sentry.jsx`, wired in `AppProviders.jsx`) already wraps the

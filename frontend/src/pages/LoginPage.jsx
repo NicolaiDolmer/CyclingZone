@@ -331,7 +331,11 @@ export default function LoginPage() {
         : t("auth:submit.login.idle");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-cz-body p-4">
+    // #2253: translate="no" — browser-oversættere (Google Translate) muterede
+    // React's tekst-noder på denne flade og udløste NotFoundError-crashes i prod
+    // (Sentry CYCLINGZONE-1D m.fl., url=/login). Målrettet i stedet for globalt
+    // så statisk indhold stadig kan browser-oversættes (ejer-beslutning PR #2272).
+    <div translate="no" className="relative flex min-h-screen items-center justify-center bg-cz-body p-4">
       <div className="absolute right-4 top-4">
         <LanguageSwitcher />
       </div>

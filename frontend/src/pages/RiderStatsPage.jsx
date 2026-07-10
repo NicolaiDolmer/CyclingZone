@@ -1436,7 +1436,10 @@ export default function RiderStatsPage() {
   const nextRider = rosterIdx >= 0 && rosterIdx < roster.length - 1 ? roster[rosterIdx + 1] : null;
 
   return (
-    <div className="max-w-5xl mx-auto min-w-0">
+    // #2253: translate="no" — rytterprofilen (dynamiske stats/scouting-flader)
+    // fik NotFoundError-crashes når browser-oversættere muterede tekst-noderne
+    // (Sentry CYCLINGZONE-1P m.fl., url=/riders/:id). Se PR #2272.
+    <div translate="no" className="max-w-5xl mx-auto min-w-0">
       {/* #254: Bid-modaler — confirm før bud, race-confirm ved 409 stale price, confetti på win, overbid-toast */}
       <BidConfirmModal
         show={!!bidConfirm}

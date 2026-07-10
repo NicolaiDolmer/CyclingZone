@@ -3,13 +3,12 @@
      LanguageProvider (document.documentElement.lang = aktivt UI-sprog). En statisk
      lang="da" på engelsk indhold fik browsere til at auto-oversætte → DOM-mutation
      → React-crash.
-     #2253: translate="no" + notranslate-klasse blokerer browser-oversættere
-     (Google Translate m.fl.) fra at mutere React's tekst-noder direkte. Appen
-     har allerede fuld EN/DA-oversættelse via i18n (LanguageProvider), så
-     browser-auto-translate er redundant og var den mest sandsynlige kilde til
-     en klynge af "NotFoundError: insertBefore/removeChild"-crashes i prod
-     (Sentry CYCLINGZONE-1D/1N/1P/1Q/1R/1S/1T/1V). -->
-<html lang="en" translate="no" class="notranslate">
+     #2253: bevidst INGEN global translate="no" her (ejer-beslutning, PR #2272):
+     spillere skal kunne browser-oversætte statisk indhold til andre sprog end
+     EN/DA. I stedet er translate="no" sat målrettet på de crash-følsomme
+     dynamiske flader hvor Sentry viste NotFoundError-crashes (login, dashboard,
+     profil, rytterprofil, standings, race-resultater). -->
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

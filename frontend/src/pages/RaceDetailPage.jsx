@@ -355,7 +355,10 @@ export default function RaceDetailPage() {
   const hasAnyResults = results.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
+    // browser-oversættere der muterer tekst-noderne er samme crash-klasse som de
+    // Sentry-dokumenterede NotFoundError-flader. Se PR #2272.
+    <div translate="no" className="max-w-4xl mx-auto space-y-5">
       {/* Header */}
       <div>
         <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{backLabel}</Link>
