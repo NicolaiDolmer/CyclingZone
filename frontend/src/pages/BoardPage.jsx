@@ -289,7 +289,34 @@ function BoardMemberDialog({ member, onClose }) {
       {resolveMemberLongDescription(t, member) && (
         <p className="text-cz-2 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
       )}
+      {/* #2310 punkt 5 · per-medlem vægte — hvad dette medlem lægger mest vægt
+          på i sin vurdering af planen (referencedata, bruges hidtil kun internt
+          til citat-valg). Sorteret højest-først, kun de vægtede kategorier vist. */}
+      <MemberCategoryWeights weights={member.category_weights} />
     </Modal>
+  );
+}
+
+function MemberCategoryWeights({ weights }) {
+  const { t } = useTranslation("board");
+  const entries = Object.entries(weights || {})
+    .filter(([, v]) => Number.isFinite(Number(v)))
+    .sort((a, b) => Number(b[1]) - Number(a[1]));
+  if (!entries.length) return null;
+  return (
+    <div className="mt-4 pt-3 border-t border-cz-border">
+      <p className="text-cz-3 text-[11px] uppercase tracking-wider mb-2">{t("members.weightsHeading")}</p>
+      <div className="flex flex-col gap-1.5">
+        {entries.map(([key, value]) => (
+          <div key={key} className="flex items-center gap-2">
+            <span className="text-cz-2 text-xs w-16 flex-shrink-0">{t(`category.${key}`, { defaultValue: key })}</span>
+            <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
+              <div className="h-1.5 rounded-full bg-cz-accent" style={{ width: `${Math.min(100, Number(value) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1506,6 +1533,94 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   );
 }
 
+// ── #2310 · Board S4 transparens-linjer — små, rene visnings-komponenter ──────
+
+// Punkt 2 · retnings-pil/prognose ("62% → på vej mod 71").
+function SatisfactionProgressLine({ progress }) {
+  const { t } = useTranslation("board");
+  if (!progress || !Number.isFinite(progress.target)) return null;
+  const { current, target } = progress;
+  if (Math.round(current) === Math.round(target)) {
+    return (
+      <p className="text-cz-3 text-[11px] font-data -mt-2 mb-1">
+        {t("transparency.progressAtTarget", { target: Math.round(target) })}
+      </p>
+    );
+  }
+  const up = target > current;
+  return (
+    <p className="text-cz-3 text-[11px] font-data -mt-2 mb-1 flex items-center gap-1">
+      <span aria-hidden="true" className={up ? "text-cz-success" : "text-cz-danger"}>{up ? "↗" : "↘"}</span>
+      {t("transparency.progressTowards", { target: Math.round(target) })}
+    </p>
+  );
+}
+
+// Punkt 7 · lag 1 (passiv sponsor-modifier). Hidtil kun synligt som et rå ×-tal.
+function PassiveModifierLine({ info }) {
+  const { t } = useTranslation("board");
+  if (!info) return null;
+  const sign = info.pct > 0 ? "+" : "";
+  return (
+    <p className="text-cz-3 text-[11px] -mt-1 mb-1">
+      {t(`transparency.passiveModifier.${info.band}`, { pct: `${sign}${info.pct}` })}
+    </p>
+  );
+}
+
+// Punkt 3 · formands-varsel (consecutive_low_satisfaction_expirations).
+function ChairmanWarningLine({ count }) {
+  const { t } = useTranslation("board");
+  if (!Number.isFinite(Number(count)) || Number(count) < 1) return null;
+  return (
+    <p className="text-cz-danger text-[11px] font-medium mb-1">
+      {t("transparency.chairmanWarning")}
+    </p>
+  );
+}
+
+// Punkt 4 · afstand til bonustilbud (lag 6).
+function BonusOfferProgressLine({ progress }) {
+  const { t } = useTranslation("board");
+  if (!progress) return null;
+  if (progress.eligible) {
+    return <p className="text-cz-success text-[11px] font-medium mb-1">{t("transparency.bonusOfferEligible")}</p>;
+  }
+  if (!progress.satisfaction_ok) {
+    return (
+      <p className="text-cz-3 text-[11px] mb-1">
+        {t("transparency.bonusOfferSatisfactionGap", { threshold: progress.satisfaction_threshold })}
+      </p>
+    );
+  }
+  if (progress.goals_gap != null && progress.goals_gap > 0) {
+    return (
+      <p className="text-cz-3 text-[11px] mb-1">
+        {t("transparency.bonusOfferClose", { count: progress.goals_gap })}
+      </p>
+    );
+  }
+  return null;
+}
+
+// Punkt 6 · tradeoff-varsel — en tidligere godkendt request der strammer NÆSTE plan.
+function TradeoffWarningLine({ payload }) {
+  const { t } = useTranslation("board");
+  if (!payload || !payload.kind) return null;
+  const text = payload.kind === "tighten_identity_riders"
+    ? t("transparency.tradeoff.tighten_identity_riders", { delta: payload.delta ?? 1 })
+    : payload.kind === "raise_sponsor_growth_target"
+      ? t("transparency.tradeoff.raise_sponsor_growth_target", { deltaPct: payload.delta_pct ?? 5 })
+      : null;
+  if (!text) return null;
+  return (
+    <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-lg px-2.5 py-1.5 mb-2">
+      <p className="text-cz-accent-t text-[11px] font-semibold">{t("transparency.tradeoff.heading")}</p>
+      <p className="text-cz-2 text-[11px] mt-0.5">{text}</p>
+    </div>
+  );
+}
+
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
@@ -1526,7 +1641,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   }
 
   const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, satisfaction_events, is_expired, renew_locked, outlook, request_status, request_options } = planData;
+    cumulative_stats, snapshots, satisfaction_events, is_expired, renew_locked, outlook, request_status, request_options,
+    satisfaction_progress, passive_modifier, bonus_offer_progress } = planData;
 
   const goals = typeof board.current_goals === "string"
     ? JSON.parse(board.current_goals) : (board.current_goals || []);
@@ -1581,6 +1697,17 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             <p className="text-cz-3 text-[11px] font-data">×{modifier.toFixed(2)}</p>
           </button>
         </div>
+
+        {/* #2310 punkt 2 · retnings-pil/prognose ("62% → på vej mod 71") */}
+        <SatisfactionProgressLine progress={satisfaction_progress} />
+        {/* #2310 punkt 7 · lag 1 (passiv sponsor-modifier) — hidtil kun synlig som ×-tal */}
+        <PassiveModifierLine info={passive_modifier} />
+        {/* #2310 punkt 3 · formands-varsel ved gentagne skuffende plan-udløb */}
+        <ChairmanWarningLine count={team?.consecutive_low_satisfaction_expirations} />
+        {/* #2310 punkt 4 · afstand til bonustilbud (lag 6) */}
+        <BonusOfferProgressLine progress={bonus_offer_progress} />
+        {/* #2310 punkt 6 · tradeoff-varsel fra en tidligere godkendt bestyrelses-request */}
+        <TradeoffWarningLine payload={board.tradeoff_payload} />
 
         {is_expired ? (
           <button onClick={onNegotiate}

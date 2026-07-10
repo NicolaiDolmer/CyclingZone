@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.78",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board now explains itself in full",
+          "body": "Every plan card shows a direction arrow under the satisfaction number (\"on its way to 71%\"), a plain-language line for the passive sponsor modifier, a distance readout to the next bonus offer, and a warning when one more disappointing plan expiry would replace the chairman. Approved board requests that lock in a cost for your next plan now show that cost directly on the card, and clicking a board member's avatar reveals what feedback categories they weigh most."
+        },
+        "da": {
+          "title": "Bestyrelsen forklarer nu sig selv fuldt ud",
+          "body": "Hvert plan-kort viser en retnings-pil under tilfredsheds-tallet (\"på vej mod 71%\"), en linje i klart sprog for den passive sponsor-modifier, en afstand til næste bonustilbud, og en advarsel når endnu ét skuffende plan-udløb ville udskifte formanden. Godkendte bestyrelses-forespørgsler der låser en pris for din næste plan, vises nu direkte på kortet, og et klik på et bestyrelsesmedlems avatar viser hvilke feedback-kategorier de vægter mest."
+        },
+        "refs": [2310]
+      }
+    ]
+  },
+  {
     "version": "6.77",
     "date": "2026-07-10",
     "label": "Beta",

@@ -239,6 +239,8 @@ import {
   declineBonusOffer,
   getActiveConsequencesForTeam,
 } from "../lib/boardConsequences.js";
+import { computeWeekendSatisfactionUpdate } from "../lib/boardWeekendUpdate.js";
+import { computeBonusOfferProgress, computePassiveModifierInfo } from "../lib/boardTransparency.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
 import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "../lib/boardTestModeService.js";
 import {
@@ -9023,6 +9025,10 @@ function decorateTeamBoardMembers(teamBoardMembers = []) {
         short_description_key: `archetypes.${member.archetype_key}.shortDescription`,
         long_description: archetype.long_description,
         long_description_key: `archetypes.${member.archetype_key}.longDescription`,
+        // #2310 punkt 5 · per-medlem kategori-vægte (referencedata, ikke følsom) —
+        // så frontend kan vise "hvad vægter dette medlem" i stedet for kun
+        // at bruge dem internt til citat-valg.
+        category_weights: archetype.category_alignment || {},
       };
     })
     .filter(Boolean);
@@ -9152,7 +9158,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
       const boardRequests = allRequestLogs.filter(r => r.board_id === board.id);
       const latestRequest = boardRequests[0] || null;
-      const boardEvents = allEvents.filter((e) => e.board_id === board.id).slice(0, 10);
+      // #2310 punkt 1 · fuld tidslinje i stedet for kun de 10 nyeste — grafen skal
+      // kunne vise hele plan-cyklussen (planDuration er typisk 1-5 sæsoner ≈
+      // højst nogle dusin løbsweekender), stadig med et loft mod ubegrænset payload.
+      const boardEvents = allEvents.filter((e) => e.board_id === board.id).slice(0, 60);
       const requestUsedThisSeason = Boolean(
         boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
       );
@@ -9191,34 +9200,69 @@ router.get("/board/status", requireAuth, async (req, res) => {
       const cumulativeStageWins = (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0);
       const cumulativeGcWins = (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0);
 
+      // #2310 punkt 2 · genbrugt SOM variabel så både outlook OG den read-only
+      // satisfaction-prognose (computeWeekendSatisfactionUpdate) deler nøjagtig
+      // samme evalueringskontekst — ingen risiko for at de to drifter fra hinanden.
+      const weekendEvalContext = {
+        activeLoanCount,
+        planStartSponsorIncome: board.plan_start_sponsor_income,
+        currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
+        planDuration,
+        seasonsCompleted: workingSeasonIndex,
+        // #2308 · Weekend/season-end sætter isFinalSeason (seasonsCompleted+1 >=
+        // planDuration); uden den her scorer no_outstanding_debt 1.0 i stedet for
+        // 1.05 og final-only mål pro-rates forkert i live-outlook-displayet.
+        // workingSeasonIndex er allerede min(planDuration, seasonsCompleted+1),
+        // så >= planDuration er ækvivalent med den uncappede sammenligning.
+        isFinalSeason: workingSeasonIndex >= planDuration,
+        hasSeasonData: Boolean(currentStanding),
+        isExpired,
+        recentSnapshots: boardSnapshots.slice(-3).reverse(),
+        cumulativeStats: {
+          stageWins: cumulativeStageWins,
+          gcWins: cumulativeGcWins,
+        },
+        ...goalContext,
+        // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
+        assignedMembers: teamBoardMembers,
+      };
+
       const outlook = buildBoardOutlook({
         board,
         standing: currentStanding,
         team: currentTeam,
-        context: {
-          activeLoanCount,
-          planStartSponsorIncome: board.plan_start_sponsor_income,
-          currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
-          planDuration,
-          seasonsCompleted: workingSeasonIndex,
-          // #2308 · Weekend/season-end sætter isFinalSeason (seasonsCompleted+1 >=
-          // planDuration); uden den her scorer no_outstanding_debt 1.0 i stedet for
-          // 1.05 og final-only mål pro-rates forkert i live-outlook-displayet.
-          // workingSeasonIndex er allerede min(planDuration, seasonsCompleted+1),
-          // så >= planDuration er ækvivalent med den uncappede sammenligning.
-          isFinalSeason: workingSeasonIndex >= planDuration,
-          hasSeasonData: Boolean(currentStanding),
-          isExpired,
-          recentSnapshots: boardSnapshots.slice(-3).reverse(),
-          cumulativeStats: {
-            stageWins: cumulativeStageWins,
-            gcWins: cumulativeGcWins,
-          },
-          ...goalContext,
-          // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
-          assignedMembers: teamBoardMembers,
-        },
+        context: weekendEvalContext,
       });
+
+      // #2310 punkt 2 · retnings-pil/prognose. Read-only genbrug af den samme
+      // mekanik som weekend-finalization bruger til at bevæge satisfaction —
+      // her INGEN persistering, kun "hvor er target lige nu" til UI'et. Fejler
+      // best-effort (mangler standing/team-data uden for sæson) uden at vælte
+      // status-endpointet.
+      let satisfactionProgress = null;
+      let liveGoalsMet = null;
+      let liveGoalsTotal = null;
+      try {
+        const weekendUpdate = computeWeekendSatisfactionUpdate({
+          board,
+          standing: currentStanding,
+          team: currentTeam,
+          context: weekendEvalContext,
+          seasonStartSatisfaction: board.season_start_satisfaction ?? board.satisfaction ?? 50,
+        });
+        if (weekendUpdate) {
+          satisfactionProgress = {
+            current: weekendUpdate.previousSatisfaction,
+            target: weekendUpdate.targetSatisfaction,
+            season_delta: weekendUpdate.seasonDelta,
+            clamped_by_limit: weekendUpdate.clampedByLimit,
+          };
+          liveGoalsMet = weekendUpdate.goalsMet;
+          liveGoalsTotal = weekendUpdate.goalsTotal;
+        }
+      } catch (e) {
+        console.warn(`[board/status] satisfactionProgress compute failed for board ${board.id}:`, e?.message);
+      }
 
       const requestOptions = boardRequestsSupported
         ? buildBoardRequestOptions({
@@ -9258,6 +9302,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
         // #915 · Gen-forhandling låst når sæsonen er for langt fremme — frontend
         // skjuler "Forny"-knappen så låsen ikke kun håndhæves server-side.
         renew_locked: getBoardRenegotiationLock({ board, activeSeason }).locked,
+        // #2310 punkt 2 · retnings-pil ("62% → på vej mod 71").
+        satisfaction_progress: satisfactionProgress,
+        // #2310 punkt 7 · lag 1 (passiv sponsor-modifier), hidtil usynlig i UI.
+        passive_modifier: computePassiveModifierInfo(board),
+        // #2310 punkt 4 · afstand til bonustilbud (lag 6).
+        bonus_offer_progress: computeBonusOfferProgress({
+          satisfaction: board.satisfaction,
+          goalsMet: liveGoalsMet ?? 0,
+          goalsTotal: liveGoalsTotal ?? 0,
+        }),
         outlook,
         request_status: {
           supported: boardRequestsSupported,

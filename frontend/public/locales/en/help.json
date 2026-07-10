@@ -864,6 +864,30 @@
       "q": "What is the bonus offer I just got from the board?",
       "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the target is added to your 1-year plan and evaluated at season end. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met."
     },
+    "boardSatisfactionArrow": {
+      "q": "What is the arrow/prognosis under my satisfaction number?",
+      "a": "It shows where satisfaction is heading, not just where it is. Every race weekend the board runs a full evaluation of your current season and calculates a target based on your season-start satisfaction plus that evaluation. The live number then moves towards the target by at most 5 points per weekend (the same clamp described under 'What is board satisfaction?'), so you can see 'on its way to 71%' before it actually gets there. If the number is already at target, you'll see 'already at target' instead."
+    },
+    "boardChairmanWarning": {
+      "q": "What does the red warning about the chairman mean?",
+      "a": "It appears when your team already has one consecutive plan expiry below 30% satisfaction on record. One more disappointing plan expiry in a row and the board replaces the chairman with a new archetype, per the rule described under 'What does the board chairman do?'. The warning disappears again once a plan renews with satisfaction above the threshold, resetting the counter."
+    },
+    "bonusOfferDistance": {
+      "q": "How do I know how close I am to a bonus offer?",
+      "a": "Each plan card shows your distance to the bonus offer eligibility (satisfaction above 75% AND at least 75% of targets met, see 'What is the bonus offer I just got from the board?'). If satisfaction is still too low, you'll see how many points are missing; once satisfaction clears the bar, you'll see how many more targets you need to hit ('2 goals from a bonus offer'). Once both conditions are met it just says you're eligible."
+    },
+    "boardMemberWeights": {
+      "q": "What does a board member weigh when I open their card?",
+      "a": "Click a member in the avatar grid to open their card. Below the description you'll see the four feedback categories (results, economy, identity, ranking) with a bar per category, showing how strongly that member's archetype weighs each one. This is the same weighting the board engine uses to pick which member 'speaks' about a given target reaction, now made visible instead of only used internally."
+    },
+    "boardTradeoffWarning": {
+      "q": "What is the tradeoff warning on a plan card?",
+      "a": "Some board requests you approve (e.g. easing results pressure or loosening identity requirements) come with a locked-in cost for your NEXT plan negotiation, e.g. one extra identity rider requirement or a higher sponsor growth target. When that's the case, the plan card shows a small tradeoff card explaining exactly what's coming, so you're not surprised at the next negotiation."
+    },
+    "boardPassiveModifierLayer": {
+      "q": "What is the small line about the sponsor modifier under my satisfaction number?",
+      "a": "This is layer 1 of the consequence system: the passive sponsor modifier that already follows your satisfaction live (±20% at the extremes, see 'What is board satisfaction?'). It used to only show as a raw '×1.10' number; now there's also a short sentence describing the effect in plain language, so it's clear this is already active before any of the harder consequence layers (2-6) kick in."
+    },
     "clubDnaFaq": {
       "q": "What is club DNA and when do I pick it?",
       "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage or British all-rounder. You pick it from the start of season 1, as soon as the board is open. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
