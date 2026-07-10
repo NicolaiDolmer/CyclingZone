@@ -33,6 +33,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.LOAN_FEE_REFUNDED]: "Loan fee refunded",
   [FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED]: "Loan taken out",
   [FINANCE_REASON.LOAN_REPAYMENT]: "Loan repayment",
+  [FINANCE_REASON.FORCED_DEBT_REPAYMENT]: "Forced debt repayment (sale)",
   [FINANCE_REASON.LOAN_BUYOUT]: "Loan bought out",
   [FINANCE_REASON.LOAN_ORIGINATION_FEE]: "Loan origination fee",
   [FINANCE_REASON.EMERGENCY_LOAN_RECEIVED]: "Emergency loan",

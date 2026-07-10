@@ -284,6 +284,7 @@ export const FINANCE_REASON = Object.freeze({
   // Lån (debt)
   LOAN_PRINCIPAL_RECEIVED: "loan_principal_received",
   LOAN_REPAYMENT: "loan_repayment",
+  FORCED_DEBT_REPAYMENT: "forced_debt_repayment", // #2303 · tvangssalg afdrager gæld direkte
   LOAN_BUYOUT: "loan_buyout",
   LOAN_ORIGINATION_FEE: "loan_origination_fee",
   EMERGENCY_LOAN_RECEIVED: "emergency_loan_received",

@@ -20,6 +20,8 @@
     "loanRepayment": "Lånrate betalt",
     "loanRepaymentFinal": "Lånrate betalt. Lån fuldt tilbagebetalt! 🎉",
     "loanRepaymentRemaining": "Lånrate betalt (resterende: {remaining} CZ$)",
+    "forcedDebtRepaymentFinal": "Provenu fra tvangssalg afdrog dit lån fuldt ud",
+    "forcedDebtRepaymentRemaining": "Provenu fra tvangssalg afdrog gæld (resterende: {remaining} CZ$)",
     "loanInterest": "Lånerente ({rate}%): lagt til lånegælden, ikke trukket fra saldoen",
     "emergencyLoan": "Nødlån oprettet automatisk (gebyr: {feeRate}%, rente: {interestRate}%/sæson)",
     "loanFeePaid": "Lejegebyr: {riderName} (sæson {season})",

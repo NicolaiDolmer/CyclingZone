@@ -592,6 +592,79 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
   return { paid: actualAmount, remaining: isPaidOff ? 0 : newRemaining, paid_off: isPaidOff };
 }
 
+// ── Tvunget afdrag fra tvangssalg (forced debt sale, #2303) ───────────────────
+//
+// Finance-audit 10/7 fund: tvangssalg ved gældsbrud (economyEngine.processTeam-
+// SeasonPayroll, debt-breach-streak-blokken) krediterede salgsprovenuet til
+// balancen, men rørte aldrig loans.amount_remaining — loopet stoppede på et
+// fiktivt runningDebt-estimat, så den reelle gæld var uændret næste sæson og
+// bruddet gentog sig. Fix: afdrag lånene DIREKTE med provenuet, ældste lån
+// først, via repay_loan_atomic (samme atomiske RPC som repayLoan()).
+//
+// Kalder RPC'en DIREKTE i stedet for at genbruge repayLoan(): repayLoan's
+// bid-commitment-preflight (fetchTeamCommitment) beskytter en MANAGER mod at
+// betale gæld med penge der er låst i aktive bud — irrelevant her, da
+// provenuet lige er krediteret FRA selve salget (season-start-cron-kontekst,
+// ingen spiller-handling), og en preflight-fejl her ville forhindre selve
+// gældsafdraget bruddet skal løse. Springer også repayLoan's loan_paid_off
+// "Congratulations!"-notifikation over — uegnet tone under et tvangssalg.
+//
+// metadata_code_final/metadata_code_remaining lader RPC'en (se
+// database/2026-07-10-repay-loan-atomic-forced-sale-metadata.sql) skrive
+// tx.forcedDebtRepaymentFinal/Remaining i stedet for de almindelige
+// tx.loanRepaymentFinal/Remaining-koder, så spillerens historik kan skelne
+// et tvangsafdrag fra en frivillig repayLoan()-betaling.
+export async function repayLoansFromForcedSale(teamId, creditAmount, supabaseClient = null, seasonId = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  if (!creditAmount || creditAmount <= 0) return { totalRepaid: 0, loans: [] };
+
+  const { data: loans, error } = await client
+    .from("loans")
+    .select("id, amount_remaining")
+    .eq("team_id", teamId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  let remainingCredit = creditAmount;
+  const repaid = [];
+
+  for (const loan of loans || []) {
+    if (remainingCredit <= 0) break;
+    if (!loan.amount_remaining || loan.amount_remaining <= 0) continue;
+    const amount = Math.min(remainingCredit, loan.amount_remaining);
+
+    const { data: rpcData, error: rpcError } = await client.rpc("repay_loan_atomic", {
+      p_loan_id: loan.id,
+      p_team_id: teamId,
+      p_amount: amount,
+      p_finance_payload: {
+        season_id: seasonId,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "loanEngine.repayLoansFromForcedSale",
+        reason_code: FINANCE_REASON.FORCED_DEBT_REPAYMENT,
+        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+        related_entity_id: loan.id,
+        metadata_code_final: "tx.forcedDebtRepaymentFinal",
+        metadata_code_remaining: "tx.forcedDebtRepaymentRemaining",
+      },
+    });
+    if (rpcError) throw new Error(rpcError.message || "Forced debt repayment failed");
+
+    const result = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+    remainingCredit -= result.paid;
+    repaid.push({
+      loan_id: loan.id,
+      paid: result.paid,
+      remaining: result.remaining,
+      paid_off: result.paid_off,
+    });
+  }
+
+  return { totalRepaid: creditAmount - remainingCredit, loans: repaid };
+}
+
 // ── Tilskriv renter ved sæsonafslutning ───────────────────────────────────────
 
 // #2304 (finance-audit 10/7): renten kapitaliseres IKKE længere som en
