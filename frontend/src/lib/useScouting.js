@@ -1,12 +1,20 @@
-// useScouting — frontend-state for progression L1 (#1138) + server-estimater (#1162).
+// useScouting — frontend-state for progression L1 (#1138) + server-estimater (#1162)
+// + job-model-tilstand (#2244 Fase 3 Slice C).
 //
 // Henter holdets scout-state (slots + per-rytter niveau + eget team-id) fra
 // backend én gang, og eksponerer:
-//   • scout(riderId)        — brug ét slot; opdaterer state + estimat fra svaret
+//   • scout(riderId)        — start en scouting-handling på rytteren. Når
+//                             scoutSystemEnabled er 'on' starter dette en job-model
+//                             målrettet opgave (POST /api/scouting/assignments) der
+//                             modner over dage (ingen øjeblikkelig niveau-ændring);
+//                             ellers falder den tilbage til det gamle slots-kald
+//                             (POST /api/scouting/:riderId).
+//   • pendingFor(riderId)   — aktiv målrettet job-model-opgave på rytteren
+//                             ({ readyOn, days }) eller undefined.
 //   • requestEstimates(ids) — batched fetch af viewer-maskerede potentiale-
 //                             estimater (POST /api/scouting/estimates). Den rå
 //                             riders.potentiale findes IKKE i klienten længere —
-//                             serveren beregner { lo, hi, exact, level } pr.
+//                             serveren beregner { lo, hi, level } pr.
 //                             (rytter, hold) og kun det sendes.
 //   • estimateFor(riderId)  — undefined = ikke hentet (endnu), null = rytter
 //                             uden potentiale, ellers estimat-objektet.
@@ -16,6 +24,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getSession } from "./supabase";
+import { daysUntil } from "./scoutingCentralDisplay.js";
 
 const API = import.meta.env.VITE_API_URL;
 const BATCH_DELAY_MS = 25;
@@ -36,6 +45,10 @@ export function useScouting() {
   const [loading, setLoading] = useState(true);
   const [scoutingId, setScoutingId] = useState(null); // rytter under aktiv scout
   const [estimates, setEstimates] = useState({});     // { <rider_id>: {lo,hi,exact,level} | null }
+  const [scoutSystemEnabled, setScoutSystemEnabled] = useState(false);
+  const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn } }
+  const [jobCapacity, setJobCapacity] = useState(1);
+  const [jobActiveCount, setJobActiveCount] = useState(0);
 
   const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
   const pendingRef = useRef(new Set());   // ids der venter på næste batch
@@ -54,6 +67,15 @@ export function useScouting() {
         setMaxLevel(data.maxLevel ?? 3);
         setLevels(data.levels ?? {});
         setTeamId(data.teamId ?? null);
+        setScoutSystemEnabled(Boolean(data.scoutSystemEnabled));
+        const active = data.jobModel?.active ?? [];
+        const nextPending = {};
+        for (const a of active) {
+          if (a.kind === "target" && a.rider_id) nextPending[a.rider_id] = { readyOn: a.ready_on };
+        }
+        setPendingTargets(nextPending);
+        setJobActiveCount(active.length);
+        setJobCapacity(data.jobModel?.capacity ?? 1);
       }
     } catch {
       /* netværk — behold tidligere state, UI falder tilbage til uscoutet */
@@ -110,8 +132,34 @@ export function useScouting() {
   // undefined = ikke hentet, null = intet potentiale, ellers { lo, hi, exact, level }.
   const estimateFor = useCallback((riderId) => (riderId ? estimates[riderId] : undefined), [estimates]);
 
-  // Brug ét scout-slot på en rytter. Returnerer { ok, error?, level? }.
-  const scout = useCallback(async (riderId) => {
+  // Start en målrettet job-model-opgave (#2244): koster rejsepenge, modner over
+  // dage via den daglige sweep — INGEN øjeblikkelig niveau-ændring. Returnerer
+  // { ok, error? } | { ok:true, assignment }.
+  const startTargetJob = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    setScoutingId(riderId);
+    try {
+      const res = await fetch(`${API}/api/scouting/assignments`, {
+        method: "POST", headers, body: JSON.stringify({ kind: "target", riderId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
+      if (data.assignment?.readyOn) {
+        setPendingTargets((prev) => ({ ...prev, [riderId]: { readyOn: data.assignment.readyOn } }));
+        setJobActiveCount((prev) => prev + 1);
+      }
+      return { ok: true, assignment: data.assignment };
+    } catch {
+      return { ok: false, error: "network" };
+    } finally {
+      setScoutingId(null);
+    }
+  }, []);
+
+  // Brug ét scout-slot på en rytter (legacy-model, kun mens scoutSystemEnabled
+  // er 'off'). Returnerer { ok, error?, level? }.
+  const scoutLegacy = useCallback(async (riderId) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     setScoutingId(riderId);
@@ -133,10 +181,24 @@ export function useScouting() {
     }
   }, []);
 
+  // Dispatcher: job-model når 'on', ellers det gamle slots-kald.
+  const scout = useCallback((riderId) => (
+    scoutSystemEnabled ? startTargetJob(riderId) : scoutLegacy(riderId)
+  ), [scoutSystemEnabled, startTargetJob, scoutLegacy]);
+
   const levelFor = useCallback((riderId) => levels[riderId] ?? 0, [levels]);
 
+  // Aktiv målrettet job-model-opgave på en rytter, eller undefined. `days` er et
+  // afledt bekvemmelighedsfelt (hele dage til ready_on) — se scoutingCentralDisplay.js.
+  const pendingFor = useCallback((riderId) => {
+    const pending = riderId ? pendingTargets[riderId] : undefined;
+    if (!pending) return undefined;
+    return { ...pending, days: daysUntil(pending.readyOn) };
+  }, [pendingTargets]);
+
   return {
-    slots, maxLevel, levels, teamId, loading, scoutingId,
-    scout, refresh, levelFor, requestEstimates, estimateFor, estimates,
+    slots, maxLevel, levels, teamId, loading, scoutingId, scoutSystemEnabled,
+    jobCapacity, jobActiveCount,
+    scout, refresh, levelFor, pendingFor, requestEstimates, estimateFor, estimates,
   };
 }

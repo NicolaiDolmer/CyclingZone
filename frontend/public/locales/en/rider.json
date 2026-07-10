@@ -769,7 +769,11 @@
     "noSlots": "No scout slots left this season",
     "levelTitle": "Scouting level. Higher means a more precise estimate",
     "notScouted": "Not scouted",
-    "scoutToReveal": "Potential is hidden until you scout this rider"
+    "scoutToReveal": "Potential is hidden until you scout this rider",
+    "pendingTitle": "Your scout is already working on this rider",
+    "pendingShort": "Report in {days, plural, one {1 day} other {# days}}",
+    "pendingJob": "Scout working, report in {days, plural, one {1 day} other {# days}}",
+    "sendScoutJob": "Send scout ({days, plural, one {1 day} other {# days}}, {cost, number})"
   },
   "condition": {
     "form": "Form",
