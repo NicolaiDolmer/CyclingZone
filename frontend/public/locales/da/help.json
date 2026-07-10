@@ -740,6 +740,10 @@
       "q": "Kan andre managere se at jeg har scoutet en rytter?",
       "a": "Rytterens ejer kan. På egen rytters profil viser Interesse-fanen hvilke hold der har brugt scout-slots på ham, hvor mange og hvornår. Alle andre ser kun anonyme totaler (hvor mange rivaler der har scoutet ham), aldrig hvilke hold."
     },
+    "developmentProjectionFaq": {
+      "q": "Hvad er projektionen på Udvikling-fanen?",
+      "a": "Det er et bud på hvor en rytter er på vej hen: en stiplet linje fra hans nuværende type-rating mod et skraveret loft-bånd, med et cirka-estimat af hvor mange sæsoner og i hvilken alder han når det. Det er altid et interval, aldrig et eksakt tal, for ingen kender en rytters præcise loft. Båndet er bevidst upræcist, så det ikke kan regnes tilbage til hans skjulte potentiale, og det er skjult for fremmede ryttere du ikke har scoutet."
+    },
     "watchlistSaleNotificationFaq": {
       "q": "Får jeg besked når en rytter på min ønskeliste sættes til salg?",
       "a": "Ja. Hvis en rytter du følger sættes på transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken med pris og type. Du behøver altså ikke aktivt tjekke markedet for dine favoritter."

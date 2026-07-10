@@ -337,6 +337,24 @@
         "note": "gains on {days} of the last {window} days",
         "noTraining": "no training recorded",
         "scoutingHidden": "The training-driven development log is hidden for rival riders. You only see the recorded trend above."
+      },
+      "projection": {
+        "legend": "projection",
+        "caption": "solid = recorded · dashed = projection · shaded = ceiling range",
+        "now": "now",
+        "ceilingLabel": "CEILING",
+        "toCeiling": "To ceiling",
+        "ageAtCeiling": "Ceiling age",
+        "seasonsRange": "~{lo}–{hi} seasons",
+        "seasonsOpen": "~{lo}+ seasons",
+        "seasonsSingle": "~{n} seasons",
+        "ageRange": "~{lo}–{hi}",
+        "ageOpen": "~{lo}+",
+        "ageSingle": "~{n}",
+        "atCeiling": "At ceiling now",
+        "outlook": "Outlook",
+        "approaching": "Approaching ceiling",
+        "pastPeak": "Past peak, declining"
       }
     },
     "physio": {

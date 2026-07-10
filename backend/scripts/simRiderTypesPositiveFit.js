@@ -113,10 +113,6 @@ function dist(keys, items, keyFn) {
   for (const it of items) { const k = keyFn(it); d[k] = (d[k] || 0) + 1; }
   return d;
 }
-function fmtRow(label, d, total) {
-  return `  ${label.padEnd(16)} ${String(d).padStart(5)} (${((d/total)*100).toFixed(1).padStart(5)}%)`;
-}
-
 async function fetchAll() {
   // mirror prod active-non-retired with abilities (inner join)
   const pageSize = 1000;
@@ -308,7 +304,7 @@ function main(rows) {
 
 (async () => {
   const rows = await fetchAll();
-  const report = main(rows);
+  main(rows);
   // also expose machine-readable summary line for the scorecard writer
   process.stdout.write("\n<<<REPORT_END>>>\n");
 })();

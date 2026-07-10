@@ -124,6 +124,7 @@ import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
+import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -1326,6 +1327,71 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     res.json({
       level, maxLevel: state.maxLevel, own,
       stars: starsMasked, types, verdict, value: null, capsMissing: true,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/development-projection — fuzzy loft-projektion til Udvikling-
+// fanen (#2100). Bygger KUN på allerede-publicerede størrelser: nu-rating + det
+// maskerede loft-bånd (buildTypeCeilingBands, #1543/#1162) + den OFFENTLIGE alderskurve
+// → projektionen tilføjer INGEN ny information og kan ikke inverteres til potentiale.
+// Rå potentiale/ability_caps forlader ALDRIG serveren (samme kontrakt som scouting-
+// report; ingen potentiale-SELECT her). Level 0 + ikke-egen → { hidden: true }.
+router.get("/riders/:id/development-projection", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const [{ state }, { data: rider, error }] = await Promise.all([
+      loadScoutState(req.team.id),
+      supabase
+        .from("riders")
+        .select("id, team_id, birthdate, primary_type")
+        .eq("id", req.params.id)
+        .maybeSingle(),
+    ]);
+    if (error) throw new Error(error.message);
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+    const own = rider.team_id != null && rider.team_id === req.team.id;
+    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (!own && level <= 0) {
+      return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
+    }
+
+    const { data: ab, error: abErr } = await supabase
+      .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
+    if (abErr) throw new Error(abErr.message);
+
+    // Uden caps eller alder kan loft-bånd/projektion ikke beregnes — degradér ærligt
+    // (frontend viser den registrerede kurve uden projektions-lag).
+    const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
+    const age = rider.birthdate
+      ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
+      : null;
+    if (!caps || !ab || age == null) {
+      return res.json({ level, maxLevel: state.maxLevel, own, capsMissing: true });
+    }
+
+    const bands = buildTypeCeilingBands({
+      nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id,
+    });
+    // Projektionen tegnes på den fremhævede primærlinje: rytterens primærtype hvis kendt,
+    // ellers den højest-ratede type nu (samme valg som frontendens pickChartTypeKeys).
+    const primaryRow = bands.find((b) => b.key === rider.primary_type)
+      ?? bands.reduce((a, b) => (b.now > a.now ? b : a), bands[0]);
+    const projInput = {
+      now: primaryRow.now, ceilLo: primaryRow.ceilLo, ceilHi: primaryRow.ceilHi, age,
+    };
+
+    return res.json({
+      level, maxLevel: state.maxLevel, own, capsMissing: false,
+      primaryKey: primaryRow.key,
+      now: primaryRow.now,
+      ceil: { lo: primaryRow.ceilLo, hi: primaryRow.ceilHi },
+      band: projectCeilingBand({ ...projInput, seasons: DISPLAY_SEASONS }),
+      timing: ceilingTiming(projInput),
+      pastPeak: age > PEAK_AGE,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

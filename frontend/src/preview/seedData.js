@@ -591,3 +591,26 @@ export const SEED_CLUB = {
     commercial: { tier: 0, staff: null },
   },
 };
+
+// #2100 preview-seed: Udvikling-fanen med loft-projektion. En udviklende ung sprinter
+// (rating 58→70) + det maskerede loft-bånd + fuzzy projektion. Tallene er genereret via
+// backend/lib/developmentProjection.js (samme model prod bruger) så preview matcher live.
+export const SEED_DEVELOPMENT = [
+  { snapshot_date: "2026-03-01", season_number: 6, source: "baseline", abilities: { climbing: 38, time_trial: 44, flat: 44, tempo: 46, sprint: 34, acceleration: 30, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+  { snapshot_date: "2026-04-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 46, tempo: 46, sprint: 38, acceleration: 34, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+  { snapshot_date: "2026-05-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 48, tempo: 46, sprint: 42, acceleration: 38, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+  { snapshot_date: "2026-06-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 50, tempo: 46, sprint: 46, acceleration: 42, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+  { snapshot_date: "2026-07-01", season_number: 6, source: "daily_training", abilities: { climbing: 38, time_trial: 44, flat: 52, tempo: 46, sprint: 50, acceleration: 46, punch: 48, endurance: 50, recovery: 50, durability: 52, descending: 46, cobblestone: 42, positioning: 54, aggression: 46, tactics: 50 } },
+];
+
+export const SEED_PROJECTION = {
+  level: 3, maxLevel: 3, own: true, capsMissing: false,
+  primaryKey: "sprinter", now: 70, ceil: { lo: 78, hi: 86 },
+  band: [
+    { season: 0, lo: 70, hi: 70 }, { season: 1, lo: 71, hi: 76 }, { season: 2, lo: 72, hi: 79 },
+    { season: 3, lo: 72, hi: 81 }, { season: 4, lo: 73, hi: 82 }, { season: 5, lo: 73, hi: 83 },
+    { season: 6, lo: 73, hi: 83 },
+  ],
+  timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
+  pastPeak: false,
+};

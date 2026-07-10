@@ -337,6 +337,24 @@
         "note": "fremgang på {days} af de seneste {window} dage",
         "noTraining": "ingen træning registreret",
         "scoutingHidden": "Den træningsdrevne udviklingslog er skjult for fremmede ryttere. Du ser kun den registrerede trend ovenfor."
+      },
+      "projection": {
+        "legend": "projektion",
+        "caption": "fuld = registreret · stiplet = projektion · skraveret = loft-interval",
+        "now": "nu",
+        "ceilingLabel": "LOFT",
+        "toCeiling": "Til loft",
+        "ageAtCeiling": "Alder ved loft",
+        "seasonsRange": "~{lo}–{hi} sæsoner",
+        "seasonsOpen": "~{lo}+ sæsoner",
+        "seasonsSingle": "~{n} sæsoner",
+        "ageRange": "~{lo}–{hi}",
+        "ageOpen": "~{lo}+",
+        "ageSingle": "~{n}",
+        "atCeiling": "Ved loftet nu",
+        "outlook": "Udsigt",
+        "approaching": "Nærmer sig loftet",
+        "pastPeak": "Efter peak, i tilbagegang"
       }
     },
     "physio": {
