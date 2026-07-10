@@ -244,6 +244,10 @@ function createInitialState() {
       { id: "intake-1", team_id: "team-1", rider_id: "rider-free", season_id: "season-1", status: "offered" },
       { id: "intake-ai", team_id: "team-ai", rider_id: "rider-ai-owned", season_id: "season-1", status: "offered" },
     ],
+    scout_assignments: [
+      { id: "scout-1", team_id: "team-1", season_id: "season-1", status: "completed" },
+      { id: "scout-2", team_id: "team-1", season_id: null, status: "in_progress" },
+    ],
   };
 }
 
@@ -395,6 +399,23 @@ test("resetBetaSeasons nuller finance_transactions.season_id for ALLE hold (ogs�
   for (const tx of supabase.state.finance_transactions) {
     assert.equal(tx.season_id, null, `tx ${tx.id} har stadig season_id sat`);
   }
+});
+
+test("resetBetaSeasons nuller scout_assignments.season_id før season-delete (scout Fase 3 FK)", async () => {
+  // Regression: scout_assignments.season_id -> seasons (NO ACTION, scout-migration 10/7)
+  // blokerede season-delete og fik Reset-FK-audit'en til at fejle på alle database-PR'er.
+  const supabase = createBetaResetSupabase(createInitialState(), [
+    { child: "scout_assignments", column: "season_id", parent: "seasons" },
+  ]);
+
+  const result = await resetBetaSeasons(supabase);
+
+  assert.equal(result.seasons, 1);
+  assert.deepEqual(supabase.state.seasons, [], "sæsoner slettet");
+  for (const row of supabase.state.scout_assignments) {
+    assert.equal(row.season_id, null, `scout_assignment ${row.id} har stadig season_id sat`);
+  }
+  assert.equal(supabase.state.scout_assignments.length, 2, "opgaverne bevares (kun FK nulles)");
 });
 
 test("resetBetaSeasons sletter academy_intake før season-delete (NOT NULL FK, #1308)", async () => {
