@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.69",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Division 4 calendar repaired: no more Grand Tours in the basement",
+          "body": "A calendar bug had placed two full 21-stage Grand Tours in every Division 4 group, all overlapping each other. That locked up almost every rider in those groups, so other races could not fill their start lists and several events stalled or ran with tiny fields. The wrongly added Grand Tours have been removed along with their results and points, rider fatigue from those stages has been reset, and the rest of the Division 4 calendar has been rebuilt with normal-sized races through the end of the season. All divisions still finish on the same day."
+        },
+        "da": {
+          "title": "Division 4-kalenderen repareret: ikke flere Grand Tours i kælderen",
+          "body": "En kalenderfejl havde lagt to fulde 21-etapers Grand Tours i hver Division 4-gruppe, oven i hinanden. Det låste næsten alle ryttere i de grupper, så andre løb ikke kunne fylde deres startlister, og flere løb gik i stå eller kørte med minifelter. De forkert tilføjede Grand Tours er fjernet sammen med deres resultater og point, rytter-træthed fra de etaper er nulstillet, og resten af Division 4-kalenderen er genopbygget med løb i normal størrelse frem til sæsonafslutningen. Alle divisioner slutter stadig samme dag."
+        },
+        "refs": [2251]
+      }
+    ]
+  },
+  {
     "version": "6.68",
     "date": "2026-07-09",
     "label": "Beta",
