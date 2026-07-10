@@ -11,12 +11,12 @@
 // buildTierMaterializationPlan er REN (ingen DB) → testbar. materializeTierCalendars = I/O-wrapper.
 
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
-import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES } from "./tierRaceSelection.js";
+import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
-export { MONUMENT_GAMEDAY_BASE };
+export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
 const INSERT_BATCH = 500;
 
@@ -53,7 +53,10 @@ function editionYearFrom(startDate) {
 // (2) GT-rygraden må ikke overlappe sig selv (spec: "GT'er lægges spredt og IKKE
 //     overlappende hinanden") — målt på game-day-spans.
 // Ren + deterministisk; materializeTierCalendars nægter at APPLY'e en tier med brud.
-export function detectCalendarViolations({ tier, placements = [], minStages = GRAND_TOUR_MIN_STAGES } = {}) {
+export function detectCalendarViolations({
+  tier, placements = [], minStages = GRAND_TOUR_MIN_STAGES,
+  catalogById = new Map(), classWhitelist = TIER_CLASS_WHITELIST, usedRaceNamesBeforeTier = new Set(),
+} = {}) {
   const violations = [];
   const gtSpans = placements
     .filter((pl) => (pl.stages ?? 1) >= minStages && pl.stagesPlaced?.length)
@@ -71,6 +74,51 @@ export function detectCalendarViolations({ tier, placements = [], minStages = GR
       if (a.start <= b.end && b.start <= a.end) {
         violations.push(`tier ${tier}: grand tour overlap ${a.id} (gd ${a.start}-${a.end}) x ${b.id} (gd ${b.start}-${b.end})`);
       }
+    }
+  }
+
+  // #2276 invariant 1: klasse-whitelist pr. tier (kaskade) — tier 2+ må ALDRIG få
+  // Monuments/GrandTour/OtherWorldTourA, kun de næste klasser nedad.
+  const allowed = classWhitelist?.[tier];
+  if (Array.isArray(allowed)) {
+    const allowedSet = new Set(allowed);
+    for (const pl of placements) {
+      const cat = catalogById.get(pl.id) || {};
+      const raceClass = cat.race_class ?? pl.race_class ?? null;
+      if (raceClass != null && !allowedSet.has(raceClass)) {
+        violations.push(`tier ${tier}: race ${pl.id} (${cat.name ?? "?"}) has class "${raceClass}" outside whitelist [${allowed.join(", ")}] (#2276)`);
+      }
+    }
+  }
+
+  // #2276 invariant 2: cross-tier dedup — samme løbsnavn må ikke optræde i to tiers i
+  // samme sæson. usedRaceNamesBeforeTier = navne allerede brugt af HØJERE tiers i samme plan.
+  for (const pl of placements) {
+    const cat = catalogById.get(pl.id) || {};
+    const name = cat.name ?? pl.name ?? null;
+    if (name != null && usedRaceNamesBeforeTier.has(name)) {
+      violations.push(`tier ${tier}: race name "${name}" (${pl.id}) already used in a higher tier this season (#2276 cross-tier dedup)`);
+    }
+  }
+
+  return violations;
+}
+
+// #2276 invariant 3: alle puljer i en division skal få IDENTISK kalender (navn, game_day,
+// stages)-signatur. Ren assertion-helper — kastes af buildTierMaterializationPlan hvis en
+// tier-plans puljer nogensinde afviger (defense-in-depth: poolPlans deles i dag fra samme
+// `packed.placements`, så dette bør altid holde — regressions-fanger).
+export function detectPoolSignatureMismatch({ tier, pools = [] } = {}) {
+  if (pools.length < 2) return [];
+  const signatureOf = (pool) => pool.raceRows
+    .map((r) => `${r.pool_race_id}:${r.name}:${r.game_day_start}:${r.stages}`)
+    .sort()
+    .join("|");
+  const base = signatureOf(pools[0]);
+  const violations = [];
+  for (const pool of pools.slice(1)) {
+    if (signatureOf(pool) !== base) {
+      violations.push(`tier ${tier}: pool ${pool.leagueDivisionId} calendar signature diverges from pool ${pools[0].leagueDivisionId} (#2276 identical-pools invariant)`);
     }
   }
   return violations;
@@ -91,6 +139,11 @@ export function buildTierMaterializationPlan({
   slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
   forceTiers = [],
+  classWhitelist = TIER_CLASS_WHITELIST,
+  // #2276: navne allerede brugt af ANDRE tiers før dette kald (fx allerede-materialiserede
+  // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
+  // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
+  usedRaceNames = new Set(),
 } = {}) {
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
   const forced = new Set(forceTiers);
@@ -103,19 +156,31 @@ export function buildTierMaterializationPlan({
   }
 
   // Cross-tier dedup: øverste tier vælger først (de største løb), lavere fra resten.
+  // usedRaceIds/usedRaceNamesRunning seedes med input (fx allerede-materialiserede tiers i DB)
+  // så et enkelt-tier-kald (reconcilePoolCalendarOnActivation) ikke kan gense en navn/id der
+  // allerede kører i en anden tier den samme sæson (#2276).
   const usedRaceIds = new Set();
+  const usedRaceNamesRunning = new Set(usedRaceNames);
   const tierPlans = [];
   for (const [tier, tierPools] of [...liveByTier.entries()].sort((a, b) => a[0] - b[0])) {
-    const availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
+    let availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
+    if (usedRaceNamesRunning.size) {
+      availableCatalog = availableCatalog.filter((c) => !usedRaceNamesRunning.has(c.name));
+    }
     const quota = quotas[tier] ?? 0;
     const dens = density[tier] ?? 1;
     const cap = overlapCaps[tier] ?? 2;
     const tierSlots = slots[tier] ?? slots[3];
+    const usedRaceNamesBeforeTier = new Set(usedRaceNamesRunning);
 
     // #2251: GT'er (≥15 etaper) er KUN tilladt i tier 1 (spec'ens GT-rygrad).
-    const sel = selectTierRaceSet({ catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0, allowGrandTours: tier === 1 });
-    for (const r of sel.stageRaces) usedRaceIds.add(r.id);
-    for (const r of sel.oneDayRaces) usedRaceIds.add(r.id);
+    // #2276: klasse-whitelist pr. tier (Monuments/GrandTour/OtherWorldTourA kun tier 1).
+    const sel = selectTierRaceSet({
+      catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0,
+      allowGrandTours: tier === 1, allowedClasses: classWhitelist?.[tier] ?? null,
+    });
+    for (const r of sel.stageRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
+    for (const r of sel.oneDayRaces) { usedRaceIds.add(r.id); if (r.name != null) usedRaceNamesRunning.add(r.name); }
 
     const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
@@ -142,7 +207,10 @@ export function buildTierMaterializationPlan({
       return { leagueDivisionId: pool.id, tier, raceRows, stageRows: poolStageRows };
     });
 
-    const calendarViolations = detectCalendarViolations({ tier, placements: packed.placements });
+    const calendarViolations = [
+      ...detectCalendarViolations({ tier, placements: packed.placements, catalogById, classWhitelist, usedRaceNamesBeforeTier }),
+      ...detectPoolSignatureMismatch({ tier, pools: poolPlans }),
+    ];
 
     tierPlans.push({
       tier, quota, density: dens, overlapCap: cap, calendarViolations,
@@ -187,11 +255,22 @@ export async function materializeTierCalendars({
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
   const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
 
-  const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id").eq("season_id", seasonId);
+  const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id, name").eq("season_id", seasonId);
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas });
+  // #2276: navne allerede materialiseret i ANDRE tiers denne sæson — sikrer cross-tier
+  // dedup selv når kun ÉN tier materialiseres i dette kald (reconcilePoolCalendarOnActivation
+  // aktiverer typisk kun én pulje/tier ad gangen, uden de andre tiers' selection i hukommelsen).
+  const tierByDivisionId = new Map(pools.map((p) => [p.id, p.tier]));
+  const targetTiers = new Set(tiers && tiers.length ? tiers : pools.map((p) => p.tier));
+  const usedRaceNames = new Set(
+    (existing || [])
+      .filter((r) => r.name != null && !targetTiers.has(tierByDivisionId.get(r.league_division_id)))
+      .map((r) => r.name)
+  );
+
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, usedRaceNames });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {

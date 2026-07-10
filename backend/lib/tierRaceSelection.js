@@ -20,6 +20,20 @@ export const GRAND_TOUR_MIN_STAGES = 15;
 // Game-day-kvote pr. tier (ejer-låst). Pr. pulje; alle puljer i en tier kører samme sæt.
 export const TIER_GAME_DAY_QUOTA = Object.freeze({ 1: 140, 2: 112, 3: 84, 4: 56 });
 
+// #2276 prestige-kaskade (ejer-låst 10/7): klasse-whitelist pr. tier, data-drevet ét sted.
+// Kun tier 1 kører Monuments/GrandTour(TourFrance/GiroVuelta)/OtherWorldTourA — kaskaden
+// fylder tier 2/3/4 nedad med de NÆSTE klasser, aldrig de øverste. `null` = alle klasser
+// tilladt (kun tier 1). Rod-årsag for #2276: der fandtes KUN en etape-baseret GT-gate
+// (selectTierRaceSet allowGrandTours), ingen klasse-gate — så Monuments (1 etape) og
+// OtherWorldTourA kunne kaskadere frit ned i tier 4 når puljen materialiserede i et
+// separat kald uden tier 1-3's valg i hukommelsen (reconcilePoolCalendarOnActivation).
+export const TIER_CLASS_WHITELIST = Object.freeze({
+  1: null,
+  2: Object.freeze(["OtherWorldTourB", "ProSeries", "OtherWorldTourC"]),
+  3: Object.freeze(["ProSeries", "Class1"]),
+  4: Object.freeze(["Class1", "Class2"]),
+});
+
 // Deterministisk seed-varieret nøgle — varierer KUN rækkefølgen inden for samme prestige+størrelse.
 function seededKey(id, seed) {
   let h = 2166136261 >>> 0;
@@ -32,16 +46,22 @@ const prestigeOf = (rc) => PRESTIGE_RANK[rc] ?? 99;
 /**
  * Vælg en divisions løb op til en præcis game-day-kvote, prestige-først.
  *
- * @param {{ catalog?: Array<{id,name,race_class,race_type,stages}>, quota?: number, seed?: number, allowGrandTours?: boolean }} args
+ * @param {{ catalog?: Array<{id,name,race_class,race_type,stages}>, quota?: number, seed?: number, allowGrandTours?: boolean, allowedClasses?: string[]|null }} args
  * @returns {{ stageRaces, oneDayRaces, stageGameDays, totalGameDays, quotaHit, shortfall }}
  */
-export function selectTierRaceSet({ catalog = [], quota = 0, seed = 1, allowGrandTours = true } = {}) {
+export function selectTierRaceSet({ catalog = [], quota = 0, seed = 1, allowGrandTours = true, allowedClasses = null } = {}) {
   // #2251: Grand Tours (≥15 etaper) hører KUN til Division 1 (spec'ens GT-rygrad).
   // Uden denne gate lod prestige-først-walket leftover-GT'er kaskadere ned i lavere
   // tiers (to samtidige 21-etapers GT'er i tier 4 → binding-kollaps, tomme startfelter).
-  const eligible = allowGrandTours
+  let eligible = allowGrandTours
     ? catalog
     : catalog.filter((r) => (Math.max(1, Number(r.stages) || 1)) < GRAND_TOUR_MIN_STAGES);
+  // #2276: klasse-whitelist-gate (Monuments/OtherWorldTourA kaskaderede ned i tier 4 —
+  // etape-baseret GT-gaten alene fangede dem ikke, da Monuments = 1 etape).
+  if (Array.isArray(allowedClasses)) {
+    const allowed = new Set(allowedClasses);
+    eligible = eligible.filter((r) => allowed.has(r.race_class));
+  }
   // Rang: prestige asc → størrelse desc (de største af samme prestige først) → seed → id.
   const ranked = [...eligible].sort((a, b) => {
     const ra = prestigeOf(a.race_class), rb = prestigeOf(b.race_class);

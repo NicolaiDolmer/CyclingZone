@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
@@ -306,10 +306,13 @@ test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje sta
 test("#2251 plan: tier 4 vælger ALDRIG Grand Tours, selv når kataloget har ledige GT'er", () => {
   // GT'er ud over div 1's behov må ikke kaskadere ned: tier 4 skal fylde sin kvote
   // med ikke-GT-løb. Katalog: 2 GT'er + rigeligt småløb.
+  const tier4EligibleRows = [];
+  [5, 4, 4, 4, 3].forEach((st, i) => tier4EligibleRows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  for (let i = 0; i < 60; i++) tier4EligibleRows.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
   const catalog = [
     { id: "gt-a", name: "GT A", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
     { id: "gt-b", name: "GT B", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 },
-    ...tier3Catalog(),
+    ...tier4EligibleRows,
   ];
   const t4pools = [{ id: 8, tier: 4, realManagerCount: 2 }];
   const { tierPlans } = buildTierMaterializationPlan({ pools: t4pools, catalog, from: FROM });
@@ -485,4 +488,104 @@ test("#2149 sovende pulje der STADIG er managerløs: materializeren gater selv (
   assert.equal(summary.skipped, null, "reconcile'n når materialiseringen");
   assert.equal(summary.racesInserted, 0, "poolHasCalendar-gaten holder — 0 løb");
   assert.equal(sb.state.races.length, 0);
+});
+
+// ── #2276 · prestige-kaskade brudt i Div 4 — klasse-whitelist + cross-tier dedup + pool-signatur ──
+
+function fullCascadeCatalog() {
+  const rows = [];
+  rows.push({ id: "gt-tdf", name: "Tour de France", race_class: "TourFrance", race_type: "stage_race", stages: 21 });
+  rows.push({ id: "gt-giro", name: "Giro d'Italia", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 });
+  rows.push({ id: "gt-vuelta", name: "Vuelta a España", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 });
+  ["Paris-Roubaix", "Milano-Sanremo", "Ronde van Vlaanderen", "Liège-Bastogne-Liège", "Il Lombardia"].forEach((name, i) =>
+    rows.push({ id: `mon-${i}`, name, race_class: "Monuments", race_type: "single", stages: 1 }));
+  for (let i = 0; i < 6; i++) rows.push({ id: `owta-${i}`, name: `OWT-A ${i}`, race_class: "OtherWorldTourA", race_type: "single", stages: 1 });
+  for (let i = 0; i < 30; i++) rows.push({ id: `owtb-${i}`, name: `OWT-B ${i}`, race_class: "OtherWorldTourB", race_type: "single", stages: 1 });
+  for (let i = 0; i < 30; i++) rows.push({ id: `owtc-${i}`, name: `OWT-C ${i}`, race_class: "OtherWorldTourC", race_type: "single", stages: 1 });
+  for (let i = 0; i < 40; i++) rows.push({ id: `ps-${i}`, name: `ProSeries ${i}`, race_class: "ProSeries", race_type: "single", stages: 1 });
+  for (let i = 0; i < 40; i++) rows.push({ id: `c1-${i}`, name: `Class1 ${i}`, race_class: "Class1", race_type: "single", stages: 1 });
+  for (let i = 0; i < 60; i++) rows.push({ id: `c2-${i}`, name: `Class2 ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
+  return rows;
+}
+
+const cascadePools = [
+  { id: 101, tier: 1, realManagerCount: 10 },
+  { id: 201, tier: 2, realManagerCount: 10 }, { id: 202, tier: 2, realManagerCount: 10 },
+  { id: 301, tier: 3, realManagerCount: 10 }, { id: 302, tier: 3, realManagerCount: 10 },
+  { id: 401, tier: 4, realManagerCount: 10 }, { id: 402, tier: 4, realManagerCount: 10 }, { id: 403, tier: 4, realManagerCount: 10 },
+];
+
+test("#2276 invariant 1: klasse-whitelist pr. tier — tier 2/3/4 får ALDRIG Monuments/GrandTour/OtherWorldTourA", () => {
+  const { tierPlans } = buildTierMaterializationPlan({ pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM });
+  for (const tp of tierPlans) {
+    if (tp.tier === 1) continue;
+    const allowed = new Set(TIER_CLASS_WHITELIST[tp.tier]);
+    for (const pool of tp.pools) {
+      for (const r of pool.raceRows) {
+        assert.ok(allowed.has(r.race_class), `tier ${tp.tier} pool ${pool.leagueDivisionId}: ulovlig klasse ${r.race_class} (${r.name})`);
+      }
+    }
+    assert.equal(tp.calendarViolations.length, 0, `tier ${tp.tier} violations: ${tp.calendarViolations.join(" · ")}`);
+  }
+});
+
+test("#2276 invariant 2: cross-tier dedup — intet løbsnavn optræder i to tiers samme sæson", () => {
+  const { tierPlans } = buildTierMaterializationPlan({ pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM });
+  const nameToTiers = new Map();
+  for (const tp of tierPlans) {
+    const namesInTier = new Set(tp.pools[0].raceRows.map((r) => r.name));
+    for (const name of namesInTier) {
+      if (!nameToTiers.has(name)) nameToTiers.set(name, new Set());
+      nameToTiers.get(name).add(tp.tier);
+    }
+  }
+  for (const [name, tiersSet] of nameToTiers) {
+    assert.equal(tiersSet.size, 1, `løb "${name}" optræder i flere tiers: ${[...tiersSet].join(",")}`);
+  }
+});
+
+test("#2276 invariant 2b: detectCalendarViolations flager et løbsnavn genbrugt fra en højere tier", () => {
+  const placements = [{ id: "dup-1", stages: 1, stagesPlaced: [{ stage_number: 1, game_day: 0 }] }];
+  const catalogById = new Map([["dup-1", { name: "Il Lombardia", race_class: "Class1" }]]);
+  const violations = detectCalendarViolations({
+    tier: 4, placements, catalogById, usedRaceNamesBeforeTier: new Set(["Il Lombardia"]),
+  });
+  assert.ok(violations.some((v) => v.includes("#2276 cross-tier dedup")), violations.join(" · "));
+});
+
+test("#2276 invariant 3: alle puljer i en division får identisk kalender-signatur (navn+game_day+stages)", () => {
+  const { tierPlans } = buildTierMaterializationPlan({ pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM });
+  for (const tp of tierPlans) {
+    assert.equal(detectPoolSignatureMismatch({ tier: tp.tier, pools: tp.pools }).length, 0, `tier ${tp.tier} puljer divergerer`);
+  }
+});
+
+test("#2276 invariant 3b: detectPoolSignatureMismatch flager en pulje med afvigende raceRows", () => {
+  const pools4 = [
+    { leagueDivisionId: 1, raceRows: [{ pool_race_id: "a", name: "A", game_day_start: 0, stages: 1 }] },
+    { leagueDivisionId: 2, raceRows: [{ pool_race_id: "a", name: "A", game_day_start: 5, stages: 1 }] },
+  ];
+  const violations = detectPoolSignatureMismatch({ tier: 4, pools: pools4 });
+  assert.equal(violations.length, 1);
+  assert.match(violations[0], /#2276 identical-pools invariant/);
+});
+
+test("#2276 reconcile: aktivering af en enkelt tier-4-pulje senere respekterer allerede-materialiserede tier 1-3-navne (usedRaceNames seedet fra DB)", async () => {
+  // Simulerer prod-scenariet: tier 1-3 er allerede materialiseret (races i DB); tier 4
+  // aktiveres separat via reconcilePoolCalendarOnActivation, som IKKE har tier 1-3's
+  // selection i hukommelsen — kun usedRaceNames seedet fra eksisterende DB-rækker forhindrer
+  // at tier 4 vælger et navn der allerede kører i en højere tier.
+  const catalog = fullCascadeCatalog();
+  const divisions = [
+    { id: 101, tier: 1 }, { id: 201, tier: 2 }, { id: 301, tier: 3 }, { id: 401, tier: 4 },
+  ];
+  const teams = divisions.map((d) => ({ league_division_id: d.id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }));
+  // Tier 1 har allerede fået Il Lombardia (Monuments) materialiseret.
+  const existingRaces = [{ id: "existing-1", season_id: "s1", league_division_id: 101, pool_race_id: "mon-4", name: "Il Lombardia" }];
+  const state = { league_divisions: divisions, teams, race_pool: catalog, races: existingRaces, race_stage_profiles: [], race_stage_schedule: [] };
+  const sb = makeSupabase(state);
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, tiers: [4], dryRun: false, realDays: 28 });
+  const tier4Names = new Set(sb.state.races.filter((r) => r.league_division_id === 401).map((r) => r.name));
+  assert.ok(!tier4Names.has("Il Lombardia"), "tier 4 må ikke vælge et navn allerede brugt i tier 1");
+  assert.equal(summary.tiers.find((t) => t.tier === 4)?.calendarViolations?.length ?? 0, 0);
 });
