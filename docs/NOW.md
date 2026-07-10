@@ -14,7 +14,7 @@
 
 > **Talentspejder (spec låst 7/7):** Fase 1+2 merged · **Fase 3 (#2244) SHIPPED til prod 10/7 aften** (#2280+#2281+#2283 merged, migration verificeret applied; gates grønne — audit `docs/audits/2026-07-10-talentspejder-gates.md`); flag `scout_system_enabled` off = spillere ser slots; admin-preview on. #2284 delvist løst via chips (jobConfig-API + batch-navne shippet). Fase 4 gemte filtre #27. Kendt problem: test-konti wipes (#2245, bug/high).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — dashboard-UX-pakke (onboarding-trin, empty-CTA'er, næste træk, holdudtagelses-link, resultat-filter), startet 10/7.
 
 ## Standing context (forever-relaunch)
 
