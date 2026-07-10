@@ -55,6 +55,19 @@ Trænings-multiplikator = `(1 + base[tier] × staffEffectFactor) × specialiseri
 2. **A2/A4-flags står stadig** (staff-løn absolut små; t5-chef maks faktor 0,909; kommerciel rent minus-spor til Fase 4) — uændrede af denne slice.
 3. Scouting/medical/academy-sporene er stadig "target" — deres motorer er egne slices (spec §2.1).
 
+## Re-verifikation 2026-07-10 (session #2287, efter Talentspejder Fase 3)
+
+Genkørt efter #2244 shippede (scouting-rollen fik live effekt via scoutEngine):
+
+- **Ingen dobbeltregning af scouting:** scoutEngine/scoutAssignmentService bruger spejderens
+  rating fra `team_staff`/`staff_derived_abilities` direkte — scouting-FACILITETENS
+  `effectiveBonus` er ikke wired nogen steder (`EFFECT_LIVE_BY_TRACK.scouting=false`,
+  0 facility-referencer i scout-modulerne). To adskilte håndtag; UI-mærkningen er stadig ærlig.
+- **Harness genkørt grøn:** alle 6 gate-familier PASS (binding celle D3/×0,5 = 87,1% uændret) ·
+  inflations-gate PASS · fresh-net trajektorie 1,03×/1,11×/1,07× (identisk) · Gini 0,357/0,377/0,387
+  (identisk) · backend-tests **2966/2966 pass**.
+- **Flag flip-klar:** `app_config.facilities_enabled=false` findes i prod; flip = én UPDATE (ejer-only).
+
 ## Anbefaling
 
 Plan B-gaten er opfyldt: alle 6 gate-familier + inflation + fresh + Gini grønne, og live-kæden beviser ordret det UI'et lover. **Flip-tjekliste (ejer):** (1) test som admin på prod (køb træningscenter → kør træningsdag → se løftet i rapporten), (2) `UPDATE app_config SET value='true'::jsonb WHERE key='facilities_enabled'`, (3) indsæt staged patch-note/help (`docs/superpowers/drafts/2026-07-05-facilities-flip-announce.md`).
