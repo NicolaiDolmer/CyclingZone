@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.75",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Getting started now tracks what you actually do",
+          "body": "The Get started checklist on your dashboard used to mark most steps as done from the moment you registered, so it barely told you anything. It now tracks four real actions: placing your first bid, running your first training day, picking your squad for a race, and negotiating a board plan. Next move on the dashboard also grew three new entries for exactly those gaps: a missing squad selection links straight to that race's lineup panel, a missed training day links to Training, and no board plan links to the Board. The squad selection button on the dashboard now lands you directly on the lineup panel instead of the top of the race page. Empty cards (auctions, transfers, races, standings, results) now carry a link to where you go next instead of just blank text, and your balance in the header shows a clearer hover and arrow to make it obvious it is clickable. Recent results also now only shows races from your own division and group. While onboarding is still in progress, the survey and Discord banners stay out of the way so the checklist has the top of the screen to itself."
+        },
+        "da": {
+          "title": "Kom i gang sporer nu hvad du faktisk gør",
+          "body": "Kom i gang-tjeklisten på dit dashboard markerede tidligere de fleste trin som gennemført fra det øjeblik du registrerede dig, så den fortalte dig næsten intet. Den sporer nu fire ægte handlinger: afgiv dit første bud, kør din første træningsdag, udtag din trup til et løb, og forhandl en bestyrelsesplan. Næste træk på dashboardet har også fået tre nye punkter til præcis de mangler: en manglende holdudtagelse linker direkte til det løbs udtagelses-panel, en sprunget træningsdag linker til Træning, og ingen bestyrelsesplan linker til Bestyrelsen. Holdudtagelses-knappen på dashboardet lander dig nu direkte på udtagelses-panelet i stedet for øverst på løbssiden. Tomme kort (auktioner, transfers, løb, stilling, resultater) har nu et link til det næste skridt i stedet for bare blank tekst, og din saldo i headeren har en tydeligere hover-effekt og pil, så det er åbenlyst at den er klikbar. Seneste resultater viser nu også kun løb fra din egen division og gruppe. Mens onboarding stadig er i gang, holder survey- og Discord-bannerne sig væk, så tjeklisten har toppen af skærmen for sig selv."
+        },
+        "refs": [2288]
+      }
+    ]
+  },
+  {
     "version": "6.74",
     "date": "2026-07-10",
     "label": "Beta",

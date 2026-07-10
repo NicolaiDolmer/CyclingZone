@@ -12,7 +12,10 @@
     "transferOffers": "{count, plural, one {1 transfer offer needs your decision} other {# transfer offers need your decision}}",
     "swapOffers": "{count, plural, one {1 swap proposal needs your decision} other {# swap proposals need your decision}}",
     "loanRequests": "{count, plural, one {1 loan request needs your decision} other {# loan requests need your decision}}",
-    "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}"
+    "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}",
+    "squadSelectionMissing": "Squad selection missing for {race}",
+    "notTrainedToday": "You have not trained today",
+    "boardPlanMissing": "No board plan negotiated yet"
   },
   "squadWarning": {
     "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
@@ -43,6 +46,7 @@
       "title": "Active Auctions",
       "linkAll": "See all →",
       "empty": "No active auctions",
+      "emptyCta": "Browse the auction market →",
       "expired": "Expired",
       "winning": "Winning",
       "selling": "Selling",
@@ -53,6 +57,7 @@
       "title": "Transfers & Offers",
       "linkAll": "See all →",
       "empty": "No pending transfers",
+      "emptyCta": "Browse riders for sale →",
       "incomingCount": "{count, plural, one {1 incoming transfer} other {# incoming transfers}}",
       "from": "From: {name}",
       "to": "To: {name}",
@@ -63,6 +68,7 @@
       "title": "Upcoming Races",
       "linkAll": "Calendar →",
       "empty": "No scheduled races",
+      "emptyCta": "Open the race calendar →",
       "stages": "{count, plural, one {1 stage} other {# stages}}",
       "oneDay": "One-day race",
       "scheduled": "Scheduled",
@@ -71,7 +77,8 @@
     "standings": {
       "title": "Division {division} · Standings",
       "linkAll": "Full standings →",
-      "empty": "No season data yet"
+      "empty": "No season data yet",
+      "emptyCta": "View full standings →"
     },
     "board": {
       "title": "Board Status",
@@ -86,7 +93,8 @@
     "recentResults": {
       "title": "Recent results",
       "linkAll": "See all →",
-      "empty": "No completed races yet this season",
+      "empty": "Results appear here after the first races",
+      "emptyCta": "Open the race calendar →",
       "gc": "Overall winner",
       "winner": "Winner",
       "stage": "Stage {n} winner",
@@ -95,7 +103,8 @@
     "riderRanking": {
       "title": "Rider ranking",
       "linkAll": "Full ranking →",
-      "empty": "No results yet this season",
+      "empty": "Results appear here after the first races",
+      "emptyCta": "Open the race calendar →",
       "stageWins": "{count, plural, one {1 stage win} other {# stage wins}}",
       "gcWins": "{count} GC",
       "points": "{points} pts",
@@ -195,15 +204,15 @@
   "onboardingProgress": {
     "header": "Get started · {completed}/{total} steps complete",
     "steps": {
-      "team_named": "Name your team and manager",
-      "first_rider_owned": "Buy your first rider",
       "first_bid_placed": "Place your first bid",
-      "board_plan_set": "Choose a board plan"
+      "first_training_run": "Run your first training day",
+      "first_squad_selected": "Select your squad for a race",
+      "board_plan_set": "Negotiate a board plan"
     },
     "ctas": {
-      "team_named": "Profile →",
-      "first_rider_owned": "Go to Market →",
       "first_bid_placed": "See Auctions →",
+      "first_training_run": "Go to Training →",
+      "first_squad_selected": "Go to Races →",
       "board_plan_set": "Meet the board →"
     },
     "tour": "Show me how",

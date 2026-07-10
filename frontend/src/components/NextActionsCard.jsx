@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon } from "./ui";
+import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon } from "./ui";
 
 /**
  * "Næste træk" — prioriteret liste over hvad der venter på manageren, samlet
@@ -17,12 +17,31 @@ import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon } from "./ui";
  * @param {{ counts: { transfer_offers: number, swap_offers: number, loan_offers: number, total: number } }} pending
  * @param {number} urgentAuctionCount
  * @param {boolean} loading
+ * @param {object|null} squadSelectionMissingRace — #2288 D1: næste udtagelige løb
+ *   uden en manuel holdudtagelse endnu, eller null hvis intet mangler.
+ * @param {boolean} notTrainedToday — #2288 D2: dagens trænings-tick ikke kørt endnu.
+ * @param {boolean} boardPlanMissing — #2288 D3: ingen forhandlet bestyrelsesplan endnu.
  */
-export default function NextActionsCard({ pending, urgentAuctionCount = 0, loading = false }) {
+export default function NextActionsCard({
+  pending, urgentAuctionCount = 0, loading = false,
+  squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
+}) {
   const { t } = useTranslation("dashboard");
   const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 };
 
+  // #2288 D — mest presserende øverst: holdudtagelse (deadline-følsomt) → ikke
+  // trænet i dag (dagligt vindue) → bestyrelsesplan (langsigtet, ingen deadline).
   const items = [];
+  if (squadSelectionMissingRace)
+    items.push({
+      key: "squadSelection", Icon: FlagIcon,
+      label: t("nextActions.squadSelectionMissing", { race: squadSelectionMissingRace.name }),
+      to: `/races/${squadSelectionMissingRace.id}#selection`,
+    });
+  if (notTrainedToday)
+    items.push({ key: "training", Icon: BikeIcon, label: t("nextActions.notTrainedToday"), to: "/training" });
+  if (boardPlanMissing)
+    items.push({ key: "boardPlan", Icon: BriefcaseIcon, label: t("nextActions.boardPlanMissing"), to: "/board" });
   if (counts.transfer_offers > 0)
     items.push({ key: "transfers", Icon: ExchangeIcon, label: t("nextActions.transferOffers", { count: counts.transfer_offers }), to: "/transfers" });
   if (counts.swap_offers > 0)

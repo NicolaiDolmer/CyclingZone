@@ -399,7 +399,9 @@ test("dashboard team-selection CTA links to the next selectable race", async ({ 
   await expect(cta).toContainText(/Tour Test Prologue/);
 
   await cta.getByRole("link", { name: /Set your line-up/i }).click();
-  await expect(page).toHaveURL(/\/races\/race-next-1$/);
+  // #2288 F: lander nu PÅ udtagelses-panelet (#selection-anchor) i stedet for
+  // øverst på race-siden.
+  await expect(page).toHaveURL(/\/races\/race-next-1#selection$/);
 });
 
 test("dashboard shows per-pool race-days counter incl. in-progress (#1829)", async ({ page }) => {

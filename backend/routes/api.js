@@ -5249,35 +5249,79 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
   res.json({ ok: true, username: data.username });
 });
 
-// GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager
+// GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager.
+//
+// #2288 Slice A: de gamle trin "team_named" og "first_rider_owned" er completed
+// fra START for enhver ny manager (auto-navngivet team, start-trup gives ved
+// registrering), så de målte intet — kun first_bid_placed var en ægte handling.
+// Erstattet med 4 handlinger manageren rent faktisk selv skal udføre:
+//   1. first_bid_placed     — bud i en auktion (uændret, allerede ægte).
+//   2. first_training_run   — mindst 1 række i training_day_runs (dagligt
+//                              trænings-tick har ramt holdet mindst én gang).
+//   3. first_squad_selected — mindst én MANUEL holdudtagelse (race_entries med
+//                              is_auto_filled=false) — samme tabel/kolonne som
+//                              RaceSelectionPanel/saveSelection skriver til
+//                              (backend/lib/raceSelection.js, replace_race_selection-RPC).
+//   4. board_plan_set       — board_profiles seedes AUTOMATISK ved sæson-start
+//                              (economyEngine.processSeasonStart, alle 3 plan-typer,
+//                              negotiation_status='pending'), så "findes en board_profiles-
+//                              række" var altid sand. negotiation_status='completed'
+//                              sættes derimod kun når manageren selv har forhandlet en
+//                              plan færdig (PUT board-negotiate-ruten) — det ÆGTE signal.
 router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const teamId = req.team?.id;
   const emptySteps = [
-    { key: "team_named", done: false },
-    { key: "first_rider_owned", done: false },
     { key: "first_bid_placed", done: false },
+    { key: "first_training_run", done: false },
+    { key: "first_squad_selected", done: false },
     { key: "board_plan_set", done: false },
   ];
   if (!teamId) {
     return res.json({ steps: emptySteps, completed_count: 0, total_count: emptySteps.length });
   }
 
-  const [teamRes, ridersRes, bidsRes, boardsRes] = await Promise.all([
-    supabase.from("teams").select("manager_name").eq("id", teamId).single(),
-    supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+  const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
-    supabase.from("board_profiles").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+    supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId),
+    supabase.from("race_entries").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),
+    supabase.from("board_profiles").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("negotiation_status", "completed"),
   ]);
 
   const steps = [
-    { key: "team_named", done: Boolean(teamRes.data?.manager_name?.trim()) },
-    { key: "first_rider_owned", done: (ridersRes.count || 0) > 0 },
     { key: "first_bid_placed", done: (bidsRes.count || 0) > 0 },
+    { key: "first_training_run", done: (trainingRunsRes.count || 0) > 0 },
+    { key: "first_squad_selected", done: (squadSelectedRes.count || 0) > 0 },
     { key: "board_plan_set", done: (boardsRes.count || 0) > 0 },
   ];
   const completed_count = steps.filter(s => s.done).length;
 
   res.json({ steps, completed_count, total_count: steps.length });
+});
+
+// GET /api/training/today-status — letvægts-signal til Dashboard "Næste træk"
+// (#2288 D2): har holdet kørt dagens trænings-tick allerede? Kun training_day_runs
+// på (team_id, tick_date=København-i-dag) — ingen rider/condition/progress-joins
+// (det tunge arbejde ligger i /api/training/me, som Dashboard IKKE skal betale for).
+router.get("/training/today-status", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false, ran_today: false });
+
+    const todayDate = copenhagenDateString(new Date());
+    const { data, error } = await supabase
+      .from("training_day_runs")
+      .select("team_id")
+      .eq("team_id", req.team.id)
+      .eq("tick_date", todayDate)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ enabled: true, ran_today: Boolean(data) });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/me/finance-forecast — slice 07g manager finance-forecast + risk-tier
@@ -7087,18 +7131,33 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
 // rækker og voksende mod TdF). Samme logik som ResultaterPage's topRiders, men
 // flyttet væk fra klienten.
 
-// GET /api/dashboard/recent-results — seneste 5 afsluttede løb + vinder
-router.get("/dashboard/recent-results", requireAuth, cached({ namespace: "dashboard-recent-results", ttlMs: CACHE_TTL.dashboardRecentResults }, async (req, res) => {
+// GET /api/dashboard/recent-results — seneste 5 afsluttede løb + vinder, KUN i
+// managerens egen division+pulje (#2288 G). Uden filteret viste kortet resultater
+// fra alle 4 divisioner + 8 grupper — irrelevant for en manager i sin egen pulje,
+// og et andet mønster end nextRaces-queryen i DashboardPage.jsx (som allerede
+// filtrerer på league_division_id). keyExtras deler cachen pr. league_division_id
+// (ikke global længere), ellers ville første kaldende division "vinde" cachen for
+// alle andre divisioner i TTL-vinduet.
+router.get("/dashboard/recent-results", requireAuth, cached({
+  namespace: "dashboard-recent-results",
+  ttlMs: CACHE_TTL.dashboardRecentResults,
+  keyExtras: (req) => String(req.team?.league_division_id ?? "none"),
+}, async (req, res) => {
   try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
     const { data: season } = await supabase
       .from("seasons").select("id").eq("status", "active").maybeSingle();
     if (!season) return res.json({ races: [] });
 
-    const { data: races } = await supabase
+    let racesQuery = supabase
       .from("races")
       .select("id, name, race_type, stages")
       .eq("season_id", season.id)
       .eq("status", "completed");
+    if (req.team.league_division_id != null) {
+      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+    }
+    const { data: races } = await racesQuery;
     if (!races?.length) return res.json({ races: [] });
 
     const raceIds = races.map(r => r.id);

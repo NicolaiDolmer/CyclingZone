@@ -12,7 +12,10 @@
     "transferOffers": "{count, plural, one {1 transfertilbud venter på din beslutning} other {# transfertilbud venter på din beslutning}}",
     "swapOffers": "{count, plural, one {1 bytteforslag venter på din beslutning} other {# bytteforslag venter på din beslutning}}",
     "loanRequests": "{count, plural, one {1 leje-anmodning venter på din beslutning} other {# leje-anmodninger venter på din beslutning}}",
-    "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}"
+    "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}",
+    "squadSelectionMissing": "Holdudtagelse mangler til {race}",
+    "notTrainedToday": "Du har ikke trænet i dag",
+    "boardPlanMissing": "Ingen bestyrelsesplan forhandlet endnu"
   },
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
@@ -43,6 +46,7 @@
       "title": "Aktive Auktioner",
       "linkAll": "Se alle →",
       "empty": "Ingen aktive auktioner",
+      "emptyCta": "Se auktionsmarkedet →",
       "expired": "Udløbet",
       "winning": "Vinder",
       "selling": "Sælger",
@@ -53,6 +57,7 @@
       "title": "Transfers & Tilbud",
       "linkAll": "Se alle →",
       "empty": "Ingen ventende transfers",
+      "emptyCta": "Se ryttere til salg →",
       "incomingCount": "{count, plural, one {1 indgående transfer} other {# indgående transfers}}",
       "from": "Fra: {name}",
       "to": "Til: {name}",
@@ -63,6 +68,7 @@
       "title": "Kommende Løb",
       "linkAll": "Kalender →",
       "empty": "Ingen planlagte løb",
+      "emptyCta": "Åbn løbskalenderen →",
       "stages": "{count, plural, one {1 etape} other {# etaper}}",
       "oneDay": "Enkeltdagsløb",
       "scheduled": "Planlagt",
@@ -71,7 +77,8 @@
     "standings": {
       "title": "Division {division} · Stilling",
       "linkAll": "Fuld rangliste →",
-      "empty": "Ingen sæsondata endnu"
+      "empty": "Ingen sæsondata endnu",
+      "emptyCta": "Se den fulde rangliste →"
     },
     "board": {
       "title": "Bestyrelsens Status",
@@ -86,7 +93,8 @@
     "recentResults": {
       "title": "Seneste resultater",
       "linkAll": "Se alle →",
-      "empty": "Ingen afsluttede løb endnu denne sæson",
+      "empty": "Resultater vises her efter de første løb",
+      "emptyCta": "Åbn løbskalenderen →",
       "gc": "Samlet vinder",
       "winner": "Vinder",
       "stage": "Vinder af etape {n}",
@@ -95,7 +103,8 @@
     "riderRanking": {
       "title": "Rytterrangliste",
       "linkAll": "Hele ranglisten →",
-      "empty": "Ingen resultater endnu denne sæson",
+      "empty": "Resultater vises her efter de første løb",
+      "emptyCta": "Åbn løbskalenderen →",
       "stageWins": "{count, plural, one {1 etapesejr} other {# etapesejre}}",
       "gcWins": "{count} GC",
       "points": "{points} pt",
@@ -195,15 +204,15 @@
   "onboardingProgress": {
     "header": "Kom i gang · {completed}/{total} trin fuldført",
     "steps": {
-      "team_named": "Navngiv hold og manager",
-      "first_rider_owned": "Køb din første rytter",
       "first_bid_placed": "Afgiv dit første bud",
-      "board_plan_set": "Vælg en bestyrelsesplan"
+      "first_training_run": "Kør din første træningsdag",
+      "first_squad_selected": "Udtag din trup til et løb",
+      "board_plan_set": "Forhandl en bestyrelsesplan"
     },
     "ctas": {
-      "team_named": "Profil →",
-      "first_rider_owned": "Gå til Marked →",
       "first_bid_placed": "Se Auktioner →",
+      "first_training_run": "Gå til Træning →",
+      "first_squad_selected": "Gå til Løb →",
       "board_plan_set": "Mød bestyrelsen →"
     },
     "tour": "Vis mig hvordan",
