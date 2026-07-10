@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.79",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Forced sales during a debt breach now actually pay down your debt",
+          "body": "When your team's debt goes over the division ceiling for two seasons in a row, the board force-sells your most valuable riders. That sale money now pays your loans down directly (oldest loan first) instead of just sitting in a stat the board tracked internally — so a forced sale genuinely reduces your debt and the breach won't automatically repeat next season on the same numbers. Your transaction history also shows these repayments separately from ones you make yourself."
+        },
+        "da": {
+          "title": "Tvangssalg ved gældsbrud afdrager nu faktisk din gæld",
+          "body": "Når holdets gæld ligger over divisionens loft to sæsoner i træk, tvangssælger bestyrelsen dine mest værdifulde ryttere. De penge afdrager nu dine lån direkte (ældste lån først) i stedet for bare at indgå i et internt bestyrelses-tal — så et tvangssalg reelt sænker din gæld, og bruddet gentager sig ikke automatisk næste sæson på de samme tal. Din transaktionshistorik viser også disse afdrag adskilt fra dem du selv foretager."
+        },
+        "refs": [2303]
+      }
+    ]
+  },
+  {
     "version": "6.78",
     "date": "2026-07-10",
     "label": "Beta",

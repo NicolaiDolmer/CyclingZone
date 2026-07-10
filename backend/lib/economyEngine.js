@@ -15,6 +15,7 @@ import {
   processLoanInterest,
   createEmergencyLoan,
   getTotalDebt,
+  repayLoansFromForcedSale,
 } from "./loanEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -514,6 +515,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
   const getTotalDebtFn = deps.getTotalDebt ?? getTotalDebt;
+  const repayLoansFromForcedSaleFn = deps.repayLoansFromForcedSale ?? repayLoansFromForcedSale;
   // #1678 · sæson-nummer (threades fra processSeasonStart → defaultRunSeasonPayroll)
   // bruges til upkeep-deferral: ingen gold sink i sæson 1 før første løb.
   const seasonNumber = deps.seasonNumber ?? null;
@@ -674,10 +676,20 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
 
           forcedSaleCount += 1;
           forcedSaleTotal += credit;
-          // Optimistisk: antag at credit reducerer gæld proportionelt (estimat)
-          runningDebt = Math.max(0, runningDebt - credit);
 
-          console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}`);
+          // #2303: provenuet afdrager lånene DIREKTE (ældste lån først) i
+          // stedet for det gamle runningDebt-estimat (der aldrig rørte
+          // loans.amount_remaining — bruddet gentog sig næste sæson).
+          // Genindlæs ægte gæld efter hvert salg, så loopet stopper når
+          // holdet FAKTISK er under loftet (håndterer også provenu > gæld:
+          // repayLoansFromForcedSale afdrager op til gælden, resten forbliver
+          // som kasse-forøgelse fra creditTeam ovenfor).
+          if (credit > 0) {
+            await repayLoansFromForcedSaleFn(team.id, credit, supabaseClient, seasonId);
+          }
+          runningDebt = await getTotalDebtFn(team.id, supabaseClient);
+
+          console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}, gæld nu ${runningDebt}`);
         }
       }
     } else {
