@@ -125,6 +125,11 @@ export default function DashboardPage() {
   // RaceSelectionPanel/saveSelection skriver til: race_entries.is_auto_filled=false).
   const [squadSelectionMissingRace, setSquadSelectionMissingRace] = useState(null);
   const [notTrainedToday, setNotTrainedToday] = useState(false);
+  // D3: "bestyrelsesplan mangler" = forhandling er ÅBEN (ikke sæson-1 baseline-lås)
+  // og ingen plan er forhandlet færdig (negotiation_status='completed' — planer
+  // auto-seedes som 'pending' ved sæson-start, så board non-null er IKKE nok;
+  // samme signal som onboarding-trinnet board_plan_set).
+  const [boardPlanMissing, setBoardPlanMissing] = useState(false);
 
   async function loadAll() {
     try {
@@ -221,6 +226,10 @@ export default function DashboardPage() {
     // viste Dashboard 65% mens Bestyrelse viste 67%.
     setBoardSatisfaction(computeOverallBoardSatisfaction(boardStatus?.plans));
     setBoardOutlook(activePlan?.outlook || null);
+    const hasNegotiatedPlan = ["1yr", "3yr", "5yr"].some(
+      (pt) => boardStatus?.plans?.[pt]?.board?.negotiation_status === "completed"
+    );
+    setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
     setActiveOffers([
       ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
       ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
@@ -553,7 +562,7 @@ export default function DashboardPage() {
           loading={actionLoading}
           squadSelectionMissingRace={squadSelectionMissingRace}
           notTrainedToday={notTrainedToday}
-          boardPlanMissing={!board}
+          boardPlanMissing={boardPlanMissing}
         />
       )}
 
