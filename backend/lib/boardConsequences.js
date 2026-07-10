@@ -353,7 +353,12 @@ export function selectBonusExtraGoal(board) {
   if (focus === "star_signing") {
     return {
       type: "signature_rider",
-      target: 75,
+      // #2308 · boardGoals.js' signature_rider-evaluator tolker target som
+      // ANTAL ryttere med popularity≥75 (popularity-tærsklen er hardcoded i
+      // evaluatoren, ikke konfigurerbar via target). target: 75 var derfor
+      // matematisk uopfyldeligt (kræver 75 kvalificerede ryttere). "Sign 1
+      // star" → target: 1.
+      target: 1,
       // EN fallback label for legacy callers; #666 prefers labelKey for i18n.
       label: "Sign 1 star (popularity ≥75)",
       labelKey: "consequence.bonusGoal.signatureRider",

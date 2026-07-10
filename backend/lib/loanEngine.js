@@ -587,6 +587,7 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
       description: null,
       season_id: seasonId,
       related_loan_id: loan.id,
+      reason_code: FINANCE_REASON.SEASON_END_LOAN_INTEREST,
       metadata: {
         code: "tx.loanInterest",
         params: { rate: Math.round(loan.interest_rate * 100) },

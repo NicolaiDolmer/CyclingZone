@@ -60,3 +60,18 @@ test("#979 forward-guard: display må ikke regressere til bart board.cumulative_
     "cumulative_stats.gc_wins må ikke læses direkte fra board (mister indeværende sæson)",
   );
 });
+
+// ============================================================
+// #2308 — GET /board/status: outlook-context skal sende isFinalSeason, som
+// weekend-finalization + season-end allerede gør. Uden den scorer
+// no_outstanding_debt 1.0 i stedet for 1.05, og final-only mål pro-rates
+// forkert i det live BoardPage-display.
+// ============================================================
+
+test("#2308 outlook-context sender isFinalSeason (matcher weekend/season-end)", () => {
+  assert.match(
+    apiSource,
+    /isFinalSeason:\s*workingSeasonIndex\s*>=\s*planDuration,/,
+    "outlook-context skal sætte isFinalSeason = workingSeasonIndex >= planDuration",
+  );
+});
