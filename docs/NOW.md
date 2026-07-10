@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer: merge PR #2275** (#2256+#2265 — greying + save-guard; indeholder migration → ejer-merge-only). Derefter: #2274 (monumenter på egen eksklusiv game day, ejer-afklaring 10/7) eller Talentspejder Fase 3 (#2244). **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
+> **🎯 Next action:** **PR #2279 auto-merger (2276-følgefixes + v6.72)** — derefter: #2270-wiring af kalender-invarianter i natlig smoke-sim, #2274 (monumenter egen game day — nu kun tier 1-relevant), eller Talentspejder Fase 3 (#2244). Ejer-klik: Div 4-kalender i spillet (8 ens grupper, 3 etaper/dag til 26/7) + greying på løbssider (v6.71). **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
 
-> **Session 10/7 aften (#2256+#2265):** PR #2275 klar (greying på per-løb-side + bredere bræt-bindingMap + TOCTOU-guard i RPC via migration, v6.71) — ejer merger. Prod-verificeret: AI-fill virker (Div 4 completed-løb fyldt), pulje A's 27 løb = ældre seed-generation (4/7), guarden holder i alle tiers i game_day-rummet. Monument-afklaring (skal ligge på EGEN game day, binde normalt) → **#2274 oprettet**. #2270 (natlig smoke-sim) fortsat åben; #2228 luk efter 13/7-triage; TdF #2080: ejer vælger dag.
+> **Session 10/7 aften:** #2275 merged (greying+save-guard, v6.71; RPC-guard verificeret i prod). **#2276 Div 4-kaskadebrud REPARERET LIVE (ejer-godkendt):** 146 løb slettet, 253 præmie-tilbageførsler (-3,37M, 0 hold i minus), ny identisk kalender i 8/8 puljer (20 løb, tæthed 3, slut 26/7), invarianter i materializer (PR #2277+#2278), 4 live-følgefixes + v6.72 i PR #2279, 2 postmortems. Sentry CYCLINGZONE-2A (transient) resolved; CYCLINGZONE-28/29 → 13/7-triage. #2274 oprettet (monument egen game day). TdF #2080: ejer vælger dag.
 
 > **Ejer-verify-kø:** #2100 loft-projektion (v6.68) på en ung rytter · scouting-fanen #2243 (v6.67) · #2206 rangliste+holdstilling · #2081 slice 1 (PR #2225). **Ejer-klikliste:** #2076 uptime-rest · #2085 mail-kapacitet · #1784 spend-cap · #929 · Alunta-tokens · #1903 CZ Pro testkøb.
 
