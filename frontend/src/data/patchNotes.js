@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.72",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Division 4 got a brand new, fair race calendar",
+          "body": "Division 4 was accidentally seeded with races that belong to Division 1, including the five Monuments and two World Tour stage races, and its groups did not share the same calendar. That was unfair to Division 3 and against the design: the biggest races live in Division 1, and every group in a division must race the same calendar. We have rebuilt Division 4 completely: all eight groups now share an identical calendar of Class 1 and Class 2 races running three stages per day until the season finale on 26 July. Results and prize money from the wrongly scheduled races were rolled back precisely per team, and nobody ended up with a negative balance."
+        },
+        "da": {
+          "title": "Division 4 har fået en helt ny, fair løbskalender",
+          "body": "Division 4 blev ved en fejl seedet med løb der hører til i Division 1, herunder de fem monumenter og to World Tour-etapeløb, og grupperne delte ikke samme kalender. Det var unfair over for Division 3 og imod designet: de største løb hører til i Division 1, og alle grupper i en division skal køre den samme kalender. Vi har genopbygget Division 4 fuldstændigt: alle otte grupper deler nu en identisk kalender af Class 1- og Class 2-løb med tre etaper om dagen frem til sæsonfinalen 26. juli. Resultater og præmiepenge fra de fejlplanlagte løb er rullet præcist tilbage pr. hold, og ingen er endt med negativ saldo."
+        },
+        "refs": [2276]
+      }
+    ]
+  },
+  {
     "version": "6.71",
     "date": "2026-07-10",
     "label": "Beta",
