@@ -12,6 +12,7 @@ import SponsorContractPanel from "../components/SponsorContractPanel";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
+import { FINANCE_CATEGORIES, buildCategoryOrFilter } from "../lib/financeCategories";
 import {
   Tabs, TabList, Tab, TabPanel,
   Card, Button, Input, Select, ProgressMeter, PageLoader,
@@ -21,6 +22,11 @@ import {
 const API = import.meta.env.VITE_API_URL;
 
 const FINANCE_TABS = ["overview", "loans", "sponsors", "history"];
+// #2306: sentinel-værdi for "ingen sæson valgt" i Historik-fanens sæsonvælger —
+// viser al historik uafhængig af sæson (default), i modsætning til `null`
+// (loading-tilstand før sæsonlisten er hentet).
+const ALL_SEASONS = "all";
+const TX_PAGE_SIZE = 30;
 
 function useTimeAgo(t) {
   return (d) => {
@@ -99,8 +105,18 @@ export default function FinancePage() {
     }
   }
   const [seasons, setSeasons] = useState([]);
-  // #986: valgt sæson i Historik-fanen (default = aktiv, eller ?season=).
-  const [historySeasonId, setHistorySeasonId] = useState(null);
+  // #986/#2306: fælles sæson-vælger for Historik-fanen — styrer BÅDE
+  // rapport-panelet OG transaktionslisten (issue #2306: vælgeren filtrerede
+  // tidligere kun rapport-panelet, hvilket var forvirrende). Default = ALL_SEASONS
+  // ("Alle") så listen viser al historik; rapport-panelet kræver en konkret
+  // sæson og skjules når "Alle" er valgt.
+  const [historySeasonId, setHistorySeasonId] = useState(ALL_SEASONS);
+  // #2306: kategori-filter + range-based pagination for transaktionslisten.
+  const [txCategory, setTxCategory] = useState("all");
+  const [txPage, setTxPage] = useState(0);
+  const [txHasMore, setTxHasMore] = useState(true);
+  const [txLoadingMore, setTxLoadingMore] = useState(false);
+  const [txError, setTxError] = useState(false);
   const [loading, setLoading] = useState(true);
   // #1350: terminal error-state for initial load — uden den kunne en rejected
   // request efterlade en permanent spinner. Settle altid loading i finally.
@@ -148,11 +164,9 @@ export default function FinancePage() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const authHeaders = { Authorization: `Bearer ${session.access_token}` };
-    const [loanRes, forecastRes, txRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
+    const [loanRes, forecastRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
       fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
-      supabase.from("finance_transactions").select("*")
-        .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
       // #44: hent leading auktioner + proxies så vi kan vise reserveret balance
       supabase.from("auctions")
         .select("id, current_price")
@@ -166,26 +180,17 @@ export default function FinancePage() {
       supabase.from("seasons").select("id, number, status").order("number", { ascending: false }),
     ]);
 
-    // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
-    // reject — uden denne guard ville et fejlet transaktions-kald ligne et tomt
-    // finans-overblik. Behandl det som en (retry-bar) load-fejl.
-    if (txRes.error) {
-      setLoadError(true);
-      return;
-    }
-
     const allSeasons = seasonsRes.data || [];
     setSeasons(allSeasons);
     const active = allSeasons.find((s) => s.status === "active");
     // Default Historik-sæson: behold eksisterende valg (loadAll kaldes igen efter
-    // lån-handlinger), ellers ?season= hvis gyldig, ellers aktiv/seneste.
+    // lån-handlinger), ellers ?season= hvis gyldig, ellers ALL_SEASONS (#2306:
+    // "Alle" er default så transaktionslisten viser alt uden en ekstra klik).
     const seasonParam = searchParams.get("season");
     setHistorySeasonId((prev) =>
-      prev
+      (prev && prev !== ALL_SEASONS ? prev : null)
         || (seasonParam && allSeasons.some((s) => s.id === seasonParam) ? seasonParam : null)
-        || active?.id
-        || allSeasons[0]?.id
-        || null,
+        || ALL_SEASONS,
     );
 
     if (loanRes.ok) setLoanData(await loanRes.json());
@@ -194,8 +199,6 @@ export default function FinancePage() {
     } else {
       setForecast(null);
     }
-    setTransactions(txRes.data || []);
-
     // #44: worst-case commitment = MAX(current_price, my_proxy_max) for leading
     // + my_proxy_max for ikke-leading auktioner.
     const leadingMap = new Map();
@@ -249,6 +252,52 @@ export default function FinancePage() {
       setForecastLoading(false);
       setLoading(false);
     }
+  }
+
+  // #2306: transaktionslistens fetch er adskilt fra loadAll så sæson-/kategori-
+  // filter + "vis flere"-pagination kan genkøre uden at re-hente hele resten af
+  // Finance-siden (lån, forecast, præmie-kort m.v.).
+  async function fetchTxPage(page, append) {
+    if (!team?.id) return;
+    if (append) setTxLoadingMore(true);
+    try {
+      let query = supabase.from("finance_transactions").select("*")
+        .eq("team_id", team.id);
+      if (historySeasonId && historySeasonId !== ALL_SEASONS) query = query.eq("season_id", historySeasonId);
+      if (txCategory !== "all") {
+        const orFilter = buildCategoryOrFilter(txCategory);
+        if (orFilter) query = query.or(orFilter);
+      }
+      const from = page * TX_PAGE_SIZE;
+      const to = from + TX_PAGE_SIZE - 1;
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      // #1350-mønster: en Supabase-fejl returnerer { data: null, error } i
+      // stedet for at reject — behandl som (retry-bar) fejl, aldrig tavst [].
+      if (error) throw error;
+      const rows = data || [];
+      setTransactions((prev) => (append ? [...prev, ...rows] : rows));
+      setTxHasMore(rows.length === TX_PAGE_SIZE);
+      setTxError(false);
+      setTxPage(page);
+    } catch (e) {
+      console.error("FinancePage fetchTxPage failed", e);
+      setTxError(true);
+    } finally {
+      if (append) setTxLoadingMore(false);
+    }
+  }
+
+  // Nulstil til side 0 når team er klar, eller sæson-/kategori-filteret ændres.
+  useEffect(() => {
+    if (!team?.id) return;
+    fetchTxPage(0, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [team?.id, historySeasonId, txCategory]);
+
+  function loadMoreTransactions() {
+    fetchTxPage(txPage + 1, true);
   }
 
   function showMsg(text, type = "success") {
@@ -717,8 +766,12 @@ export default function FinancePage() {
           {seasons.length > 0 && (
             <div className="mb-4 flex items-center gap-2">
               <label htmlFor="finance-history-season" className="text-cz-3 text-xs">{t("history.seasonPicker")}</label>
-              <Select id="finance-history-season" size="sm" value={historySeasonId || ""}
+              {/* #2306: vælgeren filtrerer nu BÅDE rapport-panelet OG
+                  transaktionslisten nedenunder — "Alle" (default) viser al
+                  historik uden sæson-filter. */}
+              <Select id="finance-history-season" size="sm" value={historySeasonId}
                 onChange={e => setHistorySeasonId(e.target.value)} className="w-auto">
+                <option value={ALL_SEASONS}>{t("history.allSeasons")}</option>
                 {seasons.map(s => (
                   <option key={s.id} value={s.id}>
                     {s.status === "active"
@@ -730,15 +783,45 @@ export default function FinancePage() {
             </div>
           )}
 
-          {historySeasonId && team?.id && (
+          {historySeasonId && historySeasonId !== ALL_SEASONS && team?.id && (
             <div className="mb-4">
               <SeasonFinanceReportPanel seasonId={historySeasonId} teamId={team.id} />
             </div>
           )}
 
-          {/* Transaktionshistorik (alle typer, seneste 30) */}
+          {/* Transaktionshistorik — sæson- og kategori-filtreret, range-based
+              "vis flere"-pagination (#2306). */}
           <Card data-tour="finance-tx-history" className="p-5">
             <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("transactions.history.title")}</h2>
+
+            {/* Kategori-chips */}
+            <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label={t("history.categoryFilterAria")}>
+              {["all", ...FINANCE_CATEGORIES].map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setTxCategory(cat)}
+                  aria-pressed={txCategory === cat}
+                  className={`min-h-[32px] px-3 py-1 rounded-cz text-xs font-medium border transition-colors
+                    ${txCategory === cat
+                      ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                      : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
+                >
+                  {t(`history.category.${cat}`)}
+                </button>
+              ))}
+            </div>
+
+            {txError && (
+              <div role="alert"
+                className="mb-4 bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-3 flex items-center justify-between gap-3">
+                <p className="text-cz-danger text-xs">{t("history.txLoadError")}</p>
+                <Button variant="secondary" size="sm" onClick={() => fetchTxPage(0, false)}>
+                  {t("loadError.retry")}
+                </Button>
+              </div>
+            )}
+
             {transactions.length === 0 ? (
               <p className="text-cz-3 text-sm">{t("transactions.history.empty")}</p>
             ) : (
@@ -778,6 +861,14 @@ export default function FinancePage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {txHasMore && transactions.length > 0 && (
+              <div className="mt-4 flex justify-center">
+                <Button variant="secondary" size="sm" onClick={loadMoreTransactions} disabled={txLoadingMore}>
+                  {txLoadingMore ? t("history.loadingMore") : t("history.loadMore")}
+                </Button>
               </div>
             )}
           </Card>
