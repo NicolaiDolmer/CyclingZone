@@ -44,6 +44,7 @@ import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
+import { runScoutSweep } from "./lib/scoutSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
@@ -457,6 +458,19 @@ async function runTrainingSweepCron() {
   }
 }
 
+// ─── Talentspejder: modner scout_assignments (missioner + målrettede opgaver) (#2244) ──
+// Mirror af trænings-sweepen: kl. 22 dansk tid + team-niveau mutex (scout_sweep_runs).
+
+async function runScoutSweepCron() {
+  const result = await runScoutSweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`🔭 Scout-sweep: ${result.swept} opgave(r) modnet`);
+  }
+  if (result.failed) {
+    console.error(`❌ Scout-sweep: ${result.failed} opgave(r) fejlede (per-hold try/catch isolerede)`);
+  }
+}
+
 // ─── Akademi-graduering: auto-resolver udløbne pending graduates (#932) ───────
 
 async function runGraduationSweepCron() {
@@ -696,6 +710,9 @@ export function startCron() {
 
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
   setInterval(trackedTick("graduation sweep", runGraduationSweepCron), 5 * 60 * 1000);
+
+  // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
+  setInterval(trackedTick("scout sweep", runScoutSweepCron), 5 * 60 * 1000);
 
   // Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563).
   // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.

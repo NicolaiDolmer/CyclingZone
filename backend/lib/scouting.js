@@ -10,9 +10,16 @@
 // #1162: Backend ejer nu OGSÅ estimat-beregningen (flyttet fra
 // frontend/src/lib/scouting.js display-lag v1). Den sande riders.potentiale
 // forlader aldrig serveren for ikke-admin-klienter — kun det maskerede
-// {lo, hi, exact, level}-resultat sendes (POST /api/scouting/estimates).
+// {lo, hi, level}-resultat sendes (POST /api/scouting/estimates).
 // Denne fil er ren JS uden DB/Math.random, så den kan unit-testes isoleret
 // og genbruges deterministisk.
+//
+// #2244 (Fase 3): spejder-rating driver nu et halvbredde-GULV på rest-båndet
+// (fuldt scoutet / egen rytter) via scoutEngine.scoutHalfWidth — se
+// residualHalfWidthFor nedenfor. `exact`-feltet er FJERNET fra det maskerede
+// output: egne ryttere viser altid et bånd (aldrig et eksakt tal), blot
+// smallere end fremmede rytteres (min-bånd × 0.8).
+import { DEFAULT_SCOUT, scoutHalfWidth } from "./scoutEngine.js";
 
 export const SCOUTING_CONFIG = Object.freeze({
   // Antal aktive scout-handlinger en manager har pr. sæson. Genopfyldes implicit
@@ -116,14 +123,36 @@ function baseUncertainty(age, cfg = SCOUT_DISPLAY_CONFIG) {
   return cfg.baseHalfWidthByAge[cfg.baseHalfWidthByAge.length - 1].half;
 }
 
+// Stjerne-skala-konvertering af scoutEngine's rating-point-gulv: gulvet er
+// kalibreret så et TOP-spejder (overall 99, gulv 3.0 rating-pt) matcher det
+// EKSISTERENDE residualHalfWidth (0.5 stjerne) — samme forhold som
+// scoutingReport's CEIL_HALF_WIDTH_BY_LEVEL[3]=3. En dårligere spejder (fx
+// default-spejderen, overall 40) får dermed et BREDERE rest-bånd end den
+// gamle scout-uafhængige konstant.
+const STAR_GULV_UNIT_SCALE = SCOUT_DISPLAY_CONFIG.residualHalfWidth / 3;
+
+// Rest-bånds-halvbredde (fuldt scoutet / egen rytter) for en given spejder:
+// max(residualHalfWidth, spejder-gulv-i-stjerne-enheder).
+function residualHalfWidthFor(scout) {
+  return scoutHalfWidth(0, scout, [SCOUT_DISPLAY_CONFIG.residualHalfWidth], STAR_GULV_UNIT_SCALE);
+}
+
 // Estimat-interval for én rytter set fra ét hold.
 //   truePotentiale : riders.potentiale (1.0–6.0) — forlader ALDRIG serveren rå
 //   scoutLevel     : 0..maxLevel  (0 = uscoutet)
 //   age            : rytterens alder (bredde-input)
 //   riderId,teamId : seed for per-manager bias
 //   maxLevel       : SCOUTING_CONFIG.maxLevel
-// Returnerer { lo, hi, exact, scoutLevel } i potentiale/stjerne-enheder.
-export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId, teamId, maxLevel = SCOUTING_CONFIG.maxLevel) {
+//   scout          : spejder-objekt ({overall,...}, #2244) — driver rest-bånds-gulvet.
+//                    Default DEFAULT_SCOUT (overall 40, teams uden hyret scouting-staff).
+//   bandFactor     : yderligere skalering af rest-båndets halvbredde (egne ryttere:
+//                    0.8 — smallere end fremmede, men ALDRIG eksakt, #2244/A3).
+// Returnerer { lo, hi, exact, scoutLevel } i potentiale/stjerne-enheder. `exact`
+// er altid false (bevaret internt for harness/tests — API-laget dropper feltet).
+export function estimatePotentialRange(
+  truePotentiale, scoutLevel, age, riderId, teamId,
+  maxLevel = SCOUTING_CONFIG.maxLevel, scout = DEFAULT_SCOUT, bandFactor = 1,
+) {
   if (truePotentiale == null) return null;
   const truth = Number(truePotentiale);
   if (!Number.isFinite(truth)) return null;
@@ -135,8 +164,10 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
 
   // Fuldt scoutet (eller maxLevel==0) → REST-BÅND (#1543 beslutning 3+4): selv
   // fuld viden er et smalt interval om det ankrede center — aldrig eksakt.
+  // Halvbredden er nu spejder-rating-afhængig (#2244): gulvet stiger for en
+  // dårligere spejder, og bandFactor snævrer yderligere ind for egne ryttere.
   if (level >= maxLevel) {
-    const half = SCOUT_DISPLAY_CONFIG.residualHalfWidth;
+    const half = residualHalfWidthFor(scout) * bandFactor;
     const center = clamp(truth + anchor, 1, 6);
     return {
       lo: clamp(roundHalf(center - half), 1, 6),
@@ -159,11 +190,18 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
   return { lo, hi, exact: false, scoutLevel: level };
 }
 
+// Egne ryttere: bånd-halvbredde × denne faktor ift. en fremmed rytter på
+// samme (fulde) scout-niveau — smallere fordi egen stab kender rytteren
+// bedst, men ALDRIG eksakt (#1543 beslutning 4 / #2244 A3).
+const OWN_RIDER_BAND_FACTOR = 0.8;
+
 // Det maskerede estimat én viewer (team) må se for én rytter. Dette er det
 // ENESTE potentiale-output der må forlade serveren til ikke-admin-klienter.
 //   rider        : { id, potentiale, birthdate, team_id }
 //   level        : viewerens scout-niveau på rytteren (0..maxLevel)
 //   viewerTeamId : viewerens team-id
+//   scout        : viewer-holdets spejder-objekt (#2244) — driver bånd-gulvet.
+//                  Default DEFAULT_SCOUT (teams uden hyret scouting-staff).
 // Returnerer:
 //   • null                       — rytter uden potentiale (intet at vise).
 //   • { hidden: true, level: 0 } — ikke-egen, uscoutet rytter (#1543): potentialet
@@ -171,19 +209,23 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
 //                                  potentiale eller et lo–hi-spænd forlader serveren
 //                                  før et scout-slot er brugt — intet gratis level-0
 //                                  hint længere.
-//   • { lo, hi, exact, level }   — egen rytter (smalleste rest-bånd, #1543
-//                                  beslutning 4) eller scoutet (level > 0).
-export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CONFIG, currentYear = new Date().getFullYear()) {
+//   • { lo, hi, level }          — egen rytter (smalleste rest-bånd, #1543
+//                                  beslutning 4) eller scoutet (level > 0). `exact`
+//                                  findes IKKE i dette output (#2244 A3): egne
+//                                  ryttere er ALTID et bånd, aldrig et eksakt tal.
+export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CONFIG, currentYear = new Date().getFullYear(), scout = DEFAULT_SCOUT) {
   if (!rider || rider.potentiale == null) return null;
   const isOwn = rider.team_id != null && viewerTeamId != null && rider.team_id === viewerTeamId;
   // #1543: en ikke-egen rytter som endnu ikke er scoutet (level 0) har INTET
   // synligt potentiale. Vi beregner ikke et lo–hi-interval og lækker dermed
   // ingen sandhed (heller ikke gennem clamping/bias) før et slot er brugt.
   if (!isOwn && (Number(level) || 0) <= 0) return { hidden: true, level: 0 };
-  // Egne ryttere er fuldt kendte (samme regel som POST /scouting/:riderId håndhæver).
+  // Egne ryttere er fuldt kendte (samme regel som POST /scouting/:riderId håndhæver),
+  // men vises stadig som et smallere bånd (#2244), aldrig eksakt.
   const effectiveLevel = isOwn ? cfg.maxLevel : level;
+  const bandFactor = isOwn ? OWN_RIDER_BAND_FACTOR : 1;
   const age = rider.birthdate ? currentYear - new Date(rider.birthdate).getFullYear() : null;
-  const range = estimatePotentialRange(rider.potentiale, effectiveLevel, age, rider.id, viewerTeamId, cfg.maxLevel);
+  const range = estimatePotentialRange(rider.potentiale, effectiveLevel, age, rider.id, viewerTeamId, cfg.maxLevel, scout, bandFactor);
   if (!range) return null;
-  return { lo: range.lo, hi: range.hi, exact: range.exact, level: range.scoutLevel };
+  return { lo: range.lo, hi: range.hi, level: range.scoutLevel };
 }

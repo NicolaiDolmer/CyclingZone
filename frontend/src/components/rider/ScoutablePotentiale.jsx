@@ -1,18 +1,26 @@
-// ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162).
+// ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162)
+// + job-model "under"-tilstand (#2244 Fase 3 Slice C).
 //
 // Viser en rytters potentiale som et SCOUTET estimat (stjerne-range + kvalitativ
-// label), plus en valgfri scout-knap der bruger ét slot og indsnævrer estimatet.
+// label), plus en valgfri scout-knap der starter en scouting-handling og
+// indsnævrer estimatet.
 //
 // #1162: Estimatet beregnes på SERVEREN (POST /api/scouting/estimates) — den rå
 // riders.potentiale findes ikke i klienten. #1543 beslutning 3+4: egne ryttere +
 // fuldt scoutede får et SMALT REST-BÅND (aldrig eksakt) — ingen når 100% viden.
-// Eksakt-branchen nedenfor er defensiv (clamping ved 1/6 kan stadig give lo==hi).
+// #2244 A3: `exact`-feltet er FJERNET fra det maskerede estimat helt (serveren
+// sender det aldrig længere — egne ryttere er nu ALTID et bånd). Den tidligere
+// "vis eksakte stjerner"-gren herunder er derfor fjernet; `lo === hi` (fx efter
+// clamping ved skalaens yderpunkter 1/6) rammer stadig samme visning naturligt.
 // #1242 (ejer-beslutning dokumenteret her): egne ryttere viser SAMME kvalitative
 // præsentation som andres — aldrig et råt tal. Stjernerne (0,5-trin) ER den
 // fulde indsigt; potentiale-skalaen er ikke spillervendt som tal.
 // #1543: en ikke-egen rytter der ikke er scoutet (level 0) returnerer serveren nu
 // { hidden: true } — INTET potentiale vises (intet gratis lo–hi-spænd) før et
 // scout-slot er brugt. Scout-knappen vises stadig, så spilleren kan afdække det.
+// #2244: når scoutSystemEnabled er 'on' starter knappen en job-model-opgave der
+// modner over dage (ingen øjeblikkelig niveau-ændring) — mens opgaven er aktiv
+// vises "Spejderen arbejder" i stedet for knappen (pendingFor(riderId)).
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,7 +30,10 @@ import { potentialLabelKey } from "../../lib/scouting";
 
 export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false }) {
   const { t } = useTranslation();
-  const { maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor } = scouting;
+  const {
+    maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
+    scoutSystemEnabled, jobCapacity, jobActiveCount, pendingFor,
+  } = scouting;
 
   const riderId = rider?.id;
   useEffect(() => {
@@ -42,9 +53,10 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const hidden = estimate.hidden === true;
 
   const level = estimate.level ?? 0;
-  const remaining = slots?.remaining ?? 0;
   const busy = scoutingId === riderId;
-  const canScout = remaining > 0 && level < maxLevel && !busy;
+  const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
+  const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
+  const canScout = remaining > 0 && level < maxLevel && !busy && !pending;
 
   const handleScout = (e) => {
     e.stopPropagation();
@@ -52,7 +64,13 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     if (canScout) scout(riderId);
   };
 
-  const scoutButton = showScout && (
+  const pendingBadge = scoutSystemEnabled && pending && (
+    <span className="text-[11px] text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
+      {t("rider:scouting.pendingShort", { days: pending.days })}
+    </span>
+  );
+
+  const scoutButton = showScout && !pending && (
     <button
       type="button"
       onClick={handleScout}
@@ -68,7 +86,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
           {level > 0 ? t("rider:scouting.rescout") : t("rider:scouting.scout")}
         </>
       )}
-      {slots && <span className="ms-1 text-cz-3">{slots.remaining}/{slots.total}</span>}
+      {!scoutSystemEnabled && slots && <span className="ms-1 text-cz-3">{slots.remaining}/{slots.total}</span>}
     </button>
   );
 
@@ -78,6 +96,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
         <span className="text-cz-3 text-xs whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
           {t("rider:scouting.notScouted")}
         </span>
+        {pendingBadge}
         {scoutButton}
       </span>
     );
@@ -86,9 +105,10 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const labelKey = potentialLabelKey(estimate);
   const label = labelKey ? t(`rider:scouting.label_${labelKey}`) : null;
 
-  // Eksakt (egen rytter eller fuldt scoutet) → eksakte stjerner + kvalitativ
-  // tekst. Ingen scout-knap (intet at indsnævre) og intet niveau-badge.
-  if (estimate.exact || estimate.lo === estimate.hi) {
+  // Defensiv fallback: lo === hi (fx clamping ved skalaens yderpunkter 1/6) →
+  // vis som eksakte stjerner. `exact`-feltet findes ikke længere i det maskerede
+  // estimat (#2244 A3) — dette er REN clamping-defensiv, ikke en "kendt eksakt"-gren.
+  if (estimate.lo === estimate.hi) {
     return <PotentialeStars value={estimate.lo} label={label} birthdate={rider.birthdate} large={large} />;
   }
 
@@ -100,6 +120,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
           {level}/{maxLevel}
         </span>
       )}
+      {pendingBadge}
       {scoutButton}
     </span>
   );
