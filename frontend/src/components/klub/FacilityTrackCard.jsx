@@ -24,7 +24,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
       <Card className={`px-[14px] py-[10px] flex items-center justify-between gap-3 ${isCommercial ? "border-l-2 border-l-cz-warning rounded-l-none" : ""}`}>
         <div className="min-w-0">
           <span className="font-display text-[15px] leading-none">{t(`tracks.${track}.name`)}</span>
-          <span className="text-[12px] text-cz-2"> — {t(`tracks.${track}.soon`)}</span>
+          <span className="text-[12px] text-cz-2"> · {t(`tracks.${track}.soon`)}</span>
         </div>
         <span className={`shrink-0 text-[10px] uppercase tracking-wide rounded-[3px] px-[7px] py-[2px] ${isCommercial ? "text-cz-warning bg-cz-warning/10" : "text-cz-accent-t bg-cz-accent/10"}`}>
           {t("facilities.comingSoon")}
