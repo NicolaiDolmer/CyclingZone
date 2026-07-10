@@ -116,7 +116,10 @@
       "bonus": "Divisionsbonus",
       "admin_adjustment": "Admin justering",
       "interest": "Renter",
-      "academy_signing": "Akademi-signing"
+      "academy_signing": "Akademi-signing",
+      "academy_drift": "Akademi-drift",
+      "facility_upkeep": "Facilitets-vedligehold",
+      "staff_salary": "Stab-løn"
     }
   },
   "timeAgo": {

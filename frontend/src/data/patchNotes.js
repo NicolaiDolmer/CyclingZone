@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.76",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Three transaction types no longer show a raw code in your history",
+          "body": "Academy drift, facility upkeep and staff salary entries in Finance > Transaction history used to show their raw internal name instead of a readable label. They now show proper text, same as every other transaction type."
+        },
+        "da": {
+          "title": "Tre transaktionstyper viser ikke længere en rå kode i din historik",
+          "body": "Poster for akademi-drift, facilitets-vedligehold og stab-løn i Finance > Transaktionshistorik viste tidligere deres rå interne navn i stedet for en læsbar tekst. De viser nu ordentlig tekst, ligesom alle andre transaktionstyper."
+        },
+        "refs": [2300]
+      }
+    ]
+  },
+  {
     "version": "6.75",
     "date": "2026-07-10",
     "label": "Beta",
