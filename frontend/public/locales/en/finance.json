@@ -19,8 +19,22 @@
   },
   "history": {
     "seasonPicker": "Season",
+    "allSeasons": "All seasons",
     "option": "Season {number}",
-    "optionActive": "Season {number} (ongoing)"
+    "optionActive": "Season {number} (ongoing)",
+    "categoryFilterAria": "Filter transactions by category",
+    "category": {
+      "all": "All",
+      "salary": "Salaries",
+      "prizes": "Prizes",
+      "loans": "Loans",
+      "transfers": "Transfers & auctions",
+      "sponsor": "Sponsor",
+      "other": "Other"
+    },
+    "loadMore": "Show more",
+    "loadingMore": "Loading...",
+    "txLoadError": "Could not load transactions. Please try again."
   },
   "loadError": {
     "message": "Could not load your finances. Please try again.",

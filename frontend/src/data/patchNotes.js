@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.78",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Transaction history: season filter now applies to the list, plus category filter and pagination",
+          "body": "Finance > History used to always show your latest 30 transactions regardless of which season you picked, which was confusing next to the season report above it. The season picker now filters the transaction list too (with a new \"All seasons\" option as the default), category chips let you narrow it down to salaries, prizes, loans, transfers/auctions, sponsor, or other, and a \"Show more\" button loads older history 30 rows at a time instead of cutting it off."
+        },
+        "da": {
+          "title": "Transaktionshistorik: sæsonfilter gælder nu listen, plus kategorifilter og pagination",
+          "body": "Finance > Historik viste tidligere altid dine seneste 30 transaktioner uanset hvilken sæson du havde valgt, hvilket var forvirrende sammen med sæsonrapporten ovenover. Sæsonvælgeren filtrerer nu også transaktionslisten (med en ny \"Alle sæsoner\"-mulighed som default), kategori-chips lader dig indsnævre til løn, præmier, lån, transfers/auktioner, sponsor eller øvrige, og en \"Vis flere\"-knap henter ældre historik 30 rækker ad gangen i stedet for at afskære den."
+        },
+        "refs": [2306]
+      }
+    ]
+  },
+  {
     "version": "6.77",
     "date": "2026-07-10",
     "label": "Beta",
