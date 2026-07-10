@@ -42,7 +42,6 @@
     "academy": { "name": "Academy Expansion", "effect": "intake slots", "soon": "More intake slots" },
     "commercial": { "name": "Commercial Department", "effect": "sponsor (capped)", "soon": "Long-term sponsor income" }
   },
-  "commercial": { "sinkTag": "Long-term sponsor play", "sinkNote": "Builds sponsor income over time rather than paying for itself now." },
   "roles": {
     "training": "Sports Director",
     "scouting": "Chief Scout",

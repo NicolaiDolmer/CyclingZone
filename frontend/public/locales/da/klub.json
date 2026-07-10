@@ -39,7 +39,6 @@
     "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots", "soon": "Flere intake-slots" },
     "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)", "soon": "Langsigtet sponsor-indtægt" }
   },
-  "commercial": { "sinkTag": "Langsigtet sponsor-satsning", "sinkNote": "Bygger sponsor-indtægt over tid frem for at tjene sig hjem nu." },
   "roles": {
     "training": "Sportsdirektør",
     "scouting": "Chefscout",
