@@ -32,7 +32,7 @@
       "scopeLabel": "Scope",
       "countryLabel": "Country",
       "submit": "Start mission",
-      "costNote": "Missions run 14 days and cost travel money from your budget. No refund if cancelled."
+      "costNote": "Missions run {days} days and cost {cost, number} in travel money from your budget. No refund if cancelled."
     },
     "scope": {
       "u23": "U23 riders",

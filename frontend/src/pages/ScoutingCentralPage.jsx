@@ -159,7 +159,7 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, t }) {
   );
 }
 
-function MissionForm({ onSubmit, busy, t }) {
+function MissionForm({ onSubmit, busy, jobConfig, t }) {
   const [scope, setScope] = useState("u23");
   const [country, setCountry] = useState(COUNTRY_CODES[0] ?? "dk");
   const [result, setResult] = useState(null);
@@ -203,7 +203,10 @@ function MissionForm({ onSubmit, busy, t }) {
           {t("mission.form.submit")}
         </Button>
       </form>
-      <p className="text-cz-3 text-[10.5px] mt-2.5 mb-0">{t("mission.form.costNote")}</p>
+      {/* Varighed/pris fra jobConfig (SSOT: backend scoutEngine.SCOUT_JOB_CONFIG); fallbacks dækker kun før første fetch. */}
+      <p className="text-cz-3 text-[10.5px] mt-2.5 mb-0">
+        {t("mission.form.costNote", { days: jobConfig?.missionDays ?? 14, cost: jobConfig?.missionCost ?? 6000 })}
+      </p>
       {result && !result.ok && (
         <p className="text-cz-warning text-[12px] mt-2 mb-0">
           {t(`error.${result.error}`, { defaultValue: t("error.failed") })}
@@ -302,7 +305,7 @@ export default function ScoutingCentralPage() {
       <div className="flex flex-col gap-3">
         <ScoutCard scout={central.scout} capacity={central.capacity} t={t} />
         <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} t={t} />
-        <MissionForm onSubmit={central.startMission} busy={central.busy} t={t} />
+        <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
         <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
       </div>
     </div>

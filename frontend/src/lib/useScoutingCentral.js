@@ -26,6 +26,7 @@ export function useScoutingCentral() {
   const [active, setActive] = useState([]);
   const [completed, setCompleted] = useState([]);
   const [capacity, setCapacity] = useState(1);
+  const [jobConfig, setJobConfig] = useState(null); // { targetDaysPerLevel, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +54,7 @@ export function useScoutingCentral() {
       setActive(data.active ?? []);
       setCompleted(data.completed ?? []);
       setCapacity(data.capacity ?? 1);
+      setJobConfig(data.jobConfig ?? null);
       setError(null);
     } catch {
       /* netværk — behold tidligere state */
@@ -118,7 +120,7 @@ export function useScoutingCentral() {
   }, [refresh]);
 
   return {
-    enabled, scout, active, completed, capacity, loading, error, busy,
+    enabled, scout, active, completed, capacity, jobConfig, loading, error, busy,
     refresh, startTarget, startMission, cancelAssignment,
   };
 }

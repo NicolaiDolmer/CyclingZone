@@ -5,7 +5,7 @@
 // Scout-opslag: aktiv team_staff-row med role='scouting' + dens
 // staff_derived_abilities (roleSkills: evaluation/reach). Ingen hyret spejder →
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
-import { DEFAULT_SCOUT, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
+import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
 
 const COMPLETED_LIMIT = 20;
@@ -83,14 +83,22 @@ async function loadCurrentLevel(teamId, riderId, supabaseClient) {
   return Math.min((data ?? []).length, 3);
 }
 
-// {scout, active, completed, capacity} — al frontend-tilstand for Scouting-central.
+// Priser/varigheder som frontend skal vise — SSOT er SCOUT_JOB_CONFIG i scoutEngine.js.
+const JOB_CONFIG_RESPONSE = Object.freeze({
+  targetDaysPerLevel: SCOUT_JOB_CONFIG.target.daysPerLevel,
+  targetCostPerLevel: SCOUT_JOB_CONFIG.target.costPerLevel,
+  missionDays: SCOUT_JOB_CONFIG.mission.days,
+  missionCost: SCOUT_JOB_CONFIG.mission.cost,
+});
+
+// {scout, active, completed, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
 export async function getScoutState(teamId, supabaseClient) {
   const [scout, active, completed] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),
     loadCompletedAssignments(teamId, supabaseClient),
   ]);
-  return { scout, active, completed, capacity: scoutCapacity(scout) };
+  return { scout, active, completed, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
 }
 
 export async function startTargetAssignment({ teamId, riderId, seasonId }, supabaseClient, now = new Date()) {
