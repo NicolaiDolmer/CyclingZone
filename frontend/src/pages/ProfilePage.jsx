@@ -313,7 +313,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto">
+    // #2253: translate="no" — browser-oversættere muterede React's tekst-noder og
+    // udløste NotFoundError-crashes (Sentry-events med url=/profile). Se PR #2272.
+    <div translate="no" className="max-w-xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-cz-1">{t("header.title")}</h1>
         <p className="text-cz-3 text-sm">{t("header.subtitle")}</p>
