@@ -28,8 +28,11 @@ export default function TeamSelectionCtaCard({ races }) {
           <p className="text-cz-3 text-xs mt-0.5">{t(bodyKey, { race: nextRace.name })}</p>
         </div>
       </div>
+      {/* #2288 F — landede tidligere øverst på race-siden uden at vise
+          udtagelses-panelet; #selection-anchoret får RaceDetailPage til at
+          scrolle direkte ned til RaceSelectionPanel ved load. */}
       <Link
-        to={`/races/${nextRace.id}`}
+        to={`/races/${nextRace.id}#selection`}
         className="flex-shrink-0 self-start sm:self-auto px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         {t("discoverCta.action")}

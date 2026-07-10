@@ -36,9 +36,14 @@ function hasClicked() {
   return readLocalTimestamp(CLICK_KEY) > 0;
 }
 
-export default function SurveyBanner() {
+// #2288 B: onVisibleChange lader kaldere (Dashboard) vide om banneret rent
+// faktisk vises, så de kan undertrykke andre nudge-bannere (max 1 ad gangen —
+// survey vinder over Discord-nudgen, se DashboardPage.jsx).
+export default function SurveyBanner({ onVisibleChange } = {}) {
   const { t } = useTranslation("banners");
   const [visible, setVisible] = useState(false);
+
+  useEffect(() => { onVisibleChange?.(visible); }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const [isAdminPreview, setIsAdminPreview] = useState(false);
   const [surveyUrl, setSurveyUrl] = useState("");
   const [hashedId, setHashedId] = useState("anon");

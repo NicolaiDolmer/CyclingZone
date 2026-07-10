@@ -2,10 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
 
+// #2288 Slice A: 4 ægte spiller-handlinger (se backend/routes/api.js's
+// /me/onboarding-progress-kommentar for hvorfor de gamle team_named/
+// first_rider_owned-trin blev droppet — de var altid completed fra start).
 const STEP_TARGETS = {
-  team_named: "/profile",
-  first_rider_owned: "/riders",
   first_bid_placed: "/auctions",
+  first_training_run: "/training",
+  first_squad_selected: "/races",
   board_plan_set: "/board",
 };
 

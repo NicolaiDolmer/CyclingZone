@@ -16,6 +16,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
+import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
@@ -25,7 +26,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
-import { Card, AlertTriangleIcon, XIcon, ArrowDownIcon, PageLoader } from "../components/ui";
+import { Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader } from "../components/ui";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -94,6 +95,7 @@ export default function DashboardPage() {
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
+  const [surveyBannerVisible, setSurveyBannerVisible] = useState(false); // #2288 B
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   // #1569: progress-guiden dismisses kun for DENNE session (sessionStorage), ikke
   // permanent — et fejlklik på X ved 0/4 trin må ikke dræbe den eneste onboarding-
@@ -116,6 +118,13 @@ export default function DashboardPage() {
   const [riderRanking, setRiderRanking] = useState([]);
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
+
+  // #2288 D — "Næste træk"-udvidelse: 3 lette signaler beregnet efter nextRaces/
+  // board er hentet. squadSelectionMissingRace = det næste udtagelige løb HVIS
+  // holdet endnu ikke har lavet en manuel udtagelse til det (samme kilde som
+  // RaceSelectionPanel/saveSelection skriver til: race_entries.is_auto_filled=false).
+  const [squadSelectionMissingRace, setSquadSelectionMissingRace] = useState(null);
+  const [notTrainedToday, setNotTrainedToday] = useState(false);
 
   async function loadAll() {
     try {
@@ -326,6 +335,42 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
+  // #2288 D1 — mangler holdudtagelse til det næste udtagelige løb? Samme kilde
+  // som RaceSelectionPanel/saveSelection (race_entries, is_auto_filled=false).
+  useEffect(() => {
+    let cancelled = false;
+    const nextRace = pickNextSelectableRace(nextRaces);
+    if (!nextRace || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    (async () => {
+      const { count } = await supabase
+        .from("race_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("race_id", nextRace.id)
+        .eq("team_id", team.id)
+        .eq("is_auto_filled", false);
+      if (!cancelled) setSquadSelectionMissingRace((count || 0) > 0 ? null : nextRace);
+    })();
+    return () => { cancelled = true; };
+  }, [nextRaces, team?.id]);
+
+  // #2288 D2 — trænede holdet i dag? Letvægts-endpoint, kun training_day_runs.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const r = await fetch(`${API}/api/training/today-status`, { headers: { Authorization: `Bearer ${token}` } });
+        if (r.ok && !cancelled) {
+          const body = await r.json();
+          setNotTrainedToday(Boolean(body.enabled) && !body.ran_today);
+        }
+      } catch { /* best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, [team?.id]);
+
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
@@ -441,12 +486,23 @@ export default function DashboardPage() {
     ["pending", "countered", "awaiting_confirmation", "window_pending"].includes(o.status)
   );
 
+  // #2288 B — banner-prioritering: indtil onboarding er fuldført skal onboarding-
+  // kortet have hele skærmen for sig selv (ingen SurveyBanner/Discord-nudge, der
+  // konkurrerer om opmærksomhed med de 4 kom-i-gang-trin). Efter onboarding: max
+  // 1 nudge-banner ad gangen — survey vinder over Discord (research-signalet er
+  // tidsbegrænset af ejer/produkt, Discord-nudgen er evergreen og kan vente).
+  const onboardingIncomplete = Boolean(
+    onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count
+  );
+  const showSurveyBanner = !onboardingIncomplete;
+  const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge && !surveyBannerVisible;
+
   return (
     // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
     // race-data, countdowns); browser-oversættere muterede dem og udløste
     // NotFoundError-crashes (Sentry-events med url=/dashboard). Se PR #2272.
     <div translate="no" className="max-w-6xl mx-auto">
-      <SurveyBanner />
+      {showSurveyBanner && <SurveyBanner onVisibleChange={setSurveyBannerVisible} />}
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
@@ -459,9 +515,14 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <Link to="/finance" className="block text-right group" title={t("common:sidebar.balance")}>
-            <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
-            <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+          {/* #2288 E — synlig klikbar affordance: hover-underline + chevron, så
+              saldoblokken læses som et link (den linker allerede til /finance). */}
+          <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
+            <div>
+              <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
+              <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+            </div>
+            <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
           </Link>
           {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
               placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
@@ -476,10 +537,24 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
+          træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
+          kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
+      {!onboardingDismissed && onboardingIncomplete && (
+        <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+      )}
+
       {/* Næste træk — prioriteret action-overblik (#271 Slice B).
           Valgfri via customize (#1536). */}
       {isVisible("nextActions") && (
-        <NextActionsCard pending={actionSummary} urgentAuctionCount={urgentAuctionCount} loading={actionLoading} />
+        <NextActionsCard
+          pending={actionSummary}
+          urgentAuctionCount={urgentAuctionCount}
+          loading={actionLoading}
+          squadSelectionMissingRace={squadSelectionMissingRace}
+          notTrainedToday={notTrainedToday}
+          boardPlanMissing={!board}
+        />
       )}
 
       {/* Squad warning */}
@@ -507,18 +582,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Onboarding progress — vis indtil alle trin nået eller dismissed */}
-      {!onboardingDismissed && onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count && (
-        <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
-      )}
-
       {/* Onboarding completion — vis engang når alle 4 trin er gennemført */}
       {!completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
         <OnboardingCompletionCard onDismiss={dismissCompletion} />
       )}
 
-      {/* Discord DM nudge */}
-      {showDiscordNudge && (
+      {/* Discord DM nudge — undertrykt under onboarding + når SurveyBanner allerede
+          viser en nudge (#2288 B: max 1 nudge-banner ad gangen). */}
+      {showDiscordNudgeBanner && (
         <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
             <span className="text-cz-discord text-sm font-bold">D</span>
@@ -609,7 +680,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.auctions.linkAll")}</span>
           </Link>
           {myActiveAuctions.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.auctions.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.auctions.empty")}</p>
+              <Link to="/auctions" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.auctions.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {[...winningAuctions, ...myAuctions.filter(a => getAuctionLeaderId(a) !== team?.id)]
@@ -655,7 +729,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.transfers.linkAll")}</span>
           </Link>
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.transfers.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.transfers.empty")}</p>
+              <Link to="/transfers" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.transfers.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
@@ -701,7 +778,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.races.linkAll")}</span>
           </Link>
           {nextRaces.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.races.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
+              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {nextRaces.map((race) => (
@@ -748,7 +828,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.standings.linkAll")}</span>
           </Link>
           {divStandings.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.standings.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.standings.empty")}</p>
+              <Link to="/standings" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.standings.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-1">
               {divStandings.map((s, i) => {
@@ -849,7 +932,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.recentResults.linkAll")}</span>
           </Link>
           {recentResults.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.recentResults.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
+              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {recentResults.map(race => (
@@ -890,7 +976,10 @@ export default function DashboardPage() {
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</span>
           </Link>
           {riderRanking.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.riderRanking.empty")}</p>
+            <div className="text-center py-4">
+              <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
+              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-1">
               {riderRanking.map((r, i) => (

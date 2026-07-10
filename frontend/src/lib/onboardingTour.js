@@ -3,9 +3,10 @@
 
 const STORAGE_KEY = "cz-onboarding-tour-step";
 
-// Onboarding step keys → tour pages.
+// Onboarding step keys → tour pages (#2288: first_training_run/first_squad_selected
+// har ingen dedikeret guidet tour endnu — "Show me how"-linket springes blot over
+// for de trin, se OnboardingProgressCard's tourPage-fallback).
 export const TOUR_PAGE_BY_STEP = {
-  first_rider_owned: "riders",
   first_bid_placed: "auctions",
   board_plan_set: "board",
 };

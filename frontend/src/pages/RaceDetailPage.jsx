@@ -338,6 +338,19 @@ export default function RaceDetailPage() {
     if (!valid.includes(activeTab)) setActiveTab("samlet");
   }, [isStageRace, stageNumbers, activeTab]);
 
+  // #2288 F — dashboard-CTA'er (TeamSelectionCtaCard, "Næste træk") linker til
+  // /races/:id#selection, så manageren lander PÅ udtagelses-panelet i stedet for
+  // øverst på siden. RaceSelectionPanel renderes altid nederst uanset aktiv fane
+  // (se JSX nedenfor), så et enkelt scroll-into-view efter load er nok — ingen
+  // tab-omskrivning nødvendig.
+  useEffect(() => {
+    if (loading || location.hash !== "#selection") return;
+    const id = requestAnimationFrame(() => {
+      document.getElementById("race-selection-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [loading, location.hash]);
+
   if (loading) return (
     <PageLoader />
   );
@@ -421,9 +434,11 @@ export default function RaceDetailPage() {
 
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false).
-          S4: per-etape rute-match mod den valgte etape. */}
+          S4: per-etape rute-match mod den valgte etape.
+          #2288 F: id'et er scroll-målet for /races/:id#selection-dybt-links. */}
       {race.status === "scheduled" && (
-        deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live"
+        <div id="race-selection-anchor">
+        {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live"
           ? (
             <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
               <p className="text-sm font-semibold text-cz-1">{t("racehub.lineupLocked.title")}</p>
@@ -438,7 +453,8 @@ export default function RaceDetailPage() {
               selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
               selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
             />
-          )
+          )}
+        </div>
       )}
 
       {!hasAnyResults && race.status !== "scheduled" && (
