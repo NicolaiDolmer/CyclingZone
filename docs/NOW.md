@@ -18,6 +18,8 @@
 
 > **Parallel PR 10/7:** [#2290](https://github.com/NicolaiDolmer/CyclingZone/issues/2290) tabel-sortering — 4 spiller-huller (træning-roster, manager-trup, løbs-bibliotek+verden) gjort sorterbare via delt `useTableSort`/`SortableTh`, + forward-guard (`tableSortIntent.test.js`: hver tabel skal erklære `data-sortable`/`data-sort-exempt`). v6.74. PR afventer ejer-merge.
 
+> **Session 10/7 (worktree):** [#2307](https://github.com/NicolaiDolmer/CyclingZone/issues/2307) Board S1 frontend-korrekthed — PR afventer ejer-review (v6.76): budget-modifier én kilde (backend), bånd-tekster rettet+i18n, feed-i18n-resolve, error-state, mobil-overflow, NaN-guard, realtime-refetch, a11y-progressbars, dead keys fjernet.
+
 > **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)

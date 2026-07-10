@@ -11,6 +11,20 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board budget multiplier now matches everywhere, and satisfaction bands are correct",
+          "body": "The sponsor budget multiplier shown on the Board page and on the dashboard's board card could show slightly different numbers for the same plan. Both now always show the same, official number. The satisfaction band explainer also stated the wrong thresholds for when the bonus kicks in (it said 70%+, the real threshold is 60%+); the text is now correct and translated. The board feed, the season history table on mobile, and goal progress bars also got smaller correctness and accessibility fixes, and the board page now shows a clear error with a retry button if it fails to load instead of staying blank."
+        },
+        "da": {
+          "title": "Bestyrelsens budget-multiplier stemmer nu overalt, og tilfredsheds-bånd er korrekte",
+          "body": "Sponsor-budget-multiplieren på bestyrelsessiden og på dashboardets bestyrelseskort kunne vise let forskellige tal for samme plan. Begge viser nu altid det samme, officielle tal. Forklaringen af tilfredsheds-bånd angav også den forkerte tærskel for hvornår bonussen slår ind (den sagde 70%+, den reelle tærskel er 60%+); teksten er nu korrekt og oversat. Bestyrelses-feedet, sæson-historik-tabellen på mobil og mål-fremgangsbjælkerne fik også mindre korrektheds- og tilgængeligheds-rettelser, og bestyrelsessiden viser nu en tydelig fejl med en prøv igen-knap hvis den ikke kan indlæses, i stedet for at forblive tom."
+        },
+        "refs": [2307]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
         "topic": "Finance",
         "en": {
           "title": "Three transaction types no longer show a raw code in your history",
