@@ -96,6 +96,24 @@ export function findRiderBindingConflicts({ riderIds = [], thisWindow, otherRace
   return [...bound];
 }
 
+// #2265: som findRiderBindingConflicts, men returnerer HVILKET løb der binder hver rytter,
+// så UI'et kan sige "optaget i <løbsnavn>" i stedet for blot at afvise. Deterministisk:
+// første overlappende løb i otherRaces-rækkefølgen vinder (én binding pr. rytter er nok
+// til at gråne ham). otherRaces-elementer skal bære raceId (loadTeamBindingContext gør).
+// Returnerer Map<rider_id, raceId>.
+export function mapRiderBindingDetails({ riderIds = [], thisWindow, otherRaces = [] }) {
+  const details = new Map();
+  if (!thisWindow) return details;
+  const wanted = new Set(riderIds);
+  for (const other of otherRaces) {
+    if (!windowsOverlap(thisWindow, other.window)) continue;
+    for (const rid of other.riderIds || []) {
+      if (wanted.has(rid) && !details.has(rid)) details.set(rid, other.raceId);
+    }
+  }
+  return details;
+}
+
 // Efter en reschedule der introducerer overlap: find ryttere udtaget (manuelt) til to
 // tidsoverlappende løb. Pure + deterministisk. Returnerer ét par pr. konflikt med det
 // kronologisk TIDLIGSTE løb som "keep" og det senere som "drop" (resolve = fjern
@@ -183,7 +201,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   }
 
   const otherRaces = otherRaceIds
-    .map((rid) => ({ window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
+    .map((rid) => ({ raceId: rid, window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
     .filter((o) => o.window); // løb uden schedule kan ikke binde
   return { thisWindow, otherRaces };
 }

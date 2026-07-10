@@ -13,7 +13,7 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, findSelectionOverlaps, groupColumnsByGameDay } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
@@ -329,7 +329,9 @@ export default function RaceHubBoard() {
   });
 
   // #1925: kladde-bevidst binding til pulje/popover (afspejler dine live-redigeringer).
-  const liveBindingMap = draftBindingMap(effectiveColumns);
+  // #2256: + serverens eksterne bindings (løb uden for brættet — anden dag/pulje), så en
+  // rytter committet dér også greyes her.
+  const liveBindingMap = mergeBindingMaps(draftBindingMap(effectiveColumns), data.externalBindings);
 
   // #2195: gruppér dagens løb efter in-game løbsdag. Er der >1 spil-dag på den samme rigtige
   // dato, rendes tydelige "Race day N"-sektioner + en forklarende note, så komprimeringen (og
