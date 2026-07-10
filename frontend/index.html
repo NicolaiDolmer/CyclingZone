@@ -2,8 +2,14 @@
 <!-- #2039: EN-first default. Den autoritative app-bredte lang sættes runtime af
      LanguageProvider (document.documentElement.lang = aktivt UI-sprog). En statisk
      lang="da" på engelsk indhold fik browsere til at auto-oversætte → DOM-mutation
-     → React-crash. -->
-<html lang="en">
+     → React-crash.
+     #2253: translate="no" + notranslate-klasse blokerer browser-oversættere
+     (Google Translate m.fl.) fra at mutere React's tekst-noder direkte. Appen
+     har allerede fuld EN/DA-oversættelse via i18n (LanguageProvider), så
+     browser-auto-translate er redundant og var den mest sandsynlige kilde til
+     en klynge af "NotFoundError: insertBefore/removeChild"-crashes i prod
+     (Sentry CYCLINGZONE-1D/1N/1P/1Q/1R/1S/1T/1V). -->
+<html lang="en" translate="no" class="notranslate">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

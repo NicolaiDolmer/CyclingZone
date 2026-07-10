@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.70",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Fewer crash-to-error-screen moments caused by browser auto-translate",
+          "body": "Browser translation tools (like Google Translate) sometimes rewrote page text behind the scenes in a way that confused React and crashed the page. Since Cycling Zone already has full English and Danish translations built in, auto-translate is now turned off for the app so it can no longer interfere with the page."
+        },
+        "da": {
+          "title": "Færre fejlskærme forårsaget af browser-auto-oversættelse",
+          "body": "Browser-oversættelsesværktøjer (som Google Translate) omskrev til tider sidens tekst i det skjulte på en måde der forvirrede React og fik siden til at crashe. Da Cycling Zone allerede har fuld engelsk og dansk oversættelse indbygget, er auto-oversættelse nu slået fra for appen, så den ikke længere kan forstyrre siden."
+        },
+        "refs": [2253]
+      }
+    ]
+  },
+  {
     "version": "6.69",
     "date": "2026-07-10",
     "label": "Beta",
