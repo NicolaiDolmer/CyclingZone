@@ -116,7 +116,10 @@
       "bonus": "Division bonus",
       "admin_adjustment": "Admin adjustment",
       "interest": "Interest",
-      "academy_signing": "Academy signing"
+      "academy_signing": "Academy signing",
+      "academy_drift": "Academy drift",
+      "facility_upkeep": "Facility upkeep",
+      "staff_salary": "Staff salaries"
     }
   },
   "timeAgo": {

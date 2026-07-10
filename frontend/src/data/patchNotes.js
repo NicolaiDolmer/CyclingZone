@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Sponsor-budget-multiplieren på bestyrelsessiden og på dashboardets bestyrelseskort kunne vise let forskellige tal for samme plan. Begge viser nu altid det samme, officielle tal. Forklaringen af tilfredsheds-bånd angav også den forkerte tærskel for hvornår bonussen slår ind (den sagde 70%+, den reelle tærskel er 60%+); teksten er nu korrekt og oversat. Bestyrelses-feedet, sæson-historik-tabellen på mobil og mål-fremgangsbjælkerne fik også mindre korrektheds- og tilgængeligheds-rettelser, og bestyrelsessiden viser nu en tydelig fejl med en prøv igen-knap hvis den ikke kan indlæses, i stedet for at forblive tom."
         },
         "refs": [2307]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Three transaction types no longer show a raw code in your history",
+          "body": "Academy drift, facility upkeep and staff salary entries in Finance > Transaction history used to show their raw internal name instead of a readable label. They now show proper text, same as every other transaction type."
+        },
+        "da": {
+          "title": "Tre transaktionstyper viser ikke længere en rå kode i din historik",
+          "body": "Poster for akademi-drift, facilitets-vedligehold og stab-løn i Finance > Transaktionshistorik viste tidligere deres rå interne navn i stedet for en læsbar tekst. De viser nu ordentlig tekst, ligesom alle andre transaktionstyper."
+        },
+        "refs": [2300]
       }
     ]
   },
