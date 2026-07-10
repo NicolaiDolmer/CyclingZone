@@ -10,6 +10,11 @@
 // DB. Når tier 4 aktiveredes i et separat reconcile-kald, kaskaderede Monuments/OWT-A frit
 // ned. Begge huller er lukket i materializeren; dette script reverserer + genopbygger tier 4.
 //
+// Scope (arkitekt-beslutning 10/7): FULD Div 4-nulstilling — ALLE tier 4-løb slettes (ikke kun
+// de kaskade-ulovlige), så alle 8 puljer garanteret har kørt samme løb ved sæsonslut. Afviklede
+// løb (uanset klasse) reverseres økonomisk først; den nye kalender bygges fra bunden i rest-
+// vinduet [reparationsdag+1, sæsonens sidste løbsdag] ved tæthed 3 (ejer-beslutning 10/7).
+//
 // KØR ALDRIG mod prod uden ejer-godkendelse — ejeren skal have set live-tilstanden
 // (dry-run-output) og godkendt PRÆCIS dette skridt.
 //   node scripts/repair2276Div4Cascade.js            → dry-run: viser live state + plan
@@ -32,7 +37,7 @@ import { dirname, join } from "path";
 import { writeFileSync, mkdirSync } from "fs";
 import { materializeTierCalendars, buildTierMaterializationPlan, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA, TIER_CLASS_WHITELIST } from "../lib/tierRaceSelection.js";
-import { classifyIllegalTier4Races, computeFinanceReversals } from "../lib/div4CascadeRepair.js";
+import { classifyIllegalTier4Races, computeFinanceReversals, partitionTier4FullReset } from "../lib/div4CascadeRepair.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { updateStandings, updateRiderValues } from "../lib/economyEngine.js";
 import { refreshRankingMatviewsSafe } from "../lib/refreshRankingMatviews.js";
@@ -192,57 +197,67 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   for (const poolId of tier4PoolIds) racesByPool.set(poolId, []);
   for (const r of tier4Races || []) racesByPool.get(r.league_division_id)?.push(r);
 
-  const { toDelete, canonicalTemplate } = classifyIllegalTier4Races({
+  // Invariant-rapportering (til kontekst i dry-run-output — hvor mange af løbene der var
+  // decideret ulovlige). Sletnings-scope er dog FULD nulstilling, se partitionTier4FullReset.
+  const { toDelete: illegalRaces } = classifyIllegalTier4Races({
     racesByPool, tier1to3Names, classWhitelist: TIER_CLASS_WHITELIST[4],
   });
+  const illegalIds = new Set(illegalRaces.map((d) => d.id));
+  const reasonsById = new Map(illegalRaces.map((d) => [d.id, d.reasons]));
 
-  log(`\n── Live-tilstand: ${toDelete.length} ulovlig(e)/skæv(e) løb-instans(er) på tværs af ${tier4PoolIds.length} tier 4-puljer ──`);
+  // FULD Div 4-nulstilling (arkitekt-beslutning 10/7): slet ALLE tier 4-løb — ikke kun de
+  // kaskade-ulovlige — så alle 8 puljer garanteret har kørt samme løb ved sæsonslut. Afviklede
+  // løb (uanset klasse) reverseres økonomisk først; scheduled slettes direkte. Den nye kalender
+  // bygges derefter fra bunden i restvinduet ved tæthed 3 (ingen gamle løb at flette rundt om).
+  const { toReverse, toDeleteScheduled, allIds: raceIdsToDelete } = partitionTier4FullReset({ races: tier4Races || [] });
   const byId = new Map((tier4Races || []).map((r) => [r.id, r]));
-  const raceIdsToDelete = toDelete.map((d) => d.id);
-  const playedIds = toDelete.filter((d) => byId.get(d.id)?.status === "completed" || byId.get(d.id)?.prize_paid_at).map((d) => d.id);
+  const playedIds = toReverse.map((r) => r.id);
 
-  for (const d of toDelete) {
+  log(`\n── FULD Div 4-nulstilling: ${raceIdsToDelete.length} løb i alt på tværs af ${tier4PoolIds.length} puljer (${illegalIds.size} kaskade-ulovlige, ${raceIdsToDelete.length - illegalIds.size} øvrige) ──`);
+  if (!raceIdsToDelete.length) { log("intet at reparere — ingen tier 4-løb i sæsonen"); return { deleted: 0 }; }
+
+  // Finance-reversering for ALLE afviklede tier 4-løb (dry-run beregner + rapporterer, --live udfører).
+  const financeTx = playedIds.length
+    ? await fetchAll(supabase, "finance_transactions", (q) => q.in("race_id", playedIds))
+    : [];
+  const reversals = computeFinanceReversals({ transactions: financeTx, raceIds: playedIds });
+
+  // Sektion 1: reverseres — alle afviklede løb med beløb pr. hold.
+  log(`\n── Sektion 1: REVERSERES — ${toReverse.length} afviklet(e) løb, ${reversals.length} hold-linjer ──`);
+  for (const r of toReverse) {
+    const tag = illegalIds.has(r.id) ? ` · [${reasonsById.get(r.id).join(",")}]` : " · [lovlig klasse — fuld nulstilling]";
+    log(`  pulje ${r.league_division_id} · ${r.name} [${r.race_class}] · ${r.status}${r.prize_paid_at ? " · præmie udbetalt" : ""}${tag} · ${r.id}`);
+  }
+  for (const rev of reversals) {
+    const name = await realManagerName(supabase, rev.teamId);
+    log(`    hold ${name} (${rev.teamId}) · løb ${byId.get(rev.raceId)?.name} · tilbagefør ${rev.amount}`);
+  }
+
+  // Sektion 2: slettes — alle scheduled løb med entries/rigtige hold.
+  log(`\n── Sektion 2: SLETTES — ${toDeleteScheduled.length} planlagt(e) løb ──`);
+  for (const r of toDeleteScheduled) {
     const { data: entryRows, error: entriesErr } = await supabase
-      .from("race_entries").select("team_id").eq("race_id", d.id);
-    if (entriesErr) throw new Error(`race_entries (${d.id}): ${entriesErr.message}`);
+      .from("race_entries").select("team_id").eq("race_id", r.id);
+    if (entriesErr) throw new Error(`race_entries (${r.id}): ${entriesErr.message}`);
     const teamIds = [...new Set((entryRows || []).map((e) => e.team_id).filter(Boolean))];
     let realTeamCount = 0;
     if (teamIds.length) {
       const { data: teamRows, error: teamsErr } = await supabase
         .from("teams").select("id, is_ai").in("id", teamIds);
-      if (teamsErr) throw new Error(`teams (${d.id}): ${teamsErr.message}`);
+      if (teamsErr) throw new Error(`teams (${r.id}): ${teamsErr.message}`);
       realTeamCount = (teamRows || []).filter((t) => t.is_ai === false).length;
     }
-    log(`  pulje ${d.pool_id} · ${d.name} · ${byId.get(d.id)?.status} · entries ${entryRows?.length ?? 0} (rigtige hold: ${realTeamCount}) · [${d.reasons.join(",")}] · ${d.id}`);
-  }
-  if (!toDelete.length) { log("intet at reparere"); return { deleted: 0 }; }
-
-  log(`\n${playedIds.length} af de ulovlige løb er AFVIKLET og kræver finance-reversering.`);
-
-  // Finance-reversering (dry-run beregner + rapporterer, --live udfører).
-  const financeTx = playedIds.length
-    ? await fetchAll(supabase, "finance_transactions", (q) => q.in("race_id", playedIds))
-    : [];
-  const reversals = computeFinanceReversals({ transactions: financeTx, raceIds: playedIds });
-  if (reversals.length) {
-    log(`\nFinance-reversering (${reversals.length} hold-linjer):`);
-    for (const rev of reversals) {
-      const name = await realManagerName(supabase, rev.teamId);
-      log(`  hold ${name} (${rev.teamId}) · løb ${byId.get(rev.raceId)?.name} · tilbagefør ${rev.amount}`);
-    }
+    const tag = illegalIds.has(r.id) ? ` · [${reasonsById.get(r.id).join(",")}]` : "";
+    log(`  pulje ${r.league_division_id} · ${r.name} [${r.race_class}] · ${r.status} · entries ${entryRows?.length ?? 0} (rigtige hold: ${realTeamCount})${tag} · ${r.id}`);
   }
 
-  // Ny korrekt skabelon (surviving/legal løb — den ENDELIGE rest-af-sæson-kalender er
-  // den re-materialiserede plan nedenfor, som fylder resten af vinduet op med tæthed 3).
-  log(`\nNy skabelon (${canonicalTemplate.length} legale løb, kaskade-korrekte klasser [${TIER_CLASS_WHITELIST[4].join(", ")}]):`);
-  for (const t of canonicalTemplate) log(`  ${t.name} · ${t.stages} etape(r) · game_day_start ${t.game_day_start}`);
-
+  // Sektion 3: ny kalender dag-for-dag.
   // Ejer-beslutning 10/7 (#2276 opfølgning): rest-af-sæson-kalenderen for div 4 genopbygges
   // med tæthed 3 (design-default = 2) i vinduet [reparationsdag+1, sæsonens sidste løbsdag]
   // — udledt af tier 1-3's kalender i prod, aldrig hardcodet. Vis dag-for-dag i BÅDE dry-run
   // og --live, så ejeren ser præcis samme plan der bliver skrevet.
   const { from, seasonEnd, realDays } = await computeDiv4RestOfSeasonWindow({ supabase, seasonId: season.id, lowerTierPoolIds, now });
-  log(`\n── Rest-af-sæson-vindue (ejer-beslutning 10/7): ${from.toISOString().slice(0, 10)} → ${seasonEnd.toISOString().slice(0, 10)} (${realDays} IRL-dage) · tæthed ${DIV4_REPAIR_DENSITY} · kvote ${DIV4_REPAIR_DENSITY * realDays} ──`);
+  log(`\n── Sektion 3: NY KALENDER (rest-af-sæson, ejer-beslutning 10/7): ${from.toISOString().slice(0, 10)} → ${seasonEnd.toISOString().slice(0, 10)} (${realDays} IRL-dage) · tæthed ${DIV4_REPAIR_DENSITY} · kvote ${DIV4_REPAIR_DENSITY * realDays} ──`);
   const { tier4Plan } = await buildDiv4RepairPlan({
     supabase, seasonId: season.id, seasonStartDate: season.start_date, tier4PoolIds, tier1to3Names, from, realDays,
   });
@@ -250,7 +265,10 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
 
   if (dryRun) {
     log("\nDRY-RUN — ingen writes. Kør med --live EFTER ejer-godkendelse.");
-    return { deleted: 0, dryRun: true, toDelete, reversals, canonicalTemplate, restOfSeasonWindow: { from: from.toISOString(), seasonEnd: seasonEnd.toISOString(), realDays }, tier4Plan };
+    return {
+      deleted: 0, dryRun: true, toReverse, toDeleteScheduled, reversals, illegalCount: illegalIds.size,
+      restOfSeasonWindow: { from: from.toISOString(), seasonEnd: seasonEnd.toISOString(), realDays }, tier4Plan,
+    };
   }
 
   const { data: flagRow, error: flagErr } = await supabase
@@ -265,10 +283,10 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   log(`scheduler-flag '${STAGE_SCHEDULER_FLAG_KEY}' sat til 'off' (var: ${JSON.stringify(flagBefore)})`);
   try {
 
-  // 1) Backup (JSON) — races + CHILD_TABLES + finance_transactions for de afviklede.
+  // 1) Backup (JSON) — ALLE tier 4-løb + CHILD_TABLES + finance_transactions for de afviklede.
   const backup = {
     generated_at: now.toISOString(), season_id: season.id,
-    races: (toDelete.map((d) => byId.get(d.id))), reasons: toDelete, financeTransactions: financeTx, children: {},
+    races: tier4Races || [], illegalReasons: illegalRaces, financeTransactions: financeTx, children: {},
   };
   for (const table of CHILD_TABLES) {
     backup.children[table] = [];
@@ -295,7 +313,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
         // gør reverseringen entydigt sporbar i finance_transactions.
         type: "admin_adjustment",
         amount: rev.amount,
-        description: `Reversering — ulovligt løb i tier 4 (#2276) — ${byId.get(rev.raceId)?.name ?? rev.raceId}`,
+        description: `Reversering — fuld Div 4-nulstilling (#2276) — ${byId.get(rev.raceId)?.name ?? rev.raceId}`,
         season_id: season.id,
         race_id: rev.raceId,
         actor_type: FINANCE_ACTOR_TYPE.MIGRATION,
