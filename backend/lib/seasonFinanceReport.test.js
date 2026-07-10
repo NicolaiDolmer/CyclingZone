@@ -7,6 +7,7 @@ import {
   computeHeroCashflow,
   REASON_LABEL,
   summarizeLoans,
+  summarizePrizes,
   topTransactions,
 } from "./seasonFinanceReport.js";
 
@@ -202,6 +203,42 @@ test("buildSeasonFinanceReport — combines all sections", () => {
   assert.equal(report.top.top_out.length, 1);
   assert.equal(report.loans.length, 1);
   assert.equal(report.loans[0].next_season_interest, 5000);
+});
+
+test("summarizePrizes — season total, race count, all-time total og race_name-mapping", () => {
+  const result = summarizePrizes(
+    [
+      { id: "p1", amount: 50000, race_id: "r1", description: "Prize", created_at: "2026-07-01T10:00:00Z", race: { name: "GP Copenhagen" } },
+      { id: "p2", amount: 20000, race_id: "r1", description: "Bonus", created_at: "2026-07-01T10:00:00Z", race: { name: "GP Copenhagen" } },
+      { id: "p3", amount: 10000, race_id: "r2", description: "Prize", created_at: "2026-07-02T10:00:00Z", race: { name: "Vuelta Zone" } },
+      { id: "p4", amount: 5000, race_id: null, description: "Divisionsbonus", created_at: "2026-07-03T10:00:00Z" },
+    ],
+    [{ amount: 50000 }, { amount: 20000 }, { amount: 10000 }, { amount: 5000 }, { amount: 99000 }],
+  );
+  assert.equal(result.season_total, 85000);
+  // r1 tæller én gang, r2 én gang, race-løs bonus én gang
+  assert.equal(result.race_count, 3);
+  assert.equal(result.all_time_total, 184000);
+  assert.equal(result.rows.length, 4);
+  assert.equal(result.rows[0].race_name, "GP Copenhagen");
+  assert.equal(result.rows[3].race_name, null);
+  assert.equal(result.rows[3].race_id, null);
+});
+
+test("summarizePrizes — tomme input giver nul-resumé", () => {
+  const result = summarizePrizes([], []);
+  assert.deepEqual(result, { season_total: 0, race_count: 0, all_time_total: 0, rows: [] });
+  const defaulted = summarizePrizes();
+  assert.deepEqual(defaulted, { season_total: 0, race_count: 0, all_time_total: 0, rows: [] });
+});
+
+test("summarizePrizes — ikke-numeriske amounts tæller som 0", () => {
+  const result = summarizePrizes(
+    [{ id: "p1", amount: "not-a-number", race_id: "r1", created_at: "2026-07-01T10:00:00Z" }],
+    [{ amount: null }, { amount: "abc" }, { amount: 7 }],
+  );
+  assert.equal(result.season_total, 0);
+  assert.equal(result.all_time_total, 7);
 });
 
 test("REASON_LABEL — every FINANCE_REASON value has a Danish label", async () => {

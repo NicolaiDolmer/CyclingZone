@@ -38,8 +38,10 @@
     "headroom": "Room under cap: {value} CZ$"
   },
   "prize": {
-    "label": "Prize money",
-    "raceCount": "{count, plural, one {1 race} other {# races}}"
+    "label": "Prize money (season {season})",
+    "labelNoSeason": "Prize money",
+    "raceCount": "{count, plural, one {1 race} other {# races}}",
+    "allSeasons": "all seasons: {amount} CZ$"
   },
   "prizeList": {
     "title": "Race prizes",

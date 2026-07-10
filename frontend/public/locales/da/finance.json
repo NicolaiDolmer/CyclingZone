@@ -38,8 +38,10 @@
     "headroom": "Plads under loftet: {value} CZ$"
   },
   "prize": {
-    "label": "Præmiepenge",
-    "raceCount": "{count, plural, one {1 løb} other {# løb}}"
+    "label": "Præmiepenge (sæson {season})",
+    "labelNoSeason": "Præmiepenge",
+    "raceCount": "{count, plural, one {1 løb} other {# løb}}",
+    "allSeasons": "alle sæsoner: {amount} CZ$"
   },
   "prizeList": {
     "title": "Løbspræmier",

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.77",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Prize money card now shows this season, with an all-time total below",
+          "body": "The prize money card on Finance > Overview used to add up every prize and bonus you had ever earned, with no hint of the time frame. It is now clearly labelled with the current season, shows that season's prize total and race count, and lists only this season's race prizes below. A small line under the total still shows your all-time prize earnings across all seasons. The numbers are also computed on the server now, so the page stays fast as your career grows."
+        },
+        "da": {
+          "title": "Præmiepenge-kortet viser nu indeværende sæson, med en all-time-total under",
+          "body": "Præmiepenge-kortet på Finance > Oversigt lagde tidligere alle præmier og bonusser du nogensinde havde tjent sammen, uden at vise tidsrammen. Det er nu tydeligt mærket med den aktuelle sæson, viser sæsonens præmiesum og antal løb, og listen nedenunder viser kun denne sæsons løbspræmier. En lille linje under totalen viser stadig dine samlede præmieindtægter på tværs af alle sæsoner. Tallene beregnes nu også på serveren, så siden forbliver hurtig efterhånden som din karriere vokser."
+        },
+        "refs": [2305]
+      }
+    ]
+  },
+  {
     "version": "6.76",
     "date": "2026-07-10",
     "label": "Beta",

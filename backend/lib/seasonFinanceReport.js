@@ -168,6 +168,41 @@ export function summarizeLoans(loans) {
 }
 
 /**
+ * #2305 · Præmie-resumé til Finance → Oversigt-kortet.
+ * seasonRows: prize/bonus-transaktioner for ÉT team + ÉN sæson (pre-filtered,
+ * med evt. embedded race:race_id(name)). allTimeAmounts: { amount }-rækker for
+ * samme team på tværs af ALLE sæsoner — summen beregnes her (server-side) så
+ * klienten aldrig skal hente den ubegrænsede rækkeliste.
+ */
+export function summarizePrizes(seasonRows = [], allTimeAmounts = []) {
+  let seasonTotal = 0;
+  const raceIds = new Set();
+  let rowsWithoutRace = 0;
+  const rows = seasonRows.map((tx) => {
+    const amount = Number(tx.amount) || 0;
+    seasonTotal += amount;
+    if (tx.race_id) raceIds.add(tx.race_id);
+    else rowsWithoutRace += 1;
+    return {
+      id: tx.id,
+      amount,
+      race_id: tx.race_id || null,
+      description: tx.description || "",
+      created_at: tx.created_at,
+      race_name: tx.race?.name || null,
+    };
+  });
+  let allTimeTotal = 0;
+  for (const r of allTimeAmounts) allTimeTotal += Number(r.amount) || 0;
+  return {
+    season_total: seasonTotal,
+    race_count: raceIds.size + rowsWithoutRace,
+    all_time_total: allTimeTotal,
+    rows,
+  };
+}
+
+/**
  * Top-level: kombinerer alt. Tager pre-filtered rows for ÉT team + ÉN sæson
  * og bygger hele rapport-payload'en.
  */
