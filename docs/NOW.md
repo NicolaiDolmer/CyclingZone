@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **PR #2279 auto-merger (2276-følgefixes + v6.72)** — derefter: #2270-wiring af kalender-invarianter i natlig smoke-sim, #2274 (monumenter egen game day — nu kun tier 1-relevant), eller Talentspejder Fase 3 (#2244). Ejer-klik: Div 4-kalender i spillet (8 ens grupper, 3 etaper/dag til 26/7) + greying på løbssider (v6.71). **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
+> **🎯 Next action:** **Ejer: merge Talentspejder-kæden #2280→#2281→#2282 (migration i #2280) + sanity-tjek rejsepriser (1.000/step, 6.000/mission — audit i #2282) + tone-session/gennemklik på draft #2283.** Derefter: #2270-wiring af kalender-invarianter i natlig smoke-sim eller #2274 (monumenter egen game day). **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
 
 > **Session 10/7 aften:** #2275 merged (greying+save-guard, v6.71; RPC-guard verificeret i prod). **#2276 Div 4-kaskadebrud REPARERET LIVE (ejer-godkendt):** 146 løb slettet, 253 præmie-tilbageførsler (-3,37M, 0 hold i minus), ny identisk kalender i 8/8 puljer (20 løb, tæthed 3, slut 26/7), invarianter i materializer (PR #2277+#2278), 4 live-følgefixes + v6.72 i PR #2279, 2 postmortems. Sentry CYCLINGZONE-2A (transient) resolved; CYCLINGZONE-28/29 → 13/7-triage. #2274 oprettet (monument egen game day). TdF #2080: ejer vælger dag.
 
@@ -12,9 +12,9 @@
 
 > **Økonomi Fase 3 (#1441):** A1+A2+A3+A4b merged; faciliteter admin-only bag `app_config.facilities_enabled=false`. **Pre-flip Plan B engine-slice (util-udvidelse + training-effekt-wiring + re-harness + flag-migration) skal være grøn FØR flip.** Staged announce: `docs/superpowers/drafts/2026-07-05-facilities-flip-announce.md`. Opfølgninger: #2217 staff-kontrakter · #2218 pension→staff · #2219 audit-whitelist. Vercel-preview har ikke mock (#1834) → ejer-gennemklik = lokal dev-server.
 
-> **Talentspejder (design låst 7/7, spec `docs/superpowers/specs/2026-07-07-talentspejder-design.md`):** Fase 1 merged (#2243, v6.67) · Fase 2 loft-projektion merged (#2100, v6.68) · næste: Fase 3 spejder-system (#2244, m. #2216) · Fase 4 gemte filtre #27. Kendt problem: test-konti wipes i prod (#2245, bug/high).
+> **Talentspejder (spec låst 7/7):** Fase 1+2 merged (v6.67/v6.68) · **Fase 3 (#2244) IMPLEMENTERET 10/7** — PR-kæde #2280 (migration)→#2281→#2282 + draft #2283 (frontend, v6.73); gates grønne (inversion, shortlist-korrelation, travel-scorecard efter rekalibrering — audit `docs/audits/2026-07-10-talentspejder-gates.md`); flag `scout_system_enabled` off indtil ship. Opfølgning #2284 (API-jobconfig + batch-navne). Fase 4 gemte filtre #27. Kendt problem: test-konti wipes (#2245, bug/high).
 
-> **🤖 Working agent:** Claude Code (Fable) — Talentspejder Fase 3 (#2244), startet 10/7.
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
