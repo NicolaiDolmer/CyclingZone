@@ -5538,7 +5538,9 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .order("created_at", { ascending: false }),
       supabase
         .from("loans")
-        .select("id, loan_type, principal, amount_remaining, interest_rate, seasons_remaining, status")
+        // #2304: accrued_interest medsendes så UI kan vise "påløbet rente"
+        // pr. lån uden en ekstra roundtrip.
+        .select("id, loan_type, principal, amount_remaining, interest_rate, seasons_remaining, status, accrued_interest")
         .eq("team_id", teamId)
         .eq("status", "active"),
       // #2305: sæson-scoped præmieliste til Oversigt-kortet (server-side, med

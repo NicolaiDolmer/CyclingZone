@@ -389,6 +389,8 @@ export default function FinancePage() {
   );
 
   const activeLoans = (loanData?.loans || []).filter(l => l.status === "active");
+  // #2304: total livstids-akkumuleret rente på tværs af aktive lån (gældskort-synlighed).
+  const totalAccruedInterest = activeLoans.reduce((sum, l) => sum + (l.accrued_interest || 0), 0);
   // #1948: vis kun spiller-takbare lån (kort/langt). 'reset' (rentefrit, admin-givet til
   // minus-spillere efter præmie-fjernelse) og 'emergency' (auto-nødlån) må aldrig kunne
   // vælges eller optages af spillere — backend afviser dem også, dette skjuler dem i UI.
@@ -468,6 +470,13 @@ export default function FinancePage() {
               {debtHeadroom != null && (
                 <p className="text-cz-3 text-xs mt-2 leading-snug">
                   {t("debt.headroom", { value: formatNumber(debtHeadroom) })}
+                </p>
+              )}
+              {/* #2304: total livstids-akkumuleret rente på tværs af aktive lån —
+                  synlighed for at et lån man ikke afdrager bliver dyrere. */}
+              {totalAccruedInterest > 0 && (
+                <p className="text-cz-warning text-xs mt-1">
+                  {t("debt.accruedInterest", { value: formatNumber(totalAccruedInterest) })}
                 </p>
               )}
             </Card>
@@ -579,7 +588,7 @@ export default function FinancePage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                      <div className="grid grid-cols-4 gap-2 mb-3 text-center">
                         <div>
                           <p className="text-cz-2 font-mono text-xs">{formatNumber(loan.principal || 0)}</p>
                           <p className="text-cz-3 text-xs">{t("loans.active.principal")}</p>
@@ -591,6 +600,12 @@ export default function FinancePage() {
                         <div>
                           <p className="text-cz-2 font-mono text-xs">{loan.seasons_remaining}</p>
                           <p className="text-cz-3 text-xs">{t("loans.active.seasonsRemaining")}</p>
+                        </div>
+                        {/* #2304: livstids-akkumuleret rente, synlig så spilleren ser at et
+                            lån man ikke afdrager bliver dyrere. */}
+                        <div>
+                          <p className="text-cz-warning font-mono text-xs">{formatNumber(loan.accrued_interest || 0)}</p>
+                          <p className="text-cz-3 text-xs">{t("loans.active.accruedInterest")}</p>
                         </div>
                       </div>
 

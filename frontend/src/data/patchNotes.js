@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.80",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Loan interest no longer double-counted in your season report",
+          "body": "Interest added to a loan you don't pay down used to show up as a cash expense in your season report net, even though no money actually left your account, and that same interest got counted again once you repaid the loan. Interest that's added to a loan's debt is now shown as a separate, clearly-marked \"non-cash\" line instead of being mixed into your net cashflow, and every active loan now shows exactly how much interest has piled up on it, both in Finance > Loans and on the debt card."
+        },
+        "da": {
+          "title": "Lånerente tælles ikke længere dobbelt i din sæsonrapport",
+          "body": "Rente der blev lagt oveni et lån du ikke afdrog på, blev tidligere vist som en kontant udgift i din sæsonrapports net-tal, selvom der reelt ikke forsvandt penge fra din konto, og den samme rente blev talt med igen når du senere betalte lånet af. Rente der lægges oveni et låns gæld vises nu som en separat, tydeligt markeret \"ikke-kontant\"-linje i stedet for at blande sig ind i dit netto-cashflow, og hvert aktivt lån viser nu præcis hvor meget rente der er lagt oveni, både under Finance → Lån og på gældskortet."
+        },
+        "refs": [2304]
+      }
+    ]
+  },
+  {
     "version": "6.79",
     "date": "2026-07-10",
     "label": "Beta",

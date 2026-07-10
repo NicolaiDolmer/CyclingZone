@@ -79,6 +79,51 @@ export function computeHeroCashflow(transactions) {
 }
 
 /**
+ * #2304 (finance-audit 10/7): loan_interest-transaktioner var historisk en
+ * kontant-lignende ledger-post skrevet ved rente-KAPITALISERING (ingen
+ * balance-debitering skete faktisk) — de tælles derfor IKKE med i
+ * hero-cashflow-nettet (ville ellers dobbelttælle sammen med den
+ * efterfølgende loan_repayment-debitering). Fra og med #2304 skriver
+ * processLoanInterest slet ikke længere denne post-type (se loanEngine.js),
+ * men historiske rows (før migrationen) og evt. legacy-rows uden reason_code
+ * bevares i databasen — de skal blot forblive udenfor "net", markeret som en
+ * separat ikke-kontant linje.
+ *
+ * Matcher på reason_code === SEASON_END_LOAN_INTEREST ELLER (legacy:
+ * type === "loan_interest" uden reason_code, fra før reason_code-kolonnen
+ * fandtes).
+ */
+function isNonCashLoanInterestTx(tx) {
+  if (tx.reason_code === FINANCE_REASON.SEASON_END_LOAN_INTEREST) return true;
+  return tx.type === "loan_interest" && !tx.reason_code;
+}
+
+/**
+ * Splitter transaktionslisten i "cash" (tæller med i hero-nettet) og
+ * "non-cash loan interest" (rente tilskrevet gæld, vises separat).
+ */
+export function partitionCashflowTransactions(transactions) {
+  const cash = [];
+  const nonCashLoanInterest = [];
+  for (const tx of transactions) {
+    if (isNonCashLoanInterestTx(tx)) nonCashLoanInterest.push(tx);
+    else cash.push(tx);
+  }
+  return { cash, nonCashLoanInterest };
+}
+
+/**
+ * Ikke-kontant-linjen til hero-kortet: "Rente tilskrevet gæld" — summen af de
+ * ekskluderede loan_interest-rows (negativt fortegn, matcher amount-
+ * konventionen ovenfor) + antal.
+ */
+export function summarizeNonCashLoanInterest(nonCashLoanInterest) {
+  let total = 0;
+  for (const tx of nonCashLoanInterest) total += Number(tx.amount) || 0;
+  return { total, transaction_count: nonCashLoanInterest.length };
+}
+
+/**
  * Donut-data: aggregér rows per reason_code, separat for indtægt og udgift.
  * Returnerer to lister sorteret descending efter abs(value) — så største skive
  * kommer først i recharts-rendering.
@@ -164,6 +209,9 @@ export function summarizeLoans(loans) {
       interest_rate,
       seasons_remaining: Number(l.seasons_remaining) || 0,
       next_season_interest: Math.round(amount_remaining * interest_rate),
+      // #2304: livstids-sum af rente kapitaliseret på lånet — synlighed for
+      // spilleren om hvor meget renten reelt har lagt oveni gælden.
+      accrued_interest: Number(l.accrued_interest) || 0,
     };
   });
 }
@@ -208,8 +256,16 @@ export function summarizePrizes(seasonRows = [], allTimeAmounts = []) {
  * og bygger hele rapport-payload'en.
  */
 export function buildSeasonFinanceReport({ transactions = [], loans = [] }) {
+  // #2304: hero-nettet må ikke medregne ikke-kontant rente-kapitalisering
+  // (se partitionCashflowTransactions ovenfor) — donuts/top viser fortsat
+  // den FULDE transaktionsliste (inkl. rente) da de er informative
+  // drill-down-visninger, ikke et cashflow-net.
+  const { cash, nonCashLoanInterest } = partitionCashflowTransactions(transactions);
   return {
-    hero: computeHeroCashflow(transactions),
+    hero: {
+      ...computeHeroCashflow(cash),
+      non_cash_loan_interest: summarizeNonCashLoanInterest(nonCashLoanInterest),
+    },
     donuts: aggregateByReason(transactions),
     top: topTransactions(transactions, 3),
     loans: summarizeLoans(loans),

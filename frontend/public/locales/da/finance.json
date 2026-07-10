@@ -49,7 +49,8 @@
   "debt": {
     "label": "Total gæld",
     "ceiling": "Loft: {value} CZ$",
-    "headroom": "Plads under loftet: {value} CZ$"
+    "headroom": "Plads under loftet: {value} CZ$",
+    "accruedInterest": "Heraf {value} CZ$ påløbet rente"
   },
   "prize": {
     "label": "Præmiepenge (sæson {season})",
@@ -76,6 +77,7 @@
       "principal": "Hovedstol",
       "interestPerSeason": "Rente/sæson",
       "seasonsRemaining": "Sæsoner tilbage",
+      "accruedInterest": "Påløbet rente",
       "startRepay": "Betal rate →",
       "startRepayMaxPlaceholder": "Max {value}",
       "repayPlaceholder": "0",
@@ -199,6 +201,7 @@
     "transactionCount": "{count} transaktioner",
     "income": "Indtægt",
     "expense": "Udgift",
+    "nonCashLoanInterest": "Rente tilskrevet gæld (ikke-kontant, uden for nettet)",
     "total": "I alt",
     "activeLoans": "Aktive lån",
     "noActiveLoans": "Ingen aktive lån.",
@@ -207,6 +210,7 @@
     "loanInterest": "Rente",
     "loanSeasons": "Sæsoner",
     "loanNextInterest": "Næste sæsons rente",
+    "loanAccruedInterest": "Påløbet rente",
     "loanShort": "Kort lån",
     "loanLong": "Langt lån",
     "loanEmergency": "Nødlån",

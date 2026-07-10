@@ -171,6 +171,17 @@ function HeroCard({ hero, season }) {
           </p>
         </div>
       </div>
+      {/* #2304: rente kapitaliseret på gæld er ikke-kontant (ingen balance-debitering
+          sker ved kapitalisering) — vises separat FRA net-tallet, ikke blandet ind i det,
+          så regnskabet ikke lyver om kassen. */}
+      {hero.non_cash_loan_interest?.transaction_count > 0 && (
+        <div className="mt-4 pt-4 border-t border-cz-border flex items-center justify-between gap-3">
+          <p className="text-cz-3 text-xs">{t("report.nonCashLoanInterest")}</p>
+          <p className="text-cz-warning font-mono text-sm font-semibold">
+            {formatCZ(hero.non_cash_loan_interest.total)}
+          </p>
+        </div>
+      )}
     </Card>
   );
 }
@@ -238,6 +249,8 @@ function LoanPortfolioCard({ loans }) {
                 <th className="text-right py-2">{t("report.loanInterest")}</th>
                 <th className="text-right py-2">{t("report.loanSeasons")}</th>
                 <th className="text-right py-2">{t("report.loanNextInterest")}</th>
+                {/* #2304: livstids-akkumuleret rente, synlig i sæsonrapportens lån-tabel. */}
+                <th className="text-right py-2">{t("report.loanAccruedInterest")}</th>
               </tr>
             </thead>
             <tbody>
@@ -257,6 +270,9 @@ function LoanPortfolioCard({ loans }) {
                   </td>
                   <td className="py-2 text-right text-cz-danger font-mono">
                     {formatCZ(l.next_season_interest)}
+                  </td>
+                  <td className="py-2 text-right text-cz-warning font-mono">
+                    {formatCZ(l.accrued_interest || 0)}
                   </td>
                 </tr>
               ))}

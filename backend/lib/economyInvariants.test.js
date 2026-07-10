@@ -198,8 +198,37 @@ function createIdempotencySupabase({
                 },
               };
             },
-            update() {
-              return { eq() { return Promise.resolve({ error: null }); } };
+            // #2304: processLoanInterest gør sin idempotency-UPDATE betinget
+            // via .or(last_interest_season_id.is.null,...neq.<season>) og
+            // læser affected-rows via .select(). Mocken simulerer samme WHERE
+            // -logik i JS så idempotency-testen kan verificere 0-rows-skip.
+            update(payload) {
+              let eqFilters = {};
+              let orFilter = null;
+              const query = {
+                eq(col, val) {
+                  eqFilters[col] = val;
+                  return query;
+                },
+                or(expr) {
+                  orFilter = expr;
+                  return query;
+                },
+                select() {
+                  const loan = state.loans.find((l) => l.id === eqFilters.id);
+                  if (!loan) return Promise.resolve({ data: [], error: null });
+                  if (orFilter) {
+                    const seasonMatch = orFilter.match(/neq\.(.+)$/);
+                    const targetSeason = seasonMatch ? seasonMatch[1] : null;
+                    const blocked = loan.last_interest_season_id != null
+                      && loan.last_interest_season_id === targetSeason;
+                    if (blocked) return Promise.resolve({ data: [], error: null });
+                  }
+                  Object.assign(loan, payload);
+                  return Promise.resolve({ data: [{ id: loan.id }], error: null });
+                },
+              };
+              return query;
             },
           };
         }
@@ -303,44 +332,21 @@ test("payDivisionBonuses fanger unique_violation graciously og crasher ikke", as
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
-// 3. processLoanInterest — per (loan, season) idempotent (FAIL i current code)
+// 3. processLoanInterest — per (loan, season) idempotent (#2304 post-refactor)
 //
-// Current code skriver finance_transactions row uden related_loan_id og uden
-// unique-key. Anden cron-kørsel for samme sæson vil dobbelt-charge renter.
-// Post-migration har vi (related_loan_id, season_id) UNIQUE WHERE type = 'loan_interest'.
+// #2304 (finance-audit 10/7): processLoanInterest skriver IKKE længere en
+// finance_transactions-row ved kapitalisering (den var kontant-lignende uden
+// at debitere balancen, og talte renten dobbelt med repayment). Idempotency
+// er nu en betinget UPDATE på loans.last_interest_season_id i stedet for et
+// unique index på finance_transactions.
 // ───────────────────────────────────────────────────────────────────────────────
 
-test("processLoanInterest fanger unique_violation per (loan, season) — ingen dobbelt-charge", async () => {
-  const loan = {
-    id: "loan-1",
-    team_id: "team-1",
-    amount_remaining: 100_000,
-    interest_rate: 0.10,
-    seasons_remaining: 3,
-    status: "active",
-  };
-
-  const supabase = createIdempotencySupabase({
-    loans: [loan],
-    teams: [{ id: "team-1", division: 3 }],
-    uniqueViolations: {
-      uniq_loan_interest_per_loan_season: (row) =>
-        row.type === "loan_interest" && row.related_loan_id === "loan-1" && row.season_id === "season-1",
-    },
-  });
-
-  // Må ikke kaste når DB afviser duplicate-charge.
-  await processLoanInterest("team-1", "season-1", supabase.client);
-
-  const interestRows = supabase.state.insertedFinanceRows.filter((r) => r.type === "loan_interest");
-  assert.equal(interestRows.length, 0, "ingen loan_interest finance row inserted ved unique_violation");
-});
-
-test("processLoanInterest sender related_loan_id i finance_transactions row (post-fix)", async () => {
+test("processLoanInterest skriver INGEN finance_transactions-row ved kapitalisering", async () => {
   const loan = {
     id: "loan-7",
     team_id: "team-1",
     amount_remaining: 100_000,
+    accrued_interest: 0,
     interest_rate: 0.10,
     seasons_remaining: 3,
     status: "active",
@@ -351,15 +357,49 @@ test("processLoanInterest sender related_loan_id i finance_transactions row (pos
     teams: [{ id: "team-1", division: 3 }],
   });
 
-  await processLoanInterest("team-1", "season-1", supabase.client);
+  const result = await processLoanInterest("team-1", "season-1", supabase.client);
 
-  const interestRow = supabase.state.insertedFinanceRows.find((r) => r.type === "loan_interest");
-  assert.ok(interestRow, "loan_interest row skal være inserted");
   assert.equal(
-    interestRow.related_loan_id,
-    "loan-7",
-    "finance_transactions.related_loan_id skal pege på loan-7 så DB-unique-index kan virke"
+    supabase.state.insertedFinanceRows.length,
+    0,
+    "ingen finance_transactions-row må insertes ved rente-kapitalisering (#2304 — ikke-kontant)"
   );
+  assert.equal(result.charged.length, 1);
+  assert.equal(result.charged[0].skipped, false);
+  assert.equal(result.charged[0].interest, 10_000);
+
+  const updatedLoan = supabase.state.loans.find((l) => l.id === "loan-7");
+  assert.equal(updatedLoan.amount_remaining, 110_000, "renten skal stadig kapitaliseres ind i amount_remaining");
+  assert.equal(updatedLoan.accrued_interest, 10_000, "accrued_interest skal akkumulere den tilskrevne rente");
+  assert.equal(updatedLoan.last_interest_season_id, "season-1");
+});
+
+test("processLoanInterest fanger dobbelt-charge per (loan, season) — betinget UPDATE rammer 0 rows", async () => {
+  const loan = {
+    id: "loan-1",
+    team_id: "team-1",
+    amount_remaining: 100_000,
+    accrued_interest: 10_000,
+    interest_rate: 0.10,
+    seasons_remaining: 2,
+    status: "active",
+    // Renten er allerede tilskrevet for season-1 i en tidligere cron-kørsel.
+    last_interest_season_id: "season-1",
+  };
+
+  const supabase = createIdempotencySupabase({
+    loans: [loan],
+    teams: [{ id: "team-1", division: 3 }],
+  });
+
+  const result = await processLoanInterest("team-1", "season-1", supabase.client);
+
+  assert.equal(result.charged.length, 1);
+  assert.equal(result.charged[0].skipped, true, "2. kørsel for samme sæson skal skippe stille");
+
+  const updatedLoan = supabase.state.loans.find((l) => l.id === "loan-1");
+  assert.equal(updatedLoan.amount_remaining, 100_000, "amount_remaining må ikke ændres ved dobbelt-charge");
+  assert.equal(updatedLoan.accrued_interest, 10_000, "accrued_interest må ikke ændres ved dobbelt-charge");
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1014,13 +1054,36 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
             return Promise.resolve({ data: rows[0] || null, error: null });
           },
           update(payload) {
-            return {
-              eq(col, val) {
-                const loan = loans.find((l) => l[col] === val);
+            // #2304: processLoanInterest's idempotency-UPDATE er betinget
+            // (.eq("id", ...).or("last_interest_season_id.is.null,...").select("id")).
+            // Mocken respekterer eq/or-filtrene, returnerer 0 rows hvis
+            // last_interest_season_id allerede matcher target-sæsonen.
+            let eqFilters = {};
+            let orFilter = null;
+            const updQuery = {
+              eq(col, val) { eqFilters[col] = val; return updQuery; },
+              or(expr) { orFilter = expr; return updQuery; },
+              select() {
+                const loan = loans.find((l) => l.id === eqFilters.id);
+                if (!loan) return Promise.resolve({ data: [], error: null });
+                if (orFilter) {
+                  const seasonMatch = orFilter.match(/neq\.(.+)$/);
+                  const targetSeason = seasonMatch ? seasonMatch[1] : null;
+                  if (loan.last_interest_season_id != null && loan.last_interest_season_id === targetSeason) {
+                    return Promise.resolve({ data: [], error: null });
+                  }
+                }
+                Object.assign(loan, payload);
+                return Promise.resolve({ data: [{ id: loan.id }], error: null });
+              },
+              // Ikke-#2304-callsites (fx B3 debt-breach-blok) bruger update().eq() uden .select().
+              then(resolve, reject) {
+                const loan = loans.find((l) => l.id === eqFilters.id);
                 if (loan) Object.assign(loan, payload);
-                return Promise.resolve({ error: null });
+                return Promise.resolve({ error: null }).then(resolve, reject);
               },
             };
+            return updQuery;
           },
           insert(row) {
             // createEmergencyLoan inserter ny lån-row → .select().single()
@@ -1038,8 +1101,9 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
       if (table === "finance_transactions") {
         return {
           insert(row) {
-            // processLoanInterest skriver direkte til finance_transactions
-            // (ikke via RPC) så den path skal også tracks i financeRows.
+            // #2304: processLoanInterest skriver IKKE længere til
+            // finance_transactions (renten er ikke-kontant, se loanEngine.js).
+            // Denne insert-sti bruges nu kun af andre payroll-trin.
             financeRows.push(row);
             return Promise.resolve({ error: null });
           },
@@ -1099,14 +1163,16 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
     negative_balance_interest_count: 0, negative_balance_interest_total: 0,
   });
 
-  // INVARIANT: summary counts == antal finance_transactions rows af samme type
-  const loanInterestRows = financeRows.filter((r) => r.type === "loan_interest");
+  // INVARIANT (post-#2304): loan_interest skriver IKKE længere en
+  // finance_transactions-row (ikke-kontant kapitalisering) — summary
+  // counts/totals verificeres i stedet direkte mod loans-state
+  // (amount_remaining/accrued_interest), IKKE mod financeRows.
   const salaryRows = financeRows.filter((r) => r.type === "salary");
   const emergencyRows = financeRows.filter((r) => r.type === "emergency_loan");
   const negInterestRows = financeRows.filter((r) => r.type === "interest");
 
-  assert.equal(summary.loan_interest_count, loanInterestRows.length,
-    "summary.loan_interest_count skal matche antal loan_interest-rows skrevet");
+  assert.equal(financeRows.filter((r) => r.type === "loan_interest").length, 0,
+    "loan_interest må ALDRIG skrive en finance_transactions-row (#2304 — ikke-kontant)");
   assert.equal(summary.salary_count, salaryRows.length,
     "summary.salary_count skal matche antal salary-rows skrevet");
   assert.equal(summary.emergency_loan_count, emergencyRows.length,
@@ -1114,10 +1180,13 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
   assert.equal(summary.negative_balance_interest_count, negInterestRows.length,
     "summary.negative_balance_interest_count skal matche antal interest-rows skrevet (negativ-balance-rente)");
 
+  // loan_interest_total verificeres mod loans-statens accrued_interest i stedet.
+  const totalAccrued = loans.reduce((s, l) => s + (l.accrued_interest || 0), 0);
+  assert.equal(summary.loan_interest_total, totalAccrued,
+    "summary.loan_interest_total skal matche summen af accrued_interest på lånene");
+
   // INVARIANT: summary totals == abs(sum af amount) for samme type
   const sumAbs = (rows) => rows.reduce((s, r) => s + Math.abs(r.amount || 0), 0);
-  assert.equal(summary.loan_interest_total, sumAbs(loanInterestRows),
-    "summary.loan_interest_total skal matche abs(sum af amount) for loan_interest-rows");
   assert.equal(summary.salary_total, sumAbs(salaryRows),
     "summary.salary_total skal matche abs(sum af amount) for salary-rows");
 
@@ -1130,13 +1199,19 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
 });
 
 test("payroll-summary: skipped (idempotent-retry) loan_interest tæller IKKE i counts (#535)", async () => {
-  // Cron-retry-scenarie: anden gang vi kører payroll for samme sæson, fanger
-  // DB'en duplicate-INSERT via uniq_loan_interest_per_loan_season og returnerer
-  // 23505. Vi må IKKE tælle disse "skipped" rows i summary.count, ellers ville
-  // re-run vise count=2 mens UI'en ser count=1 → falsk-positive divergens-alert.
+  // Cron-retry-scenarie (post-#2304): anden gang vi kører payroll for samme
+  // sæson, rammer processLoanInterest's betingede UPDATE (WHERE
+  // last_interest_season_id IS DISTINCT FROM p_season_id) 0 rows, fordi
+  // loans.last_interest_season_id allerede er sat til season-1 af 1. kørsel.
+  // Vi må IKKE tælle disse "skipped" i summary.count, ellers ville re-run
+  // vise count=2 mens loans-state kun blev opdateret 1 gang → falsk-positive
+  // divergens-alert.
   const financeRows = [];
   const team = { id: "team-1", name: "Retry", balance: 5000, riders: [{ id: "r1", salary: 100 }] };
-  const loan = { id: "loan-1", team_id: "team-1", amount_remaining: 1000, interest_rate: 0.10, seasons_remaining: 2, status: "active" };
+  const loan = {
+    id: "loan-1", team_id: "team-1", amount_remaining: 1000, accrued_interest: 0,
+    interest_rate: 0.10, seasons_remaining: 2, status: "active", last_interest_season_id: null,
+  };
 
   const mockSupabase = {
     rpc(name, params) {
@@ -1154,23 +1229,42 @@ test("payroll-summary: skipped (idempotent-retry) loan_interest tæller IKKE i c
         return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { balance: team.balance }, error: null }) }) }) };
       }
       if (table === "loans") {
+        let eqFilters = {};
+        let orFilter = null;
         const query = {
-          select: () => query, eq: () => query,
+          select: () => query,
+          eq(col, val) { eqFilters[col] = val; return query; },
+          or(expr) { orFilter = expr; return query; },
           then: (r) => Promise.resolve({ data: [loan], error: null }).then(r),
-          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          update(payload) {
+            eqFilters = {};
+            orFilter = null;
+            return {
+              eq(col, val) { eqFilters[col] = val; return this; },
+              or(expr) { orFilter = expr; return this; },
+              select() {
+                if (eqFilters.id !== loan.id) return Promise.resolve({ data: [], error: null });
+                if (orFilter) {
+                  const seasonMatch = orFilter.match(/neq\.(.+)$/);
+                  const targetSeason = seasonMatch ? seasonMatch[1] : null;
+                  if (loan.last_interest_season_id != null && loan.last_interest_season_id === targetSeason) {
+                    return Promise.resolve({ data: [], error: null });
+                  }
+                }
+                Object.assign(loan, payload);
+                return Promise.resolve({ data: [{ id: loan.id }], error: null });
+              },
+            };
+          },
         };
         return query;
       }
       if (table === "finance_transactions") {
         return {
           insert(row) {
-            // Simulér uniq_loan_interest_per_loan_season ved 2. INSERT for samme (loan, season)
-            const dupe = financeRows.find((r) =>
-              r.type === "loan_interest" && r.related_loan_id === row.related_loan_id && r.season_id === row.season_id
-            );
-            if (dupe) {
-              return Promise.resolve({ error: { code: "23505", constraint: "uniq_loan_interest_per_loan_season" } });
-            }
+            // #2304: loan_interest skriver ikke længere en row her — andre
+            // payroll-trin (fx salary) bruger ikke denne sti (går via RPC),
+            // men behold insert-mock for defensiv robusthed.
             financeRows.push(row);
             return Promise.resolve({ error: null });
           },
@@ -1197,20 +1291,23 @@ test("payroll-summary: skipped (idempotent-retry) loan_interest tæller IKKE i c
 
   const { processTeamSeasonPayroll: payrollFn } = await import("./economyEngine.js");
 
-  // Første kørsel: alle rows skrives
+  // Første kørsel: loans-state opdateres, last_interest_season_id sættes.
   const first = await payrollFn(team, "season-1", { supabase: mockSupabase });
-  assert.equal(first.loan_interest_count, 1, "første kørsel: 1 loan_interest debiteret");
+  assert.equal(first.loan_interest_count, 1, "første kørsel: 1 loan_interest tilskrevet");
   assert.equal(first.salary_count, 1, "første kørsel: 1 salary debiteret");
+  assert.equal(loan.accrued_interest, 100, "accrued_interest akkumulerer den tilskrevne rente");
+  assert.equal(loan.last_interest_season_id, "season-1");
 
-  // Anden kørsel (cron-retry): DB afviser duplicates, count må reflektere det
+  // Anden kørsel (cron-retry): betinget UPDATE rammer 0 rows → skip.
   const second = await payrollFn(team, "season-1", { supabase: mockSupabase });
   assert.equal(second.loan_interest_count, 0,
-    "anden kørsel: 0 nye loan_interest debiteret (DB afviste duplikat)");
-  // Salary går via debitTeam med idempotent=true → RPC returnerer 23505, debitTeam swallow'er → 0 ny row.
-  // Vores counter er totalSalary > 0 ? 1 : 0 — men totalSalary er stadig 100 selv om RPC skipper.
-  // Det er en mindre upræcision: vi accepterer at salary_count tæller "ville-have-debiteret" frem for
-  // "faktisk debiteret". Invariant-testen ovenfor (test 9) dokumenterer den faktiske finance-row-count.
-  // Re-asserter at finance_transactions har præcis 2 rows (1 loan_interest + 1 salary) efter begge kørsler.
-  const totalRows = financeRows.length;
-  assert.equal(totalRows, 2, "DB har præcis 2 finance-rows efter 2 kørsler (1 loan_interest + 1 salary)");
+    "anden kørsel: 0 nye loan_interest tilskrevet (idempotency-guard skippede)");
+  assert.equal(loan.accrued_interest, 100, "accrued_interest må ikke ændres ved dobbelt-charge");
+
+  // INVARIANT (post-#2304): loan_interest skriver ALDRIG en finance_transactions-row.
+  assert.equal(financeRows.filter((r) => r.type === "loan_interest").length, 0,
+    "loan_interest må ALDRIG skrive en finance_transactions-row (#2304 — ikke-kontant)");
+  // Kun 1 finance-row (salary) skrevet over begge kørsler (salary's RPC-idempotency
+  // afviser 2. forsøg, men mocken pusher først når RPC lykkes).
+  assert.equal(financeRows.length, 1, "kun salary-row skrevet — loan_interest er ikke-kontant");
 });
