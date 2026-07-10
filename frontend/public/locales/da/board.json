@@ -4,6 +4,8 @@
     "subtitle": "Tre parallelle planer, egne mål og tilfredshed",
     "financeLink": "Finanser"
   },
+  "loadError": "Bestyrelsen kunne ikke indlæses. Prøv igen.",
+  "retry": "Prøv igen",
   "tour": {
     "plans": {
       "title": "Tre planer kører parallelt",
@@ -41,6 +43,11 @@
     },
     "plansFooter": "Alle tre planer kører parallelt. Du forhandler én ad gangen, og hver har sine egne mål og tidshorisont.",
     "satisfactionLabel": "Tilfredshed → sponsor-modifier",
+    "bands": {
+      "high": "60–100% → sponsor × 1,10–1,20",
+      "moderate": "40–59% → sponsor × 1,00",
+      "low": "0–39% → sponsor × 0,80–0,90"
+    },
     "satisfactionFooter": "Hvert opfyldt mål øger tilfredsheden. Utilfredse bestyrelser skærper kravene ved næste planforhandling.",
     "kpis": {
       "heading": "Hvad de vurderer på",
@@ -456,24 +463,28 @@
       "good": "Sæson gennemført: mål nået",
       "poor": "Sæson gennemført: mål ikke nået"
     },
-    "wizardStepDone": "Gennemført"
+    "wizardStepDone": "Gennemført",
+    "goalProgress": "Målfremgang",
+    "goalsProgress": "Mål nået",
+    "planProgress": "Planfremgang",
+    "wizardProgress": "Forhandlingstrin-fremgang"
   },
   "satisfactionExplainer": {
     "heading": "Hvad betyder tilfredshed?",
     "high": {
-      "range": "70–100%",
+      "range": "60–100%",
       "label": "Høj tilfredshed",
-      "effect": "Sponsor × > 1.0, ekstra indtægt"
+      "effect": "Sponsor × 1,10–1,20, ekstra indtægt"
     },
     "moderate": {
-      "range": "40–69%",
+      "range": "40–59%",
       "label": "Moderat tilfredshed",
-      "effect": "Sponsor × 1.0, normal indtægt"
+      "effect": "Sponsor × 1,00, normal indtægt"
     },
     "low": {
       "range": "0–39%",
       "label": "Lav tilfredshed",
-      "effect": "Sponsor × < 1.0, reduceret"
+      "effect": "Sponsor × 0,80–0,90, reduceret"
     }
   },
   "category": {
@@ -487,12 +498,6 @@
     "goals": "{met}/{total} mål nået",
     "flat": "ingen ændring",
     "unknownRace": "Løbsweekend"
-  },
-  "overallStatus": {
-    "veryStrong": "Meget stærkt",
-    "onTrack": "På sporet",
-    "uncertain": "Usikkert",
-    "underPressure": "Under pres"
   },
   "feedback": {
     "awaitingData": {

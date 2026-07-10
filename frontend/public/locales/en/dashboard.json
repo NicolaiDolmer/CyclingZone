@@ -83,7 +83,6 @@
     "board": {
       "title": "Board Status",
       "linkAll": "Details →",
-      "empty": "No board data",
       "satisfaction": "Satisfaction",
       "focus": "Focus",
       "budgetMultiplier": "Budget multiplier",

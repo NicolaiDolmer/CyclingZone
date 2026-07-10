@@ -4,6 +4,8 @@
     "subtitle": "Three parallel plans, separate targets and satisfaction",
     "financeLink": "Finances"
   },
+  "loadError": "Couldn't load the board. Please try again.",
+  "retry": "Try again",
   "tour": {
     "plans": {
       "title": "Three plans run in parallel",
@@ -41,6 +43,11 @@
     },
     "plansFooter": "All three plans run in parallel. You negotiate one at a time, and each has its own targets and time horizon.",
     "satisfactionLabel": "Satisfaction → sponsor modifier",
+    "bands": {
+      "high": "60–100% → sponsor × 1.10–1.20",
+      "moderate": "40–59% → sponsor × 1.00",
+      "low": "0–39% → sponsor × 0.80–0.90"
+    },
     "satisfactionFooter": "Every met target boosts satisfaction. Dissatisfied boards tighten requirements at the next plan negotiation.",
     "kpis": {
       "heading": "What they evaluate on",
@@ -456,24 +463,28 @@
       "good": "Season completed: targets met",
       "poor": "Season completed: targets missed"
     },
-    "wizardStepDone": "Completed"
+    "wizardStepDone": "Completed",
+    "goalProgress": "Target progress",
+    "goalsProgress": "Targets met",
+    "planProgress": "Plan progress",
+    "wizardProgress": "Negotiation step progress"
   },
   "satisfactionExplainer": {
     "heading": "What does satisfaction mean?",
     "high": {
-      "range": "70–100%",
+      "range": "60–100%",
       "label": "High satisfaction",
-      "effect": "Sponsor × > 1.0, extra income"
+      "effect": "Sponsor × 1.10–1.20, extra income"
     },
     "moderate": {
-      "range": "40–69%",
+      "range": "40–59%",
       "label": "Moderate satisfaction",
-      "effect": "Sponsor × 1.0, normal income"
+      "effect": "Sponsor × 1.00, normal income"
     },
     "low": {
       "range": "0–39%",
       "label": "Low satisfaction",
-      "effect": "Sponsor × < 1.0, reduced"
+      "effect": "Sponsor × 0.80–0.90, reduced"
     }
   },
   "category": {
@@ -487,12 +498,6 @@
     "goals": "{met}/{total} goals met",
     "flat": "no change",
     "unknownRace": "Race weekend"
-  },
-  "overallStatus": {
-    "veryStrong": "Very strong",
-    "onTrack": "On track",
-    "uncertain": "Uncertain",
-    "underPressure": "Under pressure"
   },
   "feedback": {
     "awaitingData": {
