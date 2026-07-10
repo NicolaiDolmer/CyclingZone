@@ -10,6 +10,11 @@
 // DB. Når tier 4 aktiveredes i et separat reconcile-kald, kaskaderede Monuments/OWT-A frit
 // ned. Begge huller er lukket i materializeren; dette script reverserer + genopbygger tier 4.
 //
+// Scope (arkitekt-beslutning 10/7): FULD Div 4-nulstilling — ALLE tier 4-løb slettes (ikke kun
+// de kaskade-ulovlige), så alle 8 puljer garanteret har kørt samme løb ved sæsonslut. Afviklede
+// løb (uanset klasse) reverseres økonomisk først; den nye kalender bygges fra bunden i rest-
+// vinduet [reparationsdag+1, sæsonens sidste løbsdag] ved tæthed 3 (ejer-beslutning 10/7).
+//
 // KØR ALDRIG mod prod uden ejer-godkendelse — ejeren skal have set live-tilstanden
 // (dry-run-output) og godkendt PRÆCIS dette skridt.
 //   node scripts/repair2276Div4Cascade.js            → dry-run: viser live state + plan
@@ -30,9 +35,9 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { writeFileSync, mkdirSync } from "fs";
-import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
+import { materializeTierCalendars, buildTierMaterializationPlan, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA, TIER_CLASS_WHITELIST } from "../lib/tierRaceSelection.js";
-import { classifyIllegalTier4Races, computeFinanceReversals } from "../lib/div4CascadeRepair.js";
+import { classifyIllegalTier4Races, computeFinanceReversals, partitionTier4FullReset } from "../lib/div4CascadeRepair.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { updateStandings, updateRiderValues } from "../lib/economyEngine.js";
 import { refreshRankingMatviewsSafe } from "../lib/refreshRankingMatviews.js";
@@ -67,6 +72,102 @@ async function realManagerName(supabase, teamId) {
   return data ? `${data.name}${data.is_ai ? " (AI)" : ""}` : teamId;
 }
 
+// Ejer-beslutning 10/7 (#2276 opfølgning): Div 4's genopbyggede rest-af-sæson-kalender kører
+// tæthed 3 (design-default for tier 4 er 2) i et FORKORTET vindue: reparationsdag+1 til sæsonens
+// sidste løbsdag. quota = density × vinduesdage. Kun tier 4 og kun DENNE reparation — design-
+// defaults (140/112/84/56, tæthed 5/4/3/2) er uændrede for alle andre tiers/sæsoner (fra sæson 2
+// gælder design-kvoterne for tier 4 igen).
+const DIV4_REPAIR_DENSITY = 3;
+
+/**
+ * Udleder rest-af-sæson-vinduet for #2276-reparationen: `from` = i morgen (UTC-midnat,
+ * Europe/Copenhagen-dagsgrænsen er allerede UTC-midnat-alignet i buildScheduleRows), og
+ * sæson-slut = max(scheduled_at) over de UBERØRTE tier 1-3-puljer (stabilt tal, uafhængigt
+ * af om tier 4's ulovlige løb slettes før eller efter kaldet — så dry-run og --live regner
+ * PRÆCIS samme vindue). Hardcoder ALDRIG en dato — udledes af prod-data hver gang.
+ */
+async function computeDiv4RestOfSeasonWindow({ supabase, seasonId, lowerTierPoolIds, now }) {
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const { data: lowerRaces, error: lrErr } = await supabase
+    .from("races").select("id").eq("season_id", seasonId).in("league_division_id", lowerTierPoolIds);
+  if (lrErr) throw new Error(`races (tier 1-3 horisont): ${lrErr.message}`);
+  const lowerRaceIds = (lowerRaces || []).map((r) => r.id);
+  let maxAt = null;
+  for (let i = 0; i < lowerRaceIds.length; i += 200) {
+    const { data: sched, error } = await supabase
+      .from("race_stage_schedule").select("scheduled_at").in("race_id", lowerRaceIds.slice(i, i + 200));
+    if (error) throw new Error(`race_stage_schedule (horisont): ${error.message}`);
+    for (const s of sched || []) {
+      const t = Date.parse(s.scheduled_at);
+      if (Number.isFinite(t) && (maxAt == null || t > maxAt)) maxAt = t;
+    }
+  }
+  if (maxAt == null) throw new Error("kunne ikke bestemme sæson-slut fra tier 1-3-kalenderen");
+  const end = new Date(maxAt);
+  const endDayUtc = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const realDays = Math.floor((endDayUtc - from.getTime()) / 86_400_000);
+  return { from, seasonEnd: end, realDays };
+}
+
+/**
+ * Rene (I/O-fri undtagen én katalog/pulje-hentning) preview af den nye tier 4-kalender —
+ * bruges af BÅDE dry-run (til ejer-godkendelse) og som sandhed for hvad --live vil skrive.
+ * Bygger planen via buildTierMaterializationPlan (samme sti som materializeTierCalendars)
+ * med override-tæthed/kvote for tier 4 og usedRaceNames seedet fra tier 1-3 (cross-tier-dedup
+ * holder selv når kun tier 4 materialiseres i dette kald).
+ */
+async function buildDiv4RepairPlan({ supabase, tier4PoolIds, tier1to3Names, from, realDays }) {
+  const { data: divisions, error: dErr } = await supabase
+    .from("league_divisions").select("id, tier, pool_index, label").in("id", tier4PoolIds);
+  if (dErr) throw new Error(`league_divisions (div4-plan): ${dErr.message}`);
+  const { data: teams, error: tErr } = await supabase
+    .from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account").in("league_division_id", tier4PoolIds);
+  if (tErr) throw new Error(`teams (div4-plan): ${tErr.message}`);
+  const realByDiv = new Map();
+  for (const t of teams || []) {
+    if (t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account && t.league_division_id != null) {
+      realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
+    }
+  }
+  const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
+  const { data: catalog, error: cErr } = await supabase
+    .from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
+  if (cErr) throw new Error(`race_pool (div4-plan): ${cErr.message}`);
+
+  const density = { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY };
+  const quotas = { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays };
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools, catalog: catalog || [], from, realDays, quotas, density, forceTiers: [4],
+    usedRaceNames: tier1to3Names,
+  });
+  return { tier4Plan: tierPlans.find((tp) => tp.tier === 4) ?? null, quotas, density };
+}
+
+/** Formatterer en tier-plan dag-for-dag (dato, game days, løb m. klasse+etaper) til ejer-godkendelse. */
+function formatDailyCalendar({ tier4Plan, from, log }) {
+  if (!tier4Plan) { log("  (ingen tier 4-plan — ingen live puljer eller intet katalog tilgængeligt)"); return; }
+  const pool = tier4Plan.pools[0];
+  if (!pool) { log("  (ingen puljer)"); return; }
+  const raceByPoolRaceId = new Map(pool.raceRows.map((r) => [r.pool_race_id, r]));
+  const byDate = new Map(); // dateStr -> [{ name, race_class, stage_number, stages }]
+  for (const s of pool.stageRows) {
+    const r = raceByPoolRaceId.get(s.pool_race_id);
+    const dateStr = new Date(s.scheduled_at).toISOString().slice(0, 10);
+    if (!byDate.has(dateStr)) byDate.set(dateStr, []);
+    byDate.get(dateStr).push({ name: r?.name ?? s.pool_race_id, race_class: r?.race_class ?? "?", stage_number: s.stage_number, stages: r?.stages ?? 1 });
+  }
+  const dates = [...byDate.keys()].sort();
+  log(`  vindue: ${from.toISOString().slice(0, 10)} (dag+1) → ${dates[dates.length - 1] ?? "?"} · ${dates.length} IRL-dage · tæthed ${tier4Plan.density} · kvote ${tier4Plan.quota} (ramt: ${tier4Plan.quotaHit})`);
+  for (const dateStr of dates) {
+    const events = byDate.get(dateStr).sort((a, b) => a.name.localeCompare(b.name));
+    log(`  ${dateStr} (${events.length} etape(r)):`);
+    for (const e of events) log(`    ${e.name} [${e.race_class}] · etape ${e.stage_number}/${e.stages}`);
+  }
+  if (tier4Plan.calendarViolations?.length) {
+    log(`  ⚠ kalender-invarianter BRUDT: ${tier4Plan.calendarViolations.join(" · ")}`);
+  }
+}
+
 export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = true, log = console.log }) {
   const { data: season, error: sErr } = await supabase
     .from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
@@ -96,53 +197,78 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   for (const poolId of tier4PoolIds) racesByPool.set(poolId, []);
   for (const r of tier4Races || []) racesByPool.get(r.league_division_id)?.push(r);
 
-  const { toDelete, canonicalTemplate } = classifyIllegalTier4Races({
+  // Invariant-rapportering (til kontekst i dry-run-output — hvor mange af løbene der var
+  // decideret ulovlige). Sletnings-scope er dog FULD nulstilling, se partitionTier4FullReset.
+  const { toDelete: illegalRaces } = classifyIllegalTier4Races({
     racesByPool, tier1to3Names, classWhitelist: TIER_CLASS_WHITELIST[4],
   });
+  const illegalIds = new Set(illegalRaces.map((d) => d.id));
+  const reasonsById = new Map(illegalRaces.map((d) => [d.id, d.reasons]));
 
-  log(`\n── Live-tilstand: ${toDelete.length} ulovlig(e)/skæv(e) løb-instans(er) på tværs af ${tier4PoolIds.length} tier 4-puljer ──`);
+  // FULD Div 4-nulstilling (arkitekt-beslutning 10/7): slet ALLE tier 4-løb — ikke kun de
+  // kaskade-ulovlige — så alle 8 puljer garanteret har kørt samme løb ved sæsonslut. Afviklede
+  // løb (uanset klasse) reverseres økonomisk først; scheduled slettes direkte. Den nye kalender
+  // bygges derefter fra bunden i restvinduet ved tæthed 3 (ingen gamle løb at flette rundt om).
+  const { toReverse, toDeleteScheduled, allIds: raceIdsToDelete } = partitionTier4FullReset({ races: tier4Races || [] });
   const byId = new Map((tier4Races || []).map((r) => [r.id, r]));
-  const raceIdsToDelete = toDelete.map((d) => d.id);
-  const playedIds = toDelete.filter((d) => byId.get(d.id)?.status === "completed" || byId.get(d.id)?.prize_paid_at).map((d) => d.id);
+  const playedIds = toReverse.map((r) => r.id);
 
-  for (const d of toDelete) {
+  log(`\n── FULD Div 4-nulstilling: ${raceIdsToDelete.length} løb i alt på tværs af ${tier4PoolIds.length} puljer (${illegalIds.size} kaskade-ulovlige, ${raceIdsToDelete.length - illegalIds.size} øvrige) ──`);
+  if (!raceIdsToDelete.length) { log("intet at reparere — ingen tier 4-løb i sæsonen"); return { deleted: 0 }; }
+
+  // Finance-reversering for ALLE afviklede tier 4-løb (dry-run beregner + rapporterer, --live udfører).
+  const financeTx = playedIds.length
+    ? await fetchAll(supabase, "finance_transactions", (q) => q.in("race_id", playedIds))
+    : [];
+  const reversals = computeFinanceReversals({ transactions: financeTx, raceIds: playedIds });
+
+  // Sektion 1: reverseres — alle afviklede løb med beløb pr. hold.
+  log(`\n── Sektion 1: REVERSERES — ${toReverse.length} afviklet(e) løb, ${reversals.length} hold-linjer ──`);
+  for (const r of toReverse) {
+    const tag = illegalIds.has(r.id) ? ` · [${reasonsById.get(r.id).join(",")}]` : " · [lovlig klasse — fuld nulstilling]";
+    log(`  pulje ${r.league_division_id} · ${r.name} [${r.race_class}] · ${r.status}${r.prize_paid_at ? " · præmie udbetalt" : ""}${tag} · ${r.id}`);
+  }
+  for (const rev of reversals) {
+    const name = await realManagerName(supabase, rev.teamId);
+    log(`    hold ${name} (${rev.teamId}) · løb ${byId.get(rev.raceId)?.name} · tilbagefør ${rev.amount}`);
+  }
+
+  // Sektion 2: slettes — alle scheduled løb med entries/rigtige hold.
+  log(`\n── Sektion 2: SLETTES — ${toDeleteScheduled.length} planlagt(e) løb ──`);
+  for (const r of toDeleteScheduled) {
     const { data: entryRows, error: entriesErr } = await supabase
-      .from("race_entries").select("team_id").eq("race_id", d.id);
-    if (entriesErr) throw new Error(`race_entries (${d.id}): ${entriesErr.message}`);
+      .from("race_entries").select("team_id").eq("race_id", r.id);
+    if (entriesErr) throw new Error(`race_entries (${r.id}): ${entriesErr.message}`);
     const teamIds = [...new Set((entryRows || []).map((e) => e.team_id).filter(Boolean))];
     let realTeamCount = 0;
     if (teamIds.length) {
       const { data: teamRows, error: teamsErr } = await supabase
         .from("teams").select("id, is_ai").in("id", teamIds);
-      if (teamsErr) throw new Error(`teams (${d.id}): ${teamsErr.message}`);
+      if (teamsErr) throw new Error(`teams (${r.id}): ${teamsErr.message}`);
       realTeamCount = (teamRows || []).filter((t) => t.is_ai === false).length;
     }
-    log(`  pulje ${d.pool_id} · ${d.name} · ${byId.get(d.id)?.status} · entries ${entryRows?.length ?? 0} (rigtige hold: ${realTeamCount}) · [${d.reasons.join(",")}] · ${d.id}`);
-  }
-  if (!toDelete.length) { log("intet at reparere"); return { deleted: 0 }; }
-
-  log(`\n${playedIds.length} af de ulovlige løb er AFVIKLET og kræver finance-reversering.`);
-
-  // Finance-reversering (dry-run beregner + rapporterer, --live udfører).
-  const financeTx = playedIds.length
-    ? await fetchAll(supabase, "finance_transactions", (q) => q.in("race_id", playedIds))
-    : [];
-  const reversals = computeFinanceReversals({ transactions: financeTx, raceIds: playedIds });
-  if (reversals.length) {
-    log(`\nFinance-reversering (${reversals.length} hold-linjer):`);
-    for (const rev of reversals) {
-      const name = await realManagerName(supabase, rev.teamId);
-      log(`  hold ${name} (${rev.teamId}) · løb ${byId.get(rev.raceId)?.name} · tilbagefør ${rev.amount}`);
-    }
+    const tag = illegalIds.has(r.id) ? ` · [${reasonsById.get(r.id).join(",")}]` : "";
+    log(`  pulje ${r.league_division_id} · ${r.name} [${r.race_class}] · ${r.status} · entries ${entryRows?.length ?? 0} (rigtige hold: ${realTeamCount})${tag} · ${r.id}`);
   }
 
-  // Ny korrekt skabelon (til dry-run-output — den ENDELIGE er den re-materialiserede plan).
-  log(`\nNy skabelon (${canonicalTemplate.length} løb, kaskade-korrekte klasser [${TIER_CLASS_WHITELIST[4].join(", ")}]):`);
-  for (const t of canonicalTemplate) log(`  ${t.name} · ${t.stages} etape(r) · game_day_start ${t.game_day_start}`);
+  // Sektion 3: ny kalender dag-for-dag.
+  // Ejer-beslutning 10/7 (#2276 opfølgning): rest-af-sæson-kalenderen for div 4 genopbygges
+  // med tæthed 3 (design-default = 2) i vinduet [reparationsdag+1, sæsonens sidste løbsdag]
+  // — udledt af tier 1-3's kalender i prod, aldrig hardcodet. Vis dag-for-dag i BÅDE dry-run
+  // og --live, så ejeren ser præcis samme plan der bliver skrevet.
+  const { from, seasonEnd, realDays } = await computeDiv4RestOfSeasonWindow({ supabase, seasonId: season.id, lowerTierPoolIds, now });
+  log(`\n── Sektion 3: NY KALENDER (rest-af-sæson, ejer-beslutning 10/7): ${from.toISOString().slice(0, 10)} → ${seasonEnd.toISOString().slice(0, 10)} (${realDays} IRL-dage) · tæthed ${DIV4_REPAIR_DENSITY} · kvote ${DIV4_REPAIR_DENSITY * realDays} ──`);
+  const { tier4Plan } = await buildDiv4RepairPlan({
+    supabase, tier4PoolIds, tier1to3Names, from, realDays,
+  });
+  formatDailyCalendar({ tier4Plan, from, log });
 
   if (dryRun) {
     log("\nDRY-RUN — ingen writes. Kør med --live EFTER ejer-godkendelse.");
-    return { deleted: 0, dryRun: true, toDelete, reversals, canonicalTemplate };
+    return {
+      deleted: 0, dryRun: true, toReverse, toDeleteScheduled, reversals, illegalCount: illegalIds.size,
+      restOfSeasonWindow: { from: from.toISOString(), seasonEnd: seasonEnd.toISOString(), realDays }, tier4Plan,
+    };
   }
 
   const { data: flagRow, error: flagErr } = await supabase
@@ -157,10 +283,10 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   log(`scheduler-flag '${STAGE_SCHEDULER_FLAG_KEY}' sat til 'off' (var: ${JSON.stringify(flagBefore)})`);
   try {
 
-  // 1) Backup (JSON) — races + CHILD_TABLES + finance_transactions for de afviklede.
+  // 1) Backup (JSON) — ALLE tier 4-løb + CHILD_TABLES + finance_transactions for de afviklede.
   const backup = {
     generated_at: now.toISOString(), season_id: season.id,
-    races: (toDelete.map((d) => byId.get(d.id))), reasons: toDelete, financeTransactions: financeTx, children: {},
+    races: tier4Races || [], illegalReasons: illegalRaces, financeTransactions: financeTx, children: {},
   };
   for (const table of CHILD_TABLES) {
     backup.children[table] = [];
@@ -187,7 +313,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
         // gør reverseringen entydigt sporbar i finance_transactions.
         type: "admin_adjustment",
         amount: rev.amount,
-        description: `Reversering — ulovligt løb i tier 4 (#2276) — ${byId.get(rev.raceId)?.name ?? rev.raceId}`,
+        description: `Reversering — fuld Div 4-nulstilling (#2276) — ${byId.get(rev.raceId)?.name ?? rev.raceId}`,
         season_id: season.id,
         race_id: rev.raceId,
         actor_type: FINANCE_ACTOR_TYPE.MIGRATION,
@@ -231,30 +357,16 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
   log("  season race-days genberegnet");
 
-  // 6) Re-materialisér tier 4 med den rettede materializer (whitelist + cross-tier-dedup).
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-  const seasonRaces = await fetchAll(supabase, "races", (q) => q.eq("season_id", season.id));
-  const seasonRaceIds = seasonRaces.map((r) => r.id);
-  let maxAt = null;
-  for (let i = 0; i < seasonRaceIds.length; i += 200) {
-    const { data: sched, error } = await supabase
-      .from("race_stage_schedule").select("scheduled_at").in("race_id", seasonRaceIds.slice(i, i + 200));
-    if (error) throw new Error(`race_stage_schedule (horisont): ${error.message}`);
-    for (const s of sched || []) {
-      const t = Date.parse(s.scheduled_at);
-      if (Number.isFinite(t) && (maxAt == null || t > maxAt)) maxAt = t;
-    }
-  }
-  if (maxAt == null) throw new Error("kunne ikke bestemme sæson-slut");
-  const end = new Date(maxAt);
-  const endDayUtc = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
-  const realDays = Math.floor((endDayUtc - from.getTime()) / 86_400_000);
+  // 6) Re-materialisér tier 4 med den rettede materializer (whitelist + cross-tier-dedup) +
+  // #2276-ejer-override (tæthed 3, forkortet vindue) — SAMME `from`/`realDays` som dry-run-
+  // preview'en ovenfor viste ejeren, beregnet FØR sletningen (lowerTierPoolIds er uberørte).
   if (realDays < 1) throw new Error("sæsonen er ved at slutte — ingen re-materialisering");
 
   const summary = await materializeTierCalendars({
     supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
     tiers: [4], dryRun: false, realDays,
-    quotas: { ...TIER_GAME_DAY_QUOTA, 4: TIER_DENSITY[4] * realDays },
+    quotas: { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays },
+    density: { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY },
     log,
   });
   log(`\nre-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);

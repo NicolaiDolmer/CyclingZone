@@ -96,6 +96,29 @@ export function classifyIllegalTier4Races({
 }
 
 /**
+ * #2276 fuld nulstilling (arkitekt-beslutning 10/7): sletnings-scope er ALLE tier 4-løb i
+ * sæsonen — ikke kun de kaskade-ulovlige — så alle 8 puljer garanteret har kørt samme løb
+ * ved sæsonslut. Ren partition af løbene i:
+ *  - toReverse: afviklede (status=completed ELLER prize_paid_at sat) — kræver finance-
+ *    reversering FØR sletning.
+ *  - toDeleteScheduled: alle øvrige (scheduled/aktive) — slettes direkte.
+ * Alle løb i BEGGE lister slettes; opdelingen styrer kun reverserings-trinnet + dry-run-
+ * rapporteringen.
+ *
+ * @param {{ races: Array<{id, name, race_class, status, prize_paid_at, league_division_id}> }} args
+ * @returns {{ toReverse: Array, toDeleteScheduled: Array, allIds: Array }}
+ */
+export function partitionTier4FullReset({ races = [] } = {}) {
+  const toReverse = [];
+  const toDeleteScheduled = [];
+  for (const r of races) {
+    if (r.status === "completed" || r.prize_paid_at != null) toReverse.push(r);
+    else toDeleteScheduled.push(r);
+  }
+  return { toReverse, toDeleteScheduled, allIds: races.map((r) => r.id) };
+}
+
+/**
  * Udled pr.-hold finance-tilbageførsler for et sæt (allerede afviklede, ulovlige)
  * løb-id'er. Summerer type=prize + type=sponsor_race_day pr. hold pr. løb (issue
  * #2276: begge typer er race_id-keyed indkomst der skal reverseres), nøglet

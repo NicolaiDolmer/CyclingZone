@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeCanonicalSignatures, classifyIllegalTier4Races, computeFinanceReversals } from "./div4CascadeRepair.js";
+import { computeCanonicalSignatures, classifyIllegalTier4Races, computeFinanceReversals, partitionTier4FullReset } from "./div4CascadeRepair.js";
 
 function makePools({ legalCount = 8, extraInPoolA = true, illegalClassInAll = true } = {}) {
   const racesByPool = new Map();
@@ -87,4 +87,26 @@ test("computeFinanceReversals: summerer prize + sponsor_race_day pr. hold, ignor
 
 test("computeFinanceReversals: tom liste ved ingen transaktioner", () => {
   assert.deepEqual(computeFinanceReversals({ transactions: [], raceIds: ["race-1"] }), []);
+});
+
+test("partitionTier4FullReset: ALLE løb medtages i allIds — completed/prize_paid → toReverse, resten → toDeleteScheduled", () => {
+  const races = [
+    { id: "a", name: "Completed lovlig", race_class: "Class1", status: "completed", prize_paid_at: "2026-07-01T00:00:00Z" },
+    { id: "b", name: "Completed uden prize_paid_at", race_class: "Monuments", status: "completed", prize_paid_at: null },
+    { id: "c", name: "Prize paid men status weird", race_class: "Class2", status: "in_progress", prize_paid_at: "2026-07-02T00:00:00Z" },
+    { id: "d", name: "Scheduled lovlig", race_class: "Class1", status: "scheduled", prize_paid_at: null },
+    { id: "e", name: "Scheduled ulovlig", race_class: "Monuments", status: "scheduled", prize_paid_at: null },
+  ];
+  const { toReverse, toDeleteScheduled, allIds } = partitionTier4FullReset({ races });
+  // Fuld nulstilling: alle 5 slettes uanset klasse/lovlighed.
+  assert.deepEqual(allIds.sort(), ["a", "b", "c", "d", "e"]);
+  assert.deepEqual(toReverse.map((r) => r.id).sort(), ["a", "b", "c"]);
+  assert.deepEqual(toDeleteScheduled.map((r) => r.id).sort(), ["d", "e"]);
+});
+
+test("partitionTier4FullReset: tom input → tomme lister", () => {
+  const { toReverse, toDeleteScheduled, allIds } = partitionTier4FullReset({ races: [] });
+  assert.deepEqual(toReverse, []);
+  assert.deepEqual(toDeleteScheduled, []);
+  assert.deepEqual(allIds, []);
 });

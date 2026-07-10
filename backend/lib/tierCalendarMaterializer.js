@@ -235,7 +235,12 @@ export function buildTierMaterializationPlan({
 export async function materializeTierCalendars({
   supabase, seasonId, seasonStartDate = null, from = new Date(),
   baseSeed = 1, tiers = null, forceTiers = [], dryRun = true, log = () => {},
-  realDays = 28, quotas = TIER_GAME_DAY_QUOTA,
+  // realDays + quotas definerer VINDUET (from..from+realDays) og kvoten pr. tier
+  // (design-default: 140/112/84/56 = TIER_DENSITY × 28 dage). #2276 rest-af-sæson-reparation
+  // (ejer-beslutning 10/7) overstyrer BEGGE eksplicit for ét tier (fx tier 4: tæthed 3,
+  // forkortet vindue) — se repair2276Div4Cascade.js. density overstyrer KUN når eksplicit
+  // angivet; default TIER_DENSITY bruges ellers uændret (design-tæthederne må ikke røres).
+  realDays = 28, quotas = TIER_GAME_DAY_QUOTA, density = TIER_DENSITY,
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -270,7 +275,7 @@ export async function materializeTierCalendars({
       .map((r) => r.name)
   );
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, usedRaceNames });
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
