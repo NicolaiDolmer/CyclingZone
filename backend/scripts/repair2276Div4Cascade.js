@@ -116,7 +116,7 @@ async function computeDiv4RestOfSeasonWindow({ supabase, seasonId, lowerTierPool
  * med override-tæthed/kvote for tier 4 og usedRaceNames seedet fra tier 1-3 (cross-tier-dedup
  * holder selv når kun tier 4 materialiseres i dette kald).
  */
-async function buildDiv4RepairPlan({ supabase, seasonId, seasonStartDate, tier4PoolIds, tier1to3Names, from, realDays }) {
+async function buildDiv4RepairPlan({ supabase, tier4PoolIds, tier1to3Names, from, realDays }) {
   const { data: divisions, error: dErr } = await supabase
     .from("league_divisions").select("id, tier, pool_index, label").in("id", tier4PoolIds);
   if (dErr) throw new Error(`league_divisions (div4-plan): ${dErr.message}`);
@@ -259,7 +259,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   const { from, seasonEnd, realDays } = await computeDiv4RestOfSeasonWindow({ supabase, seasonId: season.id, lowerTierPoolIds, now });
   log(`\n── Sektion 3: NY KALENDER (rest-af-sæson, ejer-beslutning 10/7): ${from.toISOString().slice(0, 10)} → ${seasonEnd.toISOString().slice(0, 10)} (${realDays} IRL-dage) · tæthed ${DIV4_REPAIR_DENSITY} · kvote ${DIV4_REPAIR_DENSITY * realDays} ──`);
   const { tier4Plan } = await buildDiv4RepairPlan({
-    supabase, seasonId: season.id, seasonStartDate: season.start_date, tier4PoolIds, tier1to3Names, from, realDays,
+    supabase, tier4PoolIds, tier1to3Names, from, realDays,
   });
   formatDailyCalendar({ tier4Plan, from, log });
 
