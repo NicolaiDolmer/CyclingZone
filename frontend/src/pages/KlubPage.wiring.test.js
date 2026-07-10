@@ -28,3 +28,14 @@ test("KlubPage rendrer sporene i TRACK_ORDER og staff-panelet", () => {
 test("KlubPage bruger klub-namespace", () => {
   assert.match(src, /useTranslation\("klub"\)/);
 });
+
+test("KlubPage grupperer live faciliteter før coming-soon (#1441 Slice 1)", () => {
+  assert.match(src, /groupedFacilities/);
+  assert.match(src, /filter\(\(f\) => f\.effectLive\)/);
+  assert.match(src, /filter\(\(f\) => !f\.effectLive\)/);
+});
+
+test("KlubPage viser intro + sæson-omkostning i klartekst", () => {
+  assert.match(src, /page\.intro/);
+  assert.match(src, /cost\.seasonLine/);
+});

@@ -2,6 +2,7 @@
   "page": {
     "title": "Klub",
     "subtitle": "Faciliteter og staff",
+    "intro": "Faciliteter får dine ryttere til at udvikle sig hurtigere, restituere bedre og scoute skarpere. Hver facilitet du bygger koster penge hver sæson, så invester der hvor det passer din plan.",
     "balance": "Saldo",
     "division": "Division {division}"
   },
@@ -9,7 +10,8 @@
   "cost": {
     "upkeep": "Drift",
     "payroll": "Lønninger",
-    "balance": "Saldo"
+    "balance": "Saldo",
+    "seasonLine": "Hver sæson betaler du {upkeep} drift + {payroll} løn = {total} CZ$. Læg budget før du opgraderer."
   },
   "facilities": {
     "tier": "Tier {tier} / {max}",
@@ -17,7 +19,12 @@
     "upgradeTo": "Opgradér til T{tier}",
     "buildTier": "Byg T{tier}",
     "upkeep": "Drift {amount}/sæson",
-    "maxed": "Fuldt udbygget"
+    "maxed": "Fuldt udbygget",
+    "comingSoon": "Kommer snart"
+  },
+  "roi": {
+    "training": "Dine ryttere træner {value} hurtigere hver dag",
+    "trainingBuild": "Byg den for at begynde at træne dine ryttere hurtigere"
   },
   "effect": {
     "label": "Effekt",
@@ -26,13 +33,12 @@
     "note": "Ikke alle effekter er aktive endnu"
   },
   "tracks": {
-    "training": { "name": "Træningscenter", "effect": "træning" },
-    "scouting": { "name": "Scouting-netværk", "effect": "rytter-indsigt" },
-    "medical": { "name": "Medicinsk afdeling", "effect": "restitution" },
-    "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots" },
-    "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)" }
+    "training": { "name": "Træningscenter", "effect": "træning", "soon": "Hurtigere rytter-udvikling" },
+    "scouting": { "name": "Scouting-netværk", "effect": "rytter-indsigt", "soon": "Skarpere rytter-indsigt" },
+    "medical": { "name": "Medicinsk afdeling", "effect": "restitution", "soon": "Hurtigere restitution" },
+    "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots", "soon": "Flere intake-slots" },
+    "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)", "soon": "Langsigtet sponsor-indtægt" }
   },
-  "commercial": { "sinkTag": "Langsigtet sponsor-satsning", "sinkNote": "Bygger sponsor-indtægt over tid frem for at tjene sig hjem nu." },
   "roles": {
     "training": "Sportsdirektør",
     "scouting": "Chefscout",
