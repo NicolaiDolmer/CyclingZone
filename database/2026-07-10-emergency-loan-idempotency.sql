@@ -30,6 +30,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_emergency_loan_per_team_season
 
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS emergency_loan_streak INTEGER NOT NULL DEFAULT 0;
 
+-- Den gamle 5-arg-signatur SKAL droppes før 6-arg-versionen oprettes: CREATE OR
+-- REPLACE med ændret parameterliste laver en NY overload, og 5-arg-kald bliver
+-- derefter tvetydige ("function is not unique") pga. DEFAULT på p_season_id.
+DROP FUNCTION IF EXISTS create_emergency_loan_atomic(UUID, BIGINT, NUMERIC, NUMERIC, BIGINT);
+
 CREATE OR REPLACE FUNCTION create_emergency_loan_atomic(
   p_team_id UUID, p_amount_needed BIGINT, p_origination_fee_pct NUMERIC,
   p_interest_rate NUMERIC, p_debt_ceiling BIGINT, p_season_id UUID DEFAULT NULL
