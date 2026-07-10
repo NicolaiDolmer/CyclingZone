@@ -2,6 +2,8 @@
 
 Fuldt audit af finance/økonomi-backend + Finance-siden. Alle fund er konverteret til issues; dette dokument er indekset + ejer-beslutningerne.
 
+> **Status 11/7: ALLE 7 issues shippet til prod** (v6.76–v6.80, PR #2312/#2314/#2316/#2319/#2322/#2324/#2325 + reset-FK-fix #2318; begge migrationer applied+verificeret). Opfølgninger: rente/hovedstol-split på repayment-posten (udskudt fra #2304, mangler issue) · balance-over-tid-graf (droppet stretch fra #2306) · `authenticated`-GRANTs på penge-RPC'er bør sikkerhedsreviewes. Læring: `.claude/learnings/2026-07-11-season-fk-must-ship-with-reset-handling.md`.
+
 ## Korrekthedsfejl → issues
 
 | Issue | Fund | Prioritet |
