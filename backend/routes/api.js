@@ -123,6 +123,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
+import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
@@ -1181,8 +1182,14 @@ async function loadScoutState(teamId) {
 router.get("/scouting/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const { state } = await loadScoutState(req.team.id);
-    res.json({ ...state, teamId: req.team.id });
+    const [{ state }, scoutSystemEnabled] = await Promise.all([
+      loadScoutState(req.team.id),
+      isScoutSystemEnabled(),
+    ]);
+    // #2244: mens job-modellen er 'on' rapporteres den ved siden af den gamle
+    // slots-state (slots-tal er da uændrede/historiske — job-modellen er sandheden).
+    const jobModel = scoutSystemEnabled ? await getScoutState(req.team.id, supabase) : null;
+    res.json({ ...state, teamId: req.team.id, scoutSystemEnabled, ...(jobModel ? { jobModel } : {}) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1218,13 +1225,92 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
   }
 });
 
+// #2244 Fase 3 — job-model kill-switch (samme semantik som race_engine_v2_enabled:
+// et binært on/off, IKKE en beta-gate). Mens 'off' fungerer de gamle slots-endpoints
+// uændret; når 'on' erstattes POST /scouting/:riderId (slots) af job-modellen, og
+// GET /scouting/me rapporterer job-model-state ved siden af slots-state.
+async function isScoutSystemEnabled() {
+  const stage = await readFlagStage(supabase, "scout_system_enabled");
+  return evaluateFlagStage(stage);
+}
+
+async function resolveActiveSeasonId() {
+  const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+  return season?.id ?? null;
+}
+
+// GET /api/scouting/central — job-model-state for Scouting-central (#2244):
+// spejder, aktive opgaver, afsluttede opgaver (shortlist-feed for missioner).
+// Ingen potentiale-reads her — getScoutState returnerer kun assignment-rækker
+// (rider_id-referencer + resultat-metadata), aldrig rå riders.potentiale.
+router.get("/scouting/central", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const state = await getScoutState(req.team.id, supabase);
+    res.json({ teamId: req.team.id, ...state });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/scouting/assignments — start en målrettet opgave eller mission.
+// Body: { kind: 'target', riderId } | { kind: 'mission', criteria }.
+router.post("/scouting/assignments", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const kind = req.body?.kind;
+  try {
+    const seasonId = await resolveActiveSeasonId();
+    if (!seasonId) return res.status(409).json({ error: "no_active_season" });
+
+    let result;
+    if (kind === "target") {
+      const riderId = req.body?.riderId;
+      if (!riderId) return res.status(400).json({ error: "riderId required" });
+      result = await startTargetAssignment({ teamId: req.team.id, riderId, seasonId }, supabase);
+    } else if (kind === "mission") {
+      const criteria = req.body?.criteria;
+      if (!criteria?.scope) return res.status(400).json({ error: "criteria.scope required" });
+      result = await startMission({ teamId: req.team.id, criteria, seasonId }, supabase);
+    } else {
+      return res.status(400).json({ error: "invalid_kind" });
+    }
+
+    if (!result.ok) return res.status(409).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/scouting/assignments/:id/cancel — annullér en aktiv opgave. Ingen
+// refusion v1 (spec-beslutning).
+router.post("/scouting/assignments/:id/cancel", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const result = await cancelAssignment({ teamId: req.team.id, assignmentId: req.params.id }, supabase);
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/scouting/:riderId — brug ét scout-slot på en rytter (indsnævrer
 // estimatet ét niveau). Håndhæver slot-kapacitet + maxLevel. Idempotens er
 // bevidst FRA: hver handling forbruger et slot (det er ressource-mekanikken).
+// #2244: gated bag scout_system_enabled kill-switch — når job-modellen er 'on'
+// er slots-modellen afløst; denne route returnerer 410 og henviser til
+// POST /scouting/assignments.
 router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   try {
+    if (await isScoutSystemEnabled()) {
+      return res.status(410).json({
+        error: "slots_model_retired",
+        message: "Scouting is now a job-based system — use POST /api/scouting/assignments.",
+      });
+    }
     const { activeSeasonId, state } = await loadScoutState(req.team.id);
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
 

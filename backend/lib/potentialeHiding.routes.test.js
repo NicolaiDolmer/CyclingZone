@@ -98,6 +98,27 @@ test("migrationen maskerer både riders.potentiale og rider_derived_abilities.hi
   assert.match(migrationSource, /column_name <> 'hidden_potential'/);
 });
 
+test("#2244: nye scouting-central/assignments-endpoints emitter aldrig potentiale/exact-felter", () => {
+  // GET /scouting/central + POST /scouting/assignments(/:id/cancel) returnerer
+  // KUN assignment-metadata (rider_id-referencer, cost, dates, status) — aldrig
+  // rå potentiale eller det udfasede `exact`-felt (#2244 A3 fjernede exact helt).
+  for (const marker of ['"/scouting/central"', '"/scouting/assignments"', '"/scouting/assignments/:id/cancel"']) {
+    const idx = apiSource.indexOf(marker);
+    assert.ok(idx !== -1, `${marker}-routen skal findes`);
+    const block = apiSource.slice(idx, idx + 1000);
+    assert.doesNotMatch(block, /\bpotentiale\b/, `${marker} må ikke referere potentiale`);
+    assert.doesNotMatch(block, /\bexact\b/, `${marker} må ikke referere det udfasede exact-felt`);
+  }
+});
+
+test("#2244: POST /scouting/:riderId (slots) er kill-switch-gatet bag scout_system_enabled", () => {
+  const idx = apiSource.indexOf('router.post("/scouting/:riderId"');
+  assert.ok(idx !== -1, "POST /scouting/:riderId skal findes");
+  const block = apiSource.slice(idx, idx + 1000);
+  assert.match(block, /isScoutSystemEnabled\(\)/, "routen skal tjekke scout_system_enabled-flaget");
+  assert.match(block, /410/, "routen skal returnere 410 når job-modellen er slået til");
+});
+
 test("scout-svaret returnerer kun det maskerede estimat — aldrig rå potentiale (#1162)", () => {
   // POST /scouting/:riderId returnerer estimate: buildScoutEstimate(...) — find
   // response-blokken og verificér at rå rider.potentiale ikke er i payloaden.
