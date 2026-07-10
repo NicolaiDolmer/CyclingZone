@@ -212,6 +212,7 @@
     "chairmanTitle": "Board chairman",
     "wildcard": "Wildcard",
     "identityMatch": "Identity match",
+    "weightsHeading": "What this member weighs",
     "viewProfile": "View board member"
   },
   "dna": {
@@ -498,6 +499,27 @@
     "goals": "{met}/{total} goals met",
     "flat": "no change",
     "unknownRace": "Race weekend"
+  },
+  "transparency": {
+    "progressTowards": "On its way to {target}%",
+    "progressAtTarget": "Already at target ({target}%)",
+    "passiveModifier": {
+      "strong_boost": "Board is very pleased: sponsor income +{pct}%",
+      "boost": "Board is pleased: sponsor income +{pct}%",
+      "neutral": "Board is neutral: no sponsor effect",
+      "penalty": "Board is unhappy: sponsor income {pct}%",
+      "strong_penalty": "Board is very unhappy: sponsor income {pct}%"
+    },
+    "chairmanWarning": "One more disappointing plan expiry and the board replaces the chairman",
+    "bonusOfferClose": "{count} goal from a bonus offer",
+    "bonusOfferClose_plural": "{count} goals from a bonus offer",
+    "bonusOfferSatisfactionGap": "Needs satisfaction above {threshold}% for a bonus offer",
+    "bonusOfferEligible": "Eligible for a bonus offer",
+    "tradeoff": {
+      "heading": "Locked in from an earlier request",
+      "tighten_identity_riders": "Your next plan requires {delta} more identity rider(s)",
+      "raise_sponsor_growth_target": "Your next plan's sponsor growth target rises by {deltaPct}%"
+    }
   },
   "feedback": {
     "awaitingData": {

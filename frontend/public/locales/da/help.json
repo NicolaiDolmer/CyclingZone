@@ -864,6 +864,30 @@
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
       "a": "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og målet tilføjes til din 1-årsplan og evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt."
     },
+    "boardSatisfactionArrow": {
+      "q": "Hvad betyder pilen/prognosen under mit tilfredsheds-tal?",
+      "a": "Den viser hvor tilfredsheden er på vej hen, ikke kun hvor den er lige nu. Hver løbsweekend kører bestyrelsen en fuld evaluering af din nuværende sæson og beregner et target ud fra din sæson-start-tilfredshed plus den evaluering. Det løbende tal bevæger sig derefter mod target med højst 5 point pr. weekend (samme clamp som beskrevet under 'Hvad er bestyrelsens tilfredshed?'), så du kan se 'på vej mod 71%' før det rent faktisk når derhen. Er tallet allerede ved target, ser du i stedet 'allerede ved target'."
+    },
+    "boardChairmanWarning": {
+      "q": "Hvad betyder den røde advarsel om formanden?",
+      "a": "Den vises når dit hold allerede har ét plan-udløb i træk under 30% tilfredshed registreret. Endnu ét skuffende plan-udløb i træk udskifter formanden med en ny arketype, jf. reglen beskrevet under 'Hvad laver bestyrelsesformanden?'. Advarslen forsvinder igen når en plan fornyes med tilfredshed over tærsklen, hvilket nulstiller tælleren."
+    },
+    "bonusOfferDistance": {
+      "q": "Hvordan ved jeg hvor tæt jeg er på et bonustilbud?",
+      "a": "Hvert plan-kort viser din afstand til bonustilbuds-berettigelse (tilfredshed over 75% OG mindst 75% af målene nået, se 'Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?'). Er tilfredsheden stadig for lav, ser du hvor mange point der mangler; når tilfredsheden er over stregen, ser du hvor mange flere mål du skal ramme ('2 mål fra et bonustilbud'). Er begge betingelser opfyldt, står der bare at du er kvalificeret."
+    },
+    "boardMemberWeights": {
+      "q": "Hvad vægter et bestyrelsesmedlem når jeg åbner deres kort?",
+      "a": "Klik på et medlem i avatar-gridet for at åbne deres kort. Under beskrivelsen ser du de fire feedback-kategorier (resultater, økonomi, identitet, rangering) med en bar pr. kategori, der viser hvor kraftigt netop det medlems arketype vægter hver af dem. Det er den samme vægtning bestyrelses-motoren bruger til at vælge hvilket medlem der 'taler' om en given mål-reaktion, nu gjort synlig i stedet for kun brugt internt."
+    },
+    "boardTradeoffWarning": {
+      "q": "Hvad er tradeoff-varslet på et plan-kort?",
+      "a": "Nogle bestyrelses-forespørgsler du godkender (fx lempet resultat-pres eller lempede identitetskrav) kommer med en låst pris for din NÆSTE plan-forhandling, fx ét ekstra identitetskrav eller et højere sponsor-vækstmål. I det tilfælde viser plan-kortet et lille tradeoff-kort der forklarer præcis hvad der kommer, så du ikke bliver overrasket ved næste forhandling."
+    },
+    "boardPassiveModifierLayer": {
+      "q": "Hvad er den lille linje om sponsor-modifieren under mit tilfredsheds-tal?",
+      "a": "Det er lag 1 i konsekvens-systemet: den passive sponsor-modifier der allerede følger din tilfredshed live (±20% i yderpunkterne, se 'Hvad er bestyrelsens tilfredshed?'). Den viste hidtil kun et rå '×1.10'-tal; nu er der også en kort sætning der beskriver effekten i klart sprog, så det er tydeligt at dette allerede er aktivt, før nogen af de hårdere konsekvens-lag (2-6) rammer."
+    },
     "clubDnaFaq": {
       "q": "Hvad er klub-DNA og hvornår vælger jeg det?",
       "a": "Klub-DNA er din klubs identitet, én af 5 håndlavede arketyper: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv eller Britisk all-rounder. Du vælger det fra starten af sæson 1, så snart bestyrelsen er åben. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner, leveres i opfølgningsslice)."

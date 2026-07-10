@@ -212,6 +212,7 @@
     "chairmanTitle": "Bestyrelsesformand",
     "wildcard": "Wildcard",
     "identityMatch": "Identitetsmatch",
+    "weightsHeading": "Hvad dette medlem vægter",
     "viewProfile": "Se bestyrelsesmedlem"
   },
   "dna": {
@@ -498,6 +499,27 @@
     "goals": "{met}/{total} mål nået",
     "flat": "ingen ændring",
     "unknownRace": "Løbsweekend"
+  },
+  "transparency": {
+    "progressTowards": "På vej mod {target}%",
+    "progressAtTarget": "Allerede ved target ({target}%)",
+    "passiveModifier": {
+      "strong_boost": "Bestyrelsen er meget tilfreds: sponsorindtægt +{pct}%",
+      "boost": "Bestyrelsen er tilfreds: sponsorindtægt +{pct}%",
+      "neutral": "Bestyrelsen er neutral: ingen sponsoreffekt",
+      "penalty": "Bestyrelsen er utilfreds: sponsorindtægt {pct}%",
+      "strong_penalty": "Bestyrelsen er meget utilfreds: sponsorindtægt {pct}%"
+    },
+    "chairmanWarning": "Endnu ét skuffende plan-udløb udskifter formanden",
+    "bonusOfferClose": "{count} mål fra et bonustilbud",
+    "bonusOfferClose_plural": "{count} mål fra et bonustilbud",
+    "bonusOfferSatisfactionGap": "Kræver tilfredshed over {threshold}% for et bonustilbud",
+    "bonusOfferEligible": "Kvalificeret til et bonustilbud",
+    "tradeoff": {
+      "heading": "Låst fra en tidligere forespørgsel",
+      "tighten_identity_riders": "Din næste plan kræver {delta} flere identitets-ryttere",
+      "raise_sponsor_growth_target": "Din næste plans sponsor-vækstmål stiger med {deltaPct}%"
+    }
   },
   "feedback": {
     "awaitingData": {
