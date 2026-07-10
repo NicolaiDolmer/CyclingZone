@@ -14,7 +14,7 @@
     "intake": "intake quality", "growth": "growth rate",
     "negotiation": "negotiation", "marketing": "marketing"
   },
-  "effect": { "body": "This chief's overall rating ({rating}) drives how much of the facility's effect is realised. Only the training track's effect is live today; the others show their target and activate as each engine lands." },
+  "effect": { "body": "This chief's overall rating ({rating}) drives how much of the facility's effect is realised. The Training Center is active in-game today; the others are coming soon and show what they will do once they go live." },
   "history": { "body": "Contract history and tenure will appear here once staff contracts land." },
   "switcher": { "count": "{index} / {total}" }
 }

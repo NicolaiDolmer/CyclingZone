@@ -21,9 +21,9 @@
   },
   "effect": {
     "label": "Effekt",
-    "live": "live",
-    "target": "mål",
-    "note": "Effekt-kolonnen viser mål-modellen. Hvert spors effekt i spillet aktiveres når dets motor lander."
+    "live": "Aktiv nu",
+    "target": "Kommer snart",
+    "note": "Ikke alle effekter er aktive endnu"
   },
   "tracks": {
     "training": { "name": "Træningscenter", "effect": "træning" },
@@ -32,7 +32,7 @@
     "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots" },
     "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)" }
   },
-  "commercial": { "sinkTag": "Rent sink · Fase 4-payoff", "sinkNote": "Betaler sig aldrig tilbage: bevidst design." },
+  "commercial": { "sinkTag": "Langsigtet sponsor-satsning", "sinkNote": "Bygger sponsor-indtægt over tid frem for at tjene sig hjem nu." },
   "roles": {
     "training": "Sportsdirektør",
     "scouting": "Chefscout",
