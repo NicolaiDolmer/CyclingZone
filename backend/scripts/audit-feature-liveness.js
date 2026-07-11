@@ -83,129 +83,51 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 // Detector A: tabeller der naturligt er tomme i prod (post-reset, sæson-state-tabeller, etc.)
 // Halv-permanent: tilføj entry når en finding er bekræftet "intentional empty".
 const WHITELIST_EMPTY_TABLES = new Set([
-  // Reset af beta-state tømmer disse — de fyldes når sæson 1 + transfer-window kører
-  "transfer_offers",
-  "swap_offers",
-  // loan_agreements (rytter-lejeaftaler) er søsterbord til transfer_offers/swap_offers
-  // ovenfor: rytter-markeds-state der tømmes af beta-reset (RESET_DELETE_TARGETS i
-  // betaResetService.js). Skriv-path verificeret: POST /api/loans (api.js) →
-  // insert({status:"pending"}) med fejl surfacet (ingen stilfærdig rollback); frontend
-  // når den via TransfersPage NewLoanForm + RiderStatsPage. 0 rows fordi ingen rytter-
-  // leje er oprettet endnu i frisk sæson 1 (relaunch 2026-06-18) — ikke broken. Bemærk:
-  // lån-bugs #45/#97 er FINANSIELLE lån (loans-tabellen), ikke denne. Fjern når rows.
-  "loan_agreements",
-  "race_results",
-  "season_standings",
+  // --- Midlertidige suppressioner (fjern entry når tabellen har rows) ---
+  // 2026-07-10 (#2298): 20 stale entries fjernet — deres tabeller har nu rows i prod
+  // (race_results 125k, board_satisfaction_events 36k, race_entries 17k, m.fl.),
+  // så Detector A dækker dem igen. Historik i issue #2298.
+  //
+  // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // Pending-imports er per-batch state — tomme uden for active import
-  "pending_race_results",
-  "pending_race_result_rows",
-  // Board-tabeller er milestone-gated (skriv-paths fyrer ved sæson-end / manager-action).
-  // Bekræftet i b53d831 + #284 — ikke broken, sæson 1 starter ~2026-05-15.
-  "board_consequences",
-  "board_request_log",
-  "team_board_members",
-  // Løbende bestyrelses-tilfredshed event-log (#1451/#1187): boardWeekendFinalization.js
-  // upserter én row pr. (board, race) ved board-weekend-finalization — wired ind i begge
-  // finalization-stier (raceRunner.simulateRace + pcmResultsImport.importPcmResults), "én
-  // opdatering pr. finaliserings-event (typisk = én løbsweekend)". Samme milestone-gating
-  // som board-tabellerne ovenfor: bevidst tom indtil første weekend-finalization med et race
-  // fylder den (race-motoren er gated bag RACE_ENGINE_V2_ENABLED indtil 20/6-relaunch, #1103).
-  // Skriv-path verificeret i boardWeekendFinalization.js. Fjern denne entry når tabellen har rows.
-  "board_satisfaction_events",
-  // Besøgs-log (#963) — bevidst tom ved oprettelse. Fyldes når PR #992-koden er
-  // deployet og rigtige brugere åbner rytter-profiler; hele pointen er at BEGYNDE
-  // at opsamle nu, så popularitet (#957) har historik. Skriv-path verificeret i
-  // POST /api/riders/:id/view. Fjern denne whitelist-entry når tabellen har rows.
-  "rider_profile_views",
-  // Light race-motor (#1102) skriver run-snapshots når RACE_ENGINE_V2_ENABLED er ON;
-  // flaget er seedet OFF, så tabellen er bevidst tom indtil motoren aktiveres.
-  // Skriv-path verificeret i raceRunner.js. Fjern når flag tændes + tabellen har rows.
-  "race_simulation_runs",
   // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
   // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
   // tabellen har rows.
   "rider_development_log",
-  // Scouting L1 (#1138) skriver én row pr. scout-handling. Bevidst tom ved oprettelse —
-  // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
-  // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
-  "scout_actions",
   // Talentspejder Fase 3 sweep-dedup (#2244, merged 2026-07-10): scoutSweep.js insert'er
   // ÉN row pr. (team_id, tick_date) som reservation-mutex FØR den modner et holds
   // scout_assignments (mirror af training_day_runs). Skrives KUN inde i sweep-vinduet
   // (shouldSweepNow: Copenhagen-time ≥ 22) OG kun hvis holdet har modne assignments
   // (matured.length > 0). Featuren merged samme dag, så tabellen er naturligt tom indtil
-  // cron'en rammer vinduet med et modent job — samme "write-but-no-data indtil sweep
-  // kører"-mønster som scout_actions/nps_responses ovenfor, ikke broken. Skriv-path
-  // verificeret i backend/lib/scoutSweep.js (runScoutSweep, reservation-insert).
+  // cron'en rammer vinduet med et modent job. Skriv-path verificeret i
+  // backend/lib/scoutSweep.js (runScoutSweep, reservation-insert).
   // TODO(2026-07-10): fjern denne entry når tabellen har rows (tjek efter første
   // sweep-vindue der rammer et modent scout_assignment).
   "scout_sweep_runs",
-  // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
-  // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
-  // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-
-  // køer; fandt den 2026-06-11 efter outboxen var drænet. Skriv-path verificeret
-  // i discordDmOutbox.js (enqueueDm).
-  "discord_dm_outbox",
-  // Race-motor #1306/#1307: startfelt skrives af raceRunner.js (per-hold autopick, #1307) når
-  // RACE_ENGINE_V2_ENABLED er ON; flaget er seedet OFF indtil 20/6-relaunch
-  // (flag-flip = #1103-checklisten). Fjern når flag tændes + tabellen har rows.
-  "race_entries",
-  // Form/træthed #1306: raceFatigue.js skriver rytter-condition ved løbsafvikling
-  // bag samme RACE_ENGINE_V2_ENABLED-flag. Bevidst tom indtil 20/6-flag-flip (#1103).
-  "rider_condition",
-  // Stage-kalender (WS1 Fase 3): race_stage_schedule fyldes af backfillRaceScheduledFor.js
-  // (insert af ét scheduled_at pr. (race, etape)). Backfill + stage-scheduler er gated bag
-  // runtime-flag stage_scheduler_enabled (fail-safe OFF indtil 20/6-relaunch, #1103), så
-  // tabellen er bevidst tom indtil flaget flippes og backfillen kører. Skriv-path verificeret
-  // i backend/scripts/backfillRaceScheduledFor.js. Fjern denne entry når tabellen har rows.
-  "race_stage_schedule",
-  // Daglig træning #1305 Fase A: dailyTrainingEngine.js skriver run-log pr.
-  // træningsdag, gated af isDailyTrainingEnabled (DB-flag, seedet OFF indtil
-  // 20/6-relaunch, #1103). Fjern når flag tændes + tabellen har rows.
-  "training_day_runs",
-  // Akademi-MVP #1308: academyIntake.js skriver intake-kuld (runAcademyIntake) gated
-  // af academy_enabled (DB-flag, seedet OFF indtil 20/6-relaunch, #1103). Tabellen blev
-  // oprettet ved Fase A-merge (migration anvendt), men fyldes først når flaget flippes
-  // ved relaunch. Skriv-path verificeret i academyIntake.js. Fjern når flag tændes + rows.
-  "academy_intake",
   // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
-  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22, del af
-  // det academy_enabled-gatede flow (DB-flag, seedet OFF indtil 20/6-relaunch, #1103).
-  // Samme flag-gated mønster som academy_intake ovenfor; tabellen fyldes først ved
-  // relaunch. Skriv-path verificeret i academyGraduation.js. Fjern når flag tændes + rows.
+  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22. Tabellen
+  // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
+  // i academyGraduation.js. Fjern denne entry når tabellen har rows.
   "academy_graduation",
-  // Signup-attribution (#679/#1408, genoplivet i #2069/#2079): fire-and-forget upsert
-  // kører på FØRSTE team-create (signup-bootstrap) i PUT /api/teams/my, men KUN når
-  // klienten sender en attribution-payload med et signal (utm_*/referrer/landing_path) —
-  // direkte signups uden UTM/referrer skriver ingen row (buildAttributionRow returnerer
-  // null). Tabellen var 100% tom 15/6-2/7 fordi email-confirm var slået til og KUN
-  // LoginPage-bootstrappen sendte attribution (#2079's rod-årsag). Fixet 2-3/7: alle tre
-  // team-create-stier (LoginPage, Layout-bootstrap, SetupWizardModal) sender nu attribution
-  // med user_metadata som cross-device-fallback. De 65 historiske signups er tabt (accepteret).
-  // TODO(2026-07-10): fjern denne entry når tabellen har rows (tjek efter TdF-kampagnen 4/7).
-  "signup_attribution",
-  // In-app NPS (#940, shippet 2026-06-25): nps_responses fyldes KUN når en bruger
-  // afgiver et NPS-svar (0-10 + valgfri fritekst). Skriv-path verificeret: klienten
-  // insert'er via RLS-policy nps_responses_insert_own (eget user_id, fejl surfacet —
-  // ingen stilfærdig rollback); frontend når den via NpsPrompt-toasten der trigges
-  // efter første løb-resultat (TeamResultsTab, eget hold). Bevidst tom indtil den
-  // første bruger svarer — ikke broken. Samme "write-but-no-data indtil brugerne
-  // handler"-mønster som scout_actions ovenfor. Fjern denne entry når
-  // tabellen har rows.
-  "nps_responses",
-  // Afmeld-state (race-hub Fase 0b, #1810): raceWithdrawal.js skriver én row pr.
-  // frivillig afmelding (withdraw/reinstate) bag flaget auto_entry_generator_enabled
-  // (seedet OFF) — og afmeld-UI'et findes først i race-hub Fase 1. Tabellen blev oprettet
-  // ved #1810-merge (migration anvendt) men er bevidst tom indtil afmeldinger sker.
-  // Skriv-path verificeret i raceWithdrawal.js. Fjern denne entry når tabellen har rows.
-  "race_withdrawals",
   // CZ Pro billing-rails (#1903, PR #1909 merged 2/7): subscriptions fyldes først når
-  // Alunta-checkout/webhook går live (ejer-opsætning planlagt senest 6/7: plan + tokens
-  // i Infisical + test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
+  // Alunta-checkout/webhook går live (ejer-opsætning: plan + tokens i Infisical +
+  // test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
   // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
   "subscriptions",
+  //
+  // --- PERMANENTE suppressioner (fjernes ALDRIG ved rows — tom = sund steady-state) ---
+  // Disse er dræn-til-tom-køer / per-batch transient state. Detector A's
+  // "write-but-no-data" mis-fyrer på dem by design; de hører IKKE til
+  // "fjern når rows"-oprydningen (#2298).
+  //
+  // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
+  // igen når den leveres (processDmOutboxDrain). Tom = alle DM'er leveret.
+  // Skriv-path verificeret i discordDmOutbox.js (enqueueDm).
+  "discord_dm_outbox",
+  // Pending-imports er per-batch state — tomme uden for et aktivt import-run.
+  "pending_race_results",
+  "pending_race_result_rows",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
@@ -285,49 +207,17 @@ const WHITELIST_NON_MIGRATION_SQL = new Set([
 // (fx nye events tilføjet uden at være shipped endnu, eller events på milestone-gated
 // features). Tilføj entry når en finding er bekræftet "intentional zero".
 const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
-  // Board consequences er milestone-gated (#284): eventet fyrer først når
-  // season-end consequences findes. Forventet naturlige impressions efter
-  // sæson 1-start omkring 2026-05-15.
-  "feature_board_consequences_panel_viewed",
-  // Survey-CTA-banner (#364) er gated bag admin-preview via app_config-flag
-  // indtil Tally-URL flippes (sprint uge 1 ons/tor). Naturlige impressions
-  // begynder efter flag-flip — fjern disse entries når banner går live for alle.
-  // Begge events fyrer reelt fra SurveyBanner.jsx (dismissed: linje 111,
-  // clicked: linje 105) — survey_banner_clicked whitelistet i #1650 (var listet
-  // i KNOWN_EVENTS men 0 impressions fordi banneret kun vises i admin-preview).
-  "survey_banner_dismissed",
+  // 2026-07-10 (#2298): 14 stale entries fjernet — deres events flyder nu i
+  // player_events (verificeret mod prod, 30-dages vindue). Historik i issue #2298.
+  //
+  // Survey-CTA-banner (#364): survey_banner_clicked fyrer reelt fra SurveyBanner.jsx,
+  // men 0 klik i 30-dages vinduet (dismissed flyder, clicked gør ikke) — behold
+  // indtil et klik er set. Fjern entry når eventet flyder (tjek player_events).
   "survey_banner_clicked",
-  // Academy + training (#1669): events fyrer reelt fra useAcademy.js / useTraining.js,
-  // men starter naturligt på 0 indtil de bagvedliggende motorer (academy_enabled,
-  // træningsmotoren) er aktive for spillere efter relaunch. Tilføjet til KNOWN_EVENTS
-  // i #1669 for canary-dækning; whitelistet her med samme mønster som funnel-events
-  // i PR #1660. Fjern hver entry når dens event flyder (tjek player_events).
-  "academy_sign",
-  "academy_reject",
-  "academy_free_agent_sign",
+  // Academy (#1669): academy_graduate fyrer først når en akademirytter når
+  // graduation-alderen (samme gating som academy_graduation-tabellen i Detector A).
+  // Fjern entry når eventet flyder (tjek player_events).
   "academy_graduate",
-  "training_focus_set_bulk",
-  "training_run_today",
-  // Pillar-event (#1168) instrumenteret 2026-06-10 sammen med firing-stien
-  // (useTraining.setPlan). Starter naturligt på 0 indtil spillere sætter fokus
-  // — fjern entry når events flyder (tjek player_events for training_focus_set).
-  "training_focus_set",
-  // Aktiverings-funnel (#1583) instrumenteret 2026-06-21 sammen med firing-stierne
-  // (LoginPage+DashboardPage signup, DashboardPage onboarding_completed,
-  // useAuctionBidding first_bid, RiderStatsPage first_transfer). Starter naturligt
-  // på 0 indtil nye signups gennemfører funnellen — fjern hver entry når dens
-  // event flyder (tjek player_events).
-  "signup",
-  "onboarding_completed",
-  "first_bid",
-  "first_transfer",
-  // Funnel-events instrumenteret 2026-06-25 (#940 målebølge) sammen med firing-
-  // stierne (team_drafted: DashboardPage når truppen er løbsklar; first_race_
-  // result_viewed: TeamResultsTab når en bruger ser sit EGET holds resultater).
-  // Starter naturligt på 0 indtil nye managere passerer trinene — fjern hver
-  // entry når dens event flyder (tjek player_events).
-  "team_drafted",
-  "first_race_result_viewed",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
