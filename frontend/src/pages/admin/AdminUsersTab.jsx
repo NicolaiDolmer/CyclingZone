@@ -5,6 +5,17 @@ import { formatCz, getRiderMarketValue } from "../../lib/marketValues";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { useTableSort } from "../../lib/useTableSort.js";
+import SortableTh from "../../components/ui/SortableTh.jsx";
+
+// Sorterbare kolonner (#2294) — bruger/email/rolle er tekst, hold sorteres på
+// holdnavn (division indgår ikke i sort-nøglen, kun i visningen).
+const USERS_SORT_ACCESSORS = {
+  user: (u) => u.username ?? null,
+  email: (u) => u.email ?? null,
+  role: (u) => u.role ?? null,
+  team: (u) => u.teams?.[0]?.name ?? null,
+};
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -144,6 +155,9 @@ export default function AdminUsersTab() {
 
   useEffect(() => { loadData(); }, []);
 
+  const { rows: sortedUsers, sort: usersSort, sortDir: usersSortDir, handleSort: handleUsersSort } =
+    useTableSort(users, USERS_SORT_ACCESSORS, { initialDir: "asc" });
+
   async function handleDeleteUser(userId, username, isTestAccount) {
     if (!confirm(`Slet bruger "${username}" permanent?\n\nHoldet bevares, men mister sin ejer. Notifikationer slettes.`)) return;
     // #2245: test-a/b/seller er permanente og er blevet slettet ved fejl under bulk-oprydning
@@ -195,18 +209,22 @@ export default function AdminUsersTab() {
           <p className="text-cz-3 text-sm">Ingen brugere endnu.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-cz-border">
-            <table data-sort-exempt="Admin brugerliste; sortering er opfoelgning" className="w-full text-xs min-w-[580px]">
+            <table data-sortable className="w-full text-xs min-w-[580px]">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-3 py-2 text-left text-cz-3">Bruger</th>
-                  <th className="px-3 py-2 text-left text-cz-3 hidden sm:table-cell">Email</th>
-                  <th className="px-3 py-2 text-left text-cz-3">Rolle</th>
-                  <th className="px-3 py-2 text-left text-cz-3 hidden md:table-cell">Hold</th>
+                  <SortableTh sortKey="user" sort={usersSort} sortDir={usersSortDir} onSort={handleUsersSort}
+                    className="px-3 py-2 text-left">Bruger</SortableTh>
+                  <SortableTh sortKey="email" sort={usersSort} sortDir={usersSortDir} onSort={handleUsersSort}
+                    className="px-3 py-2 text-left hidden sm:table-cell">Email</SortableTh>
+                  <SortableTh sortKey="role" sort={usersSort} sortDir={usersSortDir} onSort={handleUsersSort}
+                    className="px-3 py-2 text-left">Rolle</SortableTh>
+                  <SortableTh sortKey="team" sort={usersSort} sortDir={usersSortDir} onSort={handleUsersSort}
+                    className="px-3 py-2 text-left hidden md:table-cell">Hold</SortableTh>
                   <th className="px-3 py-2 text-right text-cz-3">Handlinger</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => {
+                {sortedUsers.map(u => {
                   const isTestAccount = !!u.teams?.[0]?.is_test_account;
                   return (
                   <tr key={u.id} className="border-b border-cz-border last:border-0">
