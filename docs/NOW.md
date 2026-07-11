@@ -20,7 +20,9 @@
 
 > **Session 11/7 eftermiddag:** [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering — headers klikbare (SortableTh + useTableSort), erstatter listing-niveau `sortListings`; TeamTransferHistoryTab-flag-byt rettet (profit-panel fik reel sortering, historik-tabel fik korrekt `data-sortable`); guard i `tableSortIntent.test.js` hærdet til at kræve en RIGTIG sort-mekanisme bag `data-sortable`. v6.82, PR #2332 MERGED, #2329 lukket (ejer: gennemklik transfers-tabellerne i prod — preview har ikke mock, #1834). Patch note-audit 8/7-11/7: 3 huller → v6.83 (PR #2333 MERGED; #2301 nødlån, #2302 atomisk afdrag, #2308 board-paritet). Discord-roundup postet af ejer 11/7. **#2264 løst + lukket (PR #2334, v6.84):** "aldersgrænse ≤20 på auktioner" var 3 forældreløse akademi-frie-agenter fra snyd-holds-lukningen (`is_academy=true` uden hold) — datareparation kørt i prod (ejer-go), frigivelses-stier nulstiller nu flaget, invariant-guard tilføjet, AI-rytter-auktionsknap skjult. Deploy READY.
 
-> **🤖 Working agent:** Claude Code (Fable) — #1974 trænings-transparens (gating-signal + interim copy); #2082 lukket verificeret 11/7.
+> **Session 11/7 aften:** #2082 lukket (var allerede shippet i PR #2202 4/7; migration + motor verificeret live i prod). #1974-slice: trænbarhedssignal pr. ryttertype i trænings-UI (fokus-dropdown-markører + chip + help/FAQ, v6.85) — PR #2335 auto-merge armeret på grønne checks. #1974 holdes åbent (rest: synligt potentiale via #1138 + GT/bakke-klassificering). **Ejer-verify:** træningssiden i prod — markører i fokus-dropdown + chip ved mis-matchet fokus. #2262 (unge-rate-tuning) urørt per ejer-ønske.
+
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
