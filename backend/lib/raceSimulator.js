@@ -25,7 +25,10 @@
 //   → samme rang. Stabil tiebreaker (rider_id) ved score-lighed. Ingen Math.random/Date.
 
 import { makeRng, gaussian } from "./fictionalRiderGenerator.js";
-import { workCost, teamRaceWeightV3 } from "./raceRoles.js";
+import { workCost, teamRaceWeightV3, formRaceWeightV3 } from "./raceRoles.js";
+// S2 (#2353): dagsform + jour sans — per-rytter-hashede, dedikerede streams
+// (raceDayForm.js); kaldes KUN når v3=true, konsumerer intet fra main-rng.
+import { dayFormComponent, jourSansComponent } from "./raceDayForm.js";
 
 export const ENGINE_VERSION = 1;
 // Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
@@ -88,12 +91,15 @@ export const FATIGUE_RACE_WEIGHT = 0.030;  // #1021: træthed 100 → 0.030 (kal
 // kun når der ER træthed (condition-mode / #1021), ikke i neutral-mode.
 export const DURABILITY_FATIGUE_DAMPING = 0.5;
 
-function formComponent(entrant /* , stageProfile, rng */) {
+// S2 (#2353): vægten er parametriseret — v1-kald bruger default FORM_RACE_WEIGHT
+// (bit-identisk flag-off), v3-kald sender formRaceWeightV3() (spec §7: 0.012 er
+// "reelt usynlig"; v3 gør formstyring til spillerens våben).
+function formComponent(entrant, weight = FORM_RACE_WEIGHT) {
   const raw = entrant?.form;
   // null/undefined/NaN = ingen condition-data → neutral (IKKE worst-form 0).
   if (raw == null || !Number.isFinite(Number(raw))) return 0;
   const form = clamp(Number(raw), 0, 100);
-  return ((form - 50) / 50) * FORM_RACE_WEIGHT;
+  return ((form - 50) / 50) * weight;
 }
 
 function fatigueComponent(entrant /* , stageProfile */) {
@@ -365,7 +371,9 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   const scored = ordered.map((e) => {
     const terrain = terrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
-    const form = formComponent(e, stageProfile, rng);
+    // S2 (#2353): v3 bruger den hævede form-vægt (formRaceWeightV3); v1-stien
+    // er uændret (default-vægt) — flag-off bit-identisk.
+    const form = formComponent(e, v3 ? formRaceWeightV3() : FORM_RACE_WEIGHT);
     const fatigue = fatigueComponent(e, stageProfile);
     const team = teamComponent(e, stageProfile, teamCtx, v3);
     const breakaway = breakawayById.get(e.rider_id) || 0;
@@ -374,12 +382,17 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     // korrekt (samme fortegns-konvention som breakaway/finale, modsat fatigue
     // der er en positiv magnitude trukket fra separat).
     const workCostDelta = workCostComponent(e, stageProfile, v3);
-    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta;
+    // S2 (#2353): dagsform (symmetrisk) + jour sans (≤0, form-koblet p) —
+    // per-rytter-hashede dedikerede streams, INTET forbrug af main-rng
+    // (noise-sekvensen ovenfor er bit-identisk med og uden v3).
+    const dayform = v3 ? dayFormComponent({ riderId: e.rider_id, stageSeed: seed }) : 0;
+    const jourSans = v3 ? jourSansComponent({ riderId: e.rider_id, stageSeed: seed, form: e.form }) : 0;
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans },
     };
   });
 

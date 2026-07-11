@@ -78,6 +78,35 @@ export const RACE_V3_TUNING = Object.freeze({
   // protect = fuld pris, normal = fuld pris (baseline), save = halv pris.
   EFFORT_COST_MULTIPLIER_SAVE: 0.5,
   EFFORT_COST_MULTIPLIER_DEFAULT: 1.0,
+
+  // ── S2 (#2353): dagsform + jour sans + form-vægt (spec §7) ──────────────────
+  // Dagsform: per (rytter, etape-seed) seeded normal-komponent — NAVNGIVET
+  // varians (optræder i why-rapporten som "stærk/tung dag"), IKKE en skrue på
+  // NOISE_SD_SCALE (gate-kalibreret, røres ikke). Spec-interval 0.012-0.018;
+  // start-kandidat 0.015; endelig værdi via S2-grid-sweep
+  // (docs/audits/2026-07-12-race-v3-s2-calibration.md).
+  DAYFORM_SD: envNum("RACE_V3_DAYFORM_SD", 0.015),
+
+  // Jour sans (kollapsdagen): Bernoulli pr. (rytter, etape). BASE-raten er
+  // grid-knappen (spec-interval 2-5%); form-koblingen skalerer den lineært
+  // mellem FORM_LOW og FORM_HIGH: form ≤ 40 → base × 5/3, form ≥ 70 →
+  // base × 2/3 (ved base 3% = spec §7's "5% ved form<40, 2% ved form>70"
+  // ordret). Manglende form-data → base (neutral, ikke worst-case — samme
+  // princip som formComponent's NaN-guard). Udfald: uniform i [MIN, MAX],
+  // trækkes fra scoren. Asymmetrien er pointen: favoritter der KNÆKKER.
+  JOUR_SANS_P_BASE: envNum("RACE_V3_JOUR_SANS_P", 0.03),
+  JOUR_SANS_FORM_LOW: 40,
+  JOUR_SANS_FORM_HIGH: 70,
+  JOUR_SANS_P_MULT_LOWFORM: 5 / 3,
+  JOUR_SANS_P_MULT_HIGHFORM: 2 / 3,
+  JOUR_SANS_MAGNITUDE_MIN: 0.05,
+  JOUR_SANS_MAGNITUDE_MAX: 0.10,
+
+  // Form-vægt i race-scoren (spec §7: v1's 0.012 gør form-kanalen "reelt
+  // usynlig"). v3 hæver den så formstyring bliver spillerens våben; v1-
+  // konstanten FORM_RACE_WEIGHT i raceSimulator.js er UÆNDRET (flag-off
+  // bit-identisk). Spec-interval 0.025-0.045; start-kandidat 0.035.
+  FORM_RACE_WEIGHT_V3: envNum("RACE_V3_FORM_WEIGHT", 0.035),
 });
 
 // GC-relevante profiler (spec §6): helper-arbejde her koster WORK_COST_HELPER_GC.
@@ -166,4 +195,15 @@ export function effortFatigueMultiplier(effort = "normal") {
  */
 export function teamRaceWeightV3() {
   return RACE_V3_TUNING.TEAM_RACE_WEIGHT_V3;
+}
+
+/**
+ * FORM_RACE_WEIGHT der skal bruges givet v3-tilstand (S2, #2353) — samme
+ * mønster som teamRaceWeightV3(): v1's frosne konstant bor i raceSimulator.js
+ * og røres ikke; denne bruges KUN når v3=true.
+ *
+ * @returns {number}
+ */
+export function formRaceWeightV3() {
+  return RACE_V3_TUNING.FORM_RACE_WEIGHT_V3;
 }

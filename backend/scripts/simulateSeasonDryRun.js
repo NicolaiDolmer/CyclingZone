@@ -79,9 +79,10 @@ const CONDITION_MODE = arg("condition", null) === "random";
 // Prøve-trækningen (sampleField) er UÆNDRET — roller udledes deterministisk af
 // prøven og konsumerer ingen rng, så felterne er identiske med neutral-mode.
 const ROLES_MODE = !!arg("roles", false);
-// #2352 (Race v3 S1): --v3 aktiverer work-cost + TEAM_RACE_WEIGHT_V3 i simulateStage
-// (raceSimulator.js's v3-parameter — SAMME flag som app_config.race_engine_v3_scoring
-// styrer i prod). Kræver --roles (work-cost er meningsløst uden roller i feltet).
+// #2352/#2353 (Race v3 S1+S2): --v3 aktiverer work-cost + TEAM_RACE_WEIGHT_V3 +
+// dagsform + jour sans + FORM_RACE_WEIGHT_V3 i simulateStage (raceSimulator.js's
+// v3-parameter — SAMME flag som app_config.race_engine_v3_scoring styrer i prod).
+// Kræver --roles (work-cost er meningsløst uden roller i feltet).
 // De NEUTRALE tvilling-kald (helperPlacementDeltas' baseline, kaptajn-delta-tvillingen)
 // forbliver v3=false med vilje — de definerer "uden roller"-referencen, PRÆCIS som
 // S0-baseline'en gjorde det uden work-cost.
@@ -479,10 +480,16 @@ const helperDeltasAll = []; // kun ROLES_MODE, GC-relevante profiler
 // bygger helperSupport, og work_cost/team konsumerer ingen rng.
 const helperTop15DeltasAll = []; // kun ROLES_MODE, GC-relevante profiler
 const GC_RELEVANT_PROFILES = new Set(["rolling", "hilly", "mountain", "high_mountain", "classic"]);
+// #2353 (S2): realiseret jour-sans-rate (andel rytter-etaper med jour_sans < 0)
+// — spec §12-bånd 2-5%. Ren post-hoc læsning af components; kun ≠0 når --v3.
+let jourSansHits = 0;
+let riderStageCount = 0;
 function recordDominanceObservation(ranked, teamByRider, terrain) {
   allDominanceObservations.push(observeRace({ ranked, teamByRider, terrain }));
   for (const rr of ranked) {
     seasonStartsByRider.set(rr.rider_id, (seasonStartsByRider.get(rr.rider_id) || 0) + 1);
+    riderStageCount++;
+    if ((rr.components?.jour_sans || 0) < 0) jourSansHits++;
   }
   seasonWinsByRider.set(ranked[0].rider_id, (seasonWinsByRider.get(ranked[0].rider_id) || 0) + 1);
 }
@@ -556,7 +563,11 @@ if (POPULATION_MODE) {
 
       if (ROLES_MODE) {
         const neutralEntrants = entrants.map(({ race_role: _race_role, ...rest }) => rest);
-        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+        // #2353: tvillingen kører med SAMME v3-tilstand som hovedkørslen — S2's
+        // dagsform/jour-sans er per-rytter-hashet på (seed, rider_id) og derfor
+        // IDENTISK i begge kørsler; de parrede deltaer isolerer stadig KUN
+        // rolle-effekterne (work-cost + boost). V3_MODE=false → uændret S0-sti.
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
         if (GC_RELEVANT_PROFILES.has(terrain)) {
           const roleByRider = new Map(entrants.map((e) => [e.rider_id, e.race_role]));
           helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider }));
@@ -634,7 +645,9 @@ if (POPULATION_MODE) {
           ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
           ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
         }));
-        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+        // #2353: v3: V3_MODE — se population-grenens tvilling-kommentar (S2-varians
+        // er per-rytter-hashet og identisk i begge kørsler; V3_MODE=false = uændret).
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
         if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
         // #2224 Section F: hjælper-placeringstab (kun GC-relevante profiler).
         if (GC_RELEVANT_PROFILES.has(terrain)) {
@@ -1145,7 +1158,10 @@ for (const r of dominanceRows) {
   console.log(`   ${padE(r.key, 25)}${padE(valueStr, 12)}${padE(bandStr, 22)}${statusStr}`);
 }
 console.log(`\n   Gini (sejre, alle startere): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only, intet bånd)`);
-console.log(`   Jour-sans-rate: 0% · DNF-rate: 0% (S2/S4 — komponent endnu ikke i motoren; indgår ikke i --enforce-dominance)`);
+// #2353: realiseret jour-sans-rate måles når --v3 (spec §12-bånd 2-5% af rytter-
+// etaper; rapport-only — basen er en direkte tunings-konstant, ikke en emergent).
+const jourSansRatePct = riderStageCount ? (100 * jourSansHits / riderStageCount) : 0;
+console.log(`   Jour-sans-rate: ${V3_MODE ? `${jourSansRatePct.toFixed(2)}% (bånd 2-5%, rapport-only)` : "0% (kræver --v3)"} · DNF-rate: 0% (S4 — komponent endnu ikke i motoren; indgår ikke i --enforce-dominance)`);
 console.log(`   GT (final-GC-top10): favorit vandt=${gtDominanceObservation.favoriteWon} podium=${gtDominanceObservation.favoritePodium} · maxSameTeamTop10=${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10=${gtDominanceObservation.distinctTeamsTop10}`);
 if (ROLES_MODE) {
   // #2352: fordelings-kontekst for top-terrain-linsen (medianen står i tabellen).

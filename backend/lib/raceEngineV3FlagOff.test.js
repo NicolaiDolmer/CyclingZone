@@ -64,15 +64,30 @@ test("simulateStage: v3 udeladt (default) er deepEqual med v3=false, alle profil
   }
 });
 
-test("simulateStage: v3=false komponenter — work_cost altid 0, ingen work_cost-nøgle-bidrag til finalScore", () => {
+test("simulateStage: v3=false komponenter — work_cost/dayform/jour_sans altid 0, komponentsummen holder", () => {
   const stageProfile = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain };
   const { ranked } = simulateStage({ entrants: ENTRANTS, stageProfile, seed: 42, v3: false });
   for (const r of ranked) {
     assert.equal(r.components.work_cost, 0, r.rider_id);
+    // S2 (#2353): dagsform + jour sans er ligeledes døde i v1-stien.
+    assert.equal(r.components.dayform, 0, r.rider_id);
+    assert.equal(r.components.jour_sans, 0, r.rider_id);
     const sum = r.components.terrain + r.components.noise + r.components.form
       - r.components.fatigue + r.components.team + (r.components.breakaway ?? 0)
-      + (r.components.finale ?? 0) + r.components.work_cost;
+      + (r.components.finale ?? 0) + r.components.work_cost
+      + r.components.dayform + r.components.jour_sans;
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, `finalScore matcher ikke komponenter (${r.rider_id})`);
+  }
+});
+
+// S2 (#2353): v1's form-vægt er UÆNDRET — en entrant med form-data scorer
+// præcis som før S2 når flaget er off (FORM_RACE_WEIGHT=0.012-stien er urørt).
+test("simulateStage: v3=false med form-data — formComponent bruger stadig v1's FORM_RACE_WEIGHT", () => {
+  const stageProfile = { profile_type: "itt", demand_vector: DEMAND_VECTORS.itt };
+  const withForm = ENTRANTS.map((e) => ({ ...e, form: 100 }));
+  const { ranked } = simulateStage({ entrants: withForm, stageProfile, seed: 5, v3: false });
+  for (const r of ranked) {
+    assert.ok(Math.abs(r.components.form - 0.012) < 1e-12, `${r.rider_id}: v1-form skal være +0.012, var ${r.components.form}`);
   }
 });
 
