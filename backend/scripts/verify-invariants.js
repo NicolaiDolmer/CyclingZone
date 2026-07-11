@@ -98,7 +98,7 @@ async function main() {
 
   const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
-    fetch_("riders", "id,team_id"),
+    fetch_("riders", "id,team_id,is_academy,is_retired"),
     // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
     fetch_("riders", "id,base_value", { is_retired: "is.false" }),
     fetch_("rider_derived_abilities", "rider_id"),
@@ -190,6 +190,14 @@ async function main() {
     }
   }
 
+  // Check 9 (#2264): Ingen aktiv fri agent må stå med is_academy=true. En akademi-
+  // rytter uden hold er ulovlig tilstand: den vises i markedets "All riders", men
+  // auktions-start afvises (rider_is_academy) — spillere ser en forvirrende fejl.
+  // Opstod da et lukket snyd-holds akademi-ryttere blev frigivet uden flag-nulstilling.
+  const orphanedAcademyFreeAgents = riders
+    .filter(r => !r.team_id && r.is_academy && !r.is_retired)
+    .map(r => ({ riderId: r.id }));
+
   const checks = {
     no_double_active_auctions: check(
       doubleAuctions.length === 0,
@@ -239,6 +247,13 @@ async function main() {
         ? `OK — ${activeAuctions.length} auktioner, ${openSwaps.length} åbne swap-tilbud`
         : `${doubleSwapMarket.length} rytter(e) er i både aktiv auktion og tilbudt i åbent swap-tilbud`,
       doubleSwapMarket
+    ),
+    no_orphaned_academy_free_agents: check(
+      orphanedAcademyFreeAgents.length === 0,
+      orphanedAcademyFreeAgents.length === 0
+        ? "OK — ingen frie agenter med is_academy=true"
+        : `${orphanedAcademyFreeAgents.length} fri(e) agent(er) står med is_academy=true (ulovlig tilstand, #2264)`,
+      orphanedAcademyFreeAgents.slice(0, 50)
     ),
     riders_have_derived_abilities: check(
       strandedRiders.length === 0,

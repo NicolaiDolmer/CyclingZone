@@ -190,7 +190,8 @@ function createInitialState() {
     league_divisions: seedDiv4Pools(),
     riders: [
       { id: "rider-ai", team_id: "team-1", ai_team_id: "team-ai", pending_team_id: "team-2" },
-      { id: "rider-free", team_id: "team-1", ai_team_id: null, pending_team_id: "team-2" },
+      // #2264: is_academy=true her armerer guarden mod forældreløse akademi-frie-agenter.
+      { id: "rider-free", team_id: "team-1", ai_team_id: null, pending_team_id: "team-2", is_academy: true },
       { id: "rider-ai-owned", team_id: "team-ai", ai_team_id: "team-ai", pending_team_id: null },
       // BUG 1 (#1481): parkeret indkommende handel — rytteren står stadig fysisk på
       // sælgeren (AI-holdet), men er købt af manager-holdet via pending_team_id.
@@ -279,6 +280,9 @@ test("resetBetaRosters returns manager riders to ai_team_id or free agency and c
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-ai").team_id, "team-ai");
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-ai").pending_team_id, null);
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-free").team_id, null);
+  // #2264: frigivelse til fri agent skal nulstille is_academy — ellers strander
+  // rytteren som "akademi-rytter uden hold" (markedet viser den, auktion afviser).
+  assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-free").is_academy, false);
 });
 
 test("resetBetaRosters clears pending_team_id for incoming transfers parked on a manager team (BUG 1, #1481)", async () => {

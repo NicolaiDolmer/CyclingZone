@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.84",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Three young free agents could not be auctioned",
+          "body": "Three young riders in the free agent pool (17, 18 and 20 years old) refused to go up for auction with a confusing message about academies. They were left over from a closed team and still marked as academy riders even though they had no team. The three riders are fixed and can be auctioned normally, the cleanup routines now clear the academy mark when a rider is released, and an automated check watches for the state ever coming back. There is no age limit on auctions and there never was."
+        },
+        "da": {
+          "title": "Tre unge frie agenter kunne ikke sættes på auktion",
+          "body": "Tre unge ryttere i fri agent-puljen (17, 18 og 20 år) nægtede at komme på auktion med en forvirrende besked om akademier. De var efterladt fra et lukket hold og stod stadig markeret som akademi-ryttere, selvom de ikke havde noget hold. De tre ryttere er repareret og kan auktioneres normalt, oprydningsrutinerne nulstiller nu akademi-markeringen når en rytter frigives, og et automatisk tjek overvåger at tilstanden ikke opstår igen. Der er ingen aldersgrænse på auktioner, og det har der aldrig været."
+        },
+        "refs": [2264]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction button no longer shown on AI-owned riders",
+          "body": "Riders on AI-controlled teams stopped being auctionable at the end of June, but the rider page still showed a start-auction button that only produced an error. The button is now hidden for AI and system riders, and the error message is properly translated if you ever meet it elsewhere."
+        },
+        "da": {
+          "title": "Auktions-knappen vises ikke længere på AI-ejede ryttere",
+          "body": "Ryttere på AI-styrede hold kunne ikke længere auktioneres fra slutningen af juni, men rytter-siden viste stadig en start auktion-knap der kun gav en fejl. Knappen er nu skjult for AI- og system-ryttere, og fejlbeskeden er korrekt oversat hvis du skulle møde den andre steder."
+        },
+        "refs": [2264]
+      }
+    ]
+  },
+  {
     "version": "6.83",
     "date": "2026-07-11",
     "label": "Beta",
