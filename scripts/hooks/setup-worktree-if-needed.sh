@@ -1,5 +1,9 @@
 #!/bin/bash
-# SessionStart hook. Auto-setup af et worktree der mangler node_modules eller .env.
+# SessionStart + PreToolUse(Bash) hook. Auto-setup af et worktree der mangler
+# node_modules eller .env. PreToolUse-varianten dækker subagent-worktrees oprettet
+# MIDT i en session (Agent-tool isolation:worktree), som aldrig rammer SessionStart —
+# første Bash-kald i worktree'et udbedrer hullet (11/7: #2311/#2328-agenterne
+# snublede begge over manglende .env).
 #
 # Harness-oprettede worktrees (.claude/worktrees/<navn>) går uden om new-worktree.ps1
 # og mangler derfor node_modules-junctions + .env-hardlinks → backend `node --test`
