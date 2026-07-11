@@ -24,7 +24,7 @@
 
 > **Session 11/7 aften (2):** #1894 smart default-fokus pr. ryttertype — `smartDefaultFocus(primaryType)` i `backend/lib/training.js` (genbruger #1974's `focusTrainability`, ALDRIG ny type→fokus-mapping); `resolveProgram(plan, primaryType)` i `dailyTraining.js` bruger den når ingen plan (44% af trup ramte tidligere hardcoded "endurance"); `/api/training/me` leverer `smartDefaultFocus`-map så frontend aldrig dubler reglen; TrainingPage viser "Assistent: ... (auto)"-hint (variant 1) + bulk-bar "Smart fokus (efter ryttertype)" (variant 3, springer ryttere med eksisterende plan over, server-håndhævet). v6.86, PR #2336 MERGED (ejer 11/7), #1894 lukket, prod-deploy READY. **Ejer-verify:** træningssiden i prod — hint under fokus-dropdown for ryttere uden plan + smart-mode i bulk-baren.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — #1895 ugentlig træningsplan (ejer-design 11/7: lagdelt holdrytme + pr-rytter-override, 2 PR'er); sonnet-subagenter i worktrees.
 
 ## Standing context (forever-relaunch)
 
