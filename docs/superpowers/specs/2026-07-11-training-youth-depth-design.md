@@ -1,6 +1,6 @@
 # Træning & ungdomsudvikling — sammenhængende dybde-opgradering (design-spec)
 
-> Status: design-udkast til ejer-review (2026-07-11). Lead game-systems-arkitekt.
+> Status: design godkendt i retning; ejer-beslutninger runde 1 låst 2026-07-11 (§11). Eksekvering i separate sessions.
 > Produktmotorer: **Træning** (#931) + **Ungdomsudvikling** (#1145/#932). Doktrinens to største produktrisici.
 > Løser/samler: #1922 (træning trade-offs), #2262 (19-20-årige dødfødte), #1974 (skæv skill-fordeling), #2064 (ongoing influx), #932/#958 (akademi→U23-bue). Bygger oven på #1137 (L0 passiv), #1138/talentspejder (usikkerhed), #1791 (ungdoms-loft), #1308 (akademi-MVP).
 > Ingen prod-mutation i denne spec. Migrationer beskrives kun som `.sql`-udkast. Alt balancefølsomt går gennem sim + scorecard + ejer-gate før ship.
@@ -124,9 +124,9 @@ Potentiale-usikkerheden er **allerede ejer-låst** (talentspejder-spec 2026-07-0
 
 Dette respekterer doktrinens "skjult men ikke uafkodeligt": du kender aldrig det eksakte loft, men du kan *scoute dig til* en handlingsbar tro på det og *teste den* over sæsoner.
 
-### 3.4 Peak & aldring — type-afhængigt peak som depth-beslutning
+### 3.4 Peak & aldring — unified peak bevares (ejer-afvist type-peak, se §11)
 
-I dag: unified `peakAge: 28`, `peakAgeByType: null` (ubrugt hook). Doktrinen (§Rider development) nævner eksplicit "sprintere topper tidligere end klatrere". **Anbefaling: aktivér type-afhængigt peak** i denne pakke — det skaber en ægte transfer-/køb-timing-trade-off (et sprint-talent har et kortere karriere-vindue → køb tidligt / sælg før fald) og øger realisme uden ny UI. **Men balance-følsomt** → bag sim + scorecard (én af de usikre antagelser, §9). Startkandidat: sprintere/puncher peak ~26, rouleurs/GC ~28-29, klatrere ~28. Kalibreres empirisk.
+I dag: unified `peakAge: 28`, `peakAgeByType: null` (ubrugt hook). Specen anbefalede oprindeligt at aktivere type-afhængigt peak; **ejer afviste 2026-07-11** (§11 beslutning 1). Unified peak 28 bevares; `peakAgeByType` forbliver en dormant hook og røres ikke i denne pakke.
 
 **Pension-transparens** (#1137, bobby-ønske): eksponér et **forventet pensions-vindue** på rytterprofilen (afledt af `retirement.windowStartAge 36 → guaranteedAge 40` + type-peak), så pension ikke overrasker. Fuzzy ("forventes at trække sig om 2-4 sæsoner"), ikke en eksakt dato.
 
@@ -263,7 +263,7 @@ Alt balancefølsomt her går gennem sim mod ægte/syntetisk population + scoreca
 | A2 | **Meningsfuld bane, 19-årig pot-5+, stort gap** | **≥ 15 evne-stigninger i sæson 1** (mod #2262's ~7-8); lukker gap på en bane ~2-3 sæsoner efter en 16-årig, ikke "aldrig" |
 | A3 | **Ingen ny eksplosion.** Kumulativ gap-lukning, stort talent | **~9-13%/sæson tidligt, ~50% ved sæson 5-7** (bevar #2082-mål); variance over sæsonlængde-sweep **≤ 5 pct-point** |
 | A4 | **Alderslotteri reduceret.** Andel 19-21-årige høj-pot der stadig kan nå top-band ved peak | **≥ 90%** ("dødfødt" ≈ 0% i dag for 20-årige) |
-| A5 | **Peak-realisme.** Median peak-alder | **27-28** (bevar #2082 scorecard 1; type-afhængigt peak: pr. type i sit vindue) |
+| A5 | **Peak-realisme.** Median peak-alder | **27-28** (bevar #2082 scorecard 1; unified peak, §11 beslutning 1) |
 
 ### 7.2 Scorecard B — "Har træning ægte trade-offs?"
 
@@ -306,9 +306,9 @@ Hver fase = egen PR, egen sim + scorecard hvor markeret. Ingen fase un-gater sig
 - **Ændring:** form betyder ~8-12% i løb; taper-mekanik; Lag 2-tidslinje.
 - **Gate:** Scorecard B3/B4/B5 + race-resultat-stabilitet (må ikke blive støjende). **Ejer-review** (usikker antagelse §9.2).
 
-### Fase 4 — Reconcilér daglig vs. sæson + type-afhængigt peak + pension-transparens 🟡
-- **Filer:** `economyEngine.js` (`processSeasonStart`: send `dailyTrainingEnabled`/`trainingSeasonId`, korrekt `skipGrowth`), `riderProgression.js` (`peakAgeByType`), `developmentProjection.js` (pensions-vindue).
-- **Gate:** Scorecard A5 (peak pr. type); idempotens-regressionstest; ingen double-dip verificeret.
+### Fase 4 — Reconcilér daglig vs. sæson + pension-transparens 🟡
+- **Filer:** `economyEngine.js` (`processSeasonStart`: send `dailyTrainingEnabled`/`trainingSeasonId`, korrekt `skipGrowth`), `developmentProjection.js` (pensions-vindue). *(Type-peak udgået, §11 beslutning 1.)*
+- **Gate:** Scorecard A5 (unified peak 27-28); idempotens-regressionstest; ingen double-dip verificeret.
 
 ### Fase 5 — Ungdoms-bue synlig + to-vejs flyt + tilknytnings-milestones 🟢
 - **Filer:** `academyGraduation.js` (ned-flyt senior→akademi), notifikations-motor, verdens-feed/recap-kobling, frontend rejse-visning.
@@ -345,9 +345,23 @@ Hver fase = egen PR, egen sim + scorecard hvor markeret. Ingen fase un-gater sig
 - **Separate Junior/U23-hold + kalendere (#958):** gated bag §7.3-evidens.
 - **Fuld CTL/ATL/TSB-fysiologimodel:** Lag 2 giver en *forenklet* form/load-visning, ikke en komplet træningsvidenskabs-sim.
 - **Off-focus atrofi/skill-decay før peak:** v1 = off-focus stagnerer (~0), ikke falder. Aktiv atrofi er en senere depth-beslutning (risiko for "random destruction"-følelse).
+- **Type-afhængigt peak** (`peakAgeByType`): ejer-afvist 2026-07-11 (§11 beslutning 1). Unified peak 28 bevares.
 - **Retraining/respecialisering** (skifte en rytters type): doktrinen markerer det som "senere, langsom, usikker path". Ikke her.
 - **Manager-skills der påvirker scouting-præcision** (#1109): post-launch.
 - **Camps som selvstændig facilitet-økonomi:** Lag 2 nævner camps konceptuelt; den fulde facilitet-økonomi følger `FACILITIES_ENABLED`-sporet (#1441), ikke denne pakke.
+
+---
+
+## 11. Ejer-beslutninger — runde 1 (2026-07-11, låst)
+
+1. **Type-afhængigt peak: NEJ.** Ejer afviste at aktivere `peakAgeByType`. Unified `peakAge: 28` bevares; hooken forbliver dormant. Konsekvens: Fase 4 slankes (kun reconciliation + pension-transparens); Scorecard A5 måler mod unified 27-28.
+2. **Form-vægt i race: mål låst, tal udledes empirisk.** Ejer delegerede til arkitekt-anbefaling ("skal være verdensklasse"). Låst model: veltimet peak vs. neutral form = **+8-12% effektiv race-score**, med tre hårde guardrails der alle er scorecard-gates i Fase 3:
+   - **Evne dominerer altid:** en rytter der er ~10 evne-point bedre skal stadig slå fuld form-forskel (form må aldrig invertere kvalitetshierarkiet).
+   - **Resultat-stabilitet:** samme felt med kun form varieret må ikke give vilkårlige placeringer (varians-metrik i harness).
+   - **Form synlig FØR løbet:** spilleren taber aldrig på noget usynligt (legibility).
+   Konstanterne (`FORM_RACE_WEIGHT`/`FATIGUE_RACE_WEIGHT` mv.) udledes i Fase 3-harnesset mod ægte population — aldrig gættet direkte (samme disciplin som tid-som-valuta i økonomien). Rationale: FM's største form-fejl er vilkårligheds-følelse; OOTP's styrke er form der betyder noget uden at overdøve kvalitet. 8-12% er nok til at periodisering lønner sig, uden at en dårlig uge ødelægger en stjernes sæson.
+
+Ingen udestående beslutninger blokerer Fase 1-2. §9's tre usikre antagelser afgøres empirisk (scorecards/instrumentering), ikke ved ejer-valg nu.
 
 ---
 

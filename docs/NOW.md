@@ -22,6 +22,8 @@
 
 > **Race-engine-dybde 11/7 (Fable): spec EJER-GODKENDT, klar til pick-up** — [specs/2026-07-11-race-engine-depth-credibility-design.md](superpowers/specs/2026-07-11-race-engine-depth-credibility-design.md). Evidens (#2224): felt-favoritter vinder 82-88 %, 25 % af løb har 4+ samme hold i top 10. Alle 5 §16-beslutninger låst (work-cost A markant; salt A omgående). **Rækkefølge: salt-PR → S0 harness+baseline → S1 work-cost → S2 dagsform → S3 roller/etape #2034 → S4 styrt #1176 → S5 peaks → S6 why-rapport.** Udføres i separate sessions (ejer 11/7).
 
+> **Træning+ungdom-dybde 11/7 (Fable): spec leveret, runde-1-beslutninger LÅST** — [specs/2026-07-11-training-youth-depth-design.md](superpowers/specs/2026-07-11-training-youth-depth-design.md). Kerne: gap-til-loft-drevet vækst (fixer #2262/#1974/#1922 som ét problem), fokus=budget, form 8-12% i race (§11: type-peak NEJ; form-mål låst, tal via harness). 6 faser, alle bag sim+scorecard; eksekvering i separate sessions. Issue-kommentarer postet (#2262/#1922/#1974/#2064/#932/#1137/#958/#1138).
+
 > **🎯 Next action:** Race-engine v3 pick-up: salt-PR (lille, selvstændig) derefter S0 (harness+baseline). Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91). Eftersend rytter-ID til #2263. Narrativ-spec: ejer vælger slices. Åbne fix-kandidater: #2254-rest, #2270/#2274, admin-test-køen (talentspejder/faciliteter-flip).
 
 > **🤖 Working agent:** Ingen aktiv session.
