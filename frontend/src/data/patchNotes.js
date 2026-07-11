@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.83",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Emergency loans: max one per season, and repeat use now has consequences",
+          "body": "A rare scheduling hiccup could hand a team the same emergency loan more than once at season start, creating money out of nothing and piling on extra debt. A team can now receive at most one emergency loan per season, guaranteed at the database level. Leaning on emergency loans season after season also stops being free: two seasons in a row triggers a transfer freeze and a message from the board, instead of debt quietly growing forever."
+        },
+        "da": {
+          "title": "Nødlån: maks ét pr. sæson, og gentagen brug har nu konsekvenser",
+          "body": "Et sjældent tidsplan-hikke kunne give et hold det samme nødlån mere end én gang ved sæsonstart, hvilket skabte penge ud af ingenting og lagde ekstra gæld oveni. Et hold kan nu højst modtage ét nødlån pr. sæson, garanteret på database-niveau. At læne sig op ad nødlån sæson efter sæson er heller ikke længere gratis: to sæsoner i træk udløser en transfer-fryse og en besked fra bestyrelsen, i stedet for at gælden stille vokser for evigt."
+        },
+        "refs": [2301]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Loan repayments are now processed atomically",
+          "body": "Paying down a loan used to update the debt and withdraw the money in two separate steps. In rare cases (a failed withdrawal, or two repayments landing at the same moment) that could erase debt without a matching payment. Repayment now happens as one single, locked operation: the debt only shrinks when the money actually leaves your account."
+        },
+        "da": {
+          "title": "Lån-afdrag behandles nu atomisk",
+          "body": "At afdrage på et lån opdaterede tidligere gælden og trak pengene i to separate trin. I sjældne tilfælde (en fejlet hævning, eller to afdrag der landede i samme øjeblik) kunne det slette gæld uden en tilsvarende betaling. Afdrag sker nu som én samlet, låst operation: gælden falder kun når pengene faktisk forlader din konto."
+        },
+        "refs": [2302]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board satisfaction is now computed the same way everywhere",
+          "body": "The board's satisfaction was calculated in three places (the board page, the weekend evaluation, and the season finale) and they didn't all receive the same inputs, so results-based expectations could be judged against a smaller field than the one you actually race in. All three now use identical inputs. A board bonus goal tied to your signature rider was also mathematically impossible to hit; it now asks for what it always meant to ask for."
+        },
+        "da": {
+          "title": "Bestyrelsens tilfredshed beregnes nu ens overalt",
+          "body": "Bestyrelsens tilfredshed blev beregnet tre steder (bestyrelsessiden, weekend-evalueringen og sæsonfinalen), og de fik ikke alle de samme input, så resultat-baserede forventninger kunne blive målt mod et mindre felt end det du faktisk kører i. Alle tre bruger nu identiske input. Et bonus-mål knyttet til din profilrytter var desuden matematisk umuligt at ramme; det kræver nu det, det hele tiden var meningen."
+        },
+        "refs": [2308]
+      }
+    ]
+  },
+  {
     "version": "6.82",
     "date": "2026-07-11",
     "label": "Beta",
