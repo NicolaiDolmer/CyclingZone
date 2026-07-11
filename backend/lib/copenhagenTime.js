@@ -14,6 +14,16 @@ export function copenhagenHour(now = new Date()) {
   return Number(HOUR_FMT.format(now)) % 24;
 }
 
+// #1895: ugedags-nøgle ("mon".."sun") for en dansk kalenderdato-streng (YYYY-MM-DD,
+// typisk tickDate fra copenhagenDateString). Tolker datoen som UTC-middag (samme
+// DST-robuste trick som dailyTrainingEngine.addDaysToDate) — datoen ER allerede den
+// danske kalenderdag, så ingen yderligere tidszone-konvertering skal ske her.
+const WEEKDAY_ORDER = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]; // Date#getUTCDay() index
+export function copenhagenWeekdayKey(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  return WEEKDAY_ORDER[d.getUTCDay()];
+}
+
 // UTC-instant for seneste midnat (00:00) i dansk tid på SAMME danske kalenderdato som `now`.
 // Grænse for "i dag" i spillogik (fx daglige cap's/loop-guards). DST-robust via samme
 // offset-korrektion som auctionEngine.gameHourToUTC: parse den danske dato som om den var

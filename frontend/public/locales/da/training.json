@@ -75,5 +75,21 @@
   "riderHistoryTitle": "Træningshistorik",
   "riderHistorySubtitle": "Rytterens daglige træning de seneste 30 dage",
   "riderHistoryEmpty": "Ingen træningshistorik for rytteren endnu.",
-  "riderHistoryRest": "Hviledag"
+  "riderHistoryRest": "Hviledag",
+  "weekRhythmTitle": "Ugentlig rytme",
+  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Hver rytter træner stadig sit eget fokus; rytmen styrer kun hvor hård dagen er. \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen.",
+  "weekday_mon": "Man",
+  "weekday_tue": "Tir",
+  "weekday_wed": "Ons",
+  "weekday_thu": "Tor",
+  "weekday_fri": "Fre",
+  "weekday_sat": "Lør",
+  "weekday_sun": "Søn",
+  "weekRhythmSave": "Gem rytme",
+  "weekRhythmResetButton": "Nulstil (ingen rytme)",
+  "weekRhythmSaved": "Ugentlig rytme gemt.",
+  "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
+  "weekRhythmSaveFailed": "Kunne ikke gemme. Prøv igen om lidt.",
+  "weekRhythmBonusNote": "Rytmen sætter kun intensitet, aldrig fokus, og manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
+  "weekRhythmTodayHint": "i dag: {intensity} (ugentlig rytme)"
 }

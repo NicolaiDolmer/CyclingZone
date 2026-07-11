@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer: TO admin-tests i prod:** (1) talentspejder (cyclingzone.org → Scouting; beslut flip af \`scout_system_enabled\` — v6.73-patch-note er allerede offentlig! — + tone-session + sanity-tjek rejsepriser 1.000/step + 6.000/mission), (2) faciliteter (køb træningscenter → træningsdag → se løftet; pre-flip-gaten #2287 er grøn → beslut \`facilities_enabled\`-flip + staged announce). Derefter: #2270 eller #2274. **#1894 merged+lukket:** ejer-verify smart default-fokus (hint + bulk-smart) på /training i prod. **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
+> **Ejer-admin-test-kø (bag #1895):** talentspejder-flip (\`scout_system_enabled\`) + faciliteter-flip (\`facilities_enabled\`, pre-flip-gate #2287 grøn) + #1894 smart default-fokus. **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
 
 > **Session 10/7 sen aften:** #2288 dashboard-UX-pakke **MERGED (PR #2296, v6.75)** — ægte onboarding-trin (bud/træning/udtagelse/bestyrelsesplan), banner-prioritering, empty-CTA'er, "Næste træk"-udvidelse (inkl. "ikke trænet i dag"), holdudtagelse lander på panelet, seneste resultater kun egen division+gruppe. Alle CI-gates + uafhængigt review grønne. **Ejer-verify:** dashboard som alm. bruger i prod — tjekliste viser 0-1 fuldførte trin på frisk konto, Næste træk-punkter, udtagelses-knap → panel, resultater kun egen gruppe.
 
@@ -24,7 +24,11 @@
 
 > **Session 11/7 aften (2):** #1894 smart default-fokus pr. ryttertype — `smartDefaultFocus(primaryType)` i `backend/lib/training.js` (genbruger #1974's `focusTrainability`, ALDRIG ny type→fokus-mapping); `resolveProgram(plan, primaryType)` i `dailyTraining.js` bruger den når ingen plan (44% af trup ramte tidligere hardcoded "endurance"); `/api/training/me` leverer `smartDefaultFocus`-map så frontend aldrig dubler reglen; TrainingPage viser "Assistent: ... (auto)"-hint (variant 1) + bulk-bar "Smart fokus (efter ryttertype)" (variant 3, springer ryttere med eksisterende plan over, server-håndhævet). v6.86, PR #2336 MERGED (ejer 11/7), #1894 lukket, prod-deploy READY. **Ejer-verify:** træningssiden i prod — hint under fokus-dropdown for ryttere uden plan + smart-mode i bulk-baren.
 
-> **🤖 Working agent:** Claude Code (Fable) — #1895 ugentlig træningsplan (ejer-design 11/7: lagdelt holdrytme + pr-rytter-override, 2 PR'er); sonnet-subagenter i worktrees.
+> **Session 11/7 aften (3):** #1895 PR 1/2 — ugentlig træningsrytme på holdniveau. `training_week_plans` (migration, ikke applied — PR har `.sql`, ejer merger+applier manuelt), `resolveDayIntensity` (lagdelt: rytter-override PR 2 > holdrytme > sæson-intensitet > "normal") i `backend/lib/training.js`, wired i `dailyTrainingEngine.js` (rører kun intensitet, aldrig fokus/bonus-gating). `PUT/DELETE /api/training/week-plan` + nyt "Weekly rhythm"-panel + grå "i dag: X (ugerytme)"-note på TrainingPage. v6.87, PR åben (**IKKE auto-merge — indeholder migration, ejer merger+applier**). Alle gates grønne (backend 3053, frontend 1019, playwright 27/27 alle 3 projekter).
+
+> **🎯 Next action:** Ejer merger PR (#1895 PR 1) + applier migrationen manuelt, derefter test "Weekly rhythm"-panel i prod. Derefter #1895 PR 2 (pr-rytter-override) ELLER admin-test-køen fra sessionerne ovenfor (talentspejder-flip, faciliteter-flip).
+
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 

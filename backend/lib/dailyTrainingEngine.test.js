@@ -30,10 +30,20 @@ function createMockSupabase(state, opts = {}) {
         // Accumulate filters — flush happens on .then() / Promise resolution.
         return builder(table, op, nf, patch, inList);
       },
+      is(col, val) {
+        // #1895: .is("rider_id", null) — samme filter-semantik som .eq() her (row[col] !== val).
+        const nf = [...filters, [col, val]];
+        return builder(table, op, nf, patch, inList);
+      },
       in(col, vals) {
         return builder(table, op, filters, patch, [col, vals]);
       },
       order() { return builder(table, op, filters, patch, inList); },
+      async maybeSingle() {
+        const result = await new Promise((resolve) => obj.then(resolve));
+        const rows = result.data ?? [];
+        return { data: rows[0] ?? null, error: result.error };
+      },
       update(p) { return builder(table, "update", filters, p, inList); },
       delete() {
         return builder(table, "delete", filters, patch, inList);
@@ -556,6 +566,80 @@ test("ability-history: en upsert-fejl kaster ikke — træningsdagen committes a
   const runRow = state.training_day_runs.find((r) => r.team_id === TEAM_ID);
   assert.ok(runRow?.report?.tick_date, "training_day_runs committet");
   assert.equal((state.rider_derived_ability_history ?? []).length, 0, "historik ikke skrevet (fejlen blev slugt)");
+});
+
+// ── #1895 PR 1: ugentlig træningsrytme på holdniveau ──────────────────────────
+// NOW = 2026-06-12T10:00+02:00 → Copenhagen-dato "2026-06-12" → fredag ("fri").
+test("ugerytme: hold MED rytme styrer dagens intensitet (fredag='rest' overstyrer plan-intensitet 'hard')", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  state.training_week_plans = [{
+    team_id: TEAM_ID, rider_id: null,
+    days: { mon: { intensity: "hard" }, tue: { intensity: "hard" }, wed: { intensity: "hard" },
+      thu: { intensity: "hard" }, fri: { intensity: "rest" }, sat: { intensity: "hard" }, sun: { intensity: "rest" } },
+  }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.intensity, "rest", "fredagens ugerytme (rest) vinder over plan-intensiteten (hard)");
+  assert.equal(rr.focus, "vo2max", "fokus er UÆNDRET af ugerytmen — bor kun i training_plans");
+  assert.deepEqual(rr.gains, {}, "rest → ingen ability-gains i dag");
+});
+
+test("ugerytme: hold UDEN rytme-row → uændret adfærd (regressions-guard, bit-identisk med i dag)", async () => {
+  const withPlan = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  }); // ingen training_week_plans-row
+  const resultWithoutRhythm = await runTeamTrainingDay({
+    supabase: createMockSupabase(withPlan), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  assert.equal(resultWithoutRhythm.report.riders[0].intensity, "hard", "uden holdrytme følger dagen stadig plan-intensiteten uændret");
+
+  // Samme scenarie med en TOM/flad "normal hver dag"-rytme skal give BIT-IDENTISK resultat.
+  const withFlatRhythm = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  withFlatRhythm.training_week_plans = [{
+    team_id: TEAM_ID, rider_id: null,
+    days: { mon: { intensity: "normal" }, tue: { intensity: "normal" }, wed: { intensity: "normal" },
+      thu: { intensity: "normal" }, fri: { intensity: "normal" }, sat: { intensity: "normal" }, sun: { intensity: "normal" } },
+  }];
+  const resultFlat = await runTeamTrainingDay({
+    supabase: createMockSupabase(withFlatRhythm), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  // "normal" er hverken sat på fredag i den flade rytme forskelligt fra plan-intensiteten "hard" —
+  // KUN rytmens fri-nøgle betyder noget: her er den "normal", plan er "hard". Rytme vinder når sat.
+  assert.equal(resultFlat.report.riders[0].intensity, "normal", "flad rytme (alle 'normal') vinder over plan-intensiteten når rytmen ER sat");
+});
+
+test("ugerytme: bonus_applied følger stadig UDELUKKENDE executedBy (rytmen rører den ikke)", async () => {
+  const state = seedState();
+  state.training_week_plans = [{
+    team_id: TEAM_ID, rider_id: null,
+    days: { mon: { intensity: "hard" }, tue: { intensity: "hard" }, wed: { intensity: "hard" },
+      thu: { intensity: "hard" }, fri: { intensity: "hard" }, sat: { intensity: "hard" }, sun: { intensity: "hard" } },
+  }];
+  const managerResult = await runTeamTrainingDay({
+    supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  assert.equal(managerResult.report.bonus_applied, true);
+
+  const state2 = seedState();
+  state2.training_week_plans = state.training_week_plans;
+  const assistantResult = await runTeamTrainingDay({
+    supabase: createMockSupabase(state2), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "assistant", now: NOW,
+  });
+  assert.equal(assistantResult.report.bonus_applied, false);
 });
 
 // ── Plan B (#1441): trænings-facilitet + chef wired ind i tick'et ──────────────
