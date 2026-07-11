@@ -16,7 +16,7 @@ import TierLadder from "./TierLadder";
 //    confirm/staff-modaler kan kun nås for live spor.
 export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy }) {
   const { t } = useTranslation("klub");
-  const { track, tier, upgradePrice, tierUpkeep, staff, effectiveBonus, effectLive } = facility;
+  const { track, tier, upgradePrice, tierUpkeep, staff, effectiveBonus, effectLive, nextTierBonus } = facility;
   const isCommercial = track === "commercial";
 
   if (!effectLive) {
@@ -42,6 +42,16 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
   const roiText = tier === 0
     ? t(`roi.${track}Build`, { defaultValue: "" })
     : t(`roi.${track}`, { value: roiValue, defaultValue: "" });
+
+  // #2311 (Slice 2): tier-preview af NÆSTE niveau før køb, så afkastet er synligt
+  // ved beslutningen — ikke først efter. nextTierBonus === null ved max tier (ingen
+  // "undefined"-preview). Genbruger track-specifik ROI-copy hvis den findes
+  // (`roi.<track>Next`), ellers en generisk "Next: Level N -> +X%"-linje.
+  const nextTierValue = maxed ? null : formatTrackEffect(track, nextTierBonus).replace(/^\+/, "");
+  const nextTierText = maxed
+    ? ""
+    : (t(`roi.${track}Next`, { tier: nextTier, value: nextTierValue, defaultValue: "" }) ||
+       t("nextTier.generic", { tier: nextTier, value: formatTrackEffect(track, nextTierBonus) }));
 
   return (
     <Card className="px-[14px] py-[12px] grid grid-cols-[1fr_auto] gap-[14px] items-center">
@@ -75,6 +85,9 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
           <Button variant="primary" size="sm" loading={busy} onClick={() => onUpgrade(track)}>
             {(tier === 0 ? t("facilities.buildTier", { tier: nextTier }) : t("facilities.upgradeTo", { tier: nextTier }))} · <span className="font-data">{formatNumber(upgradePrice)}</span>
           </Button>
+        )}
+        {!maxed && nextTierText && (
+          <div className="text-[10.5px] text-cz-accent-t mt-[4px] max-w-[220px] ms-auto">{nextTierText}</div>
         )}
         <div className="text-[10.5px] text-cz-2 mt-[2px]">{t("facilities.upkeep", { amount: formatNumber(tierUpkeep) })}</div>
       </div>

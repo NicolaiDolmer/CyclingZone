@@ -23,6 +23,7 @@ import {
   BellIcon,
   JerseyIcon,
   ChevronDownIcon,
+  SettingsIcon,
 } from "../components/ui/icons/index.jsx";
 
 const SECTION_DEFS = [
@@ -218,6 +219,17 @@ const SECTION_DEFS = [
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
+    ],
+  },
+  {
+    key: "facilities",
+    Icon: SettingsIcon,
+    blocks: [
+      { id: "whatFacilities", kind: "text" },
+      { id: "tracks", kind: "rows" },
+      { id: "onlyTrainingLive", kind: "text" },
+      { id: "staffSynergy", kind: "text" },
+      { id: "costs", kind: "text" },
     ],
   },
   {

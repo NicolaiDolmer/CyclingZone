@@ -73,11 +73,15 @@ function facilitiesPayload() {
     const f = state.facilities[track];
     const upgradePrice = f.tier >= 5 ? null : PRICE[f.tier + 1];
     const staffTier = f.staff?.tier ?? null;
+    // #2311 (Slice 2): tier-preview før køb — samme formel som backend (base[tier+1] × util),
+    // null ved max tier (co-SSOT med facilityRoutesHandlers.js, dækket af parity-test).
+    const nextTierBonus = f.tier >= 5 ? null : (BASE_EFFECT[track][f.tier + 1] || 0) * util(staffTier);
     return {
       track, tier: f.tier, upgradePrice, tierUpkeep: UPKEEP[f.tier],
       // #2220 A4b: staff bærer nu id (dyb-link) + overall (rating-cirkel/sammenligning).
       staff: f.staff ? { id: `staff-${track}`, name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier], overall: OVERALL_BY_TIER[f.staff.tier] } : null,
       effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
+      nextTierBonus,
       // Plan B (#1441): training-effekten er wired i trænings-motoren → live.
       effectLive: track === "training",
     };

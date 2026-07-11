@@ -8,6 +8,7 @@ import {
   FACILITY_TRACKS,
   FACILITY_TIER_UPKEEP,
   EFFECT_LIVE_BY_TRACK,
+  MAX_FACILITY_TIER,
 } from "./facilityConstants.js";
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
@@ -85,6 +86,10 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
       // drevet (overall), IKKE tier-skalaren. staffOut bærer overall (eller null = gulv).
       effectiveBonus: effectiveBonus(track, tier, staffOut),
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
+      // #2311 (Slice 2): tier-preview før køb — hvad NÆSTE tier giver, samme staff
+      // holdt konstant (spejler kilden effectiveBonus bruger). null ved max tier
+      // (ingen "undefined"-preview i UI).
+      nextTierBonus: tier >= MAX_FACILITY_TIER ? null : effectiveBonus(track, tier + 1, staffOut),
     };
   });
 

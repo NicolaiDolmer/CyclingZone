@@ -148,6 +148,27 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(scouting.effectiveBonus, 0);
 });
 
+test("GET facilities: nextTierBonus = effectiveBonus ved tier+1 (samme staff), null ved max tier (#2311)", async () => {
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: 2 }, { track: "commercial", tier: 5 }],
+    staff: [{ id: "staff-1", name: "Sofie Lindqvist", role: "training", tier: 2, salary: 22_000 }],
+  });
+  const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
+  assert.equal(status, 200);
+
+  const training = body.facilities.find((f) => f.track === "training");
+  assert.equal(training.nextTierBonus, effectiveBonus("training", 3, training.staff));
+
+  // Max tier (5) → ingen næste niveau, aldrig "undefined" i UI.
+  const commercial = body.facilities.find((f) => f.track === "commercial");
+  assert.equal(commercial.nextTierBonus, null);
+
+  // Tier 0, ingen staff → nextTierBonus = effekten ved tier 1 med staff=null (gulv).
+  const scouting = body.facilities.find((f) => f.track === "scouting");
+  assert.equal(scouting.tier, 0);
+  assert.equal(scouting.nextTierBonus, effectiveBonus("scouting", 1, null));
+});
+
 test("GET facilities: effectLive — KUN training er live (Plan B #1441)", async () => {
   // Tomt facilitets-sæt: alle spor tier 0.
   const supabase = createSupabaseMock();
