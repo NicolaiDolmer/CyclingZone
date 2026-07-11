@@ -107,6 +107,7 @@ export default function RiderProfileHero({
   scouting,
   onWatchlist = false,
   onToggleWatchlist,
+  onCompare,                      // () => void — navigér til /compare?ids=... (parent styrer routing)
   actions = null,                 // action-række (ReactNode) — injiceres af parent
 }) {
   const { t } = useTranslation("rider");
@@ -137,6 +138,15 @@ export default function RiderProfileHero({
                       className={`mt-1 flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-2xl transition-colors ${onWatchlist ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}
                     >
                       {onWatchlist ? "★" : "☆"}
+                    </button>
+                  )}
+                  {onCompare && (
+                    <button
+                      onClick={onCompare}
+                      title={t("header.compareTitle")}
+                      className="mt-1 flex-shrink-0 min-h-[32px] px-2 flex items-center justify-center text-xs font-semibold text-cz-3 hover:text-cz-accent-t transition-colors"
+                    >
+                      {t("header.compare")}
                     </button>
                   )}
                 </div>
@@ -170,6 +180,18 @@ export default function RiderProfileHero({
                     >
                       {divisionLabel}
                     </span>
+                  )}
+                  {rider.height != null && (
+                    <>
+                      <span className="text-cz-3" aria-hidden="true">·</span>
+                      <span className="text-cz-2 font-mono tabular-nums">{t("header.heightCm", { height: rider.height })}</span>
+                    </>
+                  )}
+                  {rider.weight != null && (
+                    <>
+                      <span className="text-cz-3" aria-hidden="true">·</span>
+                      <span className="text-cz-2 font-mono tabular-nums">{t("header.weightKg", { weight: rider.weight })}</span>
+                    </>
                   )}
                 </div>
 

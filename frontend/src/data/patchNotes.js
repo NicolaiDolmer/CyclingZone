@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.89",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Height, weight and Compare are back on the rider profile",
+          "body": "The rider profile page again shows height and weight next to nationality and division, and a \"Compare\" button next to the star is back to send a rider straight into the rider comparison tool. Both were lost in the profile redesign and are now restored, matching the rest of the redesigned page."
+        },
+        "da": {
+          "title": "Højde, vægt og Sammenlign er tilbage på rytterprofilen",
+          "body": "Rytterprofilen viser igen højde og vægt ved siden af nationalitet og division, og en \"Sammenlign\"-knap ved siden af stjernen sender igen en rytter direkte ind i sammenligningsværktøjet. Begge dele forsvandt ved profil-redesignet og er nu genindført, matchet til resten af den redesignede side."
+        },
+        "refs": [2266]
+      }
+    ]
+  },
+  {
     "version": "6.88",
     "date": "2026-07-11",
     "label": "Beta",

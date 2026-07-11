@@ -1495,6 +1495,7 @@ export default function RiderStatsPage() {
           scouting={scouting}
           onWatchlist={onWatchlist}
           onToggleWatchlist={toggleWatchlist}
+          onCompare={() => navigate(`/compare?ids=${rider.id}`)}
           actions={
             /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
                action row) — udvidede formularer folder ud i fuld bredde under
