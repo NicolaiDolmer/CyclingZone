@@ -115,12 +115,19 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
   // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
   "subscriptions",
-  //
-  // --- PERMANENTE suppressioner (fjernes ALDRIG ved rows — tom = sund steady-state) ---
-  // Disse er dræn-til-tom-køer / per-batch transient state. Detector A's
-  // "write-but-no-data" mis-fyrer på dem by design; de hører IKKE til
-  // "fjern når rows"-oprydningen (#2298).
-  //
+  // Ugentlig træningsrytme (#1895, PR #2338/#2339 merged 11/7): training_week_plans
+  // fyldes KUN når en manager gemmer en holdrytme eller individuel ugeplan i
+  // trænings-UI'et. Skriv-path verificeret i backend/routes/api.js (upsert).
+  // Bevidst tom indtil første bruger gemmer en plan. Fjern denne entry når
+  // tabellen har rows.
+  "training_week_plans",
+]);
+
+// PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
+// steady-state). Dræn-til-tom-køer / per-batch transient state; Detector A's
+// "write-but-no-data" mis-fyrer på dem by design, og forward-guarden (#2299)
+// skal heller ikke flage dem når de kortvarigt har rows.
+const PERMANENT_EMPTY_TABLES = new Set([
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = alle DM'er leveret.
   // Skriv-path verificeret i discordDmOutbox.js (enqueueDm).
@@ -308,8 +315,23 @@ async function detectorA() {
   ]);
   const findings = [];
   for (const row of counts) {
-    if (row.row_count > 0) continue;
+    // Forward-guard (#2299): en midlertidig whitelist-entry hvis tabel nu HAR
+    // rows er stale — flag den, så whitelisten selv-rydder i stedet for at
+    // rådne (20/28 entries var forfaldne pr. 2026-07-10, se #2298).
+    if (row.row_count > 0) {
+      if (WHITELIST_EMPTY_TABLES.has(row.table_name)) {
+        findings.push({
+          detector: "A",
+          severity: "info",
+          table: row.table_name,
+          rows: row.row_count,
+          reason: `Stale whitelist-entry: tabellen har nu ${row.row_count} rows — fjern "${row.table_name}" fra WHITELIST_EMPTY_TABLES`,
+        });
+      }
+      continue;
+    }
     if (WHITELIST_EMPTY_TABLES.has(row.table_name)) continue;
+    if (PERMANENT_EMPTY_TABLES.has(row.table_name)) continue;
     const paths = insertPaths.get(row.table_name);
     if (!paths || paths.size === 0) continue; // ingen backend-write — ikke vores problem
     findings.push({
@@ -580,8 +602,19 @@ async function detectorE() {
   for (const row of counts) seen.set(row.event_name, row);
   const findings = [];
   for (const eventName of known) {
-    if (WHITELIST_ZERO_IMPRESSION_EVENTS.has(eventName)) continue;
     const row = seen.get(eventName);
+    if (WHITELIST_ZERO_IMPRESSION_EVENTS.has(eventName)) {
+      // Forward-guard (#2299): whitelist-entry hvis event nu flyder er stale.
+      if (row && row.event_count > 0) {
+        findings.push({
+          detector: "E",
+          severity: "info",
+          event_name: eventName,
+          reason: `Stale whitelist-entry: eventet har ${row.event_count} impressions sidste ${IMPRESSION_WINDOW_DAYS} dage — fjern "${eventName}" fra WHITELIST_ZERO_IMPRESSION_EVENTS`,
+        });
+      }
+      continue;
+    }
     if (row && row.event_count > 0) continue;
     findings.push({
       detector: "E",
