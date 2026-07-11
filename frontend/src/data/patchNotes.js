@@ -4,6 +4,83 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.81",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard rider ranking loads again",
+          "body": "The rider ranking card was fetching results for every race across the entire season instead of just your own division, which made it time out silently and leave the card empty. It now loads the same way the recent-results card already did, scoped to your division."
+        },
+        "da": {
+          "title": "Rytterranglisten på forsiden loader igen",
+          "body": "Ranglistekortet hentede resultater for alle sæsonens løb på tværs af alle divisioner i stedet for kun din egen, hvilket fik det til at timeoute stille og efterlade kortet tomt. Det henter nu på samme måde som \"seneste resultater\"-kortet allerede gjorde, afgrænset til din division."
+        },
+        "refs": [2328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Upcoming races card now shows what's actually next",
+          "body": "The card picked its three races by an internal calendar date before it knew the real schedule, which could show races out of order. It now sorts by the real stage schedule, so today's stages show first and tomorrow's take over once today's are done."
+        },
+        "da": {
+          "title": "\"Kommende løb\"-kortet viser nu de rigtige løb",
+          "body": "Kortet valgte sine tre løb ud fra en intern kalenderdato, før det kendte den ægte tidsplan, hvilket kunne vise løb i forkert rækkefølge. Det sorterer nu efter den ægte etapetidsplan, så dagens etaper vises først, og næste dags løb overtager når dagens er kørt."
+        },
+        "refs": [2328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Squad selection button now links to the race that actually needs it",
+          "body": "The \"pick your race squad\" card linked to the earliest scheduled race even if you'd already picked your squad for it. It now links directly to the next race that's still missing your squad selection."
+        },
+        "da": {
+          "title": "Holdudtagelses-knappen linker nu til det løb der faktisk mangler det",
+          "body": "\"Vælg din trup\"-kortet linkede til det tidligst planlagte løb, selv hvis du allerede havde udtaget til det. Det linker nu direkte til det næste løb hvor du stadig mangler at lave en udtagelse."
+        },
+        "refs": [2328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your own standing always shows in the division table",
+          "body": "The division standings card only ever showed the top 5 teams, so if you were outside the top 5 you couldn't see where you stood. Your own row is now always shown, separated below the top 5 when you're not in it."
+        },
+        "da": {
+          "title": "Din egen placering vises altid i divisionstabellen",
+          "body": "Divisionsstillingen viste kun top 5 hold, så du ikke kunne se din egen placering hvis du lå udenfor. Din egen række vises nu altid, adskilt nederst hvis du ikke er i top 5."
+        },
+        "refs": [2328]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "\"View calendar\" button now goes to the calendar",
+          "body": "The season banner's \"View calendar\" link pointed at the race hub instead of the calendar page. It now goes where it says."
+        },
+        "da": {
+          "title": "\"Se kalender\"-knappen fører nu til kalenderen",
+          "body": "Sæsonbannerets \"Se kalender\"-link pegede på Race Hub i stedet for kalendersiden. Det fører nu det rigtige sted hen."
+        },
+        "refs": [2328]
+      }
+    ]
+  },
+  {
     "version": "6.80",
     "date": "2026-07-11",
     "label": "Beta",

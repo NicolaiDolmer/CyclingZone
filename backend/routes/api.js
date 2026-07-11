@@ -7246,15 +7246,32 @@ router.get("/dashboard/recent-results", requireAuth, cached({
   }
 }));
 
-// GET /api/dashboard/rider-ranking — sæsonens top-5 ryttere efter point
-router.get("/dashboard/rider-ranking", requireAuth, cached({ namespace: "dashboard-rider-ranking", ttlMs: CACHE_TTL.dashboardRiderRanking }, async (req, res) => {
+// GET /api/dashboard/rider-ranking — sæsonens top-5 ryttere efter point, KUN i
+// managerens egen division+pulje (#2328, samme mønster som recent-results #2288 G).
+// Uden filteret hentede endpointet ALLE løb på tværs af sæsonens ~15 puljer
+// (423 løb / ~125k race_results-rækker i prod) via fetchAllRows' side-for-side
+// paginering (126 sekventielle round-trips) — det timede stille ud på Railway,
+// så frontend'ens `if (r.ok)`-guard aldrig fyrede og ranglisten forblev tom uden
+// synlig fejl. keyExtras deler cachen pr. league_division_id (ikke global).
+router.get("/dashboard/rider-ranking", requireAuth, cached({
+  namespace: "dashboard-rider-ranking",
+  ttlMs: CACHE_TTL.dashboardRiderRanking,
+  keyExtras: (req) => String(req.team?.league_division_id ?? "none"),
+}, async (req, res) => {
   try {
-    const { data: season } = await supabase
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const { data: season, error: seasonError } = await supabase
       .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonError) throw seasonError;
     if (!season) return res.json({ riders: [] });
 
-    const { data: races } = await supabase
+    let racesQuery = supabase
       .from("races").select("id").eq("season_id", season.id);
+    if (req.team.league_division_id != null) {
+      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+    }
+    const { data: races, error: racesError } = await racesQuery;
+    if (racesError) throw racesError;
     if (!races?.length) return res.json({ riders: [] });
 
     const raceIds = races.map(r => r.id);

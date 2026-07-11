@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
+import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
@@ -215,9 +216,14 @@ export default function DashboardPage() {
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
     setIncomingLoanCount(squadCountInputs.incomingLoanCount);
     setAllAuctions(auctionsRes.data || []);
+    // #2328: hold ALLE holdets kommende puljeløb i state (ikke kun top-3) — både
+    // "Kommende løb"-kortets faktiske dagsordning (pickUpcomingRaces nedenfor,
+    // som kræver den ægte race_stage_schedule-tid for hele listen) og holdudtagelses-
+    // CTA'en/squadSelectionMissingRace skal kunne finde det RIGTIGE næste udtagelige
+    // løb blandt ALLE puljens løb, ikke kun de tre der viste-tilfældigt fra den
+    // gamle PCM-dato-sortering.
     const sortedRaces = [...(racesRes.data || [])]
-      .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text))
-      .slice(0, 3);
+      .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text));
     setNextRaces(sortedRaces);
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
@@ -488,9 +494,22 @@ export default function DashboardPage() {
   });
   const { ownedNow, outgoingCount, warning: squadWarning } = squadStats;
 
+  // #2328 — "Kommende løb"-kortet: de 3 faktisk kommende løb efter ægte
+  // race_stage_schedule-tid (nextStageByRace), ikke den statiske PCM-dato som
+  // det tidligere top-3-udvalg blev sorteret på FØR den ægte tid var kendt.
+  const displayedRaces = pickUpcomingRaces(nextRaces, nextStageByRace, 3);
+
   // My division standings
-  const divStandings = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
-    .sort((a, b) => b.total_points - a.total_points).slice(0, 5);
+  const divStandingsAll = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
+    .sort((a, b) => b.total_points - a.total_points);
+  const myStandingIndex = divStandingsAll.findIndex(s => s.team_id === team?.id);
+  // #2328 — egen placering skal altid være synlig, også uden for top-5. Top-5
+  // vises som hidtil; er manageren ikke i top-5, tilføjes hans egen række sidst
+  // (med den ægte placerings-nummer bevaret via myStandingIndex i JSX'en).
+  const divStandingsTop = divStandingsAll.slice(0, 5).map((s, i) => ({ ...s, _rank: i + 1 }));
+  const divStandings = myStandingIndex >= 0 && myStandingIndex >= 5
+    ? [...divStandingsTop, { ...divStandingsAll[myStandingIndex], _rank: myStandingIndex + 1, _isOwnRowBreak: true }]
+    : divStandingsTop;
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -627,9 +646,11 @@ export default function DashboardPage() {
           ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
           senere), men monteres ikke længere her. */}
 
-      {/* Season Status Banner — links to the race calendar (#1421: was a dead Card) */}
+      {/* Season Status Banner — links to the race calendar (#1421: was a dead Card).
+          #2328: rettet fra /races (RaceHub) til /calendar — knappens tekst
+          ("Se kalender") lovede kalendersiden, men Linket pegede på RaceHub. */}
       {seasonInfo && (
-        <Link to="/races" className="group block">
+        <Link to="/calendar" className="group block">
         <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
@@ -676,9 +697,10 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det næste kommende
-          løbs udtagelses-panel. Selv-guarder (intet scheduled løb → null). */}
-      <TeamSelectionCtaCard races={nextRaces} />
+      {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der reelt
+          MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
+          tidligst scheduled-løb, som kunne være allerede-udtaget). */}
+      <TeamSelectionCtaCard nextRace={squadSelectionMissingRace} />
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">
@@ -788,14 +810,14 @@ export default function DashboardPage() {
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.races.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.races.linkAll")}</span>
           </Link>
-          {nextRaces.length === 0 ? (
+          {displayedRaces.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
               <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {nextRaces.map((race) => (
+              {displayedRaces.map((race) => (
                 <Link key={race.id} to={`/races/${race.id}`} state={{ from: "dashboard" }}
                   className="flex items-center justify-between py-2.5 border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle rounded px-1 -mx-1 transition-all">
                   <div>
@@ -845,20 +867,28 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {divStandings.map((s, i) => {
+              {divStandings.map((s) => {
                 const isMe = s.team_id === team?.id;
-                const isLeader = i === 0;
-                const maxPts = divStandings[0]?.total_points || 1;
+                const isLeader = s._rank === 1;
+                const maxPts = divStandingsTop[0]?.total_points || 1;
                 return (
-                  <Link key={s.id} to="/standings"
-                    style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
-                    className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
-                    <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{i+1}</span>
-                    <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
-                    <div className="flex-1">
-                      <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
-                    </div>
-                  </Link>
+                  <Fragment key={s.id}>
+                    {/* #2328 — egen række uden for top-5 skilles visuelt fra
+                        top-5-blokken med en tynd skillelinje, så spring i
+                        placeringsnummeret (fx #5 → #14) ikke ser ud som en fejl. */}
+                    {s._isOwnRowBreak && (
+                      <div className="border-t border-cz-border my-1" aria-hidden="true" />
+                    )}
+                    <Link to="/standings"
+                      style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                      className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
+                      <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
+                      <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
+                      <div className="flex-1">
+                        <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
+                      </div>
+                    </Link>
+                  </Fragment>
                 );
               })}
             </div>
