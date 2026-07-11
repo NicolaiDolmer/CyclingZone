@@ -18,6 +18,8 @@
 
 > **Session 11/7 (autonom aften, 2t+):** Lukket: #2266 (PR #2346, v6.89) · #2293 (PR #2347, v6.90) · #2284, #2245, #2265 (verificeret allerede shippet — PR #2246/#2275). Merged+**migrationer applied & verificeret i prod**: PR #2345 (#2327 security RPC-grant-revoke) + PR #2348 (#2326 lån-split, v6.91) — begge lukket. #2275-binding-guard bekræftet allerede applied. #2254 delvist fixet (PR #2350, v6.92: landing-badge af-signaleret + compare-tap-target 44px; åben for RaceHub/training/board-findings der kræver DOM-verify) · #2263 undersøgt (ingen bred nulstilling; mangler rytter-ID fra ejer-DM).
 
+> **Narrativ design 11/7 (Fable):** spec + content-batch leveret — [specs/2026-07-11-narrative-systems-design.md](superpowers/specs/2026-07-11-narrative-systems-design.md) + [drafts/2026-07-11-narrative-content-batch.md](superpowers/drafts/2026-07-11-narrative-content-batch.md) (recap v2, karrieremål/traits, verdenshistorik+klubmuseum som HoF-afløser, feed). Design-delen af MASTERPLAN-punkt 7 (#1145/#1147); ejer vælger slices (anbefalet S1 palmarès + S2 recap v2). Tier 2-vokabular koordinerer med race-engine-dybde-spec'en.
+
 > **🎯 Next action:** Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91 — lav en delbetaling, se Interest/Principal i Finance-historik). Eftersend rytter-ID til #2263. Åbne fix-kandidater: #2254-rest (RaceHub live-stage klikbar — kræver DOM-verify), #2270/#2274, admin-test-køen (talentspejder/faciliteter-flip).
 
 > **🤖 Working agent:** Claude Code (Fable) — race-engine v2-dybde design-spec (#2224 dominans + #1021/#1176/#2034), startet 11/7 aften.
