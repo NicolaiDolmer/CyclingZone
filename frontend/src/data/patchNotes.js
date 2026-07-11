@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.93",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "Build your club: facilities and staff",
+          "body": "Spend your surplus on five facility tracks (training, scouting, medical, academy, and commercial), each with five tiers, and hire a chief for every track. Prices are shown in CZ$ and in seasons of profit, so you can see the real cost. Facilities absorb your winnings and unlock effects as each engine comes online, starting with training. Every chief has a clickable profile with an overall rating and ability columns, so you can compare candidates by strength and specialization before hiring, and a season-cost strip on the club page shows upkeep and payroll against your balance."
+        },
+        "da": {
+          "title": "Byg din klub: faciliteter og staff",
+          "body": "Brug dit overskud på fem facilitets-spor (træning, scouting, medicinsk, akademi og kommerciel), hver med fem tiers, og ansæt en chef for hvert spor. Priser vises i CZ$ og i sæsoners overskud, så du kan se den reelle pris. Faciliteter opsuger din gevinst og låser effekter op efterhånden som hver motor lander, med træning først. Hver chef har en klikbar profil med en samlet rating og evne-kolonner, så du kan sammenligne kandidater på styrke og specialisering før du ansætter, og en sæson-omkostnings-stribe på klub-fladen viser drift og lønninger op mod din saldo."
+        },
+        "refs": [1441, 2357]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Meet your talent scout: Scouting Central is live",
+          "body": "Scouting moves from single clicks to a real scout you direct. On the new Scouting Central page you send your talent scout on targeted assignments for a specific rider or on broader search missions, follow the task queue, and get finished reports back in a shortlist feed. Reports narrow a rider's hidden potential range, just like scouting did before, and all your existing scouting progress carries over."
+        },
+        "da": {
+          "title": "Mød din talentspejder: Scouting-centralen er live",
+          "body": "Scouting rykker fra enkelt-klik til en rigtig spejder du styrer. På den nye Scouting-central sender du din talentspejder på målrettede opgaver på en bestemt rytter eller på bredere søge-missioner, følger opgavekøen og får færdige rapporter tilbage i et shortlist-feed. Rapporter indsnævrer en rytters skjulte potentiale-interval, ligesom scouting gjorde før, og al din eksisterende scouting-fremgang følger med."
+        },
+        "refs": [2244, 2357]
+      }
+    ]
+  },
+  {
     "version": "6.92",
     "date": "2026-07-11",
     "label": "Beta",

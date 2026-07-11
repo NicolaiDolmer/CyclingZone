@@ -4437,8 +4437,17 @@ test("#1441 A1: processTeamSeasonPayroll-summary indeholder facility_upkeep + st
 test("#1441 A1: defaultRunSeasonPayroll aggregate-summary indeholder facility_upkeep_total + staff_salary_total (0 by default)", async () => {
   // Fake: ingen human-teams → loadHumanSeasonEndTeams returnerer [] og
   // aggregate-summary'en skal alligevel eksponere alle felter med 0.
+  // #2357: orkestratoren læser nu også app_config (facilities_enabled) — faken
+  // serverer null (flag mangler) så default-disabled-stien dækkes ærligt.
   const supabase = {
     from(table) {
+      if (table === "app_config") {
+        return {
+          select() {
+            return { eq() { return { maybeSingle() { return Promise.resolve({ data: null, error: null }); } }; } };
+          },
+        };
+      }
       assert.equal(table, "teams");
       return {
         select() {
@@ -4456,4 +4465,86 @@ test("#1441 A1: defaultRunSeasonPayroll aggregate-summary indeholder facility_up
   assert.equal(summary.upkeep_total, 0);
   assert.equal(summary.facility_upkeep_total, 0, "facility_upkeep_total skal findes i aggregate-summary");
   assert.equal(summary.staff_salary_total, 0, "staff_salary_total skal findes i aggregate-summary");
+});
+
+test("#2357: defaultRunSeasonPayroll læser facilities_enabled fra app_config (flip-wiring)", async () => {
+  // Flag='on' i app_config + ingen teams: beviser at orkestratoren spørger
+  // app_config (runtime-flag) og ikke kun compile-konstanten. Threading-adfærden
+  // pr. hold dækkes af processTeamSeasonPayroll-testen nedenfor.
+  const queriedTables = [];
+  const supabase = {
+    from(table) {
+      queriedTables.push(table);
+      if (table === "app_config") {
+        return {
+          select() {
+            return { eq(col, key) {
+              assert.equal(key, "facilities_enabled");
+              return { maybeSingle() { return Promise.resolve({ data: { value: "on" }, error: null }); } };
+            } };
+          },
+        };
+      }
+      return {
+        select() {
+          return {
+            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+          };
+        },
+      };
+    },
+  };
+
+  await defaultRunSeasonPayroll(supabase, "season-flag-1", {});
+  assert.ok(queriedTables.includes("app_config"), "orkestratoren skal læse app_config.facilities_enabled");
+});
+
+test("#2357: processTeamSeasonPayroll threader facilitiesEnabled til chargeFacilityCosts (drift+staff-løn opkræves ved flip)", async () => {
+  // Regression-guard for flip-bølgen: FØR wiringen faldt chargeFacilityCosts
+  // tilbage på compile-konstanten (false) → faciliteter kunne købes (route-gate
+  // læser app_config) men sæson-drift/staff-løn blev aldrig opkrævet.
+  const { supabase, financeRows, queriedTables } = makeFacilitySupabase({
+    facilities: [{ track: "training", tier: 2 }], // 3_500 upkeep
+    staff: [{ salary: 40_000 }],
+  });
+  // Payroll-stien tæller også akademi-ryttere (trin 4) — servér riders med count 0
+  // og delegér alt andet til facility-faken (som fortsat throw'er på ukendte tabeller).
+  const baseFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table === "riders") {
+      queriedTables.push(table);
+      return {
+        select() {
+          return { eq() { return { eq() { return Promise.resolve({ count: 0, error: null }); } }; } };
+        },
+      };
+    }
+    if (table === "teams") {
+      queriedTables.push(table);
+      return {
+        // debt_breach_streak/transfer_frozen-opdatering + post-salary balance-genlæsning
+        update() { return { eq() { return Promise.resolve({ error: null }); } }; },
+        select() {
+          return { eq() { return { single() { return Promise.resolve({ data: { balance: 999_999 }, error: null }); } }; } };
+        },
+      };
+    }
+    return baseFrom(table);
+  };
+
+  const team = { id: "team-flip-1", name: "Flip FC", division: 2, balance: 999_999, riders: [] };
+  const summary = await processTeamSeasonPayroll(team, "season-flip-1", {
+    supabase,
+    seasonNumber: 1, // sæson-1-deferral på division-upkeep → kun facility-sinks rammer faken
+    facilitiesEnabled: true,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  assert.ok(queriedTables.includes("team_facilities"), "flag=true skal åbne facility-gaten");
+  assert.equal(summary.facility_upkeep, 3_500);
+  assert.equal(summary.staff_salary, 40_000);
+  assert.equal(financeRows.filter((r) => r.type === "facility_upkeep").length, 1);
+  assert.equal(financeRows.filter((r) => r.type === "staff_salary").length, 1);
 });

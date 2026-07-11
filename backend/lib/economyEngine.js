@@ -59,6 +59,7 @@ import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { FACILITIES_ENABLED } from "./facilityConstants.js";
+import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import {
   buildSponsorStandingsContext,
@@ -443,12 +444,18 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
   const teamsWithRoster = await loadHumanSeasonEndTeams(supabaseClient);
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+  // #2357 flip-bølge: facilities_enabled læses fra app_config (samme runtime-gate
+  // som køb/ansæt-routerne i api.js) så sæson-drift + staff-løn følger flippet.
+  // Compile-konstanten FACILITIES_ENABLED er kun fallback for direkte kald/tests.
+  const facilitiesEnabled = deps.facilitiesEnabled
+    ?? evaluateFlagStage(await readFlagStage(supabaseClient, "facilities_enabled"));
   const results = [];
   for (const teamWithRoster of teamsWithRoster) {
     const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
       supabase: supabaseClient,
       // #1678 · videre-fører seasonNumber så upkeep kan deferres i sæson 1.
       seasonNumber: deps.seasonNumber,
+      facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
     });
@@ -804,12 +811,13 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   }
 
   // 6+7. Facilitets-upkeep + staff-sæsonløn (#1441 Fase 3 A1) — flag-gated,
-  //      idempotent pr. sæson+hold. Ekstraheret til chargeFacilityCosts så tests
-  //      kan injicere enabled:true (FACILITIES_ENABLED er compile-time const=false).
+  //      idempotent pr. sæson+hold. enabled threades fra defaultRunSeasonPayroll
+  //      (app_config-flag, #2357); FACILITIES_ENABLED er kun fallback-default.
   const { facilityUpkeepCharged, staffSalaryCharged } = await chargeFacilityCosts({
     team,
     seasonId,
     supabaseClient,
+    enabled: deps.facilitiesEnabled ?? FACILITIES_ENABLED,
   });
 
   return {
