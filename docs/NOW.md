@@ -16,11 +16,9 @@
 
 > **Talentspejder (spec låst 7/7):** Fase 1+2 merged · **Fase 3 (#2244) SHIPPED til prod 10/7 aften** (#2280+#2281+#2283 merged, migration verificeret applied; gates grønne — audit `docs/audits/2026-07-10-talentspejder-gates.md`); flag `scout_system_enabled` off = spillere ser slots; admin-preview on. #2284 delvist løst via chips (jobConfig-API + batch-navne shippet). Fase 4 gemte filtre #27. Kendt problem: test-konti wipes (#2245, bug/high).
 
-> **Parallel PR 10/7:** [#2290](https://github.com/NicolaiDolmer/CyclingZone/issues/2290) tabel-sortering — 4 spiller-huller (træning-roster, manager-trup, løbs-bibliotek+verden) gjort sorterbare via delt `useTableSort`/`SortableTh`, + forward-guard (`tableSortIntent.test.js`: hver tabel skal erklære `data-sortable`/`data-sort-exempt`). v6.74. PR afventer ejer-merge.
+> **Ejer-feedback 11/7:** #2290 (PR #2291) + #2307 (PR #2313) er MERGED. Nye issues: [#2328](https://github.com/NicolaiDolmer/CyclingZone/issues/2328) dashboard-opfølgninger (rangliste loader ikke, kommende løb forkerte, udtagelses-link, egen placering i stilling, "Se kalender"-knap) · [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabeller mangler sortering.
 
-> **Session 10/7 (worktree):** [#2307](https://github.com/NicolaiDolmer/CyclingZone/issues/2307) Board S1 frontend-korrekthed — PR afventer ejer-review (v6.76): budget-modifier én kilde (backend), bånd-tekster rettet+i18n, feed-i18n-resolve, error-state, mobil-overflow, NaN-guard, realtime-refetch, a11y-progressbars, dead keys fjernet.
-
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (main-PC) — aktiv på #2311 (Klub-UX Slice 2) siden 11/7.
 
 ## Standing context (forever-relaunch)
 
