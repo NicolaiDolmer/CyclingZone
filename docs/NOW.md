@@ -28,7 +28,7 @@
 
 > **🎯 Next action:** Ejer-verify #1894+#1895 på /training i prod (samlet: auto-hint, bulk-smart, ugerytme, individuel plan). Derefter admin-test-køen (talentspejder-flip, faciliteter-flip) eller #2270/#2274.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (autonom time, 11/7 aften): backlog-hygiejne — #2329 lukket (verificeret), #2298 whitelist-oprydning, dernæst #2295.
 
 ## Standing context (forever-relaunch)
 
