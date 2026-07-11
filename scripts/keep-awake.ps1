@@ -31,7 +31,7 @@ public static class NwKeepAwake {
 }
 '@
 
-[uint32]$ES_CONTINUOUS       = 0x80000000
+[uint32]$ES_CONTINUOUS       = [uint32]'0x80000000'  # hex-literal parses som negativ int32 i pwsh 7 → eksplicit uint32-konvertering
 [uint32]$ES_SYSTEM_REQUIRED  = 0x00000001
 $keepAwakeFlags = $ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED
 

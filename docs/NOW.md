@@ -30,7 +30,7 @@
 >
 > **🎯 Next action:** Pick-up-klar UDEN ejer: **S1 work-cost [#2352](https://github.com/NicolaiDolmer/CyclingZone/issues/2352)** (kalibreres mod S0-baselinen); parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** NATBØLGE 11-12/7 (Fable-orkestrator + sonnet-fleet): S1 #2352 (hovedspor) · #1997 palmarès (draft) · oprydning #2359/#1994/#2358/#1996 · #2150+#2184 · #2360. Ingen merges i nat — morgen-salve m. ejer-go. STOP + spørg ejer før pick-up.
 
 ## Standing context (forever-relaunch)
 
