@@ -505,6 +505,10 @@
         "title": "Hvad hvert fokus træner",
         "text": "Hvert fokus udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner stadig forbedres en smule langsommere. Alle udvikler sig bredt, bare hurtigst i den valgte retning. Retningerne er: VO2max træner Klatring, Punch og Tempo. Tærskel/TT træner Enkeltstart og Tempo. Spurt træner Spurt og Acceleration. Udholdenhed træner Udholdenhed, Restitution og Modstandskraft. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Intensitet sætter tempoet: Let er langsomst men sikker, Normal er den balancerede standard med en lille risiko for tilbageslag, og Hård er hurtigst men risikerer et tilbageslag eller en skade når rytterens træthed allerede er høj."
       },
+      "typeGating": {
+        "title": "Hvorfor rykker et fokus ikke for nogle ryttere?",
+        "text": "Enhver rytter har en type (spurter, klatrer, TT, GC og så videre) og et skjult potentiale pr. evne, begge sat da rytteren blev oprettet. Et træningsfokus fremskynder kun evner der passer til rytterens type: en klatrers Spurt og Acceleration rykker næsten intet under et spurt-fokus, uanset intensitet, fordi den type har ringe naturligt råderum der. Tjek rytterens type-mærkat før du vælger fokus, og brug fokus-dropdownen, som mærker hver mulighed så du kan se med det samme om den passer til rytteren, er begrænset, eller slet ikke udvikles."
+      },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
         "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."

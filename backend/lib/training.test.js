@@ -6,6 +6,7 @@ import {
   deriveTrainingState, canTrain, resolveTrainingModifier,
   isValidFocus, isValidIntensity,
   partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS,
+  focusTrainability,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -196,5 +197,45 @@ test("resolveTrainingModifier: easy rammer aldrig tilbageslag", () => {
   for (let i = 0; i < 100; i++) {
     const m = resolveTrainingModifier({ focus: "endurance", intensity: "easy" }, `s-${i}`, 5);
     assert.equal(m.setbackHit, false);
+  }
+});
+
+// ── #1974: focusTrainability — type-derived trainability-signal ────────────────
+// Udledes UDELUKKENDE af signatureFactor(primaryType, ability) (riderProgression.js).
+// Værdier bekræftet mod de faktiske vægt-tabeller i riderTypes.js (RIDER_TYPES).
+
+test("focusTrainability: climber — signatur-fokus er 'strength', modsat fokus er 'blocked'", () => {
+  const t = focusTrainability("climber");
+  // climber weights: climbing:3, tempo:2, punch:1, endurance:1, sprint:-2, acceleration:-1, flat:-1
+  assert.equal(t.vo2max, "strength");    // climbing+punch+tempo alle positive
+  assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral)
+  assert.equal(t.sprint, "blocked");     // sprint(-2) og acceleration(-1) begge negative → factor 0
+  assert.equal(t.endurance, "strength"); // endurance positiv
+  assert.equal(t.technique, "limited");  // descending/positioning/cobblestone alle neutrale (ingen vægt)
+  assert.equal(t.aero, "limited");       // time_trial neutral, flat(-1) negativ → ikke alle 0, ikke nogen ≥1
+});
+
+test("focusTrainability: sprinter — sprint-fokus 'strength', vo2max/threshold 'limited' (ingen blocked)", () => {
+  const t = focusTrainability("sprinter");
+  // sprinter weights: acceleration:3, sprint:2, flat:1, durability:1, climbing:-2, endurance:-1
+  assert.equal(t.sprint, "strength");   // sprint+acceleration begge positive
+  assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0, men durability≥1 gør fokus 'strength')
+  assert.equal(t.vo2max, "limited");    // climbing(-2)→0, punch/tempo neutrale → ikke alle 0
+  assert.equal(t.technique, "limited"); // ingen af descending/positioning/cobblestone vægtet
+});
+
+test("focusTrainability: alle TRAINING_FOCUS_KEYS er dækket for enhver kendt type", () => {
+  for (const focusKey of TRAINING_FOCUS_KEYS) {
+    const t = focusTrainability("gc");
+    assert.ok(["strength", "limited", "blocked"].includes(t[focusKey]), `ugyldig værdi for ${focusKey}`);
+  }
+});
+
+test("focusTrainability: ukendt/manglende primary_type → alt 'limited' (sikker neutral)", () => {
+  for (const primaryType of [null, undefined, "", "nonexistent-type"]) {
+    const t = focusTrainability(primaryType);
+    for (const focusKey of TRAINING_FOCUS_KEYS) {
+      assert.equal(t[focusKey], "limited", `${String(primaryType)} → ${focusKey} skulle være 'limited'`);
+    }
   }
 });

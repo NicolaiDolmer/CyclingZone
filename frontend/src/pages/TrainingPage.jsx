@@ -71,7 +71,7 @@ export default function TrainingPage() {
 
   const training = useTraining();
   const {
-    enabled, todayRun, condition, progress, loading,
+    enabled, todayRun, condition, progress, trainability, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
   } = training;
 
@@ -205,6 +205,9 @@ export default function TrainingPage() {
     const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
     const busy = savingId === rider.id || bulkApplying;
     const isSelected = selected.has(rider.id);
+    // #1974: coarse type-derived trainability-signal — hvorfor et fokus ikke rykker.
+    const riderTrainability = trainability[rider.id] ?? {};
+    const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
 
     return (
       <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
@@ -245,9 +248,15 @@ export default function TrainingPage() {
             className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
           >
             <option value="">—</option>
-            {TRAINING_FOCUS_KEYS.map((k) => (
-              <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
-            ))}
+            {TRAINING_FOCUS_KEYS.map((k) => {
+              const level = riderTrainability[k];
+              const marker = level ? t(`trainability_${level}`) : "";
+              return (
+                <option key={k} value={k}>
+                  {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
+                </option>
+              );
+            })}
           </select>
           {plan?.focus && (
             <button
@@ -259,6 +268,18 @@ export default function TrainingPage() {
             >
               ×
             </button>
+          )}
+          {(currentTrainability === "limited" || currentTrainability === "blocked") && (
+            <span
+              className={`ms-1 inline-block text-[10px] px-1.5 py-0.5 rounded-full border ${
+                currentTrainability === "blocked"
+                  ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
+                  : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
+              }`}
+              title={t(currentTrainability === "blocked" ? "trainabilityChipBlockedTitle" : "trainabilityChipLimitedTitle")}
+            >
+              {t(currentTrainability === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited")}
+            </span>
           )}
         </td>
 
@@ -421,6 +442,7 @@ export default function TrainingPage() {
           ))}
         </ul>
         <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
+        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideGating")}</p>
       </details>
 
       {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
