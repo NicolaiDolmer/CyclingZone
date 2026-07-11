@@ -73,6 +73,7 @@
     "cannot_bid_own_listing": "Kan ikke byde på eget udbud",
     "rider_not_found_or_no_team": "Rytter ikke fundet eller har intet hold",
     "rider_retired_trade": "Rytteren er pensioneret og kan ikke handles",
+    "ai_rider_no_auction": "AI-ejede ryttere kan ikke sættes på auktion.",
     "ai_rider_no_direct_offer": "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet.",
     "cannot_afford_offer": "Du har ikke råd til dette tilbud",
     "squad_full": "Dit hold er fyldt ({effectiveCap} ryttere, Div {division} cap {maxRiders})",

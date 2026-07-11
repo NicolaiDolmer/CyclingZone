@@ -1366,17 +1366,15 @@ export default function RiderStatsPage() {
       overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
     }
   }
-  // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter, egne
-  // SENIOR-ryttere, samt bank/AI-ryttere kan sættes på auktion).
-  const canAuction  = (isFreeAgent || isMySeniorRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
+  // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter og egne
+  // SENIOR-ryttere kan sættes på auktion). #2264: bank/AI-ryttere er fjernet —
+  // backend har blokeret dem siden 2026-06-30 (ai_rider_no_auction), så knappen
+  // gav kun en fejl.
+  const canAuction  = (isFreeAgent || isMySeniorRider) && !isPendingTransfer && !isRetired;
   const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
     ? t("auctionStart.label.myRider")
-    : isBankRider
-      ? t("auctionStart.label.bank")
-      : isAiRider
-        ? t("auctionStart.label.ai")
-        : t("auctionStart.label.free");
+    : t("auctionStart.label.free");
   // Racing-age (year-arithmetic) — matches U25/filter-logik andre steder i appen.
   // Ellers kunne profil vise "24 år" mens max_age=25-filteret tæller rytteren som 25.
   const age = rider.birthdate

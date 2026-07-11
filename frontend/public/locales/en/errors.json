@@ -73,6 +73,7 @@
     "cannot_bid_own_listing": "You can't bid on your own listing",
     "rider_not_found_or_no_team": "Rider not found or has no team",
     "rider_retired_trade": "This rider has retired and can't be traded",
+    "ai_rider_no_auction": "AI-owned riders can't be put up for auction.",
     "ai_rider_no_direct_offer": "AI riders can't receive direct offers. Start or bid on an auction instead.",
     "cannot_afford_offer": "You can't afford this offer",
     "squad_full": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",

@@ -165,7 +165,9 @@ export async function resetBetaRosters(supabase) {
     updates.push(
       supabase
         .from("riders")
-        .update({ team_id: null, pending_team_id: null })
+        // #2264: nulstil is_academy ved frigivelse til fri agent — en akademi-
+        // rytter uden hold er ulovlig tilstand (markedet viser den, auktion afviser).
+        .update({ team_id: null, pending_team_id: null, is_academy: false })
         .in("id", withoutAi)
     );
   }

@@ -4804,8 +4804,11 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
     const { data: activeSeason } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
     contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
   }
+  // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
+  // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
+  // — vises i markedet men afvises af auktions-gaten (rider_is_academy).
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, is_academy: false, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
