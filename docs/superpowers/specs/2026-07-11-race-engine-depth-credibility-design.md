@@ -278,10 +278,10 @@ Kalibrerings-protokol pr. slice: 3 seeds (2026/7/42, som race:gate) × neutral/c
 2. **"Work-cost på −10..−30 pladser kan kalibreres uden at gøre roller forhadte."** Hjælper-ejere skal opleve mening, ikke straf. **Evidens for:** role-exploit-oraklet holder (kaptajn-setup optimalt for tophold); andel af manager-satte lineups der aktivt bruger helper/effort stiger efter S3; kvalitativ feedback på `helper_sacrifice`-historierne. **Evidens imod:** managere flytter systematisk ALT til free_role efter at have prøvet roller (revealed preference = rollerne opleves som tab); support-henvendelser om "min rytter blev ødelagt af en rolle han ikke valgte" (AI-autopick-hold).
 3. **"Seeded, forklaret uheld (jour sans + styrt) opleves som fair sport, ikke som skjult terning."** Hele styrt-søjlen står og falder med det. **Evidens for:** why-rapport-åbningsrate på løb med incidents; klage-rate pr. incident-ramt løb ≤ klage-rate generelt; story-tags citeres i Discord (historie-værdi realiseret). **Evidens imod:** spillere trækker ryttere fra brosten/descent-løb i målbar grad (risiko-aversion æder kalenderen); gentagne "refund"-krav efter DNF'er; incidents nævnt negativt i churn-svar. Fallback er defineret på forhånd: halvér raterne og fjern abandon-udfaldet (kun time_loss) uden at røre resten.
 
-## 16. Åbne ejer-beslutninger (før S1 går i gang)
+## 16. Ejer-beslutninger (runde 1 besvaret 11/7)
 
-1. **Godkend målbånd-tabellen (§12)** — især favorit-win 25-40 % og hold-koncentration ≤5 %.
-2. **Work-cost-styrke:** markant (−10..−30 pladser, anbefalet — ellers løses #2224 ikke) vs. mild (−5..−15) 👍/👎.
-3. **Styrt i Grand Tours:** må GC-favoritter DNF'e? Anbefaling: JA med lav rate — det er historierne; fallback-knappen (kun time_loss) findes.
-4. **Peak-vinduer:** 2 pr. rytter pr. sæson, ren kalender-mekanik i v1? 👍/👎.
-5. **Commit-reveal-salt:** aktiveres fra næste sæsongrænse? (Ren win, men ændrer alle fremtidige seeds én gang.)
+1. **Målbånd-tabellen (§12): GODKENDT** (ejer 11/7).
+2. **Work-cost-styrke:** markant (−10..−30 pladser, anbefalet — ellers løses #2224 ikke) vs. mild (−5..−15). **AFVENTER** — ejer bad om forklaring af begrebet; endelig størrelse låses uanset i harnesset.
+3. **Styrt i Grand Tours: GODKENDT** (ejer 11/7) — GC-favoritter kan DNF'e, lav rate; fallback (kun time_loss) står klar.
+4. **Peak-vinduer: GODKENDT** (ejer 11/7) — 2 pr. rytter pr. sæson, ren kalender-mekanik i v1.
+5. **Commit-reveal-salt:** **AFVENTER** — ejer spurgte til alternativer + om det kan gøres omgående. Afklaring: sæsongrænse-anbefalingen var ren kommunikations-æstetik; teknisk kan saltet aktiveres straks som lille selvstændig PR (env-secret i Infisical, seed-konstruktion i raceRunner, salt_version-stempel på runs; parcours-seeds saltes IKKE — de skal være offentlige). Ikke balance-følsomt (ændrer ingen fordelinger, kun den konkrete noise-sekvens); determinisme/idempotens bevares. Alternativer vurderet: privat repo (imod building-in-public, løser ikke prædikterbarhed reelt) og tilfældigt-men-persisteret seed (bryder ren input→output-determinisme) — begge fravalgt til fordel for salt.
