@@ -26,6 +26,7 @@ export function useTraining() {
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
+  const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -46,6 +47,7 @@ export function useTraining() {
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setTrainability(data.trainability ?? {});
+        setSmartDefaultFocus(data.smartDefaultFocus ?? {});
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -125,13 +127,14 @@ export function useTraining() {
       if (data.plans) setPlans(data.plans);
       if (data.slots) setSlots(data.slots);
       const applied = data.applied ?? 0;
+      const skippedHasPlan = (data.skipped?.hasPlan) ?? []; // #1894 smart-mode: har allerede en plan
       const skipped = [
         ...((data.skipped?.notOwned) ?? []),
         ...((data.skipped?.noSlots) ?? []),
       ];
       const failed = skipped.map((riderId) => ({ riderId, error: "skipped" }));
       if (applied > 0) logEvent("training_focus_set_bulk", { focus, intensity, applied });
-      return { ok: failed.length === 0, applied, failed };
+      return { ok: failed.length === 0, applied, failed, skippedHasPlan };
     } catch {
       return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error: "network" })), error: "network" };
     } finally {
@@ -167,5 +170,5 @@ export function useTraining() {
     }
   }, [refresh]);
 
-  return { slots, plans, teamId, enabled, todayRun, condition, progress, trainability, loading, savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh };
+  return { slots, plans, teamId, enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading, savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh };
 }

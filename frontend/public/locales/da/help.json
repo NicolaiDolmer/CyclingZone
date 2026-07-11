@@ -513,6 +513,10 @@
         "title": "Træn i dag og +25%-boostet",
         "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."
       },
+      "smartDefault": {
+        "title": "Hvad træner en rytter uden valgt fokus?",
+        "text": "En rytter uden valgt fokus står ikke uden træning: assistenten træner rytteren mod et fokus der passer til typen, fx en spurter mod Spurt og en klatrer mod VO2max. Du ser en lille 'Assistent: ... (auto)'-note under fokus-dropdownen når det gælder. Vælger du selv et fokus, vinder det altid. For at anvende et type-matchet fokus på flere ryttere ad gangen: markér dem og vælg 'Smart fokus (efter ryttertype)' i anvend-på-valgte-bjælken; ryttere der allerede har et fokus springes over, så dine eksisterende valg aldrig overskrives."
+      },
       "formFatigue": {
         "title": "Form og Træthed",
         "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hver dag omkring midnat restituerer hver rytter også noget Træthed, så den aldrig sidder fast på 100: hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger den stadig op i løbet af dagen. En høj Recovery-evne gør den daglige restitution hurtigere. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt. I løb (aktivt siden sæson 1-relaunchen) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løbsdage opbygger træthed efter etapeprofil: bjergetaper koster mest, flad etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."

@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer: TO admin-tests i prod:** (1) talentspejder (cyclingzone.org → Scouting; beslut flip af \`scout_system_enabled\` — v6.73-patch-note er allerede offentlig! — + tone-session + sanity-tjek rejsepriser 1.000/step + 6.000/mission), (2) faciliteter (køb træningscenter → træningsdag → se løftet; pre-flip-gaten #2287 er grøn → beslut \`facilities_enabled\`-flip + staged announce). Derefter: #2270 eller #2274. **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
+> **🎯 Next action:** **Ejer: TO admin-tests i prod:** (1) talentspejder (cyclingzone.org → Scouting; beslut flip af \`scout_system_enabled\` — v6.73-patch-note er allerede offentlig! — + tone-session + sanity-tjek rejsepriser 1.000/step + 6.000/mission), (2) faciliteter (køb træningscenter → træningsdag → se løftet; pre-flip-gaten #2287 er grøn → beslut \`facilities_enabled\`-flip + staged announce). Derefter: #2270 eller #2274. **#1894 PR åben:** ejer-verify smart default-fokus (variant 1 hint + variant 3 bulk) i prod når merged. **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
 
 > **Session 10/7 sen aften:** #2288 dashboard-UX-pakke **MERGED (PR #2296, v6.75)** — ægte onboarding-trin (bud/træning/udtagelse/bestyrelsesplan), banner-prioritering, empty-CTA'er, "Næste træk"-udvidelse (inkl. "ikke trænet i dag"), holdudtagelse lander på panelet, seneste resultater kun egen division+gruppe. Alle CI-gates + uafhængigt review grønne. **Ejer-verify:** dashboard som alm. bruger i prod — tjekliste viser 0-1 fuldførte trin på frisk konto, Næste træk-punkter, udtagelses-knap → panel, resultater kun egen gruppe.
 
@@ -22,7 +22,9 @@
 
 > **Session 11/7 aften:** #2082 lukket (var allerede shippet i PR #2202 4/7; migration + motor verificeret live i prod). #1974-slice: trænbarhedssignal pr. ryttertype i trænings-UI (fokus-dropdown-markører + chip + help/FAQ, v6.85) — PR #2335 auto-merge armeret på grønne checks. #1974 holdes åbent (rest: synligt potentiale via #1138 + GT/bakke-klassificering). **Ejer-verify:** træningssiden i prod — markører i fokus-dropdown + chip ved mis-matchet fokus. #2262 (unge-rate-tuning) urørt per ejer-ønske.
 
-> **🤖 Working agent:** Claude Code (Fable) — #1894 smart default-fokus pr. ryttertype (ejer valgte variant 1+3 11/7); sonnet-subagent bygger i worktree.
+> **Session 11/7 aften (2):** #1894 smart default-fokus pr. ryttertype — `smartDefaultFocus(primaryType)` i `backend/lib/training.js` (genbruger #1974's `focusTrainability`, ALDRIG ny type→fokus-mapping); `resolveProgram(plan, primaryType)` i `dailyTraining.js` bruger den når ingen plan (44% af trup ramte tidligere hardcoded "endurance"); `/api/training/me` leverer `smartDefaultFocus`-map så frontend aldrig dubler reglen; TrainingPage viser "Assistent: ... (auto)"-hint (variant 1) + bulk-bar "Smart fokus (efter ryttertype)" (variant 3, springer ryttere med eksisterende plan over, server-håndhævet). v6.86, PR åben (ikke auto-merge). **Ejer-verify:** træningssiden i prod efter merge — hint under fokus-dropdown for ryttere uden plan + smart-mode i bulk-baren.
+
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 

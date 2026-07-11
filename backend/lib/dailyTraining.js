@@ -3,7 +3,7 @@
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
 import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential } from "./riderProgression.js";
-import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
@@ -20,10 +20,16 @@ export const DAILY_TRAINING_CONFIG = Object.freeze({
 
 export const DEFAULT_PROGRAM = Object.freeze({ focus: "endurance", intensity: "normal" });
 
-export function resolveProgram(plan) {
+// #1894: ryttere uden aktiv plan trænede tidligere ALTID DEFAULT_PROGRAM
+// ("endurance") uanset ryttertype (44% af trup — fejludvikling for fx sprintere).
+// primaryType er VALGFRI (bagudkompatibel) — udeladt/null falder tilbage til
+// smartDefaultFocus(null) som giver "endurance" (samme adfærd som DEFAULT_PROGRAM.focus).
+export function resolveProgram(plan, primaryType) {
   // "rest" er gyldig daglig intensitet, men indgår bevidst IKKE i training.js' sæson-validator
   // (sæson-stien kender kun easy/normal/hard; A7 håndterer API-validering).
-  if (!plan || !plan.focus || !plan.intensity) return DEFAULT_PROGRAM;
+  if (!plan || !plan.focus || !plan.intensity) {
+    return { focus: smartDefaultFocus(primaryType), intensity: DEFAULT_PROGRAM.intensity };
+  }
   return { focus: plan.focus, intensity: plan.intensity };
 }
 

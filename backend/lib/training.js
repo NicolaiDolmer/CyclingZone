@@ -150,6 +150,28 @@ export function partitionBulkTrainingTargets({
   return { toApply, skippedNotOwned, skippedNoSlots };
 }
 
+// #1894 variant 3: partitionér et bulk-smart-focus-request. Smart-mode adskiller sig
+// fra partitionBulkTrainingTargets på ÉT punkt: ryttere med en EKSISTERENDE plan
+// springes over (ikke re-target) — en managers eget valg må ALDRIG overskrives af
+// "anvend smart fokus på hele truppen". Ren funktion; kaldes af routes/api.js FØR
+// partitionBulkTrainingTargets (som stadig håndterer ejerskab + slot-budget).
+//   riderIds        : ønskede rytter-ids (kan have dubletter/null)
+//   plannedRiderIds : ids der ALLEREDE har en aktiv plan i denne sæson
+// Returnerer { eligible, skippedHasPlan } — deduped, input-rækkefølge bevaret.
+export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {}) {
+  const planned = plannedRiderIds instanceof Set ? plannedRiderIds : new Set(plannedRiderIds ?? []);
+  const seen = new Set();
+  const eligible = [];
+  const skippedHasPlan = [];
+  for (const id of riderIds ?? []) {
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    if (planned.has(id)) skippedHasPlan.push(id);
+    else eligible.push(id);
+  }
+  return { eligible, skippedHasPlan };
+}
+
 // Resolvér en plan til en bias-modifier som riderProgression.developRiderSeason
 // konsumerer. Seeder tilbageslags-rullet deterministisk pr. (rytter, sæson, plan).
 //   plan         : { focus, intensity } | null
@@ -178,6 +200,30 @@ export function focusTrainability(primaryType, cfg = PROGRESSION_CONFIG) {
     else out[focusKey] = "limited";
   }
   return out;
+}
+
+// #1894: smart default-fokus for ryttere UDEN aktiv plan (44% af trup ramte
+// hardcoded DEFAULT_PROGRAM.focus="endurance" i dailyTraining.js uanset type —
+// en sprinter trænede endurance i stedet for sprint). Genbruger #1974's
+// focusTrainability(primaryType) — INGEN ny type→fokus-mapping. Deterministisk:
+// første fokus-nøgle (TRAINING_FOCUS_KEYS-rækkefølge) med "strength", ellers
+// første ikke-"blocked", ellers "endurance" (sikker fallback, ukendt/manglende type).
+export function smartDefaultFocus(primaryType, cfg = PROGRESSION_CONFIG) {
+  const trainability = focusTrainability(primaryType, cfg);
+  for (const focusKey of TRAINING_FOCUS_KEYS) {
+    if (trainability[focusKey] === "strength") return focusKey;
+  }
+  // Manglende/ukendt type (eller en type uden nogen "strength"-fokus) giver ALT
+  // "limited" (focusTrainability) — uden denne guard ville loopet nedenfor vælge
+  // "vo2max" (første TRAINING_FOCUS_KEYS-nøgle) blot fordi den kommer først i
+  // rækkefølgen, hvilket ikke er en meningsfuld "smart" default. "endurance"
+  // matcher DEFAULT_PROGRAM's hidtidige adfærd (bagudkompatibelt).
+  const allLimited = TRAINING_FOCUS_KEYS.every((k) => trainability[k] === "limited");
+  if (allLimited) return "endurance";
+  for (const focusKey of TRAINING_FOCUS_KEYS) {
+    if (trainability[focusKey] !== "blocked") return focusKey;
+  }
+  return "endurance";
 }
 
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {

@@ -126,7 +126,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -1558,9 +1558,15 @@ router.get("/training/me", requireAuth, async (req, res) => {
 
     // #1974: coarse trainability-signal pr. rytter+fokus, udledt AF TYPEN alene
     // (ingen caps/potentiale eksponeres — server-hidden per #1162).
+    // #1894: smart_default_focus leveres SAMME sted — frontend genberegner ALDRIG
+    // type→fokus-reglen selv, den er backend-only (smartDefaultFocus i training.js).
     const trainability = {};
+    const smartDefaultFocusByRider = {};
+    const primaryTypeByRider = new Map();
     for (const rider of riders ?? []) {
       trainability[rider.id] = focusTrainability(rider.primary_type ?? null);
+      smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
+      primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
 
     // Today's run-row + condition + progress — batched (max 3 ekstra queries mod DB).
@@ -1595,7 +1601,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const condition = {};
     for (const row of conditionResult.data ?? []) {
       const plan = state.plans[row.rider_id] ?? null;
-      const program = resolveProgram(plan);
+      const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
       const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(row.fatigue ?? 0) });
       condition[row.rider_id] = {
         form: row.form,
@@ -1611,7 +1617,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       progress[row.rider_id] = row.ability_progress ?? {};
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1676,7 +1682,12 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
   if (!riderIds.every((id) => typeof id === "string" && id)) {
     return res.status(400).json({ error: "invalid_rider_ids" });
   }
-  if (!isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
+  // #1894 variant 3 (bulk smart-focus): focus="smart" er en SERVER-side mode, ikke
+  // en gyldig plan-fokus-nøgle. Resolves pr. rytter fra primary_type (smartDefaultFocus)
+  // og anvendes KUN på ryttere UDEN eksisterende plan — smart-mode må ALDRIG overskrive
+  // en managers eget valg (håndhævet her, ikke i frontend).
+  const isSmartMode = focus === "smart";
+  if (!isSmartMode && !isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
   if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
   try {
     const { activeSeasonId, state } = await loadTrainingState(req.team.id);
@@ -1685,23 +1696,42 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
     const uniqueIds = [...new Set(riderIds)];
     // Ejer-guard: træning er KUN for egne ryttere (akademi inkl. — de indgår i
     // daglig træning). Slå de ejede op i DB og partitionér mod slot-budgettet.
+    const ownedSelect = isSmartMode ? "id, primary_type" : "id";
     const { data: ownedRows, error: ownErr } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).in("id", uniqueIds);
+      .from("riders").select(ownedSelect).eq("team_id", req.team.id).in("id", uniqueIds);
     if (ownErr) throw new Error(ownErr.message);
     const ownedSet = new Set((ownedRows ?? []).map(r => r.id));
 
+    const plannedRiderIds = Object.keys(state.plans);
+    // Smart-mode: ryttere med eksisterende plan SPRINGES OVER (ikke re-target) —
+    // adskiller sig fra normal bulk hvor re-targeting er gratis/tilladt.
+    const smartPartition = isSmartMode
+      ? partitionSmartBulkTargets({ riderIds: uniqueIds, plannedRiderIds })
+      : null;
+    const skippedHasPlan = smartPartition?.skippedHasPlan ?? [];
+
     const { toApply, skippedNotOwned, skippedNoSlots } = partitionBulkTrainingTargets({
-      riderIds: uniqueIds,
+      riderIds: isSmartMode ? smartPartition.eligible : uniqueIds,
       ownedRiderIds: ownedSet,
-      plannedRiderIds: Object.keys(state.plans),
+      plannedRiderIds,
       slotsRemaining: state.slots.remaining,
     });
 
     if (toApply.length > 0) {
       const now = new Date().toISOString();
-      const rows = toApply.map(rider_id => ({
-        team_id: req.team.id, rider_id, season_id: activeSeasonId, focus, intensity, updated_at: now,
-      }));
+      let rows;
+      if (isSmartMode) {
+        const primaryTypeById = new Map((ownedRows ?? []).map((r) => [r.id, r.primary_type ?? null]));
+        rows = toApply.map(rider_id => ({
+          team_id: req.team.id, rider_id, season_id: activeSeasonId,
+          focus: smartDefaultFocus(primaryTypeById.get(rider_id) ?? null),
+          intensity, updated_at: now,
+        }));
+      } else {
+        rows = toApply.map(rider_id => ({
+          team_id: req.team.id, rider_id, season_id: activeSeasonId, focus, intensity, updated_at: now,
+        }));
+      }
       const { error: upErr } = await supabase
         .from("training_plans")
         .upsert(rows, { onConflict: "team_id,rider_id,season_id" });
@@ -1713,7 +1743,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
       ok: skippedNotOwned.length === 0 && skippedNoSlots.length === 0,
       applied: toApply.length,
       appliedRiderIds: toApply,
-      skipped: { notOwned: skippedNotOwned, noSlots: skippedNoSlots },
+      skipped: { notOwned: skippedNotOwned, noSlots: skippedNoSlots, hasPlan: skippedHasPlan },
       plans: next.plans,
       slots: next.slots,
     });
