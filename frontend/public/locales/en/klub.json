@@ -27,7 +27,11 @@
   },
   "roi": {
     "training": "Your riders train {value} faster every day",
-    "trainingBuild": "Build it to start training your riders faster"
+    "trainingBuild": "Build it to start training your riders faster",
+    "trainingNext": "Next: Level {tier} → your riders would train {value} faster every day"
+  },
+  "nextTier": {
+    "generic": "Next: Level {tier} → {value}"
   },
   "effect": {
     "label": "Effect",

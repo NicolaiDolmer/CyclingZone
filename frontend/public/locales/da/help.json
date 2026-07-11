@@ -619,6 +619,36 @@
         "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt, fyre en rytter eller flytte ryttere mellem din senior-trup og dit akademi direkte fra rytterens egen profil-side."
       }
     },
+    "facilities": {
+      "label": "Klub-faciliteter",
+      "whatFacilities": {
+        "title": "Hvad er klub-faciliteter?",
+        "text": "Faciliteter er klub-niveau-opgraderinger du bygger og opgraderer på Klub-siden, adskilt fra dine ryttere. Hver facilitet har 5 tiers: en engangs-bygge-/opgraderingspris pr. tier, plus en mindre driftsomkostning hver sæson når den er bygget. Du kan også ansætte en chef til en facilitet; chefens samlede rating afgør hvor meget af facilitetens effekt du reelt får, fra omkring det halve ved en facilitet uden chef op til fuld effekt med en topvurderet chef."
+      },
+      "tracks": {
+        "title": "De 5 facilitets-spor",
+        "rows": [
+          ["Facilitet", "Hvad den gør", "Status"],
+          ["Træningscenter", "Fremskynder dine ryttere daglige evne-vækst", "Aktiv nu"],
+          ["Scouting-netværk", "Skærper hvor meget du kan se om en rytters sande potentiale", "Kommer snart"],
+          ["Medicinsk afdeling", "Fremskynder form- og skade-restitution", "Kommer snart"],
+          ["Akademi-udvidelse", "Tilføjer ekstra akademi-intake-slots", "Kommer snart"],
+          ["Kommerciel afdeling", "Øger sponsor-indtægt (loftet, en langsigtet investering)", "Kommer snart"]
+        ]
+      },
+      "onlyTrainingLive": {
+        "title": "Kun Træningscenteret er aktivt lige nu",
+        "text": "Af de 5 spor er det kun Træningscenterets effekt der er koblet ind i spillet i dag. De øvrige 4 viser hvad de vil gøre, så du kan planlægge fremad, men at bygge eller opgradere dem har endnu ingen spil-effekt. Deres \"Kommer snart\"-mærke skifter automatisk til aktiv i det øjeblik deres motor går live, uden at du behøver gøre noget."
+      },
+      "staffSynergy": {
+        "title": "Sådan spiller en chef og faciliteten sammen",
+        "text": "Facilitetens tier sætter dens grundeffekt. Ansætter du en chef til det spor, afgør chefens samlede rating hvor meget af den grundeffekt du reelt får: en facilitet uden chef kører på omkring halv styrke, og en chefs samlede rating skalerer den op mod fuld styrke, jo tættere ratingen kommer på toppen. Kort sagt: faciliteten er loftet, og chefen er hvor tæt du kommer på det."
+      },
+      "costs": {
+        "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",
+        "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger. Budgettér den som en tilbagevendende post, ikke kun den indledende pris."
+      }
+    },
     "raceSelection": {
       "label": "Holdudtagelse",
       "what": {

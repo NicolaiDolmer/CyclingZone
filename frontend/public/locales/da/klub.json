@@ -24,7 +24,11 @@
   },
   "roi": {
     "training": "Dine ryttere træner {value} hurtigere hver dag",
-    "trainingBuild": "Byg den for at begynde at træne dine ryttere hurtigere"
+    "trainingBuild": "Byg den for at begynde at træne dine ryttere hurtigere",
+    "trainingNext": "Næste: Niveau {tier} → dine ryttere vil træne {value} hurtigere hver dag"
+  },
+  "nextTier": {
+    "generic": "Næste: Niveau {tier} → {value}"
   },
   "effect": {
     "label": "Effekt",
