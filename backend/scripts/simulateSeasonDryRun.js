@@ -13,7 +13,19 @@
 //
 //   node scripts/simulateSeasonDryRun.js [--seed=2026] [--count=800] \
 //        [--races=300] [--field=140] [--gtField=176] [--html=<sti>] [--no-html] \
-//        [--condition=random] [--roles] [--enforce-targets]
+//        [--condition=random] [--roles] [--enforce-targets] \
+//        [--population=<fil>] [--condition=snapshot] [--enforce-dominance]
+//
+// #2224 (Race v3 S0): --population=<sti til population-snapshot.json> kører
+// harnesset mod en ÆGTE prod-population-snapshot (produceret af
+// exportPopulationSnapshot.js) i stedet for den genererede fiktive population.
+// I population-mode er B-scorecardet/udbruds-bånd/roles-bånd/liveness ALTID
+// rapport-only (håndhæves aldrig, uanset --enforce-*-flag) — de bånd er
+// kalibreret mod den GENEREREDE population. --condition=snapshot bruger
+// snapshottets egne form/fatigue-værdier (kun gyldigt sammen med --population).
+// Sektion F (dominans/varians-scorecard, #2224) kører i ALLE modes og kan
+// håndhæves med --enforce-dominance. UDEN --population er scriptet
+// bit-identisk med før #2224 (determinisme-guard).
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -29,6 +41,10 @@ import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_B
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
+import { autopickTeamSelection } from "../lib/raceAutopick.js";
+import {
+  observeRace, aggregateObservations, winRateStats, giniOverWins, helperPlacementDeltas, median,
+} from "../lib/raceDominanceMetrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -73,6 +89,28 @@ const ENFORCE_LIVENESS = !!arg("enforce-liveness", false);
 // maskerer/blokerer de launch-kritiske gates. #1021-kalibrerings-sessionen kan
 // gøre dem til en hard gate igen med --enforce-breakaway når båndene er re-fittet.
 const ENFORCE_BREAKAWAY = !!arg("enforce-breakaway", false);
+// #2224 (Race v3 S0): --population=<sti> kører mod en ÆGTE prod-population-
+// snapshot (schema_version 1, se exportPopulationSnapshot.js) i stedet for den
+// genererede fiktive population. Population-koden ligger UDELUKKENDE i nye
+// grene (POPULATION_MODE-gates) — uden flaget er scriptet bit-identisk med før.
+const POPULATION_PATH = arg("population", null);
+const POPULATION_MODE = !!POPULATION_PATH;
+// #2224: --enforce-dominance gør sektion F (dominans/varians-scorecard) til en
+// hard gate (exit 1). Default off (rapport-only), ligesom de øvrige --enforce-*.
+const ENFORCE_DOMINANCE = !!arg("enforce-dominance", false);
+const conditionArg = arg("condition", null);
+if (conditionArg === "snapshot" && !POPULATION_MODE) {
+  console.error("❌ --condition=snapshot kræver --population=<fil>");
+  process.exit(1);
+}
+// #2224: --condition=snapshot (population-only) bruger snapshottets EGNE
+// form/fatigue-værdier (ingen rng-forbrug). --condition=random er uændret og
+// virker i begge modes (se CONDITION_MODE nedenfor).
+const CONDITION_SNAPSHOT = conditionArg === "snapshot";
+// HAS_CONDITION samler begge condition-kilder til brug i population-entrants
+// (fatigue-damping i autopick + form/fatigue på entrants) — CONDITION_MODE
+// alene styrer fortsat den genererede stis (uændrede) adfærd.
+const HAS_CONDITION = CONDITION_MODE || CONDITION_SNAPSHOT;
 // #1420: per-run default HTML-sti, så reruns med forskellige parametre kan
 // holdes åbne side om side (gitignored out/). --html=<sti> overstyrer. Defineres
 // her, fordi navnet afhænger af CONDITION_MODE/ROLES_MODE/MIX ovenfor.
@@ -83,6 +121,15 @@ const HTML_PATH = arg("html", join(
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
+
+// #2224: population-snapshot (schema_version 1, se exportPopulationSnapshot.js).
+// Fail-fast ved ukendt/manglende schema_version — vi vil ALDRIG stiltiende
+// fejltolke et format vi ikke kender.
+const populationData = POPULATION_MODE ? JSON.parse(readFileSync(POPULATION_PATH, "utf8")) : null;
+if (POPULATION_MODE && populationData?.schema_version !== 1) {
+  console.error(`❌ Ukendt population-snapshot schema_version: ${populationData?.schema_version} (kun 1 understøttet). Fil: ${POPULATION_PATH}`);
+  process.exit(1);
+}
 
 // ── Ejer-besluttede gate-bånd (2026-06-11, jf. genre-benchmark-research) ──────
 // Interim-bånd nåelige med motor-tuning alene. FULDE mål (7/6) bevaret nedenfor;
@@ -135,6 +182,21 @@ const TARGETS = {
 //   escapee-ratio 3.4 / 2.8 / 3.0 (krav >1.5).
 // Scorecard (født-som) holdt på alle 7 mål i alle 5 gate-kørsler; binding margin:
 //   flat sprinter 90 % (seed 42 roles + 2026 roles) — flat-bonus >0.30 vælter den.
+//
+// ── BASELINE-LOG (2026-07-11, #2224 Race v3 S0) — dominans/varians mod ÆGTE population ──
+// Første sektion F-måling mod prod-snapshot (scripts/baselines/population-snapshot-
+// 2026-07-11.json: 368 hold / 5.650 ryttere / 15 puljer). 3 seeds (2026/7/42) ×
+// neutral/condition=snapshot/roles — INGEN motor-ændring (S0). Fuld rapport:
+// docs/audits/2026-07-11-race-v3-s0-baseline.md. Spænd over de 9 kørsler:
+//   favoriteWinRate 53.0-54.9 % (bånd 25-40) · maxSeasonWinRate 87.2-89.5 % (≤45 —
+//   matcher prod-evidensens 82-88 %, #2224 §2) · favoritePodiumRate 76.3-78.1 % (55-75)
+//   · ittFavoriteWinRate 71.0-76.7 % (45-65) · share4PlusSameTeamTop10 4.5-5.9 % (≤5;
+//   én-dags-linsen — prods 25 % er målt på GC-resultater m. tynde felter, se rapport)
+//   · helperLossMedianGc 0.0 (mål 10-30; hjælper-arbejde er gratis i dag) · gini 0.945-0.952.
+// FUND: udbruds-bånd eksploderer i population-mode (flat 42-48 % escapee-sejre vs bånd
+//   1-7 %) — puljerne er langt mere evne-homogene end den genererede 800-population, så
+//   udbruds-bonussen afgør langt flere løb. Kontekst for #1021-refit + S1/S2-kalibrering.
+// S1-mål: helperLossMedianGc + share4Plus i bånd; S2-mål: favorit/max-win-rates i bånd.
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
@@ -267,30 +329,87 @@ function assignRoles(sample) {
 }
 
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} mix=${MIX} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED}${POPULATION_MODE ? ` population=${POPULATION_PATH}` : ` count=${COUNT} mix=${MIX}`} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${CONDITION_SNAPSHOT ? " condition=snapshot" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
 
-const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, ...mixOverride });
+// #2224: field/byId bygges enten fra en ÆGTE prod-population-snapshot
+// (POPULATION_MODE) eller fra den genererede fiktive population (uændret sti).
+// Den genererede gren (else) er BYTE-IDENTISK med før #2224 — determinisme-guard.
+let field, byId, ridersByTeam, populationPools;
+if (POPULATION_MODE) {
+  field = populationData.riders.map((r) => {
+    const abilities = r.abilities || {};
+    const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
+    return {
+      id: r.id, team_id: r.team_id,
+      name: r.name, nat: "",
+      // Prod-ryttere har ingen "født-som"-arketype → bornAs ER den afledte type.
+      // Sektion B's "født-som"-kolonne er derfor IDENTISK med "afledt" her — se
+      // konsol-note (sektion B-header) og HTML-note.
+      bornAs: derived,
+      derived,
+      specialty: riderSpecialty(abilities),
+      overall: riderOverall(abilities),
+      baseValue: predictBaseValue({ primary_type: derived }, abilities, model),
+      is_u25: !!r.is_u25,
+      abilities,
+    };
+  });
+  byId = new Map(field.map((r) => [r.id, r]));
 
-const field = raw.map((r, i) => {
-  const id = `r${i}`;
-  // Plan 2 (#1122): evner afledes nu af den arketype-skæve fysiologi (faldt til {}
-  // = PCM-fallback hvis profilen mangler). Se abilityDerivation.js (FORMULA_VERSION=3).
-  const abilities = deriveAbilities(r._meta?.physiology ?? {}, { ...r, id }, { asOfYear: REFERENCE_YEAR });
-  const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
-  return {
-    id, team_id: null,
-    name: `${r.firstname} ${r.lastname}`,
-    nat: r.nationality_code,
-    bornAs: r._meta?.archetype ?? "?",
-    derived,
-    specialty: riderSpecialty(abilities),
-    overall: riderOverall(abilities),
-    baseValue: predictBaseValue({ primary_type: derived }, abilities, model),
-    is_u25: !!r.is_u25,
-    abilities,
-  };
-});
-const byId = new Map(field.map((r) => [r.id, r]));
+  // --condition=snapshot: brug snapshottets EGNE form/fatigue (ingen rng-forbrug).
+  if (CONDITION_SNAPSHOT) {
+    const snapshotRidersById = new Map(populationData.riders.map((r) => [r.id, r]));
+    for (const r of field) {
+      const src = snapshotRidersById.get(r.id);
+      if (src?.form != null) r.form = src.form;
+      if (src?.fatigue != null) r.fatigue = src.fatigue;
+    }
+  }
+
+  ridersByTeam = new Map();
+  for (const r of field) {
+    if (!ridersByTeam.has(r.team_id)) ridersByTeam.set(r.team_id, []);
+    ridersByTeam.get(r.team_id).push(r);
+  }
+  // Puljer = hold grupperet efter league_division_id; kun puljer med ≥6 hold
+  // bruges (spec #2224). pool-tier = tier'en for holdene i puljen (league_divisions
+  // er tier-rene i praksis, så teams[0].tier er repræsentativ for hele puljen).
+  const byDivision = new Map();
+  for (const t of populationData.teams) {
+    if (t.league_division_id == null) continue;
+    if (!byDivision.has(t.league_division_id)) byDivision.set(t.league_division_id, []);
+    byDivision.get(t.league_division_id).push(t);
+  }
+  populationPools = [...byDivision.values()]
+    .filter((teams) => teams.length >= 6)
+    .map((teams) => ({ teams, tier: teams[0]?.tier ?? null }));
+  if (populationPools.length === 0) {
+    console.error(`❌ Population-snapshot har ingen division/pulje med ≥6 hold (${POPULATION_PATH}) — kan ikke bygge felter.`);
+    process.exit(1);
+  }
+} else {
+  const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, ...mixOverride });
+  field = raw.map((r, i) => {
+    const id = `r${i}`;
+    // Plan 2 (#1122): evner afledes nu af den arketype-skæve fysiologi (faldt til {}
+    // = PCM-fallback hvis profilen mangler). Se abilityDerivation.js (FORMULA_VERSION=3).
+    const abilities = deriveAbilities(r._meta?.physiology ?? {}, { ...r, id }, { asOfYear: REFERENCE_YEAR });
+    const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
+    return {
+      id, team_id: null,
+      name: `${r.firstname} ${r.lastname}`,
+      nat: r.nationality_code,
+      bornAs: r._meta?.archetype ?? "?",
+      derived,
+      specialty: riderSpecialty(abilities),
+      overall: riderOverall(abilities),
+      baseValue: predictBaseValue({ primary_type: derived }, abilities, model),
+      is_u25: !!r.is_u25,
+      abilities,
+    };
+  });
+  byId = new Map(field.map((r) => [r.id, r]));
+}
 
 // B4: condition-mode — tildel seeded form/træthed per rytter.
 // Bruger en DEDIKERET RNG afledt af et XOR-scrambled seed, så den aldrig
@@ -327,88 +446,203 @@ console.log("A. FELT-RESUMÉ\n");
 console.log(`  Ryttere: ${fieldSummary.n}   ·   Overall: p10 ${fieldSummary.ov.p10} · median ${fieldSummary.ov.median} · p90 ${fieldSummary.ov.p90} · max ${fieldSummary.ov.max}`);
 console.log(`  base_value: median ${money(fieldSummary.bv.median)} · p90 ${money(fieldSummary.bv.p90)} · max ${money(fieldSummary.bv.max)}`);
 console.log(`  Afledt type-mix: ${fieldSummary.types.map(([t, n]) => `${t} ${pctS(n, field.length)}`).join(" · ")}`);
+if (POPULATION_MODE) {
+  console.log(`  ⚠ population-mode: "født-som" ovenfor/nedenfor ER den afledte type (prod-ryttere har ingen arketype-label).`);
+}
+
+// ── Sektion F (#2224) — akkumulatorer, delt af BEGGE stier ────────────────────
+// Rør INTET rng-forbrug: observeRace/bogføring er ren post-hoc læsning af
+// simulateStage-outputtet, tilføjet UDEN at ændre rækkefølgen af eksisterende
+// kald i den genererede sti (determinisme-guard).
+const allDominanceObservations = [];
+const seasonWinsByRider = new Map();
+const seasonStartsByRider = new Map();
+const helperDeltasAll = []; // kun ROLES_MODE, GC-relevante profiler
+const GC_RELEVANT_PROFILES = new Set(["rolling", "hilly", "mountain", "high_mountain", "classic"]);
+function recordDominanceObservation(ranked, teamByRider, terrain) {
+  allDominanceObservations.push(observeRace({ ranked, teamByRider, terrain }));
+  for (const rr of ranked) {
+    seasonStartsByRider.set(rr.rider_id, (seasonStartsByRider.get(rr.rider_id) || 0) + 1);
+  }
+  seasonWinsByRider.set(ranked[0].rider_id, (seasonWinsByRider.get(ranked[0].rider_id) || 0) + 1);
+}
 
 // ── B. Terræn-fordeling + indsamling til scorecard/HTML ──────────────────────
+// #2224: POPULATION_MODE kører en HELT NY sti (pulje-baseret felt-sampling via
+// prod-autopick). Den genererede gren (else) er BYTE-IDENTISK med før #2224 —
+// eneste tilføjelse er recordDominanceObservation()/helperDeltasAll-bogføring,
+// som er ren post-hoc læsning og konsumerer INGEN rng.
 const terrainResults = [];
-for (const terrain of TERRAINS) {
-  const demand = DEMAND_VECTORS[terrain];
-  const keyAb = keyAbilityOf(demand);
-  const rng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}`));
-  // #1021: dedikeret finale-rng → field-sampling-sekvensen (rng) er uændret.
-  const finaleRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}:finale`));
-  const bornHist = {}, derivedHist = {};
-  const winners = new Set();
-  let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
-  // #1307: udbruds-vinder-tæller (ALLE modes) + roles-mode-metrikker.
-  let breakawayWinCount = 0;
-  const finaleSplit = {}; // #1021: escapee-share pr. finale (bimodale terræner)
-  let captainWinsRoles = 0, captainWinsNeutral = 0;
-  let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
+if (POPULATION_MODE) {
+  const sizeRuleForPoolTier = (tier) => (tier === 1 ? { min: 7, max: 7 } : { min: 6, max: 6 });
+  for (const terrain of TERRAINS) {
+    const demand = DEMAND_VECTORS[terrain];
+    const keyAb = keyAbilityOf(demand);
+    // NY rng-strøm (population-only) — påvirker ikke den genererede sti.
+    const poolRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}`));
+    const finaleRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}:finale`));
+    const bornHist = {}, derivedHist = {};
+    const winners = new Set();
+    let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
+    let breakawayWinCount = 0;
+    const finaleSplit = {};
+    let racesRun = 0;
 
-  for (let i = 0; i < RACES; i++) {
-    const sample = sampleField(rng, field, FIELD);
-    const raceSeed = stableSeed(`${terrain}:${i}`);
-    const finaleType = finaleFor(finaleRng, terrain); // #1021: driver udbruds-bonussen
-    const roles = ROLES_MODE ? assignRoles(sample) : null;
-    const entrants = sample.map((r) => ({
-      rider_id: r.id,
-      team_id: ROLES_MODE ? `t${roles.teamById.get(r.id)}` : r.id,
-      abilities: r.abilities,
-      ...(ROLES_MODE ? { race_role: roles.roleById.get(r.id) } : {}),
-      ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
-      ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
-    }));
-    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
-    const w = byId.get(ranked[0].rider_id);
-    bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
-    derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
-    winners.add(w.id);
-    winnerKeySum += w.abilities[keyAb];
-    const byOverall = [...sample].sort((a, b) => b.overall - a.overall);
-    const rank = byOverall.findIndex((r) => r.id === w.id) + 1;
-    overallRankSum += rank;
-    if (rank === 1) strongestWon++;
-    if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
-    const fkey = finaleType || "none";
-    finaleSplit[fkey] = finaleSplit[fkey] || { races: 0, bw: 0 };
-    finaleSplit[fkey].races++;
-    if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
+    for (let i = 0; i < RACES; i++) {
+      const pool = populationPools[Math.floor(poolRng() * populationPools.length)];
+      const finaleType = finaleFor(finaleRng, terrain);
+      const sizeRule = sizeRuleForPoolTier(pool.tier);
+      const entrants = [];
+      for (const team of pool.teams) {
+        const roster = ridersByTeam.get(team.id) || [];
+        const picks = autopickTeamSelection({
+          riders: roster.map((r) => ({ rider_id: r.id, abilities: r.abilities, fatigue: HAS_CONDITION ? r.fatigue : undefined })),
+          stages: [{ profile_type: terrain, demand_vector: demand }],
+          sizeRule,
+        });
+        for (const p of picks) {
+          const r = byId.get(p.rider_id);
+          entrants.push({
+            rider_id: p.rider_id,
+            team_id: team.id, // #2224: ALTID det rigtige hold i population-mode.
+            abilities: r.abilities,
+            ...(ROLES_MODE ? { race_role: p.race_role } : {}),
+            ...(HAS_CONDITION && r.form    != null ? { form:    r.form }    : {}),
+            ...(HAS_CONDITION && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+          });
+        }
+      }
+      if (entrants.length < 2) continue; // degenereret pulje/felt — spring løbet over
+      const raceSeed = stableSeed(`${terrain}:${i}`);
+      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+      racesRun++;
+      const w = byId.get(ranked[0].rider_id);
+      bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
+      derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
+      winners.add(w.id);
+      winnerKeySum += w.abilities[keyAb];
+      const byOverall = entrants.map((e) => byId.get(e.rider_id)).sort((a, b) => b.overall - a.overall);
+      const rank = byOverall.findIndex((r) => r.id === w.id) + 1;
+      overallRankSum += rank;
+      if (rank === 1) strongestWon++;
+      if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
+      const fkey = finaleType || "none";
+      finaleSplit[fkey] = finaleSplit[fkey] || { races: 0, bw: 0 };
+      finaleSplit[fkey].races++;
+      if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
 
-    if (ROLES_MODE) {
-      if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
-      // Neutral tvilling: SAMME prøve + seed, men uden roller/hold (som neutral-
-      // mode) → måler om rolle-mekanikken netto gavner kaptajnerne.
-      const neutralEntrants = sample.map((r) => ({
-        rider_id: r.id, team_id: r.id, abilities: r.abilities,
+      const teamByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
+      recordDominanceObservation(ranked, teamByRider, terrain);
+
+      if (ROLES_MODE) {
+        const neutralEntrants = entrants.map(({ race_role: _race_role, ...rest }) => rest);
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+        if (GC_RELEVANT_PROFILES.has(terrain)) {
+          const roleByRider = new Map(entrants.map((e) => [e.rider_id, e.race_role]));
+          helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider }));
+        }
+      }
+    }
+    terrainResults.push({
+      terrain, keyAb, races: racesRun,
+      winnerKeyAvg: racesRun ? Math.round(winnerKeySum / racesRun) : 0, fieldMedianKey: fieldMedianAbility(keyAb),
+      bornHist, derivedHist, distinct: winners.size,
+      avgStrengthRank: racesRun ? overallRankSum / racesRun : 0, strongestWonPct: pct1(strongestWon, racesRun || 1),
+      breakawayWinShare: racesRun ? breakawayWinCount / racesRun : 0,
+      finaleSplit,
+    });
+  }
+} else {
+  for (const terrain of TERRAINS) {
+    const demand = DEMAND_VECTORS[terrain];
+    const keyAb = keyAbilityOf(demand);
+    const rng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}`));
+    // #1021: dedikeret finale-rng → field-sampling-sekvensen (rng) er uændret.
+    const finaleRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}:finale`));
+    const bornHist = {}, derivedHist = {};
+    const winners = new Set();
+    let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
+    // #1307: udbruds-vinder-tæller (ALLE modes) + roles-mode-metrikker.
+    let breakawayWinCount = 0;
+    const finaleSplit = {}; // #1021: escapee-share pr. finale (bimodale terræner)
+    let captainWinsRoles = 0, captainWinsNeutral = 0;
+    let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
+
+    for (let i = 0; i < RACES; i++) {
+      const sample = sampleField(rng, field, FIELD);
+      const raceSeed = stableSeed(`${terrain}:${i}`);
+      const finaleType = finaleFor(finaleRng, terrain); // #1021: driver udbruds-bonussen
+      const roles = ROLES_MODE ? assignRoles(sample) : null;
+      const entrants = sample.map((r) => ({
+        rider_id: r.id,
+        team_id: ROLES_MODE ? `t${roles.teamById.get(r.id)}` : r.id,
+        abilities: r.abilities,
+        ...(ROLES_MODE ? { race_role: roles.roleById.get(r.id) } : {}),
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
-      if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
-      // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
-      if (BREAKAWAY_BONUS[terrain]) {
-        for (const r of ranked) {
-          const role = roles.roleById.get(r.rider_id);
-          if (role === "hunter") {
-            hunterExposures++;
-            if (r.components.breakaway > 0) hunterEscapes++;
-          } else if (role === "helper") {
-            helperExposures++;
-            if (r.components.breakaway > 0) helperEscapes++;
+      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+
+      // #2224 Section F: ren post-hoc bogføring — INGEN rng-forbrug, ingen ændring
+      // af rækkefølgen af eksisterende kald ovenfor/nedenfor.
+      const teamByRiderGen = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
+      recordDominanceObservation(ranked, teamByRiderGen, terrain);
+
+      const w = byId.get(ranked[0].rider_id);
+      bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
+      derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
+      winners.add(w.id);
+      winnerKeySum += w.abilities[keyAb];
+      const byOverall = [...sample].sort((a, b) => b.overall - a.overall);
+      const rank = byOverall.findIndex((r) => r.id === w.id) + 1;
+      overallRankSum += rank;
+      if (rank === 1) strongestWon++;
+      if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
+      const fkey = finaleType || "none";
+      finaleSplit[fkey] = finaleSplit[fkey] || { races: 0, bw: 0 };
+      finaleSplit[fkey].races++;
+      if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
+
+      if (ROLES_MODE) {
+        if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
+        // Neutral tvilling: SAMME prøve + seed, men uden roller/hold (som neutral-
+        // mode) → måler om rolle-mekanikken netto gavner kaptajnerne.
+        const neutralEntrants = sample.map((r) => ({
+          rider_id: r.id, team_id: r.id, abilities: r.abilities,
+          ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
+          ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+        }));
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+        if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
+        // #2224 Section F: hjælper-placeringstab (kun GC-relevante profiler).
+        if (GC_RELEVANT_PROFILES.has(terrain)) {
+          helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider: roles.roleById }));
+        }
+        // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
+        if (BREAKAWAY_BONUS[terrain]) {
+          for (const r of ranked) {
+            const role = roles.roleById.get(r.rider_id);
+            if (role === "hunter") {
+              hunterExposures++;
+              if (r.components.breakaway > 0) hunterEscapes++;
+            } else if (role === "helper") {
+              helperExposures++;
+              if (r.components.breakaway > 0) helperEscapes++;
+            }
           }
         }
       }
     }
+    terrainResults.push({
+      terrain, keyAb, races: RACES,
+      winnerKeyAvg: Math.round(winnerKeySum / RACES), fieldMedianKey: fieldMedianAbility(keyAb),
+      bornHist, derivedHist, distinct: winners.size,
+      avgStrengthRank: overallRankSum / RACES, strongestWonPct: pct1(strongestWon, RACES),
+      breakawayWinShare: breakawayWinCount / RACES,
+      finaleSplit,
+      ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
+    });
   }
-  terrainResults.push({
-    terrain, keyAb, races: RACES,
-    winnerKeyAvg: Math.round(winnerKeySum / RACES), fieldMedianKey: fieldMedianAbility(keyAb),
-    bornHist, derivedHist, distinct: winners.size,
-    avgStrengthRank: overallRankSum / RACES, strongestWonPct: pct1(strongestWon, RACES),
-    breakawayWinShare: breakawayWinCount / RACES,
-    finaleSplit,
-    ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
-  });
 }
 
 // ── Scorecard vs ejer-mål (født-som = ægte type) ─────────────────────────────
@@ -424,6 +658,9 @@ const scorecard = Object.entries(TARGETS).map(([key, t]) => {
 
 console.log(`\n${"─".repeat(80)}`);
 console.log("B. MÅL-SCORECARD (født-som = ægte rytter-type; afledt = spillets label)\n");
+if (POPULATION_MODE) {
+  console.log(`   ⚠ population-mode: "født-som" = "afledt" (se felt-resumé) — båndene nedenfor er kalibreret mod den GENEREREDE population og er ALTID rapport-only her, uanset --enforce-*.`);
+}
 console.log(`   ${padE("terræn", 14)}${padE("mål", 26)}${padE("født-som", 11)}${padE("afledt", 10)}status`);
 console.log(`   ${"-".repeat(74)}`);
 for (const s of scorecard) {
@@ -468,7 +705,14 @@ for (const [terrain, band] of Object.entries(BREAKAWAY_TARGETS)) {
 // hunterEscapeRate > 1.5 × helperEscapeRate: hunter-rollen skal mærkes (pr.
 // rytter-løb, aggregeret over de tre udbruds-egnede terræner).
 const rolesFailures = [];
-if (ROLES_MODE) {
+if (ROLES_MODE && POPULATION_MODE) {
+  // #2224: population-mode bruger prod-rollerne (captain/sprint_captain/helper —
+  // ingen "hunter"), så den generede stis hunter-ratio-metrik giver ikke mening
+  // her. Rolle-kvalitets-signalet for population-mode er i stedet Section F's
+  // helperLossMedianGc (median hjælper-placeringstab). rolesFailures forbliver
+  // tom → kan aldrig udløse --enforce-targets-exit i population-mode.
+  console.log(`\n   ROLES-METRIKKER: n/a i population-mode (prod-roller har ingen "hunter") — se Section F helperLossMedianGc.`);
+} else if (ROLES_MODE) {
   const capRoles = terrainResults.reduce((s, tr) => s + (tr.captainWinsRoles || 0), 0);
   const capNeutral = terrainResults.reduce((s, tr) => s + (tr.captainWinsNeutral || 0), 0);
   const hunterEsc = terrainResults.reduce((s, tr) => s + (tr.hunterEscapes || 0), 0);
@@ -496,36 +740,68 @@ const GT_TEMPLATE = [
 ];
 const gtStages = GT_TEMPLATE.map((profile_type, i) => ({ stage_number: i + 1, profile_type, demand_vector: DEMAND_VECTORS[profile_type] }));
 
-const gtRng = makeRng(stableSeed(`dryrun:${SEED}:gt`));
-const gtRiders = sampleField(gtRng, field, GT_FIELD).sort((a, b) => b.overall - a.overall);
-const TEAM_SIZE = 8;
-const nTeams = Math.ceil(gtRiders.length / TEAM_SIZE);
-const gtEntrants = gtRiders.map((r, i) => {
-  const round = Math.floor(i / nTeams), pos = i % nTeams;
-  const teamIdx = round % 2 === 0 ? pos : nTeams - 1 - pos;
-  return {
-    rider_id: r.id, team_id: `t${teamIdx}`, rider_name: r.name, is_u25: r.is_u25, abilities: r.abilities,
-    ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
-    ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
-  };
-});
-
-// #1307 --roles: tildel roller INDEN FOR de eksisterende GT-hold via den
-// fælles assignRolesToTeams-helper (samme regler som terrain-sampleren).
-if (ROLES_MODE) {
-  const gtTeams = new Map();
-  for (const e of gtEntrants) {
-    if (!gtTeams.has(e.team_id)) gtTeams.set(e.team_id, []);
-    gtTeams.get(e.team_id).push(e);
+// #2224: POPULATION_MODE bygger GT-feltet fra ALLE tier-1-hold (fallback:
+// største pulje) via prod-autopick; den genererede gren (else) er UÆNDRET.
+let gtRiders, gtEntrants;
+if (POPULATION_MODE) {
+  const tier1Teams = populationData.teams.filter((t) => t.tier === 1);
+  const largestPool = [...populationPools].sort((a, b) => b.teams.length - a.teams.length)[0];
+  const gtTeams = tier1Teams.length > 0 ? tier1Teams : (largestPool?.teams ?? []);
+  if (gtTeams.length === 0) {
+    console.error(`❌ Population-snapshot har hverken tier-1-hold eller nogen pulje at bygge GT-feltet fra.`);
+    process.exit(1);
   }
-  const gtRoleById = assignRolesToTeams(gtTeams, {
-    getOverall:   (e) => byId.get(e.rider_id).overall,
-    getId:        (e) => e.rider_id,
-    getTeamIdx:   (teamId) => Number(teamId.slice(1)),
-    getAbilities: (e) => e.abilities,
+  gtEntrants = [];
+  for (const team of gtTeams) {
+    const roster = ridersByTeam.get(team.id) || [];
+    const picks = autopickTeamSelection({
+      riders: roster.map((r) => ({ rider_id: r.id, abilities: r.abilities, fatigue: HAS_CONDITION ? r.fatigue : undefined })),
+      stages: gtStages,
+      sizeRule: { min: 8, max: 8 },
+    });
+    for (const p of picks) {
+      const r = byId.get(p.rider_id);
+      gtEntrants.push({
+        rider_id: p.rider_id, team_id: team.id, rider_name: r.name, is_u25: r.is_u25, abilities: r.abilities,
+        ...(ROLES_MODE ? { race_role: p.race_role } : {}),
+        ...(HAS_CONDITION && r.form    != null ? { form:    r.form }    : {}),
+        ...(HAS_CONDITION && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+      });
+    }
+  }
+  gtRiders = gtEntrants.map((e) => byId.get(e.rider_id)).sort((a, b) => b.overall - a.overall);
+} else {
+  const gtRng = makeRng(stableSeed(`dryrun:${SEED}:gt`));
+  gtRiders = sampleField(gtRng, field, GT_FIELD).sort((a, b) => b.overall - a.overall);
+  const TEAM_SIZE = 8;
+  const nTeams = Math.ceil(gtRiders.length / TEAM_SIZE);
+  gtEntrants = gtRiders.map((r, i) => {
+    const round = Math.floor(i / nTeams), pos = i % nTeams;
+    const teamIdx = round % 2 === 0 ? pos : nTeams - 1 - pos;
+    return {
+      rider_id: r.id, team_id: `t${teamIdx}`, rider_name: r.name, is_u25: r.is_u25, abilities: r.abilities,
+      ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
+      ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+    };
   });
-  for (const e of gtEntrants) {
-    e.race_role = gtRoleById.get(e.rider_id);
+
+  // #1307 --roles: tildel roller INDEN FOR de eksisterende GT-hold via den
+  // fælles assignRolesToTeams-helper (samme regler som terrain-sampleren).
+  if (ROLES_MODE) {
+    const gtTeams = new Map();
+    for (const e of gtEntrants) {
+      if (!gtTeams.has(e.team_id)) gtTeams.set(e.team_id, []);
+      gtTeams.get(e.team_id).push(e);
+    }
+    const gtRoleById = assignRolesToTeams(gtTeams, {
+      getOverall:   (e) => byId.get(e.rider_id).overall,
+      getId:        (e) => e.rider_id,
+      getTeamIdx:   (teamId) => Number(teamId.slice(1)),
+      getAbilities: (e) => e.abilities,
+    });
+    for (const e of gtEntrants) {
+      e.race_role = gtRoleById.get(e.rider_id);
+    }
   }
 }
 
@@ -553,6 +829,24 @@ const gtFinal = {
   young: rowsOf("young", finalStage).slice(0, 5).map((row) => ({ rank: row.rank, rider: byId.get(row.rider_id) })),
   team: resultRows.filter((x) => x.result_type === "team" && x.stage_number === finalStage).sort((a, b) => a.rank - b.rank).slice(0, 5),
 };
+
+// #2224 Section F: GT-dominans på final-GC — observeRace kræver components.terrain
+// pr. entrant (bruges kun til at udpege favoritten); GC har ingen enkelt-etape-
+// components, så vi bruger rider.overall (0-99) som pre-race styrke-proxy — samme
+// linse som ⌀rang-metrikken bruger andetsteds i harnesset. Rapporteres separat
+// (ÉN linje), indgår IKKE i sæson-akkumulatorerne (season win/start-rates).
+const gtTeamByRider = new Map(gtEntrants.map((e) => [e.rider_id, e.team_id]));
+const gtRankedForDominance = rowsOf("gc", finalStage).map((row) => ({
+  rider_id: row.rider_id,
+  team_id: gtTeamByRider.get(row.rider_id) ?? null,
+  rank: row.rank,
+  components: { terrain: byId.get(row.rider_id)?.overall ?? 0 },
+}));
+const gtDominanceObservation = observeRace({
+  ranked: gtRankedForDominance,
+  teamByRider: gtTeamByRider,
+  terrain: "gt-final-gc",
+});
 
 const lbl = (r) => `${padE(r.name, 22)} ${padE(r.bornAs, 13)} →${padE(r.derived, 12)} ovr ${padS(r.overall, 2)}  ${money(r.baseValue)}`;
 console.log(`\n${"─".repeat(80)}`);
@@ -607,18 +901,22 @@ if (structuralFailures.length) {
 } else {
   console.log("   ✓ nøgle-evne belønnes på alle terræner · ingen monopol-vindere · GC = laveste tid · værdi-pyramide ikke inverteret");
 }
+// #2224: i population-mode er B-scorecardet ALTID rapport-only (båndene er
+// kalibreret mod den GENEREREDE population) — --enforce-targets ignoreres med
+// en note, uanset flag.
 if (failedTargets.length) {
-  if (ENFORCE_TARGETS) {
+  if (ENFORCE_TARGETS && !POPULATION_MODE) {
     console.log(`   ❌ ${failedTargets.length} kalibrerings-bånd under mål (--enforce-targets aktiv → exit 1): ${failedTargets.map((s) => s.terrain).join(", ")}`);
     process.exitCode = 1;
   } else {
-    console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only; håndhæv med --enforce-targets): ${failedTargets.map((s) => s.terrain).join(", ")}`);
+    console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only${POPULATION_MODE ? " — population-mode, --enforce-targets ignoreret" : "; håndhæv med --enforce-targets"}): ${failedTargets.map((s) => s.terrain).join(", ")}`);
   }
 }
 // #1307: roles-metrikker (kaptajn-delta + hunter-ratio) er launch-relevante og
-// håndhæves med --enforce-targets, præcis som win-rate-scorecardet.
+// håndhæves med --enforce-targets, præcis som win-rate-scorecardet. #2224: n/a
+// i population-mode (rolesFailures forbliver altid tom dér, se ROLES-METRIKKER-blokken).
 if (rolesFailures.length) {
-  if (ENFORCE_TARGETS) {
+  if (ENFORCE_TARGETS && !POPULATION_MODE) {
     console.log(`   ❌ ${rolesFailures.length} roles-bånd brudt (--enforce-targets aktiv → exit 1): ${rolesFailures.join(" · ")}`);
     process.exitCode = 1;
   } else {
@@ -628,13 +926,14 @@ if (rolesFailures.length) {
 // #1021 Fase 1 (post-launch): udbruds-realisme-båndene er KANDIDAT-bånd der endnu
 // ikke er cross-seed-kalibreret mod den nuværende population. RAPPORT-ONLY som
 // standard, så de ikke maskerer/blokerer de launch-kritiske gates; #1021-
-// kalibreringen kan gøre dem hard igen med --enforce-breakaway.
+// kalibreringen kan gøre dem hard igen med --enforce-breakaway. #2224: ALTID
+// rapport-only i population-mode (samme begrundelse som B-scorecardet).
 if (breakawayBandFailures.length) {
-  if (ENFORCE_BREAKAWAY) {
+  if (ENFORCE_BREAKAWAY && !POPULATION_MODE) {
     console.log(`   ❌ ${breakawayBandFailures.length} udbruds-bånd udenfor (--enforce-breakaway aktiv → exit 1): ${breakawayBandFailures.join(" · ")}`);
     process.exitCode = 1;
   } else {
-    console.log(`   ⚠ ${breakawayBandFailures.length} udbruds-bånd udenfor (rapport-only — post-launch #1021-kalibrering; håndhæv med --enforce-breakaway): ${breakawayBandFailures.join(" · ")}`);
+    console.log(`   ⚠ ${breakawayBandFailures.length} udbruds-bånd udenfor (rapport-only${POPULATION_MODE ? " — population-mode, --enforce-breakaway ignoreret" : " — post-launch #1021-kalibrering; håndhæv med --enforce-breakaway"}): ${breakawayBandFailures.join(" · ")}`);
   }
 }
 
@@ -709,13 +1008,15 @@ for (const r of livenessResults) {
   const label = r.metric === "bw-gap" ? "bw-gap" : "⌀rank ";
   console.log(`   ${padE(r.ability, 13)} ${padE(r.terrain, 14)} ${padE(r.mode, 10)} ${label} ${padS(r.rankGain.toFixed(2), 6)}   ${ok ? "✓" : "✗ DØDVÆGT"}`);
 }
+// #2224: ALTID rapport-only i population-mode (probe-bånd kalibreret mod den
+// GENEREREDE population) — --enforce-liveness ignoreres med en note.
 if (livenessFailures.length) {
-  if (ENFORCE_LIVENESS) {
+  if (ENFORCE_LIVENESS && !POPULATION_MODE) {
     console.log(`   ❌ ${livenessFailures.length} evne(r) er dødvægt (--enforce-liveness aktiv → exit 1):`);
     for (const f of livenessFailures) console.log(`   - ${f}`);
     process.exitCode = 1;
   } else {
-    console.log(`   ⚠ ${livenessFailures.length} evne(r) er dødvægt (rapport-only; håndhæv med --enforce-liveness): ${livenessResults.filter((r) => r.rankGain < floorFor(r.mode)).map((r) => r.ability).join(", ")}`);
+    console.log(`   ⚠ ${livenessFailures.length} evne(r) er dødvægt (rapport-only${POPULATION_MODE ? " — population-mode, --enforce-liveness ignoreret" : "; håndhæv med --enforce-liveness"}): ${livenessResults.filter((r) => r.rankGain < floorFor(r.mode)).map((r) => r.ability).join(", ")}`);
   }
 }
 
@@ -736,6 +1037,97 @@ if (CONDITION_MODE) {
   console.log(`   form    range [${minForm}, ${maxForm}] ·  mean ${meanForm}  (tilsigtet [30, 90])`);
   console.log(`   fatigue range [${minFatigue}, ${maxFatigue}] · mean ${meanFatigue} (tilsigtet [0, 70])`);
   console.log(`   max score-swing (condition-interval): form ${formSwing.toFixed(4)} + fatigue ${fatigueSwing.toFixed(4)} = ${(formSwing + fatigueSwing).toFixed(4)}`);
+}
+
+// ── F. DOMINANS/VARIANS-SCORECARD (#2224) — kører i ALLE modes ──────────────
+// Måler om motoren er for FORUDSIGELIG (samme favorit/hold vinder for ofte)
+// eller for FLAD (ingen sammenhæng mellem evne og resultat). Rapport-only som
+// standard; --enforce-dominance gør båndene til en hard gate (exit 1).
+const DOMINANCE_TARGETS = {
+  favoriteWinRate:         { min: 0.25, max: 0.40 },
+  maxSeasonWinRate:        { max: 0.45 },            // ≥5 starter
+  p95SeasonWinRate:        { max: 0.35 },
+  favoritePodiumRate:      { min: 0.55, max: 0.75 },
+  share4PlusSameTeamTop10: { max: 0.05 },
+  avgDistinctTeamsTop10:   { min: 7.5 },
+  ittFavoriteWinRate:      { min: 0.45, max: 0.65 }, // perTerrain.itt
+  helperLossMedianGc:      { min: 10, max: 30 },     // tabte pladser (kun roles-mode; ellers "n/a")
+};
+const DOMINANCE_PCT_KEYS = new Set([
+  "favoriteWinRate", "maxSeasonWinRate", "p95SeasonWinRate", "favoritePodiumRate",
+  "share4PlusSameTeamTop10", "ittFavoriteWinRate",
+]);
+
+const dominanceAgg = aggregateObservations(allDominanceObservations);
+const seasonWinRateStats = winRateStats({ winsByRider: seasonWinsByRider, startsByRider: seasonStartsByRider, minStarts: 5 });
+const seasonGini = giniOverWins({ winsByRider: seasonWinsByRider, startsByRider: seasonStartsByRider });
+const helperLossMedianGc = ROLES_MODE ? median(helperDeltasAll) : null;
+
+const dominanceMeasured = {
+  favoriteWinRate: dominanceAgg.favoriteWinRate,
+  maxSeasonWinRate: seasonWinRateStats.maxWinRate,
+  p95SeasonWinRate: seasonWinRateStats.p95WinRate,
+  favoritePodiumRate: dominanceAgg.favoritePodiumRate,
+  share4PlusSameTeamTop10: dominanceAgg.share4PlusSameTeamTop10,
+  avgDistinctTeamsTop10: dominanceAgg.avgDistinctTeamsTop10,
+  ittFavoriteWinRate: dominanceAgg.perTerrain?.itt?.favoriteWinRate ?? null,
+  helperLossMedianGc,
+};
+
+function checkDominanceBand(value, band) {
+  if (value == null) return null; // n/a
+  if (band.min != null && value < band.min) return false;
+  if (band.max != null && value > band.max) return false;
+  return true;
+}
+
+const dominanceRows = Object.entries(DOMINANCE_TARGETS).map(([key, band]) => {
+  const value = dominanceMeasured[key];
+  const pass = checkDominanceBand(value, band);
+  return { key, value, band, pass };
+});
+const dominanceFailures = dominanceRows
+  .filter((r) => r.pass === false)
+  .map((r) => {
+    const fmt = (v) => (DOMINANCE_PCT_KEYS.has(r.key) ? `${(v * 100).toFixed(1)}%` : v.toFixed(1));
+    const bandFmt = DOMINANCE_PCT_KEYS.has(r.key)
+      ? `[${r.band.min != null ? (r.band.min * 100).toFixed(1) + "%" : "−"}, ${r.band.max != null ? (r.band.max * 100).toFixed(1) + "%" : "−"}]`
+      : `[${r.band.min ?? "−"}, ${r.band.max ?? "−"}]`;
+    return `${r.key} ${fmt(r.value)} udenfor ${bandFmt}`;
+  });
+
+// team-linse aktiv i denne kørsel — se sektions-note nedenfor.
+const dominanceTeamLens = POPULATION_MODE ? "rigtige hold" : (ROLES_MODE ? "snake-draft-hold" : "ingen (hver rytter sit eget hold)");
+
+console.log(`\n${"─".repeat(80)}`);
+console.log(`F. DOMINANS/VARIANS-SCORECARD (#2224) — team-linse: ${dominanceTeamLens}\n`);
+console.log(`   ${padE("metrik", 25)}${padE("målt", 12)}${padE("bånd", 22)}status`);
+console.log(`   ${"-".repeat(74)}`);
+for (const r of dominanceRows) {
+  const isPct = DOMINANCE_PCT_KEYS.has(r.key);
+  const valueStr = r.value == null ? "n/a" : (isPct ? `${(r.value * 100).toFixed(1)}%` : r.value.toFixed(1));
+  const bandStr = isPct
+    ? `[${r.band.min != null ? (r.band.min * 100).toFixed(0) + "%" : "−"}, ${r.band.max != null ? (r.band.max * 100).toFixed(0) + "%" : "−"}]`
+    : `[${r.band.min ?? "−"}, ${r.band.max ?? "−"}]`;
+  const statusStr = r.pass == null ? "n/a" : (r.pass ? "✓" : "✗");
+  console.log(`   ${padE(r.key, 25)}${padE(valueStr, 12)}${padE(bandStr, 22)}${statusStr}`);
+}
+console.log(`\n   Gini (sejre, alle startere): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only, intet bånd)`);
+console.log(`   Jour-sans-rate: 0% · DNF-rate: 0% (S2/S4 — komponent endnu ikke i motoren; indgår ikke i --enforce-dominance)`);
+console.log(`   GT (final-GC-top10): favorit vandt=${gtDominanceObservation.favoriteWon} podium=${gtDominanceObservation.favoritePodium} · maxSameTeamTop10=${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10=${gtDominanceObservation.distinctTeamsTop10}`);
+if (!ROLES_MODE) {
+  console.log(`   helperLossMedianGc: n/a (kræver --roles)`);
+}
+
+if (dominanceFailures.length) {
+  if (ENFORCE_DOMINANCE) {
+    console.log(`   ❌ ${dominanceFailures.length} dominans-mål udenfor bånd (--enforce-dominance aktiv → exit 1): ${dominanceFailures.join(" · ")}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`   ⚠ ${dominanceFailures.length} dominans-mål udenfor bånd (rapport-only; håndhæv med --enforce-dominance): ${dominanceFailures.join(" · ")}`);
+  }
+} else {
+  console.log(`   ✓ alle dominans-mål inden for bånd`);
 }
 
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────
@@ -763,6 +1155,28 @@ if (WRITE_HTML) {
     </tr>`).join("");
 
   const typeBar = fieldSummary.types.map(([t, n]) => `<span class="chip ${t}">${esc(t)} ${pctS(n, field.length)}</span>`).join(" ");
+
+  // #2224: dominans/varians-scorecard (sektion F) + win-rate-histogram.
+  const dominanceRowsHtml = dominanceRows.map((r) => {
+    const isPct = DOMINANCE_PCT_KEYS.has(r.key);
+    const valueStr = r.value == null ? "n/a" : (isPct ? `${(r.value * 100).toFixed(1)}%` : r.value.toFixed(1));
+    const bandStr = isPct
+      ? `[${r.band.min != null ? (r.band.min * 100).toFixed(0) + "%" : "−"}, ${r.band.max != null ? (r.band.max * 100).toFixed(0) + "%" : "−"}]`
+      : `[${r.band.min ?? "−"}, ${r.band.max ?? "−"}]`;
+    const statusClass = r.pass == null ? "" : (r.pass ? "pass" : "fail");
+    const statusText = r.pass == null ? "n/a" : (r.pass ? "✓" : "✗");
+    return `
+    <tr class="${statusClass}">
+      <td>${esc(r.key)}</td><td class="num">${esc(valueStr)}</td><td class="num muted">${esc(bandStr)}</td><td>${statusText}</td>
+    </tr>`;
+  }).join("");
+  const winRateHistMax = Math.max(1, ...seasonWinRateStats.histogram.map((b) => b.count));
+  const winRateHistRows = seasonWinRateStats.histogram.map((b) => `
+    <tr>
+      <td class="num muted">${Math.round(b.from * 100)}–${Math.round(b.to * 100)}%</td>
+      <td><div style="background:#5cc8ff;height:10px;width:${Math.round((b.count / winRateHistMax) * 100)}%;border-radius:4px"></div></td>
+      <td class="num">${b.count}</td>
+    </tr>`).join("");
 
   const stageBlocks = gtStageData.map((st) => {
     const rows = st.top.map((x) => `<tr><td class="num">${x.rank}</td><td>${riderCell(x.rider)}</td><td class="num muted">${esc(x.time || "")}</td></tr>`).join("");
@@ -811,7 +1225,8 @@ details{background:var(--panel);border:1px solid var(--line);border-radius:8px;m
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:820px){.grid2{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
 <h1>🚴 Race-engine kalibrerings-cockpit</h1>
-<p class="sub">seed ${SEED} · ${COUNT} ryttere · mix <b>${esc(MIX)}</b> · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
+<p class="sub">seed ${SEED} · ${POPULATION_MODE ? `population <b>${esc(POPULATION_PATH)}</b> (${field.length} ryttere)` : `${COUNT} ryttere · mix <b>${esc(MIX)}</b>`} · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
+${POPULATION_MODE ? `<p class="sub">⚠ population-mode: "født-som" = "afledt" (prod-ryttere har ingen arketype) · B-scorecard/udbruds-bånd/roles-bånd/liveness er ALTID rapport-only her.</p>` : ""}
 
 <h2>Mål-scorecard <span class="muted" style="font-weight:400">— født-som = ægte rytter-type · afledt = spillets label</span></h2>
 <table><thead><tr><th>Terræn</th><th>Mål</th><th class="num">Født-som</th><th class="num">Afledt</th><th class="num">Mål%</th><th>Status</th></tr></thead><tbody>${scorecardRows}</tbody></table>
@@ -819,6 +1234,19 @@ details{background:var(--panel);border:1px solid var(--line);border-radius:8px;m
 <h2>Belønner motoren den rigtige evne?</h2>
 <p class="sub">Vinder ⌀ i terrænets nøgle-evne vs. felt-median. ⌀rang = vinderens overall-placering i feltet (1 = stærkest).</p>
 <table><thead><tr><th>Terræn</th><th>Nøgle-evne</th><th class="num">Vinder ⌀</th><th>Vinder født-som (top3)</th><th>Vinder afledt (top3)</th><th class="num">⌀rang</th><th class="num">Distinkte</th></tr></thead><tbody>${terrainRows}</tbody></table>
+
+<h2>Dominans/varians (#2224) <span class="muted" style="font-weight:400">— team-linse: ${esc(dominanceTeamLens)}</span></h2>
+<div class="grid2">
+  <div>
+    <table><thead><tr><th>Metrik</th><th class="num">Målt</th><th class="num">Bånd</th><th>Status</th></tr></thead><tbody>${dominanceRowsHtml}</tbody></table>
+    <p class="sub">Gini (sejre): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only) · Jour-sans/DNF: 0% (S2/S4, ikke i motoren endnu)</p>
+    <p class="sub">GT (final-GC-top10): favorit vandt ${gtDominanceObservation.favoriteWon ? "ja" : "nej"} · podium ${gtDominanceObservation.favoritePodium ? "ja" : "nej"} · maxSameTeamTop10 ${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10 ${gtDominanceObservation.distinctTeamsTop10}</p>
+  </div>
+  <div>
+    <h3 style="margin:4px 0">Sæson-win-rate-histogram <span class="muted" style="font-weight:400">(≥5 starter, ${seasonWinRateStats.riders} ryttere)</span></h3>
+    <table><thead><tr><th>Interval</th><th></th><th class="num">Ryttere</th></tr></thead><tbody>${winRateHistRows}</tbody></table>
+  </div>
+</div>
 
 <h2>Feltet</h2>
 <p class="sub">${fieldSummary.n} ryttere · overall median ${fieldSummary.ov.median} (p90 ${fieldSummary.ov.p90}, max ${fieldSummary.ov.max}) · base_value median ${money(fieldSummary.bv.median)} (max ${money(fieldSummary.bv.max)})</p>
