@@ -20,7 +20,7 @@
 
 > **🎯 Next action:** Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91 — lav en delbetaling, se Interest/Principal i Finance-historik). Eftersend rytter-ID til #2263. Åbne fix-kandidater: #2254-rest (RaceHub live-stage klikbar — kræver DOM-verify), #2270/#2274, admin-test-køen (talentspejder/faciliteter-flip).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — race-engine v2-dybde design-spec (#2224 dominans + #1021/#1176/#2034), startet 11/7 aften.
 
 ## Standing context (forever-relaunch)
 
