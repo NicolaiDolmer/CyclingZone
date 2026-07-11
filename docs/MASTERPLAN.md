@@ -21,7 +21,7 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186) E
 
 ## 3 · RESTEN AF JULI (ét spor ad gangen)
 11. ⚪ [#2034](https://github.com/NicolaiDolmer/CyclingZone/issues/2034) Roller pr. etape + hjælperytter-adfærd + dominans-fix ([#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224)) shippes.
-12. ⚪ [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922) Trænings-rework (ægte trade-offs, + ugeplan [#1895](https://github.com/NicolaiDolmer/CyclingZone/issues/1895)) — oven på nerf'en.
+12. ⚪ [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922) Trænings-rework (ægte trade-offs) — oven på nerf'en. Ugeplan [#1895](https://github.com/NicolaiDolmer/CyclingZone/issues/1895) + smart default [#1894](https://github.com/NicolaiDolmer/CyclingZone/issues/1894) ✅ SHIPPET 11/7 (v6.86-87); rest-opfølgning: løbs-bevidst periodisering [#2337](https://github.com/NicolaiDolmer/CyclingZone/issues/2337).
 13. ⚪ [#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932)+[#2064](https://github.com/NicolaiDolmer/CyclingZone/issues/2064) Akademi-rework + intake-øgning (sim først) + junior/U23 [#958](https://github.com/NicolaiDolmer/CyclingZone/issues/958) design.
 14. 🟠 [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) Rytterprofil rest — scouting-fane + hero + rating [#2006](https://github.com/NicolaiDolmer/CyclingZone/issues/2006) + højde/vægt + compare retur #2266.
 15. ⚪ Værdi-gennemgang — auto-opdatering kører allerede; session om frekvens + glid mod handelspris [#1281](https://github.com/NicolaiDolmer/CyclingZone/issues/1281).
