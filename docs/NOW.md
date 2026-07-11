@@ -22,7 +22,7 @@
 
 > **Session 11/7 aften:** #2082 lukket (var allerede shippet i PR #2202 4/7; migration + motor verificeret live i prod). #1974-slice: trænbarhedssignal pr. ryttertype i trænings-UI (fokus-dropdown-markører + chip + help/FAQ, v6.85) — PR #2335 auto-merge armeret på grønne checks. #1974 holdes åbent (rest: synligt potentiale via #1138 + GT/bakke-klassificering). **Ejer-verify:** træningssiden i prod — markører i fokus-dropdown + chip ved mis-matchet fokus. #2262 (unge-rate-tuning) urørt per ejer-ønske.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — #1894 smart default-fokus pr. ryttertype (ejer valgte variant 1+3 11/7); sonnet-subagent bygger i worktree.
 
 ## Standing context (forever-relaunch)
 
