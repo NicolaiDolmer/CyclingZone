@@ -88,7 +88,7 @@
   "weekRhythmSave": "Gem rytme",
   "weekRhythmResetButton": "Nulstil (ingen rytme)",
   "weekRhythmSaved": "Ugentlig rytme gemt.",
-  "weekRhythmReset": "Ugentlig rytme fjernet — ryttere følger igen deres sæson-intensitet hver dag.",
+  "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
   "weekRhythmSaveFailed": "Kunne ikke gemme. Prøv igen om lidt.",
   "weekRhythmBonusNote": "Rytmen sætter kun intensitet, aldrig fokus, og manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
   "weekRhythmTodayHint": "i dag: {intensity} (ugentlig rytme)"

@@ -88,7 +88,7 @@
   "weekRhythmSave": "Save rhythm",
   "weekRhythmResetButton": "Reset to no rhythm",
   "weekRhythmSaved": "Weekly rhythm saved.",
-  "weekRhythmReset": "Weekly rhythm removed — riders are back to their season intensity every day.",
+  "weekRhythmReset": "Weekly rhythm removed: riders are back to their season intensity every day.",
   "weekRhythmSaveFailed": "Could not save. Try again in a moment.",
   "weekRhythmBonusNote": "The rhythm sets intensity only, never focus, and the manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
   "weekRhythmTodayHint": "today: {intensity} (weekly rhythm)"
