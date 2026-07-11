@@ -205,7 +205,6 @@ function createInitialState() {
     transfer_listings: [{ id: "listing-1", status: "open" }],
     transfer_offers: [{ id: "transfer-1", status: "window_pending" }],
     swap_offers: [{ id: "swap-1", status: "accepted" }],
-    loan_agreements: [{ id: "loan-1", status: "active" }],
     finance_transactions: [
       { id: "tx-1", team_id: "team-1", season_id: "season-1" },
       { id: "tx-ai", team_id: "team-ai", season_id: "season-1" },
@@ -262,7 +261,6 @@ test("cancelBetaMarket cancels every non-terminal market artifact, including acc
     transfer_listings: 1,
     transfer_offers: 1,
     swap_offers: 1,
-    loan_agreements: 1,
   });
   assert.equal(supabase.state.swap_offers[0].status, "rejected");
 });
@@ -344,7 +342,7 @@ test("resetBetaBoardProfiles deletes all manager board data and creates one base
   assert.deepEqual(supabase.state.board_plan_snapshots.map((row) => row.id), ["snap-ai"]);
 });
 
-test("resetBetaRiderHistory wipes alle 6 historik-tabeller men bevarer rider_watchlist + riders + teams (#104)", async () => {
+test("resetBetaRiderHistory wipes alle 5 historik-tabeller men bevarer rider_watchlist + riders + teams (#104)", async () => {
   const initialState = createInitialState();
   initialState.auction_bids = [
     { id: "bid-1", auction_id: "auction-1", team_id: "team-1", amount: 50000 },
@@ -353,8 +351,6 @@ test("resetBetaRiderHistory wipes alle 6 historik-tabeller men bevarer rider_wat
   // Ekstra rows for at sikre alle statuses ryddes (ikke kun "active"/"accepted")
   initialState.auctions.push({ id: "auction-2", status: "completed" });
   initialState.transfer_offers.push({ id: "transfer-2", status: "rejected" });
-  initialState.loan_agreements.push({ id: "loan-2", status: "completed" });
-  initialState.loan_agreements.push({ id: "loan-3", status: "buyout" });
   // Kritisk fixture: ønskelister må ALDRIG røres af denne reset
   initialState.rider_watchlist = [
     { id: "wl-1", user_id: "user-1", rider_id: "rider-ai", note: "Stjerne" },
@@ -370,16 +366,14 @@ test("resetBetaRiderHistory wipes alle 6 historik-tabeller men bevarer rider_wat
     transfer_offers: 2,
     transfer_listings: 1,
     swap_offers: 1,
-    loan_agreements: 3,
   });
 
-  // Alle 6 historik-tabeller skal være tomme efter reset
+  // Alle 5 historik-tabeller skal være tomme efter reset
   assert.deepEqual(supabase.state.auctions, []);
   assert.deepEqual(supabase.state.auction_bids, []);
   assert.deepEqual(supabase.state.transfer_listings, []);
   assert.deepEqual(supabase.state.transfer_offers, []);
   assert.deepEqual(supabase.state.swap_offers, []);
-  assert.deepEqual(supabase.state.loan_agreements, []);
 
   // KRITISK: rider-history rører IKKE ønskelister (det gør resetBetaWishlist separat),
   // ryttere, hold og økonomi bevares
@@ -462,7 +456,6 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.equal(result.training_history.training_day_runs, 2, "træningshistorik ryddet i full-reset");
   assert.deepEqual(supabase.state.training_day_runs, [], "ingen training_day_runs tilbage efter full-reset");
   assert.deepEqual(supabase.state.auctions, []);
-  assert.deepEqual(supabase.state.loan_agreements, []);
   // #1608 Task 6: ægte managere placeres i bunden (tier 4) + en div-4-pulje; frosne
   // hold er urørt (bevarer division 1 + sin gamle pulje).
   const resetTeam1 = supabase.state.teams.find((team) => team.id === "team-1");

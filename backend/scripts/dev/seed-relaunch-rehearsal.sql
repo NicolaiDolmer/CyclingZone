@@ -232,9 +232,8 @@ INSERT INTO public.swap_offers (offered_rider_id, requested_rider_id, proposing_
 SELECT r1.id, r2.id, r1.team_id, r2.team_id, 'pending'
 FROM (SELECT id, team_id FROM public.riders WHERE team_id = '00000000-0000-4000-9000-000000000005' LIMIT 1) r1,
      (SELECT id, team_id FROM public.riders WHERE team_id = '00000000-0000-4000-9000-000000000006' LIMIT 1) r2;
-INSERT INTO public.loan_agreements (rider_id, from_team_id, to_team_id, loan_fee, start_season, end_season, status)
-SELECT r.id, r.team_id, '00000000-0000-4000-9000-000000000007', 20000, 2, 3, 'active'
-FROM public.riders r WHERE r.team_id = '00000000-0000-4000-9000-000000000008' LIMIT 1;
+-- #1994: rider-loan seed (loan_agreements) fjernet — featuren er afviklet og
+-- tabellen droppet (database/2026-07-11-drop-loan-agreements-table.sql).
 INSERT INTO public.loans (team_id, loan_type, principal, origination_fee, interest_rate,
   seasons_total, seasons_remaining, amount_remaining, status)
 VALUES ('00000000-0000-4000-9000-000000000009', 'short', 200000, 6000, 0.08, 3, 2, 140000, 'active'),

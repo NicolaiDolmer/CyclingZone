@@ -1,14 +1,14 @@
 // Bygger offentlig handelshistorik for ét hold — hentet via
-// GET /api/teams/:id/transfer-history. Samler events fra auctions, transfer_offers,
-// swap_offers og loan_agreements og sorterer kronologisk (nyeste først).
+// GET /api/teams/:id/transfer-history. Samler events fra auctions, transfer_offers
+// og swap_offers og sorterer kronologisk (nyeste først).
 //
 // Privacy-kontrakt: genbruger samme whitelist som riderHistory.js (#105).
 // Pending/afviste/annullerede forhandlinger må aldrig eksponeres.
 
-import { PUBLIC_LOAN_STATUSES, PUBLIC_OFFER_STATUSES } from "./riderHistory.js";
+import { PUBLIC_OFFER_STATUSES } from "./riderHistory.js";
 import { assertNoSupabaseError } from "./supabaseResultGuard.js";
 
-export { PUBLIC_LOAN_STATUSES, PUBLIC_OFFER_STATUSES };
+export { PUBLIC_OFFER_STATUSES };
 
 function buildSeasonResolver(seasons) {
   const sorted = [...(seasons || [])]
@@ -65,7 +65,7 @@ function buildSeasonResolver(seasons) {
 }
 
 export async function buildTeamTransferHistory(supabase, teamId) {
-  const [auctionsRes, offersRes, swapsRes, loansRes, seasonsRes, academyRes] = await Promise.all([
+  const [auctionsRes, offersRes, swapsRes, seasonsRes, academyRes] = await Promise.all([
     supabase.from("auctions")
       .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller_team_id, current_bidder_id, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
       .eq("status", "completed")
@@ -83,12 +83,6 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       .in("status", PUBLIC_OFFER_STATUSES)
       .or(`proposing_team_id.eq.${teamId},receiving_team_id.eq.${teamId}`)
       .order("updated_at", { ascending: false }),
-
-    supabase.from("loan_agreements")
-      .select("id, loan_fee, start_season, end_season, status, created_at, updated_at, from_team_id, to_team_id, from_team:from_team_id(id, name, is_ai), to_team:to_team_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
-      .in("status", PUBLIC_LOAN_STATUSES)
-      .or(`from_team_id.eq.${teamId},to_team_id.eq.${teamId}`)
-      .order("created_at", { ascending: false }),
 
     supabase.from("seasons")
       .select("id, number, start_date, end_date")
@@ -113,7 +107,6 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     auctions: auctionsRes,
     transfer_offers: offersRes,
     swap_offers: swapsRes,
-    loan_agreements: loansRes,
     seasons: seasonsRes,
     academy_intake: academyRes,
   }, "buildTeamTransferHistory");
@@ -187,25 +180,6 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       amount: Math.abs(cashAdj),
       status: s.status,
       season_number: resolveSeason(s.updated_at),
-    });
-  }
-
-  for (const l of loansRes.data || []) {
-    const isFrom = l.from_team_id === teamId;
-    events.push({
-      id: `loan:${l.id}`,
-      type: "loan",
-      direction: isFrom ? "out" : "in",
-      // Udlejer (from_team) modtager loan_fee, lejer betaler (api.js loan-accept)
-      cash_flow: l.loan_fee > 0 ? (isFrom ? "in" : "out") : null,
-      date: l.created_at,
-      rider: l.rider,
-      counterparty: isFrom ? l.to_team : l.from_team,
-      amount: l.loan_fee,
-      start_season: l.start_season,
-      end_season: l.end_season,
-      loan_status: l.status,
-      season_number: resolveSeason(l.created_at),
     });
   }
 

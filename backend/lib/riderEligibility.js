@@ -22,26 +22,20 @@ export function applyRiderEligibilityFilter(query) {
 // race_entries mod rytterens nuværende tilstand (forbrugs-punkt-gyldighed), så en
 // ghost (solgt/fyret/akademi/pensioneret EFTER udtagelse) falder ud uanset hvordan
 // han forsvandt fra holdet. teamId udeladt → spring team-tjekket over (kun status).
-//
-// loanedOutRiderIds (Set, valgfri): rytter-id'er der lige nu er UDLÅNT (aktiv
-// loan_agreements). En udlånt rytter beholder sit ejer-holds team_id, men kører for
-// låneren — derfor er han IKKE valgbar for ejeren (ellers tæller han som en fantom-
-// rytter i ejerens trup-kapacitet og kan dobbelt-feltes). Ekskludér ham overalt.
-export function isEligibleRider(rider, { teamId = null, loanedOutRiderIds = null } = {}) {
+// (#1994: loanedOutRiderIds-parametret fjernet — udlåns-featuren er afviklet.)
+export function isEligibleRider(rider, { teamId = null } = {}) {
   if (!rider) return false;
   if (rider.is_academy === true) return false;
   if (rider.is_retired === true) return false;
-  if (loanedOutRiderIds && loanedOutRiderIds.has(rider.id)) return false;
   if (teamId != null && rider.team_id !== teamId) return false;
   return true;
 }
 
 // Frafiltrér ghost-entries: behold kun entries hvis rytter (a) findes i ridersById og
-// (b) er berettiget for entry'ens eget team_id og (c) ikke er udlånt. ridersById =
-// Map<rider_id, riderRow> med mindst { id, team_id, is_academy, is_retired }.
-// loanedOutRiderIds (Set, valgfri) = aktivt udlånte ryttere (ekskluderes). En entry
-// uden rytter-row droppes (slettet rytter). Pure + deterministisk; bevarer rækkefølgen.
-export function filterEligibleEntries({ entries = [], ridersById, loanedOutRiderIds = null }) {
+// (b) er berettiget for entry'ens eget team_id. ridersById = Map<rider_id, riderRow>
+// med mindst { id, team_id, is_academy, is_retired }. En entry uden rytter-row
+// droppes (slettet rytter). Pure + deterministisk; bevarer rækkefølgen.
+export function filterEligibleEntries({ entries = [], ridersById }) {
   return entries.filter((e) =>
-    isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id, loanedOutRiderIds }));
+    isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id }));
 }

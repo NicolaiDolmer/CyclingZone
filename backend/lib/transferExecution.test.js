@@ -6,7 +6,6 @@ import {
   confirmTransferOffer,
   getListingCancelIssue,
   getListingPriceUpdateIssue,
-  getLoanCancelIssue,
   getSwapCancelIssue,
   getSwapExecutionIssue,
   getTransferCancelIssue,
@@ -275,17 +274,6 @@ test("getSwapCancelIssue blocks manager cancel after both parties accepted", () 
   );
 });
 
-test("getLoanCancelIssue blocks manager cancel on active loan, allows on pending", () => {
-  assert.equal(
-    getLoanCancelIssue({ status: "active" })?.code,
-    "loan_already_active"
-  );
-
-  assert.equal(getLoanCancelIssue({ status: "pending" }), null);
-  assert.equal(getLoanCancelIssue({ status: "rejected" }), null);
-  assert.equal(getLoanCancelIssue(null), null);
-});
-
 test("getListingCancelIssue: ejer kan fjerne open/negotiating, fremmede afvises, lukkede er no-op", () => {
   // not_found — listing eksisterer ikke
   assert.equal(
@@ -505,7 +493,6 @@ function baseDb({ windowStatus }) {
     transfer_listings: [],
     auctions: [],
     auction_proxy_bids: [],
-    loan_agreements: [],
     seasons: [{ id: "season-1", status: "active" }],
     transfer_windows: [{ status: windowStatus, created_at: "2026-05-31" }],
     races: [],

@@ -5,13 +5,12 @@
     "balance": "Balance",
     "loadingAria": "Loading transfers"
   },
-  "marketIntro": "The transfer market is where managers list their own riders for a fixed price. Buy instantly or send an offer. Auctions are separate (timed bidding), and swaps and loans are optional ways to trade.",
+  "marketIntro": "The transfer market is where managers list their own riders for a fixed price. Buy instantly or send an offer. Auctions are separate (timed bidding).",
   "tabs": {
     "received": "Received offers",
     "sent": "Sent offers",
     "archive": "History ({count})",
     "swaps": "Swaps",
-    "loans": "Loans",
     "market": "Market ({count})"
   },
   "modes": {
@@ -27,18 +26,10 @@
     "rejected": "Rejected",
     "withdrawn": "Withdrawn"
   },
-  "loanStatus": {
-    "pending": "Awaiting response",
-    "active": "Active",
-    "buyout": "Bought",
-    "cancelled": "Cancelled",
-    "rejected": "Rejected"
-  },
   "type": {
     "auction": "Auction",
     "transfer": "Transfer",
     "swap": "Swap",
-    "loan": "Loan",
     "academy": "Academy"
   },
   "direction": {
@@ -119,23 +110,6 @@
       "selfConfirmed": "You confirmed · awaiting the other party"
     }
   },
-  "loanCard": {
-    "to": "To",
-    "from": "From",
-    "seasonsSingle": "Season {start}",
-    "seasonsRange": "Seasons {start}–{end}",
-    "feeLabel": "Loan fee/season",
-    "valueLabel": "Value",
-    "buyOptionLabel": "Buy option",
-    "noBuyOption": "—",
-    "buttons": {
-      "accept": "✓ Accept",
-      "reject": "✕ Reject",
-      "withdraw": "Withdraw proposal",
-      "exerciseBuyout": "Exercise buy option ({amount} CZ$)"
-    },
-    "bindingNote": "Active loans are binding and can only be cancelled by an admin."
-  },
   "transferCard": {
     "send": "Send",
     "messagePlaceholder": "Message (optional)...",
@@ -166,21 +140,6 @@
     "cancel": "Cancel",
     "newButton": "+ Propose new swap"
   },
-  "newLoan": {
-    "title": "Propose loan",
-    "riderLabel": "Rider to loan (search by lastname)",
-    "lastnamePlaceholder": "Lastname...",
-    "selectedRider": "Selected: {firstname} {lastname} ({team})",
-    "seasonLabel": "Season (max 1 season)",
-    "seasonPlaceholder": "e.g. 3",
-    "feeLabel": "Loan fee per season (CZ$)",
-    "buyOptionLabel": "Buy option (CZ$) · optional",
-    "buyOptionPlaceholder": "Leave blank for no option",
-    "sending": "Sending...",
-    "submit": "Send proposal",
-    "cancel": "Cancel",
-    "newButton": "+ Propose new loan"
-  },
   "history": {
     "title": "Transfer history",
     "seasonFilterAll": "All seasons",
@@ -197,7 +156,6 @@
       "amount": "Amount"
     },
     "aiTag": "(AI)",
-    "loanTag": "(loan)",
     "swapZero": "0 CZ$",
     "noBids": "No bids",
     "academySource": "Academy",
@@ -221,9 +179,7 @@
     "archivedReceived": "Archived received offers",
     "archivedSent": "Archived sent offers",
     "receivedProposals": "Received proposals",
-    "sentProposals": "Sent proposals",
-    "yourLending": "Your lending",
-    "yourBorrowing": "Your loans"
+    "sentProposals": "Sent proposals"
   },
   "empty": {
     "received": "No received offers",
@@ -233,8 +189,6 @@
     "archive": "No archived offers",
     "swaps": "No active swaps",
     "swapsHint": "Propose a swap by clicking the button above",
-    "loans": "No active loans",
-    "loansHint": "Propose a loan by clicking the button above",
     "marketNoListings": "No riders for sale",
     "marketNoMatches": "No riders match the filter"
   },
@@ -258,10 +212,6 @@
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",
     "swapProposalSent": "✅ Swap proposal sent!",
-    "loanActivated": "✅ Loan activated",
-    "loanRejected": "Loan proposal rejected",
-    "loanCancelled": "Loan cancelled",
-    "loanProposalSent": "✅ Loan proposal sent!",
     "priceUpdated": "✅ Asking price updated",
     "priceUpdateFailed": "Could not update the price"
   },
@@ -273,10 +223,6 @@
     "swapDone": {
       "title": "Swap complete! 🎉",
       "subtitle": "Riders have been exchanged"
-    },
-    "buyoutDone": {
-      "title": "Rider bought! 🎉",
-      "subtitle": "The buy option has been exercised"
     }
   },
   "marketSort": {

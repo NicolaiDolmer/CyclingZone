@@ -378,83 +378,6 @@ export function buildSwapCancelledStaleNotification({ riderName }) {
   };
 }
 
-// ─── Leje (loan) ────────────────────────────────────────────────────────────
-
-export function buildLoanProposalNotification({ proposerName, riderName, seasonFrom, seasonTo, fee, buyOption, riderId }) {
-  const seasonsSame = seasonFrom === seasonTo;
-  const buyStr = buyOption ? ` · buy option ${buyOption.toLocaleString("en-US")} CZ$` : "";
-  const seasonStr = seasonsSame ? `season ${seasonFrom}` : `season ${seasonFrom}–${seasonTo}`;
-  return {
-    type: "transfer_offer_received",
-    title: "Loan proposal received",
-    message: `${proposerName} wants to loan ${riderName} (${seasonStr}, ${fee.toLocaleString("en-US")} CZ$/season${buyStr})`,
-    metadata: withRider({
-      titleCode: "notif.transfer.loanProposal.title",
-      titleParams: {},
-      messageCode: buyOption
-        ? (seasonsSame ? "notif.transfer.loanProposal.messageBuySingle" : "notif.transfer.loanProposal.messageBuyRange")
-        : (seasonsSame ? "notif.transfer.loanProposal.messageSingle" : "notif.transfer.loanProposal.messageRange"),
-      messageParams: { proposerName, riderName, seasonFrom, seasonTo, fee, buyOption: buyOption || 0 },
-    }, riderId),
-  };
-}
-
-export function buildLoanActivatedNotification({ lenderName, riderName, riderId }) {
-  return {
-    type: "transfer_offer_accepted",
-    title: "Loan activated",
-    message: `${lenderName} accepted your loan request for ${riderName}`,
-    metadata: withRider({
-      titleCode: "notif.transfer.loanActivated.title",
-      titleParams: {},
-      messageCode: "notif.transfer.loanActivated.message",
-      messageParams: { lenderName, riderName },
-    }, riderId),
-  };
-}
-
-export function buildLoanRejectedNotification({ lenderName, riderName, riderId }) {
-  return {
-    type: "transfer_offer_rejected",
-    title: "Loan request rejected",
-    message: `${lenderName} declined your loan proposal for ${riderName}`,
-    metadata: withRider({
-      titleCode: "notif.transfer.loanRejected.title",
-      titleParams: {},
-      messageCode: "notif.transfer.loanRejected.message",
-      messageParams: { lenderName, riderName },
-    }, riderId),
-  };
-}
-
-export function buildLoanCancelledNotification({ actorName, riderName, riderId }) {
-  return {
-    type: "transfer_offer_rejected",
-    title: "Loan agreement cancelled",
-    message: `${actorName} cancelled the loan agreement for ${riderName}`,
-    metadata: withRider({
-      titleCode: "notif.transfer.loanCancelled.title",
-      titleParams: {},
-      messageCode: "notif.transfer.loanCancelled.message",
-      messageParams: { actorName, riderName },
-    }, riderId),
-  };
-}
-
-export function buildLoanBuyoutNotification({ buyerName, riderName, price }) {
-  return {
-    type: "transfer_offer_accepted",
-    title: "Buy option exercised",
-    message: `${buyerName} exercised the buy option on ${riderName} for ${price.toLocaleString("en-US")} CZ$`,
-    metadata: {
-      titleCode: "notif.transfer.loanBuyout.title",
-      titleParams: {},
-      messageCode: "notif.transfer.loanBuyout.message",
-      messageParams: { buyerName, riderName, price },
-    },
-  };
-}
-
 // ─── Admin-annulleringer ────────────────────────────────────────────────────
 //
 // `reason` er valgfri admin-fritekst; den kan være dansk, men den er admin-
@@ -489,27 +412,6 @@ export function buildAdminSwapCancelledNotification({ offeredName, requestedName
       titleParams: {},
       messageCode: reason ? "notif.transfer.adminSwapCancelled.messageReason" : "notif.transfer.adminSwapCancelled.message",
       messageParams: { offeredName, requestedName, reason },
-    },
-  };
-}
-
-export function buildAdminLoanCancelledNotification({ riderName, reason = "", refundedFee = 0 }) {
-  const refundSuffix = refundedFee > 0
-    ? ` The loan fee (${refundedFee.toLocaleString("en-US")} CZ$) has been refunded.`
-    : "";
-  const base = reason ? "messageReason" : "message";
-  const messageCode = refundedFee > 0
-    ? `notif.transfer.adminLoanCancelled.${base}Refund`
-    : `notif.transfer.adminLoanCancelled.${base}`;
-  return {
-    type: "transfer_offer_rejected",
-    title: "Loan agreement cancelled by admin",
-    message: `The loan agreement on ${riderName} was cancelled by an admin${reasonSuffix(reason)}${refundSuffix}`,
-    metadata: {
-      titleCode: "notif.transfer.adminLoanCancelled.title",
-      titleParams: {},
-      messageCode,
-      messageParams: { riderName, reason, refundedFee: refundedFee || 0 },
     },
   };
 }

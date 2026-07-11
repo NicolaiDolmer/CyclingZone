@@ -131,103 +131,8 @@ test("Enum-objekter er Object.freeze'd (forhindrer runtime-mutation)", () => {
 // finance_transactions med NULL actor_type aftager til 0 efter udrulning.
 // ============================================================
 
-import { processLoanAgreementSeasonFees, createEmergencyLoan, createLoan, repayLoan } from "./loanEngine.js";
+import { createEmergencyLoan, createLoan, repayLoan } from "./loanEngine.js";
 import { paySeasonPrizesToDate } from "./prizePayoutEngine.js";
-
-function makeAuditCaptureClient({ teams = {}, loans = [], extras = {} } = {}) {
-  const captures = [];
-  const balances = new Map(Object.entries(teams).map(([id, t]) => [id, t.balance ?? 0]));
-
-  const tableHandlers = {
-    loan_agreements: () => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ data: loans, error: null }),
-        }),
-      }),
-    }),
-    teams: () => ({
-      select: (cols) => ({
-        eq: (_c, value) => ({
-          single: () => Promise.resolve({
-            data: cols === "division" ? { division: 3 } : (teams[value] || null),
-            error: null,
-          }),
-        }),
-      }),
-    }),
-    loan_config: () => ({
-      select: () => ({
-        eq: () => Promise.resolve({
-          data: [{ loan_type: "emergency", origination_fee_pct: 0.15, interest_rate_pct: 0.15, debt_ceiling: 600000 }],
-          error: null,
-        }),
-      }),
-    }),
-    loans: () => ({
-      insert: () => ({
-        select: () => ({ single: () => Promise.resolve({ data: { id: "loan-x" }, error: null }) }),
-      }),
-      select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
-    }),
-    notifications: () => ({ insert: () => Promise.resolve({ data: null, error: null }) }),
-    user_preferences: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
-    }),
-    ...extras,
-  };
-
-  return {
-    captures,
-    balances,
-    client: {
-      rpc(name, params) {
-        assert.equal(name, "increment_balance_with_audit");
-        const before = balances.get(params.p_team_id) ?? 0;
-        const after = before + params.p_delta;
-        balances.set(params.p_team_id, after);
-        captures.push({ teamId: params.p_team_id, delta: params.p_delta, payload: params.p_finance_payload });
-        return Promise.resolve({ data: after, error: null });
-      },
-      from(table) {
-        const handler = tableHandlers[table];
-        if (!handler) throw new Error(`Unexpected table: ${table}`);
-        return handler();
-      },
-    },
-  };
-}
-
-test("processLoanAgreementSeasonFees populerer audit-fields på begge sider (cron)", async () => {
-  const fixture = makeAuditCaptureClient({
-    loans: [{
-      id: "loan-A",
-      from_team_id: "lender",
-      to_team_id: "borrower",
-      loan_fee: 100,
-      start_season: 1,
-      end_season: 2,
-      status: "active",
-      rider: { firstname: "X", lastname: "Y" },
-    }],
-  });
-
-  await processLoanAgreementSeasonFees("borrower", 2, "season-2", fixture.client);
-
-  assert.equal(fixture.captures.length, 2);
-  const [payer, receiver] = fixture.captures;
-  assert.equal(payer.payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
-  assert.equal(payer.payload.source_path, "loanEngine.processLoanAgreementSeasonFees.payer");
-  assert.equal(payer.payload.reason_code, FINANCE_REASON.LOAN_FEE_PAID);
-  assert.equal(payer.payload.related_entity_type, FINANCE_RELATED_ENTITY.LOAN);
-  assert.equal(payer.payload.related_entity_id, "loan-A");
-  assert.equal(payer.payload.idempotency_key, "loan_fee_paid:loan-A:season-2");
-
-  assert.equal(receiver.payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
-  assert.equal(receiver.payload.source_path, "loanEngine.processLoanAgreementSeasonFees.receiver");
-  assert.equal(receiver.payload.reason_code, FINANCE_REASON.LOAN_FEE_RECEIVED);
-  assert.equal(receiver.payload.idempotency_key, "loan_fee_received:loan-A:season-2");
-});
 
 function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
   const captures = [];
@@ -554,8 +459,6 @@ const MANDATORY_PAYLOAD_KEYS = [
 // Wrapper-callsites (creditTeam/debitTeam) bruger dynamic source_path og
 // dækkes af "creditTeam/debitTeam idempotent options"-testen længere nede.
 const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
-  "loanEngine.processLoanAgreementSeasonFees.payer",
-  "loanEngine.processLoanAgreementSeasonFees.receiver",
   "prizePayoutEngine.paySeasonPrizesToDate",
   "auctionFinalization.finalizeAuctionRecord.buyer",
   "auctionFinalization.finalizeAuctionRecord.seller",
@@ -567,15 +470,18 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
 ]);
 
 const CALLSITE_FILES = [
-  { rel: "../routes/api.js", expectedCalls: 9 },
+  // #1994: rider-loan agreement routes (GET/POST/PATCH /loans,
+  // POST /admin/loans/:id/cancel) removed entirely — dropped from 9 to 3
+  // (senior-transfer + admin-adjust + youth-buyout-adjacent callsites remain).
+  { rel: "../routes/api.js", expectedCalls: 3 },
   { rel: "./transferExecution.js", expectedCalls: 4 },
   { rel: "./squadEnforcement.js", expectedCalls: 3 },
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },
   // #2302: repayLoan's callsite moved from incrementBalanceWithAudit to the
-  // atomic repay_loan_atomic RPC (database/2026-07-10-repay-loan-atomic.sql),
-  // so callsites here dropped from 5 to 4 (createLoan, createEmergencyLoan,
-  // processLoanAgreementSeasonFees.payer + .receiver).
-  { rel: "./loanEngine.js", expectedCalls: 4 },
+  // atomic repay_loan_atomic RPC (database/2026-07-10-repay-loan-atomic.sql).
+  // #1994: rider-loan season fees (processLoanAgreementSeasonFees.payer/
+  // .receiver) removed entirely — only createLoan + createEmergencyLoan remain.
+  { rel: "./loanEngine.js", expectedCalls: 2 },
   { rel: "./economyEngine.js", expectedCalls: 2 },
   // #1558: youth-stiens debit flyttede til finalize_academy_acquisition-RPC'en,
   // så incrementBalanceWithAudit-callsites faldt fra 4 til 3 (senior buyer/seller

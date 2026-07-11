@@ -168,10 +168,6 @@
         "title": "Privacy",
         "text": "Offers are private. Only you and the seller can see your negotiation. Other managers cannot see who has bid on the same rider."
       },
-      "loansAndSquad": {
-        "title": "Loan deals and squad limits",
-        "text": "Loaned riders count towards your squad size the same way as your own riders and incoming deals. The system therefore checks, both when you propose a loan deal, when the lender activates it, and when other deals complete, that your squad still stays within the division's min/max bounds. The first season's loan fee is paid when the deal activates, and if the deal covers multiple seasons the following seasons' fees are charged automatically at season start."
-      },
       "archiveCompleted": {
         "title": "Archive completed offers",
         "text": "Offers that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
@@ -308,17 +304,16 @@
       "label": "My Activity",
       "whatActivity": {
         "title": "What is My Activity?",
-        "text": "My Activity is your personal market workspace under Market. It gathers all your market actions (auctions, transfers, loans and watchlist) in one place, separate from the global inbox."
+        "text": "My Activity is your personal market workspace under Market. It gathers all your market actions (auctions, transfers and watchlist) in one place, separate from the global inbox."
       },
       "tabs": {
         "title": "The tabs",
         "steps": [
-          "Action required: Offers awaiting your reply, counters you've received, deals awaiting your confirmation, loan proposals and auctions ending within 1 hour. Opens by default.",
+          "Action required: Offers awaiting your reply, counters you've received, deals awaiting your confirmation and auctions ending within 1 hour. Opens by default.",
           "Auctions: All active auctions where you're seller or bidder.",
           "Transfers: Offers you've received and offers you've sent that are still active.",
-          "Loans: Active and pending loan deals. Riders you lend out and riders you borrow.",
           "Watchlist: Compact view of your saved riders with market status. Click → for the full watchlist.",
-          "History: Completed auctions, closed transfers and finished loan deals."
+          "History: Completed auctions and closed transfers."
         ]
       },
       "deepLinks": {
@@ -757,14 +752,6 @@
     "minBidAmount": {
       "q": "How much do I need to bid above the current price?",
       "a": "Your bid must be at least 1 CZ$ above the current price. If no one has bid yet, you can match the asking price. Active auctions where you lead count as reserved balance and potential squad slot at the same time."
-    },
-    "loansInSquadLimit": {
-      "q": "Do loaned riders count towards the squad limit?",
-      "a": "Yes. Active loan deals count towards your squad size, so you can be rejected on loans, auctions or other incoming deals if your squad is already full."
-    },
-    "loanFeeTiming": {
-      "q": "When is the loan fee charged on a loan deal?",
-      "a": "The first covered season is paid when the loan deal activates. If the deal runs over multiple seasons, the following seasons' loan fees are charged automatically at season start and booked in the finance log for both teams."
     },
     "bidVisibility": {
       "q": "Can I see who has bid on my rider?",

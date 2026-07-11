@@ -2,8 +2,7 @@
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
     "incoming": "+{count} ind",
-    "outgoing": "−{count} ud",
-    "loans": "+{count} leje"
+    "outgoing": "−{count} ud"
   },
   "nextActions": {
     "title": "Næste træk",
@@ -11,7 +10,6 @@
     "allClear": "Du er på forkant. Intet kræver din handling lige nu.",
     "transferOffers": "{count, plural, one {1 transfertilbud venter på din beslutning} other {# transfertilbud venter på din beslutning}}",
     "swapOffers": "{count, plural, one {1 bytteforslag venter på din beslutning} other {# bytteforslag venter på din beslutning}}",
-    "loanRequests": "{count, plural, one {1 leje-anmodning venter på din beslutning} other {# leje-anmodninger venter på din beslutning}}",
     "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}",
     "squadSelectionMissing": "Holdudtagelse mangler til {race}",
     "notTrainedToday": "Du har ikke trænet i dag",
@@ -160,9 +158,7 @@
       "sponsor": "Sponsor",
       "prize": "Præmiepenge (estimat)",
       "salary": "Løn",
-      "loanInterest": "Lånerenter",
-      "loanFees": "Lejegebyr (lejer)",
-      "loanFeesReceived": "Lejegebyr modtaget"
+      "loanInterest": "Lånerenter"
     },
     "sponsorDetail": {
       "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",

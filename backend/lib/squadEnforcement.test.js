@@ -19,7 +19,6 @@ function createMockSupabase(initialState) {
   const state = {
     teams: [...(initialState.teams || [])],
     riders: [...(initialState.riders || [])],
-    loanAgreements: [...(initialState.loanAgreements || [])],
     seasonStandings: [...(initialState.seasonStandings || [])],
     transferWindows: [...(initialState.transferWindows || [])],
     transferListings: [...(initialState.transferListings || [])],
@@ -43,7 +42,6 @@ function createMockSupabase(initialState) {
   function from(table) {
     if (table === "teams") return teamsTable();
     if (table === "riders") return ridersTable();
-    if (table === "loan_agreements") return loanAgreementsTable();
     if (table === "season_standings") return seasonStandingsTable();
     if (table === "transfer_windows") return transferWindowsTable();
     if (table === "transfer_listings") return transferListingsTable();
@@ -168,22 +166,6 @@ function createMockSupabase(initialState) {
             return Promise.resolve({ data: null, error: null });
           },
         };
-      },
-    };
-  }
-
-  function loanAgreementsTable() {
-    return {
-      select(_cols, _opts = {}) {
-        const filters = {};
-        const builder = {
-          eq(col, val) { filters[col] = val; return builder; },
-        };
-        builder.then = (resolve) => {
-          const rows = state.loanAgreements.filter(l => Object.entries(filters).every(([k, v]) => l[k] === v));
-          resolve({ data: rows, error: null });
-        };
-        return builder;
       },
     };
   }

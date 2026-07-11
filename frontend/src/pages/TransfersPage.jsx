@@ -16,7 +16,7 @@ import { resolveApiError } from "../lib/apiError";
 import { sortRows } from "../lib/useTableSort.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
-import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon, PageLoader } from "../components/ui";
+import { Card, EmptyState, ExchangeIcon, InboxIcon, PageLoader } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
@@ -63,7 +63,7 @@ const API = import.meta.env.VITE_API_URL;
 
 // #987: faner kan deep-linkes via ?tab= (fx /transfers?tab=market fra nav'ens
 // "Transferliste"-genvej). Ukendte værdier falder tilbage til "received".
-const VALID_TABS = ["received", "sent", "archive", "swaps", "loans", "market"];
+const VALID_TABS = ["received", "sent", "archive", "swaps", "market"];
 const DEFAULT_TAB = "received";
 
 // #58: de 6 sideordnede faner er grupperet i 3 handlingsorienterede modes, så en
@@ -73,7 +73,7 @@ const DEFAULT_TAB = "received";
 // VALID_TABS. Rækkefølgen af faner i et mode = visnings-rækkefølge i sub-fane-båndet.
 const TAB_MODES = [
   { key: "handle",       tabs: ["received"] },
-  { key: "negotiations", tabs: ["sent", "archive", "swaps", "loans"] },
+  { key: "negotiations", tabs: ["sent", "archive", "swaps"] },
   { key: "market",       tabs: ["market"] },
 ];
 
@@ -730,224 +730,6 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
   );
 }
 
-// ── Loan agreement card ───────────────────────────────────────────────────────
-const LOAN_STATUS_STYLE = {
-  pending:   { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
-  active:    { color: "text-cz-info",  bg: "bg-cz-info/10 border-cz-info/20" },
-  buyout:    { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
-  cancelled: { color: "text-cz-3",    bg: "bg-cz-subtle border-cz-border" },
-  rejected:  { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
-};
-
-const LOAN_STATUS_LABEL_KEY = {
-  pending: "loanStatus.pending",
-  active: "loanStatus.active",
-  buyout: "loanStatus.buyout",
-  cancelled: "loanStatus.cancelled",
-  rejected: "loanStatus.rejected",
-};
-
-function loanCfg(t, status) {
-  const style = LOAN_STATUS_STYLE[status] || LOAN_STATUS_STYLE.pending;
-  const labelKey = LOAN_STATUS_LABEL_KEY[status] || LOAN_STATUS_LABEL_KEY.pending;
-  return { ...style, label: t(labelKey) };
-}
-
-function LoanCard({ loan, myTeamId, onAction }) {
-  const { t } = useTranslation("transfers");
-  const [loading, setLoading] = useState(false);
-  const isLender   = loan.from_team?.id === myTeamId;
-  const isBorrower = loan.to_team?.id   === myTeamId;
-  const cfg = loanCfg(t, loan.status);
-
-  async function doAction(action) {
-    setLoading(true);
-    await onAction(loan.id, action);
-    setLoading(false);
-  }
-
-  const seasons = loan.start_season === loan.end_season
-    ? t("loanCard.seasonsSingle", { start: loan.start_season })
-    : t("loanCard.seasonsRange", { start: loan.start_season, end: loan.end_season });
-
-  return (
-    <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${loan.status === "active" ? "border-cz-info/20" : loan.status === "pending" ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
-
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <RiderLink id={loan.rider?.id}
-            className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
-            {loan.rider?.firstname} {loan.rider?.lastname}
-          </RiderLink>
-          <p className="text-cz-3 text-xs">
-            {isLender ? `${t("loanCard.to")}: ${loan.to_team?.name}` : `${t("loanCard.from")}: ${loan.from_team?.name}`} · {seasons}
-          </p>
-        </div>
-        <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
-          {cfg.label}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.feeLabel")}</p>
-          <p className="text-cz-1 font-mono text-sm font-bold">{formatNumber(loan.loan_fee)} CZ$</p>
-        </div>
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.valueLabel")}</p>
-            <p className="text-cz-accent-t font-mono text-sm font-bold">{formatCz(getRiderMarketValue(loan.rider))}</p>
-        </div>
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.buyOptionLabel")}</p>
-          <p className="text-cz-2 font-mono text-sm">
-            {loan.buy_option_price ? `${formatNumber(loan.buy_option_price)} CZ$` : t("loanCard.noBuyOption")}
-          </p>
-        </div>
-      </div>
-
-      {loan.status === "pending" && isLender && (
-        <div className="flex gap-2">
-          <button onClick={() => doAction("accept")} disabled={loading}
-            className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-            {t("loanCard.buttons.accept")}
-          </button>
-          <button onClick={() => doAction("reject")} disabled={loading}
-            className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
-            {t("loanCard.buttons.reject")}
-          </button>
-        </div>
-      )}
-      {loan.status === "pending" && isBorrower && (
-        <button onClick={() => doAction("cancel")} disabled={loading}
-          className="min-h-[44px] w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
-            hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-          {t("loanCard.buttons.withdraw")}
-        </button>
-      )}
-      {loan.status === "active" && (
-        <div className="flex flex-col gap-2">
-          {isBorrower && loan.buy_option_price && (
-            <button onClick={() => doAction("buyout")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-              {t("loanCard.buttons.exerciseBuyout", { amount: formatNumber(loan.buy_option_price) })}
-            </button>
-          )}
-          {/* #156: aktive lejeaftaler er bindende — kun admin kan annullere. */}
-          <p className="text-cz-3 text-xs italic">
-            {t("loanCard.bindingNote")}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── New loan form ─────────────────────────────────────────────────────────────
-function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
-  const { t } = useTranslation("transfers");
-  const [search, setSearch]           = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedRider, setSelectedRider] = useState(null);
-  const [loanFee, setLoanFee]         = useState(0);
-  const [startSeason, setStartSeason] = useState("");
-  const [buyOption, setBuyOption]     = useState("");
-  const [loading, setLoading]         = useState(false);
-  const [searching, setSearching]     = useState(false);
-
-  async function runSearch(q) {
-    if (q.trim().length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    const { data } = await supabase
-      .from("riders")
-        .select("id, firstname, lastname, market_value, team_id, team:team_id(id, name)")
-      .ilike("lastname", `%${q}%`)
-      .eq("is_retired", false)
-      .not("team_id", "is", null)
-      .limit(20);
-    setSearchResults((data || []).filter(r => r.team_id !== myTeamId));
-    setSearching(false);
-  }
-
-  async function handleSubmit() {
-    if (!selectedRider || !startSeason) return;
-    setLoading(true);
-    try {
-      await onSubmit({
-        rider_id: selectedRider.id,
-        loan_fee: loanFee,
-        start_season: parseInt(startSeason),
-        end_season: parseInt(startSeason),
-        buy_option_price: buyOption ? parseInt(buyOption) : null,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card className="p-5 flex flex-col gap-4">
-      <h3 className="text-cz-1 font-semibold">{t("newLoan.title")}</h3>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.riderLabel")}</label>
-        <div className="relative">
-          <input type="text" value={search}
-            onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
-            placeholder={t("newLoan.lastnamePlaceholder")}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
-          {searching && <span className="absolute right-3 top-2.5 text-cz-3 text-xs">...</span>}
-          {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-cz-subtle border border-cz-border rounded-lg overflow-hidden shadow-lg">
-              {searchResults.map(r => (
-                <button key={r.id} onClick={() => { setSelectedRider(r); setSearch(`${r.firstname} ${r.lastname}`); setSearchResults([]); }}
-                  className="min-h-[44px] w-full text-left px-3 py-2 hover:bg-cz-subtle text-cz-1 text-sm border-b border-cz-border last:border-0">
-                  {r.firstname} {r.lastname}
-                    <span className="text-cz-3 text-xs ms-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {selectedRider && (
-          <p className="text-cz-info/70 text-xs mt-1">{t("newLoan.selectedRider", { firstname: selectedRider.firstname, lastname: selectedRider.lastname, team: selectedRider.team?.name })}</p>
-        )}
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.seasonLabel")}</label>
-        <input type="number" value={startSeason} onChange={e => setStartSeason(e.target.value)}
-          placeholder={t("newLoan.seasonPlaceholder")}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.feeLabel")}</label>
-        <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.buyOptionLabel")}</label>
-        <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
-          placeholder={t("newLoan.buyOptionPlaceholder")}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={handleSubmit} disabled={loading || !selectedRider || !startSeason}
-          className="min-h-[44px] flex-1 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-40">
-          {loading ? t("newLoan.sending") : t("newLoan.submit")}
-        </button>
-        <button onClick={onCancel}
-          className="min-h-[44px] px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle">
-          {t("newLoan.cancel")}
-        </button>
-      </div>
-    </Card>
-  );
-}
-
 // ── Egne listings: redigér pris + fjern (#1185) ──────────────────────────────
 // Fjern-flowet bruger in-app confirm i stedet for window.confirm — native
 // confirm-dialoger undertrykkes i visse mobile in-app-browsere/PWA-kontekster,
@@ -1196,7 +978,7 @@ export default function TransfersPage() {
   function setTab(key) {
     setSearchParams(key === DEFAULT_TAB ? {} : { tab: key }, { replace: true });
   }
-  // #1569: en ny spiller har ALLE handels-faner tomme (ingen tilbud/swaps/loans/
+  // #1569: en ny spiller har ALLE handels-faner tomme (ingen tilbud/swaps/
   // archive), så default-fanen 'received' var en tom blindgyde. Når data er loadet
   // og alle handels-faner er tomme — og manageren ikke selv har deep-linket en
   // fane — defaulter vi ÉN gang til 'market'-fanen, hvor der faktisk er ryttere.
@@ -1208,11 +990,8 @@ export default function TransfersPage() {
   const [archivedReceivedOffers, setArchivedReceivedOffers] = useState([]);
   const [sentSwaps, setSentSwaps] = useState([]);
   const [receivedSwaps, setReceivedSwaps] = useState([]);
-  const [lendingLoans, setLendingLoans] = useState([]);
-  const [borrowingLoans, setBorrowingLoans] = useState([]);
   const [myRiders, setMyRiders] = useState([]);
   const [showNewSwap, setShowNewSwap] = useState(false);
-  const [showNewLoan, setShowNewLoan] = useState(false);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1251,12 +1030,10 @@ export default function TransfersPage() {
       archivedReceivedOffers.length === 0 &&
       archivedSentOffers.length === 0 &&
       receivedSwaps.length === 0 &&
-      sentSwaps.length === 0 &&
-      lendingLoans.length === 0 &&
-      borrowingLoans.length === 0;
+      sentSwaps.length === 0;
     didDefaultTabRef.current = true;
     if (allTradeTabsEmpty) setTab("market");
-  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, lendingLoans, borrowingLoans]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll() {
     setLoading(true);
@@ -1272,11 +1049,10 @@ export default function TransfersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
-      const [listingsRes, offersRes, swapsRes, loansRes, ridersRes] = await Promise.all([
+      const [listingsRes, offersRes, swapsRes, ridersRes] = await Promise.all([
         fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
-        fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
         supabase.from("riders").select("id, firstname, lastname, market_value").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
       ]);
 
@@ -1291,8 +1067,6 @@ export default function TransfersPage() {
       setArchivedReceivedOffers((offersRes.archivedReceived || []).map(flatRider));
       setSentSwaps((swapsRes.sent || []).map(flatSwap));
       setReceivedSwaps((swapsRes.received || []).map(flatSwap));
-      setLendingLoans((loansRes.lending || []).map(flatRider));
-      setBorrowingLoans((loansRes.borrowing || []).map(flatRider));
       setMyRiders(ridersRes.data || []);
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1468,45 +1242,6 @@ export default function TransfersPage() {
     }
   }
 
-  async function handleLoanAction(loanId, action) {
-    try {
-      const res = await fetch(`${API}/api/loans/${loanId}`, {
-        method: "PATCH",
-        headers: await getHeaders(),
-        body: JSON.stringify({ action }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        if (action === "buyout") {
-          setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: <ClipboardIcon size={56} className="text-cz-accent-t" aria-hidden="true" /> });
-        } else {
-          const msgs = { accept: t("toast.loanActivated"), reject: t("toast.loanRejected"), cancel: t("toast.loanCancelled") };
-          showMsg(msgs[action] || t("toast.updated"));
-        }
-        loadAll();
-      } else {
-        showMsg(resolveApiError(data, t), "error");
-      }
-    } catch {
-      showMsg(t("auth:error.connectionFailed"), "error");
-    }
-  }
-
-  async function handleNewLoan(payload) {
-    try {
-      const res = await fetch(`${API}/api/loans`, {
-        method: "POST",
-        headers: await getHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
-      else showMsg(resolveApiError(data, t), "error");
-    } catch {
-      showMsg(t("auth:error.connectionFailed"), "error");
-    }
-  }
-
   const pendingReceived = receivedOffers.filter(o =>
     o.status === "pending" || (o.status === "awaiting_confirmation" && !o.seller_confirmed)
   ).length;
@@ -1517,7 +1252,6 @@ export default function TransfersPage() {
     ...receivedSwaps.filter(s => s.status === "pending" || (s.status === "awaiting_confirmation" && !s.receiving_confirmed)),
     ...sentSwaps.filter(s => s.status === "countered" || (s.status === "awaiting_confirmation" && !s.proposing_confirmed)),
   ].length;
-  const pendingLoans = lendingLoans.filter(l => l.status === "pending").length;
 
   // #58: pr-fane label + badge, delt af mode-båndet og sub-fane-båndet. Nøglerne
   // matcher VALID_TABS; rækkefølgen styres af TAB_MODES.
@@ -1526,7 +1260,6 @@ export default function TransfersPage() {
     sent:     { label: t("tabs.sent"),     badge: pendingSent },
     archive:  { label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
     swaps:    { label: t("tabs.swaps"),    badge: pendingSwaps },
-    loans:    { label: t("tabs.loans"),    badge: pendingLoans },
     market:   { label: t("tabs.market",   { count: listings.length }) },
   };
   // #58: aktivt mode udledes af den aktive fane (som stadig lever i ?tab=). Klik på
@@ -1558,7 +1291,7 @@ export default function TransfersPage() {
 
   // #1675: market-fanen viser en bred evne-tabel (15 kolonner) — den bruger fuld
   // content-bredde (Layout giver /transfers max-w-full). De kort-baserede faner
-  // (tilbud/swaps/loans/arkiv) + header cappes til en læsbar kolonne, så kortene
+  // (tilbud/swaps/arkiv) + header cappes til en læsbar kolonne, så kortene
   // ikke strækkes over hele skærmen.
   const isMarketTab = tab === "market";
   return (
@@ -1760,58 +1493,10 @@ export default function TransfersPage() {
             </div>
           )}
 
-          {tab === "loans" && (
-            <div className="flex flex-col gap-4">
-              {showNewLoan ? (
-                <NewLoanForm
-                  myTeamId={myTeamId}
-                  onSubmit={handleNewLoan}
-                  onCancel={() => setShowNewLoan(false)}
-                />
-              ) : (
-                <button onClick={() => setShowNewLoan(true)}
-                  className="min-h-[44px] w-full py-2.5 bg-cz-info/8 text-cz-info/80 border border-cz-info/15 rounded-cz text-sm font-medium
-                    hover:bg-cz-info/15 hover:text-cz-info transition-all">
-                  {t("newLoan.newButton")}
-                </button>
-              )}
-
-              {lendingLoans.length > 0 && (
-                <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.yourLending")}</p>
-                  <div className="flex flex-col gap-3">
-                    {lendingLoans.map(l => (
-                      <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {borrowingLoans.length > 0 && (
-                <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.yourBorrowing")}</p>
-                  <div className="flex flex-col gap-3">
-                    {borrowingLoans.map(l => (
-                      <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {lendingLoans.length === 0 && borrowingLoans.length === 0 && !showNewLoan && (
-                <EmptyState
-                  icon={<ClipboardIcon size={28} aria-hidden="true" />}
-                  title={t("empty.loans")}
-                  description={t("empty.loansHint")}
-                />
-              )}
-            </div>
-          )}
-
           {tab === "market" && (
             <div>
               {/* #1569: kort intro så nye spillere forstår transferlistens marked
-                  (vs. auktioner) + at swaps/loans er valgfri. */}
+                  (vs. auktioner). */}
               <p className="text-cz-3 text-xs mb-3 max-w-4xl">{t("marketIntro")}</p>
               {/* #1675: cap filter-panelet (form-inputs strækkes ikke i fuld bredde —
                   samme konvention som RidersPage max-w-[1600px]). */}

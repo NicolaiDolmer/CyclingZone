@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon } from "./ui";
+import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon } from "./ui";
 
 /**
  * "Næste træk" — prioriteret liste over hvad der venter på manageren, samlet
@@ -14,7 +14,7 @@ import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, 
  * Økonomisk risiko og Deadline Day har egne dedikerede bannere på Dashboard og
  * gentages bevidst ikke her.
  *
- * @param {{ counts: { transfer_offers: number, swap_offers: number, loan_offers: number, total: number } }} pending
+ * @param {{ counts: { transfer_offers: number, swap_offers: number, total: number } }} pending
  * @param {number} urgentAuctionCount
  * @param {boolean} loading
  * @param {object|null} squadSelectionMissingRace — #2288 D1: næste udtagelige løb
@@ -27,7 +27,7 @@ export default function NextActionsCard({
   squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
 }) {
   const { t } = useTranslation("dashboard");
-  const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 };
+  const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, total: 0 };
 
   // #2288 D — mest presserende øverst: holdudtagelse (deadline-følsomt) → ikke
   // trænet i dag (dagligt vindue) → bestyrelsesplan (langsigtet, ingen deadline).
@@ -46,8 +46,6 @@ export default function NextActionsCard({
     items.push({ key: "transfers", Icon: ExchangeIcon, label: t("nextActions.transferOffers", { count: counts.transfer_offers }), to: "/transfers" });
   if (counts.swap_offers > 0)
     items.push({ key: "swaps", Icon: ExchangeIcon, label: t("nextActions.swapOffers", { count: counts.swap_offers }), to: "/transfers" });
-  if (counts.loan_offers > 0)
-    items.push({ key: "loans", Icon: ClockIcon, label: t("nextActions.loanRequests", { count: counts.loan_offers }), to: "/transfers" });
   if (urgentAuctionCount > 0)
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 

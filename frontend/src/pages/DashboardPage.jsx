@@ -75,7 +75,6 @@ export default function DashboardPage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
-  const [incomingLoanCount, setIncomingLoanCount] = useState(0);
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
@@ -214,7 +213,6 @@ export default function DashboardPage() {
     setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
-    setIncomingLoanCount(squadCountInputs.incomingLoanCount);
     setAllAuctions(auctionsRes.data || []);
     // #2328: hold ALLE holdets kommende puljeløb i state (ikke kun top-3) — både
     // "Kommende løb"-kortets faktiske dagsordning (pickUpcomingRaces nedenfor,
@@ -488,7 +486,6 @@ export default function DashboardPage() {
   const squadStats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount,
-    incomingLoanCount,
     myTeamId: team?.id,
     division: team?.division,
   });
@@ -541,7 +538,6 @@ export default function DashboardPage() {
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
             {pendingIncomingCount > 0 && <span className="text-cz-success"> {t("dashboard:header.incoming", { count: pendingIncomingCount })}</span>}
             {outgoingCount > 0 && <span className="text-cz-danger"> {t("dashboard:header.outgoing", { count: outgoingCount })}</span>}
-            {incomingLoanCount > 0 && <span className="text-cz-info"> {t("dashboard:header.loans", { count: incomingLoanCount })}</span>}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">

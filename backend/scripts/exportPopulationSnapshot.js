@@ -14,7 +14,6 @@
 //      med fallback til teams.division hvis league_division_id mangler/ikke matcher.
 //   3. Ryttere: kun ikke-akademi, ikke-pensionerede ryttere hvis (oprindelige)
 //      team_id er på et medtaget hold.
-//   4. Aktive udlån (loan_agreements, status='active'): udlånt rytter kører for
 //      LÅNER-holdet (to_team_id) — effektiv team_id ombygges. Hvis låner-holdet
 //      ikke er blandt de medtagne hold → rytteren droppes (tælles).
 //   5. Abilities (rider_derived_abilities): ryttere UDEN abilities-række droppes
@@ -186,23 +185,6 @@ async function loadCandidateRiders(includedTeamIds) {
   return (data || []).filter((r) => includedTeamIds.has(r.team_id));
 }
 
-// rider_id → to_team_id for AKTIVE udlån blandt kandidat-rytterne.
-async function loadActiveLoanBorrowerByRider(riderIds) {
-  if (riderIds.length === 0) return new Map();
-  const { data, error } = await selectInChunks({
-    supabase,
-    table: "loan_agreements",
-    columns: "rider_id, to_team_id, status",
-    inColumn: "rider_id",
-    ids: riderIds,
-    extra: (q) => q.eq("status", "active"),
-  });
-  if (error) throw new Error(`loan_agreements-select fejlede: ${error.message}`);
-  const map = new Map();
-  for (const row of data || []) map.set(row.rider_id, row.to_team_id);
-  return map;
-}
-
 async function loadAbilitiesByRider(riderIds) {
   if (riderIds.length === 0) return new Map();
   const columns = ["rider_id", ...ABILITY_KEYS].join(", ");
@@ -256,25 +238,9 @@ async function main() {
   const candidates = await loadCandidateRiders(includedTeamIds);
   console.log(`  ${candidates.length} kandidat-ryttere.`);
 
-  console.log("Henter aktive udlån...");
-  const candidateIds = candidates.map((r) => r.id);
-  const loanBorrowerByRider = await loadActiveLoanBorrowerByRider(candidateIds);
-
-  let droppedLoanOutside = 0;
-  const withEffectiveTeam = [];
-  for (const r of candidates) {
-    const borrowerTeamId = loanBorrowerByRider.get(r.id);
-    if (borrowerTeamId != null) {
-      if (!includedTeamIds.has(borrowerTeamId)) {
-        droppedLoanOutside++;
-        continue;
-      }
-      withEffectiveTeam.push({ ...r, effective_team_id: borrowerTeamId });
-    } else {
-      withEffectiveTeam.push({ ...r, effective_team_id: r.team_id });
-    }
-  }
-  console.log(`  ${withEffectiveTeam.length} ryttere efter loan-mapping (${droppedLoanOutside} droppet: udlånt til ikke-medtaget hold).`);
+  // #1994: udlåns-featuren er afviklet (loan_agreements droppes) — effective_team_id
+  // er nu altid rytterens eget team_id.
+  const withEffectiveTeam = candidates.map((r) => ({ ...r, effective_team_id: r.team_id }));
 
   console.log("Henter abilities...");
   const abilitiesByRider = await loadAbilitiesByRider(withEffectiveTeam.map((r) => r.id));
@@ -316,7 +282,7 @@ async function main() {
   const filtersDescription =
     "Ekskluderer teams.is_test_account=true, teams.is_frozen=true"
     + (hasIsBank ? ", teams.is_bank=true" : " (is_bank-kolonne ikke fundet — sprunget over)")
-    + "; ekskluderer riders.is_academy=true og is_retired=true; udlånte ryttere flyttet til låner-hold (droppet hvis låner-hold ikke medtaget); ryttere uden rider_derived_abilities-række droppet.";
+    + "; ekskluderer riders.is_academy=true og is_retired=true; ryttere uden rider_derived_abilities-række droppet.";
 
   const snapshot = {
     schema_version: 1,
@@ -327,7 +293,6 @@ async function main() {
       teams: teamsResolved.length,
       riders: finalRiders.length,
       dropped_no_abilities: droppedNoAbilities,
-      dropped_loan_outside: droppedLoanOutside,
     },
     teams: teamsResolved.map((t) => ({
       id: t.id,
@@ -369,7 +334,7 @@ async function main() {
   }
   console.log(`Ryttere i alt (eksporteret): ${finalRiders.length}`);
   console.log(`Ryttere pr. hold — p10=${percentile(ridersPerTeamSorted, 10)} median=${percentile(ridersPerTeamSorted, 50)} p90=${percentile(ridersPerTeamSorted, 90)}`);
-  console.log(`Droppet — ingen abilities: ${droppedNoAbilities}; udlånt til ikke-medtaget hold: ${droppedLoanOutside}`);
+  console.log(`Droppet — ingen abilities: ${droppedNoAbilities}`);
   console.log(`Condition-dækning: ${ridersWithForm}/${finalRiders.length} (${conditionCoveragePct}%) har form != null`);
   console.log(`Output: ${OUT_PATH} (${formatMB(fileSizeBytes)} MB)`);
 

@@ -31,7 +31,7 @@
     "noneUnread": "Ingen ulæste notifikationer",
     "noneInCategory": "Ingen notifikationer i denne kategori",
     "noPending": "Intet venter på din beslutning",
-    "noPendingHint": "Tilbud, byttehandler og lånetilbud du skal svare på dukker op her",
+    "noPendingHint": "Tilbud og byttehandler du skal svare på dukker op her",
     "noFeed": "Ingen aktivitet endnu",
     "noFeedHint": "Start auktioner og handler for at se aktivitet her"
   },
@@ -57,7 +57,6 @@
       "proposingDecide": "Svar på modbud",
       "receivingConfirm": "Bekræft byttehandel",
       "proposingConfirm": "Bekræft byttehandel",
-      "lenderDecide": "Accepter / afvis leje-anmodning",
       "actionRequired": "Handling påkrævet"
     },
     "unknownTeam": "ukendt hold",
@@ -66,10 +65,7 @@
     "transferSecondary": "Fra {team} · {role}",
     "swapPrimary": "{offered} ↔ {requested}",
     "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
-    "swapSecondaryNoCash": "{team} · {role}",
-    "loanPrimary": "{rider}, lån {fee} CZ$",
-    "loanSecondarySingleSeason": "Fra {team} · Sæson {start} · {role}",
-    "loanSecondaryMultiSeason": "Fra {team} · Sæson {start} til {end} · {role}"
+    "swapSecondaryNoCash": "{team} · {role}"
   },
   "feed": {
     "auctionWon": "{team} vandt auktion",

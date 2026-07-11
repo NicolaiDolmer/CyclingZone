@@ -1,6 +1,7 @@
 // Tests for #25: per-team transfer history.
 // Verificerer at:
-//   - alle 4 transfer-kilder samles korrekt
+//   - alle 3 transfer-kilder samles korrekt (auctions, transfer_offers, swap_offers;
+//     #1994 fjernede den fjerde kilde, loan_agreements — udlåns-featuren er afviklet)
 //   - direction (in/out/swap) bestemmes ud fra holdets rolle
 //   - private statuses (pending/rejected/etc) ALDRIG vises (genbruger #105-kontrakt)
 //   - events sorteres kronologisk (nyeste først)
@@ -19,12 +20,12 @@ const RIDER = "rider-A";
 const RIDER_B = "rider-B";
 
 function createSupabase({
-  auctions = [], transferOffers = [], swapOffers = [], loanAgreements = [], seasons = [],
+  auctions = [], transferOffers = [], swapOffers = [], seasons = [],
   academyIntake = [],
 } = {}) {
   const tableData = {
     auctions, transfer_offers: transferOffers, swap_offers: swapOffers,
-    loan_agreements: loanAgreements, seasons, academy_intake: academyIntake,
+    seasons, academy_intake: academyIntake,
   };
 
   function matchOr(expr, row) {
@@ -101,28 +102,16 @@ function academyIntakeRow({ id, team, date, status = "signed" }) {
   };
 }
 
-function loanRow({ id, from, to, fee = 30000, status = "active", date }) {
-  return {
-    id, status, loan_fee: fee, start_season: 1, end_season: 1,
-    created_at: date, updated_at: date,
-    from_team_id: from, to_team_id: to,
-    from_team: { id: from, name: `Team ${from}`, is_ai: false },
-    to_team: { id: to, name: `Team ${to}`, is_ai: false },
-    rider: { id: RIDER, firstname: "A", lastname: "Rider" },
-  };
-}
-
-test("teamTransferHistory — samler events fra alle 4 kilder", async () => {
+test("teamTransferHistory — samler events fra alle 3 kilder", async () => {
   const supabase = createSupabase({
     auctions: [auctionRow({ id: "A1", seller: OTHER, winner: TEAM, price: 50000, date: "2026-05-01T00:00:00Z" })],
     transferOffers: [offerRow({ id: "T1", seller: TEAM, buyer: OTHER, amount: 30000, date: "2026-05-02T00:00:00Z" })],
     swapOffers: [swapRow({ id: "S1", proposing: TEAM, receiving: OTHER, cash: 0, date: "2026-05-03T00:00:00Z" })],
-    loanAgreements: [loanRow({ id: "L1", from: TEAM, to: OTHER, date: "2026-05-04T00:00:00Z" })],
   });
   const events = await buildTeamTransferHistory(supabase, TEAM);
-  assert.equal(events.length, 4);
+  assert.equal(events.length, 3);
   const types = events.map((e) => e.type).sort();
-  assert.deepEqual(types, ["auction", "loan", "swap", "transfer"]);
+  assert.deepEqual(types, ["auction", "swap", "transfer"]);
 });
 
 test("teamTransferHistory — direction afspejler holdets rolle", async () => {
@@ -135,10 +124,6 @@ test("teamTransferHistory — direction afspejler holdets rolle", async () => {
       offerRow({ id: "T-buy", seller: OTHER, buyer: TEAM, amount: 30000, date: "2026-05-03T00:00:00Z" }),
       offerRow({ id: "T-sell", seller: TEAM, buyer: OTHER, amount: 35000, date: "2026-05-04T00:00:00Z" }),
     ],
-    loanAgreements: [
-      loanRow({ id: "L-out", from: TEAM, to: OTHER, date: "2026-05-05T00:00:00Z" }),
-      loanRow({ id: "L-in", from: OTHER, to: TEAM, date: "2026-05-06T00:00:00Z" }),
-    ],
   });
   const events = await buildTeamTransferHistory(supabase, TEAM);
   const byId = Object.fromEntries(events.map((e) => [e.id, e]));
@@ -146,8 +131,6 @@ test("teamTransferHistory — direction afspejler holdets rolle", async () => {
   assert.equal(byId["auction:A-sell"].direction, "out");
   assert.equal(byId["transfer:T-buy"].direction, "in");
   assert.equal(byId["transfer:T-sell"].direction, "out");
-  assert.equal(byId["loan:L-out"].direction, "out");
-  assert.equal(byId["loan:L-in"].direction, "in");
 });
 
 test("teamTransferHistory — swap uden cash får direction='swap'", async () => {
@@ -206,7 +189,7 @@ test("teamTransferHistory — season_number udledes fra dato", async () => {
 });
 
 test("teamTransferHistory — cash_flow afspejler kontobevægelsen, ikke rytter-retningen (#984)", async () => {
-  // direction er rytter-centrisk (in=køb, out=salg) for auction/transfer/loan,
+  // direction er rytter-centrisk (in=køb, out=salg) for auction/transfer,
   // men pengestrømmen er omvendt: køb = penge UD, salg = penge IND.
   // For swap følger direction allerede cash-flowet.
   const supabase = createSupabase({
@@ -217,11 +200,6 @@ test("teamTransferHistory — cash_flow afspejler kontobevægelsen, ikke rytter-
     transferOffers: [
       offerRow({ id: "T-buy", seller: OTHER, buyer: TEAM, amount: 30000, date: "2026-05-03T00:00:00Z" }),
       offerRow({ id: "T-sell", seller: TEAM, buyer: OTHER, amount: 35000, date: "2026-05-04T00:00:00Z" }),
-    ],
-    loanAgreements: [
-      loanRow({ id: "L-out", from: TEAM, to: OTHER, date: "2026-05-05T00:00:00Z" }),
-      loanRow({ id: "L-in", from: OTHER, to: TEAM, date: "2026-05-06T00:00:00Z" }),
-      loanRow({ id: "L-free", from: TEAM, to: OTHER, fee: 0, date: "2026-05-07T00:00:00Z" }),
     ],
     swapOffers: [
       swapRow({ id: "S-even", proposing: TEAM, receiving: OTHER, cash: 0, date: "2026-05-08T00:00:00Z" }),
@@ -235,9 +213,6 @@ test("teamTransferHistory — cash_flow afspejler kontobevægelsen, ikke rytter-
   assert.equal(byId["auction:A-sell"].cash_flow, "in", "auktionssalg = penge ind");
   assert.equal(byId["transfer:T-buy"].cash_flow, "out", "transferkøb = penge ud");
   assert.equal(byId["transfer:T-sell"].cash_flow, "in", "transfersalg = penge ind");
-  assert.equal(byId["loan:L-out"].cash_flow, "in", "udlejning = fee ind (api.js: from_team får +loan_fee)");
-  assert.equal(byId["loan:L-in"].cash_flow, "out", "leje = fee ud");
-  assert.equal(byId["loan:L-free"].cash_flow, null, "gratis leje = ingen pengestrøm");
   assert.equal(byId["swap:S-even"].cash_flow, null, "ren bytte = ingen pengestrøm");
   assert.equal(byId["swap:S-paid"].cash_flow, "out", "swap med betalt cash = penge ud");
   assert.equal(byId["swap:S-received"].cash_flow, "in", "swap med modtaget cash = penge ind");
@@ -299,16 +274,10 @@ test("teamTransferHistory — private statuses ekskluderes (#105 kontrakt)", asy
       offerRow({ id: "T-pending", seller: TEAM, buyer: OTHER, amount: 6000, date: "2026-05-02T00:00:00Z", status: "pending" }),
       offerRow({ id: "T-accepted", seller: TEAM, buyer: OTHER, amount: 7000, date: "2026-05-03T00:00:00Z", status: "accepted" }),
     ],
-    loanAgreements: [
-      loanRow({ id: "L-rejected", from: TEAM, to: OTHER, status: "rejected", date: "2026-05-01T00:00:00Z" }),
-      loanRow({ id: "L-pending", from: TEAM, to: OTHER, status: "pending", date: "2026-05-02T00:00:00Z" }),
-      loanRow({ id: "L-active", from: TEAM, to: OTHER, status: "active", date: "2026-05-03T00:00:00Z" }),
-    ],
   });
   const events = await buildTeamTransferHistory(supabase, TEAM);
   const ids = events.map((e) => e.id);
   assert.ok(ids.includes("transfer:T-accepted"));
-  assert.ok(ids.includes("loan:L-active"));
   assert.ok(!ids.some((id) => id.includes("rejected") || id.includes("pending")));
 });
 

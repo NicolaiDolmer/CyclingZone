@@ -13,7 +13,6 @@
   "tabs": {
     "action": "Needs action",
     "transfers": "Transfers",
-    "loans": "Loans",
     "history": "History"
   },
   "offerStatus": {
@@ -25,19 +24,10 @@
     "rejected": "Rejected",
     "withdrawn": "Withdrawn"
   },
-  "loanStatus": {
-    "pending": "Pending",
-    "active": "Active",
-    "completed": "Completed",
-    "rejected": "Rejected",
-    "cancelled": "Cancelled",
-    "buyout": "Bought out"
-  },
   "badge": {
     "seller": "Seller",
     "winner": "Winner",
     "bidder": "Bidder",
-    "loanProposal": "Loan offer",
     "bought": "Bought",
     "sold": "Sold",
     "noBids": "No bids",
@@ -46,16 +36,12 @@
   },
   "section": {
     "offersNeedResponse": "Offers awaiting your response",
-    "loanProposals": "Loan offers awaiting your response",
     "auctionsEndingSoon": "Auctions ending within 1 hour",
     "activeAuctions": "Active auctions",
     "receivedOffers": "Received offers",
     "sentOffers": "Sent offers",
-    "iLend": "I'm lending out",
-    "iBorrow": "I'm borrowing",
     "auctions": "Auctions",
-    "transfers": "Transfers",
-    "loans": "Loans"
+    "transfers": "Transfers"
   },
   "empty": {
     "actionTitle": "Nothing needs your action",
@@ -64,8 +50,6 @@
     "auctionsSub": "You're not bidding on any auctions and selling nothing",
     "transfersTitle": "No active transfers",
     "transfersSub": "Offers you send or receive show up here",
-    "loansTitle": "No active loan agreements",
-    "loansSub": "Loan agreements you make show up here",
     "watchlistTitle": "Your watchlist is empty",
     "watchlistSub": "Add riders from the rider database with the star button.",
     "historyTitle": "No history yet",
@@ -78,9 +62,7 @@
     "highestBidder": "Highest bidder: {name}",
     "noBidsYet": "No bids yet",
     "leader": "Leader: {name}",
-    "noLeaderYet": "No leader yet",
-    "loanedTo": "Loaned to: {name}",
-    "loanedFrom": "Loaned from: {name}"
+    "noLeaderYet": "No leader yet"
   },
   "watchlist": {
     "goToFull": "Go to full watchlist →",

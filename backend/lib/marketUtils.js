@@ -173,7 +173,7 @@ export async function getTeamMarketState(supabase, teamId) {
       .eq("id", teamId)
   );
 
-  const [riderCount, pendingCount, outgoingCount, activeLoanCount] = await Promise.all([
+  const [riderCount, pendingCount, outgoingCount] = await Promise.all([
     // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
       supabase
@@ -203,37 +203,23 @@ export async function getTeamMarketState(supabase, teamId) {
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)
     ),
-    // #19 audit: count "active" (running loan) + "window_pending" (accept parked
-    // while window closed — rider stays on lender, so only this loan represents
-    // the incoming rider). "buyout_pending" is DELIBERATELY excluded: a parked
-    // buyout sets rider.pending_team_id = borrower, so it is already counted via
-    // pendingCount above. Adding it here would double-count the rider against the
-    // borrower's squad cap.
-    expectCount(
-      supabase
-        .from("loan_agreements")
-        .select("id", { count: "exact", head: true })
-        .eq("to_team_id", teamId)
-        .in("status", ["active", "window_pending"])
-    ),
   ]);
 
   const squadLimits = getSquadLimits(team.division);
-  // #268: future_count = ejede nu - på-vej-væk + på-vej-ind + aktive lån.
+  // #268: future_count = ejede nu - på-vej-væk + på-vej-ind.
   // Matcher frontend's computeDashboardSquadStats (jf. #250) så squad-cap
   // checks bruger samme baseline som dashboard-tælleren manageren ser.
-  const futureCount = riderCount - outgoingCount + pendingCount + activeLoanCount;
+  const futureCount = riderCount - outgoingCount + pendingCount;
 
   return {
     ...team,
     rider_count: riderCount,
     pending_count: pendingCount,
     outgoing_count: outgoingCount,
-    active_loan_count: activeLoanCount,
-    // total_count beholdes som legacy felt (current + pending + loans, uden
+    // total_count beholdes som legacy felt (current + pending, uden
     // outgoing-subtraktion) for at undgå at bryde kalde-sites der måtte
     // læse det direkte. Nye checks skal bruge future_count.
-    total_count: riderCount + pendingCount + activeLoanCount,
+    total_count: riderCount + pendingCount,
     future_count: futureCount,
     squad_limits: squadLimits,
   };

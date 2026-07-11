@@ -103,7 +103,6 @@ export function restRows(table, requestUrl = "") {
     }
     case "auction_proxy_bids":
     case "finance_transactions":
-    case "loan_agreements":
     case "notifications":
     case "player_events":
     case "rider_watchlist":
@@ -183,8 +182,7 @@ export function apiResponse(pathname) {
     return {
       transfer_offers: [],
       swap_offers: [],
-      loan_offers: [],
-      counts: { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 },
+      counts: { transfer_offers: 0, swap_offers: 0, total: 0 },
     };
   }
 
@@ -196,7 +194,6 @@ export function apiResponse(pathname) {
     return { sent: [], received: [], archivedSent: [], archivedReceived: [] };
   }
   if (pathname.endsWith("/api/transfers/swaps")) return { sent: [], received: [] };
-  if (pathname.endsWith("/api/loans")) return { lending: [], borrowing: [] };
   if (pathname.endsWith("/api/me/onboarding-progress")) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }

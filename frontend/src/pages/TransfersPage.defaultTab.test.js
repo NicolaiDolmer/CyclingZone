@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // #1569 — for en ny spiller er ALLE transfer-faner tomme (ingen tilbud, swaps,
-// loans, archive). Default-fanen 'received' var derfor en tom blindgyde. Fix: når
+// archive). Default-fanen 'received' var derfor en tom blindgyde. Fix: når
 // data er loadet og alle handels-faner er tomme, defaultes til 'market'-fanen
 // (hvor der faktisk er ryttere) + en kort intro-linje der forklarer fladen.
 // Effekten er én-skuds, så den ikke overskriver et bevidst fane-valg eller et

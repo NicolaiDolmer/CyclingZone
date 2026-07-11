@@ -47,7 +47,7 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
-import { loadEligibleEntries, loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
+import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
@@ -610,11 +610,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
-    // #1906 loan-aware: en udlånt rytter kører for låneren — han må ikke stå i ejer-
-    // holdets faktiske startfelt (ellers kører han for det forkerte hold / dobbelt).
-    const { data: loanedOutRiderIds, error: loErr } = await loadLoanedOutRiderIds({ supabase, riderIds: entryRiderIds });
-    if (loErr) throw new Error(`loan_agreements (eligibility): ${loErr.message}`);
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, loanedOutRiderIds });
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById });
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).

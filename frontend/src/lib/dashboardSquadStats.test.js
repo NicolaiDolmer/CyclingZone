@@ -4,7 +4,6 @@ import {
   computeDashboardSquadStats,
   fetchSquadCountInputs,
   getSquadLimits,
-  INCOMING_LOAN_STATUSES,
 } from "./dashboardSquadStats.js";
 
 const ME = "team-me";
@@ -59,12 +58,11 @@ test("getSquadLimits — fallback til division 3 ved ukendt division", () => {
   assert.deepEqual(getSquadLimits(null), { min: 0, max: 30 });
 });
 
-test("computeDashboardSquadStats — ingen pending, ingen lån = ownedNow = futureRiderCount", () => {
+test("computeDashboardSquadStats — ingen pending = ownedNow = futureRiderCount", () => {
   const riders = Array.from({ length: 9 }, () => ({ pending_team_id: null }));
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -81,7 +79,6 @@ test("computeDashboardSquadStats — pending-incoming inkluderes (#250 hovedrapp
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 2,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -109,7 +106,6 @@ test("computeDashboardSquadStats — pending-outgoing trækkes fra (#250 sæson 
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -130,7 +126,6 @@ test("computeDashboardSquadStats — pending-out som peger på MIT eget hold tæ
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -150,7 +145,6 @@ test("computeDashboardSquadStats — pending-in + pending-out i samme hold (dead
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 2,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -165,7 +159,6 @@ test("computeDashboardSquadStats — over-cap warning ved fælles cap=30", () =>
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 2, // 29 + 2 = 31, over fælles max 30
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -184,7 +177,6 @@ test("computeDashboardSquadStats — falsk over-warning fjernes når pending-out
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -194,27 +186,12 @@ test("computeDashboardSquadStats — falsk over-warning fjernes når pending-out
   assert.equal(stats.warning, null);
 });
 
-test("computeDashboardSquadStats — aktive lån tæller med i squad-størrelsen", () => {
-  // Lejede-ind-ryttere er squad-medlemmer ift. cap. Skal med i futureRiderCount.
-  const riders = Array.from({ length: 28 }, () => ({ pending_team_id: null }));
-  const stats = computeDashboardSquadStats({
-    riders,
-    pendingIncomingCount: 0,
-    incomingLoanCount: 3, // 28 + 3 = 31, over fælles max 30
-    myTeamId: ME,
-    division: 3,
-  });
-  assert.equal(stats.futureRiderCount, 31);
-  assert.equal(stats.warning?.type, "over");
-});
-
 test("computeDashboardSquadStats — division 1 cap=30, ingen under-warning (floor fjernet)", () => {
   // Roster-floor fjernet 2026-06-05: 19 ryttere i D1 udløser ikke længere en under-warning.
   const riders = Array.from({ length: 19 }, () => ({ pending_team_id: null }));
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 1,
   });
@@ -227,7 +204,6 @@ test("computeDashboardSquadStats — tom riders-array (0 ryttere er tilladt, ing
   const stats = computeDashboardSquadStats({
     riders: [],
     pendingIncomingCount: 0,
-    incomingLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
@@ -239,38 +215,13 @@ test("computeDashboardSquadStats — tom riders-array (0 ryttere er tilladt, ing
 
 // ─── #1090: fetchSquadCountInputs — paritet med backend getTeamMarketState ───
 
-test("fetchSquadCountInputs — indgående lån tæller active OG window_pending (#1090)", async () => {
-  // Regression: en lejeaftale accepteret mens vinduet var lukket (status
-  // "window_pending") er en rytter der kommer ind til næste sæson. Dashboardet
-  // talte tidligere kun "active" → advarslen ignorerede ham. Filteret SKAL
-  // matche backend getTeamMarketState (["active", "window_pending"]).
-  const stub = createSupabaseStub({ riders: 1, loan_agreements: 2 });
-  const inputs = await fetchSquadCountInputs(stub, ME);
-
-  const loanQuery = stub.queries.find((q) => q.table === "loan_agreements");
-  assert.ok(loanQuery, "skal query'e loan_agreements");
-  assert.deepEqual(
-    loanQuery.filters,
-    [["eq", "to_team_id", ME], ["in", "status", ["active", "window_pending"]]],
-    "lån-filteret skal matche backend getTeamMarketState (active + window_pending)"
-  );
-  assert.equal(inputs.incomingLoanCount, 2);
-});
-
-test("fetchSquadCountInputs — buyout_pending-lån er bevidst UDELADT (dobbelt-tælle-guard)", () => {
-  // En parkeret buyout sætter rider.pending_team_id = lejer, så rytteren
-  // tælles allerede via pending-incoming. Lånet må ikke også tælles (#19 audit).
-  assert.deepEqual(INCOMING_LOAN_STATUSES, ["active", "window_pending"]);
-  assert.ok(!INCOMING_LOAN_STATUSES.includes("buyout_pending"));
-});
-
 test("fetchSquadCountInputs — pending-in inkluderer ryttere med team_id = NULL (#1090)", async () => {
   // Regression: `.neq("team_id", mig)` ekskluderer rækker med team_id = NULL
   // (SQL trevalent logik) — fx en fri agent vundet på auktion mens vinduet var
   // lukket (pending_team_id = mig, team_id = NULL). Filteret skal være et
   // or(is.null, neq) så de tæller med, uden at self-pending (team_id = mig)
   // dobbelt-tælles mod ownedNow.
-  const stub = createSupabaseStub({ riders: 3, loan_agreements: 0 });
+  const stub = createSupabaseStub({ riders: 3 });
   const inputs = await fetchSquadCountInputs(stub, ME);
 
   const riderQuery = stub.queries.find((q) => q.table === "riders");
@@ -288,15 +239,14 @@ test("fetchSquadCountInputs — pending-in inkluderer ryttere med team_id = NULL
 });
 
 test("fetchSquadCountInputs — null counts falder tilbage til 0", async () => {
-  const stub = createSupabaseStub({ riders: null, loan_agreements: null });
+  const stub = createSupabaseStub({ riders: null });
   const inputs = await fetchSquadCountInputs(stub, ME);
   assert.equal(inputs.pendingIncomingCount, 0);
-  assert.equal(inputs.incomingLoanCount, 0);
 });
 
 // #1308: pending-incoming-query skal ekskludere akademiryttere
 test("#1308: fetchSquadCountInputs — pending-incoming ekskluderer akademiryttere (is_academy=false)", async () => {
-  const stub = createSupabaseStub({ riders: 5, loan_agreements: 0 });
+  const stub = createSupabaseStub({ riders: 5 });
   await fetchSquadCountInputs(stub, ME);
 
   const riderQuery = stub.queries.find((q) => q.table === "riders");
@@ -309,24 +259,4 @@ test("#1308: fetchSquadCountInputs — pending-incoming ekskluderer akademirytte
     academyFilter,
     `pending-incoming query mangler is_academy=false filter (aktuelle filtre: ${JSON.stringify(riderQuery.filters)})`
   );
-});
-
-test("#1090 end-to-end: window_pending-lån + pending-in udløser over-cap-warning", async () => {
-  // 27 ejede + 2 pending-in (vundne auktioner parkeret til næste sæson) + 2
-  // indgående lån (1 active + 1 window_pending) = 31 → over fælles max 30.
-  // Før #1090 talte dashboardet kun det aktive lån → 30 → ingen warning.
-  const stub = createSupabaseStub({ riders: 2, loan_agreements: 2 });
-  const inputs = await fetchSquadCountInputs(stub, ME);
-  const riders = Array.from({ length: 27 }, () => ({ pending_team_id: null }));
-
-  const stats = computeDashboardSquadStats({
-    riders,
-    ...inputs,
-    myTeamId: ME,
-    division: 2,
-  });
-
-  assert.equal(stats.futureRiderCount, 31);
-  assert.equal(stats.warning?.type, "over");
-  assert.equal(stats.warning.count, 1, "skal sælge 1 rytter for at lande på 30");
 });

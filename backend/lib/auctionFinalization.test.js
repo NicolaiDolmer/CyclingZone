@@ -270,30 +270,6 @@ function createFinalizeAuctionSupabase({
         };
       }
 
-      if (table === "loan_agreements") {
-        return {
-          select(columns, options) {
-            assert.equal(columns, "id");
-            assert.deepEqual(options, { count: "exact", head: true });
-
-            return {
-              eq(firstColumn, firstValue) {
-                assert.equal(firstColumn, "to_team_id");
-                const counts = teamMarketCounts[firstValue] || {};
-
-                return {
-                  in(secondColumn, secondValue) {
-                    assert.equal(secondColumn, "status");
-                    assert.deepEqual(secondValue, ["active", "window_pending"]);
-                    return Promise.resolve({ count: counts.activeLoanCount || 0, error: null });
-                  },
-                };
-              },
-            };
-          },
-        };
-      }
-
       if (table === "transfer_windows") {
         return {
           select(columns) {
@@ -474,7 +450,6 @@ test("finalizeAuctionById blocks a winner whose squad would exceed the hard cap 
         "buyer-team": {
           riderCount: 30,
           pendingCount: 1,
-          activeLoanCount: 1,
         },
       },
       auctionUpdates,
@@ -533,9 +508,8 @@ test("finalizeAuctionById hard-caps at deal time (#16 always-open, no window gra
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 28,
+          riderCount: 29,
           pendingCount: 1,
-          activeLoanCount: 1,
         },
       },
       transferWindowStatus: "closed",

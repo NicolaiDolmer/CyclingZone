@@ -24,8 +24,6 @@
     "forcedDebtRepaymentRemaining": "Forced sale proceeds paid down debt (remaining: {remaining} CZ$)",
     "loanInterest": "Loan interest ({rate}%): added to loan debt, not deducted from balance",
     "emergencyLoan": "Emergency loan opened automatically (fee: {feeRate}%, interest: {interestRate}%/season)",
-    "loanFeePaid": "Loan fee: {riderName} (season {season})",
-    "loanFeeReceived": "Loan fee received: {riderName} (season {season})",
     "squadFineSingle": "Squad-size fine: {count} excess rider × {amount} CZ$",
     "squadFineMulti": "Squad-size fine: {count} excess riders × {amount} CZ$",
     "auctionBuy": "Bought {riderName} at auction",
@@ -291,29 +289,6 @@
         "title": "Swap cancelled",
         "message": "{actorName} pulled out of the swap."
       },
-      "loanProposal": {
-        "title": "Loan proposal received",
-        "messageSingle": "{proposerName} wants to loan {riderName} (season {seasonFrom}, {fee} CZ$/season)",
-        "messageRange": "{proposerName} wants to loan {riderName} (season {seasonFrom}–{seasonTo}, {fee} CZ$/season)",
-        "messageBuySingle": "{proposerName} wants to loan {riderName} (season {seasonFrom}, {fee} CZ$/season · buy option {buyOption} CZ$)",
-        "messageBuyRange": "{proposerName} wants to loan {riderName} (season {seasonFrom}–{seasonTo}, {fee} CZ$/season · buy option {buyOption} CZ$)"
-      },
-      "loanActivated": {
-        "title": "Loan activated",
-        "message": "{lenderName} accepted your loan request for {riderName}"
-      },
-      "loanRejected": {
-        "title": "Loan request rejected",
-        "message": "{lenderName} declined your loan proposal for {riderName}"
-      },
-      "loanCancelled": {
-        "title": "Loan agreement cancelled",
-        "message": "{actorName} cancelled the loan agreement for {riderName}"
-      },
-      "loanBuyout": {
-        "title": "Buy option exercised",
-        "message": "{buyerName} exercised the buy option on {riderName} for {price} CZ$"
-      },
       "adminTransferCancelled": {
         "title": "Deal cancelled by admin",
         "message": "The deal on {riderName} was cancelled by an admin.",
@@ -323,13 +298,6 @@
         "title": "Swap cancelled by admin",
         "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
         "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
-      },
-      "adminLoanCancelled": {
-        "title": "Loan agreement cancelled by admin",
-        "message": "The loan agreement on {riderName} was cancelled by an admin.",
-        "messageReason": "The loan agreement on {riderName} was cancelled by an admin: {reason}",
-        "messageRefund": "The loan agreement on {riderName} was cancelled by an admin. The loan fee ({refundedFee} CZ$) has been refunded.",
-        "messageReasonRefund": "The loan agreement on {riderName} was cancelled by an admin: {reason} The loan fee ({refundedFee} CZ$) has been refunded."
       }
     }
   },

@@ -265,7 +265,6 @@ function createTeamMarketStateSupabase({
   riderCount = 0,
   pendingCount = 0,
   outgoingCount = 0,
-  activeLoanCount = 0,
 } = {}) {
   function ridersQuery() {
     const filters = { eq: {}, notIsNull: new Set(), neq: {} };
@@ -335,45 +334,16 @@ function createTeamMarketStateSupabase({
         };
       }
 
-      if (table === "loan_agreements") {
-        return {
-          select(columns, options) {
-            assert.equal(columns, "id");
-            assert.deepEqual(options, { count: "exact", head: true });
-
-            return {
-              eq(firstColumn, firstValue) {
-                assert.equal(firstColumn, "to_team_id");
-                assert.equal(firstValue, team.id);
-
-                return {
-                  in(secondColumn, secondValue) {
-                    assert.equal(secondColumn, "status");
-                    // #19 audit guard: 'buyout_pending' must NEVER be in this
-                    // filter — a parked buyout is already counted via
-                    // rider.pending_team_id, so counting its loan here too would
-                    // double-count the rider against the borrower's squad cap.
-                    assert.deepEqual(secondValue, ["active", "window_pending"]);
-                    return Promise.resolve({ count: activeLoanCount, error: null });
-                  },
-                };
-              },
-            };
-          },
-        };
-      }
-
       throw new Error(`Unexpected table: ${table}`);
     },
   };
 }
 
-test("getTeamMarketState includes active loan agreements in the total squad count", async () => {
+test("getTeamMarketState sums rider + pending counts in the total squad count", async () => {
   const teamState = await getTeamMarketState(
     createTeamMarketStateSupabase({
       riderCount: 14,
       pendingCount: 1,
-      activeLoanCount: 2,
     }),
     "team-1"
   );
@@ -381,9 +351,8 @@ test("getTeamMarketState includes active loan agreements in the total squad coun
   assert.equal(teamState.rider_count, 14);
   assert.equal(teamState.pending_count, 1);
   assert.equal(teamState.outgoing_count, 0);
-  assert.equal(teamState.active_loan_count, 2);
-  assert.equal(teamState.total_count, 17);
-  assert.equal(teamState.future_count, 17);
+  assert.equal(teamState.total_count, 15);
+  assert.equal(teamState.future_count, 15);
   assert.deepEqual(teamState.squad_limits, { min: 0, max: 30 });
 });
 
@@ -397,7 +366,6 @@ test("getTeamMarketState subtracts outgoing-pending riders from future_count (#2
       riderCount: 10,
       pendingCount: 2,
       outgoingCount: 3,
-      activeLoanCount: 1,
     }),
     "team-1"
   );
@@ -405,11 +373,10 @@ test("getTeamMarketState subtracts outgoing-pending riders from future_count (#2
   assert.equal(teamState.rider_count, 10);
   assert.equal(teamState.pending_count, 2);
   assert.equal(teamState.outgoing_count, 3);
-  assert.equal(teamState.active_loan_count, 1);
-  // total_count (legacy, includes outgoing): 10 + 2 + 1 = 13
-  assert.equal(teamState.total_count, 13);
-  // future_count (correct): 10 - 3 + 2 + 1 = 10
-  assert.equal(teamState.future_count, 10);
+  // total_count (legacy, includes outgoing): 10 + 2 = 12
+  assert.equal(teamState.total_count, 12);
+  // future_count (correct): 10 - 3 + 2 = 9
+  assert.equal(teamState.future_count, 9);
 });
 
 test("getIncomingSquadViolation prefers future_count over total_count (#268)", () => {
@@ -479,7 +446,7 @@ test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 67
 
 // #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.
 // Scenarie: 30 senior-ryttere + 5 akademiryttere → rider_count skal være 30,
-// future_count 30 (ingen pending/outgoing/lån), og cap-tjek triggeres ved +1 ny.
+// future_count 30 (ingen pending/outgoing), og cap-tjek triggeres ved +1 ny.
 test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-queries", async () => {
   const TEAM_ID = "team-academy";
   const SENIOR_COUNT = 30;
@@ -551,17 +518,6 @@ test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-
             select(_cols, _opts) { return ridersQuery(); },
           };
         }
-        if (table === "loan_agreements") {
-          return {
-            select() {
-              return {
-                eq() {
-                  return { in() { return Promise.resolve({ count: 0, error: null }); } };
-                },
-              };
-            },
-          };
-        }
         throw new Error(`Unexpected table: ${table}`);
       },
     };
@@ -571,9 +527,9 @@ test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-
 
   // rider_count = kun seniorer (ACADEMY_COUNT er udeladt af mock)
   assert.equal(state.rider_count, SENIOR_COUNT, "rider_count skal kun tælle senior-ryttere");
-  assert.equal(state.future_count, SENIOR_COUNT, "future_count = 30 (ingen pending/outgoing/lån)");
+  assert.equal(state.future_count, SENIOR_COUNT, "future_count = 30 (ingen pending/outgoing)");
 
-  // Med 30 senior-ryttere og ingen lån/pending skal getIncomingSquadViolation trigge ved +1 ny rytter
+  // Med 30 senior-ryttere og ingen pending skal getIncomingSquadViolation trigge ved +1 ny rytter
   const violation = getIncomingSquadViolation({
     division: 3,
     future_count: state.future_count,

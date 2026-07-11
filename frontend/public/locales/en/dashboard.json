@@ -2,8 +2,7 @@
   "header": {
     "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
     "incoming": "+{count} in",
-    "outgoing": "−{count} out",
-    "loans": "+{count} loan"
+    "outgoing": "−{count} out"
   },
   "nextActions": {
     "title": "Next move",
@@ -11,7 +10,6 @@
     "allClear": "You're all caught up. Nothing needs your action right now.",
     "transferOffers": "{count, plural, one {1 transfer offer needs your decision} other {# transfer offers need your decision}}",
     "swapOffers": "{count, plural, one {1 swap proposal needs your decision} other {# swap proposals need your decision}}",
-    "loanRequests": "{count, plural, one {1 loan request needs your decision} other {# loan requests need your decision}}",
     "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}",
     "squadSelectionMissing": "Squad selection missing for {race}",
     "notTrainedToday": "You have not trained today",
@@ -160,9 +158,7 @@
       "sponsor": "Sponsor",
       "prize": "Prize money (estimate)",
       "salary": "Salary",
-      "loanInterest": "Loan interest",
-      "loanFees": "Loan fee (renter)",
-      "loanFeesReceived": "Loan fee received"
+      "loanInterest": "Loan interest"
     },
     "sponsorDetail": {
       "variable": "Base {base} + variable {variable} from last season's rank/points",

@@ -168,10 +168,6 @@
         "title": "Privathed",
         "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter."
       },
-      "loansAndSquad": {
-        "title": "Lejeaftaler og holdgrænser",
-        "text": "Lejede ryttere tæller med i din holdstørrelse på samme måde som egne ryttere og indgående handler. Systemet tjekker derfor både når du foreslår en lejeaftale, når udlejeren aktiverer den, og når andre handler afsluttes, at dit hold stadig holder sig inden for divisionens min/max-grænser. Første sæsons lejegebyr betales når aftalen aktiveres, og hvis aftalen dækker flere sæsoner bliver næste sæsoners gebyrer opkrævet automatisk ved sæsonstart."
-      },
       "archiveCompleted": {
         "title": "Arkivér afsluttede tilbud",
         "text": "Tilbud der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
@@ -308,17 +304,16 @@
       "label": "Min Aktivitet",
       "whatActivity": {
         "title": "Hvad er Min Aktivitet?",
-        "text": "Min Aktivitet er din personlige markedsarbejdsflade under Marked. Den samler alle dine markedshandlinger (auktioner, transfers, lån og ønskeliste) ét sted, adskilt fra den globale Indbakke."
+        "text": "Min Aktivitet er din personlige markedsarbejdsflade under Marked. Den samler alle dine markedshandlinger (auktioner, transfers og ønskeliste) ét sted, adskilt fra den globale Indbakke."
       },
       "tabs": {
         "title": "Fanerne",
         "steps": [
-          "Kræver handling: Tilbud du skal svare på, modbud du har modtaget, aftaler der afventer din bekræftelse, lejeforslag og auktioner der slutter inden for 1 time. Åbnes som standard.",
+          "Kræver handling: Tilbud du skal svare på, modbud du har modtaget, aftaler der afventer din bekræftelse og auktioner der slutter inden for 1 time. Åbnes som standard.",
           "Auktioner: Alle aktive auktioner hvor du er sælger eller byder.",
           "Transfers: Tilbud du har modtaget og tilbud du har sendt, der stadig er aktive.",
-          "Lån: Aktive og afventende lejeaftaler. Ryttere du udlåner og ryttere du låner.",
           "Ønskeliste: Kompakt visning af dine gemte ryttere med markedsstatus. Klik → for fuld ønskeliste.",
-          "Historik: Afsluttede auktioner, lukkede transfers og færdige lejeaftaler."
+          "Historik: Afsluttede auktioner og lukkede transfers."
         ]
       },
       "deepLinks": {
@@ -757,14 +752,6 @@
     "minBidAmount": {
       "q": "Hvor meget skal jeg byde over i en auktion?",
       "a": "Dit bud skal være mindst 1 CZ$ over den nuværende pris. Hvis ingen har budt endnu, kan du matche asking-prisen. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads."
-    },
-    "loansInSquadLimit": {
-      "q": "Tæller lejede ryttere med i holdgrænsen?",
-      "a": "Ja. Aktive lejeaftaler tæller med i din squad-størrelse, så du kan blive afvist på lån, auktioner eller andre indgående handler hvis holdet allerede er fyldt op."
-    },
-    "loanFeeTiming": {
-      "q": "Hvornår trækkes lejegebyret på en lejeaftale?",
-      "a": "Første dækkede sæson betales når lejeaftalen aktiveres. Hvis aftalen løber over flere sæsoner, bliver de næste sæsoners lejegebyr trukket automatisk ved sæsonstart og bogført i finance-loggen for begge hold."
     },
     "bidVisibility": {
       "q": "Kan jeg se hvem der har budt på min rytter?",

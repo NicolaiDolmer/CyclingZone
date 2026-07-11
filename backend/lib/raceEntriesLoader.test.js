@@ -5,7 +5,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { clearFutureRaceEntries } from "./raceEntryCleanup.js";
 
 // Minimal PostgREST-builder-mock: kæder eq/in/neq/select/delete/range og er thenable.
-function mockSupabase({ riders = [], loans = [], raceEntriesSelect = [], onDelete = null }) {
+function mockSupabase({ riders = [], raceEntriesSelect = [], onDelete = null }) {
   return {
     from(table) {
       const state = { table, filters: [], op: "select" };
@@ -17,10 +17,6 @@ function mockSupabase({ riders = [], loans = [], raceEntriesSelect = [], onDelet
         if (table === "riders") {
           const ids = inVals("id") || [];
           return { data: riders.filter((r) => ids.includes(r.id)), error: null };
-        }
-        if (table === "loan_agreements") {
-          const ids = inVals("rider_id") || [];
-          return { data: loans.filter((l) => ids.includes(l.rider_id) && l.status === "active"), error: null };
         }
         if (table === "race_entries") {
           if (state.op === "delete") { if (onDelete) onDelete(state); return { error: null }; }
@@ -42,23 +38,20 @@ function mockSupabase({ riders = [], loans = [], raceEntriesSelect = [], onDelet
   };
 }
 
-test("loadEligibleEntries: frasorterer akademi/solgt/udlånt/slettet, beholder gyldige", async () => {
+test("loadEligibleEntries: frasorterer akademi/solgt/slettet, beholder gyldige", async () => {
   const entries = [
     { rider_id: "ok", team_id: "t1" },
     { rider_id: "academy", team_id: "t1" },
     { rider_id: "sold", team_id: "t1" },
-    { rider_id: "loaned", team_id: "t1" },
     { rider_id: "deleted", team_id: "t1" },
   ];
   const riders = [
     { id: "ok", team_id: "t1", is_academy: false, is_retired: false },
     { id: "academy", team_id: "t1", is_academy: true, is_retired: false },
     { id: "sold", team_id: "t2", is_academy: false, is_retired: false },
-    { id: "loaned", team_id: "t1", is_academy: false, is_retired: false },
   ];
-  const loans = [{ rider_id: "loaned", status: "active" }];
   const { data, error } = await loadEligibleEntries({
-    supabase: mockSupabase({ riders, loans }),
+    supabase: mockSupabase({ riders }),
     baseQuery: () => Promise.resolve({ data: entries, error: null }),
   });
   assert.equal(error, null);

@@ -6,10 +6,6 @@
 //   - transfer_offers: pending modtaget, modbud modtaget, eller awaiting_confirmation
 //     hvor min side endnu ikke har bekræftet
 //   - swap_offers: samme principper
-//   - loan_agreements: pending låne-anmodninger PÅ mine ryttere, hvor jeg er
-//     udlåner (from_team) og skal acceptere/afvise. Det er kun udlåneren der kan
-//     handle på en pending lejeaftale (api.js PATCH /loans/:id → action=accept/reject
-//     kræver isLender); lejeren (to_team) har sendt anmodningen og venter.
 //
 // Auctions er IKKE inkluderet — de udløser ikke "pending decisions" i FM-forstand
 // (current_bidder kan vælge at bidde højere men er ikke under tidskrav).
@@ -18,11 +14,9 @@ function emptyResult() {
   return {
     transfer_offers: [],
     swap_offers: [],
-    loan_offers: [],
     counts: {
       transfer_offers: 0,
       swap_offers: 0,
-      loan_offers: 0,
       total: 0,
     },
   };
@@ -154,59 +148,22 @@ async function fetchPendingSwapOffers(supabase, teamId) {
     .filter(Boolean);
 }
 
-async function fetchPendingLoanOffers(supabase, teamId) {
-  const { data, error } = await supabase
-    .from("loan_agreements")
-    .select(`
-      id, status, loan_fee, start_season, end_season, buy_option_price,
-      from_team_id, to_team_id, rider_id,
-      created_at, updated_at,
-      rider:rider_id(id, firstname, lastname),
-      to_team:to_team_id(id, name)
-    `)
-    .eq("from_team_id", teamId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return (data || []).map((loan) => ({
-    id: loan.id,
-    kind: "loan_offer",
-    role: "lender_decide",
-    rider_id: loan.rider_id,
-    rider_name: loan.rider
-      ? `${loan.rider.firstname} ${loan.rider.lastname}`
-      : "Ukendt rytter",
-    counterparty_team_name: loan.to_team?.name,
-    loan_fee: loan.loan_fee,
-    start_season: loan.start_season,
-    end_season: loan.end_season,
-    buy_option_price: loan.buy_option_price,
-    updated_at: loan.updated_at || loan.created_at,
-    link: "/transfers",
-  }));
-}
-
 export async function getPendingInboxItems({ supabase, teamId }) {
   if (!teamId) return emptyResult();
 
-  const [transferOffers, swapOffers, loanOffers] = await Promise.all([
+  const [transferOffers, swapOffers] = await Promise.all([
     fetchPendingTransferOffers(supabase, teamId),
     fetchPendingSwapOffers(supabase, teamId),
-    fetchPendingLoanOffers(supabase, teamId),
   ]);
 
-  const total = transferOffers.length + swapOffers.length + loanOffers.length;
+  const total = transferOffers.length + swapOffers.length;
 
   return {
     transfer_offers: transferOffers,
     swap_offers: swapOffers,
-    loan_offers: loanOffers,
     counts: {
       transfer_offers: transferOffers.length,
       swap_offers: swapOffers.length,
-      loan_offers: loanOffers.length,
       total,
     },
   };

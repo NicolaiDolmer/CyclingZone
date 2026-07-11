@@ -565,22 +565,6 @@
       "label": "Swap",
       "teamFallback": "Unknown",
       "cashAdjustment": "Cash adjustment: {amount} CZ$"
-    },
-    "loan": {
-      "label": "Loan",
-      "borrows": "loans from",
-      "toFallback": "Unknown",
-      "fromFallback": "Unknown",
-      "seasonRange": "Season {start}–{end}",
-      "feeSuffix": "· {amount} CZ$ fee",
-      "status": {
-        "active": "active",
-        "completed": "completed",
-        "buyout": "buyout",
-        "pending": "pending",
-        "cancelled": "cancelled",
-        "rejected": "rejected"
-      }
     }
   },
   "auctionPanel": {
@@ -728,18 +712,6 @@
     "sending": "Sending...",
     "toast": {
       "success": "✅ Swap proposed!",
-      "errorPrefix": "❌"
-    }
-  },
-  "loanOffer": {
-    "buttonOpen": "📋 Propose loan",
-    "seasonPlaceholder": "Season number (e.g. 3)",
-    "feePlaceholder": "Loan fee (CZ$)",
-    "buyOptionPlaceholder": "Buy option (CZ$), optional",
-    "submit": "Send loan proposal",
-    "sending": "Sending...",
-    "toast": {
-      "success": "✅ Loan proposal sent!",
       "errorPrefix": "❌"
     }
   },

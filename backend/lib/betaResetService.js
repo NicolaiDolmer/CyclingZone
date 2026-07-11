@@ -15,7 +15,7 @@ export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 
 // Hold denne liste i sync med delete()-kaldene nedenfor.
 export const RESET_DELETE_TARGETS = Object.freeze([
   // rytter-/markeds-historik (resetBetaRiderHistory / resetBetaTransferArchive)
-  "auction_bids", "auctions", "transfer_offers", "transfer_listings", "swap_offers", "loan_agreements",
+  "auction_bids", "auctions", "transfer_offers", "transfer_listings", "swap_offers",
   // økonomi (resetBetaLoans / resetBetaBalances)
   "loans", "finance_transactions",
   // notifikationer (resetBetaNotifications)
@@ -67,7 +67,6 @@ const MARKET_RESET_STATUSES = {
   transfer_listings: ["open", "negotiating"],
   transfer_offers: ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"],
   swap_offers: ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"],
-  loan_agreements: ["pending", "active", "window_pending", "buyout_pending"],
 };
 
 function assertSupabase(supabase) {
@@ -106,7 +105,7 @@ export async function getBetaManagerTeams(supabase) {
 export async function cancelBetaMarket(supabase) {
   assertSupabase(supabase);
 
-  const [auctions, listings, offers, swaps, loans] = await Promise.all([
+  const [auctions, listings, offers, swaps] = await Promise.all([
     supabase.from("auctions")
       .update({ status: "cancelled" })
       .in("status", MARKET_RESET_STATUSES.auctions)
@@ -123,20 +122,15 @@ export async function cancelBetaMarket(supabase) {
       .update({ status: "rejected" })
       .in("status", MARKET_RESET_STATUSES.swap_offers)
       .select("id"),
-    supabase.from("loan_agreements")
-      .update({ status: "cancelled" })
-      .in("status", MARKET_RESET_STATUSES.loan_agreements)
-      .select("id"),
   ]);
 
-  [auctions, listings, offers, swaps, loans].forEach(ensureOk);
+  [auctions, listings, offers, swaps].forEach(ensureOk);
 
   return {
     auctions: countRows(auctions),
     transfer_listings: countRows(listings),
     transfer_offers: countRows(offers),
     swap_offers: countRows(swaps),
-    loan_agreements: countRows(loans),
   };
 }
 
@@ -424,12 +418,19 @@ export async function resetBetaTransferArchive(supabase) {
   };
 }
 
-// #104 · Sletter ALL public-facing rytter-historik (auctions, transfers, swaps, leje-aftaler)
+// #104 · Sletter ALL public-facing rytter-historik (auctions, transfers, swaps)
 // så spillet kan starte fra ren tavle uden alpha-støj på rytter-profiler.
 // Bevarer riders, teams, balancer, sæsoner, race-resultater m.m.
 // rider_watchlist (ønskelister) ryddes separat af resetBetaWishlist (#1481) — IKKE her.
 // Sletter child-tabeller før parent-tabeller for at få korrekte counts (i stedet for
 // at lade ON DELETE CASCADE wipe dem stille).
+//
+// #1994: loan_agreements-oprydningen er fjernet herfra. Tabellen har 0 rows i
+// prod og droppes helt (database/2026-07-11-drop-loan-agreements-table.sql) —
+// at bevare en .delete()-kald mod en tabel der snart forsvinder ville crashe
+// HELE reset-flowet i det øjeblik migrationen anvendes, mens at fjerne den nu
+// er harmløst i mellemtiden (0 rows, ingen nye kan opstå — routen der skrev
+// dem er væk).
 export async function resetBetaRiderHistory(supabase) {
   assertSupabase(supabase);
 
@@ -438,7 +439,6 @@ export async function resetBetaRiderHistory(supabase) {
   const transferOffers = ensureOk(await supabase.from("transfer_offers").delete().not("id", "is", null).select("id"));
   const transferListings = ensureOk(await supabase.from("transfer_listings").delete().not("id", "is", null).select("id"));
   const swapOffers = ensureOk(await supabase.from("swap_offers").delete().not("id", "is", null).select("id"));
-  const loanAgreements = ensureOk(await supabase.from("loan_agreements").delete().not("id", "is", null).select("id"));
 
   return {
     auction_bids: countRows(auctionBids),
@@ -446,7 +446,6 @@ export async function resetBetaRiderHistory(supabase) {
     transfer_offers: countRows(transferOffers),
     transfer_listings: countRows(transferListings),
     swap_offers: countRows(swapOffers),
-    loan_agreements: countRows(loanAgreements),
   };
 }
 

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 // #1482 — Holdsiden (SquadTab) renderer nu status/badges, ryttertype og
 // kontraktudløb som egne kolonner. Felterne hentes via tre Supabase-selects i
-// loadAll() (trup, pending, loan-in). Hvis et felt falder ud af en select-liste
+// loadAll() (trup, pending). Hvis et felt falder ud af en select-liste
 // ses tomme celler / "—" i UI'et uden anden fejl — denne test holder os ærlige.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,8 +25,6 @@ const FORBIDDEN_PCM_STATS = [
 
 // Trup- + pending-select: riders.select(`id, firstname, ...`)
 const directSelects = [...teamPageSource.matchAll(/\.from\("riders"\)\s*\.select\(`([^`]*)`\)/g)];
-// Loan-in nested select: rider:rider_id(...)
-const loanSelect = teamPageSource.match(/rider:rider_id\(([^)]*)\)/);
 
 test("TeamPage riders-selects indeholder felter til de nye kolonner (#1482)", () => {
   assert.ok(directSelects.length >= 2, "forventede mindst 2 riders.select()-kald (trup + pending)");
@@ -38,17 +36,6 @@ test("TeamPage riders-selects indeholder felter til de nye kolonner (#1482)", ()
         `riders-select mangler '${field}' — rendres i Type/Contract-kolonnen og bliver tom hvis fjernet`,
       );
     }
-  }
-});
-
-test("TeamPage loan-in select indeholder felter til de nye kolonner (#1482)", () => {
-  assert.ok(loanSelect, "rider:rider_id(...) loan-select skal kunne findes");
-  for (const field of REQUIRED) {
-    assert.match(
-      loanSelect[1],
-      new RegExp(`\\b${field}\\b`),
-      `loan-in rider-select mangler '${field}' — lejede ryttere ville mangle Type/Contract`,
-    );
   }
 });
 
@@ -71,14 +58,6 @@ test("TeamPage selects må IKKE selecte gamle PCM stat_*-felter (#1529)", () => 
         `riders-select indeholder stadig PCM-feltet '${field}' — visningen skal bruge ABILITY_SELECT (rider_derived_abilities)`,
       );
     }
-  }
-  assert.ok(loanSelect, "rider:rider_id(...) loan-select skal kunne findes");
-  for (const field of FORBIDDEN_PCM_STATS) {
-    assert.doesNotMatch(
-      loanSelect[1],
-      new RegExp(`\\b${field}\\b`),
-      `loan-in rider-select indeholder stadig PCM-feltet '${field}'`,
-    );
   }
 });
 

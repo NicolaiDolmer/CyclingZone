@@ -31,7 +31,7 @@
     "noneUnread": "No unread notifications",
     "noneInCategory": "No notifications in this category",
     "noPending": "Nothing waiting on your decision",
-    "noPendingHint": "Offers, swaps and loan offers that need your response will show up here",
+    "noPendingHint": "Offers and swaps that need your response will show up here",
     "noFeed": "No activity yet",
     "noFeedHint": "Start auctions and trades to see activity here"
   },
@@ -57,7 +57,6 @@
       "proposingDecide": "Reply to counter-offer",
       "receivingConfirm": "Confirm swap",
       "proposingConfirm": "Confirm swap",
-      "lenderDecide": "Accept / reject loan request",
       "actionRequired": "Action required"
     },
     "unknownTeam": "unknown team",
@@ -66,10 +65,7 @@
     "transferSecondary": "From {team} · {role}",
     "swapPrimary": "{offered} ↔ {requested}",
     "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
-    "swapSecondaryNoCash": "{team} · {role}",
-    "loanPrimary": "{rider}, loan {fee} CZ$",
-    "loanSecondarySingleSeason": "From {team} · Season {start} · {role}",
-    "loanSecondaryMultiSeason": "From {team} · Season {start} to {end} · {role}"
+    "swapSecondaryNoCash": "{team} · {role}"
   },
   "feed": {
     "auctionWon": "{team} won auction",

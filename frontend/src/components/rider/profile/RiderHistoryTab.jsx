@@ -1,14 +1,14 @@
 // RiderHistoryTab — Historik-fanen (#2000): kompakt tabel over rytterens
 // offentlige handelshistorik: Dato | Type-chip | Begivenhed | Beløb.
 //
-// Datalag: buildRiderHistory-events (auction/transfer/swap/loan — allerede
+// Datalag: buildRiderHistory-events (auction/transfer/swap — allerede
 // hentet af siden via loadHistory) + auktionsbud fra bid-timelinen (seneste
 // auktion). Række-normalisering + sortering i lib/riderHistoryTable.js.
 // Afviste/pending forhandlinger er private og findes bevidst ikke i laget.
 //
 // Token-only. Grid-kolonner spejler handoff-prototypen (84/88/1fr/116 desktop,
 // smallere på mobil); type-chippens farve følger prototypens histType-map
-// (auktion/transfer = accent, bud/bytte = info, leje = neutral).
+// (auktion/transfer = accent, bud/bytte = info).
 
 import { useTranslation } from "react-i18next";
 import { buildHistoryRows, historyRowAmount } from "../../../lib/riderHistoryTable.js";
@@ -23,7 +23,6 @@ const CHIP_TONE = {
   bid: "text-cz-info",
   transfer: "text-cz-accent-t",
   swap: "text-cz-info",
-  loan: "text-cz-2",
 };
 
 function chipLabel(kind, row, t) {
@@ -36,7 +35,6 @@ function chipLabel(kind, row, t) {
     case "bid": return t("profile.history.chipBid");
     case "transfer": return t("history.transfer.label");
     case "swap": return t("history.swap.label");
-    case "loan": return t("history.loan.label");
     default: return kind;
   }
 }
@@ -46,7 +44,6 @@ const AMOUNT_TONE = {
   bid: "text-cz-2",
   transfer: "text-cz-1",
   swap: "text-cz-2",
-  loan: "text-cz-2",
 };
 
 // Begivenheds-cellen — genbruger de eksisterende history.*-sætningsfragmenter
@@ -97,17 +94,6 @@ function EventCell({ row, t }) {
           {link(row.receiving_team, t("history.swap.teamFallback"))}
         </>
       );
-    case "loan": {
-      const status = row.status ? t(`history.loan.status.${row.status}`, { defaultValue: row.status }) : null;
-      return (
-        <>
-          {link(row.to_team, t("history.loan.toFallback"))}
-          <span className="text-cz-3"> {t("history.loan.borrows")} </span>
-          {link(row.from_team, t("history.loan.fromFallback"))}
-          <span className="text-cz-3 text-[11px]"> · {t("history.loan.seasonRange", { start: row.start_season, end: row.end_season })}{status ? ` · ${status}` : ""}</span>
-        </>
-      );
-    }
     default:
       return null;
   }

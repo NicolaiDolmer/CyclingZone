@@ -387,9 +387,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
     riderFilters.onChange("sort_dir", next.dir);
   }
 
-  const loanedInRiders  = riders.filter(r => r._isLoanedIn);
-  const loanedOutRiders = riders.filter(r => r._isLoanedOut);
-  const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0 || loanedInRiders.length > 0 || loanedOutRiders.length > 0;
+  const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
 
   return (
     <div>
@@ -410,7 +408,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
         </div>
       )}
 
-      {/* #1095: segmenteret nuværende/kommende-visning + loan-pills */}
+      {/* #1095: segmenteret nuværende/kommende-visning */}
       {hasTransfers && (
         <div className="flex gap-2 mb-4 flex-wrap items-center">
           {(incomingRiders.length > 0 || outgoingRiders.length > 0) && (
@@ -428,18 +426,6 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                 </button>
               ))}
             </div>
-          )}
-          {loanedInRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-info/10 text-cz-info border border-cz-info/20 rounded-cz">
-              <span className="w-2 h-2 rounded-full bg-cz-info" />
-              {t("squad.loanedIn", { count: loanedInRiders.length })}
-            </span>
-          )}
-          {loanedOutRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-cz">
-              <span className="w-2 h-2 rounded-full bg-cz-warning" />
-              {t("squad.loanedOut", { count: loanedOutRiders.length })}
-            </span>
           )}
         </div>
       )}
@@ -514,9 +500,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                     onClick={() => navigate(`/riders/${r.id}`)}
                     className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors
                       ${r._isIncoming  ? "bg-cz-success-bg0/3"  :
-                        r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
-                        r._isLoanedIn  ? "bg-cz-info/3" :
-                        r._isLoanedOut ? "bg-cz-warning/10" : ""}`}>
+                        r._isOutgoing  ? "bg-cz-danger-bg0/3"    : ""}`}>
                     <td className="px-2 py-2.5">
                       <NationCell code={r.nationality_code} />
                     </td>
@@ -524,26 +508,11 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
                         {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
-                        {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-cz-info flex-shrink-0" />}
-                        {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-cz-warning flex-shrink-0" />}
                         <RiderLink id={r.id} stopPropagation
                           className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
                         </RiderLink>
-                        {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen.
-                            Loan-pills bliver i navne-cellen (de bærer team/sæson-tooltip). */}
-                        {r._isLoanedIn  && (
-                          <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded"
-                            title={t("squad.tooltips.loanedFrom", { team: r._loanInInfo?.from_team?.name, start: r._loanInInfo?.start_season, end: r._loanInInfo?.end_season })}>
-                            {t("squad.tags.loanedIn")}
-                          </span>
-                        )}
-                        {r._isLoanedOut && (
-                          <span className="text-[9px] uppercase bg-cz-warning/20 text-cz-warning px-1.5 py-0.5 rounded"
-                            title={t("squad.tooltips.loanedTo", { team: r._loanOutInfo?.to_team?.name, start: r._loanOutInfo?.start_season, end: r._loanOutInfo?.end_season })}>
-                            {t("squad.tags.loanedOut")}
-                          </span>
-                        )}
+                        {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen. */}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono text-sm font-bold">
@@ -690,7 +659,7 @@ export function TeamPage() {
     if (!myTeam) { setLoading(false); return; }
     setTeam(myTeam);
 
-    const [ridersRes, pendingRes, loansOutRes, loansInRes] = await Promise.all([
+    const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
@@ -699,18 +668,7 @@ export function TeamPage() {
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
-      // Riders we're lending out
-      supabase.from("loan_agreements")
-        .select("rider_id, to_team:to_team_id(name), start_season, end_season")
-        .eq("from_team_id", myTeam.id).eq("status", "active"),
-      // Riders we're borrowing
-      supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
-        .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
-
-    const loanedOutIds = new Set((loansOutRes.data || []).map(l => l.rider_id));
-    const loanedOutMap = Object.fromEntries((loansOutRes.data || []).map(l => [l.rider_id, l]));
 
     // #1529: evnerne kommer som joinet rider_derived_abilities-embed; flattenAbilities
     // løfter rider.climbing osv. op på rytter-objektet så render/sort virker uændret.
@@ -718,17 +676,10 @@ export function TeamPage() {
     const currentRiders = (ridersRes.data || []).map(r => ({
       ...flattenCondition(flattenAbilities(r)),
       _isOutgoing:  r.pending_team_id && r.pending_team_id !== myTeam.id,
-      _isLoanedOut: loanedOutIds.has(r.id),
-      _loanOutInfo: loanedOutMap[r.id] || null,
     }));
     const incomingRiders = (pendingRes.data || []).map(r => ({ ...flattenCondition(flattenAbilities(r)), _isIncoming: true }));
-    const loanedInRiders = (loansInRes.data || []).map(l => ({
-      ...flattenCondition(flattenAbilities(l.rider)),
-      _isLoanedIn:  true,
-      _loanInInfo:  { from_team: l.from_team, start_season: l.start_season, end_season: l.end_season, buy_option_price: l.buy_option_price },
-    }));
 
-    setRiders([...currentRiders, ...incomingRiders, ...loanedInRiders]);
+    setRiders([...currentRiders, ...incomingRiders]);
     setLoading(false);
   }
 

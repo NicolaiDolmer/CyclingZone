@@ -175,20 +175,6 @@ export default function FinanceForecastCard({
             accent="text-cz-danger"
           />
         )}
-        {forecast.projected_loan_fees !== 0 && (
-          <Row
-            label={t("forecast.row.loanFees")}
-            value={forecast.projected_loan_fees}
-            accent="text-cz-danger"
-          />
-        )}
-        {forecast.projected_loan_fees_received !== 0 && (
-          <Row
-            label={t("forecast.row.loanFeesReceived")}
-            value={forecast.projected_loan_fees_received}
-            accent="text-cz-success"
-          />
-        )}
       </div>
 
       {multiSeason && (

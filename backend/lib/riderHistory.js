@@ -1,6 +1,6 @@
 // Bygger den offentlige handelshistorik for én rytter — hentet via
-// GET /api/riders/:id/history. Samler events fra auctions, transfer_offers,
-// swap_offers og loan_agreements og sorterer kronologisk (nyeste først).
+// GET /api/riders/:id/history. Samler events fra auctions, transfer_offers og
+// swap_offers og sorterer kronologisk (nyeste først).
 //
 // Privacy-kontrakt: kun "afgjorte" eller endeligt-låste tilbud ekskluderes IKKE.
 // Pending/afviste/annullerede forhandlinger er privat information mellem de
@@ -10,22 +10,13 @@
 //   auctions:        status = "completed"
 //   transfer_offers: status in ("accepted", "window_pending")
 //   swap_offers:     status in ("accepted", "window_pending")
-//   loan_agreements: status in ("active", "window_pending", "buyout_pending", "completed", "buyout")
-//     - "active":    leje løber lige nu, offentlig handel
-//     - "window_pending": bindende loan-accept, registreres ved vindue-åbning
-//     - "buyout_pending": bindende købsoption udnyttet+betalt mens vinduet er
-//                    lukket, permanent ejerskifte registreres ved vindue-åbning
-//     - "completed": leje afsluttet ved sæsonslut (forward-compat — endnu
-//                    uden producent-kode, men inkluderet for fremtidig brug)
-//     - "buyout":    borrower udnyttede købsoption, permanent ejerskifte
 
 import { assertNoSupabaseError } from "./supabaseResultGuard.js";
 
-export const PUBLIC_LOAN_STATUSES = ["active", "window_pending", "buyout_pending", "completed", "buyout"];
 export const PUBLIC_OFFER_STATUSES = ["accepted", "window_pending"];
 
 export async function buildRiderHistory(supabase, riderId) {
-  const [auctionsRes, offersRes, swapsRes, loansRes] = await Promise.all([
+  const [auctionsRes, offersRes, swapsRes] = await Promise.all([
     supabase.from("auctions")
       .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name)")
       .eq("rider_id", riderId)
@@ -43,12 +34,6 @@ export async function buildRiderHistory(supabase, riderId) {
       .or(`offered_rider_id.eq.${riderId},requested_rider_id.eq.${riderId}`)
       .in("status", PUBLIC_OFFER_STATUSES)
       .order("updated_at", { ascending: false }),
-
-    supabase.from("loan_agreements")
-      .select("id, loan_fee, start_season, end_season, status, created_at, updated_at, from_team:from_team_id(id, name), to_team:to_team_id(id, name)")
-      .eq("rider_id", riderId)
-      .in("status", PUBLIC_LOAN_STATUSES)
-      .order("created_at", { ascending: false }),
   ]);
 
   // Security-audit 2026-06-12 (P3, #1338): Supabase-fejl må ikke sluges stille.
@@ -59,7 +44,6 @@ export async function buildRiderHistory(supabase, riderId) {
     auctions: auctionsRes,
     transfer_offers: offersRes,
     swap_offers: swapsRes,
-    loan_agreements: loansRes,
   }, "buildRiderHistory");
 
   const events = [];
@@ -100,19 +84,6 @@ export async function buildRiderHistory(supabase, riderId) {
       proposing_team: s.proposing,
       receiving_team: s.receiving,
       rider_role: s.offered_rider_id === riderId ? "offered" : "requested",
-    });
-  }
-
-  for (const l of loansRes.data || []) {
-    events.push({
-      type: "loan",
-      date: l.created_at,
-      loan_fee: l.loan_fee,
-      start_season: l.start_season,
-      end_season: l.end_season,
-      status: l.status,
-      from_team: l.from_team,
-      to_team: l.to_team,
     });
   }
 

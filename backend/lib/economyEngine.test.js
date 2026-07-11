@@ -2525,7 +2525,7 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
  *   rpc               — increment_balance_with_audit (fanger finance-payload)
  *   board_profiles    — insert af manglende plantyper
  *
- * processLoanAgreementSeasonFees + runSeasonPayroll injiceres som no-op stubs.
+ * runSeasonPayroll injiceres som no-op stub.
  */
 function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [], activeContract = null } = {}) {
   const state = {
@@ -2740,7 +2740,6 @@ test("processSeasonStart clamper FINAL sponsor-payout til gross_sponsor × MAX_B
 
   const outcome = await processSeasonStart(seasonId, {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 
@@ -3864,7 +3863,6 @@ test("#1678: processSeasonStart SPRINGER sæson-1-sponsor over for hold med uber
 
   const outcome = await processSeasonStart(seasonId, {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 
@@ -3891,7 +3889,6 @@ test("#1678: processSeasonStart BETALER sæson-1-sponsor hvis holdet allerede ha
 
   await processSeasonStart(seasonId, {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 
@@ -3911,7 +3908,6 @@ test("#1678: processSeasonStart udbetaler sponsor normalt i sæson 2 (skip gæld
 
   await processSeasonStart(seasonId, {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 
@@ -4247,7 +4243,6 @@ test("#1721: sæson-1-afledt modifier får FULD effekt på sæson-2-sponsor (ikk
 
   await processSeasonStart(seasonId, {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 

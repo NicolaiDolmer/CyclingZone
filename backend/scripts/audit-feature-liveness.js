@@ -157,7 +157,6 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)
   "POST /admin/transfers/offers/:id/cancel",
   "POST /admin/transfers/swaps/:id/cancel",
-  "POST /admin/loans/:id/cancel",
   "POST /admin/race-pool/import-csv",
   // Admin-only operational tooling — baseline-måling og incident-triage for in-process response cache (#334)
   "GET /admin/cache-stats",

@@ -43,38 +43,6 @@ test("filterEligibleEntries: ghost-entries (akademi/pensioneret/off-team/slettet
   assert.deepEqual(live.map((e) => e.rider_id), ["ok"]);
 });
 
-test("isEligibleRider: udlånt rytter afvises for ejer-holdet (loan-aware)", () => {
-  const loaned = new Set(["onLoan"]);
-  // Udlånt rytter står stadig på ejer-holdet (team_id=t1, senior, aktiv) men er ude.
-  assert.equal(
-    isEligibleRider({ id: "onLoan", team_id: "t1", is_academy: false, is_retired: false }, { teamId: "t1", loanedOutRiderIds: loaned }),
-    false
-  );
-  // Ikke-udlånt rytter på samme hold er stadig berettiget.
-  assert.equal(
-    isEligibleRider({ id: "home", team_id: "t1", is_academy: false, is_retired: false }, { teamId: "t1", loanedOutRiderIds: loaned }),
-    true
-  );
-  // Uden loanedOutRiderIds → loan-tjek springes over (bagudkompatibelt).
-  assert.equal(
-    isEligibleRider({ id: "onLoan", team_id: "t1", is_academy: false, is_retired: false }, { teamId: "t1" }),
-    true
-  );
-});
-
-test("filterEligibleEntries: udlånte ryttere falder ud sammen med ghosts", () => {
-  const ridersById = new Map([
-    ["ok", { id: "ok", team_id: "t1", is_academy: false, is_retired: false }],
-    ["loaned", { id: "loaned", team_id: "t1", is_academy: false, is_retired: false }],
-  ]);
-  const entries = [
-    { rider_id: "ok", team_id: "t1" },
-    { rider_id: "loaned", team_id: "t1" },
-  ];
-  const live = filterEligibleEntries({ entries, ridersById, loanedOutRiderIds: new Set(["loaned"]) });
-  assert.deepEqual(live.map((e) => e.rider_id), ["ok"]);
-});
-
 test("applyRiderEligibilityFilter: kæder akademi- + pensioneret-filter på query'en", () => {
   const calls = [];
   const q = {

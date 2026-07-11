@@ -564,21 +564,6 @@ test("processSeasonStart fanger unique_violation på sponsor (team, season)", as
         insert() { return Promise.resolve({ error: null }); },
       };
     }
-    if (table === "loan_agreements") {
-      return {
-        select() {
-          return {
-            eq() {
-              return {
-                eq() {
-                  return Promise.resolve({ data: [], error: null });
-                },
-              };
-            },
-          };
-        },
-      };
-    }
     return baseFrom(table);
   };
 
@@ -706,7 +691,6 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
 
   const result = await processSeasonStart("season-2", {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => [],
   });
 
@@ -784,7 +768,6 @@ test("processSeasonStart tvinger sponsor-modifier til 1.0 i board test-mode", as
 
     const result = await processSeasonStart("season-1", {
       supabase,
-      processLoanAgreementSeasonFees: async () => [],
       runSeasonPayroll: async () => [],
     });
     return { delta: financeRows[0].delta, sponsor: result.sponsor[0].sponsor };
@@ -869,7 +852,6 @@ test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll 
 
   await processSeasonStart("season-1", {
     supabase,
-    processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => {
       callLog.push({ phase: "payroll" });
       return [];
