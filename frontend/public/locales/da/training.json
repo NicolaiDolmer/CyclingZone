@@ -91,5 +91,16 @@
   "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
   "weekRhythmSaveFailed": "Kunne ikke gemme. Prøv igen om lidt.",
   "weekRhythmBonusNote": "Rytmen sætter kun intensitet, aldrig fokus, og manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
-  "weekRhythmTodayHint": "i dag: {intensity} (ugentlig rytme)"
+  "weekRhythmTodayHint": "i dag: {intensity} (ugentlig rytme)",
+  "weekRhythmTodayHintOwn": "i dag: {intensity} (egen ugeplan)",
+  "individualWeekPlanToggleOpen": "Individuel ugeplan",
+  "individualWeekPlanToggleClose": "Skjul individuel plan",
+  "individualWeekPlanTitle": "Individuel ugeplan",
+  "individualWeekPlanIntro": "Sæt {name}'s egen ønskede intensitet pr. ugedag. Dette overstyrer holdets ugentlige rytme for netop denne rytter; fokus røres aldrig her.",
+  "individualWeekPlanSave": "Gem plan",
+  "individualWeekPlanRemove": "Fjern (følg holdets rytme)",
+  "individualWeekPlanSaved": "Individuel ugeplan gemt.",
+  "individualWeekPlanRemoved": "Individuel ugeplan fjernet: rytteren følger igen holdets rytme.",
+  "individualWeekPlanBadge": "Egen plan",
+  "individualWeekPlanBadgeTitle": "Denne rytter har sin egen individuelle ugeplan, som overstyrer holdets ugentlige rytme."
 }

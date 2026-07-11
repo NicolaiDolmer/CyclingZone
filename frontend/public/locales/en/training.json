@@ -91,5 +91,16 @@
   "weekRhythmReset": "Weekly rhythm removed: riders are back to their season intensity every day.",
   "weekRhythmSaveFailed": "Could not save. Try again in a moment.",
   "weekRhythmBonusNote": "The rhythm sets intensity only, never focus, and the manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
-  "weekRhythmTodayHint": "today: {intensity} (weekly rhythm)"
+  "weekRhythmTodayHint": "today: {intensity} (weekly rhythm)",
+  "weekRhythmTodayHintOwn": "today: {intensity} (own weekly plan)",
+  "individualWeekPlanToggleOpen": "Individual weekly plan",
+  "individualWeekPlanToggleClose": "Hide individual plan",
+  "individualWeekPlanTitle": "Individual weekly plan",
+  "individualWeekPlanIntro": "Set {name}'s own target intensity for each day of the week. This overrides the team's weekly rhythm for this rider only; focus is never touched here.",
+  "individualWeekPlanSave": "Save plan",
+  "individualWeekPlanRemove": "Remove (follow team rhythm)",
+  "individualWeekPlanSaved": "Individual weekly plan saved.",
+  "individualWeekPlanRemoved": "Individual weekly plan removed: rider follows the team rhythm again.",
+  "individualWeekPlanBadge": "Own plan",
+  "individualWeekPlanBadgeTitle": "This rider has their own individual weekly plan, which overrides the team's weekly rhythm."
 }

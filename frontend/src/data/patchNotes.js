@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Du kan nu sætte en ønsket intensitet pr. ugedag (man-søn) i det nye \"Ugentlig rytme\"-panel på Træningssiden. Hver rytter træner stadig sit eget fokus, og \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen, men rytmen styrer hvor hård dagen er uden du skal røre hver rytter enkeltvis. Hold der ikke sætter en rytme er upåvirkede: ryttere følger stadig deres sæson-intensitet hver dag, præcis som før. Roster-rækker viser en lille note når dagens rytme ændrer en rytters intensitet for dagen."
         },
         "refs": [1895]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Set an individual weekly plan for the riders you micro-manage",
+          "body": "Each rider's row on the Training page now has an \"Individual weekly plan\" toggle that opens a per-rider version of the weekly rhythm: your own target intensity for each day of the week, just for that rider. It wins over the team's weekly rhythm for that rider only, and focus is never touched. Riders with their own plan show a small \"Own plan\" badge in the roster so you can see at a glance who's running their own program. Riders without one are unaffected, they simply keep following the team rhythm (or their season intensity, exactly like before)."
+        },
+        "da": {
+          "title": "Sæt en individuel ugeplan for de ryttere du mikro-styrer",
+          "body": "Hver rytters række på Træningssiden har nu en \"Individuel ugeplan\"-knap, der åbner en pr-rytter-version af ugerytmen: din egen ønskede intensitet pr. ugedag, kun for netop den rytter. Den vinder over holdets ugentlige rytme for netop denne rytter, og fokus røres aldrig. Ryttere med egen plan viser et lille \"Egen plan\"-mærkat i rosteret, så du hurtigt kan se hvem der kører sit eget program. Ryttere uden en er upåvirkede — de følger bare holdets rytme (eller sæson-intensiteten, præcis som før)."
+        },
+        "refs": [1895]
       }
     ]
   },

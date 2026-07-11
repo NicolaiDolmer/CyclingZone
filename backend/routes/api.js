@@ -1593,16 +1593,24 @@ router.get("/training/me", requireAuth, async (req, res) => {
             .select("rider_id, ability_progress")
             .in("rider_id", riderIds)
         : Promise.resolve({ data: [] }),
+      // #1895: holdets rytme (rider_id NULL) + pr-rytter-overrides (rider_id sat)
+      // hentes i ét kald, splittes herunder — PR 2 tilføjer riderWeekPlans.
       supabase
         .from("training_week_plans")
-        .select("days")
-        .eq("team_id", teamId)
-        .is("rider_id", null)
-        .maybeSingle(),
+        .select("rider_id, days")
+        .eq("team_id", teamId),
     ]);
 
     const todayRun = todayRunResult.data ?? null;
-    const weekPlan = weekPlanResult.data?.days ?? null;
+    const weekPlanRows = weekPlanResult.data ?? [];
+    const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
+    // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
+    // req.team.id (eq("team_id", teamId) ovenfor), så ingen ekstra ejerskabsfiltrering
+    // nødvendig her.
+    const riderWeekPlans = {};
+    for (const row of weekPlanRows) {
+      if (row.rider_id != null) riderWeekPlans[row.rider_id] = row.days;
+    }
 
     // Byg condition-map: rider_id → { form, fatigue, injured_until, risk }
     // risk = injuryRisk med planlagt intensitet for dagen.
@@ -1625,7 +1633,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       progress[row.rider_id] = row.ability_progress ?? {};
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1817,6 +1825,80 @@ router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req
       .is("rider_id", null);
     if (delErr) throw new Error(delErr.message);
     res.json({ ok: true, weekPlan: null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/training/week-plan/:riderId — sæt/opdatér ÉN rytters egen ugerytme-
+// override (#1895 PR 2). Body: { days }. Vinder over holdets ugerytme for netop
+// denne rytter (resolveDayIntensity, training.js). Rører ALDRIG fokus. Upsert på
+// (team_id, rider_id) WHERE rider_id IS NOT NULL (partial unique index, samme
+// migration som PR 1's team-row). SKAL stå FØR POST/DELETE /training/:riderId —
+// ellers matcher Express "week-plan" som et :riderId (samme fælde som ovenfor).
+router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const riderId = req.params.riderId;
+  const { days } = req.body ?? {};
+  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  try {
+    // Ejerskabs-check — samme mønster som POST /training/:riderId nedenfor:
+    // individuel ugeplan er KUN for egne ryttere.
+    const { data: rider } = await supabase
+      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+    if (rider.team_id !== req.team.id) {
+      return res.status(403).json({ error: "not_own_rider", message: "You can only set a weekly plan for your own riders." });
+    }
+
+    // Manuel select-then-write — samme begrundelse som team-rytme-routen ovenfor
+    // (PostgREST kan ikke udtrykke det partielle unique index via onConflict).
+    const { data: existing, error: selErr } = await supabase
+      .from("training_week_plans")
+      .select("id")
+      .eq("team_id", req.team.id)
+      .eq("rider_id", riderId)
+      .maybeSingle();
+    if (selErr) throw new Error(selErr.message);
+
+    const now = new Date().toISOString();
+    if (existing) {
+      const { error: updErr } = await supabase
+        .from("training_week_plans")
+        .update({ days, updated_at: now })
+        .eq("id", existing.id);
+      if (updErr) throw new Error(updErr.message);
+    } else {
+      const { error: insErr } = await supabase
+        .from("training_week_plans")
+        .insert({ team_id: req.team.id, rider_id: riderId, days, updated_at: now });
+      if (insErr) throw new Error(insErr.message);
+    }
+    res.json({ ok: true, riderId, days });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/training/week-plan/:riderId — fjern én rytters egen ugerytme-
+// override (tilbage til holdets rytme / sæson-intensitet for netop denne rytter).
+router.delete("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const riderId = req.params.riderId;
+  try {
+    const { data: rider } = await supabase
+      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+    if (rider.team_id !== req.team.id) {
+      return res.status(403).json({ error: "not_own_rider", message: "You can only remove a weekly plan for your own riders." });
+    }
+    const { error: delErr } = await supabase
+      .from("training_week_plans")
+      .delete()
+      .eq("team_id", req.team.id)
+      .eq("rider_id", riderId);
+    if (delErr) throw new Error(delErr.message);
+    res.json({ ok: true, riderId, days: null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

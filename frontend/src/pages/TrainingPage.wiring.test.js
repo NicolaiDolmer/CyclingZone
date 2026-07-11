@@ -73,5 +73,36 @@ test("#1895 ugerytme-panel har 7 ugedags-selects + gem/nulstil wired mod useTrai
 test("#1895 roster-rækker markerer dage hvor ugerytmen afviger fra sæson-intensiteten (ren visning)", () => {
   assert.match(src, /resolveDayIntensityDisplay/, "skal genbruge den delte lagdelings-funktion (samme regel som motoren)");
   assert.match(src, /intensityDiffersToday/);
-  assert.match(src, /t\("weekRhythmTodayHint"/);
+  // #1895 PR 2: hint-nøglen er dynamisk (todayHintKey) så den kan skelne holdrytme
+  // fra rytterens egen override — begge varianter skal stadig eksistere i i18n-kaldet.
+  assert.match(src, /t\(todayHintKey,/);
+  assert.match(src, /weekRhythmTodayHint"/);
+});
+
+// ── #1895 PR 2: individuel ugeplan pr. rytter (rider_id-override) ─────────────
+test("#1895.2 individuel ugeplan wired mod useTraining's riderWeekPlans/setRiderWeekPlan/clearRiderWeekPlan", () => {
+  assert.match(
+    src,
+    /riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan/,
+    "skal destrukturere pr-rytter-ugeplan-state fra useTraining",
+  );
+  assert.match(src, /handleSaveRiderWeekPlan/);
+  assert.match(src, /handleRemoveRiderWeekPlan/);
+  assert.match(src, /setRiderWeekPlan\(riderId, days\)/, "gem skal kalde useTraining's setRiderWeekPlan");
+  assert.match(src, /clearRiderWeekPlan\(riderId\)/, "fjern skal kalde useTraining's clearRiderWeekPlan");
+});
+
+test("#1895.2 roster-tabellen har en toggle-knap pr. rytter til individuel ugeplan", () => {
+  assert.match(src, /toggleRiderWeekPlan\(rider\.id\)/);
+  assert.match(src, /t\("individualWeekPlanToggleOpen"\)/);
+});
+
+test("#1895.2 ryttere MED egen ugeplan markeres i rosteret (badge)", () => {
+  assert.match(src, /hasOwnWeekPlan/, "skal beregne om rytteren har egen override");
+  assert.match(src, /t\("individualWeekPlanBadge"\)/);
+});
+
+test("#1895.2 dagens-hint tager højde for rytter-override (samme opløsningsrækkefølge som motoren)", () => {
+  assert.match(src, /riderOverrideDays/, "skal sende rytterens egen override til resolveDayIntensityDisplay");
+  assert.match(src, /weekRhythmTodayHintOwn/);
 });

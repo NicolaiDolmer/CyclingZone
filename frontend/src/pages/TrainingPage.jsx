@@ -12,7 +12,7 @@ import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay } from "../lib/training.js";
+import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, isValidIntensity } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
@@ -74,6 +74,7 @@ export default function TrainingPage() {
     enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
+    riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
   } = training;
 
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
@@ -81,6 +82,12 @@ export default function TrainingPage() {
   const [weekDraft, setWeekDraft] = useState(null); // null = ikke redigeret endnu (spejler weekPlan)
   const [weekPlanMsg, setWeekPlanMsg] = useState(null);
   const activeWeekDays = weekDraft ?? weekPlan;
+
+  // #1895 PR 2: individuel ugeplan pr. rytter — udvidbar inline-flade i rosteret,
+  // tænkt til de 2-3 ryttere man mikro-styrer. Kun ÉN rytter udvidet ad gangen.
+  const [expandedRiderId, setExpandedRiderId] = useState(null);
+  const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
+  const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
@@ -161,6 +168,48 @@ export default function TrainingPage() {
       ? { type: "ok", text: t("weekRhythmReset") }
       : { type: "error", text: t("weekRhythmSaveFailed") });
     if (result.ok) setWeekDraft(null);
+  }
+
+  // #1895 PR 2: individuel ugeplan pr. rytter — samme draft/gem/nulstil-mønster
+  // som holdets ugerytme ovenfor, men skoped pr. rytter-id.
+  function toggleRiderWeekPlan(riderId) {
+    setExpandedRiderId((prev) => (prev === riderId ? null : riderId));
+  }
+
+  function riderWeekDraftFor(riderId) {
+    return riderWeekDraftMap[riderId] ?? riderWeekPlans[riderId] ?? flatWeekTemplate();
+  }
+
+  function setRiderWeekDraftDay(riderId, weekday, intensity) {
+    setRiderWeekDraftMap((prev) => ({
+      ...prev,
+      [riderId]: { ...(prev[riderId] ?? riderWeekPlans[riderId] ?? flatWeekTemplate()), [weekday]: { intensity } },
+    }));
+  }
+
+  async function handleSaveRiderWeekPlan(riderId) {
+    setRiderWeekMsgMap((prev) => ({ ...prev, [riderId]: null }));
+    const days = riderWeekDraftMap[riderId] ?? riderWeekPlans[riderId] ?? flatWeekTemplate();
+    const result = await setRiderWeekPlan(riderId, days);
+    setRiderWeekMsgMap((prev) => ({
+      ...prev,
+      [riderId]: result.ok
+        ? { type: "ok", text: t("individualWeekPlanSaved") }
+        : { type: "error", text: t("weekRhythmSaveFailed") },
+    }));
+    if (result.ok) setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
+  }
+
+  async function handleRemoveRiderWeekPlan(riderId) {
+    setRiderWeekMsgMap((prev) => ({ ...prev, [riderId]: null }));
+    const result = await clearRiderWeekPlan(riderId);
+    setRiderWeekMsgMap((prev) => ({
+      ...prev,
+      [riderId]: result.ok
+        ? { type: "ok", text: t("individualWeekPlanRemoved") }
+        : { type: "error", text: t("weekRhythmSaveFailed") },
+    }));
+    if (result.ok) setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
   }
 
   // Dagens tick-tidspunkt i dansk lokaltid (created_at er UTC). null → vis label uden kl.
@@ -247,16 +296,26 @@ export default function TrainingPage() {
     const riderTrainability = trainability[rider.id] ?? {};
     const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
 
-    // #1895 PR 1: ren visning — dagens EFFEKTIVE intensitet ift. ugerytmen. Kun
-    // relevant når rytteren har en plan (uden plan er der intet sæson-tal at
+    // #1895 PR 2: rytterens EGEN ugeplan-override, hvis sat — vinder over holdets
+    // ugerytme for netop denne rytter (samme lagdeling som motoren).
+    const riderOverrideDays = riderWeekPlans[rider.id] ?? null;
+    const hasOwnWeekPlan = riderOverrideDays != null;
+    const isExpanded = expandedRiderId === rider.id;
+    const savingRiderPlan = savingRiderWeekPlanId === rider.id;
+
+    // #1895 PR 1+2: ren visning — dagens EFFEKTIVE intensitet ift. rytme-lagene.
+    // Kun relevant når rytteren har en plan (uden plan er der intet sæson-tal at
     // afvige fra). Sandheden bor i motoren; dette er blot en frontend-hint.
     const effectiveTodayIntensity = plan?.intensity
-      ? resolveDayIntensityDisplay({ weekday: todayWeekday, teamWeekDays: weekPlan, planIntensity: plan.intensity })
+      ? resolveDayIntensityDisplay({ weekday: todayWeekday, riderOverrideDays, teamWeekDays: weekPlan, planIntensity: plan.intensity })
       : null;
     const intensityDiffersToday = effectiveTodayIntensity != null && effectiveTodayIntensity !== plan.intensity;
+    const riderOverrideToday = riderOverrideDays?.[todayWeekday]?.intensity;
+    const todayHintKey = isValidIntensity(riderOverrideToday) ? "weekRhythmTodayHintOwn" : "weekRhythmTodayHint";
 
     return (
-      <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
+      <Fragment key={rider.id}>
+      <tr className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
         {/* Multi-select */}
         <td className="px-4 py-3 w-8">
           <input
@@ -270,9 +329,28 @@ export default function TrainingPage() {
 
         {/* Navn */}
         <td className="px-4 py-3">
-          <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
-            {rider.firstname} {rider.lastname}
-          </RiderLink>
+          <div className="flex items-center gap-1.5">
+            <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
+              {rider.firstname} {rider.lastname}
+            </RiderLink>
+            {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
+                kan se hvem der kører sit eget program uden at åbne panelet. */}
+            {hasOwnWeekPlan && (
+              <span
+                className="inline-block text-[10px] px-1.5 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
+                title={t("individualWeekPlanBadgeTitle")}
+              >
+                {t("individualWeekPlanBadge")}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleRiderWeekPlan(rider.id)}
+            className="mt-0.5 text-[10px] text-cz-3 hover:text-cz-accent underline decoration-dotted"
+          >
+            {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
+          </button>
         </td>
 
         {/* Ryttertype */}
@@ -368,7 +446,7 @@ export default function TrainingPage() {
           )}
           {intensityDiffersToday && (
             <div className="mt-0.5 text-[10px] text-cz-3">
-              {t("weekRhythmTodayHint", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+              {t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
             </div>
           )}
         </td>
@@ -411,6 +489,67 @@ export default function TrainingPage() {
           </div>
         </td>
       </tr>
+
+      {/* #1895 PR 2: individuel ugeplan-flade — udvidet inline-række under rytteren.
+          Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
+      {isExpanded && (
+        <tr className="border-b border-cz-border last:border-0 bg-cz-subtle/40">
+          <td colSpan={ROSTER_COLS} className="px-4 py-3">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-cz-3 leading-relaxed">
+                {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAY_KEYS.map((weekday) => {
+                  const current = riderWeekDraftFor(rider.id)[weekday]?.intensity ?? "normal";
+                  return (
+                    <div key={weekday} className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <select
+                        value={current}
+                        disabled={savingRiderPlan}
+                        aria-label={`${t("individualWeekPlanTitle")} — ${t(`weekday_${weekday}`)} — ${rider.firstname} ${rider.lastname}`}
+                        onChange={(e) => setRiderWeekDraftDay(rider.id, weekday, e.target.value)}
+                        className="bg-cz-card border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
+                      >
+                        {TRAINING_INTENSITIES.map((k) => (
+                          <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSaveRiderWeekPlan(rider.id)}
+                  disabled={savingRiderPlan}
+                  className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                >
+                  {savingRiderPlan ? t("loading") : t("individualWeekPlanSave")}
+                </button>
+                {hasOwnWeekPlan && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveRiderWeekPlan(rider.id)}
+                    disabled={savingRiderPlan}
+                    className="text-xs text-cz-3 hover:text-cz-danger disabled:opacity-40"
+                  >
+                    {t("individualWeekPlanRemove")}
+                  </button>
+                )}
+                {riderWeekMsgMap[rider.id] && (
+                  <span className={`text-xs ${riderWeekMsgMap[rider.id].type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                    {riderWeekMsgMap[rider.id].text}
+                  </span>
+                )}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+      </Fragment>
     );
   }
 

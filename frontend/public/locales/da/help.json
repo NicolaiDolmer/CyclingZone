@@ -544,6 +544,10 @@
       "weeklyRhythm": {
         "title": "Ugentlig rytme",
         "text": "\"Ugentlig rytme\"-panelet på Trænings-siden lader dig sætte en ønsket intensitet pr. ugedag (mandag til søndag) for hele holdet på én gang. Den styrer kun intensitet, aldrig fokus: hver rytter træner stadig sit eget valgte fokus (eller assistentens type-matchede default). En dag i rytmen overstyrer den rytters sæson-intensitet for netop den dag; en dag der ikke er sat falder tilbage til rytterens eget program. Hold der aldrig sætter en rytme er upåvirkede: ryttere fortsætter bare med at træne på sæson-intensiteten hver dag som før. Konsistens-bonussen (+25%) fra \"Træn i dag\" gives stadig kun når du selv klikker; rytmen giver den ikke automatisk."
+      },
+      "individualWeeklyPlan": {
+        "title": "Individuel ugeplan pr. rytter",
+        "text": "Klik \"Individuel ugeplan\" på en rytters række i rosteret for at sætte netop den rytters egen ønskede intensitet pr. dag, adskilt fra holdets rytme. Rytterens egen plan vinder over holdets ugentlige rytme for netop denne rytter, som igen vinder over sæson-intensiteten. Den er tænkt til de 2-3 ryttere du kan lide at mikro-styre, ikke hele truppen. Ryttere med egen plan viser et \"Egen plan\"-mærkat i rosteret."
       }
     },
     "activityfeed": {
