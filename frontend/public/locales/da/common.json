@@ -41,7 +41,8 @@
       "admin": "Admin",
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint-metrics",
-      "attribution": "Attribution"
+      "attribution": "Attribution",
+      "retention": "Retention"
     }
   },
   "sidebar": {
