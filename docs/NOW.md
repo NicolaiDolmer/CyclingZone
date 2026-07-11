@@ -20,7 +20,7 @@
 
 > **🎯 Next action:** Ejer-verify #1894+#1895 på /training i prod (samlet: auto-hint, bulk-smart, ugerytme, individuel plan) + sort-pile (v6.88) på rangliste/resultater. Derefter admin-test-køen (talentspejder-flip, faciliteter-flip) eller #2270/#2274.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable, autonom 2t-session 11/7 aften) — #2293/#2326/#2327/#2284/#2266.
 
 ## Standing context (forever-relaunch)
 
