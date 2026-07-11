@@ -26,7 +26,7 @@
 
 > **Gap-memo 11/7: ALLE 7 §9-beslutninger LÅST (A) samme aften** — [memo m. §10-eksekverings-log](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). MASTERPLAN omskrevet (ny kø-SSOT). 11 issues oprettet (#2351-#2361); #2224/#2034/#1176/#1997 scopet ind; #2217/#2218 frosset (claude:blocked). Session-disciplin: ≥2 ugentlige v3-sessions indtil S3 live.
 
-> **🎯 Next action:** Pick-up-klar UDEN ejer: [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) v3 salt-PR → [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline; parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer-klik der gater uge 29:** Alunta+testkøb (#1903, ~1 t) · admin-test talentspejder/faciliteter (#2357, ~15 min) → Claude flipper+åbner salg. Ejer-verify i prod: /training (#1894+#1895), v6.89/6.90/6.91-punkterne. Eftersend rytter-ID til #2263.
+> **🎯 Next action:** Pick-up-klar UDEN ejer: [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) v3 salt-PR → [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline; parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
