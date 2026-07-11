@@ -18,6 +18,7 @@
     "view": "Manage loans"
   },
   "history": {
+    "interestSplit": "Interest {interest} CZ$ · Principal {principal} CZ$",
     "seasonPicker": "Season",
     "allSeasons": "All seasons",
     "option": "Season {number}",

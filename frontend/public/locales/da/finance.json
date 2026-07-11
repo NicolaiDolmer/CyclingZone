@@ -18,6 +18,7 @@
     "view": "Administrér lån"
   },
   "history": {
+    "interestSplit": "Rente {interest} CZ$ · Hovedstol {principal} CZ$",
     "seasonPicker": "Sæson",
     "allSeasons": "Alle sæsoner",
     "option": "Sæson {number}",

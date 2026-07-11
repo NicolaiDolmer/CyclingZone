@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.91",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Loan repayments now show how much went to interest vs. principal",
+          "body": "When you pay down a loan, the transaction in your finance history now shows a small breakdown under the amount: how much of the payment covered accrued interest and how much reduced the principal. Payments cover interest first, then principal, and the loan's \"interest accrued\" figure goes down accordingly. Older repayment entries from before this change simply don't show the breakdown."
+        },
+        "da": {
+          "title": "Lånebetalinger viser nu hvor meget der gik til rente vs. hovedstol",
+          "body": "Når du afdrager på et lån, viser transaktionen i din finanshistorik nu en lille opdeling under beløbet: hvor meget af betalingen der dækkede påløbet rente, og hvor meget der nedbragte hovedstolen. Betalinger dækker rente først, derefter hovedstol, og lånets \"påløbet rente\"-tal falder tilsvarende. Ældre betalings-poster fra før denne ændring viser bare ikke opdelingen."
+        },
+        "refs": [2326]
+      }
+    ]
+  },
+  {
     "version": "6.90",
     "date": "2026-07-11",
     "label": "Beta",

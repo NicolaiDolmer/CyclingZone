@@ -589,7 +589,16 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
     );
   }
 
-  return { paid: actualAmount, remaining: isPaidOff ? 0 : newRemaining, paid_off: isPaidOff };
+  // #2326: interest-first split fra RPC'en (interest_paid/principal_paid).
+  // Nullish-fallback: en endnu ikke opdateret RPC (pre-#2326-migration)
+  // returnerer ikke nøglerne — behold da undefined i stedet for at gætte.
+  return {
+    paid: actualAmount,
+    remaining: isPaidOff ? 0 : newRemaining,
+    paid_off: isPaidOff,
+    interest_paid: result.interest_paid,
+    principal_paid: result.principal_paid,
+  };
 }
 
 // ── Tvunget afdrag fra tvangssalg (forced debt sale, #2303) ───────────────────
@@ -659,6 +668,9 @@ export async function repayLoansFromForcedSale(teamId, creditAmount, supabaseCli
       paid: result.paid,
       remaining: result.remaining,
       paid_off: result.paid_off,
+      // #2326: interest-first split (undefined hvis RPC'en er pre-#2326).
+      interest_paid: result.interest_paid,
+      principal_paid: result.principal_paid,
     });
   }
 
