@@ -18,7 +18,7 @@
 
 > **Session 11/7 formiddag:** #2311 Klub-Slice 2 MERGED (PR #2331; tier-preview + facilitets-help, preview-verificeret EN+DA, lukket) · #2328 dashboard-opfølgninger MERGED (PR #2330, v6.81; ejer-verify i prod udestår — 5 punkter i issue-kommentar) · worktree-env-hul lukket (PreToolUse-hook, refs #994). Åben: [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering (claude:todo). Kendt rest: `CyclingZone-worktrees/2311-klub-slice2`-mappen er fil-låst — slet manuelt senere.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (desktop) — #2329 transfermarked-sortering + patch note-audit (11/7 eftermiddag).
 
 ## Standing context (forever-relaunch)
 
