@@ -194,8 +194,12 @@ function teamComponent(entrant, stageProfile, teamContext, v3 = false) {
 // Ren, deterministisk lookup (backend/lib/raceRoles.js) — INGEN rng-forbrug,
 // så noise/breakaway-sekvenserne er upåvirkede uanset v3-tilstand. Dormant når
 // v3=false (returnerer altid 0) → flag-off er bit-identisk.
+// team_id-guard (natbølge-review 12/7): en rytter UDEN hold (fx race_entries.
+// team_id NULL efter ON DELETE SET NULL) kan ikke arbejde FOR nogen — han må
+// ikke betale work-cost for et hold der ikke findes. Spejler teamComponent's
+// `!entrant?.team_id`-no-op, så pris og modydelse følger samme eksistens-regel.
 function workCostComponent(entrant, stageProfile, v3) {
-  if (!v3 || !entrant?.race_role) return 0;
+  if (!v3 || !entrant?.race_role || !entrant?.team_id) return 0;
   // effort er en S3-seam (race_stage_roles.effort) — 'normal' indtil den findes.
   return workCost(entrant.race_role, stageProfile?.profile_type, entrant.effort || "normal");
 }

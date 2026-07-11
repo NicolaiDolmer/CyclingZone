@@ -88,21 +88,23 @@ CREATE INDEX IF NOT EXISTS idx_race_simulation_rider_scores_run ON public.race_s
 
 ALTER TABLE public.race_simulation_rider_scores ENABLE ROW LEVEL SECURITY;
 
--- RLS: SELECT authenticated (why-rapporten oversætter rå tal → kvalitative bånd
--- i API-laget, S6 — selve tabellen er læsbar så det API-lag kan bygges uden en
--- ny migration; rå tal er i praksis kun eksponeret via en fremtidig admin-rute).
+-- RLS: ADMIN-ONLY (natbølge-review 12/7) — rå komponent-dekomponering
+-- (terrain/dagsform/jour_sans/work_cost pr. rytter) er skjult "why"-info; en
+-- bred SELECT-authenticated ville lade enhver spiller læse rivalers dagsform
+-- via PostgREST den dag flaget flippes. Spejler søster-tabellen
+-- race_simulation_runs' policy-mønster (admin-only; service_role/backend
+-- bypasser RLS ved skrivning). S6's spillervendte why-rapport læser via et
+-- API-lag (service_role) der oversætter rå tal → kvalitative bånd — det
+-- kræver INGEN authenticated-SELECT på selve tabellen.
 DROP POLICY IF EXISTS "race_simulation_rider_scores_select_authenticated" ON public.race_simulation_rider_scores;
-CREATE POLICY "race_simulation_rider_scores_select_authenticated"
-  ON public.race_simulation_rider_scores FOR SELECT TO authenticated
-  USING (true);
-
 DROP POLICY IF EXISTS "race_simulation_rider_scores_admin_write" ON public.race_simulation_rider_scores;
-CREATE POLICY "race_simulation_rider_scores_admin_write"
+DROP POLICY IF EXISTS "race_simulation_rider_scores_admin_all" ON public.race_simulation_rider_scores;
+CREATE POLICY "race_simulation_rider_scores_admin_all"
   ON public.race_simulation_rider_scores FOR ALL TO authenticated
   USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 COMMENT ON TABLE public.race_simulation_rider_scores IS
-  '#2224/#2352 (S1): komponenter pr. rytter pr. etape-run (why-lag, S6-forbrug). Skrives KUN når race_engine_v3_scoring er ON (backend/lib/raceRunner.js). ~200 rækker/etape — admin-formål.';
+  '#2224/#2352 (S1): komponenter pr. rytter pr. etape-run (why-lag, S6-forbrug). Skrives KUN når race_engine_v3_scoring er ON (backend/lib/raceRunner.js). ~200 rækker/etape. ADMIN-ONLY RLS (rå tal afslører rivalers dagsform); spillervendt why læser bånd via service_role-API (S6).';
 
 -- ── 4) Flag: race_engine_v3_scoring kill-switch (default off) ────────────────
 -- Tre-tilstands-skema (off|beta|on), samme mønster som race_engine_v2_enabled

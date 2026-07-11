@@ -62,6 +62,20 @@ test("v3: captain betaler intet work_cost", () => {
   assert.equal(ranked.find((r) => r.rider_id === "a0").components.work_cost, 0);
 });
 
+// Natbølge-review 12/7: en helper/hunter UDEN team_id (fx race_entries.team_id
+// NULL efter ON DELETE SET NULL) må ikke betale work-cost for et hold der ikke
+// findes — spejler teamComponent's team_id-no-op.
+test("v3: helper/hunter med team_id=null betaler INTET work_cost (team_id-guard)", () => {
+  const orphanHelper = { rider_id: "orphan1", team_id: null, race_role: "helper", abilities: ab(70) };
+  const orphanHunter = { rider_id: "orphan2", race_role: "hunter", abilities: ab(70) }; // team_id helt udeladt
+  const teamed = team("a", ["captain", "helper"]);
+  const { ranked } = simulateStage({ entrants: [...teamed, orphanHelper, orphanHunter], stageProfile: MOUNTAIN, seed: 8, v3: true });
+  assert.equal(ranked.find((r) => r.rider_id === "orphan1").components.work_cost, 0, "helper uden hold: 0 cost");
+  assert.equal(ranked.find((r) => r.rider_id === "orphan2").components.work_cost, 0, "hunter uden hold: 0 cost");
+  // Kontrol: hjælperen MED hold betaler stadig fuld pris (guarden er ikke for bred).
+  assert.equal(ranked.find((r) => r.rider_id === "a1").components.work_cost, RACE_V3_TUNING.WORK_COST_HELPER_GC);
+});
+
 // ── free_role: 0 cost, 0 holdbidrag ───────────────────────────────────────────
 
 test("v3: free_role betaler 0 work_cost", () => {
