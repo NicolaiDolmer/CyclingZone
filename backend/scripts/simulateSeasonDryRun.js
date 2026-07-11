@@ -43,7 +43,8 @@ import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "..
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
 import { autopickTeamSelection } from "../lib/raceAutopick.js";
 import {
-  observeRace, aggregateObservations, winRateStats, giniOverWins, helperPlacementDeltas, median,
+  observeRace, aggregateObservations, winRateStats, giniOverWins, helperPlacementDeltas,
+  helperCounterfactualDeltas, median, quantile,
 } from "../lib/raceDominanceMetrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -469,6 +470,14 @@ const allDominanceObservations = [];
 const seasonWinsByRider = new Map();
 const seasonStartsByRider = new Map();
 const helperDeltasAll = []; // kun ROLES_MODE, GC-relevante profiler
+// #2352 (S1): counterfactual hjælper-tab i TOP-terrain-linsen — parret
+// (samme seed) roles-vs-counterfactual-delta for hjælpere i feltets terrain-
+// top-15 (se helperCounterfactualDeltas i raceDominanceMetrics.js for linse-
+// rationale: fuld-felt-medianen er ~0 pr. konstruktion i hjælper-tunge felter).
+// Counterfactual = den eksisterende neutrale tvilling (rolle-strippet) — bit-
+// identisk med all-free_role under v3, da ingen af dem betaler work-cost eller
+// bygger helperSupport, og work_cost/team konsumerer ingen rng.
+const helperTop15DeltasAll = []; // kun ROLES_MODE, GC-relevante profiler
 const GC_RELEVANT_PROFILES = new Set(["rolling", "hilly", "mountain", "high_mountain", "classic"]);
 function recordDominanceObservation(ranked, teamByRider, terrain) {
   allDominanceObservations.push(observeRace({ ranked, teamByRider, terrain }));
@@ -551,6 +560,8 @@ if (POPULATION_MODE) {
         if (GC_RELEVANT_PROFILES.has(terrain)) {
           const roleByRider = new Map(entrants.map((e) => [e.rider_id, e.race_role]));
           helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider }));
+          // #2352: top-terrain-linsen (counterfactual = samme neutrale tvilling).
+          helperTop15DeltasAll.push(...helperCounterfactualDeltas({ rankedRoles: ranked, rankedCounterfactual: neutral.ranked, roleByRider }));
         }
       }
     }
@@ -628,6 +639,8 @@ if (POPULATION_MODE) {
         // #2224 Section F: hjælper-placeringstab (kun GC-relevante profiler).
         if (GC_RELEVANT_PROFILES.has(terrain)) {
           helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider: roles.roleById }));
+          // #2352: top-terrain-linsen (counterfactual = samme neutrale tvilling).
+          helperTop15DeltasAll.push(...helperCounterfactualDeltas({ rankedRoles: ranked, rankedCounterfactual: neutral.ranked, roleByRider: roles.roleById }));
         }
         // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
         if (BREAKAWAY_BONUS[terrain]) {
@@ -1062,7 +1075,11 @@ const DOMINANCE_TARGETS = {
   share4PlusSameTeamTop10: { max: 0.05 },
   avgDistinctTeamsTop10:   { min: 7.5 },
   ittFavoriteWinRate:      { min: 0.45, max: 0.65 }, // perTerrain.itt
-  helperLossMedianGc:      { min: 10, max: 30 },     // tabte pladser (kun roles-mode; ellers "n/a")
+  helperLossMedianGc:      { min: 10, max: 30 },     // tabte pladser, FULD-FELT-linse (S0-arv; ~0 pr. konstruktion i hjælper-tunge felter — se helperLossTop15MedianGc)
+  // #2352 (S1, bindende linse): counterfactual hjælper-tab for hjælpere i
+  // feltets terrain-top-15 (parret same-seed roles vs. rolle-frit). Ejerens
+  // "A — MARKANT"-bånd: median 10-30 tabte pladser.
+  helperLossTop15MedianGc: { min: 10, max: 30 },
 };
 const DOMINANCE_PCT_KEYS = new Set([
   "favoriteWinRate", "maxSeasonWinRate", "p95SeasonWinRate", "favoritePodiumRate",
@@ -1073,6 +1090,9 @@ const dominanceAgg = aggregateObservations(allDominanceObservations);
 const seasonWinRateStats = winRateStats({ winsByRider: seasonWinsByRider, startsByRider: seasonStartsByRider, minStarts: 5 });
 const seasonGini = giniOverWins({ winsByRider: seasonWinsByRider, startsByRider: seasonStartsByRider });
 const helperLossMedianGc = ROLES_MODE ? median(helperDeltasAll) : null;
+const helperLossTop15MedianGc = ROLES_MODE ? median(helperTop15DeltasAll) : null;
+const helperLossTop15P25 = ROLES_MODE ? quantile(helperTop15DeltasAll, 0.25) : null;
+const helperLossTop15P75 = ROLES_MODE ? quantile(helperTop15DeltasAll, 0.75) : null;
 
 const dominanceMeasured = {
   favoriteWinRate: dominanceAgg.favoriteWinRate,
@@ -1083,6 +1103,7 @@ const dominanceMeasured = {
   avgDistinctTeamsTop10: dominanceAgg.avgDistinctTeamsTop10,
   ittFavoriteWinRate: dominanceAgg.perTerrain?.itt?.favoriteWinRate ?? null,
   helperLossMedianGc,
+  helperLossTop15MedianGc,
 };
 
 function checkDominanceBand(value, band) {
@@ -1126,8 +1147,11 @@ for (const r of dominanceRows) {
 console.log(`\n   Gini (sejre, alle startere): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only, intet bånd)`);
 console.log(`   Jour-sans-rate: 0% · DNF-rate: 0% (S2/S4 — komponent endnu ikke i motoren; indgår ikke i --enforce-dominance)`);
 console.log(`   GT (final-GC-top10): favorit vandt=${gtDominanceObservation.favoriteWon} podium=${gtDominanceObservation.favoritePodium} · maxSameTeamTop10=${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10=${gtDominanceObservation.distinctTeamsTop10}`);
-if (!ROLES_MODE) {
-  console.log(`   helperLossMedianGc: n/a (kræver --roles)`);
+if (ROLES_MODE) {
+  // #2352: fordelings-kontekst for top-terrain-linsen (medianen står i tabellen).
+  console.log(`   helperLossTop15 (counterfactual, n=${helperTop15DeltasAll.length}): p25=${helperLossTop15P25 ?? "n/a"} · median=${helperLossTop15MedianGc ?? "n/a"} · p75=${helperLossTop15P75 ?? "n/a"} (positiv = tabte pladser)`);
+} else {
+  console.log(`   helperLossMedianGc/helperLossTop15MedianGc: n/a (kræver --roles)`);
 }
 
 if (dominanceFailures.length) {

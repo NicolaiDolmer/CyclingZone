@@ -13,14 +13,35 @@
 // ── Tunings-flade (ÉT sted, jf. spec §14 "kalibrerings-eksplosion") ───────────
 // ALLE S1-balancekonstanter samles her. Kalibrering = redigér RACE_V3_TUNING,
 // ingen andre filer rører tal.
+//
+// SWEEP-OVERRIDES (kalibrerings-harness-only): de tre kalibrérbare konstanter
+// kan overstyres via env (RACE_V3_WORK_COST_HELPER_GC / RACE_V3_WORK_COST_HELPER_FLAT
+// / RACE_V3_TEAM_RACE_WEIGHT) så scripts/sweepS1WorkCost.mjs kan køre et
+// joint grid i child-processer UDEN at redigere denne fil pr. celle. Prod/CI
+// sætter ALDRIG disse envs → tallene nedenfor er de gældende. Ingen secrets.
+const envNum = (name, def) => {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : def;
+};
+
 export const RACE_V3_TUNING = Object.freeze({
   // Hjælper-arbejde på GC-relevante profiler (spec §6, ejer-beslutning §16.2
-  // "A — MARKANT"): kandidat −0.045 (interval −0.03..−0.06 ≈ −6 til −11
-  // ability-point ≈ −10 til −30 pladser i et tæt felt). Negativt = trækkes fra.
-  WORK_COST_HELPER_GC: -0.045,
-  // Flad etape: leadout-arbejde efter afsat spurt — mindre end GC-arbejdet
-  // (kortere, mere lokaliseret indsats).
-  WORK_COST_HELPER_FLAT: -0.04,
+  // "A — MARKANT"): spec-interval −0.03..−0.06. Negativt = trækkes fra.
+  // VINDER af joint grid-sweep 2026-07-12 (3×4-grid + kant-udvidelse til −0.06;
+  // fuld tabel: docs/audits/2026-07-12-race-v3-s1-calibration.md): −0.03.
+  // NØGLEFUND: counterfactual hjælper-tab-medianen (top-terrain-linsen) er
+  // næsten UELASTISK i work-cost (median 3→5 over HELE spec-intervallet
+  // −0.03..−0.06) — score-gabene i toppen af pulje-felterne er ~0.01/plads, så
+  // −0.03..−0.06 flytter en top-hjælper 3-13 pladser, aldrig 10-30 som median.
+  // Derfor vælges den LAVESTE cost der (sammen med w=0.10) består oraklet —
+  // den minimerer favorit-win-forværringen og efterlader mest varians-budget
+  // til S2. p75 = 8-9 tabte pladser: mærkbart for de bedste hjælpere.
+  WORK_COST_HELPER_GC: envNum("RACE_V3_WORK_COST_HELPER_GC", -0.03),
+  // Flad etape: leadout-arbejde efter afsat spurt — skaleret proportionalt
+  // med GC-costen (8/9-forhold, jf. spec-kandidaterne −0.04/−0.045).
+  WORK_COST_HELPER_FLAT: envNum("RACE_V3_WORK_COST_HELPER_FLAT", -0.0267),
   // Hunter kører eget løb (udbruds-kandidat) men bruger stadig kræfter for
   // holdet — lille, profil-uafhængig pris.
   WORK_COST_HUNTER: -0.01,
@@ -31,16 +52,17 @@ export const RACE_V3_TUNING = Object.freeze({
   WORK_COST_FREE_ROLE: 0,
 
   // Kaptajnens modydelse: TEAM_RACE_WEIGHT hæves fra v1's 0.024 (raceSimulator.js).
-  // Spec §6 nævner "~0.05" som UDGANGSPUNKT ("kandidat") — empirisk kalibrering
-  // mod anti-exploit-oraklet (raceRoleExploitOracle.test.js, spec §6: "kaptajn-
-  // setup ≥ all-free_role på BÅDE sæsonpoint OG sejre") viste at 0.05 IKKE var
-  // nok: et sæson-simuleret tophold (kaptajn+7 hjælpere, 48 løb, 8 terræner) tabte
-  // på sæsonpoint til all-free_role (708 vs. 769) ved 0.05. 0.12 gav en solid
-  // margin (806 vs. 769 point, 22 vs. 14 sejre). Se rapport til orkestrator —
-  // dette ER forventet iterativ kalibrering (spec §6: "kalibreres til at holde"),
-  // IKKE en færdig-kalibreret konstant; orkestratoren kan justere videre sammen
-  // med S2's variansbudget.
-  TEAM_RACE_WEIGHT_V3: 0.12,
+  // Spec §6's kandidat "~0.05" holdt IKKE mod anti-exploit-oraklet (tophold
+  // tabte på sæsonpoint til all-free_role, 708 vs. 769 ved 0.05). VINDER af
+  // joint grid-sweep 2026-07-12 (scripts/sweepS1WorkCost.mjs; kriterier i
+  // prioriteret rækkefølge: oracle grøn m. ≥+1% point-margin OG sejre ≥ →
+  // hold-koncentration i bånd → counterfactual hjælper-tab → LAVEST favorit-
+  // win-forværring): 0.10 = den MINDSTE grid-vægt der består oraklet med
+  // margin (+2.3% point, 20 vs. 14 sejre ved gc=−0.03). Bevidst ikke 0.12:
+  // boostet er weight×helperSupport, og hver 0.02 ekstra vægt æder direkte af
+  // §7-regnestykkets udfordrer-vindue (favorit-gab 0.032) — S2's varians-
+  // budget. Fuld tabel: docs/audits/2026-07-12-race-v3-s1-calibration.md.
+  TEAM_RACE_WEIGHT_V3: envNum("RACE_V3_TEAM_RACE_WEIGHT", 0.10),
 
   // Trætheds-kobling (spec §6 + §8): en hjælper der arbejder (protect-effort)
   // akkumulerer +20% race-fatigue den dag; save (spar kræfter) −30%. Dormant
