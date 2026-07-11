@@ -99,3 +99,27 @@ test("POST /training/bulk registreres FØR POST /training/:riderId (#1885)", () 
     `bulk (idx ${bulkIdx}) skal stå før :riderId (idx ${riderIdIdx}) — ellers matcher :riderId "bulk" som et rytter-id`,
   );
 });
+
+// ── #1895 PR 2: pr-rytter ugerytme-override-routes ────────────────────────────
+function putRouteIndex(path) {
+  return router.stack.findIndex(
+    (layer) => layer.route?.path === path && layer.route?.methods?.put,
+  );
+}
+function deleteRouteIndex(path) {
+  return router.stack.findIndex(
+    (layer) => layer.route?.path === path && layer.route?.methods?.delete,
+  );
+}
+
+test("PUT/DELETE /training/week-plan/:riderId registreres FØR POST/DELETE /training/:riderId (#1895 PR 2)", () => {
+  const putWeekPlanRiderIdx = putRouteIndex("/training/week-plan/:riderId");
+  const deleteWeekPlanRiderIdx = deleteRouteIndex("/training/week-plan/:riderId");
+  const postRiderIdIdx = postRouteIndex("/training/:riderId");
+  const deleteRiderIdIdx = deleteRouteIndex("/training/:riderId");
+
+  assert.notEqual(putWeekPlanRiderIdx, -1, "PUT week-plan/:riderId skal være registreret");
+  assert.notEqual(deleteWeekPlanRiderIdx, -1, "DELETE week-plan/:riderId skal være registreret");
+  assert.ok(putWeekPlanRiderIdx < postRiderIdIdx, "PUT week-plan/:riderId skal stå før POST :riderId");
+  assert.ok(deleteWeekPlanRiderIdx < deleteRiderIdIdx, "DELETE week-plan/:riderId skal stå før DELETE :riderId");
+});

@@ -50,8 +50,11 @@ export function weekdayKeyForDate(date = new Date()) {
   return WEEKDAY_ORDER[date.getDay()];
 }
 
-// Samme lagdeling som backend resolveDayIntensity, uden rytter-override (PR 2).
-export function resolveDayIntensityDisplay({ weekday, teamWeekDays, planIntensity }) {
+// Samme lagdeling som backend resolveDayIntensity (training.js): rytter-override
+// (#1895 PR 2) > holdrytme > sæson-intensitet > "normal".
+export function resolveDayIntensityDisplay({ weekday, riderOverrideDays, teamWeekDays, planIntensity }) {
+  const riderOverride = riderOverrideDays?.[weekday]?.intensity;
+  if (isValidIntensity(riderOverride)) return riderOverride;
   const teamDay = teamWeekDays?.[weekday]?.intensity;
   if (isValidIntensity(teamDay)) return teamDay;
   if (isValidIntensity(planIntensity)) return planIntensity;

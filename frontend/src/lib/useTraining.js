@@ -28,6 +28,7 @@ export function useTraining() {
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
+  const [riderWeekPlans, setRiderWeekPlansState] = useState({}); // { <rider_id>: {mon:{intensity},...} } — pr-rytter-override (#1895 PR 2)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -50,6 +51,7 @@ export function useTraining() {
         setTrainability(data.trainability ?? {});
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
+        setRiderWeekPlansState(data.riderWeekPlans ?? {});
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -187,6 +189,47 @@ export function useTraining() {
     }
   }, []);
 
+  // #1895 PR 2: sæt/opdatér ÉN rytters egen ugerytme-override (vinder over holdets
+  // rytme for netop denne rytter). Rører ALDRIG fokus. Returnerer { ok, error? }.
+  const [savingRiderWeekPlanId, setSavingRiderWeekPlanId] = useState(null);
+  const setRiderWeekPlan = useCallback(async (riderId, days) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    setSavingRiderWeekPlanId(riderId);
+    try {
+      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, {
+        method: "PUT", headers, body: JSON.stringify({ days }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || "failed" };
+      setRiderWeekPlansState((prev) => ({ ...prev, [riderId]: data.days ?? days }));
+      logEvent("training_rider_week_plan_set", {});
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "network" };
+    } finally {
+      setSavingRiderWeekPlanId(null);
+    }
+  }, []);
+
+  // Fjern én rytters egen ugerytme-override (tilbage til holdets rytme). Returnerer { ok, error? }.
+  const clearRiderWeekPlan = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    setSavingRiderWeekPlanId(riderId);
+    try {
+      const res = await fetch(`${API}/api/training/week-plan/${riderId}`, { method: "DELETE", headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || "failed" };
+      setRiderWeekPlansState((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "network" };
+    } finally {
+      setSavingRiderWeekPlanId(null);
+    }
+  }, []);
+
   // Kør daglig træning (POST /api/training/run-today). Returnerer { ok, tickDate, report }
   // ved succes, null ved 409 (allerede kørt / deaktiveret / ingen sæson), eller { ok: false }.
   const runToday = useCallback(async () => {
@@ -216,6 +259,8 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, trainability, smartDefaultFocus,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
+    riderWeekPlans, savingRiderWeekPlanId,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
+    setRiderWeekPlan, clearRiderWeekPlan,
   };
 }

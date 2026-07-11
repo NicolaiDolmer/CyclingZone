@@ -116,13 +116,12 @@ export async function runTeamTrainingDay({
       .eq("team_id", teamId)
       .eq("season_id", seasonId),
     supabase.from("rider_condition").select("*").in("rider_id", riderIds),
-    // #1895 PR 1: holdets ugentlige rytme (rider_id IS NULL — pr-rytter-override
-    // er PR 2, ikke brugt her endnu). Højst én row pr. hold (partial unique index).
+    // #1895: holdets ugentlige rytme (rider_id IS NULL) OG pr-rytter-overrides
+    // (rider_id sat) hentes i ÉT kald — begge lever i samme tabel, splittes i JS.
+    // PR 1 hentede kun team-rowet; PR 2 tilføjer rytter-override-laget.
     supabase.from("training_week_plans")
-      .select("days")
-      .eq("team_id", teamId)
-      .is("rider_id", null)
-      .maybeSingle(),
+      .select("rider_id, days")
+      .eq("team_id", teamId),
   ]);
 
   if (abilityError) throw new Error(`abilities load: ${abilityError.message}`);
@@ -133,7 +132,13 @@ export async function runTeamTrainingDay({
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
   const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
   const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
-  const teamWeekDays = weekPlanRow?.days ?? null;
+  const weekPlanRows = Array.isArray(weekPlanRow) ? weekPlanRow : [];
+  const teamWeekDays = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
+  // #1895 PR 2: rytter-override-rows → Map(rider_id → days). Rider-override vinder
+  // over holdrytmen i resolveDayIntensity (se training.js).
+  const riderOverrideByRider = new Map(
+    weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]),
+  );
   const weekday = copenhagenWeekdayKey(tickDate);
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
@@ -159,12 +164,12 @@ export async function runTeamTrainingDay({
     const cond = condByRider.get(rider.id) ?? { form: 50, fatigue: 0, injured_until: null, injury_cause: null };
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);
-    // #1895 PR 1: lagdelt ugerytme-opløsning — rører KUN intensitet, aldrig
-    // program.focus. riderOverrideDays er altid null her (PR 2 tilføjer rytter-
-    // pr-dag-override; kaldestedet skifter da, resolveDayIntensity er uændret).
+    // #1895: lagdelt ugerytme-opløsning — rører KUN intensitet, aldrig
+    // program.focus. PR 2: rytterens EGEN pr-dag-override (hvis sat) vinder over
+    // holdets ugerytme, som vinder over sæson-intensiteten (resolveDayIntensity).
     program.intensity = resolveDayIntensity({
       weekday,
-      riderOverrideDays: null,
+      riderOverrideDays: riderOverrideByRider.get(rider.id) ?? null,
       teamWeekDays,
       planIntensity: program.intensity,
     });

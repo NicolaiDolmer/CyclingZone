@@ -642,6 +642,53 @@ test("ugerytme: bonus_applied følger stadig UDELUKKENDE executedBy (rytmen rør
   assert.equal(assistantResult.report.bonus_applied, false);
 });
 
+// ── #1895 PR 2: rytter-pr-dag-override (rider_id sat i training_week_plans) ────
+test("rytter-override: r1's egen override vinder over holdets ugerytme", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
+    abilities: [makeAbilityRow("r1"), makeAbilityRow("r2")],
+    plans: [
+      { rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
+      { rider_id: "r2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
+    ],
+  });
+  state.training_week_plans = [
+    // Holdets rytme: fredag = "normal".
+    { team_id: TEAM_ID, rider_id: null, days: {
+      mon: { intensity: "normal" }, tue: { intensity: "normal" }, wed: { intensity: "normal" },
+      thu: { intensity: "normal" }, fri: { intensity: "normal" }, sat: { intensity: "normal" }, sun: { intensity: "normal" },
+    } },
+    // r1's egen override: fredag = "rest" — skal vinde over BÅDE holdrytmen OG plan-intensiteten.
+    { team_id: TEAM_ID, rider_id: "r1", days: {
+      mon: { intensity: "hard" }, tue: { intensity: "hard" }, wed: { intensity: "hard" },
+      thu: { intensity: "hard" }, fri: { intensity: "rest" }, sat: { intensity: "hard" }, sun: { intensity: "hard" },
+    } },
+  ];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const r1Row = result.report.riders.find((r) => r.rider_id === "r1");
+  const r2Row = result.report.riders.find((r) => r.rider_id === "r2");
+  assert.equal(r1Row.intensity, "rest", "r1's egen override (rest) vinder over holdrytmen (normal)");
+  assert.equal(r2Row.intensity, "normal", "r2 uden override falder tilbage til holdets ugerytme");
+  assert.equal(r1Row.focus, "vo2max", "fokus er UÆNDRET af rytter-override — bor kun i training_plans");
+});
+
+test("rytter-override: uden holdrytme falder rytteren tilbage til holdets/sæson-intensitet uændret (regression)", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  }); // ingen training_week_plans-rows overhovedet
+  const result = await runTeamTrainingDay({
+    supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  assert.equal(result.report.riders[0].intensity, "hard", "ingen override/rytme → uændret plan-intensitet");
+});
+
 // ── Plan B (#1441): trænings-facilitet + chef wired ind i tick'et ──────────────
 test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bit-identisk baseline", async () => {
   // Baseline: intet club-data (team_facilities/team_staff findes ikke) → neutral kontekst.
