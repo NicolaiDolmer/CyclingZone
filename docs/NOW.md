@@ -26,7 +26,7 @@
 
 > **Gap-memo 11/7: ALLE 7 §9-beslutninger LÅST (A) samme aften** — [memo m. §10-eksekverings-log](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). MASTERPLAN omskrevet (ny kø-SSOT). 11 issues oprettet (#2351-#2361); #2224/#2034/#1176/#1997 scopet ind; #2217/#2218 frosset (claude:blocked). Session-disciplin: ≥2 ugentlige v3-sessions indtil S3 live.
 
-> **Race v3 salt (#2351): PR #2363 MERGED 11/7 aften, migration applied+verificeret i prod, backend-deploy SUCCESS.** Rest: sæt `RACE_ENGINE_SEED_SALT` (+`_VERSION=1`) i Railway — classifier blokerede Claudes secret-write; ejer gør det selv ELLER giver eksplicit go i chat. Vindue: natten mellem to løbsdage (dagens løb kørte 19:04). Verify dagen efter: nye runs har `salt_version=1`.
+> **Race v3 salt (#2351): FÆRDIG 11/7 aften — PR #2363 merged, migration applied+verificeret, `RACE_ENGINE_SEED_SALT` SAT i Railway (ejer-go, ~21:50) og deploy SUCCESS.** Issue lukket. Verify næste løbsdag: nye `race_simulation_runs`-rækker har `salt_version=1`.
 >
 > **🎯 Next action:** Pick-up-klar UDEN ejer: [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline (ny session); parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** salt-env-flip (se ovenfor) · Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
 
