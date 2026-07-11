@@ -24,9 +24,9 @@
 
 > **Træning+ungdom-dybde 11/7 (Fable): spec leveret, runde-1-beslutninger LÅST** — [specs/2026-07-11-training-youth-depth-design.md](superpowers/specs/2026-07-11-training-youth-depth-design.md). Kerne: gap-til-loft-drevet vækst (fixer #2262/#1974/#1922 som ét problem), fokus=budget, form 8-12% i race (§11: type-peak NEJ; form-mål låst, tal via harness). 6 faser, alle bag sim+scorecard; eksekvering i separate sessions. Issue-kommentarer postet (#2262/#1922/#1974/#2064/#932/#1137/#958/#1138).
 
-> **Strategisk gap-memo 11/7 (Fable):** verdensklasse-gap-analyse leveret — [specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). Kerne: race-v3-eksekvering beskyttes, palmarès+recap parallelt, CZ Pro-åbning = dyreste ikke-beslutning. **7 ejer-beslutninger afventer i memoets §9** (bl.a. MASTERPLAN-omskrivning, swaps-demotion, HoF/lån-fjernelse).
+> **Gap-memo 11/7: ALLE 7 §9-beslutninger LÅST (A) samme aften** — [memo m. §10-eksekverings-log](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). MASTERPLAN omskrevet (ny kø-SSOT). 11 issues oprettet (#2351-#2361); #2224/#2034/#1176/#1997 scopet ind; #2217/#2218 frosset (claude:blocked). Session-disciplin: ≥2 ugentlige v3-sessions indtil S3 live.
 
-> **🎯 Next action:** Ejer læser gap-memoet (§0 + §9-beslutningsbatch) → derefter race-engine v3 pick-up: salt-PR (lille, selvstændig) + S0 (harness+baseline). Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91). Eftersend rytter-ID til #2263. Åbne fix-kandidater: #2254-rest, #2270/#2274, admin-test-køen.
+> **🎯 Next action:** Pick-up-klar UDEN ejer: [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) v3 salt-PR → [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline; parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer-klik der gater uge 29:** Alunta+testkøb (#1903, ~1 t) · admin-test talentspejder/faciliteter (#2357, ~15 min) → Claude flipper+åbner salg. Ejer-verify i prod: /training (#1894+#1895), v6.89/6.90/6.91-punkterne. Eftersend rytter-ID til #2263.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

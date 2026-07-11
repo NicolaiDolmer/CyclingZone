@@ -182,7 +182,9 @@ Buen maksimerer begge visionsben i rækkefølgen: kvalitet (mdr 0-6 er næsten r
 5. **Facilitets-sporet var ved at løbe foran doktrinen.** Gate-arbejdet og klub-UX'en er godt håndværk, men staff-kontrakter/pension-dybde (#2217/#2218) hører til EFTER at kernemotorerne er troværdige. Doktrinens egen regel ("detailed operational capacity ships last") skal håndhæves mod backloggen.
 6. **Ejer-verify-køen vokser** (NOW.md lister 8+ punkter). Hver uverificeret feature er skjult risiko og blokeret lukning. Forslag: fast 20-minutters ejer-verify-ritual 2× ugentligt, dagsorden genereret af Claude.
 
-## 9. Ejer-beslutninger (én batch, A/B + anbefaling)
+## 9. Ejer-beslutninger (én batch, A/B + anbefaling) — **AFGJORT 11/7: ALLE 7 = A**
+
+> **Ejer-afgørelse 2026-07-11 (samme aften):** alle 7 beslutninger = A. Beslutning 7 med tilføjelse: *"…jeg vil gerne have, at vi færdiggør de ting, som bare skal sættes live for alle spillere. Der er nogle funktioner der næsten er komplet færdige og klar til at blive brugt. de skal ud."* → flip-bølgen ([#2357](https://github.com/NicolaiDolmer/CyclingZone/issues/2357)) er føjet til NU-køen. Eksekvering: se §10.
 
 | # | Beslutning | A | B | Anbefaling |
 |---|---|---|---|---|
@@ -193,6 +195,15 @@ Buen maksimerer begge visionsben i rækkefølgen: kvalitet (mdr 0-6 er næsten r
 | 5 | Swaps | Demotér UI (rytterprofil-handling), frys videre arbejde, genvurdér ved 500 brugere | Behold fuld flade som i dag | **A** — 10 tilbud nogensinde; amendment-beslutningen fortjener data-genbesøg |
 | 6 | HoF + lån-UI | Fjern HoF fra nav + fjern leje/lån-UI nu (#1994) | Lad dem stå til reworks lander | **A** — døde flader koster troværdighed hver dag de vises |
 | 7 | Staff/empire-dybde | Frys #2217/#2218 til efter v3 + træningsfaser | Fortsæt som planlagte opfølgninger | **A** — doktrinens egen sekvens-regel |
+
+## 10. Eksekverings-log (låst 11/7 aften — selvkørende fra næste session)
+
+- **MASTERPLAN omskrevet** (beslutning 2) til kø: NU (uge 29) → uge 30-33 → aug-sep → efterår. Session-disciplin (beslutning 3) står i headeren: ≥2 ugentlige v3-sessions indtil S3 er live.
+- **Issues oprettet 11/7:** [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) v3 salt · [#2352](https://github.com/NicolaiDolmer/CyclingZone/issues/2352) S1 work-cost · [#2353](https://github.com/NicolaiDolmer/CyclingZone/issues/2353) S2 dagsform · [#2354](https://github.com/NicolaiDolmer/CyclingZone/issues/2354) S5 peaks · [#2355](https://github.com/NicolaiDolmer/CyclingZone/issues/2355) S6 why · [#2356](https://github.com/NicolaiDolmer/CyclingZone/issues/2356) recap v2 · [#2357](https://github.com/NicolaiDolmer/CyclingZone/issues/2357) flip-bølge · [#2358](https://github.com/NicolaiDolmer/CyclingZone/issues/2358) swaps-demotion · [#2359](https://github.com/NicolaiDolmer/CyclingZone/issues/2359) HoF af nav · [#2360](https://github.com/NicolaiDolmer/CyclingZone/issues/2360) retention-scorecard v2 · [#2361](https://github.com/NicolaiDolmer/CyclingZone/issues/2361) sæsonritual.
+- **Genbrugte/scopede issues:** #2224 = v3 S0 · #2034 = S3 · #1176 = S4 · #1997 = narrativ S1 palmarès (pick-up-klar, #1993 ✅) · #1994 lån-UI · #1903 CZ Pro.
+- **Frosset:** #2217/#2218 → `claude:blocked` (beslutning 7).
+- **Ejer-klik der gater uge 29:** (1) Alunta-plan + tokens + testkøb (#1903, ~1 time) → Claude åbner salget. (2) Admin-test af talentspejder + faciliteter i prod (#2357, ~15 min) → Claude flipper + announcer.
+- **Næste session starter UDEN ejer-afhængighed:** #2351 salt-PR → #2224 S0-harness; parallelt #1997 palmarès i worktree (sonnet-workers, Fable som arkitekt).
 
 ---
 
