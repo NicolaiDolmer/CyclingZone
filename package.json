@@ -34,6 +34,8 @@
     "test:lint-getuser-guard": "node --test scripts/lint-getuser-guard.test.mjs",
     "lint:rankings-fetch": "node scripts/lint-rankings-raceresults-fetch.mjs",
     "test:lint-rankings-fetch": "node --test scripts/lint-rankings-raceresults-fetch.test.mjs",
+    "lint:riders-column-grant": "node scripts/lint-riders-column-grant.mjs",
+    "test:lint-riders-column-grant": "node --test scripts/lint-riders-column-grant.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
