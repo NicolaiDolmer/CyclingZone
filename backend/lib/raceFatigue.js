@@ -6,6 +6,8 @@
 // træder DB-defaults i kraft — form har DEFAULT 50 og sættes automatisk. Det er præcis
 // den ønskede adfærd: vi opdaterer kun træthed, rører aldrig form.
 
+import { effortFatigueMultiplier } from "./raceRoles.js";
+
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
   rolling:       12,
@@ -34,18 +36,28 @@ export function raceFatigueLoad(profileType) {
  * (rammer i+1, i+2 ...), så etape 1 køres på start-træthed og en 21-etapers tour
  * bliver en udmattelseskamp. Clamp 0–100. Ren + deterministisk.
  *
+ * Race v3 S1 (#2352): valgfri `effort`-parameter kobler roller til trætheden
+ * (spec §6 — "hjælper der arbejder (protect-effort) +20% race-fatigue; save
+ * -30%"). DORMANT seam: default 'normal' → multiplikator 1.0 → adfærd UÆNDRET
+ * (bit-identisk med før S1). raceRunner.js kalder i dag altid med 'normal'
+ * (ingen per-etape effort-datamodel findes endnu — det er S3's
+ * race_stage_roles-tabel); denne funktion er klar til at modtage rigtige
+ * værdier uden signaturændring, samme mønster som #1306's form/fatigue-seams.
+ *
  * @param {number|null|undefined} startFatigue
  * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
+ * @param {{effort?: 'protect'|'normal'|'save'}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
-export function stageEnteringFatigues(startFatigue, profileTypes) {
+export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal" } = {}) {
   let f = Number.isFinite(Number(startFatigue))
     ? Math.max(0, Math.min(100, Number(startFatigue)))
     : 0;
+  const mult = effortFatigueMultiplier(effort);
   const out = [];
   for (const p of profileTypes) {
     out.push(f);
-    f = Math.min(100, f + raceFatigueLoad(p));
+    f = Math.min(100, f + raceFatigueLoad(p) * mult);
   }
   return out;
 }

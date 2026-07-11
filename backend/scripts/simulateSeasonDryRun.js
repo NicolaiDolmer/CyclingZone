@@ -78,6 +78,17 @@ const CONDITION_MODE = arg("condition", null) === "random";
 // Prøve-trækningen (sampleField) er UÆNDRET — roller udledes deterministisk af
 // prøven og konsumerer ingen rng, så felterne er identiske med neutral-mode.
 const ROLES_MODE = !!arg("roles", false);
+// #2352 (Race v3 S1): --v3 aktiverer work-cost + TEAM_RACE_WEIGHT_V3 i simulateStage
+// (raceSimulator.js's v3-parameter — SAMME flag som app_config.race_engine_v3_scoring
+// styrer i prod). Kræver --roles (work-cost er meningsløst uden roller i feltet).
+// De NEUTRALE tvilling-kald (helperPlacementDeltas' baseline, kaptajn-delta-tvillingen)
+// forbliver v3=false med vilje — de definerer "uden roller"-referencen, PRÆCIS som
+// S0-baseline'en gjorde det uden work-cost.
+const V3_MODE = !!arg("v3", false);
+if (V3_MODE && !ROLES_MODE) {
+  console.error("❌ --v3 kræver --roles (work-cost er meningsløst uden en rolle at koste).");
+  process.exit(1);
+}
 // Plan 1 (#1122): --enforce-liveness gør evne-liveness-scorecardet (sektion E) til
 // en hard gate (exit 1). Default off, så Phase A's race:gate forbliver grøn mens
 // instrumentet bygges; tilføjes race:gate-scriptet i Phase C når motoren er grøn.
@@ -116,7 +127,7 @@ const HAS_CONDITION = CONDITION_MODE || CONDITION_SNAPSHOT;
 // her, fordi navnet afhænger af CONDITION_MODE/ROLES_MODE/MIX ovenfor.
 const HTML_PATH = arg("html", join(
   __dirname, "out",
-  `cockpit-${MIX}-${SEED}${CONDITION_MODE ? "-cond" : ""}${ROLES_MODE ? "-roles" : ""}.html`,
+  `cockpit-${MIX}-${SEED}${CONDITION_MODE ? "-cond" : ""}${ROLES_MODE ? "-roles" : ""}${V3_MODE ? "-v3" : ""}.html`,
 ));
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
@@ -329,7 +340,7 @@ function assignRoles(sample) {
 }
 
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED}${POPULATION_MODE ? ` population=${POPULATION_PATH}` : ` count=${COUNT} mix=${MIX}`} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${CONDITION_SNAPSHOT ? " condition=snapshot" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED}${POPULATION_MODE ? ` population=${POPULATION_PATH}` : ` count=${COUNT} mix=${MIX}`} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${CONDITION_SNAPSHOT ? " condition=snapshot" : ""}${ROLES_MODE ? " roles" : ""}${V3_MODE ? " v3(work-cost+team-weight)" : ""} (in-memory, rører ikke prod)\n`);
 
 // #2224: field/byId bygges enten fra en ÆGTE prod-population-snapshot
 // (POPULATION_MODE) eller fra den genererede fiktive population (uændret sti).
@@ -514,7 +525,7 @@ if (POPULATION_MODE) {
       }
       if (entrants.length < 2) continue; // degenereret pulje/felt — spring løbet over
       const raceSeed = stableSeed(`${terrain}:${i}`);
-      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
       racesRun++;
       const w = byId.get(ranked[0].rider_id);
       bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
@@ -581,7 +592,7 @@ if (POPULATION_MODE) {
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
+      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
 
       // #2224 Section F: ren post-hoc bogføring — INGEN rng-forbrug, ingen ændring
       // af rækkefølgen af eksisterende kald ovenfor/nedenfor.
@@ -807,7 +818,7 @@ if (POPULATION_MODE) {
 
 const { resultRows } = buildRaceResults({
   race: { id: "gt-dry", race_type: "stage_race" },
-  stages: gtStages, entrants: gtEntrants, pointsLookup: {},
+  stages: gtStages, entrants: gtEntrants, pointsLookup: {}, v3: V3_MODE,
 });
 const finalStage = GT_TEMPLATE.length;
 const rowsOf = (type, stage) => resultRows.filter((x) => x.result_type === type && x.stage_number === stage).sort((a, b) => a.rank - b.rank);
