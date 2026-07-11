@@ -855,6 +855,16 @@ export default function FinancePage() {
                           }
                           return resolved.fallback || txLabel(tx.type);
                         })()}</p>
+                        {/* #2326: rente/hovedstol-split på repayment-poster — vises kun
+                            når metadata'en findes (gamle poster har den ikke). */}
+                        {tx.metadata?.interest_paid != null && tx.metadata?.principal_paid != null && (
+                          <p className="text-cz-3 text-xs mt-0.5">
+                            {t("history.interestSplit", {
+                              interest: formatNumber(tx.metadata.interest_paid),
+                              principal: formatNumber(tx.metadata.principal_paid),
+                            })}
+                          </p>
+                        )}
                         <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                       </div>
                       <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>

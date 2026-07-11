@@ -791,6 +791,7 @@ function createRepayLoanSupabase({
   leadingAuctions = [],
   proxyBids = [],
   rpcErrorFor = null, // { message } — simuler at RPC'en selv afviser
+  legacyRpcWithoutSplit = false, // #2326: simuler pre-migration RPC uden split-nøgler
 } = {}) {
   const state = {
     balance,
@@ -830,23 +831,34 @@ function createRepayLoanSupabase({
         state.loan.amount_remaining = isPaidOff ? 0 : newRemaining;
         state.loan.status = isPaidOff ? "paid_off" : "active";
 
+        // #2326: interest-first split — spejler repay_loan_atomic (database/
+        // 2026-07-11-repay-loan-interest-split-2326.sql).
+        const interestPaid = Math.min(actualAmount, Math.max(state.loan.accrued_interest || 0, 0));
+        const principalPaid = actualAmount - interestPaid;
+        state.loan.accrued_interest = Math.max((state.loan.accrued_interest || 0) - interestPaid, 0);
+
         state.financeRows.push({
           team_id: params.p_team_id,
           type: "loan_repayment",
           amount: -actualAmount,
           related_loan_id: params.p_loan_id,
+          split_metadata: legacyRpcWithoutSplit
+            ? undefined
+            : { interest_paid: interestPaid, principal_paid: principalPaid },
           ...params.p_finance_payload,
         });
 
-        return Promise.resolve({
-          data: {
-            paid: actualAmount,
-            remaining: isPaidOff ? 0 : newRemaining,
-            paid_off: isPaidOff,
-            balance: state.balance,
-          },
-          error: null,
-        });
+        const data = {
+          paid: actualAmount,
+          remaining: isPaidOff ? 0 : newRemaining,
+          paid_off: isPaidOff,
+          balance: state.balance,
+        };
+        if (!legacyRpcWithoutSplit) {
+          data.interest_paid = interestPaid;
+          data.principal_paid = principalPaid;
+        }
+        return Promise.resolve({ data, error: null });
       },
       from(table) {
         if (table === "loans") {
@@ -960,7 +972,7 @@ test("repayLoan: succesfuld delvis repay opdaterer balance+remaining+ledger kons
 
   const result = await repayLoan("loan-1", "team-1", 200, supabase.client);
 
-  assert.deepEqual(result, { paid: 200, remaining: 300, paid_off: false });
+  assert.deepEqual(result, { paid: 200, remaining: 300, paid_off: false, interest_paid: 0, principal_paid: 200 });
   assert.equal(supabase.state.balance, 800, "balance skal debiteres med det faktisk betalte beløb");
   assert.equal(supabase.state.loan.amount_remaining, 300);
   assert.equal(supabase.state.loan.status, "active");
@@ -980,7 +992,7 @@ test("repayLoan: fuld indfrielse sætter paid_off-status + trigger notifikation"
 
   const result = await repayLoan("loan-1", "team-1", 500, supabase.client);
 
-  assert.deepEqual(result, { paid: 500, remaining: 0, paid_off: true });
+  assert.deepEqual(result, { paid: 500, remaining: 0, paid_off: true, interest_paid: 0, principal_paid: 500 });
   assert.equal(supabase.state.balance, 500);
   assert.equal(supabase.state.loan.status, "paid_off");
   assert.equal(supabase.state.loan.amount_remaining, 0);
@@ -993,8 +1005,50 @@ test("repayLoan: overbetaling klampes til amount_remaining (repay > gæld)", asy
 
   const result = await repayLoan("loan-1", "team-1", 500, supabase.client);
 
-  assert.deepEqual(result, { paid: 300, remaining: 0, paid_off: true });
+  assert.deepEqual(result, { paid: 300, remaining: 0, paid_off: true, interest_paid: 0, principal_paid: 300 });
   assert.equal(supabase.state.balance, 700, "kun de faktiske 300 debiteres, ikke de anmodede 500");
+});
+
+// ── #2326: interest-first rente/hovedstol-split ───────────────────────────────
+
+test("repayLoan: interest-first split — betaling dækker accrued_interest før hovedstol", async () => {
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500, accrued_interest: 150 },
+  });
+
+  const result = await repayLoan("loan-1", "team-1", 200, supabase.client);
+
+  assert.equal(result.interest_paid, 150, "hele den påløbne rente dækkes først");
+  assert.equal(result.principal_paid, 50, "resten af betalingen går til hovedstol");
+  assert.equal(supabase.state.loan.accrued_interest, 0, "accrued_interest reduceres med interest_paid");
+});
+
+test("repayLoan: betaling mindre end accrued_interest — alt går til rente, resten står tilbage", async () => {
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500, accrued_interest: 300 },
+  });
+
+  const result = await repayLoan("loan-1", "team-1", 100, supabase.client);
+
+  assert.equal(result.interest_paid, 100);
+  assert.equal(result.principal_paid, 0);
+  assert.equal(supabase.state.loan.accrued_interest, 200, "resterende rente står tilbage på lånet");
+});
+
+test("repayLoan: backwards compat — pre-#2326 RPC uden split-nøgler giver undefined split (ingen crash)", async () => {
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 },
+    legacyRpcWithoutSplit: true,
+  });
+
+  const result = await repayLoan("loan-1", "team-1", 200, supabase.client);
+
+  assert.equal(result.paid, 200);
+  assert.equal(result.interest_paid, undefined);
+  assert.equal(result.principal_paid, undefined);
 });
 
 test("repayLoan: afviser ved utilstrækkelig balance (Ikke nok midler)", async () => {
