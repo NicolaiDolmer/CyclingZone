@@ -5,19 +5,30 @@ import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
+import { useTableSort } from "../lib/useTableSort.js";
+import SortableTh from "./ui/SortableTh.jsx";
 import { Card, Select, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan", academy: "type.academy" };
 
-function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
-  const active = current === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none py-2 text-${align} transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{dir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
+// #2329: begge tabeller i denne fane bruger den kanoniske SortableTh/useTableSort
+// (lib/useTableSort.js) i stedet for en lokal hand-rolled header. Historik-tabellen
+// havde faktisk sortering, men det forkerte data-sort-*-flag (data-sort-exempt i
+// stedet for data-sortable); profit-panelet havde det RIGTIGE flag (data-sortable)
+// men INGEN sortering. Guard-hærdning i tableSortIntent.test.js fangede uoverensstemmelsen.
+const HISTORY_SORT_DESC_FIRST_KEYS = new Set(["date", "amount"]);
+const HISTORY_SORT_ACCESSORS = {
+  date: (ev) => (ev.date ? new Date(ev.date).getTime() : null),
+  amount: (ev) => (typeof ev.amount === "number" ? ev.amount : null),
+};
+
+const PROFIT_SORT_DESC_FIRST_KEYS = new Set(["bought", "sold", "profit"]);
+const PROFIT_SORT_ACCESSORS = {
+  rider: (tr) => `${tr.rider?.firstname || ""} ${tr.rider?.lastname || ""}`.trim() || null,
+  bought: (tr) => (typeof tr.buyAmount === "number" ? tr.buyAmount : null),
+  sold: (tr) => (typeof tr.sellAmount === "number" ? tr.sellAmount : null),
+  profit: (tr) => (typeof tr.profit === "number" ? tr.profit : null),
+};
 
 // #1741: retning skal kunne aflæses på et øjeblik. Tidligere var det kun en
 // lille farvet tekst (let at overse, "Køb"/"Salg" forveksles). Nu: pil-ikon +
@@ -103,6 +114,12 @@ function TradeLeg({ amount, date }) {
 // historikken. Altid alle sæsoner — køb og salg kan ligge i hver sin sæson.
 function TransferProfitPanel({ trades, totals }) {
   const { t } = useTranslation("transfers");
+  // #2329: hook FØR den tidlige return — rows/accessors er stabile selv når
+  // trades er tom (sortRows returnerer bare en tom liste).
+  const { rows: sortedTrades, sort, sortDir, handleSort } = useTableSort(trades, PROFIT_SORT_ACCESSORS, {
+    initialSort: null,
+    descFirstKeys: PROFIT_SORT_DESC_FIRST_KEYS,
+  });
   if (trades.length === 0) return null;
   const unknownCount = totals.tradeCount - totals.knownTradeCount;
   return (
@@ -115,14 +132,14 @@ function TransferProfitPanel({ trades, totals }) {
         <table data-sortable className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border">
-              <th className="text-left py-2 text-cz-3">{t("profit.header.rider")}</th>
-              <th className="text-right py-2 text-cz-3">{t("profit.header.bought")}</th>
-              <th className="text-right py-2 text-cz-3">{t("profit.header.sold")}</th>
-              <th className="text-right py-2 text-cz-3">{t("profit.header.profit")}</th>
+              <SortableTh sortKey="rider" sort={sort} sortDir={sortDir} onSort={handleSort} className="text-left py-2">{t("profit.header.rider")}</SortableTh>
+              <SortableTh sortKey="bought" sort={sort} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("profit.header.bought")}</SortableTh>
+              <SortableTh sortKey="sold" sort={sort} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("profit.header.sold")}</SortableTh>
+              <SortableTh sortKey="profit" sort={sort} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("profit.header.profit")}</SortableTh>
             </tr>
           </thead>
           <tbody>
-            {trades.map((tr, i) => (
+            {sortedTrades.map((tr, i) => (
               <tr key={`${tr.rider.id}:${tr.sellDate}:${i}`} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
                 <td className="py-2">
                   <RiderLink id={tr.rider.id} className="text-cz-1 hover:text-cz-accent-t">
@@ -156,8 +173,6 @@ export default function TeamTransferHistoryTab({ teamId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [seasonFilter, setSeasonFilter] = useState("current");
-  const [sortKey, setSortKey] = useState("date");
-  const [sortDir, setSortDir] = useState("desc");
   const [currentSeason, setCurrentSeason] = useState(null);
 
   useEffect(() => {
@@ -197,7 +212,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
   // køb og salg kan ligge i hver sin sæson.
   const profit = useMemo(() => computeTransferProfit(events), [events]);
 
-  const filtered = useMemo(() => {
+  const seasonFiltered = useMemo(() => {
     let list = events;
     if (seasonFilter === "current" && currentSeason != null) {
       list = list.filter((e) => e.season_number === currentSeason);
@@ -205,19 +220,16 @@ export default function TeamTransferHistoryTab({ teamId }) {
       const n = Number(seasonFilter);
       list = list.filter((e) => e.season_number === n);
     }
-    const sorted = [...list].sort((a, b) => {
-      let av, bv;
-      if (sortKey === "date") { av = new Date(a.date).getTime(); bv = new Date(b.date).getTime(); }
-      else { av = a.amount ?? 0; bv = b.amount ?? 0; }
-      return sortDir === "desc" ? bv - av : av - bv;
-    });
-    return sorted;
-  }, [events, seasonFilter, currentSeason, sortKey, sortDir]);
+    return list;
+  }, [events, seasonFilter, currentSeason]);
 
-  function handleSort(key) {
-    if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    else { setSortKey(key); setSortDir("desc"); }
-  }
+  // #2329: kanonisk sort-state — historik-tabellen HAVDE allerede denne
+  // sortering, blot bag et lokalt SortTh + forkert data-sort-*-flag.
+  const { rows: filtered, sort: sortKey, sortDir, handleSort } = useTableSort(seasonFiltered, HISTORY_SORT_ACCESSORS, {
+    initialSort: "date",
+    initialDir: "desc",
+    descFirstKeys: HISTORY_SORT_DESC_FIRST_KEYS,
+  });
 
   if (loading) return (
     <div className="flex justify-center py-8">
@@ -259,15 +271,15 @@ export default function TeamTransferHistoryTab({ teamId }) {
 
       {filtered.length > 0 && (
         <div className="overflow-x-auto">
-          <table data-sort-exempt="Profit-opsummeringspanel, faa raekker (sortering: opfoelgning)" className="w-full text-xs">
+          <table data-sortable className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border">
-                <SortTh sortKey="date" current={sortKey} dir={sortDir} onSort={handleSort}>{t("history.header.date")}</SortTh>
+                <SortableTh sortKey="date" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-left py-2">{t("history.header.date")}</SortableTh>
                 <th className="text-left py-2 text-cz-3">{t("history.header.type")}</th>
                 <th className="text-left py-2 text-cz-3">{t("history.header.direction")}</th>
                 <th className="text-left py-2 text-cz-3">{t("history.header.rider")}</th>
                 <th className="text-left py-2 text-cz-3">{t("history.header.counterparty")}</th>
-                <SortTh sortKey="amount" current={sortKey} dir={sortDir} onSort={handleSort} align="right">{t("history.header.amount")}</SortTh>
+                <SortableTh sortKey="amount" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("history.header.amount")}</SortableTh>
               </tr>
             </thead>
             <tbody>

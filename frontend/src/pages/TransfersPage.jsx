@@ -13,17 +13,51 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import { sortListings, LISTING_SORT_OPTIONS, ABILITY_SORT_KEYS } from "../lib/transferListingSort";
+import { sortRows } from "../lib/useTableSort.js";
+import { cycleSortState } from "../lib/riderSort.js";
+import SortableTh from "../components/ui/SortableTh.jsx";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon, PageLoader } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
-
-// #2031: pris/værdi/alder-sortering vises som knapper; de 15 evne-sorteringer
-// samles i en dropdown (for mange til knapper). Knap-rækken = alt undtagen evnerne.
-const LISTING_SORT_BUTTONS = LISTING_SORT_OPTIONS.filter(k => !ABILITY_SORT_KEYS.includes(k));
 import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import TeamCell from "../components/rider/TeamCell";
+
+// #2329: markedstabellens ÉN kanoniske sort-state (useSortState) — headers og
+// de gamle knapper/evne-dropdown deler samme { sort, dir }, så de aldrig kan
+// komme i konflikt. Erstattede den listing-niveau sortListings (#1185/#2031),
+// som kun kunne rammes fra knapperne, ikke fra header-klik.
+//
+// #2031: pris/værdi/alder-sortering vises som knapper; de 15 evne-sorteringer
+// samles i en dropdown (for mange til knapper).
+const MARKET_SORT_BUTTONS = [
+  { key: "newest", sort: "listed", dir: "desc" },
+  { key: "price_asc", sort: "price", dir: "asc" },
+  { key: "price_desc", sort: "price", dir: "desc" },
+  { key: "value_desc", sort: "value", dir: "desc" },
+  { key: "value_asc", sort: "value", dir: "asc" },
+  { key: "age_asc", sort: "age", dir: "asc" },
+  { key: "age_desc", sort: "age", dir: "desc" },
+];
+
+// Numeriske kolonner + evner starter faldende ved første header-klik ("bedst/
+// dyrest øverst"), som resten af sidens tabeller (riderSort-konventionen).
+const MARKET_SORT_DESC_FIRST_KEYS = new Set(["age", "listed", "value", "salary", "price", ...ABILITY_KEYS]);
+
+// Accessorer pr. sorterbar kolonne. Rytterens evner er fladtgjort op på
+// listing.rider[<key>] (flattenAbilities ved load) — se abilities.js (SSOT).
+const MARKET_SORT_ACCESSORS = {
+  rider: (l) => (l.rider ? `${l.rider.firstname || ""} ${l.rider.lastname || ""}`.trim() || null : null),
+  seller: (l) => l.seller?.name ?? null,
+  age: (l) => (l.rider ? getRiderAge(l.rider.birthdate) : null),
+  listed: (l) => (l.created_at ? new Date(l.created_at).getTime() : null),
+  value: (l) => (l.rider ? getRiderMarketValue(l.rider) : null),
+  salary: (l) => (l.rider ? getRiderSalary(l.rider) : null),
+  price: (l) => l.asking_price ?? null,
+  ...Object.fromEntries(
+    ABILITY_KEYS.map((key) => [key, (l) => (typeof l.rider?.[key] === "number" ? l.rider[key] : null)]),
+  ),
+};
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1184,7 +1218,20 @@ export default function TransfersPage() {
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
-  const [listingSort, setListingSort] = useState("newest"); // #1185: market-tab sortering
+  // #2329: markedstabellens ÉN kanoniske sort-state — delt af header-klik
+  // (klik = cycleSortState, samme klik-cyklus som resten af siden via
+  // useSortState) OG de gamle knapper/evne-dropdown (klik = præcis
+  // sort+retning). Samme { sort, dir } uanset indgang, så de aldrig kan
+  // komme i konflikt.
+  const [marketSortState, setMarketSortState] = useState({ sort: "listed", dir: "desc" });
+  const marketSort = marketSortState.sort;
+  const marketSortDir = marketSortState.dir;
+  function handleMarketSort(key) {
+    setMarketSortState((cur) => cycleSortState(cur, key, MARKET_SORT_DESC_FIRST_KEYS));
+  }
+  function setExactMarketSort(sort, dir) {
+    setMarketSortState({ sort, dir });
+  }
   const [expandedListingId, setExpandedListingId] = useState(null); // #1523: åben action-række i market-tabellen
 
   function toggleExpandedListing(id) {
@@ -1501,11 +1548,12 @@ export default function TransfersPage() {
 
   const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean));
   const filteredIds = new Set(riderFilters.filtered.map(r => r.id));
-  // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres på
-  // listing-niveau (asking_price/created_at) — se lib/transferListingSort (#1185).
-  const filteredListings = sortListings(
+  // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres af den
+  // kanoniske markedstabel-sort-state (#2329, se MARKET_SORT_ACCESSORS ovenfor).
+  const filteredListings = sortRows(
     listings.filter(l => !l.rider || filteredIds.has(l.rider.id)),
-    listingSort
+    MARKET_SORT_ACCESSORS[marketSort] ?? null,
+    marketSortDir,
   );
 
   // #1675: market-fanen viser en bred evne-tabel (15 kolonner) — den bruger fuld
@@ -1776,30 +1824,35 @@ export default function TransfersPage() {
                   nationalities={riderFilters.nationalities}
                 />
               </div>
-              {/* #1185: sortér på listing-pris (asking_price)/værdi/alder/nyeste.
+              {/* #1185/#2329: sortér på listing-pris (asking_price)/værdi/alder/nyeste
+                  via knapperne, ELLER klik en kolonne-header direkte — begge sætter
+                  den samme kanoniske sort-state (marketSortState).
                   #2031: evne-sortering via dropdown (15 evner = for mange til knapper). */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("marketSort.label")}</span>
-                {LISTING_SORT_BUTTONS.map(key => (
-                  <button key={key} onClick={() => setListingSort(key)}
-                    className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                      ${listingSort === key
-                        ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                        : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-                    {t(`marketSort.${key}`)}
-                  </button>
-                ))}
+                {MARKET_SORT_BUTTONS.map(btn => {
+                  const active = marketSort === btn.sort && marketSortDir === btn.dir;
+                  return (
+                    <button key={btn.key} onClick={() => setExactMarketSort(btn.sort, btn.dir)}
+                      className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                        ${active
+                          ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                          : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+                      {t(`marketSort.${btn.key}`)}
+                    </button>
+                  );
+                })}
                 <select
                   aria-label={t("marketSort.abilityLabel")}
-                  value={ABILITY_SORT_KEYS.includes(listingSort) ? listingSort : ""}
-                  onChange={e => { if (e.target.value) setListingSort(e.target.value); }}
+                  value={ABILITY_KEYS.includes(marketSort) ? marketSort : ""}
+                  onChange={e => { if (e.target.value) setExactMarketSort(e.target.value, "desc"); }}
                   className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                    ${ABILITY_SORT_KEYS.includes(listingSort)
+                    ${ABILITY_KEYS.includes(marketSort)
                       ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                       : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
                   <option value="">{t("marketSort.abilityPlaceholder")}</option>
                   {ABILITY_KEYS.map(key => (
-                    <option key={key} value={`ability_${key}`}>{t(`marketSort.abilities.${key}`)}</option>
+                    <option key={key} value={key}>{t(`marketSort.abilities.${key}`)}</option>
                   ))}
                 </select>
               </div>
@@ -1817,16 +1870,42 @@ export default function TransfersPage() {
                     <table data-sortable className="w-full text-xs">
                       <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                         <tr className="border-b border-cz-border">
+                          {/* Nation-kolonnen er bevidst ikke sorterbar (rent visuelt flag, ingen
+                              entydig "bedste" nation) — resten af kolonnerne er via SortableTh. */}
                           <th className="px-2 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-12 hidden sm:table-cell">{t("marketRow.nation")}</th>
-                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("marketRow.rider")}</th>
-                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden sm:table-cell">{t("marketRow.seller")}</th>
-                          <th className="px-2 py-3 text-center font-medium uppercase tracking-wider text-cz-3 w-12 hidden md:table-cell">{t("marketRow.age")}</th>
-                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden md:table-cell">{t("marketRow.listed")}</th>
-                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20">{t("marketRow.value")}</th>
-                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20 hidden sm:table-cell">{t("marketRow.salary")}</th>
-                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-24">{t("marketRow.price")}</th>
+                          <SortableTh sortKey="rider" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-left uppercase tracking-wider w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">
+                            {t("marketRow.rider")}
+                          </SortableTh>
+                          <SortableTh sortKey="seller" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-left uppercase tracking-wider hidden sm:table-cell">
+                            {t("marketRow.seller")}
+                          </SortableTh>
+                          <SortableTh sortKey="age" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-2 py-3 text-center uppercase tracking-wider w-12 hidden md:table-cell">
+                            {t("marketRow.age")}
+                          </SortableTh>
+                          <SortableTh sortKey="listed" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-left uppercase tracking-wider hidden md:table-cell">
+                            {t("marketRow.listed")}
+                          </SortableTh>
+                          <SortableTh sortKey="value" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-right uppercase tracking-wider w-20">
+                            {t("marketRow.value")}
+                          </SortableTh>
+                          <SortableTh sortKey="salary" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-right uppercase tracking-wider w-20 hidden sm:table-cell">
+                            {t("marketRow.salary")}
+                          </SortableTh>
+                          <SortableTh sortKey="price" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                            className="px-3 py-3 text-right uppercase tracking-wider w-24">
+                            {t("marketRow.price")}
+                          </SortableTh>
                           {LISTING_STATS.map(({ key, label }) => (
-                            <th key={key} className="px-1.5 py-3 text-center font-medium text-cz-3 w-14">{label}</th>
+                            <SortableTh key={key} sortKey={key} sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
+                              className="px-1.5 py-3 text-center w-14">
+                              {label}
+                            </SortableTh>
                           ))}
                           <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-28">{t("marketRow.action")}</th>
                         </tr>

@@ -16,9 +16,11 @@
 
 > **Talentspejder (spec låst 7/7):** Fase 1+2 merged · **Fase 3 (#2244) SHIPPED til prod 10/7 aften** (#2280+#2281+#2283 merged, migration verificeret applied; gates grønne — audit `docs/audits/2026-07-10-talentspejder-gates.md`); flag `scout_system_enabled` off = spillere ser slots; admin-preview on. #2284 delvist løst via chips (jobConfig-API + batch-navne shippet). Fase 4 gemte filtre #27. Kendt problem: test-konti wipes (#2245, bug/high).
 
-> **Session 11/7 formiddag:** #2311 Klub-Slice 2 MERGED (PR #2331; tier-preview + facilitets-help, preview-verificeret EN+DA, lukket) · #2328 dashboard-opfølgninger MERGED (PR #2330, v6.81; ejer-verify i prod udestår — 5 punkter i issue-kommentar) · worktree-env-hul lukket (PreToolUse-hook, refs #994). Åben: [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering (claude:todo). Kendt rest: `CyclingZone-worktrees/2311-klub-slice2`-mappen er fil-låst — slet manuelt senere.
+> **Session 11/7 formiddag:** #2311 Klub-Slice 2 MERGED (PR #2331; tier-preview + facilitets-help, preview-verificeret EN+DA, lukket) · #2328 dashboard-opfølgninger MERGED (PR #2330, v6.81; ejer-verify i prod udestår — 5 punkter i issue-kommentar) · worktree-env-hul lukket (PreToolUse-hook, refs #994).
 
-> **🤖 Working agent:** Claude Code (desktop) — #2329 transfermarked-sortering + patch note-audit (11/7 eftermiddag).
+> **Session 11/7 eftermiddag:** [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering — headers klikbare (SortableTh + useTableSort), erstatter listing-niveau `sortListings`; TeamTransferHistoryTab-flag-byt rettet (profit-panel fik reel sortering, historik-tabel fik korrekt `data-sortable`); guard i `tableSortIntent.test.js` hærdet til at kræve en RIGTIG sort-mekanisme bag `data-sortable` (fangede AuctionsPage-false-positive via delegeret `<thead>`-komponent, løst ved at udvide guardens søgning). v6.82. PR afventer ejer-merge.
+
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 

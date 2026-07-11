@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.82",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Sort the transfer market by clicking any column header",
+          "body": "The riders-for-sale table, your transfer history, and your transfer profit summary can now be sorted by clicking any column header, not just the sort buttons above the market table. Header clicks and the existing sort buttons share the same sort, so they always agree on what's currently sorted."
+        },
+        "da": {
+          "title": "Sortér transfermarkedet ved at klikke på en kolonneoverskrift",
+          "body": "Tabellen med ryttere til salg, din transferhistorik og din transferprofit-opsummering kan nu sorteres ved at klikke på en hvilken som helst kolonneoverskrift, ikke kun sorteringsknapperne over markedstabellen. Klik på overskrifter og de eksisterende sorteringsknapper deler samme sortering, så de altid er enige om hvad der er sorteret."
+        },
+        "refs": [2329]
+      }
+    ]
+  },
+  {
     "version": "6.81",
     "date": "2026-07-11",
     "label": "Beta",
