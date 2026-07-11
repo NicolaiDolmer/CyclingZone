@@ -144,7 +144,7 @@ export default function RiderProfileHero({
                     <button
                       onClick={onCompare}
                       title={t("header.compareTitle")}
-                      className="mt-1 flex-shrink-0 min-h-[32px] px-2 flex items-center justify-center text-xs font-semibold text-cz-3 hover:text-cz-accent-t transition-colors"
+                      className="mt-1 flex-shrink-0 min-h-[44px] px-2 flex items-center justify-center text-xs font-semibold text-cz-3 hover:text-cz-accent-t transition-colors"
                     >
                       {t("header.compare")}
                     </button>

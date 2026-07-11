@@ -154,7 +154,7 @@ export default function LandingPage() {
         {/* ───────── Hero ───────── */}
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pb-24 lg:pt-20">
           <div>
-            <span className="inline-flex items-center gap-2 border border-cz-border bg-cz-card px-3 py-1 font-data text-[11px] font-semibold uppercase tracking-[0.16em] text-cz-2">
+            <span className="inline-flex cursor-default select-none items-center gap-2 border border-cz-border bg-cz-card px-3 py-1 font-data text-[11px] font-semibold uppercase tracking-[0.16em] text-cz-2">
               <span className="h-1.5 w-1.5 rounded-full bg-cz-accent" aria-hidden="true" />
               {t("hero.badge")}
             </span>

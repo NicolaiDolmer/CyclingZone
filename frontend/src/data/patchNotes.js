@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.92",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Clearer clickable areas on the landing page and rider profile",
+          "body": "Tidied up a couple of spots where things looked tappable but weren't, or were awkward to hit: the \"open beta\" badge on the front page no longer shows a text cursor as if it were a button, and the Compare button on a rider's profile now has a larger tap target so it's easier to hit on touch screens."
+        },
+        "da": {
+          "title": "Tydeligere klikbare områder på forsiden og rytterprofilen",
+          "body": "Ryddet op et par steder hvor noget så klikbart ud uden at være det, eller var svært at ramme: \"open beta\"-mærket på forsiden viser ikke længere en tekst-markør som var det en knap, og Sammenlign-knappen på en rytters profil har nu et større klik-område, så den er lettere at ramme på touch-skærme."
+        },
+        "refs": [2254]
+      }
+    ]
+  },
+  {
     "version": "6.91",
     "date": "2026-07-11",
     "label": "Beta",
