@@ -551,6 +551,11 @@ const ensureSeasonStandingsCron = makeEnsureSeasonStandings(supabase);
 // (Volta Algarvia st2-3, Hauts Plateaux st8). Ét tick ad gangen — altid.
 let stageSchedulerTickRunning = false;
 
+// #2251: delt dedup-Set på tværs af ticks (mirror stallWatchdogSeenKeys nedenfor) —
+// et fastlåst løb ("No start list" — tyndt/tomt felt i lav-division) logges/captures
+// kun ÉN gang pr. løb pr. dag i stedet for hvert 5-min-tick.
+const stageSchedulerSeenKeys = new Set();
+
 async function runStageSchedulerCron() {
   if (stageSchedulerTickRunning) {
     console.log("⏭️ Stage-scheduler: forrige tick kører stadig — springer over (overlap-guard #2090)");
@@ -563,6 +568,7 @@ async function runStageSchedulerCron() {
       now: new Date(),
       isStageSchedulerEnabled,
       isRaceEngineV2Enabled,
+      seenKeys: stageSchedulerSeenKeys,
       runStageFn: async ({ raceId, stageIndex }) => {
         const notifyDiscord = async ({ race, resultRows }) => {
           const urls = await getResultWebhooks(race.league_division_id);
