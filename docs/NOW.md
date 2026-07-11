@@ -16,11 +16,11 @@
 
 > **Session 11/7 (komprimeret):** Formiddag: #2311 Klub-Slice 2 merged (PR #2331) · #2328 dashboard-opfølgninger merged (PR #2330, v6.81; ejer-verify udestår, 5 punkter i issue). Eftermiddag: #2329 transfermarked-sortering merged (PR #2332, v6.82) · patch note-audit → v6.83 (PR #2333) · #2264 akademi-frie-agenter løst m. datareparation (ejer-go, PR #2334, v6.84). Aften: #1974-slice trænbarhedssignal (PR #2335, v6.85; issue åben — rest: #1138 + GT/bakke-klassificering) · #1894 smart default-fokus merged+lukket (PR #2336, v6.86) · #1895 ugerytme + individuel ugeplan SHIPPET+LUKKET (PR #2338+#2339, v6.87; migration applied i prod før merge, ejer-go) · FK-hul fixet (PR #2340) · opfølgning #2337. #2262 urørt per ejer-ønske. **Ejer-verify samlet:** /training i prod (trænbarheds-markører, auto-hint, bulk-smart, Weekly rhythm-panel, individuel plan + "Egen plan"-badge).
 
-> **Session 11/7 (autonom time):** Backlog-hygiejne: #2329+#2320 lukket (verificeret stale/done). #2298 whitelist-oprydning (34 entries, PR #2341) + #2299 forward-guard (PR #2342) MERGED+lukket — inkl. hotfix: audit-CI var rød på ALLE PR'er (manglende `training_week_plans`-whitelist fra #1895). #2295 SortableTh-konsolidering MERGED (PR #2343, v6.88) + lukket. #2294 admin-tabel-sortering: PR #2344 auto-merge armeret. 28 stale branches + 14 stale worktrees ryddet.
+> **Session 11/7 (autonom aften, 2t):** #2266 højde/vægt+compare genindført (PR #2346 merged, v6.89) · #2293 auktions-historik-sort (PR #2347 merged, v6.90) · #2284 verificeret shippet — alle 3 lukket · **Ejer-merge-kø: PR #2345 (#2327, security-high: revoke anon/authenticated på 14 muterende RPC'er) + PR #2348 (#2326, lån rente/hovedstol-split, v6.91)** — begge har migration → apply manuelt efter merge.
 
-> **🎯 Next action:** Ejer-verify #1894+#1895 på /training i prod (samlet: auto-hint, bulk-smart, ugerytme, individuel plan) + sort-pile (v6.88) på rangliste/resultater. Derefter admin-test-køen (talentspejder-flip, faciliteter-flip) eller #2270/#2274.
+> **🎯 Next action:** Ejer: (1) merge+apply PR #2345 (#2327, security-high) og PR #2348 (#2326), (2) verify-kø: /training i prod (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split efter apply. Derefter admin-test-køen (talentspejder-flip, faciliteter-flip) eller #2270/#2274.
 
-> **🤖 Working agent:** Claude Code (Fable, autonom 2t-session 11/7 aften) — #2293/#2326/#2327/#2284/#2266.
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
