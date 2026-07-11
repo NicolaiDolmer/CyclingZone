@@ -513,6 +513,10 @@
         "title": "Train today and the +25% boost",
         "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
       },
+      "smartDefault": {
+        "title": "What trains a rider with no focus set?",
+        "text": "A rider with no focus chosen is not left untrained: the assistant trains them toward a focus that suits their type, for example a Sprinter defaults to Sprint and a Climber to VO2max. You'll see a small 'Assistant: ... (auto)' note under the focus dropdown when this applies. Setting your own focus always overrides it. To apply a type-matched focus to several riders at once, select them and choose 'Smart focus (by rider type)' in the bulk-apply bar; riders who already have a focus set are skipped so your existing choices are never overwritten."
+      },
       "formFatigue": {
         "title": "Form and Fatigue",
         "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day around midnight each rider also recovers some Fatigue, so it never gets stuck at 100: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."

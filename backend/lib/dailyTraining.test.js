@@ -11,10 +11,31 @@ import { youthRateForPotential } from "./riderProgression.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 
-test("default-program bruges når plan mangler (spec 6.3: følger ALTID program)", () => {
+test("default-program bruges når plan mangler OG type ukendt (spec 6.3: følger ALTID program)", () => {
   assert.deepEqual(resolveProgram(null), DEFAULT_PROGRAM);
   assert.deepEqual(resolveProgram(undefined), DEFAULT_PROGRAM);
   assert.equal(resolveProgram({ focus: "sprint", intensity: "hard" }).focus, "sprint");
+});
+
+// #1894: ryttere UDEN plan trænede tidligere ALTID endurance uanset type (44% af
+// trup — fejludvikling for fx sprintere). resolveProgram(null, primaryType) skal nu
+// give et type-matchet fokus via smartDefaultFocus (backend/lib/training.js).
+test("resolveProgram: ingen plan + kendt type → smart default-fokus (#1894)", () => {
+  const program = resolveProgram(null, "sprinter");
+  assert.equal(program.focus, "sprint");
+  assert.equal(program.intensity, "normal");
+});
+
+test("resolveProgram: eksisterende plan vinder ALTID over smart default", () => {
+  const program = resolveProgram({ focus: "endurance", intensity: "hard" }, "sprinter");
+  assert.equal(program.focus, "endurance");
+  assert.equal(program.intensity, "hard");
+});
+
+test("resolveProgram: ukendt/manglende primary_type falder tilbage til endurance (bagudkompatibel)", () => {
+  assert.equal(resolveProgram(null, null).focus, "endurance");
+  assert.equal(resolveProgram(null, undefined).focus, "endurance");
+  assert.equal(resolveProgram(null).focus, "endurance");
 });
 
 test("rest-dag giver nul progress", () => {

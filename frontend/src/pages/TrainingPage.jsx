@@ -71,7 +71,7 @@ export default function TrainingPage() {
 
   const training = useTraining();
   const {
-    enabled, todayRun, condition, progress, trainability, loading,
+    enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
   } = training;
 
@@ -269,6 +269,15 @@ export default function TrainingPage() {
               ×
             </button>
           )}
+          {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus assistenten
+              rent faktisk træner dem med (backend-leveret, samme regel som bulk-
+              smart-mode og dailyTraining.js' resolveProgram — INGEN frontend-dublet
+              af type→fokus-mappingen). */}
+          {!plan?.focus && smartDefaultFocus[rider.id] && (
+            <div className="mt-0.5 text-[10px] text-cz-3">
+              {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
+            </div>
+          )}
           {(currentTrainability === "limited" || currentTrainability === "blocked") && (
             <span
               className={`ms-1 inline-block text-[10px] px-1.5 py-0.5 rounded-full border ${
@@ -363,8 +372,15 @@ export default function TrainingPage() {
     const ids = [...selected];
     if (ids.length === 0) return;
     const result = await setPlanBulk(ids, bulkFocus, bulkIntensity);
+    // #1894 variant 3: smart-mode springer ryttere MED eksisterende plan over
+    // (server-håndhævet — overskriver ALDRIG en managers eget valg). Det er en
+    // forventet, ikke-fejlende delmængde, så den vises separat fra "failed".
+    const skippedHasPlan = result.skippedHasPlan ?? [];
     if (result.failed.length === 0) {
-      setBulkMsg({ type: "ok", text: t("bulkApplied", { n: result.applied }) });
+      const text = skippedHasPlan.length > 0
+        ? `${t("bulkApplied", { n: result.applied })} ${t("bulkSmartSkippedHasPlan", { n: skippedHasPlan.length })}`
+        : t("bulkApplied", { n: result.applied });
+      setBulkMsg({ type: skippedHasPlan.length > 0 ? "partial" : "ok", text });
       setSelected(new Set());
     } else {
       setBulkMsg({
@@ -473,6 +489,7 @@ export default function TrainingPage() {
             className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
           >
             <option value="">{t("bulkSetFocus")}</option>
+            <option value="smart">{t("bulkSmartFocusOption")}</option>
             {TRAINING_FOCUS_KEYS.map((k) => (
               <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
             ))}

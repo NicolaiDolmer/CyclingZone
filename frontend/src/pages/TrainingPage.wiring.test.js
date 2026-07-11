@@ -40,3 +40,20 @@ test("#1480.3 multi-select + bulk-apply via setPlanBulk", () => {
   assert.match(src, /toggleSelectAll/);
   assert.match(src, /toggleSelect\(rider\.id\)/);
 });
+
+// #1894 variant 1: hint under fokus-dropdown for ryttere UDEN plan — viser hvilket
+// fokus assistenten rent faktisk træner dem med (backend-leveret smartDefaultFocus,
+// ingen frontend-dublet af type→fokus-reglen).
+test("#1894.1 smart-fokus-hint vises for ryttere uden plan, kun fra backend-leveret data", () => {
+  assert.match(src, /smartDefaultFocus/, "skal bruge useTraining's smartDefaultFocus-map");
+  assert.match(src, /t\("smartFocusHint"/);
+  assert.match(src, /!plan\?\.focus\s*&&\s*smartDefaultFocus\[rider\.id\]/, "hint kun uden aktiv plan");
+});
+
+// #1894 variant 3: bulk-barens fokus-select har en "smart"-mode-mulighed der
+// resolves server-side (frontend sender blot focus="smart").
+test("#1894.3 bulk-select har smart-fokus-mulighed + viser skipped-med-plan", () => {
+  assert.match(src, /<option value="smart">\{t\("bulkSmartFocusOption"\)\}<\/option>/);
+  assert.match(src, /bulkSmartSkippedHasPlan/);
+  assert.match(src, /skippedHasPlan/);
+});

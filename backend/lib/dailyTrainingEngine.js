@@ -146,7 +146,7 @@ export async function runTeamTrainingDay({
     const age = ageForSeason(rider.birthdate, seasonNumber);
     const cond = condByRider.get(rider.id) ?? { form: 50, fatigue: 0, injured_until: null, injury_cause: null };
     const plan = planByRider.get(rider.id) ?? null;
-    const program = resolveProgram(plan);
+    const program = resolveProgram(plan, rider.primary_type);
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
@@ -322,6 +322,7 @@ export async function runTeamTrainingDay({
       injury_days: injuryDays,
       focus: program.focus,
       intensity: effectiveIntensity,
+      focus_source: plan ? "plan" : "auto",
     });
   }
 

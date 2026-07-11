@@ -5,8 +5,8 @@ import {
   TRAINING_CONFIG, TRAINING_FOCUSES, TRAINING_FOCUS_KEYS,
   deriveTrainingState, canTrain, resolveTrainingModifier,
   isValidFocus, isValidIntensity,
-  partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS,
-  focusTrainability,
+  partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS,
+  focusTrainability, smartDefaultFocus,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -238,4 +238,79 @@ test("focusTrainability: ukendt/manglende primary_type → alt 'limited' (sikker
       assert.equal(t[focusKey], "limited", `${String(primaryType)} → ${focusKey} skulle være 'limited'`);
     }
   }
+});
+
+// ── smartDefaultFocus (#1894) ────────────────────────────────────────────────────
+// Forventede værdier er verificeret mod den FAKTISKE output af funktionen (kørt
+// lokalt), ikke antaget — og sanity-tjekket cykelfagligt: en sprinter skal accelerere/
+// sprinte, en klatrer/gc-rytter skal bygge vo2max (klatring+punch+tempo), en tempo-
+// kører (tt) skal bygge threshold (time_trial+tempo), en rouleur (ingen skarpt
+// speciale) lander på endurance — samme adfærd som den gamle hardcoded default.
+test("smartDefaultFocus: sprinter → sprint (speciale-evner acceleration+sprint er positive)", () => {
+  assert.equal(smartDefaultFocus("sprinter"), "sprint");
+});
+
+test("smartDefaultFocus: climber → vo2max (climbing/tempo/punch er positive type-vægte)", () => {
+  assert.equal(smartDefaultFocus("climber"), "vo2max");
+});
+
+test("smartDefaultFocus: tt (tidskører) → threshold (time_trial-vægt er positiv, climbing er negativ)", () => {
+  assert.equal(smartDefaultFocus("tt"), "threshold");
+});
+
+test("smartDefaultFocus: gc → vo2max (climbing+tempo positive; første strength-fokus i nøgle-rækkefølgen)", () => {
+  assert.equal(smartDefaultFocus("gc"), "vo2max");
+});
+
+test("smartDefaultFocus: rouleur → endurance (intet skarpt vo2max/threshold/sprint-speciale)", () => {
+  assert.equal(smartDefaultFocus("rouleur"), "endurance");
+});
+
+test("smartDefaultFocus: null/undefined/ukendt type → endurance (bagudkompatibel, sikker fallback)", () => {
+  for (const primaryType of [null, undefined, "", "nonexistent-type"]) {
+    assert.equal(smartDefaultFocus(primaryType), "endurance", `${String(primaryType)} skulle give endurance`);
+  }
+});
+
+test("smartDefaultFocus: returnerer altid en gyldig fokus-nøgle for enhver kendt type", () => {
+  const knownTypes = ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
+  for (const type of knownTypes) {
+    assert.ok(TRAINING_FOCUS_KEYS.includes(smartDefaultFocus(type)), `${type} gav ugyldig fokus-nøgle`);
+  }
+});
+
+test("smartDefaultFocus: deterministisk — samme input giver samme output hver gang", () => {
+  for (let i = 0; i < 5; i++) {
+    assert.equal(smartDefaultFocus("sprinter"), "sprint");
+    assert.equal(smartDefaultFocus("climber"), "vo2max");
+  }
+});
+
+// ── partitionSmartBulkTargets (#1894 variant 3 — bulk smart-focus) ─────────────────
+test("partitionSmartBulkTargets: ryttere MED eksisterende plan springes over (aldrig overskrevet)", () => {
+  const result = partitionSmartBulkTargets({
+    riderIds: ["r1", "r2", "r3"],
+    plannedRiderIds: ["r2"],
+  });
+  assert.deepEqual(result.eligible, ["r1", "r3"]);
+  assert.deepEqual(result.skippedHasPlan, ["r2"]);
+});
+
+test("partitionSmartBulkTargets: ingen eksisterende planer → alle eligible", () => {
+  const result = partitionSmartBulkTargets({ riderIds: ["r1", "r2"], plannedRiderIds: [] });
+  assert.deepEqual(result.eligible, ["r1", "r2"]);
+  assert.deepEqual(result.skippedHasPlan, []);
+});
+
+test("partitionSmartBulkTargets: dubletter og null ignoreres, rækkefølge bevares", () => {
+  const result = partitionSmartBulkTargets({
+    riderIds: ["r1", null, "r1", "r2", "r1"],
+    plannedRiderIds: [],
+  });
+  assert.deepEqual(result.eligible, ["r1", "r2"]);
+});
+
+test("partitionSmartBulkTargets: tom/manglende input giver tomme lister", () => {
+  assert.deepEqual(partitionSmartBulkTargets({}), { eligible: [], skippedHasPlan: [] });
+  assert.deepEqual(partitionSmartBulkTargets({ riderIds: [] }), { eligible: [], skippedHasPlan: [] });
 });

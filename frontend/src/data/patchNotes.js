@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.86",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Riders without a training focus now train toward their type by default",
+          "body": "Riders with no focus set used to train Endurance no matter their type, so a Sprinter with no plan quietly built the wrong abilities. The assistant now picks a focus that suits the rider's type instead, and the focus field shows a small \"Assistant: ...(auto)\" note when this applies. The bulk-apply bar for selected riders also gained a \"Smart focus (by rider type)\" option that gives each selected rider their own type-matched focus in one go, skipping any rider who already has a focus set — your own choice always wins."
+        },
+        "da": {
+          "title": "Ryttere uden trænings-fokus træner nu efter typen som standard",
+          "body": "Ryttere uden et valgt fokus trænede tidligere altid Udholdenhed uanset type, så en spurter uden plan stille byggede de forkerte evner. Assistenten vælger nu et fokus der passer til rytterens type i stedet, og fokus-feltet viser en lille \"Assistent: ...(auto)\"-note når det gælder. Anvend-på-valgte-bjælken fik også en \"Smart fokus (efter ryttertype)\"-mulighed, der giver hver valgt rytter sit eget type-matchede fokus i én omgang, og springer ryttere der allerede har et fokus over — din egen beslutning vinder altid."
+        },
+        "refs": [1894]
+      }
+    ]
+  },
+  {
     "version": "6.85",
     "date": "2026-07-11",
     "label": "Beta",
