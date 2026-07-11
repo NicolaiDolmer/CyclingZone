@@ -115,12 +115,8 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
   // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
   "subscriptions",
-  // Ugentlig træningsrytme (#1895, PR #2338/#2339 merged 11/7): training_week_plans
-  // fyldes KUN når en manager gemmer en holdrytme eller individuel ugeplan i
-  // trænings-UI'et. Skriv-path verificeret i backend/routes/api.js (upsert).
-  // Bevidst tom indtil første bruger gemmer en plan. Fjern denne entry når
-  // tabellen har rows.
-  "training_week_plans",
+  // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
+  // første rækker — featuren er levende, Detector A overvåger den normalt igen.)
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
