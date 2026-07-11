@@ -107,6 +107,18 @@ export const RACE_V3_TUNING = Object.freeze({
   // konstanten FORM_RACE_WEIGHT i raceSimulator.js er UÆNDRET (flag-off
   // bit-identisk). Spec-interval 0.025-0.045; start-kandidat 0.035.
   FORM_RACE_WEIGHT_V3: envNum("RACE_V3_FORM_WEIGHT", 0.035),
+
+  // ── EKSPLORATIV (probe B, orkestrator 12/7 — INGEN beslutning truffet) ──────
+  // Top-kompression af terrain-komponenten i v3-scoringen: pr. etape over det
+  // fremmødte felt komprimeres scores OVER feltets p90 mod p90:
+  //   s' = p90 + τ·(s − p90)  for s > p90;  s ≤ p90 urørt.
+  // Deterministisk, percentil-baseret, monotont ordens-bevarende, ingen rng;
+  // rører IKKE parcours-/udbruds-/team-mekanikken (de kører på RÅ terrain).
+  // Adresserer S2-audit'ens rod-årsag (målt felt-gab 0.060 ≈ 2× spec-
+  // antagelsen 0.032). DEFAULT 1.0 = INGEN EFFEKT — draft-PR'ens adfærd er
+  // uændret indtil ejer-beslutning; aktiveres kun eksplorativt via env.
+  // Se S2-audit'ens probe-appendix.
+  TOP_COMPRESSION_TAU: envNum("RACE_V3_TOP_COMPRESSION_TAU", 1.0),
 });
 
 // GC-relevante profiler (spec §6): helper-arbejde her koster WORK_COST_HELPER_GC.
@@ -206,4 +218,14 @@ export function teamRaceWeightV3() {
  */
 export function formRaceWeightV3() {
   return RACE_V3_TUNING.FORM_RACE_WEIGHT_V3;
+}
+
+/**
+ * τ for top-kompressionen (probe B, EKSPLORATIV — default 1.0 = ingen effekt).
+ * Se TOP_COMPRESSION_TAU-kommentaren i RACE_V3_TUNING.
+ *
+ * @returns {number}
+ */
+export function topCompressionTau() {
+  return RACE_V3_TUNING.TOP_COMPRESSION_TAU;
 }

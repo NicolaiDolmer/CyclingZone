@@ -71,3 +71,47 @@ node scripts/simulateSeasonDryRun.js --no-html --seed=<seed> --roles --v3   # ty
 node --test lib/raceDayForm.test.js lib/raceRoleExploitOracle.test.js
 ```
 Env-overrides (sweep-only): `RACE_V3_DAYFORM_SD`, `RACE_V3_JOUR_SANS_P`, `RACE_V3_FORM_WEIGHT`.
+
+---
+
+## Eksplorative prober — beslutningsgrundlag til ejer (12/7, orkestrator-bestilt)
+
+**EKSPLORATIVT — ingen defaults ændret** (start-kandidaterne står; probe B's τ-krog er committet med default τ=1.0 = ingen effekt). Værktøj: `backend/scripts/probeS2Options.mjs --probe=A|B`. Alle celler: p=3 % · fw=0.035, seed 2026; sprinter-flat måles i den KALIBREREDE genererede linse.
+
+### Probe A — udvidet varians-sweep (option 1's sande pris: sd 1,7-3× spec-interval)
+
+| sd | favWin (25-40) | maxSeason (≤45) | podium (55-75) | ITT (45-65) | sprinter-flat | oracle | share4+ |
+|---|---|---|---|---|---|---|---|
+| 0.025 | 52,9 % ✗ | 90,0 % ✗ | 73,3 % ✓ | 61,0 % ✓ | 99 % ✓ | +11,3 %/17v7 ✓ | 3,0 % ✓ |
+| 0.035 | 49,0 % ✗ | 90,0 % ✗ | 68,9 % ✓ | 53,0 % ✓ | 99 % ✓ | +11,1 %/13v6 ✓ | 2,9 % ✓ |
+| 0.045 | 45,0 % ✗ | 87,3 % ✗ | 64,8 % ✓ | **43,7 % ✗** | 100 % ✓ | +10,9 %/9v4 ✓ | 2,9 % ✓ |
+
+**Fund:** selv ved sd=0.045 (3× spec-max) når favWin kun 45 % — båndet 25-40 nås ALDRIG ad denne vej, og ITT falder UNDER sit bånd før favWin når sit (variansen rammer ITT hårdest, præcis spec §3's advarsel om "ITT bliver et lotteri"). maxSeason er nærmest immun (87-90 %). Type-integritet (sprinter-GRUPPEN) holder overraskende godt (99-100 % — gruppen er bred nok til at intern omfordeling ikke koster).
+
+### Probe B — gab-kompression-prototype (option 2: τ-top-kompression, `compressTopTerrain`)
+
+Deterministisk, ordens-bevarende: pr. etape komprimeres pre-noise terrain-scores over felt-p90 mod p90 (s' = p90 + τ·(s−p90)); udbrud/team kører på råt terrain. Målt felt-gab #1→#5 (mål ~0.03):
+
+| τ | sd | gab p50 | favWin | maxSeason | podium | ITT | sprinter-flat | oracle | share4+ | dist | K3 cfTab |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **0.5** | **0.015** | **0.030 ✓** | **38,7 % ✓** | 72,0 % ✗ | **65,4 % ✓** | **47,0 % ✓** | 99 % ✓ | **+17,6 %/19v8 ✓** | 2,4 % ✓ | 8,6 ✓ | 4 |
+| 0.5 | 0.018 | 0.030 | 37,5 % ✓ | 69,3 % ✗ | 63,2 % ✓ | 44,7 % ✗ (marginal) | 99 % ✓ | +19,9 % ✓ | 2,7 % ✓ | 8,5 ✓ | 4 |
+| 0.65 | 0.015 | 0.039 | 44,6 % ✗ | 81,3 % ✗ | 70,1 % ✓ | 53,7 % ✓ | 99 % ✓ | +14,2 % ✓ | 2,6 % ✓ | 8,5 ✓ | 4 |
+| 0.65 | 0.018 | 0.039 | 43,8 % ✗ | 80,1 % ✗ | 69,0 % ✓ | 52,7 % ✓ | 99 % ✓ | +16,0 % ✓ | 2,5 % ✓ | 8,5 ✓ | 4 |
+| 0.8 | 0.015 | 0.048 | 50,1 % ✗ | 86,3 % ✗ | 73,8 % ✓ | 61,3 % ✓ | 99 % ✓ | +12,8 % ✓ | 2,6 % ✓ | 8,5 ✓ | 3 |
+| 0.8 | 0.018 | 0.048 | 49,0 % ✗ | 85,6 % ✗ | 72,8 % ✓ | 60,0 % ✓ | 99 % ✓ | +14,2 % ✓ | 2,5 % ✓ | 8,5 ✓ | 3 |
+
+**Bedste celle τ=0.5 · sd=0.015 valideret på 3 seeds (2026/7/42):** favWin **38,7/38,8/37,5 % — I BÅND på alle 3** · podium 65,4/65,1/66,0 % ✓ · ITT 47,0/47,7/46,7 % ✓ · share4+ 2,4-3,1 % ✓ · distinkte 8,6 ✓ · sprinter-flat 98-100 % ✓ · js-rate 3,99-4,04 % ✓ · oracle +17,6 % (868 vs. 738 point, 19v8 — stærkeste margin målt). **Udestående:** maxSeason 69,7-77,8 % (bånd ≤45 — massivt forbedret fra 92-95,7 %, men outlier-ryttere i svage puljer dominerer stadig deres 8-11 starter); itt-tt-born-linsen dypper til 55-59 % (interim-bånd 60, −1..−5 pp); K3 cfTab 4 (tætheds-hypotesen bekræftet i RETNING (3→4) men ikke i størrelse — 10-30 nås heller ikke her).
+
+### Neutral sammenligning af de tre veje
+
+| | Option 1: sd ~0.035-0.045 (probe A) | Option 2: τ-kompression 0.5 + spec-sd (probe B) | Option 3: blødere interim-bånd (nul arbejde) |
+|---|---|---|---|
+| favWin-bånd 25-40 % | **Nås aldrig** (45 % ved 3× spec-sd) | **Nås** (37,5-38,8 %, 3 seeds) | Definitorisk (fx bånd ≤50 % → S1+S2-defaults består) |
+| Forklarbarhed/why-lag | Dagsform-udsving > noise; "tung dag" bliver hyppig og STOR (±0.045 ≈ ±9 ability-point) — terning-tyranni-risiko (spec §14) | Kompression er usynlig i why-rapporten (gab-struktur, ikke komponent); dagsform forbliver ±3 ability-point | Ingen ændring — dominansen består (ejer-klagen #2224 uløst) |
+| Kollateral | ITT under bånd FØR favWin i bånd; podium mod bund af bånd | itt-tt-born 55-59 % (−1..−5 pp under interim-60); maxSeason stadig 70-78 % | Ingen |
+| Strukturel ærlighed | Symptombehandling (mere støj oven på for store gaps) | Adresserer rod-årsagen DIREKTE (gab 0.060→0.030 = spec-antagelsen); alternativ ægte løsning er population-berigelse (flere jævnbyrdige toppe pr. pulje) som τ approksimerer motor-side | Udskyder problemet til S4/population-arbejde |
+| Implementering | 1 konstant | Krog ER committet (dormant, τ=1.0); beslutning = flip én konstant | 1 bånd-tabel-ændring |
+| Risiko | Spillere oplever stjerner som devaluerede via støj (spec §15.1's "min stjerne vinder aldrig mere") | Stjerner devalueres STRUKTURELT i toppen (en 88-klatrer scorer som ~83 i et 82-felt) — skal kommunikeres/aldrig vises som rå tal; peak/form (S5) genskaber differentiering som SPILLER-styret | Discord-klagerne fortsætter |
+
+**Observation (neutral):** maxSeason ≤45 % nås af INGEN af vejene alene — den kræver formentlig S4-incidents + kalender-/population-arbejde (outlieren skal møde reel modstand, ikke kun varians). Hvis båndet fastholdes som S2-gate, blokerer det alle tre veje; som S4+-mål blokerer det ingen.

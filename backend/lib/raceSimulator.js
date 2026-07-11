@@ -25,7 +25,7 @@
 //   → samme rang. Stabil tiebreaker (rider_id) ved score-lighed. Ingen Math.random/Date.
 
 import { makeRng, gaussian } from "./fictionalRiderGenerator.js";
-import { workCost, teamRaceWeightV3, formRaceWeightV3 } from "./raceRoles.js";
+import { workCost, teamRaceWeightV3, formRaceWeightV3, topCompressionTau } from "./raceRoles.js";
 // S2 (#2353): dagsform + jour sans — per-rytter-hashede, dedikerede streams
 // (raceDayForm.js); kaldes KUN når v3=true, konsumerer intet fra main-rng.
 import { dayFormComponent, jourSansComponent } from "./raceDayForm.js";
@@ -333,6 +333,25 @@ function gapFor(profileType, deficit) {
   return Math.round(clamp((deficit - m.bunch) * m.spread, 0, MAX_STAGE_GAP_SECONDS));
 }
 
+// ── EKSPLORATIV: top-kompression af terrain (probe B, #2353-appendix) ─────────
+// Pr. etape over det FREMMØDTE felt: scores over feltets p90 komprimeres mod
+// p90 med faktor τ — s' = p90 + τ·(s − p90); s ≤ p90 urørt. Ren, deterministisk
+// (percentil = nearest-rank floor-indeks på de pre-noise terrain-scores, samme
+// konvention som harnesset), monotont ordens-bevarende for τ > 0, ingen rng.
+// Kaldes KUN i v3-grenen og KUN når τ < 1 (default τ=1.0 → identitet — flag-off
+// OG dagens v3-adfærd er uændret indtil ejer-beslutning). Udbruds-udvælgelse +
+// team-kontekst kører bevidst videre på det RÅ terrain (invariant d).
+export function compressTopTerrain(terrainById, tau) {
+  if (!(tau < 1) || terrainById.size < 2) return terrainById;
+  const values = [...terrainById.values()].sort((a, b) => a - b);
+  const p90 = values[Math.min(values.length - 1, Math.floor(0.9 * values.length))];
+  const out = new Map();
+  for (const [id, t] of terrainById) {
+    out.set(id, t > p90 ? p90 + tau * (t - p90) : t);
+  }
+  return out;
+}
+
 /**
  * Simulér ÉN etape. Ren funktion — ingen DB, ingen Math.random/Date.
  * @param {{entrants:Array, stageProfile:object, seed:number, v3?:boolean}} args
@@ -368,8 +387,14 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
   const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile, v3 });
 
+  // Probe B (EKSPLORATIV, default τ=1.0 = identitet): terrain-komponenten i
+  // SCOREN kan komprimeres over felt-p90 — udbrud/team ovenfor kører på råt
+  // terrain (invariant: parcours-/udbruds-mekanik urørt; monotone map ændrer
+  // hverken kandidat-cut eller rækkefølge).
+  const scoreTerrainById = v3 ? compressTopTerrain(terrainById, topCompressionTau()) : terrainById;
+
   const scored = ordered.map((e) => {
-    const terrain = terrainById.get(e.rider_id);
+    const terrain = scoreTerrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
     // S2 (#2353): v3 bruger den hævede form-vægt (formRaceWeightV3); v1-stien
     // er uændret (default-vægt) — flag-off bit-identisk.
