@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.87",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Set a weekly training rhythm for your whole team",
+          "body": "You can now set a target intensity for each day of the week (Mon-Sun) on the new \"Weekly rhythm\" panel on the Training page. Each rider still trains their own focus and \"Train today\" still needs your click for the consistency bonus, but the rhythm steers how hard the day is without you touching every rider one by one. Teams that don't set a rhythm are unaffected: riders keep training at their season intensity every day, exactly like before. Roster rows show a small note when today's rhythm changes a rider's intensity for the day."
+        },
+        "da": {
+          "title": "Sæt en ugentlig træningsrytme for hele holdet",
+          "body": "Du kan nu sætte en ønsket intensitet pr. ugedag (man-søn) i det nye \"Ugentlig rytme\"-panel på Træningssiden. Hver rytter træner stadig sit eget fokus, og \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen, men rytmen styrer hvor hård dagen er uden du skal røre hver rytter enkeltvis. Hold der ikke sætter en rytme er upåvirkede: ryttere følger stadig deres sæson-intensitet hver dag, præcis som før. Roster-rækker viser en lille note når dagens rytme ændrer en rytters intensitet for dagen."
+        },
+        "refs": [1895]
+      }
+    ]
+  },
+  {
     "version": "6.86",
     "date": "2026-07-11",
     "label": "Beta",

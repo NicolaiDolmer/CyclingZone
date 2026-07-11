@@ -75,5 +75,21 @@
   "riderHistoryTitle": "Training history",
   "riderHistorySubtitle": "This rider's daily training over the last 30 days",
   "riderHistoryEmpty": "No training history for this rider yet.",
-  "riderHistoryRest": "Rest day"
+  "riderHistoryRest": "Rest day",
+  "weekRhythmTitle": "Weekly rhythm",
+  "weekRhythmIntro": "Set your team's target intensity for each day of the week. Each rider still trains their own focus; the rhythm only steers how hard the day is. \"Train today\" still needs your click for the consistency bonus.",
+  "weekday_mon": "Mon",
+  "weekday_tue": "Tue",
+  "weekday_wed": "Wed",
+  "weekday_thu": "Thu",
+  "weekday_fri": "Fri",
+  "weekday_sat": "Sat",
+  "weekday_sun": "Sun",
+  "weekRhythmSave": "Save rhythm",
+  "weekRhythmResetButton": "Reset to no rhythm",
+  "weekRhythmSaved": "Weekly rhythm saved.",
+  "weekRhythmReset": "Weekly rhythm removed — riders are back to their season intensity every day.",
+  "weekRhythmSaveFailed": "Could not save. Try again in a moment.",
+  "weekRhythmBonusNote": "The rhythm sets intensity only, never focus, and the manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
+  "weekRhythmTodayHint": "today: {intensity} (weekly rhythm)"
 }

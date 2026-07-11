@@ -226,6 +226,60 @@ export function smartDefaultFocus(primaryType, cfg = PROGRESSION_CONFIG) {
   return "endurance";
 }
 
+// ── #1895 PR 1: ugentlig træningsrytme på holdniveau ────────────────────────────
+// Holdets ugerytme (training_week_plans, rider_id IS NULL) sætter en ØNSKET
+// intensitet pr. ugedag — fokus rører den ALDRIG (fokus bor 100% i training_plans
+// + smartDefaultFocus). Lagdelt opløsning af dagens EFFEKTIVE intensitet pr.
+// rytter, se resolveDayIntensity nedenfor.
+
+export const WEEKDAY_KEYS = Object.freeze(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+
+// days-form: { mon: { intensity: "rest" }, ..., sun: { intensity: "normal" } }.
+// Alle 7 ugedags-nøgler kræves (ingen delvis rytme — en manager sætter hele ugen
+// på én gang), ukendte nøgler afvises (fx "theme" er reserveret til #2337 men
+// skrives ikke af denne PR endnu), og hver dags intensity skal være gyldig.
+export function isValidWeekPlanDays(days, cfg = TRAINING_CONFIG) {
+  if (!days || typeof days !== "object" || Array.isArray(days)) return false;
+  const keys = Object.keys(days);
+  if (keys.length !== WEEKDAY_KEYS.length) return false;
+  for (const key of keys) {
+    if (!WEEKDAY_KEYS.includes(key)) return false;
+  }
+  for (const weekday of WEEKDAY_KEYS) {
+    const entry = days[weekday];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    if (!isValidIntensity(entry.intensity, cfg)) return false;
+  }
+  return true;
+}
+
+// Lagdelt opløsning af dagens EFFEKTIVE intensitet for ÉN rytter. Ren funktion —
+// kaldes af dailyTrainingEngine.js pr. rytter pr. tick, og af frontend (ren
+// visning, samme regel) for at markere rækker hvor rytmen afviger fra sæson-
+// intensiteten. Prioritet (højeste vinder):
+//   1) riderOverrideDays[weekday].intensity — rytterens EGEN pr-dag-override
+//      (PR 2 — riderOverrideDays er altid null i denne PR, men signaturen har
+//      parameteren nu så PR 2 kun skal ændre kaldestedet, ikke funktionen)
+//   2) teamWeekDays[weekday].intensity — holdets ugerytme, hvis sat
+//   3) planIntensity — rytterens sæson-intensitet (training_plans, nuværende
+//      adfærd; kalderen har allerede resolvet default-fallback hertil)
+//   4) "normal" — sidste sikkerhedsnet hvis planIntensity selv mangler
+//   weekday         : én af WEEKDAY_KEYS ("mon".."sun")
+//   riderOverrideDays : rytterens days-objekt (rider_id sat) eller null (PR 2)
+//   teamWeekDays      : holdets days-objekt (rider_id IS NULL) eller null
+//   planIntensity     : allerede-resolvet sæson-/default-intensitet
+export function resolveDayIntensity({ weekday, riderOverrideDays, teamWeekDays, planIntensity }) {
+  const riderOverride = riderOverrideDays?.[weekday]?.intensity;
+  if (isValidIntensity(riderOverride)) return riderOverride;
+
+  const teamDay = teamWeekDays?.[weekday]?.intensity;
+  if (isValidIntensity(teamDay)) return teamDay;
+
+  if (isValidIntensity(planIntensity)) return planIntensity;
+
+  return "normal";
+}
+
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {
   if (!plan || !isValidFocus(plan.focus) || !isValidIntensity(plan.intensity, cfg)) return null;
   const focusAbilities = new Set(TRAINING_FOCUSES[plan.focus]);

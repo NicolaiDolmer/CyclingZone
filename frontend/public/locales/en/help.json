@@ -540,6 +540,10 @@
       "trainingHistory": {
         "title": "Training history",
         "text": "Every daily training run is kept. The Daily Training page lists your last 30 days below the roster, each day showing how many riders trained, breakthroughs and riders in peak form; expand a day to see the full per-rider report. Each rider's profile has its own training history under the Development tab, listing that rider's focus, intensity, gains and form day by day."
+      },
+      "weeklyRhythm": {
+        "title": "Weekly rhythm",
+        "text": "The 'Weekly rhythm' panel on the Training page lets you set a target intensity for each day of the week (Monday to Sunday) for your whole team at once. It steers intensity only, never focus: each rider keeps training their own chosen focus (or the assistant's type-matched default). A day in the rhythm overrides that rider's season intensity for that day only; a day left unset falls back to the rider's own program. Teams that never set a rhythm are unaffected, riders simply keep training at their season intensity every day like before. The 'Train today' consistency bonus (+25%) still only applies when you click it yourself; the rhythm does not grant it automatically."
       }
     },
     "activityfeed": {

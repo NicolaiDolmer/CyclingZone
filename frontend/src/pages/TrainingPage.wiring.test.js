@@ -57,3 +57,21 @@ test("#1894.3 bulk-select har smart-fokus-mulighed + viser skipped-med-plan", ()
   assert.match(src, /bulkSmartSkippedHasPlan/);
   assert.match(src, /skippedHasPlan/);
 });
+
+// #1895 PR 1: ugentlig træningsrytme — panel med 7 dags-selects + gem/nulstil,
+// wired mod useTraining's setWeekPlan/clearWeekPlan (aldrig frontend-fokus-logik).
+test("#1895 ugerytme-panel har 7 ugedags-selects + gem/nulstil wired mod useTraining", () => {
+  assert.match(src, /weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan/, "skal destrukturere ugerytme-state fra useTraining");
+  assert.match(src, /t\("weekRhythmTitle"\)/);
+  assert.match(src, /WEEKDAY_KEYS\.map\(\(weekday\)/, "skal rendere én select pr. WEEKDAY_KEYS-nøgle");
+  assert.match(src, /handleSaveWeekPlan/);
+  assert.match(src, /handleResetWeekPlan/);
+  assert.match(src, /setWeekPlan\(days\)/, "gem skal kalde useTraining's setWeekPlan");
+  assert.match(src, /clearWeekPlan\(\)/, "nulstil skal kalde useTraining's clearWeekPlan");
+});
+
+test("#1895 roster-rækker markerer dage hvor ugerytmen afviger fra sæson-intensiteten (ren visning)", () => {
+  assert.match(src, /resolveDayIntensityDisplay/, "skal genbruge den delte lagdelings-funktion (samme regel som motoren)");
+  assert.match(src, /intensityDiffersToday/);
+  assert.match(src, /t\("weekRhythmTodayHint"/);
+});

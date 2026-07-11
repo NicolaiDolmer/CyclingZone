@@ -12,7 +12,7 @@ import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
+import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
@@ -73,7 +73,14 @@ export default function TrainingPage() {
   const {
     enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
+    weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
   } = training;
+
+  // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
+  const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
+  const [weekDraft, setWeekDraft] = useState(null); // null = ikke redigeret endnu (spejler weekPlan)
+  const [weekPlanMsg, setWeekPlanMsg] = useState(null);
+  const activeWeekDays = weekDraft ?? weekPlan;
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
@@ -123,6 +130,37 @@ export default function TrainingPage() {
     if (result && !result.ok) {
       setRunError(result.error || "failed");
     }
+  }
+
+  // #1895 PR 1: ugerytme-panel — flad "normal"-skabelon som redigerings-
+  // udgangspunkt når holdet endnu ikke har en rytme (weekPlan === null).
+  function flatWeekTemplate(intensity = "normal") {
+    const days = {};
+    for (const k of WEEKDAY_KEYS) days[k] = { intensity };
+    return days;
+  }
+
+  function setWeekDraftDay(weekday, intensity) {
+    setWeekDraft((prev) => ({ ...(prev ?? weekPlan ?? flatWeekTemplate()), [weekday]: { intensity } }));
+  }
+
+  async function handleSaveWeekPlan() {
+    setWeekPlanMsg(null);
+    const days = weekDraft ?? weekPlan ?? flatWeekTemplate();
+    const result = await setWeekPlan(days);
+    setWeekPlanMsg(result.ok
+      ? { type: "ok", text: t("weekRhythmSaved") }
+      : { type: "error", text: t("weekRhythmSaveFailed") });
+    if (result.ok) setWeekDraft(null);
+  }
+
+  async function handleResetWeekPlan() {
+    setWeekPlanMsg(null);
+    const result = await clearWeekPlan();
+    setWeekPlanMsg(result.ok
+      ? { type: "ok", text: t("weekRhythmReset") }
+      : { type: "error", text: t("weekRhythmSaveFailed") });
+    if (result.ok) setWeekDraft(null);
   }
 
   // Dagens tick-tidspunkt i dansk lokaltid (created_at er UTC). null → vis label uden kl.
@@ -208,6 +246,14 @@ export default function TrainingPage() {
     // #1974: coarse type-derived trainability-signal — hvorfor et fokus ikke rykker.
     const riderTrainability = trainability[rider.id] ?? {};
     const currentTrainability = plan?.focus ? riderTrainability[plan.focus] : null;
+
+    // #1895 PR 1: ren visning — dagens EFFEKTIVE intensitet ift. ugerytmen. Kun
+    // relevant når rytteren har en plan (uden plan er der intet sæson-tal at
+    // afvige fra). Sandheden bor i motoren; dette er blot en frontend-hint.
+    const effectiveTodayIntensity = plan?.intensity
+      ? resolveDayIntensityDisplay({ weekday: todayWeekday, teamWeekDays: weekPlan, planIntensity: plan.intensity })
+      : null;
+    const intensityDiffersToday = effectiveTodayIntensity != null && effectiveTodayIntensity !== plan.intensity;
 
     return (
       <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
@@ -319,6 +365,11 @@ export default function TrainingPage() {
             </div>
           ) : (
             <span className="text-cz-3 text-xs">—</span>
+          )}
+          {intensityDiffersToday && (
+            <div className="mt-0.5 text-[10px] text-cz-3">
+              {t("weekRhythmTodayHint", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+            </div>
           )}
         </td>
 
@@ -459,6 +510,66 @@ export default function TrainingPage() {
         </ul>
         <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
         <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideGating")}</p>
+      </details>
+
+      {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
+          ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
+          Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag. */}
+      <details className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
+        <summary className="text-xs font-semibold uppercase tracking-wide text-cz-2 cursor-pointer select-none">
+          {t("weekRhythmTitle")}
+        </summary>
+        <p className="text-sm text-cz-3 leading-relaxed mt-2">{t("weekRhythmIntro")}</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {WEEKDAY_KEYS.map((weekday) => {
+            const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
+            return (
+              <div key={weekday} className="flex flex-col items-center gap-1">
+                <span className="text-[10px] uppercase text-cz-3">{t(`weekday_${weekday}`)}</span>
+                <select
+                  value={current}
+                  disabled={savingWeekPlan}
+                  aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
+                  onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
+                  className="bg-cz-card border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
+                >
+                  {TRAINING_INTENSITIES.map((k) => (
+                    <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSaveWeekPlan}
+            disabled={savingWeekPlan}
+            className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
+          </button>
+          {weekPlan && (
+            <button
+              type="button"
+              onClick={handleResetWeekPlan}
+              disabled={savingWeekPlan}
+              className="text-xs text-cz-3 hover:text-cz-danger disabled:opacity-40"
+            >
+              {t("weekRhythmResetButton")}
+            </button>
+          )}
+          {weekPlanMsg && (
+            <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+              {weekPlanMsg.text}
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
       </details>
 
       {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}

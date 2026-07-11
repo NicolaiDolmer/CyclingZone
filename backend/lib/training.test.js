@@ -7,6 +7,7 @@ import {
   isValidFocus, isValidIntensity,
   partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS,
   focusTrainability, smartDefaultFocus,
+  WEEKDAY_KEYS, isValidWeekPlanDays, resolveDayIntensity,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -313,4 +314,103 @@ test("partitionSmartBulkTargets: dubletter og null ignoreres, rækkefølge bevar
 test("partitionSmartBulkTargets: tom/manglende input giver tomme lister", () => {
   assert.deepEqual(partitionSmartBulkTargets({}), { eligible: [], skippedHasPlan: [] });
   assert.deepEqual(partitionSmartBulkTargets({ riderIds: [] }), { eligible: [], skippedHasPlan: [] });
+});
+
+// ── #1895 PR 1: ugentlig træningsrytme ───────────────────────────────────────────
+
+function fullWeek(intensity) {
+  const days = {};
+  for (const k of WEEKDAY_KEYS) days[k] = { intensity };
+  return days;
+}
+
+test("isValidWeekPlanDays: gyldig fuld uge accepteres", () => {
+  assert.ok(isValidWeekPlanDays(fullWeek("normal")));
+  const mixed = fullWeek("normal");
+  mixed.sun = { intensity: "rest" };
+  assert.ok(isValidWeekPlanDays(mixed));
+});
+
+test("isValidWeekPlanDays: manglende ugedag afvises", () => {
+  const days = fullWeek("normal");
+  delete days.sun;
+  assert.ok(!isValidWeekPlanDays(days));
+});
+
+test("isValidWeekPlanDays: ugyldig intensitet afvises", () => {
+  const days = fullWeek("normal");
+  days.mon = { intensity: "brutal" };
+  assert.ok(!isValidWeekPlanDays(days));
+});
+
+test("isValidWeekPlanDays: ekstra/ukendte nøgler afvises", () => {
+  const days = fullWeek("normal");
+  days.theme = "recovery-week";
+  assert.ok(!isValidWeekPlanDays(days));
+});
+
+test("isValidWeekPlanDays: ikke-objekt/null afvises", () => {
+  assert.ok(!isValidWeekPlanDays(null));
+  assert.ok(!isValidWeekPlanDays(undefined));
+  assert.ok(!isValidWeekPlanDays("normal"));
+  assert.ok(!isValidWeekPlanDays([]));
+});
+
+test("resolveDayIntensity: rytter-override vinder over alt", () => {
+  const result = resolveDayIntensity({
+    weekday: "mon",
+    riderOverrideDays: { mon: { intensity: "rest" } },
+    teamWeekDays: { mon: { intensity: "hard" } },
+    planIntensity: "normal",
+  });
+  assert.equal(result, "rest");
+});
+
+test("resolveDayIntensity: holdets ugerytme vinder når ingen rytter-override", () => {
+  const result = resolveDayIntensity({
+    weekday: "tue",
+    riderOverrideDays: null,
+    teamWeekDays: { tue: { intensity: "hard" } },
+    planIntensity: "normal",
+  });
+  assert.equal(result, "hard");
+});
+
+test("resolveDayIntensity: falder tilbage til sæson-intensitet uden ugerytme", () => {
+  const result = resolveDayIntensity({
+    weekday: "wed",
+    riderOverrideDays: null,
+    teamWeekDays: null,
+    planIntensity: "easy",
+  });
+  assert.equal(result, "easy");
+});
+
+test("resolveDayIntensity: falder tilbage til 'normal' uden nogen input (regressions-guard — bit-identisk med i dag)", () => {
+  const result = resolveDayIntensity({
+    weekday: "thu",
+    riderOverrideDays: null,
+    teamWeekDays: null,
+    planIntensity: null,
+  });
+  assert.equal(result, "normal");
+});
+
+test("resolveDayIntensity: holdrytme uden dagens ugedag falder videre til sæson-intensitet", () => {
+  const result = resolveDayIntensity({
+    weekday: "fri",
+    riderOverrideDays: null,
+    teamWeekDays: { mon: { intensity: "hard" } }, // ingen "fri"-nøgle
+    planIntensity: "hard",
+  });
+  assert.equal(result, "hard");
+});
+
+test("resolveDayIntensity: rest vinder på alle lag når sat", () => {
+  for (const layer of [
+    { riderOverrideDays: { sat: { intensity: "rest" } }, teamWeekDays: null, planIntensity: "hard" },
+    { riderOverrideDays: null, teamWeekDays: { sat: { intensity: "rest" } }, planIntensity: "hard" },
+  ]) {
+    assert.equal(resolveDayIntensity({ weekday: "sat", ...layer }), "rest");
+  }
 });

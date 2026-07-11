@@ -27,6 +27,7 @@ export function useTraining() {
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
+  const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -48,6 +49,7 @@ export function useTraining() {
         setProgress(data.progress ?? {});
         setTrainability(data.trainability ?? {});
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
+        setWeekPlanState(data.weekPlan ?? null);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -144,6 +146,47 @@ export function useTraining() {
 
   const planFor = useCallback((riderId) => plans[riderId] ?? null, [plans]);
 
+  // #1895 PR 1: sæt/opdatér holdets ugentlige træningsrytme (7 ugedags-nøgler,
+  // valideret backend-side). Rører ALDRIG fokus. Returnerer { ok, error? }.
+  const [savingWeekPlan, setSavingWeekPlan] = useState(false);
+  const setWeekPlan = useCallback(async (days) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    setSavingWeekPlan(true);
+    try {
+      const res = await fetch(`${API}/api/training/week-plan`, {
+        method: "PUT", headers, body: JSON.stringify({ days }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || "failed" };
+      setWeekPlanState(data.weekPlan ?? days);
+      logEvent("training_week_plan_set", {});
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "network" };
+    } finally {
+      setSavingWeekPlan(false);
+    }
+  }, []);
+
+  // Fjern holdets ugerytme (tilbage til flad sæson-intensitet hver dag). Returnerer { ok, error? }.
+  const clearWeekPlan = useCallback(async () => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    setSavingWeekPlan(true);
+    try {
+      const res = await fetch(`${API}/api/training/week-plan`, { method: "DELETE", headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || "failed" };
+      setWeekPlanState(null);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "network" };
+    } finally {
+      setSavingWeekPlan(false);
+    }
+  }, []);
+
   // Kør daglig træning (POST /api/training/run-today). Returnerer { ok, tickDate, report }
   // ved succes, null ved 409 (allerede kørt / deaktiveret / ingen sæson), eller { ok: false }.
   const runToday = useCallback(async () => {
@@ -170,5 +213,9 @@ export function useTraining() {
     }
   }, [refresh]);
 
-  return { slots, plans, teamId, enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading, savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh };
+  return {
+    slots, plans, teamId, enabled, todayRun, condition, progress, trainability, smartDefaultFocus,
+    weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
+    setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
+  };
 }

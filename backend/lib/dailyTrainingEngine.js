@@ -11,8 +11,9 @@
 // (assistant, bonus=false). Ingen nondeterminisme udover `now`-default +
 // updated_at-timestamps.
 
-import { copenhagenDateString } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { resolveProgram, applyDailyTick, computeAcademySeasonCeiling } from "./dailyTraining.js";
+import { resolveDayIntensity } from "./training.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
 import { buildCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -107,6 +108,7 @@ export async function runTeamTrainingDay({
     { data: abilityRows, error: abilityError },
     { data: planRows, error: planError },
     { data: conditionRows, error: conditionError },
+    { data: weekPlanRow, error: weekPlanError },
   ] = await Promise.all([
     supabase.from("rider_derived_abilities").select("*").in("rider_id", riderIds),
     supabase.from("training_plans")
@@ -114,15 +116,25 @@ export async function runTeamTrainingDay({
       .eq("team_id", teamId)
       .eq("season_id", seasonId),
     supabase.from("rider_condition").select("*").in("rider_id", riderIds),
+    // #1895 PR 1: holdets ugentlige rytme (rider_id IS NULL — pr-rytter-override
+    // er PR 2, ikke brugt her endnu). Højst én row pr. hold (partial unique index).
+    supabase.from("training_week_plans")
+      .select("days")
+      .eq("team_id", teamId)
+      .is("rider_id", null)
+      .maybeSingle(),
   ]);
 
   if (abilityError) throw new Error(`abilities load: ${abilityError.message}`);
   if (planError) throw new Error(`plans load: ${planError.message}`);
   if (conditionError) throw new Error(`condition load: ${conditionError.message}`);
+  if (weekPlanError) throw new Error(`week plan load: ${weekPlanError.message}`);
 
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
   const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
   const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
+  const teamWeekDays = weekPlanRow?.days ?? null;
+  const weekday = copenhagenWeekdayKey(tickDate);
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
@@ -147,6 +159,15 @@ export async function runTeamTrainingDay({
     const cond = condByRider.get(rider.id) ?? { form: 50, fatigue: 0, injured_until: null, injury_cause: null };
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);
+    // #1895 PR 1: lagdelt ugerytme-opløsning — rører KUN intensitet, aldrig
+    // program.focus. riderOverrideDays er altid null her (PR 2 tilføjer rytter-
+    // pr-dag-override; kaldestedet skifter da, resolveDayIntensity er uændret).
+    program.intensity = resolveDayIntensity({
+      weekday,
+      riderOverrideDays: null,
+      teamWeekDays,
+      planIntensity: program.intensity,
+    });
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};

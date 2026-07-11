@@ -22,6 +22,42 @@ export const TRAINING_INTENSITIES = Object.freeze(["rest", "easy", "normal", "ha
 // Display-risiko pr. intensitet (spejler backend setbackChance, i procent).
 export const TRAINING_SETBACK_PCT = Object.freeze({ easy: 0, normal: 5, hard: 18 });
 
+// #1895 PR 1: ugentlig træningsrytme — display-helpers. Spejrer backend
+// (backend/lib/training.js WEEKDAY_KEYS/isValidWeekPlanDays/resolveDayIntensity)
+// men er ren visning: sandheden om dagens EFFEKTIVE intensitet beregnes af
+// motoren (dailyTrainingEngine.js) ved dagens tick. Bruges KUN til at markere
+// rækker hvor rytmen ville afvige fra rytterens sæson-intensitet lige nu.
+export const WEEKDAY_KEYS = Object.freeze(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+
+export function isValidWeekPlanDays(days) {
+  if (!days || typeof days !== "object" || Array.isArray(days)) return false;
+  const keys = Object.keys(days);
+  if (keys.length !== WEEKDAY_KEYS.length) return false;
+  for (const key of keys) if (!WEEKDAY_KEYS.includes(key)) return false;
+  for (const weekday of WEEKDAY_KEYS) {
+    const entry = days[weekday];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    if (!isValidIntensity(entry.intensity)) return false;
+  }
+  return true;
+}
+
+// Ugedags-nøgle for en Date i BRUGERENS lokale tid (display-only — motoren
+// bruger Copenhagen-tid server-side; en visnings-hint kan afvige i sjældne
+// tidszone-kanttilfælde uden konsekvens, da den aldrig styrer noget selv).
+const WEEKDAY_ORDER = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+export function weekdayKeyForDate(date = new Date()) {
+  return WEEKDAY_ORDER[date.getDay()];
+}
+
+// Samme lagdeling som backend resolveDayIntensity, uden rytter-override (PR 2).
+export function resolveDayIntensityDisplay({ weekday, teamWeekDays, planIntensity }) {
+  const teamDay = teamWeekDays?.[weekday]?.intensity;
+  if (isValidIntensity(teamDay)) return teamDay;
+  if (isValidIntensity(planIntensity)) return planIntensity;
+  return "normal";
+}
+
 export function isValidFocus(focus) {
   return Object.prototype.hasOwnProperty.call(TRAINING_FOCUS_ABILITIES, focus);
 }

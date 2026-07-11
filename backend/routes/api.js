@@ -126,7 +126,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -1569,9 +1569,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
 
-    // Today's run-row + condition + progress — batched (max 3 ekstra queries mod DB).
+    // Today's run-row + condition + progress + holdets ugerytme (#1895 PR 1) —
+    // batched (max 4 ekstra queries mod DB).
     const todayDate = copenhagenDateString(new Date());
-    const [todayRunResult, conditionResult, progressResult] = await Promise.all([
+    const [todayRunResult, conditionResult, progressResult, weekPlanResult] = await Promise.all([
       activeSeasonId
         ? supabase
             .from("training_day_runs")
@@ -1592,9 +1593,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
             .select("rider_id, ability_progress")
             .in("rider_id", riderIds)
         : Promise.resolve({ data: [] }),
+      supabase
+        .from("training_week_plans")
+        .select("days")
+        .eq("team_id", teamId)
+        .is("rider_id", null)
+        .maybeSingle(),
     ]);
 
     const todayRun = todayRunResult.data ?? null;
+    const weekPlan = weekPlanResult.data?.days ?? null;
 
     // Byg condition-map: rider_id → { form, fatigue, injured_until, risk }
     // risk = injuryRisk med planlagt intensitet for dagen.
@@ -1617,7 +1625,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       progress[row.rider_id] = row.ability_progress ?? {};
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1747,6 +1755,68 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
       plans: next.plans,
       slots: next.slots,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/training/week-plan — sæt/opdatér holdets ugentlige træningsrytme (#1895
+// PR 1). Body: { days }. Rører ALDRIG fokus (bor kun i training_plans). Upsert på
+// (team_id) WHERE rider_id IS NULL (partial unique index, database/2026-07-11-
+// training-week-plans.sql). SKAL stå FØR POST/DELETE /training/:riderId — ellers
+// matcher Express "week-plan" som et :riderId (samme rækkefølge-fælde som
+// run-today/bulk ovenfor, #1479).
+router.put("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { days } = req.body ?? {};
+  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  try {
+    // Manuel select-then-write i stedet for .upsert(onConflict): PostgREST kan ikke
+    // udtrykke WHERE-predikatet på vores PARTIAL unique index (team_id) WHERE
+    // rider_id IS NULL via onConflict-parameteren, så ON CONFLICT-inferens ville
+    // fejle ("no unique or exclusion constraint matching"). Race mellem to samtidige
+    // PUT'er fra samme team er ufarlig: begge ender med samme (team_id, rider_id
+    // NULL) target-row-indhold vundet af sidste skriv.
+    const { data: existing, error: selErr } = await supabase
+      .from("training_week_plans")
+      .select("id")
+      .eq("team_id", req.team.id)
+      .is("rider_id", null)
+      .maybeSingle();
+    if (selErr) throw new Error(selErr.message);
+
+    const now = new Date().toISOString();
+    if (existing) {
+      const { error: updErr } = await supabase
+        .from("training_week_plans")
+        .update({ days, updated_at: now })
+        .eq("id", existing.id);
+      if (updErr) throw new Error(updErr.message);
+    } else {
+      const { error: insErr } = await supabase
+        .from("training_week_plans")
+        .insert({ team_id: req.team.id, rider_id: null, days, updated_at: now });
+      if (insErr) throw new Error(insErr.message);
+    }
+    res.json({ ok: true, weekPlan: days });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/training/week-plan — fjern holdets ugerytme (tilbage til flad
+// sæson-intensitet hver dag). Rytterne rammer ALDRIG en manglende row (motoren
+// falder tilbage til planIntensity/"normal" i resolveDayIntensity).
+router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { error: delErr } = await supabase
+      .from("training_week_plans")
+      .delete()
+      .eq("team_id", req.team.id)
+      .is("rider_id", null);
+    if (delErr) throw new Error(delErr.message);
+    res.json({ ok: true, weekPlan: null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
