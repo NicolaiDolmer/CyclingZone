@@ -148,6 +148,15 @@
           "AI-ryttere kan ikke modtage direkte tilbud; de skal købes via auktion."
         ]
       },
+      "proposeSwap": {
+        "title": "Foreslå en byttehandel",
+        "steps": [
+          "Find rytteren du vil bytte med og gå til deres profilside.",
+          "Klik '⇄ Foreslå byttehandel', vælg en af dine egne ryttere at tilbyde, og tilføj evt. en kontant-justering.",
+          "Klik 'Send byttehandel'. Den anden manager modtager en notifikation.",
+          "Eksisterende bytteforslag vises stadig under Modtagne tilbud og Sendte tilbud på Transfers-siden, hvor du kan acceptere, give modbud eller trække dem tilbage."
+        ]
+      },
       "receiveAndReply": {
         "title": "Modtage og besvare tilbud",
         "text": "Gå til Transfers, Modtagne tilbud. Her ser du alle tilbud på dine ryttere. Du kan acceptere, afvise eller sende et modbud med din egen pris."

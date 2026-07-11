@@ -53,7 +53,6 @@ const RiderComparePage = lazy(() => import("./pages/RiderComparePage"));
 const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
-const HallOfFamePage = lazy(() => import("./pages/HallOfFamePage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
@@ -245,7 +244,9 @@ export default function App() {
             <Route path="watchlist" element={<WatchlistPage />} />
             <Route path="help" element={<HelpPage />} />
             <Route path="rules" element={<RulesPage />} />
-            <Route path="hall-of-fame" element={<HallOfFamePage />} />
+            {/* #2359: HoF-fladen afløses af verdenshistorik (S3); route redirecter, side-kode
+                bevares indtil narrativ-fladen erstatter den — se HallOfFamePage.jsx. */}
+            <Route path="hall-of-fame" element={<Navigate to="/standings" replace />} />
             <Route path="season-preview" element={<Navigate to="/standings?view=strength" replace />} />
             <Route path="head-to-head" element={<Navigate to="/standings?compare=1" replace />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
