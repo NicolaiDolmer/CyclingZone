@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.85",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Focus options now show why a focus does or doesn't suit a rider",
+          "body": "Setting a training focus that clashed with a rider's type used to look identical to one that suits them, so a Sprint focus on a pure Climber quietly went nowhere with no explanation. The focus dropdown now marks each option, and a rider whose current focus is a poor fit gets a small notice next to the focus field explaining that rider type and hidden potential set a ceiling per ability. The help guide and the on-page focus guide explain the same gating in plain language. Exact caps and hidden potential values stay hidden, only the coarse fit is shown."
+        },
+        "da": {
+          "title": "Fokus-mulighederne viser nu hvorfor et fokus passer eller ikke passer til en rytter",
+          "body": "At sætte et træningsfokus der clasher med en rytters type så tidligere identisk ud med ét der passer, så et spurt-fokus på en ren klatrer stille rykkede ingenting uden nogen forklaring. Fokus-dropdownen mærker nu hver mulighed, og en rytter hvis nuværende fokus passer dårligt får en lille besked ved siden af feltet, der forklarer at ryttertype og skjult potentiale sætter et loft pr. evne. Hjælpeguiden og fokus-guiden på siden forklarer den samme gating i almindeligt sprog. Præcise lofter og skjulte potentiale-værdier forbliver skjulte, kun det grove match vises."
+        },
+        "refs": [1974]
+      }
+    ]
+  },
+  {
     "version": "6.84",
     "date": "2026-07-11",
     "label": "Beta",

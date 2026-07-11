@@ -11,7 +11,7 @@
 // isoleret og køres deterministisk i season-transition (genbruger seededUnit fra
 // riderProgression for reproducerbar risiko).
 
-import { seededUnit } from "./riderProgression.js";
+import { seededUnit, signatureFactor, PROGRESSION_CONFIG } from "./riderProgression.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
 export const TRAINING_CONFIG = Object.freeze({
@@ -157,6 +157,29 @@ export function partitionBulkTrainingTargets({
 //   seasonNumber : seed-komponent (samme sæson → samme udfald)
 // Returnerer null hvis ingen/ugyldig plan, ellers
 //   { focusAbilities:Set<string>, focusMult:number, offFocusMult:number, setbackHit:boolean }.
+// #1974: coarse, type-derived trainability-signal pr. fokus — UI-hint om HVORFOR
+// et fokus knap ikke rykker en given rytter. Udledes UDELUKKENDE af
+// signatureFactor(primaryType, ability) (riderProgression.js) — INGEN caps eller
+// potentiale eksponeres (server-hidden per #1162). Én af:
+//   "strength" — mindst én fokus-evne er signatur (positiv type-vægt, factor 1.0)
+//   "blocked"  — ALLE fokus-evner er modsatte (negativ type-vægt, factor 0)
+//   "limited"  — resten (neutral/off-type-blanding, factor offTypeHeadroomFactor)
+// Ukendt/manglende type → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
+export function focusTrainability(primaryType, cfg = PROGRESSION_CONFIG) {
+  const out = {};
+  for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
+    if (primaryType == null) {
+      out[focusKey] = "limited";
+      continue;
+    }
+    const factors = abilities.map((ability) => signatureFactor(primaryType, ability, cfg));
+    if (factors.some((f) => f >= 1.0)) out[focusKey] = "strength";
+    else if (factors.every((f) => f === 0)) out[focusKey] = "blocked";
+    else out[focusKey] = "limited";
+  }
+  return out;
+}
+
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {
   if (!plan || !isValidFocus(plan.focus) || !isValidIntensity(plan.intensity, cfg)) return null;
   const focusAbilities = new Set(TRAINING_FOCUSES[plan.focus]);

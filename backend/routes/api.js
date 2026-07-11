@@ -126,7 +126,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -1551,10 +1551,17 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     const { data: riders } = await supabase
       .from("riders")
-      .select("id")
+      .select("id, primary_type")
       .eq("team_id", teamId)
       .eq("is_retired", false);
     const riderIds = (riders ?? []).map((r) => r.id);
+
+    // #1974: coarse trainability-signal pr. rytter+fokus, udledt AF TYPEN alene
+    // (ingen caps/potentiale eksponeres — server-hidden per #1162).
+    const trainability = {};
+    for (const rider of riders ?? []) {
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null);
+    }
 
     // Today's run-row + condition + progress — batched (max 3 ekstra queries mod DB).
     const todayDate = copenhagenDateString(new Date());
@@ -1604,7 +1611,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       progress[row.rider_id] = row.ability_progress ?? {};
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

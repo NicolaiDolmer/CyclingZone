@@ -25,6 +25,7 @@ export function useTraining() {
   const [todayRun, setTodayRun] = useState(null); // { executed_by, bonus_applied, report, tick_date, created_at } | null
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
+  const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -44,6 +45,7 @@ export function useTraining() {
         setTodayRun(data.todayRun ?? null);
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
+        setTrainability(data.trainability ?? {});
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -165,5 +167,5 @@ export function useTraining() {
     }
   }, [refresh]);
 
-  return { slots, plans, teamId, enabled, todayRun, condition, progress, loading, savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh };
+  return { slots, plans, teamId, enabled, todayRun, condition, progress, trainability, loading, savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh };
 }
