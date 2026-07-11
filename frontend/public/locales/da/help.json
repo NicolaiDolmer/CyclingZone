@@ -646,7 +646,7 @@
       },
       "costs": {
         "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",
-        "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger — budgettér den som en tilbagevendende post, ikke kun den indledende pris."
+        "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger. Budgettér den som en tilbagevendende post, ikke kun den indledende pris."
       }
     },
     "raceSelection": {
