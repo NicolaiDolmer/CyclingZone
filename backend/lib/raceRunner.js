@@ -6,7 +6,8 @@
 //   1. Hent etape-profiler (race_stage_profiles) + startfelt (race_entries, med
 //      per-hold autopick for hold UDEN entries — F1=B-strategi udvidet i #1307;
 //      hold med manager-udtagne entries røres ikke).
-//   2. Simulér hver etape (seed = stableSeed(`${race.id}:${stage}`)).
+//   2. Simulér hver etape (seed = stableSeed(raceSeedInput(race.id, stage)) —
+//      server-side saltet via raceSeedSalt.js, usaltet når env ikke er sat, #2351).
 //   3. Aggregér på tværs af etaper: GC efter kumulativ tid (F3=B), + point/bjerg/
 //      ungdom/hold-klassementer. Emission (superset af pcmResultsImport.js — #2081
 //      udvidede mellem-etaperne fra rank-1-trøjeholdere til FULDE klassementer;
@@ -36,6 +37,7 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
+import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
@@ -198,7 +200,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     for (const se of simEntrants) se.fatigue = fatigueSeqById.get(se.rider_id)[i];
     const stageNumber = stage.stage_number || 1;
     const isFinal = i === stagesSorted.length - 1;
-    const seed = stableSeed(`${race.id}:${stageNumber}`);
+    const seed = stableSeed(raceSeedInput(race.id, stageNumber));
     const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed });
     // #1499: deskriptive udbruds-etiketter for denne etapes finish-order (ren read).
     const breakawayStatus = deriveBreakawayStatus(ranked);
@@ -207,6 +209,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     runs.push({
       stage_number: stageNumber,
       seed,
+      salt_version: activeSaltVersion(),
       engine_version: ENGINE_VERSION,
       entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
       input_checksum: stableSeed(JSON.stringify({
@@ -728,6 +731,10 @@ async function persistRuns({ supabase, race, runs, source = null }) {
     entrant_snapshot: r.entrant_snapshot,
     input_checksum: r.input_checksum,
     source,
+    // #2351: salt_version-kolonnen findes først efter migrationen er applied —
+    // spread KUN når sat, så insert forbliver kompatibel med prod FØR migrationen
+    // (salten aktiveres alligevel først når ejeren sætter env efter migrationen).
+    ...(r.salt_version != null ? { salt_version: r.salt_version } : {}),
   }));
   // Idempotent: slet tidligere runs for de samme etaper før insert.
   await supabase.from("race_simulation_runs").delete().eq("race_id", race.id)
@@ -956,7 +963,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     ...(e.race_role ? { race_role: e.race_role } : {}),
   }));
 
-  const seed = stableSeed(`${race.id}:${stageNumber}`);
+  const seed = stableSeed(raceSeedInput(race.id, stageNumber));
   const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed });
   // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
   const breakawayStatus = deriveBreakawayStatus(ranked);
@@ -965,6 +972,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const runs = [{
     stage_number: stageNumber,
     seed,
+    salt_version: activeSaltVersion(),
     engine_version: ENGINE_VERSION,
     entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
     input_checksum: stableSeed(JSON.stringify({
@@ -1028,7 +1036,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
 /**
  * Stage-by-stage afvikling (WS1 Fase 3): afvikl PRÆCIS én etape (0-indekseret
  * stageIndex). #2072: dagens etape simuleres ISOLERET (seed = stableSeed(
- * `${race.id}:${stageNumber}`) er uændret); klassementerne akkumuleres fra de
+ * raceSeedInput(race.id, stageNumber)) — #2351: server-side saltet via
+ * raceSeedSalt.js, usaltet når env ikke er sat); klassementerne akkumuleres fra de
  * persisterede etaperækker via buildStageRowsAccumulated. Etape 1..N-1's DB-rækker
  * røres ikke — den idempotente delete-then-insert er afgrænset til denne etape.
  *

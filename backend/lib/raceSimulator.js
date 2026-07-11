@@ -272,7 +272,9 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
 }
 
 // FNV-1a 32-bit → heltals-seed fra en streng. Eksporteret så raceRunner udleder
-// en stabil per-etape-seed (`${race.id}:${stage_number}`). Deterministisk.
+// en stabil per-etape-seed (`${race.id}:${stage_number}`, #2351: server-side
+// saltet via raceSeedSalt.js før den når hertil — usaltet når salt-env ikke er
+// sat). Deterministisk (samme input → samme seed, uanset salt).
 export function stableSeed(str) {
   let h = 0x811c9dc5;
   const s = String(str);

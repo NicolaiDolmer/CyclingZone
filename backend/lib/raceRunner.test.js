@@ -9,7 +9,7 @@ import {
 } from "./raceRunner.js";
 import { isRaceEngineV2Enabled } from "./raceEngineFlag.js";
 import { PRIZE_PER_POINT } from "./economyConstants.js";
-import { ABILITY_KEYS } from "./raceSimulator.js";
+import { ABILITY_KEYS, stableSeed } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
 const ALLOWED_RESULT_TYPES = new Set([
@@ -522,6 +522,71 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   assert.equal(upd.obj.status, "completed");
   // run-snapshot persisteret.
   assert.ok(supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert"));
+});
+
+// #2351: Race v3 salt — provably-fair seed-salt på resultat-seeds. Uden env sat
+// forbliver adfærden identisk til før (ingen salt_version-nøgle på insert-rows,
+// legacy-kompatibelt med prod FØR migrationen er applied). Med salt-env sat
+// stempler runs deres salt_version og seedet afviger fra det usaltede seed.
+const SALT_ENV_KEYS = ["RACE_ENGINE_SEED_SALT", "RACE_ENGINE_SEED_SALT_VERSION"];
+function clearSaltEnv() {
+  for (const k of SALT_ENV_KEYS) delete process.env[k];
+}
+
+test("#2351 simulateRace: uden salt-env har race_simulation_runs-insert IKKE salt_version-nøglen", async () => {
+  clearSaltEnv();
+  try {
+    const supabase = makeSupabase({
+      race_stage_profiles: STAGES_3,
+      race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+      riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+      rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+      race_points: [],
+    });
+    await simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+      recomputeRaceDays: async () => {},
+    });
+    const insert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+    assert.ok(insert, "race_simulation_runs blev ikke skrevet");
+    for (const row of insert.rows) {
+      assert.ok(!("salt_version" in row), "salt_version-nøgle må IKKE være til stede uden salt-env (prod-kompatibilitet før migration)");
+    }
+  } finally {
+    clearSaltEnv();
+  }
+});
+
+test("#2351 simulateRace: med salt-env sat har rows salt_version=1 og seedet afviger fra usaltet seed", async () => {
+  clearSaltEnv();
+  try {
+    process.env.RACE_ENGINE_SEED_SALT = "test-salt-for-raceRunner";
+    const supabase = makeSupabase({
+      race_stage_profiles: STAGES_3,
+      race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+      riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+      rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+      race_points: [],
+    });
+    await simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+      recomputeRaceDays: async () => {},
+    });
+    const insert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+    assert.ok(insert, "race_simulation_runs blev ikke skrevet");
+    assert.ok(insert.rows.length > 0);
+    for (const row of insert.rows) {
+      assert.equal(row.salt_version, 1);
+      const unsaltedSeed = stableSeed(`${STAGE_RACE.id}:${row.stage_number}`);
+      assert.notEqual(row.seed, unsaltedSeed, `etape ${row.stage_number}: saltet seed skal afvige fra usaltet seed`);
+    }
+  } finally {
+    clearSaltEnv();
+  }
 });
 
 // #1187 · Board-weekend-wiring: simulateRace kalder processBoardWeekend med
