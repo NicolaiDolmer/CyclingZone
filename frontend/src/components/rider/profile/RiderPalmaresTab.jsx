@@ -90,11 +90,11 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
     { key: "jerseyDays", value: trophy.jerseyDays },
     { key: "podiums", value: trophy.podiums },
   ];
-  const jerseyDayBreakdown = DAY_TYPES
+  // Trøjedage-breakdown: én linje pr. trøjetype med dage > 0, fuld sætning via
+  // ICU-plural i i18n ("Leader jersey · 1 day" / "Førertrøje · 1 dag").
+  const jerseyDayLines = DAY_TYPES
     .map((k) => ({ k, n: trophy.jerseyDaysByType[k] || 0 }))
-    .filter((d) => d.n > 0)
-    .map((d) => `${t(`profile.palmares.jerseyDayType.${d.k}`)} ${d.n}`)
-    .join(" · ");
+    .filter((d) => d.n > 0);
 
   const totalDefs = [
     { key: "races", value: totals.totalRaces },
@@ -118,10 +118,14 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
             </div>
           ))}
         </div>
-        {jerseyDayBreakdown && (
-          <p className="m-0 mt-3 pt-3 border-t border-cz-border text-[11px] text-cz-3 font-mono tabular-nums">
-            {jerseyDayBreakdown}
-          </p>
+        {jerseyDayLines.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-cz-border flex flex-col gap-1">
+            {jerseyDayLines.map((d) => (
+              <p key={d.k} className="m-0 text-[11px] text-cz-2 font-mono tabular-nums">
+                {t(`profile.palmares.jerseyDayLine.${d.k}`, { n: d.n })}
+              </p>
+            ))}
+          </div>
         )}
       </div>
 

@@ -219,15 +219,15 @@
         "gcWins": "GC-sejre",
         "oneDayWins": "Endagssejre",
         "stageWins": "Etapesejre",
-        "jerseyWins": "Trøjer",
-        "jerseyDays": "Trøjedage",
+        "jerseyWins": "Endelige trøjer",
+        "jerseyDays": "Dage i trøje",
         "podiums": "Podier"
       },
-      "jerseyDayType": {
-        "leader": "Fører",
-        "points_day": "Point",
-        "mountain_day": "Bjerg",
-        "young_day": "Ungdom"
+      "jerseyDayLine": {
+        "leader": "Førertrøje · {n, plural, one {# dag} other {# dage}}",
+        "points_day": "Pointtrøje · {n, plural, one {# dag} other {# dage}}",
+        "mountain_day": "Bjergtrøje · {n, plural, one {# dag} other {# dage}}",
+        "young_day": "Ungdomstrøje · {n, plural, one {# dag} other {# dage}}"
       },
       "totalsTitle": "Karrieretotaler",
       "totals": {

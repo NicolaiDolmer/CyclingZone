@@ -219,15 +219,15 @@
         "gcWins": "GC wins",
         "oneDayWins": "One-day wins",
         "stageWins": "Stage wins",
-        "jerseyWins": "Jerseys",
-        "jerseyDays": "Jersey days",
+        "jerseyWins": "Final jerseys",
+        "jerseyDays": "Days in jersey",
         "podiums": "Podiums"
       },
-      "jerseyDayType": {
-        "leader": "Leader",
-        "points_day": "Points",
-        "mountain_day": "Mountains",
-        "young_day": "Young rider"
+      "jerseyDayLine": {
+        "leader": "Leader jersey · {n, plural, one {# day} other {# days}}",
+        "points_day": "Points jersey · {n, plural, one {# day} other {# days}}",
+        "mountain_day": "Mountains jersey · {n, plural, one {# day} other {# days}}",
+        "young_day": "Young rider jersey · {n, plural, one {# day} other {# days}}"
       },
       "totalsTitle": "Career totals",
       "totals": {

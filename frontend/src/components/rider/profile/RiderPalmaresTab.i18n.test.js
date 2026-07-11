@@ -42,7 +42,7 @@ test("rider.json har profile.palmares-nøgler i både en og da (key-parity)", ()
   for (const key of [
     "trophyTitle",
     "trophy.gcWins", "trophy.oneDayWins", "trophy.stageWins", "trophy.jerseyWins", "trophy.jerseyDays", "trophy.podiums",
-    "jerseyDayType.leader", "jerseyDayType.points_day", "jerseyDayType.mountain_day", "jerseyDayType.young_day",
+    "jerseyDayLine.leader", "jerseyDayLine.points_day", "jerseyDayLine.mountain_day", "jerseyDayLine.young_day",
     "totalsTitle", "totals.races", "totals.winRate", "totals.points", "totals.prize",
     "seasonHonoursTitle", "teamFallback",
     "achievement.gcWin", "achievement.raceWin", "achievement.podium2", "achievement.podium3", "achievement.stageWin",
@@ -56,6 +56,14 @@ test("rider.json har profile.palmares-nøgler i både en og da (key-parity)", ()
     for (const key of flatKeys(tree)) {
       const value = key.split(".").reduce((o, k) => o?.[k], tree);
       assert.ok(!String(value).includes("—"), `${lngName} profile.palmares.${key} indeholder em-dash`);
+    }
+    // Trøjedage-linjerne skal pluralisere via ICU — ikke hardcoded ental/flertal.
+    for (const type of ["leader", "points_day", "mountain_day", "young_day"]) {
+      assert.match(
+        String(tree.jerseyDayLine[type]),
+        /\{n, plural,/,
+        `${lngName} profile.palmares.jerseyDayLine.${type} mangler ICU-plural`,
+      );
     }
   }
 });
