@@ -139,6 +139,7 @@
       "scouting": "Scouting",
       "history": "History",
       "results": "Results",
+      "palmares": "Palmarès",
       "interest": "Interest"
     },
     "switcher": {
@@ -211,6 +212,47 @@
       "emptySeason": "No results in this season.",
       "seasonShort": "S{n}",
       "loadError": "Results could not be loaded right now."
+    },
+    "palmares": {
+      "trophyTitle": "Trophy case",
+      "trophy": {
+        "gcWins": "GC wins",
+        "oneDayWins": "One-day wins",
+        "stageWins": "Stage wins",
+        "jerseyWins": "Jerseys",
+        "jerseyDays": "Jersey days",
+        "podiums": "Podiums"
+      },
+      "jerseyDayType": {
+        "leader": "Leader",
+        "points_day": "Points",
+        "mountain_day": "Mountains",
+        "young_day": "Young rider"
+      },
+      "totalsTitle": "Career totals",
+      "totals": {
+        "races": "Races",
+        "winRate": "Win rate",
+        "points": "Ranking points",
+        "prize": "Prize money"
+      },
+      "seasonHonoursTitle": "Season by season",
+      "teamFallback": "Unknown team",
+      "achievement": {
+        "gcWin": "Winner (GC)",
+        "raceWin": "Winner",
+        "podium2": "2nd place",
+        "podium3": "3rd place",
+        "stageWin": "Stage {n} winner",
+        "jersey": {
+          "points": "Points classification",
+          "mountain": "Mountains classification",
+          "young": "Young rider classification"
+        }
+      },
+      "emptyTitle": "No palmarès yet",
+      "emptyBody": "Every career starts blank. The first result writes the opening line.",
+      "loadError": "Palmarès could not be loaded right now."
     },
     "scouting": {
       "loading": "Loading scouting report...",
