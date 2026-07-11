@@ -8,7 +8,7 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186)/[
 ## 1 · NU (uge 29, 13-19/7)
 1. ⚪ **CZ Pro go-live** [#1903](https://github.com/NicolaiDolmer/CyclingZone/issues/1903) — EJER: Alunta-plan + tokens + testkøb (~1 t) → Claude: verificér + åbn salg + Founder-besked (tekst godkendes ordret).
 2. ⚪ **Flip-bølge** [#2357](https://github.com/NicolaiDolmer/CyclingZone/issues/2357) — talentspejder + faciliteter live for alle: EJER-admin-test (~15 min) → flip → announce → post-verify + patch notes.
-3. ⚪ **Race v3 start:** salt-PR [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) → S0 harness+dominans-baseline [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) (gate for alle senere slices).
+3. ✅ **Race v3 start FÆRDIG 11/7:** salt [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) ✅ + S0 harness+baseline [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) ✅ (PR #2364; baseline: [docs/audits/2026-07-11-race-v3-s0-baseline.md](audits/2026-07-11-race-v3-s0-baseline.md)) — næste v3-slice = S1 (punkt 6).
 4. ⚪ **Narrativ S1 palmarès-fundament** [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) (parallel worktree; #1993 ✅).
 5. ⚪ **Retention-scorecard v2** [#2360](https://github.com/NicolaiDolmer/CyclingZone/issues/2360) — gater betalt-marketing-GO [#1279](https://github.com/NicolaiDolmer/CyclingZone/issues/1279).
 

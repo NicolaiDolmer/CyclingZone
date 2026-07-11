@@ -26,11 +26,11 @@
 
 > **Gap-memo 11/7: ALLE 7 §9-beslutninger LÅST (A) samme aften** — [memo m. §10-eksekverings-log](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). MASTERPLAN omskrevet (ny kø-SSOT). 11 issues oprettet (#2351-#2361); #2224/#2034/#1176/#1997 scopet ind; #2217/#2218 frosset (claude:blocked). Session-disciplin: ≥2 ugentlige v3-sessions indtil S3 live.
 
-> **Race v3 salt (#2351): FÆRDIG 11/7 aften — PR #2363 merged, migration applied+verificeret, `RACE_ENGINE_SEED_SALT` SAT i Railway (ejer-go, ~21:50) og deploy SUCCESS.** Issue lukket. Verify næste løbsdag: nye `race_simulation_runs`-rækker har `salt_version=1`.
+> **Race v3 status 11/7 aften:** salt (#2351) ✅ lukket (verify næste løbsdag: nye runs har `salt_version=1`). **S0 harness+baseline (#2224) ✅ MERGED** (PR #2364, Fable-arkitekt + 3 sonnet-subagenter i worktree): dominans-metrik-lib + prod-population-snapshot (committet, 368 hold/5.650 ryttere) + sektion F-scorecard (`--enforce-dominance` = gate fra S1). **Baseline dokumenteret:** [docs/audits/2026-07-11-race-v3-s0-baseline.md](audits/2026-07-11-race-v3-s0-baseline.md) — max sæson-win-rate 87-89 % (bånd ≤45), hjælper-tab 0 (mål 10-30); reproducerer prod-symptomet. Issue #2224 åben (S1+S2 løser det). Sidefix: stale audit-whitelist `training_week_plans` fjernet (chore på main).
 >
-> **🎯 Next action:** Pick-up-klar UDEN ejer: [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline (ny session); parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** salt-env-flip (se ovenfor) · Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
+> **🎯 Next action:** Pick-up-klar UDEN ejer: **S1 work-cost [#2352](https://github.com/NicolaiDolmer/CyclingZone/issues/2352)** (kalibreres mod S0-baselinen); parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
 
-> **🤖 Working agent:** Claude Code (Fable) — #2224 Race v3 S0: dominans-harness + baseline (startet 11/7).
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
