@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.90",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Sort your auction history by price or time",
+          "body": "The Auction history table now has sortable Price and Time column headers, matching the same sort headers used elsewhere in the app. Sorting jumps back to the first page so the order always matches what's shown."
+        },
+        "da": {
+          "title": "Sortér din auktions-historik på pris eller tid",
+          "body": "Auktions-historikkens tabel har nu sorterbare kolonne-headers for Pris og Tid, med samme sorterings-udseende som resten af appen. Sortering hopper tilbage til side 1, så rækkefølgen altid matcher det der vises."
+        },
+        "refs": [2293]
+      }
+    ]
+  },
+  {
     "version": "6.89",
     "date": "2026-07-11",
     "label": "Beta",
