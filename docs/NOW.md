@@ -20,9 +20,11 @@
 
 > **Narrativ design 11/7 (Fable):** spec + content-batch leveret — [specs/2026-07-11-narrative-systems-design.md](superpowers/specs/2026-07-11-narrative-systems-design.md) + [drafts/2026-07-11-narrative-content-batch.md](superpowers/drafts/2026-07-11-narrative-content-batch.md) (recap v2, karrieremål/traits, verdenshistorik+klubmuseum som HoF-afløser, feed). Design-delen af MASTERPLAN-punkt 7 (#1145/#1147); ejer vælger slices (anbefalet S1 palmarès + S2 recap v2). Tier 2-vokabular koordinerer med race-engine-dybde-spec'en.
 
-> **🎯 Next action:** Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91 — lav en delbetaling, se Interest/Principal i Finance-historik). Eftersend rytter-ID til #2263. Åbne fix-kandidater: #2254-rest (RaceHub live-stage klikbar — kræver DOM-verify), #2270/#2274, admin-test-køen (talentspejder/faciliteter-flip).
+> **Race-engine-dybde design 11/7 (Fable):** komplet spec — [specs/2026-07-11-race-engine-depth-credibility-design.md](superpowers/specs/2026-07-11-race-engine-depth-credibility-design.md). Evidens (#2224, prod 11/7): felt-favoritter vinder 82-88 % (IRL-max ~35-40 %), 25 % af løb har 4+ samme hold i top 10. 5 søjler: work-cost-roller (S1) · dagsform+jour sans (S2) · roller/effort pr. etape #2034 (S3) · styrt/DNF #1176 (S4) · peaks+why-rapport+provably-fair-salt (S5-S6). S0-harness+baseline FØRST. **Ejer: godkend målbånd + 5 beslutninger i spec §16 før S1.**
 
-> **🤖 Working agent:** Claude Code (Fable) — race-engine v2-dybde design-spec (#2224 dominans + #1021/#1176/#2034), startet 11/7 aften.
+> **🎯 Next action:** Ejer-verify i prod: /training (#1894+#1895), rytterprofil højde/vægt+⇄Sammenlign (v6.89), auktions-historik-sort (v6.90), lån-split (v6.91 — lav en delbetaling, se Interest/Principal i Finance-historik). Eftersend rytter-ID til #2263. Læs+godkend race-engine-v3-spec §16 + narrativ-spec (slice-valg). Åbne fix-kandidater: #2254-rest, #2270/#2274, admin-test-køen (talentspejder/faciliteter-flip).
+
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
