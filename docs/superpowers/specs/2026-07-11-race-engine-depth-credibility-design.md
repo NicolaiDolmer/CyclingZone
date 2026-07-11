@@ -155,7 +155,7 @@ Fixer samme-hold-dominansen dér hvor den opstår: **arbejde for holdet skal kos
 - **Story-tags** genereres deterministisk af komponenterne og føder recaps/world feed/Discord: `outsider_win` (vinder uden ★★★), `favorite_collapse` (jour sans hos ★★★), `breakaway_survived`, `crash_ruined` (incident hos top-5-favorit), `helper_sacrifice` (hjælper med top-3-terrain endte 20+), `perfect_peak` (sejr i peak-vindue). Det er OOTP-almanakken oversat til cykelsport: hvert løb producerer en sætning der kan citeres og diskuteres.
 - Pre-race: startliste + favorit-bånd + form-pile. Post-race: forventning vs. udfald + why. Spillerens mentale model kan dannes OG testes — doktrinens ordret krav.
 
-**Provably fair (anti-exploit, lukker §3-hul 4):** et server-side `race_engine_seed_salt` (secret, aldrig klient-eksponeret, versioneret) blandes i alle seed-inputs: `stableSeed(saltV1:race.id:stage)`. Determinisme + idempotens bevares (salt er stabil), men ekstern pre-computation bliver umulig. Runs stempler `salt_version`. **Commit-reveal:** hash af salt publiceres ved sæsonstart; salt reveales ved sæsonslut → enhver kan efterregne at ingen resultater blev rigget. Ingen konkurrent i genren kan det. (Indførelsen ændrer fremtidige seeds — kørte løb er persisteret og røres ikke; flip sker ved en sæsongrænse.)
+**Provably fair (anti-exploit, lukker §3-hul 4):** et server-side `race_engine_seed_salt` (secret i Infisical, aldrig klient-eksponeret, versioneret) blandes i alle resultat-seed-inputs: `stableSeed(saltV1:race.id:stage)`. Parcours-seeds (stageProfileGenerator) saltes IKKE — etapeprofiler skal være offentlige. Determinisme + idempotens bevares (salt er stabil), men ekstern pre-computation bliver umulig. Runs stempler `salt_version`. **Commit-reveal:** hash af salt publiceres; salt reveales ved sæsonslut → enhver kan efterregne at ingen resultater blev rigget. Ingen konkurrent i genren kan det. **Ejer-beslutning 11/7: aktiveres OMGÅENDE som selvstændig første PR (før S0)** — flip lægges natten mellem to løbsdage; kørte løb er persisteret og røres ikke; et evt. igangværende etapeløbs resterende etaper får blot nye (stadig deterministiske) seeds. Commit-reveal-publiceringen (UI/announce) forbliver S6.
 
 ---
 
@@ -278,10 +278,13 @@ Kalibrerings-protokol pr. slice: 3 seeds (2026/7/42, som race:gate) × neutral/c
 2. **"Work-cost på −10..−30 pladser kan kalibreres uden at gøre roller forhadte."** Hjælper-ejere skal opleve mening, ikke straf. **Evidens for:** role-exploit-oraklet holder (kaptajn-setup optimalt for tophold); andel af manager-satte lineups der aktivt bruger helper/effort stiger efter S3; kvalitativ feedback på `helper_sacrifice`-historierne. **Evidens imod:** managere flytter systematisk ALT til free_role efter at have prøvet roller (revealed preference = rollerne opleves som tab); support-henvendelser om "min rytter blev ødelagt af en rolle han ikke valgte" (AI-autopick-hold).
 3. **"Seeded, forklaret uheld (jour sans + styrt) opleves som fair sport, ikke som skjult terning."** Hele styrt-søjlen står og falder med det. **Evidens for:** why-rapport-åbningsrate på løb med incidents; klage-rate pr. incident-ramt løb ≤ klage-rate generelt; story-tags citeres i Discord (historie-værdi realiseret). **Evidens imod:** spillere trækker ryttere fra brosten/descent-løb i målbar grad (risiko-aversion æder kalenderen); gentagne "refund"-krav efter DNF'er; incidents nævnt negativt i churn-svar. Fallback er defineret på forhånd: halvér raterne og fjern abandon-udfaldet (kun time_loss) uden at røre resten.
 
-## 16. Ejer-beslutninger (runde 1 besvaret 11/7)
+## 16. Ejer-beslutninger — ALLE LÅST 11/7 ✓ (spec klar til eksekvering)
 
-1. **Målbånd-tabellen (§12): GODKENDT** (ejer 11/7).
-2. **Work-cost-styrke:** markant (−10..−30 pladser, anbefalet — ellers løses #2224 ikke) vs. mild (−5..−15). **AFVENTER** — ejer bad om forklaring af begrebet; endelig størrelse låses uanset i harnesset.
-3. **Styrt i Grand Tours: GODKENDT** (ejer 11/7) — GC-favoritter kan DNF'e, lav rate; fallback (kun time_loss) står klar.
-4. **Peak-vinduer: GODKENDT** (ejer 11/7) — 2 pr. rytter pr. sæson, ren kalender-mekanik i v1.
-5. **Commit-reveal-salt:** **AFVENTER** — ejer spurgte til alternativer + om det kan gøres omgående. Afklaring: sæsongrænse-anbefalingen var ren kommunikations-æstetik; teknisk kan saltet aktiveres straks som lille selvstændig PR (env-secret i Infisical, seed-konstruktion i raceRunner, salt_version-stempel på runs; parcours-seeds saltes IKKE — de skal være offentlige). Ikke balance-følsomt (ændrer ingen fordelinger, kun den konkrete noise-sekvens); determinisme/idempotens bevares. Alternativer vurderet: privat repo (imod building-in-public, løser ikke prædikterbarhed reelt) og tilfældigt-men-persisteret seed (bryder ren input→output-determinisme) — begge fravalgt til fordel for salt.
+1. **Målbånd-tabellen (§12): GODKENDT.**
+2. **Work-cost-styrke: A — MARKANT** (−10..−30 pladser); endelig størrelse låses i harnesset mod målbåndene.
+3. **Styrt i Grand Tours: GODKENDT** — GC-favoritter kan DNF'e, lav rate; fallback (kun time_loss) står klar.
+4. **Peak-vinduer: GODKENDT** — 2 pr. rytter pr. sæson, ren kalender-mekanik i v1.
+5. **Salt: A — hemmeligt salt, aktiveres OMGÅENDE** som selvstændig første PR (før S0, se §10). Fravalgte alternativer: privat repo (imod building-in-public, løser ikke prædikterbarhed reelt), tilfældigt-men-persisteret seed (bryder ren input→output-determinisme).
+
+**Eksekverings-rækkefølge (ejer 11/7: udføres i SEPARATE sessions, intet påbegyndt i design-sessionen):**
+salt-PR → S0 (harness + baseline) → S1 → S2 → S3 → S4 → S5 → S6 (jf. §13). Hver slice: eget PR-flow, harness-gate, ejer merger migrationer manuelt.
