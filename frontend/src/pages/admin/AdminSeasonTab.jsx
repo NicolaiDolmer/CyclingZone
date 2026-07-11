@@ -6,8 +6,29 @@ import DeadlineReadinessSection from "../../components/admin/DeadlineReadinessSe
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { useTableSort } from "../../lib/useTableSort.js";
+import SortableTh from "../../components/ui/SortableTh.jsx";
 
 const API = import.meta.env.VITE_API_URL;
+
+// Sæson-transition preview — sorterbare kolonner (#2294). Default-sort er den
+// gamle hardkodede rækkefølge (division, dernæst rang), nu som en almindelig
+// sort-kolonne kolonner kan overstyre i stedet for en fast .sort()-kald.
+const SEASON_PREVIEW_SORT_ACCESSORS = {
+  team: (row) => row.team_name ?? null,
+  rank: (row) => (row.division ?? 99) * 1000 + (row.current_rank ?? 99),
+  balance: (row) => row.current_balance ?? null,
+  sponsor: (row) => row.next_season_sponsor ?? null,
+  interest: (row) => (row.loan_interest > 0 ? row.loan_interest : null),
+  salary: (row) => row.salary_deduction ?? null,
+  balance_after: (row) => row.balance_after ?? null,
+  emergency_loan: (row) => (row.needs_emergency_loan ? row.emergency_loan_amount ?? null : null),
+  satisfaction: (row) => row.board_satisfaction ?? null,
+};
+// Beløbskolonner + tilfredshed viser "bedst/størst øverst" ved første klik.
+const SEASON_PREVIEW_DESC_FIRST_KEYS = new Set([
+  "balance", "sponsor", "interest", "salary", "balance_after", "emergency_loan", "satisfaction",
+]);
 
 export default function AdminSeasonTab() {
   const { getAuth, showMsg, msg } = useAdminAuth();
@@ -23,6 +44,12 @@ export default function AdminSeasonTab() {
   const [loading, setLoading] = useState({});
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
+
+  const {
+    rows: sortedSeasonPreview, sort: seasonPreviewSort, sortDir: seasonPreviewSortDir, handleSort: handleSeasonPreviewSort,
+  } = useTableSort(seasonPreview || [], SEASON_PREVIEW_SORT_ACCESSORS, {
+    initialSort: "rank", initialDir: "asc", descFirstKeys: SEASON_PREVIEW_DESC_FIRST_KEYS,
+  });
 
   async function loadActiveAuctions() {
     try {
@@ -402,22 +429,31 @@ export default function AdminSeasonTab() {
         </div>
         {seasonPreview && (
           <div className="overflow-x-auto rounded-lg border border-cz-border">
-            <table data-sort-exempt="Admin saeson-transition preview; sortering er opfoelgning" className="w-full text-xs min-w-[760px]">
+            <table data-sortable className="w-full text-xs min-w-[760px]">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-3 py-2 text-left text-cz-3">Hold</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Balance</th>
-                  <th className="px-3 py-2 text-right text-cz-3">+ Sponsor (start)</th>
-                  <th className="px-3 py-2 text-right text-cz-3">− Renter</th>
-                  <th className="px-3 py-2 text-right text-cz-3">− Løn</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Balance efter start</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Nødlån?</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Tilfredshed</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Rang</th>
+                  <SortableTh sortKey="team" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-left">Hold</SortableTh>
+                  <SortableTh sortKey="balance" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">Balance</SortableTh>
+                  <SortableTh sortKey="sponsor" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">+ Sponsor (start)</SortableTh>
+                  <SortableTh sortKey="interest" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">− Renter</SortableTh>
+                  <SortableTh sortKey="salary" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">− Løn</SortableTh>
+                  <SortableTh sortKey="balance_after" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">Balance efter start</SortableTh>
+                  <SortableTh sortKey="emergency_loan" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">Nødlån?</SortableTh>
+                  <SortableTh sortKey="satisfaction" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">Tilfredshed</SortableTh>
+                  <SortableTh sortKey="rank" sort={seasonPreviewSort} sortDir={seasonPreviewSortDir} onSort={handleSeasonPreviewSort}
+                    className="px-3 py-2 text-right">Rang</SortableTh>
                 </tr>
               </thead>
               <tbody>
-                {seasonPreview.sort((a, b) => a.division - b.division || (a.current_rank || 99) - (b.current_rank || 99)).map(row => (
+                {sortedSeasonPreview.map(row => (
                   <tr key={row.team_id} className={`border-b border-cz-border ${row.needs_emergency_loan ? "bg-cz-danger-bg0/5" : ""}`}>
                     <td className="px-3 py-2">
                       <p className="text-cz-1 font-medium">{row.team_name}</p>

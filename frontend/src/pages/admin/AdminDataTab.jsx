@@ -8,8 +8,18 @@ import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import { FlagIcon, EditIcon, CheckIcon, XIcon } from "../../components/ui";
+import { useTableSort } from "../../lib/useTableSort.js";
+import SortableTh from "../../components/ui/SortableTh.jsx";
 
 const API = import.meta.env.VITE_API_URL;
+
+// Løbskalender — sorterbare kolonner (#2294). Klasse sorterer på den
+// menneskelæsbare label (samme rækkefølge som visningen), udgave numerisk.
+const RACES_SORT_ACCESSORS = {
+  name: (r) => r.name ?? null,
+  race_class: (r) => (r.race_class ? getRaceClassLabel(r.race_class) : null),
+  edition_year: (r) => (typeof r.edition_year === "number" ? r.edition_year : null),
+};
 
 export default function AdminDataTab() {
   const { getAuth, showMsg, msg } = useAdminAuth();
@@ -28,6 +38,9 @@ export default function AdminDataTab() {
   const [loading, setLoading] = useState({});
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
+
+  const { rows: sortedRaces, sort: racesSort, sortDir: racesSortDir, handleSort: handleRacesSort } =
+    useTableSort(races, RACES_SORT_ACCESSORS, { initialDir: "asc" });
 
   async function loadData() {
     const [s, r, rp] = await Promise.all([
@@ -177,17 +190,20 @@ export default function AdminDataTab() {
       <AdminSection title="Løbskalender">
         {races.length > 0 && (
           <div className="mb-5 overflow-hidden rounded-lg border border-cz-border">
-            <table data-sort-exempt="Admin loebskalender; sortering er opfoelgning" className="w-full text-xs">
+            <table data-sortable className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-3 py-2 text-left text-cz-3">Løb</th>
-                  <th className="px-3 py-2 text-left text-cz-3 hidden sm:table-cell">Klasse</th>
-                  <th className="px-3 py-2 text-left text-cz-3">Udgave</th>
+                  <SortableTh sortKey="name" sort={racesSort} sortDir={racesSortDir} onSort={handleRacesSort}
+                    className="px-3 py-2 text-left">Løb</SortableTh>
+                  <SortableTh sortKey="race_class" sort={racesSort} sortDir={racesSortDir} onSort={handleRacesSort}
+                    className="px-3 py-2 text-left hidden sm:table-cell">Klasse</SortableTh>
+                  <SortableTh sortKey="edition_year" sort={racesSort} sortDir={racesSortDir} onSort={handleRacesSort}
+                    className="px-3 py-2 text-left">Udgave</SortableTh>
                   <th className="px-3 py-2 text-right text-cz-3">Handlinger</th>
                 </tr>
               </thead>
               <tbody>
-                {races.map(r => (
+                {sortedRaces.map(r => (
                   <>
                     <tr key={r.id} className="border-b border-cz-border hover:bg-cz-subtle">
                       <td className="px-3 py-2.5">

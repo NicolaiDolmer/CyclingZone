@@ -1,5 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatCz } from "../../lib/marketValues";
+import { useTableSort } from "../../lib/useTableSort.js";
+import SortableTh from "../ui/SortableTh.jsx";
+
+// Økonomi-oversigt (OverviewView) — sorterbare kolonner (#2294). Filtrene
+// (division/søgning/AI/frosne) bestemmer HVILKE rækker der vises via
+// server-kaldet; sorteringen her afgør kun rækkefølgen af de rækker filtret
+// allerede har returneret.
+const ECONOMY_OVERVIEW_SORT_ACCESSORS = {
+  name: (r) => r.name ?? null,
+  division: (r) => (typeof r.division === "number" ? r.division : null),
+  balance: (r) => r.balance ?? null,
+  sponsor_income: (r) => r.sponsor_income ?? null,
+  total_debt: (r) => r.total_debt ?? null,
+  debt_ceiling: (r) => r.debt_ceiling ?? null,
+  debt_ratio: (r) => (typeof r.debt_ratio === "number" ? r.debt_ratio : null),
+  sustainability: (r) => (SUSTAINABILITY_LABEL[r.sustainability] || SUSTAINABILITY_LABEL.green).label,
+};
+// Beløb/ratio-kolonner viser størst/dyrest øverst ved første klik.
+const ECONOMY_OVERVIEW_DESC_FIRST_KEYS = new Set([
+  "balance", "sponsor_income", "total_debt", "debt_ceiling", "debt_ratio",
+]);
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -307,6 +328,9 @@ function OverviewView({ getAuth, onMsg }) {
     return { bal, debt, count: rows.length };
   }, [rows]);
 
+  const { rows: sortedRows, sort: overviewSort, sortDir: overviewSortDir, handleSort: handleOverviewSort } =
+    useTableSort(rows, ECONOMY_OVERVIEW_SORT_ACCESSORS, { descFirstKeys: ECONOMY_OVERVIEW_DESC_FIRST_KEYS });
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
@@ -351,17 +375,25 @@ function OverviewView({ getAuth, onMsg }) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table data-sort-exempt="Admin oekonomi-oversigt; har filtre, kolonne-sort er opfoelgning" className="w-full text-xs">
+        <table data-sortable className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
-              <th className="px-3 py-2 text-left text-cz-3 font-medium">Hold</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium">Div</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium">Balance</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden sm:table-cell">Sponsor</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium">Gæld</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Loft</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Ratio</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium">Status</th>
+              <SortableTh sortKey="name" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-left font-medium">Hold</SortableTh>
+              <SortableTh sortKey="division" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-left font-medium">Div</SortableTh>
+              <SortableTh sortKey="balance" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-right font-medium">Balance</SortableTh>
+              <SortableTh sortKey="sponsor_income" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-right font-medium hidden sm:table-cell">Sponsor</SortableTh>
+              <SortableTh sortKey="total_debt" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-right font-medium">Gæld</SortableTh>
+              <SortableTh sortKey="debt_ceiling" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-right font-medium hidden md:table-cell">Loft</SortableTh>
+              <SortableTh sortKey="debt_ratio" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-right font-medium hidden md:table-cell">Ratio</SortableTh>
+              <SortableTh sortKey="sustainability" sort={overviewSort} sortDir={overviewSortDir} onSort={handleOverviewSort}
+                className="px-3 py-2 text-left font-medium">Status</SortableTh>
               <th className="px-3 py-2 text-right text-cz-3 font-medium">Handling</th>
             </tr>
           </thead>
@@ -369,7 +401,7 @@ function OverviewView({ getAuth, onMsg }) {
             {rows.length === 0 && (
               <tr><td colSpan={9} className="px-3 py-4 text-center text-cz-3">{loading ? "Indlæser..." : "Ingen hold matcher filteret."}</td></tr>
             )}
-            {rows.map((r) => {
+            {sortedRows.map((r) => {
               const sus = SUSTAINABILITY_LABEL[r.sustainability] || SUSTAINABILITY_LABEL.green;
               const busy = pendingTeam === r.id;
               const canFreeze = !r.is_ai;
