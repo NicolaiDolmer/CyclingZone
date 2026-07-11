@@ -9,6 +9,9 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
 import { Card, Button, EmptyState, GavelIcon, PageLoader } from "../components/ui";
+import SortableTh from "../components/ui/SortableTh.jsx";
+import { useSortState } from "../lib/useTableSort.js";
+import { resolveAuctionHistorySort, DEFAULT_AUCTION_HISTORY_SORT } from "../lib/auctionHistorySort.js";
 
 function timeAgo(dateStr, t) {
   if (!dateStr) return "—";
@@ -61,6 +64,14 @@ export default function AuctionHistoryPage() {
   // der er synlige på den aktuelle side. Map: auctionId -> { bids, bidders }.
   const [bidStats, setBidStats] = useState({});
   const PER_PAGE = 30;
+  // #2293: server-side kolonne-sort. Kun direkte auctions-kolonner er
+  // sorterbare (se lib/auctionHistorySort.js); Pris + Tid er numeriske og
+  // starter faldende ved første klik ("højeste/nyeste øverst").
+  const { sort, sortDir, handleSort } = useSortState({
+    initialSort: DEFAULT_AUCTION_HISTORY_SORT.sort,
+    initialDir: DEFAULT_AUCTION_HISTORY_SORT.dir,
+    descFirstKeys: new Set(["actual_end", "current_price"]),
+  });
 
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -94,12 +105,16 @@ export default function AuctionHistoryPage() {
       query = query.neq("current_bidder_id", myTeamId).neq("seller_team_id", myTeamId);
     }
 
+    // #2293: server-side kolonne-sort via whitelist (resolveAuctionHistorySort);
+    // ukendt/manglende sort/dir falder tilbage til actual_end desc.
     // #249: sekundær sortering på beløb (faldende) så auktioner med samme
-    // sluttidspunkt vises med højeste bud først.
-    query = query
-      .order("actual_end", { ascending: false })
-      .order("current_price", { ascending: false })
-      .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+    // primær-sort-værdi (fx samme sluttidspunkt) vises med højeste bud først.
+    const { sort: safeSort, dir: safeDir } = resolveAuctionHistorySort(sort, sortDir);
+    query = query.order(safeSort, { ascending: safeDir === "asc" });
+    if (safeSort !== "current_price") {
+      query = query.order("current_price", { ascending: false });
+    }
+    query = query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
     const { data, count } = await query;
     const rows = data || [];
@@ -172,12 +187,14 @@ export default function AuctionHistoryPage() {
   }
 
   useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, sort, sortDir, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #246: hold pagination-state synkron med filter — uden dette kunne man stå
   // på side 5 i "Alle" og skifte til "Købt" som kun har 1 side, og lande på
   // tom side 5.
-  useEffect(() => { setPage(1); }, [filter]);
+  // #2293: samme reset ved kolonne-sort-skift, ellers kan man stå på side 5 og
+  // sortere om, og lande på en side der ikke matcher den nye rækkefølge.
+  useEffect(() => { setPage(1); }, [filter, sort, sortDir]);
 
   const { wins: myWins, sales: mySales, spent: totalSpent, earned: totalEarned } = stats;
 
@@ -251,7 +268,7 @@ export default function AuctionHistoryPage() {
         />
       ) : (
         <Card className="overflow-hidden">
-          <table data-sort-exempt="Server-pagineret; kolonne-sort kraever server-side sort-parametre (opfoelgning)" className="w-full text-sm">
+          <table data-sortable className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
                 <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colNation")}</th>
@@ -260,8 +277,14 @@ export default function AuctionHistoryPage() {
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("table.seller")}</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colWinner")}</th>
                 <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colBids")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("history.colPrice")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colTime")}</th>
+                <SortableTh sortKey="current_price" sort={sort} sortDir={sortDir} onSort={handleSort}
+                  className="px-4 py-3 text-right font-medium text-xs uppercase">
+                  {t("history.colPrice")}
+                </SortableTh>
+                <SortableTh sortKey="actual_end" sort={sort} sortDir={sortDir} onSort={handleSort}
+                  className="px-4 py-3 text-right font-medium text-xs uppercase hidden md:table-cell">
+                  {t("history.colTime")}
+                </SortableTh>
               </tr>
             </thead>
             <tbody>
