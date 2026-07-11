@@ -30,7 +30,7 @@
 >
 > **🎯 Next action:** Pick-up-klar UDEN ejer: [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) S0 harness+baseline (ny session); parallelt [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) palmarès (worktree). **Ejer:** salt-env-flip (se ovenfor) · Alunta+testkøb **13/7** (#1903) → Claude åbner salg · verify flip-bølgen live som alm. bruger (Klub + Scouting-central, #2357) · /training (#1894+#1895) + v6.89-6.91-punkterne. Eftersend rytter-ID til #2263.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — #2224 Race v3 S0: dominans-harness + baseline (startet 11/7).
 
 ## Standing context (forever-relaunch)
 
