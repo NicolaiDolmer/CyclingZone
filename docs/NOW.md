@@ -18,7 +18,7 @@
 
 > **Session 11/7 formiddag:** #2311 Klub-Slice 2 MERGED (PR #2331; tier-preview + facilitets-help, preview-verificeret EN+DA, lukket) · #2328 dashboard-opfølgninger MERGED (PR #2330, v6.81; ejer-verify i prod udestår — 5 punkter i issue-kommentar) · worktree-env-hul lukket (PreToolUse-hook, refs #994).
 
-> **Session 11/7 eftermiddag:** [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering — headers klikbare (SortableTh + useTableSort), erstatter listing-niveau `sortListings`; TeamTransferHistoryTab-flag-byt rettet (profit-panel fik reel sortering, historik-tabel fik korrekt `data-sortable`); guard i `tableSortIntent.test.js` hærdet til at kræve en RIGTIG sort-mekanisme bag `data-sortable`. v6.82, PR #2332 MERGED. Patch note-audit 8/7-11/7: 3 spillervendte huller fundet (#2301 nødlån, #2302 atomisk afdrag, #2308 board-paritet) → v6.83.
+> **Session 11/7 eftermiddag:** [#2329](https://github.com/NicolaiDolmer/CyclingZone/issues/2329) transfermarked-tabel-sortering — headers klikbare (SortableTh + useTableSort), erstatter listing-niveau `sortListings`; TeamTransferHistoryTab-flag-byt rettet (profit-panel fik reel sortering, historik-tabel fik korrekt `data-sortable`); guard i `tableSortIntent.test.js` hærdet til at kræve en RIGTIG sort-mekanisme bag `data-sortable`. v6.82, PR #2332 MERGED, #2329 lukket (ejer: gennemklik transfers-tabellerne i prod — preview har ikke mock, #1834). Patch note-audit 8/7-11/7: 3 huller → v6.83 (PR #2333 MERGED; #2301 nødlån, #2302 atomisk afdrag, #2308 board-paritet). **Discord-patch-roundup-udkast (v6.71→v6.83, uden scouting) ligger i sessionen — afventer ejer-go før post.**
 
 > **🤖 Working agent:** Ingen aktiv session.
 
