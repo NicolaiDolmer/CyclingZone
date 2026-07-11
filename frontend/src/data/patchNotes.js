@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.88",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Consistent sort arrows on rider rankings, team results and transfer history",
+          "body": "The sortable column headers on the rider rankings page, a team's race results tab and its transfer history tab now share the same arrow icon and highlight style as the rest of the app, instead of each table using its own look. No change to what you can sort by or how — just a more consistent feel when comparing columns."
+        },
+        "da": {
+          "title": "Ensartede sorterings-pile på rangliste, resultater og transferhistorik",
+          "body": "De sorterbare kolonne-headers på rytter-ranglisten, et holds resultat-fane og dets transferhistorik-fane bruger nu samme pil-ikon og fremhævnings-stil som resten af appen, i stedet for at hver tabel havde sit eget look. Ingen ændring i hvad eller hvordan du kan sortere — bare et mere ensartet udtryk når du sammenligner kolonner."
+        },
+        "refs": [2295]
+      }
+    ]
+  },
+  {
     "version": "6.87",
     "date": "2026-07-11",
     "label": "Beta",
