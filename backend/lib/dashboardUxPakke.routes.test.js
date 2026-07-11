@@ -76,3 +76,32 @@ test("recent-results: cache-keyExtras skelner mellem divisioner (ellers deler al
     "cached()-wrapperen skal have keyExtras der inkluderer league_division_id",
   );
 });
+
+// #2328 — rider-ranking hentede FØR ALLE sæsonens løb på tværs af samtlige ~15
+// puljer (423 løb / ~125k race_results-rækker i prod) via fetchAllRows' side-
+// for-side paginering, hvilket timede stille ud på Railway og lod ranglisten
+// forblive tom uden synlig fejl. Samme division-filter som recent-results (#2288
+// G) begrænser datasættet til managerens egen pulje.
+test("rider-ranking: races-query filtrerer på req.team.league_division_id (#2328, samme mønster som recent-results #2288 G)", () => {
+  const block = routeBlock('router.get("/dashboard/rider-ranking"');
+  assert.match(
+    block,
+    /req\.team\.league_division_id[\s\S]*?\.eq\("league_division_id",\s*req\.team\.league_division_id\)/,
+    "rider-ranking skal betinget filtrere races på holdets league_division_id",
+  );
+});
+
+test("rider-ranking: cache-keyExtras skelner mellem divisioner", () => {
+  const block = routeBlock('router.get("/dashboard/rider-ranking"');
+  assert.match(
+    block,
+    /keyExtras:\s*\(req\)\s*=>\s*String\(req\.team\?\.league_division_id/,
+    "cached()-wrapperen skal have keyExtras der inkluderer league_division_id",
+  );
+});
+
+test("rider-ranking: seasons/races Supabase-fejl kastes (throw), ikke tavst || []", () => {
+  const block = routeBlock('router.get("/dashboard/rider-ranking"');
+  assert.match(block, /seasonError/, "season-queryen skal tjekke error og kaste");
+  assert.match(block, /racesError/, "races-queryen skal tjekke error og kaste");
+});
