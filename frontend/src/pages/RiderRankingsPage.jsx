@@ -8,7 +8,8 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
 import { compareNationality } from "../lib/countryUtils";
-import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon, PageLoader } from "../components/ui";
+import { CalendarIcon, SearchIcon, PageLoader } from "../components/ui";
+import SortableTh from "../components/ui/SortableTh";
 import { useRiderRankings } from "../hooks/useRiderRankings";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
@@ -247,7 +248,7 @@ export default function RiderRankingsPage() {
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
                   {/* #802: nation sorterbar (IOC-kode) som på rytterdatabasen */}
-                  <SortHeader col={{ key: "nationality_code", labelKey: "rankings.thNation", shortKey: "rankings.thNation" }}
+                  <SortColHeader col={{ key: "nationality_code", labelKey: "rankings.thNation", shortKey: "rankings.thNation" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t}
                     className="px-2 py-3 text-left hidden sm:table-cell" />
 
@@ -255,21 +256,21 @@ export default function RiderRankingsPage() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thBadges")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
                   {/* Point — primær sortering, længst til venstre af stats */}
-                  <SortHeader col={{ key: "points", labelKey: "rankings.colPoints", shortKey: "rankings.shortPoints" }}
+                  <SortColHeader col={{ key: "points", labelKey: "rankings.colPoints", shortKey: "rankings.shortPoints" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   {/* Kategori-sejre */}
                   {WIN_COLS.map(col => (
-                    <SortHeader key={col.key} col={col} sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
+                    <SortColHeader key={col.key} col={col} sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   ))}
                   {/* Sejre i alt — til højre for kategorierne (#925) */}
-                  <SortHeader col={{ key: "total_wins", labelKey: "rankings.colTotalWins", shortKey: "rankings.shortTotalWins" }}
+                  <SortColHeader col={{ key: "total_wins", labelKey: "rankings.colTotalWins", shortKey: "rankings.shortTotalWins" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   {/* Tjent præmie */}
-                  <SortHeader col={{ key: "prize_earned", labelKey: "rankings.colPrize", shortKey: "rankings.shortPrize" }}
+                  <SortColHeader col={{ key: "prize_earned", labelKey: "rankings.colPrize", shortKey: "rankings.shortPrize" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   {/* Valgfri kolonner */}
                   {visibleOptionalCols.map(col => (
-                    <SortHeader key={col.key} col={col} sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
+                    <SortColHeader key={col.key} col={col} sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   ))}
                 </tr>
               </thead>
@@ -344,18 +345,19 @@ export default function RiderRankingsPage() {
   );
 }
 
-function SortHeader({ col, sortKey, sortAsc, onSort, t, className = "px-3 py-3 text-right" }) {
+// Konsolideret til den kanoniske SortableTh (#2295) — bevarer de to responsive
+// labels (kort på mobil, langt på desktop) som børn i stedet for egen th/pil-logik.
+function SortColHeader({ col, sortKey, sortAsc, onSort, t, className = "px-3 py-3 text-right" }) {
   return (
-    <th
-      onClick={() => onSort(col.key)}
-      className={`${className} text-xs font-medium cursor-pointer hover:text-cz-1 select-none transition-colors whitespace-nowrap
-        ${sortKey === col.key ? "text-cz-accent-t" : "text-cz-3"}`}>
+    <SortableTh
+      sortKey={col.key}
+      sort={sortKey}
+      sortDir={sortAsc ? "asc" : "desc"}
+      onSort={onSort}
+      className={`${className} text-xs font-medium whitespace-nowrap`}>
       <span className="hidden lg:inline">{t(col.labelKey)}</span>
       <span className="lg:hidden">{t(col.shortKey)}</span>
-      {sortKey === col.key && (
-        <span className="ms-1 inline-flex align-middle">{sortAsc ? <ArrowUpIcon size={10} aria-hidden="true" /> : <ArrowDownIcon size={10} aria-hidden="true" />}</span>
-      )}
-    </th>
+    </SortableTh>
   );
 }
 

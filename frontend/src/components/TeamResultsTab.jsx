@@ -9,22 +9,13 @@ import { useNpsPrompt } from "../hooks/useNpsPrompt";
 import NpsPrompt from "./NpsPrompt";
 import { logFirstEvent } from "../lib/logEvent";
 import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
+import SortableTh from "./ui/SortableTh";
 
 // #824 (Discord-feedback): Holdets resultatliste — kun pointgivende resultater,
 // med rytternavn pr. resultat. Attribution = race_results.team_id (holdet på
 // løbstidspunktet — samme felt som præmie-udbetalingen bogfører på), IKKE
 // rytterens nuværende hold, så solgte ryttere tæller stadig for det hold de
 // kørte for.
-
-function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
-  const active = current === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none py-2 text-${align} transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{dir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
 
 // Konkurrence-label pr. resultatrække. Etape viser etapenummer; gc på endagsløb
 // vises som endagsresultat (samme skelnen som rytter-ranglistens klassiker-sejre).
@@ -181,10 +172,10 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
               <tr className="border-b border-cz-border">
                 <th className="text-left py-2 text-cz-3">{t("results.thRace")}</th>
                 <th className="text-left py-2 text-cz-3">{t("results.thType")}</th>
-                <SortTh sortKey="rank" current={sortKey} dir={sortDir} onSort={handleSort} align="right">{t("results.thRank")}</SortTh>
+                <SortableTh sortKey="rank" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("results.thRank")}</SortableTh>
                 <th className="text-left py-2 ps-4 text-cz-3">{t("results.thRider")}</th>
-                <SortTh sortKey="points" current={sortKey} dir={sortDir} onSort={handleSort} align="right">{t("results.thPoints")}</SortTh>
-                <SortTh sortKey="prize" current={sortKey} dir={sortDir} onSort={handleSort} align="right">{t("results.thPrize")}</SortTh>
+                <SortableTh sortKey="points" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("results.thPoints")}</SortableTh>
+                <SortableTh sortKey="prize" sort={sortKey} sortDir={sortDir} onSort={handleSort} className="text-right py-2">{t("results.thPrize")}</SortableTh>
               </tr>
             </thead>
             <tbody>
