@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.96",
+    "date": "2026-07-12",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider palmares: career results, trophy case and season honours",
+          "body": "Every rider profile now has a Palmares tab. See career results grouped by season with the team they were achieved for, a trophy case with GC wins, one-day wins, stage wins, final jerseys and days in jersey, plus career totals like win rate, ranking points and prize money."
+        },
+        "da": {
+          "title": "Rytter-palmarès: karriereresultater, trofæskab og sæson-æresliste",
+          "body": "Alle rytterprofiler har nu en Palmarès-fane. Se karriereresultater grupperet pr. sæson med holdet de blev kørt hjem for, et trofæskab med GC-sejre, endagssejre, etapesejre, endelige trøjer og dage i trøje, plus karrieretotaler som win rate, ranglistepoint og præmiepenge."
+        },
+        "refs": [1997]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help and FAQ tuned to your questions",
+          "body": "Five new FAQ entries cover the most common questions from new managers: race signup, how GC and one-day wins are counted, starting budget and debt limits, academy intake and scouting slots, and the fatigue threshold for injury risk. The auction extension text now describes exactly how late bids roll into the next auction window."
+        },
+        "da": {
+          "title": "Hjælp og FAQ opdateret efter jeres spørgsmål",
+          "body": "Fem nye FAQ-punkter dækker de mest almindelige spørgsmål fra nye managere: løbstilmelding, hvordan GC- og endagssejre tælles, startbudget og gældsloft, akademi-indtag og scouting-pladser, samt træthedsgrænsen for skadesrisiko. Auktions-teksten beskriver nu præcist hvordan sene bud ruller ind i næste auktionsvindue."
+        },
+        "refs": [2150, 2184]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "More reliable race scheduling",
+          "body": "The race scheduler now skips a problematic race and continues with the rest instead of retrying it noisily, and internal alerts only fire when a stage is genuinely stuck. Groundwork for keeping every division group at exactly 24 teams also shipped."
+        },
+        "da": {
+          "title": "Mere pålidelig løbsafvikling",
+          "body": "Løbs-scheduleren springer nu et problematisk løb over og fortsætter med resten i stedet for at prøve igen med støj, og interne alarmer fyrer kun når en etape reelt sidder fast. Fundamentet for at holde hver divisionsgruppe på præcis 24 hold er også på plads."
+        },
+        "refs": [2251, 2187]
+      }
+    ]
+  },
+  {
     "version": "6.95",
     "date": "2026-07-12",
     "label": "Beta",
