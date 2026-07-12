@@ -312,6 +312,7 @@ export default function Layout() {
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
       { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
       { to: "/admin/attribution", label: t("nav.item.attribution") },
+      { to: "/admin/retention", label: t("nav.item.retention") },
     ] });
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i.to, i.exact, i.excludeQuery)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
@@ -467,6 +468,7 @@ export default function Layout() {
         { to: "/admin/waitlist", label: t("nav.item.waitlist") },
         { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
         { to: "/admin/attribution", label: t("nav.item.attribution") },
+      { to: "/admin/retention", label: t("nav.item.retention") },
       ] }]
     : baseGroups;
   const bottomItems = buildBottomItems(t);
