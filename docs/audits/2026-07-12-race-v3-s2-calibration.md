@@ -115,3 +115,30 @@ Deterministisk, ordens-bevarende: pr. etape komprimeres pre-noise terrain-scores
 | Risiko | Spillere oplever stjerner som devaluerede via støj (spec §15.1's "min stjerne vinder aldrig mere") | Stjerner devalueres STRUKTURELT i toppen (en 88-klatrer scorer som ~83 i et 82-felt) — skal kommunikeres/aldrig vises som rå tal; peak/form (S5) genskaber differentiering som SPILLER-styret | Discord-klagerne fortsætter |
 
 **Observation (neutral):** maxSeason ≤45 % nås af INGEN af vejene alene — den kræver formentlig S4-incidents + kalender-/population-arbejde (outlieren skal møde reel modstand, ikke kun varians). Hvis båndet fastholdes som S2-gate, blokerer det alle tre veje; som S4+-mål blokerer det ingen.
+
+---
+
+## Beslutning (ejer 12/7): OPTION 2 VALGT — τ-gab-kompression aktiveret
+
+**Ejer-go 12/7 (via orkestrator) på option 2** efter probe-appendix'et ovenfor. `TOP_COMPRESSION_TAU` flippet 1.0 → **0.5** i RACE_V3_TUNING (commit på S2-branchen); status-linjen i toppen af dette dokument ("konstanterne står på start-kandidaterne") er hermed superseded for τ's vedkommende — S2-variansen selv står UÆNDRET på spec-start-kandidaterne.
+
+**Endelige S2-konstanter:** `DAYFORM_SD = 0.015` · `JOUR_SANS_P_BASE = 0.03` (form-koblet 5/3 ↔ 2/3) · `JOUR_SANS_MAGNITUDE = 0.05-0.10` · `FORM_RACE_WEIGHT_V3 = 0.035` · `TOP_COMPRESSION_TAU = 0.5` (+ S1: work-cost −0.03/−0.0267/−0.01 · TEAM_RACE_WEIGHT_V3 = 0.10).
+
+**Endeligt 3-seeds-scorecard (committed konstanter, ingen env; population-snapshot, roles+v3+condition=snapshot):**
+
+| Metrik | seed 2026 | seed 7 | seed 42 | Bånd | Status |
+|---|---|---|---|---|---|
+| Favorit-win-rate | 38,7 % | 38,8 % | 37,5 % | 25-40 % | ✅ alle 3 |
+| Favorit-podium | 65,4 % | 65,1 % | 66,0 % | 55-75 % | ✅ |
+| ITT favorit-win | 47,0 % | 47,7 % | 46,7 % | 45-65 % | ✅ |
+| Sprinter-flat-gruppe (genereret linse) | 99 % | 100 % | 98 % | ≥90 % | ✅ |
+| share4PlusSameTeamTop10 | 2,4 % | 2,7 % | 3,1 % | ≤5 % | ✅ |
+| Distinkte hold top-10 | 8,6 | 8,6 | 8,6 | ≥7,5 | ✅ |
+| Jour-sans-rate | 3,99 % | 4,04 % | 4,00 % | 2-5 % | ✅ |
+| Anti-exploit-oracle | +17,6 % point (868 vs. 738), 19v8 sejre | (seed-uafhængigt scenario) | | grøn m. margin | ✅ |
+| Max sæson-win-rate | 72,0 % | 69,7 % | 77,8 % | ≤45 % | **flyttet til S4+** (se nedenfor) |
+| Hjælper-tab top-15 (K3) | 4 | 4 | 4 | 10-30 | udestår (egen beslutning, jf. §6) |
+
+**maxSeason ≤45 % flyttes til S4+ (ejer-accepteret ifm. option 2-go):** båndet nås af ingen af de tre veje alene (probe-appendix'ets observation — outlier-ryttere i svage puljer kræver incidents/population-arbejde, ikke mere varians). Forbliver RAPPORT-ONLY i S2-gaten; genevalueres efter S4-styrt/DNF.
+
+**Kollateral accepteret:** itt-tt-born 55-59 % (interim-bånd 60, −1..−5 pp, rapport-only) · strukturel top-devaluering kommunikeres aldrig som rå tal (S6-bånd).

@@ -10,11 +10,13 @@ import { RACE_V3_TUNING } from "./raceRoles.js";
 
 const mapOf = (pairs) => new Map(pairs);
 
-test("τ=1.0 (default) er identitet — SAMME Map-instans returneres (zero-cost no-op)", () => {
+test("τ=1.0 er identitet — SAMME Map-instans returneres (zero-cost no-op)", () => {
   const m = mapOf([["a", 0.5], ["b", 0.7]]);
   assert.equal(compressTopTerrain(m, 1.0), m, "τ=1 skal returnere input-mappen urørt");
   assert.equal(compressTopTerrain(m, 1.5), m, "τ>1 behandles som identitet (aldrig ekspansion)");
-  assert.equal(RACE_V3_TUNING.TOP_COMPRESSION_TAU, 1.0, "default-tuning SKAL være 1.0 (ingen effekt før ejer-beslutning)");
+  // EJER-BESLUTNING 12/7 (option 2, jf. S2-audit "Beslutning"): τ=0.5 er den
+  // aktive default — gab-kompressionen ER S2's leverance af favWin-båndet.
+  assert.equal(RACE_V3_TUNING.TOP_COMPRESSION_TAU, 0.5, "default-tuning SKAL være 0.5 (ejer-beslutning 12/7, option 2)");
 });
 
 test("kun scores OVER felt-p90 komprimeres; s ≤ p90 er urørt", () => {
@@ -62,27 +64,33 @@ test("felter < 2 ryttere: urørt (ingen percentil at beregne)", () => {
   assert.equal(compressTopTerrain(empty, 0.5), empty);
 });
 
-// ── Invariant (d): udbruds-mekanikken kører på RÅT terrain ───────────────────
-// τ er env-styret ved module-load, så en direkte integrations-test af τ<1 i
-// simulateStage kræver child-proces (det gør probe-sweepen). Her verificeres
-// den STRUKTURELLE del: med default τ=1.0 er v3-terrain-komponenten identisk
-// med det rå terrain — dvs. wiring-punktet ændrer intet før ejer-beslutning.
+// ── Integration: v3 komprimerer terrain med default-τ; v1 er urørt ───────────
 function abil(v) {
   const a = {};
   for (const k of ABILITY_KEYS) a[k] = v;
   return a;
 }
 
-test("simulateStage v3 med default τ=1.0: terrain-komponenten er det rå terrain (wiring er dormant)", () => {
+test("simulateStage v3 (default τ=0.5): terrain-komponenten matcher compressTopTerrain af det rå terrain; v1 urørt", () => {
   const entrants = Array.from({ length: 30 }, (_, i) => ({ rider_id: `r${i}`, abilities: abil(40 + i) }));
   const stage = { profile_type: "mountain", demand_vector: { climbing: 0.7, endurance: 0.3, randomness: 0 } };
   const off = simulateStage({ entrants, stageProfile: stage, seed: 11, v3: false });
   const on = simulateStage({ entrants, stageProfile: stage, seed: 11, v3: true });
+
+  // v1 (flag-off): rå terrain — kompressionen findes ikke i den gren.
+  const rawById = new Map(off.ranked.map((r) => [r.rider_id, r.components.terrain]));
+  // Forventet v3-terrain = den rene funktion anvendt på de rå værdier.
+  const expected = compressTopTerrain(rawById, RACE_V3_TUNING.TOP_COMPRESSION_TAU);
   for (const id of entrants.map((e) => e.rider_id)) {
     assert.equal(
       on.ranked.find((r) => r.rider_id === id).components.terrain,
-      off.ranked.find((r) => r.rider_id === id).components.terrain,
-      `terrain for ${id} skal være uændret ved default τ=1.0`
+      expected.get(id),
+      `v3-terrain for ${id} skal være compressTopTerrain(rå, τ)`
     );
   }
+  // Toppen ER komprimeret (testen er ikke triviel): mindst én rytter afviger fra rå.
+  assert.ok(
+    entrants.some((e) => expected.get(e.rider_id) !== rawById.get(e.rider_id)),
+    "med τ=0.5 skal feltets top faktisk komprimeres"
+  );
 });
