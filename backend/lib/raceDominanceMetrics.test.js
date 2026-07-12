@@ -8,6 +8,8 @@ import {
   giniOverWins,
   helperPlacementDeltas,
   median,
+  observeIncidents,
+  aggregateIncidentObservations,
 } from "./raceDominanceMetrics.js";
 
 // ── observeRace ────────────────────────────────────────────────────────────
@@ -264,4 +266,116 @@ test("median: ulige antal → midterste element", () => {
 
 test("median: lige antal → gennemsnit af de to midterste (sorterings-uafhængigt)", () => {
   assert.equal(median([4, 1, 3, 2]), 2.5);
+});
+
+// ── observeIncidents (S4, #1176) ─────────────────────────────────────────────
+
+test("observeIncidents: tomt incidents-array → alle andele 0", () => {
+  const obs = observeIncidents({ incidents: [], fieldSize: 140, profileType: "flat" });
+  assert.deepEqual(obs, {
+    profileType: "flat", fieldSize: 140,
+    hitCount: 0, hitSharePct: 0,
+    dnfCount: 0, dnfSharePct: 0,
+    timeLossCount: 0, timeLossSharePct: 0,
+  });
+});
+
+test("observeIncidents: blandet abandon/time_loss folder korrekt til andele af feltet", () => {
+  const incidents = [
+    { rider_id: "r1", outcome: "abandon" },
+    { rider_id: "r2", outcome: "time_loss" },
+    { rider_id: "r3", outcome: "time_loss" },
+    { rider_id: "r4", outcome: "time_loss" },
+  ];
+  const obs = observeIncidents({ incidents, fieldSize: 100, profileType: "cobbles" });
+  assert.equal(obs.hitCount, 4);
+  assert.equal(obs.hitSharePct, 4);
+  assert.equal(obs.dnfCount, 1);
+  assert.equal(obs.dnfSharePct, 1);
+  assert.equal(obs.timeLossCount, 3);
+  assert.equal(obs.timeLossSharePct, 3);
+});
+
+test("observeIncidents: fieldSize 0 (degenereret felt) → 0% i stedet for NaN/Infinity", () => {
+  const obs = observeIncidents({ incidents: [], fieldSize: 0, profileType: "itt" });
+  assert.equal(obs.hitSharePct, 0);
+  assert.equal(obs.dnfSharePct, 0);
+});
+
+// ── aggregateIncidentObservations (S4, #1176) ────────────────────────────────
+
+test("aggregateIncidentObservations: tom liste → alle nøgler null/0", () => {
+  const agg = aggregateIncidentObservations([]);
+  assert.deepEqual(agg, {
+    stages: 0, meanDnfRatePct: null, meanIncidentRatePct: null,
+    maxIncidentSharePct: null, abandonShareOfIncidents: null, perProfile: {},
+  });
+});
+
+test("aggregateIncidentObservations: uvægtet middelværdi over etape-instanser (ikke rytter-vægtet)", () => {
+  // To etaper, forskellig feltstørrelse — middelværdien af ANDELENE (5% og 15%)
+  // skal være 10%, IKKE et rytter-vægtet snit af de rå counts.
+  const observations = [
+    observeIncidents({ incidents: [{ rider_id: "a", outcome: "time_loss" }], fieldSize: 20, profileType: "flat" }), // 5%
+    observeIncidents({ incidents: [{ rider_id: "b", outcome: "time_loss" }], fieldSize: 20, profileType: "flat" }),
+  ];
+  // justér den anden til 15% (3/20)
+  observations[1] = observeIncidents({
+    incidents: [
+      { rider_id: "b", outcome: "time_loss" },
+      { rider_id: "c", outcome: "time_loss" },
+      { rider_id: "d", outcome: "time_loss" },
+    ],
+    fieldSize: 20, profileType: "flat",
+  });
+  const agg = aggregateIncidentObservations(observations);
+  assert.equal(agg.stages, 2);
+  assert.equal(agg.meanIncidentRatePct, 10); // (5+15)/2
+});
+
+test("aggregateIncidentObservations: maxIncidentSharePct = højeste ENKELT-etape-andel", () => {
+  const observations = [
+    observeIncidents({ incidents: [{ rider_id: "a", outcome: "time_loss" }], fieldSize: 100, profileType: "flat" }), // 1%
+    observeIncidents({
+      incidents: Array.from({ length: 5 }, (_, i) => ({ rider_id: `r${i}`, outcome: "time_loss" })),
+      fieldSize: 100, profileType: "cobbles",
+    }), // 5%
+  ];
+  const agg = aggregateIncidentObservations(observations);
+  assert.equal(agg.maxIncidentSharePct, 5);
+});
+
+test("aggregateIncidentObservations: abandonShareOfIncidents = totale DNF / totale uheld på tværs af etaper", () => {
+  const observations = [
+    observeIncidents({
+      incidents: [
+        { rider_id: "a", outcome: "abandon" },
+        { rider_id: "b", outcome: "time_loss" },
+        { rider_id: "c", outcome: "time_loss" },
+      ],
+      fieldSize: 100, profileType: "flat",
+    }),
+    observeIncidents({
+      incidents: [{ rider_id: "d", outcome: "abandon" }],
+      fieldSize: 100, profileType: "flat",
+    }),
+  ];
+  const agg = aggregateIncidentObservations(observations);
+  // 2 abandons / 4 uheld i alt = 0.5
+  assert.equal(agg.abandonShareOfIncidents, 0.5);
+});
+
+test("aggregateIncidentObservations: perProfile grupperer korrekt (itt lavest, cobbles højest)", () => {
+  const observations = [
+    observeIncidents({ incidents: [], fieldSize: 50, profileType: "itt" }),
+    observeIncidents({
+      incidents: Array.from({ length: 5 }, (_, i) => ({ rider_id: `c${i}`, outcome: "time_loss" })),
+      fieldSize: 100, profileType: "cobbles",
+    }),
+  ];
+  const agg = aggregateIncidentObservations(observations);
+  assert.equal(agg.perProfile.itt.meanIncidentRatePct, 0);
+  assert.equal(agg.perProfile.cobbles.meanIncidentRatePct, 5);
+  assert.equal(agg.perProfile.itt.stages, 1);
+  assert.equal(agg.perProfile.cobbles.stages, 1);
 });

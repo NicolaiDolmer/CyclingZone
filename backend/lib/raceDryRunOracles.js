@@ -99,3 +99,90 @@ export function evaluateAbilityLivenessOracle(sensitivities = [], { floor = 0.05
   }
   return failures;
 }
+
+// ── S4 (#1176): uhelds/DNF-bånd (ejer-godkendt spec-scorecard) ───────────────
+// Håndhæves sammen med --enforce-dominance i simulateSeasonDryRun.js Section F
+// (samme gating-idiom som DOMINANCE_TARGETS) — rapport-only ellers. Defaults
+// matcher spec-scorecardet; targets-param tillader override (kalibrerings-
+// sweeps/tests) uden at ændre denne fils pure-lib-kontrakt (intet I/O/imports).
+const DEFAULT_INCIDENT_TARGETS = Object.freeze({
+  // Mean DNF-rate (abandon ALENE, ikke time_loss) pr. etape-instans, andel af feltet.
+  dnfRatePctBand: Object.freeze({ min: 0.3, max: 1.5 }),
+  // Matcher raceRoles.js's RACE_V3_TUNING.INCIDENT_MAX_FIELD_SHARE default (5%) —
+  // harnesset sender den LEVENDE env-overridede værdi ind via targets ved kald.
+  maxFieldSharePct: 5,
+  // Abandon-andel af ALLE uheld: 25% ± 10pp (matcher INCIDENT_ABANDON_SHARE-default).
+  abandonShareBand: Object.freeze({ min: 0.15, max: 0.35 }),
+});
+
+/**
+ * Evaluér uhelds/DNF-båndene mod aggregateIncidentObservations()-output
+ * (raceDominanceMetrics.js). Fem invarianter:
+ *   1. Mean DNF-rate/etape ∈ dnfRatePctBand (spec-bånd).
+ *   2. Højeste ENKELT-etape-uheldsandel ≤ maxFieldSharePct — beviser at motorens
+ *      deterministiske hard cap (INCIDENT_MAX_FIELD_SHARE) faktisk holder.
+ *   3. ITT/TTT skal have feltets LAVESTE uheldsrate blandt de målte profiler.
+ *   4. Cobbles skal have feltets HØJESTE.
+ *   5. Abandon-andelen af alle uheld ∈ abandonShareBand.
+ *
+ * @param {ReturnType<typeof import("./raceDominanceMetrics.js").aggregateIncidentObservations>} stats
+ * @param {{dnfRatePctBand?:{min,max}, maxFieldSharePct?:number, abandonShareBand?:{min,max}}} [targets]
+ * @returns {string[]} brud (tom = OK; ingen data ⇒ tom, ligesom de øvrige oracles' n/a-håndtering)
+ */
+export function evaluateIncidentBoundsOracle(stats, targets = {}) {
+  const failures = [];
+  if (!stats || !stats.stages) return failures;
+
+  const dnfBand = targets.dnfRatePctBand ?? DEFAULT_INCIDENT_TARGETS.dnfRatePctBand;
+  const maxSharePct = targets.maxFieldSharePct ?? DEFAULT_INCIDENT_TARGETS.maxFieldSharePct;
+  const abandonBand = targets.abandonShareBand ?? DEFAULT_INCIDENT_TARGETS.abandonShareBand;
+
+  if (stats.meanDnfRatePct != null && (stats.meanDnfRatePct < dnfBand.min || stats.meanDnfRatePct > dnfBand.max)) {
+    failures.push(
+      `DNF-rate: ⌀${stats.meanDnfRatePct.toFixed(3)}% af feltet/etape uden for bånd [${dnfBand.min}%, ${dnfBand.max}%]`
+    );
+  }
+
+  if (stats.maxIncidentSharePct != null && stats.maxIncidentSharePct > maxSharePct) {
+    failures.push(
+      `hård cap brudt: højeste enkelt-etape-uheldsandel ${stats.maxIncidentSharePct.toFixed(2)}% overstiger INCIDENT_MAX_FIELD_SHARE (${maxSharePct}%)`
+    );
+  }
+
+  if (stats.abandonShareOfIncidents != null) {
+    const pct = stats.abandonShareOfIncidents * 100;
+    const minPct = abandonBand.min * 100, maxPct = abandonBand.max * 100;
+    if (pct < minPct || pct > maxPct) {
+      failures.push(
+        `abandon-andel af uheld ${pct.toFixed(1)}% uden for bånd [${minPct.toFixed(0)}%, ${maxPct.toFixed(0)}%] (mål 25% ± 10pp)`
+      );
+    }
+  }
+
+  const perProfile = stats.perProfile || {};
+  const entries = Object.entries(perProfile).filter(([, v]) => v.stages > 0);
+  if (entries.length > 1) {
+    const rateOf = (key) => perProfile[key]?.meanIncidentRatePct;
+    const nonSoloProfiles = entries.filter(([k]) => k !== "itt" && k !== "ttt");
+    const minOtherRate = nonSoloProfiles.length ? Math.min(...nonSoloProfiles.map(([, v]) => v.meanIncidentRatePct)) : null;
+    for (const key of ["itt", "ttt"]) {
+      const r = rateOf(key);
+      if (r != null && minOtherRate != null && r > minOtherRate) {
+        failures.push(
+          `${key}: uheldsrate ${r.toFixed(4)}% er ikke feltets laveste (min blandt øvrige profiler ${minOtherRate.toFixed(4)}%)`
+        );
+      }
+    }
+
+    const cobblesRate = rateOf("cobbles");
+    const nonCobblesProfiles = entries.filter(([k]) => k !== "cobbles");
+    const maxOtherRate = nonCobblesProfiles.length ? Math.max(...nonCobblesProfiles.map(([, v]) => v.meanIncidentRatePct)) : null;
+    if (cobblesRate != null && maxOtherRate != null && cobblesRate < maxOtherRate) {
+      failures.push(
+        `cobbles: uheldsrate ${cobblesRate.toFixed(4)}% er ikke feltets højeste (max blandt øvrige profiler ${maxOtherRate.toFixed(4)}%)`
+      );
+    }
+  }
+
+  return failures;
+}
