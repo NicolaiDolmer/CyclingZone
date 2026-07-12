@@ -1,0 +1,159 @@
+name: League-size invariant audit
+
+# Permanent forward-guard for #2377: hver liga-pulje (league_divisions) SKAL
+# have PRÆCIS 24 hold. Prod-audit 12/7 fandt 9 overskudshold på tværs af 7
+# puljer (rod-årsag: #2187 selvhelende AI-trim-gap ved signup + et frosset
+# test-hold uden is_test_account-flag). Reparationen er et separat,
+# ejer-godkendt spor (destruktiv trim) — dette workflow er KUN vagten, så
+# ENHVER fremtidig afvigelse (uanset årsag) opdages inden for et døgn.
+#
+# Triggers:
+#   - PR der rører teams/league_divisions-skemaet, auditscriptet selv eller
+#     dette workflow → blokerer merge ved nye findings
+#   - Dagligt cron (03:40 UTC — efter quality-inbox 03:30, før feature-
+#     liveness/codeql 04:00 mandag) → fanger drift inden for et døgn, jf.
+#     ejer-kravet "inden for et døgn" (#2377 pkt. 3)
+#   - Manuel workflow_dispatch
+#
+# INGEN whitelist — ejer-kravet er absolut for alle grupper i alle divisioner.
+
+on:
+  pull_request:
+    paths:
+      - 'database/**'
+      - 'backend/scripts/audit-league-size-invariant.js'
+      - '.github/workflows/league-size-invariant-audit.yml'
+  schedule:
+    - cron: '40 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip secret-backed audit for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping league-size invariant audit for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm ci
+        working-directory: backend
+
+      - name: Run league-size invariant audit
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY
+          node backend/scripts/audit-league-size-invariant.js --json > league-size-audit.json
+          node backend/scripts/audit-league-size-invariant.js | tee league-size-audit.txt
+          total=$(node -e "const d=require('./league-size-audit.json');console.log(d.total_findings)")
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+
+      - name: Upload report
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-size-audit-report
+          path: |
+            league-size-audit.json
+            league-size-audit.txt
+
+      - name: Comment on PR if findings (PR runs only)
+        if: github.event_name == 'pull_request' && steps.audit.outputs.total != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('league-size-audit.txt', 'utf8');
+            const body = [
+              '## ❌ League-size invariant audit fandt afvigelse(r)',
+              '',
+              'En eller flere liga-puljer har IKKE præcis 24 hold ([#2377](https://github.com/${{ github.repository }}/issues/2377) — ejer-krav, absolut, ingen whitelist).',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Fix: reparér de afvigende puljer via den sikre trim-sti (ejer-godkendt, IKKE automatisk) — se overskudskandidat-listen ovenfor.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Open or update tracking issue (scheduled runs only)
+        if: github.event_name == 'schedule' && steps.audit.outputs.total != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('league-size-audit.json', 'utf8'));
+            const report = fs.readFileSync('league-size-audit.txt', 'utf8');
+            const title = `[bot] League-size invariant audit fandt ${data.total_findings} afvigende pulje(r)`;
+            const body = [
+              '## League-size invariant drift detected',
+              '',
+              `Dagligt cron-run fandt **${data.total_findings}** pulje(r) uden præcis 24 hold (krav: ${data.required_team_count}, jf. [#2377](https://github.com/${{ github.repository }}/issues/2377)).`,
+              '',
+              'Mest sandsynligt: en AI-fill/signup-trim-gap (#2187-klassen) eller et manuelt oprettet test-/admin-hold uden korrekt flag. Se overskudskandidat-listen pr. pulje nedenfor som beslutningshjælp — scriptet trimmer INTET selv.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'league-size-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['league-size-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }
+
+      - name: Fail if findings
+        if: steps.audit.outputs.total != '0'
+        run: |
+          echo "::error::League-size invariant audit found ${{ steps.audit.outputs.total }} deviating group(s). See report artifact."
+          exit 1
