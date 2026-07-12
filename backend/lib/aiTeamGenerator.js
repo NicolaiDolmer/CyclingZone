@@ -37,6 +37,7 @@ import {
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export { AI_TEAM_NAME_PREFIX };
 
@@ -108,6 +109,33 @@ export async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) 
   return (entries || []).length > 0;
 }
 
+// #2389 (Sentry CYCLINGZONE-26/2E/2F): har holdet præmie-rækker i et løb hvis
+// præmier endnu ikke er udbetalt (prize_paid_at IS NULL)? Slettes holdet før
+// auto-prize-sweepen når at kreditere, kaster balance-RPC'en P0002 midt i payout-
+// ticket, og en samtidig standings-recalc kan FK-fejle på det forsvundne hold.
+// Sådan et hold udskydes (pending_removal_at) præcis som inflight-blokerede hold —
+// auto-prize sweeper hvert 5. minut, så blokeringen klarer sig selv kort efter
+// løbets finalization. Eksporteret: genbruges af aiTeamTrimHealSweep.
+export async function teamHasUnpaidPrizeResults(supabase, teamId) {
+  // fetchAllRows: et holds præmie-rækker kan overstige PostgREST's 1000-row-loft
+  // sidst på sæsonen — en trunkeret liste kunne misse netop det uudbetalte løb.
+  const resultRows = await fetchAllRows(() => supabase
+    .from("race_results")
+    .select("race_id")
+    .eq("team_id", teamId)
+    .gt("prize_money", 0)
+    .order("id", { ascending: true }));
+  const raceIds = [...new Set((resultRows || []).map((r) => r.race_id))];
+  if (!raceIds.length) return false;
+  const { data: unpaid, error: rErr } = await supabase
+    .from("races")
+    .select("id")
+    .in("id", raceIds)
+    .is("prize_paid_at", null);
+  if (rErr) throw new Error(`AI-trim (unpaid races for ${teamId}): ${rErr.message}`);
+  return (unpaid || []).length > 0;
+}
+
 // Delt inflight-race-lookup (#2187): samme "igangværende løb"-definition brugt af
 // removeAiTeams OG heal-sweep-retryen, ét sted.
 export async function getInflightRaceIds(supabase) {
@@ -164,7 +192,10 @@ async function removeAiTeams(supabase, aiTeams, count) {
   const blockedIds = [];
   for (const team of sorted) {
     if (toRemove.length >= count) break;
-    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)) {
+    // #2389: uudbetalte præmier blokerer OGSÅ trim — ellers kolliderer sletningen
+    // med auto-prize-sweepen/standings-recalc (samme udskudt-trim-mekanik).
+    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)
+        || await teamHasUnpaidPrizeResults(supabase, team.id)) {
       blockedIds.push(team.id);
       continue;
     }
@@ -173,7 +204,8 @@ async function removeAiTeams(supabase, aiTeams, count) {
   if (toRemove.length < count) {
     console.warn(
       `  ⏳ AI-trim deferred: ${count - toRemove.length} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
-      `og kan ikke trimmes nu — markeret pending_removal_at (#2187), en heal-sweep fuldfører når løbet er kørt færdigt.`
+      `eller uudbetalte præmier (#2389) og kan ikke trimmes nu — markeret pending_removal_at (#2187), ` +
+      `en heal-sweep fuldfører når løbet er kørt færdigt og udbetalt.`
     );
     if (blockedIds.length) {
       await markPendingRemoval(supabase, blockedIds);

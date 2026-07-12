@@ -592,11 +592,15 @@ function createSeasonEndSupabase({
   };
 }
 
-function createStandingsSupabase({ teams, races, results }) {
+function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
   const state = {
     teams: clone(teams),
     races: clone(races),
     results: clone(results),
+    // #2389: liveTeams simulerer et hold slettet UNDER recalc — live-re-tjekket
+    // (select("id") før upsert) ser denne liste, mens den indledende teams-læsning
+    // ser den fulde. Default = samme liste (intet slettet).
+    liveTeams: clone(liveTeams ?? teams),
     upserts: [],
   };
 
@@ -606,6 +610,19 @@ function createStandingsSupabase({ teams, races, results }) {
       if (table === "teams") {
         return {
           select(columns) {
+            if (columns === "id") {
+              // #2389: live-re-tjek før upsert (fetchAllRows → .order().range()).
+              return {
+                order() {
+                  return {
+                    range(from, to) {
+                      const data = clone(state.liveTeams).map(team => ({ id: team.id })).slice(from, to + 1);
+                      return Promise.resolve({ data, error: null });
+                    },
+                  };
+                },
+              };
+            }
             assert.equal(columns, "id, division, league_division_id");
             return Promise.resolve({
               data: clone(state.teams),
@@ -1969,6 +1986,29 @@ test("updateStandings paginerer race_results forbi 1000-row-loftet", async () =>
 
   assert.equal(summary.rowsUpdated, 1);
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 2500); // alle sider talt
+});
+
+test("updateStandings filtrerer hold slettet under recalc fra upsert (#2389, Sentry CYCLINGZONE-2F)", async () => {
+  // team-b slettes (AI-trim) mellem den indledende teams-læsning og upsert'et —
+  // uden filteret ville HELE upsert'et FK-fejle og abortere løbets finalization.
+  const supabase = createStandingsSupabase({
+    teams: [
+      { id: "team-a", division: 1 },
+      { id: "team-b", division: 1 },
+    ],
+    liveTeams: [{ id: "team-a", division: 1 }],
+    races: [{ id: "race-1" }],
+    results: [
+      { race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 1, points_earned: 20, rider: null },
+      { race_id: "race-1", team_id: "team-b", result_type: "gc", rank: 1, points_earned: 40, rider: null },
+    ],
+  });
+
+  const summary = await updateStandings("season-1", "race-1", { supabase });
+
+  assert.equal(summary.rowsUpdated, 1, "kun det levende hold skrives");
+  assert.equal(supabase.state.upserts.length, 1);
+  assert.deepEqual(supabase.state.upserts[0].rows.map(row => row.team_id), ["team-a"]);
 });
 
 test("updateRiderValues recomputes prize_earnings_bonus from the last 3 completed seasons (no active → legacy mean)", async () => {

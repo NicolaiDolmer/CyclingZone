@@ -1990,7 +1990,7 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   }
 
   const timestamp = new Date().toISOString();
-  const rows = Object.entries(teamStats).map(([teamId, stats]) => ({
+  const allRows = Object.entries(teamStats).map(([teamId, stats]) => ({
     season_id: seasonId,
     team_id: teamId,
     division: stats.division,
@@ -2003,10 +2003,26 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     updated_at: timestamp,
   }));
 
-  const { error: upsertError } = await supabaseClient
-    .from("season_standings")
-    .upsert(rows, { onConflict: "season_id,team_id" });
-  if (upsertError) throw new Error(upsertError.message);
+  // #2389 (Sentry CYCLINGZONE-2F): et hold kan være slettet (AI-trim heal-sweep)
+  // mellem teams-læsningen øverst og dette upsert — i et langt scheduler-tick er
+  // det et vindue på minutter. Én forældet række vælter HELE upsert'et med en
+  // season_standings_team_id_fkey-violation og aborterer løbets finalization.
+  // Re-tjek teams umiddelbart før skrivningen og filtrér slettede hold fra.
+  const liveTeamRows = await fetchAllRows(() => (
+    supabaseClient.from("teams").select("id").order("id", { ascending: true })
+  ));
+  const liveTeamIds = new Set(liveTeamRows.map(team => team.id));
+  const rows = allRows.filter(row => liveTeamIds.has(row.team_id));
+  if (rows.length < allRows.length) {
+    console.warn(`  ⚠️  Standings: ${allRows.length - rows.length} hold slettet under recalc — filtreret fra upsert (#2389)`);
+  }
+
+  if (rows.length) {
+    const { error: upsertError } = await supabaseClient
+      .from("season_standings")
+      .upsert(rows, { onConflict: "season_id,team_id" });
+    if (upsertError) throw new Error(upsertError.message);
+  }
 
   console.log(`  📊 Standings recalculated for ${rows.length} teams${raceId ? ` after race ${raceId}` : ""}`);
 

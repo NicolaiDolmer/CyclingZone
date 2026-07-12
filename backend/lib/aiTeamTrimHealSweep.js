@@ -23,7 +23,12 @@
 // (via removeAiTeams) tidligere har forsøgt at fjerne.
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { getInflightRaceIds, teamHasInflightEntries, deleteAiTeamById } from "./aiTeamGenerator.js";
+import {
+  getInflightRaceIds,
+  teamHasInflightEntries,
+  teamHasUnpaidPrizeResults,
+  deleteAiTeamById,
+} from "./aiTeamGenerator.js";
 
 // Længere end noget realistisk etapeløb varer (Cycling Zone's længste løb er ugelange
 // etapeløb) — en udskudt trim ældre end dette er ikke "vent på løbet", men et signal om
@@ -35,6 +40,11 @@ export async function runAiTeamTrimHealSweep({
   now = new Date(),
   staleHours = STALE_PENDING_HOURS,
   isBlocked = teamHasInflightEntries,
+  // #2389 (Sentry CYCLINGZONE-26/2E/2F): uudbetalte præmier blokerer også trim.
+  // Sletning FØR auto-prize-sweepen har krediteret løbet gav P0002 midt i payout-
+  // ticket + FK-fejl i standings-recalc. Auto-prize sweeper hvert 5. minut, så
+  // blokeringen løfter sig selv kort efter løbets finalization.
+  hasUnpaidPrizes = teamHasUnpaidPrizeResults,
   removeTeam = deleteAiTeamById,
   getInflightIds = getInflightRaceIds,
 } = {}) {
@@ -66,7 +76,8 @@ export async function runAiTeamTrimHealSweep({
 
   for (const team of candidates) {
     try {
-      const blocked = await isBlocked(supabase, team.id, inflightRaceIds);
+      const blocked = await isBlocked(supabase, team.id, inflightRaceIds)
+        || await hasUnpaidPrizes(supabase, team.id);
       if (!blocked) {
         await removeTeam(supabase, team.id);
         healed += 1;
