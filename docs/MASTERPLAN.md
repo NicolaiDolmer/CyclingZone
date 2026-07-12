@@ -10,12 +10,12 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186)/[
 2. ⚪ **Flip-bølge** [#2357](https://github.com/NicolaiDolmer/CyclingZone/issues/2357) — talentspejder + faciliteter live for alle: EJER-admin-test (~15 min) → flip → announce → post-verify + patch notes.
 3. ✅ **Race v3 start FÆRDIG 11/7:** salt [#2351](https://github.com/NicolaiDolmer/CyclingZone/issues/2351) ✅ + S0 harness+baseline [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) ✅ (PR #2364; baseline: [docs/audits/2026-07-11-race-v3-s0-baseline.md](audits/2026-07-11-race-v3-s0-baseline.md)) — næste v3-slice = S1 (punkt 6).
 4. ⚪ **Narrativ S1 palmarès-fundament** [#1997](https://github.com/NicolaiDolmer/CyclingZone/issues/1997) (parallel worktree; #1993 ✅).
-5. ⚪ **Retention-scorecard v2** [#2360](https://github.com/NicolaiDolmer/CyclingZone/issues/2360) — gater betalt-marketing-GO [#1279](https://github.com/NicolaiDolmer/CyclingZone/issues/1279).
+5. ✅ **Retention-scorecard v2** [#2360](https://github.com/NicolaiDolmer/CyclingZone/issues/2360) SHIPPET 12/7 (natbølge) — D1/D7/D30 pr. kohorte live i admin; gater betalt-marketing-GO [#1279](https://github.com/NicolaiDolmer/CyclingZone/issues/1279).
 
 ## 2 · Uge 30-33 (resten af juli → tidlig aug)
-6. ⚪ **v3-kernen:** S1 work-cost [#2352](https://github.com/NicolaiDolmer/CyclingZone/issues/2352) → S2 dagsform [#2353](https://github.com/NicolaiDolmer/CyclingZone/issues/2353) → S3 roller/etape [#2034](https://github.com/NicolaiDolmer/CyclingZone/issues/2034).
+6. 🟠 **v3-kernen:** S1 [#2352](https://github.com/NicolaiDolmer/CyclingZone/issues/2352) ✅ + S2 [#2353](https://github.com/NicolaiDolmer/CyclingZone/issues/2353) ✅ MERGED 12/7 (flag off; alle 7 bånd grønne, τ=0.5 ejer-valgt) → næste = S3 roller/etape [#2034](https://github.com/NicolaiDolmer/CyclingZone/issues/2034). Flip-forudsætninger: [#2376](https://github.com/NicolaiDolmer/CyclingZone/issues/2376).
 7. ⚪ **Narrativ S2 recap v2** [#2356](https://github.com/NicolaiDolmer/CyclingZone/issues/2356) (parallelspor efter #1997).
-8. ⚪ **Oprydnings-bølge:** HoF af nav [#2359](https://github.com/NicolaiDolmer/CyclingZone/issues/2359) · lån-UI væk [#1994](https://github.com/NicolaiDolmer/CyclingZone/issues/1994) · swaps demoteres [#2358](https://github.com/NicolaiDolmer/CyclingZone/issues/2358) · død vinduekode [#1996](https://github.com/NicolaiDolmer/CyclingZone/issues/1996).
+8. 🟠 **Oprydnings-bølge:** HoF [#2359](https://github.com/NicolaiDolmer/CyclingZone/issues/2359) ✅ · lån [#1994](https://github.com/NicolaiDolmer/CyclingZone/issues/1994) ✅ (inkl. DROP applied) · swaps [#2358](https://github.com/NicolaiDolmer/CyclingZone/issues/2358) ✅ (alle 12/7) · rest: død vinduekode [#1996](https://github.com/NicolaiDolmer/CyclingZone/issues/1996) = kort EJER-session (plan på issuet, claude:blocked).
 9. ⚪ Vuelta-beat-forberedelse + referral [#1173](https://github.com/NicolaiDolmer/CyclingZone/issues/1173) — kun ved GO fra #1279-data.
 
 ## 3 · Aug-sep
