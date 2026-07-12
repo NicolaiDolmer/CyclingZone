@@ -73,7 +73,7 @@ export function incidentProbability({ stageProfile, positioning = null, tuning =
  * @returns {Array<{rider_id:string, kind:'crash'|'mechanical', outcome:'time_loss'|'abandon', time_loss_seconds:number|null, injury_days:number|null, u:number}>}
  */
 export function rollIncidents({ entrants = [], stageProfile, stageSeed, tuning = RACE_V3_TUNING } = {}) {
-  if (!Number.isInteger(stageSeed)) throw new Error("stageSeed (heltal) kræves");
+  if (!Number.isInteger(stageSeed)) throw new Error("stageSeed (integer) required");
   if (!stageProfile) return [];
 
   // Stabil rider_id-orden — rng-sekvensen (hvilken rytter behandles hvornår) er

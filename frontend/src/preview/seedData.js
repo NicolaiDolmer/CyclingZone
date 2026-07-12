@@ -229,6 +229,17 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
 ];
 
+// S4 (#1176): race_incidents preview-seed for race-done-2 — én DNF på etape 1
+// (styrt) + ét meningsfuldt tab (mekanisk defekt) for GC-vinderen på etape 2, så
+// recap-momenterne (abandon/notableCrash) og den kompakte DNF-sektion begge har
+// noget at vise i preview uden en ægte DB. Fiktiv rytter (ikke i RIDERS) for
+// abandon'et — matcher motorens virkelighed: en udgået rytter er ikke nødvendigvis
+// en vi allerede har seedet resultater for.
+export const SEED_RACE_INCIDENTS = [
+  { id: "inc-d2-1", race_id: "race-done-2", stage_number: 1, rider_id: "rider-99", kind: "crash", outcome: "abandon", time_loss_seconds: null, rider: { id: "rider-99", firstname: "Tobias", lastname: "Krogh" } },
+  { id: "inc-d2-2", race_id: "race-done-2", stage_number: 2, rider_id: RIDERS[1].id, kind: "mechanical", outcome: "time_loss", time_loss_seconds: 134, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen" } },
+];
+
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
 // RiderStatsPage.fetchAllRiderSeasonRows). Egen shape (race:-embed, IKKE rider:-embed
 // som SEED_RACE_RESULTS ovenfor bruges til RaceDetailPage) — ingen delt lookup mod

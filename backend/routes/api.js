@@ -8046,10 +8046,10 @@ router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req,
   // Detaljeret Discord-notifikation (kun ved rigtig afvikling) — spejler PCM-importen.
   const notifyDiscord = dryRun
     ? null
-    : async ({ race, resultRows }) => {
+    : async ({ race, resultRows, incidents }) => {
         const urls = await getResultWebhooks(race.league_division_id);
         if (!urls.length) return;
-        const embed = buildRaceSimEmbed({ race, resultRows });
+        const embed = buildRaceSimEmbed({ race, resultRows, incidents });
         for (const url of urls) {
           await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
         }
@@ -8072,10 +8072,10 @@ router.post("/admin/races/:id/simulate-stage", requireAdmin, adminWriteLimiter, 
   const dryRun = req.body?.dry_run === true || req.body?.dry_run === "true";
   const notifyDiscord = dryRun
     ? null
-    : async ({ race, resultRows }) => {
+    : async ({ race, resultRows, incidents }) => {
         const urls = await getResultWebhooks(race.league_division_id);
         if (!urls.length) return;
-        const embed = buildRaceSimEmbed({ race, resultRows });
+        const embed = buildRaceSimEmbed({ race, resultRows, incidents });
         for (const url of urls) {
           await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
         }

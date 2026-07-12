@@ -15,6 +15,7 @@ import {
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
+  SEED_RACE_INCIDENTS,
   SEED_RIDER_PALMARES_RESULTS,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
@@ -109,6 +110,19 @@ export function restRows(table, requestUrl = "") {
       }
       // Alle andre race_results-queries (dashboard/standings/season-aggregater) →
       // tom, præcis som før → uændrede core-smoke-snapshots.
+      return [];
+    }
+    // S4 (#1176): race_incidents (styrt/mekanisk defekt/DNF). Scoped på race_id
+    // som race_results ovenfor; tabellen er ny (endnu ikke migreret i prod ved
+    // denne slices merge) — mocken viser derfor kun seed for det race_id vi
+    // faktisk har uheld på (race-done-2), alt andet degraderer til [] (samme
+    // graceful-degradation som RaceDetailPage's egen forespørgsel).
+    case "race_incidents": {
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_RACE_INCIDENTS.filter(i => i.race_id === id);
+      }
       return [];
     }
     case "auction_proxy_bids":
