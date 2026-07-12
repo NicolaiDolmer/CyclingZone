@@ -7,12 +7,17 @@
  *
  *   (a) finalization-stall  : alle etaper kørt (stages_completed >= stages) men
  *       status != 'completed', og sidste resultat-import er > finalizeHours gammel.
- *   (b) scheduler-progress-stall: forfaldne etaper med et reelt startfelt (entries>0)
- *       venter i køen, MEN scheduleren har ikke importeret ét eneste resultat i
- *       > stageHours. GLOBALT throughput-signal — ikke per-etape: empirisk sidder
- *       enkelt-etaper normalt mange timer "due" mens scheduleren arbejder gennem en
- *       kø (post-chronrebuild-catch-up), så en per-etape-tærskel ville spamme. Tomme
+ *   (b) etape-stall (PRÆCIS, pr. løb, #2251): en enkelt FORFALDEN etape (allerede
+ *       filtreret til scheduled_at < now-stageHours ved SQL-cutoff i
+ *       fetchWatchdogState) med et reelt startfelt (entries>0) og STADIG ingen
+ *       resultater. Fyrer pr. løb — ikke aggregeret globalt — så én reelt hængende
+ *       etape ikke drukner blandt due-etaper der bliver afviklet normalt. Tomme
  *       spøgelsesløb (bund-divisioner uden managere) tælles aldrig med.
+ *   (b2) etape-gennemløb (globalt, INFO — ikke fejl, #2251): samme kø-betingelse som
+ *       (b), MEN kun logget — alarmerer aldrig Discord/Sentry. Før #2251 var DETTE
+ *       globale "ingen resultater importeret NOGET sted i >stageHours"-signal selve
+ *       (b)-alarmen, hvilket fyrede hver nat mellem løbsdage uden ét ægte hang (7
+ *       events/døgn, 0 reelle stalls) — det er nu nedgraderet til info/log.
  *   (c) prize-payout-stall  : completed løb med prize_paid_at NULL > prizeHours
  *       efter sidste resultat-import — KUN når auto_prize er tændt (ellers betales
  *       præmier manuelt og NULL er forventet → ingen alarm).
@@ -62,6 +67,7 @@ function dayKey(now) {
 const TYPE_LABELS = {
   finalize: "⛔ Finalization-stall",
   stage: "⏱️ Etape-stall",
+  stage_throughput: "ℹ️ Etape-gennemløb",
   prize: "💰 Præmie-stall",
   standings: "📊 Standings-lag",
   matview: "🐢 Rangliste-matview-stall",
@@ -76,9 +82,9 @@ export function labelForType(type) {
  */
 export function findingKey(finding, now) {
   const day = dayKey(now);
-  // stage + standings + matview er GLOBALE (sæson-brede/globale) signaler → dedup pr. dag.
-  // finalize + prize er pr. løb → dedup pr. (løb, dag).
-  if (finding.type === "standings" || finding.type === "stage" || finding.type === "matview") {
+  // standings + stage_throughput + matview er GLOBALE (sæson-brede) signaler → dedup pr.
+  // dag. finalize + prize + stage (#2251: nu PRÆCIS pr. løb) er pr. løb → dedup pr. (løb, dag).
+  if (finding.type === "standings" || finding.type === "stage_throughput" || finding.type === "matview") {
     return `${finding.type}:${day}`;
   }
   return `${finding.type}:${finding.raceId}:${day}`;
@@ -118,26 +124,46 @@ export function evaluateStallFindings({
     }
   }
 
-  // (b) scheduler-progress-stall (GLOBAL, ikke pr. løb). Forfaldne etaper m. reelt
-  // startfelt venter i køen, MEN scheduleren har ikke importeret ét eneste resultat
-  // i > stageHours. Empirisk (prod 2026-07-03): enkelt-etaper sidder normalt 2-103t
-  // "due" mens scheduleren arbejder sig gennem en post-chronrebuild-kø — en per-etape-
-  // tærskel ville derfor spamme. Det ægte stall-signal er throughput: motoren "kører"
-  // men producerer INTET trods kø (præcis P0-mønstret 30/6-2/7). Robust mod både
-  // normal kø-latency (results flyder → ingen alarm) og backdatede schedule-rows.
+  // (b) etape-stall — PRÆCIS, pr. løb (#2251). dueStages er allerede filtreret til
+  // scheduled_at < now-stageHours (SQL-cutoff i fetchWatchdogState), så "har et reelt
+  // startfelt OG stadig ingen resultater" ER i sig selv en genuint forfalden, hængende
+  // etape — uafhængigt af hvad der sker i resten af sæsonen. Fyrer PR. LØB (raceId sat)
+  // så dedup/Discord-fields matcher finalize/prize-mønsteret 1:1.
   const queuedWork = dueStages.filter((s) => s.has_entries && !s.has_results);
+  for (const s of queuedWork) {
+    const stageAge = ageHours(now, s.scheduled_at);
+    findings.push({
+      type: "stage",
+      raceId: s.race_id,
+      raceName: s.race_name,
+      stageNumber: s.stage_number,
+      ageHours: round1(stageAge),
+      detail:
+        `Etape ${s.stage_number} forfalden ${Number.isFinite(stageAge) ? Math.round(stageAge) + "t" : ""} ` +
+        `siden m. startfelt, ingen resultater importeret`,
+    });
+  }
+
+  // (b2) etape-gennemløb (GLOBAL, INFO — ikke fejl, #2251). Samme kø-betingelse som
+  // (b), men nedgraderet: "ingen resultater importeret NOGET sted i >stageHours" er
+  // ofte normal post-chronrebuild-kø-latency (enkelt-etaper sidder empirisk 2-103t
+  // "due" mens scheduleren arbejder sig gennem en kø, prod 2026-07-03) — IKKE et
+  // ægte hang i sig selv. De præcise (b)-findings ovenfor er den reelle alarm; dette
+  // er kun et throughput-signal til logs (processStallWatchdog alarmerer aldrig på
+  // level:'info').
   if (queuedWork.length) {
     const resultsAge = ageHours(now, standings?.maxResultsImported ?? null);
     if (resultsAge > t.stageHours) {
       const examples = [...new Set(queuedWork.map((s) => s.race_name).filter(Boolean))].slice(0, 3);
       findings.push({
-        type: "stage",
+        type: "stage_throughput",
+        level: "info",
         queuedCount: queuedWork.length,
         ageHours: round1(resultsAge),
         detail:
           `${queuedWork.length} forfalden(e) etape(r) m. startfelt venter, men ingen resultater ` +
-          `importeret i ${Number.isFinite(resultsAge) ? Math.round(resultsAge) + "t" : "sæsonen"} — ` +
-          `scheduleren producerer intet trods kø` +
+          `importeret NOGET sted i ${Number.isFinite(resultsAge) ? Math.round(resultsAge) + "t" : "sæsonen"} ` +
+          `(info — se præcise etape-stall-findings for hvilke løb)` +
           (examples.length ? ` (fx ${examples.join(", ")})` : ""),
       });
     }
@@ -383,19 +409,29 @@ export async function processStallWatchdog({
 
   const findings = evaluateStallFindings({ now, thresholds, autoPrizeEnabled, ...state });
 
-  // Dedup: kun findings vi ikke allerede har alarmeret om i dag
-  const newFindings = [];
+  // Dedup: kun findings vi ikke allerede har set/alarmeret om i dag. Gælder BÅDE
+  // info- og alert-niveau-findings — samme (check,løb,dag)-nøgle-rum.
+  const deduped = [];
   for (const f of findings) {
     const key = findingKey(f, now);
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
-    newFindings.push(f);
+    deduped.push(f);
   }
   // Hold seenKeys bounded (mirror stageScheduler-dedup) — dag-nøgler ruller alligevel
   if (seenKeys.size > 1000) seenKeys.clear();
 
+  // #2251: INFO-niveau (fx det globale etape-gennemløbs-signal) logges kun — alarmerer
+  // ALDRIG Discord/Sentry. Dette signal støjede tidligere som en fejl-alarm hver nat
+  // mellem løbsdage uden ét ægte hang (7 events/døgn, 0 reelle stalls).
+  const infoFindings = deduped.filter((f) => f.level === "info");
+  for (const f of infoFindings) {
+    console.log(`  ℹ️ stall-watchdog (info): ${labelForType(f.type)} — ${f.detail}`);
+  }
+
+  const newFindings = deduped.filter((f) => f.level !== "info");
   if (!newFindings.length) {
-    return { findings, newFindings: [], alerted: false };
+    return { findings, newFindings: [], infoFindings, alerted: false };
   }
 
   // Discord: ét aggregeret embed til ops-kanalen (@mention tilføjes af sendWebhookFn)
@@ -433,5 +469,5 @@ export async function processStallWatchdog({
     }
   }
 
-  return { findings, newFindings, alerted: true };
+  return { findings, newFindings, infoFindings, alerted: true };
 }

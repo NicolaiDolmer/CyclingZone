@@ -33,6 +33,7 @@ const EXEMPT = new Map([
   ["AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side — ikke player-facing."],
   ["AdminWaitlistPage.jsx",      "Admin-only waitlist-værktøj — ikke player-facing."],
   ["AdminAttributionPage.jsx",   "Admin-only signup-attribution-dashboard (#679) — ikke player-facing."],
+  ["AdminRetentionPage.jsx",     "Admin-only retention-scorecard (#2360) — ikke player-facing."],
   ["PrivacyPolicyPage.jsx",      "DA-udgaven i dual-page-mønster (separat PrivacyPolicyPageEn.jsx til EN)."],
   ["PrivacyPolicyPageEn.jsx",    "EN-udgaven i dual-page-mønster — engelsk indhold, ingen t() nødvendig."],
 ]);

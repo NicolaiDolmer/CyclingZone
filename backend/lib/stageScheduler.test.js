@@ -357,3 +357,108 @@ test("P0 2/7: finalization-pending løb (alle etaper kørt, ikke completed) geno
   assert.equal(r.recovered, 1);
   assert.equal(r.ran, 0);
 });
+
+// ── #2251: graceful skip + struktureret log-dedup for "No start list"-fejl ──────
+
+test("#2251: gentagne 'No start list'-fejl for SAMME løb dedupes (log + Sentry) pr. dag, men skipper stille videre", async () => {
+  const races = [
+    { id: "rGhost", season_id: "s1", name: "Tyndt felt", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 9 },
+    { id: "rOk", season_id: "s1", name: "Sundt løb", stages: 1, stages_completed: 0, status: "scheduled" },
+  ];
+  const schedule = [
+    { race_id: "rGhost", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+    { race_id: "rOk", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+  ];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: () => schedule,
+  });
+  const seenKeys = new Set();
+  const sentryCalls = [];
+  const originalConsoleError = console.error;
+  const logLines = [];
+  console.error = (line) => logLines.push(line);
+  try {
+    let okRuns = 0;
+    const runStageFn = async ({ raceId }) => {
+      if (raceId === "rGhost") throw new Error(`No start list for race rGhost`);
+      okRuns++; return {};
+    };
+    const r1 = await runStageScheduler({
+      supabase, now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      seenKeys,
+      captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }),
+      runStageFn,
+    });
+    // Tick 2 — samme dag, samme løb, samme fejl (simulerer næste 5-min cron-tick).
+    const r2 = await runStageScheduler({
+      supabase, now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      seenKeys,
+      captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }),
+      runStageFn,
+    });
+    assert.equal(r1.errors, 1);
+    assert.equal(r2.errors, 1, "fejlen tælles stadig hvert tick (errors er tick-lokal, ikke deduped)");
+    assert.equal(okRuns, 2, "rOk afvikles begge ticks — rGhost's fejl blokerer ikke andre løb (skip + fortsæt)");
+    assert.equal(sentryCalls.length, 1, "Sentry-capture dedup'es pr. (løb,dag) — kun tick 1 sender");
+    const ghostLogLines = logLines.filter((l) => l.includes("rGhost"));
+    assert.equal(ghostLogLines.length, 1, "struktureret fejl-log dedup'es pr. (løb,dag) — kun tick 1 logger");
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("#2251: struktureret fejl-log er valid JSON med race-id, division og fejlbesked", async () => {
+  const races = [
+    { id: "rGhost", season_id: "s1", name: "Tyndt felt", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 9 },
+  ];
+  const schedule = [{ race_id: "rGhost", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
+  });
+  const originalConsoleError = console.error;
+  let logged = null;
+  console.error = (line) => { logged = line; };
+  try {
+    await runStageScheduler({
+      supabase, now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      captureExceptionFn: () => {},
+      runStageFn: async () => { throw new Error("No start list for race rGhost"); },
+    });
+  } finally {
+    console.error = originalConsoleError;
+  }
+  const parsed = JSON.parse(logged);
+  assert.equal(parsed.event, "stage_scheduler_race_failed");
+  assert.equal(parsed.raceId, "rGhost");
+  assert.equal(parsed.leagueDivisionId, 9);
+  assert.match(parsed.error, /No start list/);
+});
+
+test("#2251: ny dag nulstiller dedup — samme løb kan logge/alarmere igen efter midnat", async () => {
+  const races = [{ id: "rGhost", season_id: "s1", name: "Tyndt felt", stages: 1, stages_completed: 0, status: "scheduled" }];
+  const schedule = [{ race_id: "rGhost", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
+  });
+  const seenKeys = new Set();
+  const sentryCalls = [];
+  const runStageFn = async () => { throw new Error("No start list for race rGhost"); };
+  await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }), runStageFn,
+  });
+  const NEXT_DAY = new Date("2026-06-22T13:00:00Z");
+  await runStageScheduler({
+    supabase, now: NEXT_DAY,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }), runStageFn,
+  });
+  assert.equal(sentryCalls.length, 2, "ny dag = ny dedup-nøgle → alarmerer igen");
+});
