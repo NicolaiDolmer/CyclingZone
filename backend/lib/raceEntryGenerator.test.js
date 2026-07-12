@@ -53,12 +53,30 @@ test("assignTeamAcrossRaces: hvert pick har en kaptajn-rolle", () => {
 // ── runRaceEntryGenerator (DB-orkestrator) ────────────────────────────────────
 // Minimal thenable per-tabel query-builder over et `state`-objekt. Udvidet med
 // .delete()/.update()/.upsert(). __calls logger alle writes så testen kan assertere
-// diff-skrivning vs. dry-run. race_entries-insert HÅNDHÆVER PK (race_id, rider_id)
-// som Postgres — en regression tilbage til rå insert med dublet fejler testen (#2375).
+// diff-skrivning vs. dry-run. race_entries-writes HÅNDHÆVER PK (race_id, rider_id)
+// OG uq_race_entries_captain/_sprint_captain/_hunter (maks én pr. (race, hold), på
+// tværs af manuel/auto) som Postgres — regressioner til rå insert med dublet ELLER
+// dobbelt special-rolle (CYCLINGZONE-2D) fejler testen (#2375).
 // opts.failUpsert(ctx) → injicér upsert-fejl (never-emptier-/isolations-tests).
+const MOCK_SPECIAL_ROLES = ["captain", "sprint_captain", "hunter"];
 function makeSupabase(state, { failUpsert = null } = {}) {
   const calls = [];
   const entryKey = (r) => `${r.race_id}|${r.rider_id}`;
+  // uq_race_entries_*: returnér den krænkede rolle hvis `rows` (samlet tabel-billede)
+  // indeholder >1 special-rolle-række pr. (race_id, team_id, race_role).
+  const violatedRoleUq = (rows) => {
+    const counts = new Map();
+    for (const r of rows) {
+      if (!MOCK_SPECIAL_ROLES.includes(r.race_role)) continue;
+      const k = `${r.race_id}|${r.team_id}|${r.race_role}`;
+      counts.set(k, (counts.get(k) || 0) + 1);
+      if (counts.get(k) > 1) return r.race_role;
+    }
+    return null;
+  };
+  const roleUqError = (role) => ({
+    error: { message: `duplicate key value violates unique constraint "uq_race_entries_${role}"` },
+  });
   function builder(table) {
     const q = { table, filters: [], op: "select", values: null };
     const api = {
@@ -81,6 +99,8 @@ function makeSupabase(state, { failUpsert = null } = {}) {
             }
             seen.add(entryKey(r));
           }
+          const violated = violatedRoleUq([...(state[table] || []), ...rows]);
+          if (violated) return Promise.resolve(roleUqError(violated));
         }
         calls.push({ table, insert: rows });
         state[table] = [...(state[table] || []), ...rows];
@@ -93,7 +113,9 @@ function makeSupabase(state, { failUpsert = null } = {}) {
         calls.push({ table, insert: rows, upsert: true, opts });
         if (table === "race_entries" && opts.ignoreDuplicates) {
           // ON CONFLICT DO NOTHING-semantik: eksisterende (race,rytter) — uanset team —
-          // og intra-batch-dubletter springes stille over.
+          // og intra-batch-dubletter springes stille over. NB: ON CONFLICT dækker KUN
+          // PK'en (onConflict-target) — uq_race_entries_*-brud fejler stadig hele
+          // statementet, præcis som i Postgres (CYCLINGZONE-2D-mekanismen).
           const seen = new Set((state[table] || []).map(entryKey));
           const accepted = [];
           for (const r of rows) {
@@ -101,8 +123,14 @@ function makeSupabase(state, { failUpsert = null } = {}) {
             seen.add(entryKey(r));
             accepted.push(r);
           }
+          const violated = violatedRoleUq([...(state[table] || []), ...accepted]);
+          if (violated) return Promise.resolve(roleUqError(violated));
           state[table] = [...(state[table] || []), ...accepted];
           return Promise.resolve({ error: null });
+        }
+        if (table === "race_entries") {
+          const violated = violatedRoleUq([...(state[table] || []), ...rows]);
+          if (violated) return Promise.resolve(roleUqError(violated));
         }
         state[table] = [...(state[table] || []), ...rows];
         return Promise.resolve({ error: null });
@@ -120,6 +148,18 @@ function makeSupabase(state, { failUpsert = null } = {}) {
           return resolve({ error: null });
         }
         if (q.op === "update") {
+          // uq_race_entries_*-håndhævelse: simulér opdateringen på et prospekt-billede
+          // FØR den anvendes — brud → fejl uden at røre state (som Postgres).
+          if (table === "race_entries") {
+            const prospective = (state[table] || []).map((r) =>
+              rows.includes(r) ? { ...r, ...q.values } : r
+            );
+            const violated = violatedRoleUq(prospective);
+            if (violated) {
+              calls.push({ table, update: q.values, filters: q.filters, rejected: true });
+              return resolve(roleUqError(violated));
+            }
+          }
           calls.push({ table, update: q.values, filters: q.filters });
           for (const r of rows) Object.assign(r, q.values);
           return resolve({ error: null });
@@ -580,6 +620,102 @@ test("#2375: rolle-ændring på eksisterende auto-række opdateres via update (i
   const captains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "captain");
   assert.equal(captains.length, 1, "præcis én kaptajn efter rolle-refresh");
   assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 6, "stadig præcis 6 entries");
+});
+
+// ── #2375 hotfix 2 (CYCLINGZONE-2D): rolle-bevidst supplement ─────────────────
+// Prod: 31 enheder fejlede med uq_race_entries_captain/_sprint_captain (Team UKYO,
+// Division 3 A) — supplement-batchen tildelte en special-rolle som en bevaret
+// eksisterende række allerede holdt. Mocken håndhæver nu uq-indexene som Postgres,
+// så disse tests ér repro-klassen.
+
+test("CYCLINGZONE-2D: manuel captain + supplement-batch → ingen uq-fejl, nye ryttere er helpers, manager-captain urørt", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Manageren har selv udtaget 2 ryttere inkl. KAPTAJN (bevarede, manuelle entries).
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r6", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "A", rider_id: "t1-r7", team_id: "t1", race_role: "sprint_captain", is_auto_filled: false },
+  ];
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `ingen uq-kollision (fejl: ${res.errors.join("; ")})`);
+  const autoRows = state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === true);
+  assert.equal(autoRows.length, 4, "top-fyldt til fuld trup (2 manuelle + 4 auto = 6)");
+  for (const e of autoRows) assert.equal(e.race_role, "helper", `supplement ${e.rider_id} fik special-rolle ${e.race_role}`);
+  const captains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "captain");
+  assert.equal(captains.length, 1, "præcis én kaptajn");
+  assert.equal(captains[0].rider_id, "t1-r6", "managerens kaptajn er urørt");
+  assert.equal(captains[0].is_auto_filled, false, "kaptajnen er stadig den manuelle række");
+  const sprintCaptains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "sprint_captain");
+  assert.equal(sprintCaptains.length, 1, "præcis én sprint-kaptajn (managerens)");
+  assert.equal(sprintCaptains[0].rider_id, "t1-r7");
+});
+
+test("CYCLINGZONE-2D: ny auto-kaptajn indsættes uden uq-kollision — gammel holder vacates FØR insert", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 6); // r0 stærkest → ny ønsket captain
+  // Bevaret auto-lineup FØR r0 kom til (fx købt på auktion): r1 er captain, r0 mangler.
+  // Gammel skriverækkefølge (insert af ny captain FØR demote af r1) = præcis prod-fejlen.
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r1", team_id: "t1", race_role: "captain", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r2", team_id: "t1", race_role: "helper", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r3", team_id: "t1", race_role: "helper", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r4", team_id: "t1", race_role: "helper", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r5", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `ingen uq-kollision (fejl: ${res.errors.join("; ")})`);
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  assert.equal(aEntries.length, 6, "fuld trup efter supplement");
+  const captains = aEntries.filter((e) => e.race_role === "captain");
+  assert.equal(captains.length, 1, "præcis én kaptajn");
+  assert.equal(captains[0].rider_id, "t1-r0", "stærkeste rytter er ny kaptajn");
+  assert.equal(
+    aEntries.find((e) => e.rider_id === "t1-r1")?.race_role, "helper",
+    "gammel kaptajn er nedgraderet til helper (vacate)"
+  );
+  // Uniforme test-abilities → bedste sprinter == kaptajnen → autopick sætter ingen
+  // sprint_captain. Det afgørende her er at uq aldrig brydes: maks én af hver.
+  assert.ok(aEntries.filter((e) => e.race_role === "sprint_captain").length <= 1, "maks én sprint-kaptajn");
+});
+
+test("CYCLINGZONE-2D: stale auto-kaptajn (rytter forladt holdet) blokerer ikke ny kaptajn", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 6);
+  // "gone" er solgt/væk (ikke i riders-state) men hans captain-række under t1 hænger ved.
+  state.race_entries = [
+    { race_id: "A", rider_id: "gone", team_id: "t1", race_role: "captain", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `ingen uq-kollision (fejl: ${res.errors.join("; ")})`);
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  assert.ok(!aEntries.some((e) => e.rider_id === "gone"), "stale kaptajn-række fjernet");
+  const captains = aEntries.filter((e) => e.race_role === "captain");
+  assert.equal(captains.length, 1, "præcis én kaptajn");
+  assert.equal(captains[0].rider_id, "t1-r0", "ny kaptajn indsat trods stale holder");
 });
 
 test("runRaceEntryGenerator: hold UDEN strategi-row → uændret (strategy=null)", async () => {
