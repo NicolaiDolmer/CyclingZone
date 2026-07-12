@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minute extension",
-        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed the day's close (24:00) by up to 1 hour, so an auction can run until 01:00. If a bid in that extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a bid at 00:55, the auction ends at 08:05)."
+        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension cannot spill past the day's active window: if the extra 10 minutes would land after close, the auction skips straight to the next window's opening instead, carrying over only the leftover minutes (e.g. a bid that would have ended the auction 5 minutes after close instead ends it 5 minutes into the next window)."
       },
       "squadAndAuctions": {
         "title": "Squad size and auctions",
@@ -146,6 +146,15 @@
           "Enter your offer in CZ$ and an optional message.",
           "Click 'Send offer'. The seller gets a notification.",
           "AI riders cannot receive direct offers; they must be bought via auction."
+        ]
+      },
+      "proposeSwap": {
+        "title": "Propose a rider swap",
+        "steps": [
+          "Find the rider you want in a swap and go to their profile page.",
+          "Click '⇄ Propose swap', pick one of your own riders to offer, and optionally add a cash adjustment.",
+          "Click 'Send swap'. The other manager gets a notification.",
+          "Existing swap proposals still show up under Received offers and Sent offers on the Transfers page, where you can accept, counter or withdraw them."
         ]
       },
       "receiveAndReply": {
@@ -985,6 +994,26 @@
     "riderRating": {
       "q": "What does a rider's overall rating mean?",
       "a": "The rating is a single 1-99 score for how good a rider is, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. It blends two things equally: how strong the rider is at their best type (climber, sprinter, GC and so on) and their all-round ability across all skills. It uses the same model that decides the rider's displayed type and market value, so the three always agree. The scale is anchored to the whole rider pool rather than to a fixed maximum, so the very best riders sit near 99 and the rest of the field spreads out below them. The rating reflects current ability only. It is not potential, and it does not include form, fatigue or how well the rider suits a specific race."
+    },
+    "raceSignupFaq": {
+      "q": "Where do I sign up for a race?",
+      "a": "Go to Season & Results, Races (or open /races directly). The Calendar tab opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
+    },
+    "raceClassificationsFaq": {
+      "q": "What's the difference between GC, Classic/Monument and stage wins?",
+      "a": "Every race has a class (such as ProSeries, Monuments or a Grand Tour) and a type: stage race or one-day race. Stage races (like Grand Tours) run several stages and track two separate results: a stage win for topping an individual stage, and a GC win for leading the overall classification once the race finishes. One-day races (Classics and Monuments) only ever produce a single result when they finish, so winning one always counts as a GC win, never a stage win, even though there's no multi-day overall classification to speak of. Your team stats and achievements count stage wins and GC wins separately."
+    },
+    "newPlayerEconomyFaq": {
+      "q": "How much money do I start with, and when should I take a loan?",
+      "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries, upkeep and loan interest are deducted automatically at the start of each season. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."
+    },
+    "academyIntakeScoutingFaq": {
+      "q": "How often do I get new Academy prospects, and does scouting reset?",
+      "a": "Academy intake happens once per season: at the start of each season (or when you first set up your team) you get a small cohort of prospects to review and sign 0-2 of into your Academy. There's no extra cohort mid-season. Scouting works differently: you get 15 scouting actions per season, refilled automatically at the next season start, and you can spend them on any rider, not just your own Academy prospects, to narrow down how good they really are."
+    },
+    "fatigueInjuryThresholdFaq": {
+      "q": "How high can I push fatigue before training risks an injury?",
+      "a": "Injury risk from training only kicks in once a rider's Fatigue reaches 70 and you set Hard intensity; below 70, Hard training carries no injury risk at all. Above that, the risk grows with fatigue, so keep an eye on the risk badge on the rider before you save the program. This applies to Academy riders too: they train through the same daily program as your senior squad and can pick up an injury from Hard training, even though they can't be selected for races yet."
     }
   }
 }

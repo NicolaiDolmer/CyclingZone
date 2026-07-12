@@ -1,6 +1,6 @@
 // RiderProfileTabs — sticky tab-bar for den redesignede rytterprofil (#2000).
 //
-// 8 tabs, aktiv = guld-understregning. Horisontal scroll på mobil (tab-baren
+// 9 tabs, aktiv = guld-understregning. Horisontal scroll på mobil (tab-baren
 // klipper aldrig). Prop-drevet: parent ejer activeTab-state. Token-only.
 // Sidder under switcher-baren i scroll-stакken (lavere top end den).
 

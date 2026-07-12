@@ -230,3 +230,31 @@ jobs:
 
       - name: Run rankings-fetch guard
         run: node scripts/lint-rankings-raceresults-fetch.mjs
+
+  riders-column-grant-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod #2238 (rytter-siden tom for alle brugere): riders +
+    # rider_derived_abilities bruger KOLONNE-niveau SELECT-grants (#1162), ikke
+    # tabel-niveau — en ny kolonne er usynlig for anon/authenticated indtil den
+    # eksplicit GRANT'es. Samme bug shippede 3× (#1309, ability_progress 12/6,
+    # #2238's owner_is_ai). Guarden er selv-udvidende: den registrerer et
+    # tabel-navn som "gated" fra den REVOKE SELECT ON <table> FROM
+    # anon/authenticated den finder i korpusset, så den dækker automatisk
+    # enhver fremtidig tabel der adopterer samme mønster — ikke kun riders.
+    # Statisk (parser database/*.sql), ingen DB-adgang nødvendig i CI.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test riders-column-grant guard
+        run: node --test scripts/lint-riders-column-grant.test.mjs
+
+      - name: Run riders-column-grant guard
+        run: node scripts/lint-riders-column-grant.mjs

@@ -10,7 +10,6 @@
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
     "archive": "Historik ({count})",
-    "swaps": "Byttehandler",
     "loans": "Lejeaftaler",
     "market": "Marked ({count})"
   },
@@ -151,21 +150,6 @@
     "cancel": "Annullér",
     "confirmRemoveButton": "Ja, fjern"
   },
-  "newSwap": {
-    "title": "Foreslå byttehandel",
-    "offeredLabel": "Din rytter du tilbyder",
-    "selectRider": "Vælg rytter…",
-    "requestedLabel": "Rytter du ønsker (søg på efternavn)",
-    "lastnamePlaceholder": "Efternavn...",
-    "selectedRider": "Valgt: {firstname} {lastname} ({team})",
-    "cashLabel": "Kontantbetaling fra dig (CZ$) · 0 = ren bytte · negativt = du modtager",
-    "messageLabel": "Besked (valgfri)",
-    "messagePlaceholder": "Fx. begrundelse eller kommentar...",
-    "sending": "Sender...",
-    "submit": "Send forslag",
-    "cancel": "Annuller",
-    "newButton": "+ Foreslå ny byttehandel"
-  },
   "newLoan": {
     "title": "Foreslå lejeaftale",
     "riderLabel": "Rytter du ønsker at leje (søg på efternavn)",
@@ -231,8 +215,6 @@
     "sent": "Du har ikke sendt nogen tilbud endnu",
     "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
     "archive": "Ingen arkiverede tilbud",
-    "swaps": "Ingen aktive byttehandler",
-    "swapsHint": "Foreslå en byttehandel ved at klikke knappen ovenfor",
     "loans": "Ingen aktive lejeaftaler",
     "loansHint": "Foreslå en lejeaftale ved at klikke knappen ovenfor",
     "marketNoListings": "Ingen ryttere til salg",
@@ -257,7 +239,6 @@
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",
-    "swapProposalSent": "✅ Bytteforslag sendt!",
     "loanActivated": "✅ Lejeaftale aktiveret",
     "loanRejected": "Lejeforslag afvist",
     "loanCancelled": "Lejeaftale annulleret",

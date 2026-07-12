@@ -63,7 +63,10 @@ const API = import.meta.env.VITE_API_URL;
 
 // #987: faner kan deep-linkes via ?tab= (fx /transfers?tab=market fra nav'ens
 // "Transferliste"-genvej). Ukendte værdier falder tilbage til "received".
-const VALID_TABS = ["received", "sent", "archive", "swaps", "loans", "market"];
+// #2358: swap-fanen fjernet — swaps demoteres til en handling på rytterprofilen
+// (SwapOfferButton, RiderStatsPage.jsx). Eksisterende åbne swap-tilbud er stadig
+// synlige/besvarlige, blot flyttet ind i "received"/"sent" (se render nedenfor).
+const VALID_TABS = ["received", "sent", "archive", "loans", "market"];
 const DEFAULT_TAB = "received";
 
 // #58: de 6 sideordnede faner er grupperet i 3 handlingsorienterede modes, så en
@@ -73,7 +76,7 @@ const DEFAULT_TAB = "received";
 // VALID_TABS. Rækkefølgen af faner i et mode = visnings-rækkefølge i sub-fane-båndet.
 const TAB_MODES = [
   { key: "handle",       tabs: ["received"] },
-  { key: "negotiations", tabs: ["sent", "archive", "swaps", "loans"] },
+  { key: "negotiations", tabs: ["sent", "archive", "loans"] },
   { key: "market",       tabs: ["market"] },
 ];
 
@@ -617,119 +620,6 @@ function SwapCard({ swap, myTeamId, onAction }) {
   );
 }
 
-// ── New swap form ─────────────────────────────────────────────────────────────
-function NewSwapForm({ myRiders, onSubmit, onCancel }) {
-  const { t } = useTranslation("transfers");
-  const [offeredId, setOfferedId]   = useState("");
-  const [requestedId, setRequestedId] = useState("");
-  const [cash, setCash]             = useState(0);
-  const [msg, setMsg]               = useState("");
-  const [search, setSearch]         = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedRequested, setSelectedRequested] = useState(null);
-  const [loading, setLoading]       = useState(false);
-  const [searching, setSearching]   = useState(false);
-
-  async function runSearch(q) {
-    if (q.trim().length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    const { data } = await supabase
-      .from("riders")
-        .select("id, firstname, lastname, market_value, team_id, team:team_id(name)")
-      .ilike("lastname", `%${q}%`)
-      .eq("is_retired", false)
-      .not("team_id", "is", null)
-      .limit(20);
-    setSearchResults((data || []).filter(r => !myRiders.find(m => m.id === r.id)));
-    setSearching(false);
-  }
-
-  function pickRequested(rider) {
-    setSelectedRequested(rider);
-    setRequestedId(rider.id);
-    setSearch(`${rider.firstname} ${rider.lastname}`);
-    setSearchResults([]);
-  }
-
-  async function handleSubmit() {
-    if (!offeredId || !requestedId) return;
-    setLoading(true);
-    try {
-      await onSubmit({ offered_rider_id: offeredId, requested_rider_id: requestedId, cash_adjustment: cash, message: msg });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card className="p-5 flex flex-col gap-4">
-      <h3 className="text-cz-1 font-semibold">{t("newSwap.title")}</h3>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.offeredLabel")}</label>
-        <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
-          <option value="">{t("newSwap.selectRider")}</option>
-          {myRiders.map(r => (
-              <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatCz(getRiderMarketValue(r))})</option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.requestedLabel")}</label>
-        <div className="relative">
-          <input type="text" value={search}
-            onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
-            placeholder={t("newSwap.lastnamePlaceholder")}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
-          {searching && <span className="absolute right-3 top-2.5 text-cz-3 text-xs">...</span>}
-          {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-cz-subtle border border-cz-border rounded-lg overflow-hidden shadow-lg">
-              {searchResults.map(r => (
-                <button key={r.id} onClick={() => pickRequested(r)}
-                  className="min-h-[44px] w-full text-left px-3 py-2 hover:bg-cz-subtle text-cz-1 text-sm border-b border-cz-border last:border-0">
-                  {r.firstname} {r.lastname}
-                        <span className="text-cz-3 text-xs ms-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {selectedRequested && (
-          <p className="text-cz-accent-t/70 text-xs mt-1">{t("newSwap.selectedRider", { firstname: selectedRequested.firstname, lastname: selectedRequested.lastname, team: selectedRequested.team?.name })}</p>
-        )}
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">
-          {t("newSwap.cashLabel")}
-        </label>
-        <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-      </div>
-
-      <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.messageLabel")}</label>
-        <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-          placeholder={t("newSwap.messagePlaceholder")}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={handleSubmit} disabled={loading || !offeredId || !requestedId}
-          className="min-h-[44px] flex-1 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-40">
-          {loading ? t("newSwap.sending") : t("newSwap.submit")}
-        </button>
-        <button onClick={onCancel}
-          className="min-h-[44px] px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle">
-          {t("newSwap.cancel")}
-        </button>
-      </div>
-    </Card>
-  );
-}
-
 // ── Loan agreement card ───────────────────────────────────────────────────────
 const LOAN_STATUS_STYLE = {
   pending:   { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
@@ -1210,8 +1100,6 @@ export default function TransfersPage() {
   const [receivedSwaps, setReceivedSwaps] = useState([]);
   const [lendingLoans, setLendingLoans] = useState([]);
   const [borrowingLoans, setBorrowingLoans] = useState([]);
-  const [myRiders, setMyRiders] = useState([]);
-  const [showNewSwap, setShowNewSwap] = useState(false);
   const [showNewLoan, setShowNewLoan] = useState(false);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
@@ -1272,12 +1160,11 @@ export default function TransfersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
-      const [listingsRes, offersRes, swapsRes, loansRes, ridersRes] = await Promise.all([
+      const [listingsRes, offersRes, swapsRes, loansRes] = await Promise.all([
         fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
         fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
-        supabase.from("riders").select("id, firstname, lastname, market_value").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
       ]);
 
       // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op
@@ -1293,7 +1180,6 @@ export default function TransfersPage() {
       setReceivedSwaps((swapsRes.received || []).map(flatSwap));
       setLendingLoans((loansRes.lending || []).map(flatRider));
       setBorrowingLoans((loansRes.borrowing || []).map(flatRider));
-      setMyRiders(ridersRes.data || []);
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     } finally {
@@ -1448,26 +1334,6 @@ export default function TransfersPage() {
     }
   }
 
-  async function handleNewSwap(payload) {
-    try {
-      const res = await fetch(`${API}/api/transfers/swaps`, {
-        method: "POST",
-        headers: await getHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        showMsg(t("toast.swapProposalSent"));
-        setShowNewSwap(false);
-        loadAll();
-      } else {
-        showMsg(resolveApiError(data, t), "error");
-      }
-    } catch {
-      showMsg(t("auth:error.connectionFailed"), "error");
-    }
-  }
-
   async function handleLoanAction(loanId, action) {
     try {
       const res = await fetch(`${API}/api/loans/${loanId}`, {
@@ -1507,16 +1373,18 @@ export default function TransfersPage() {
     }
   }
 
+  // #2358: swap-fanen er væk — pending swap-tilbud tælles nu med i received/sent-
+  // fanens badge (samme fane de nu vises i), i stedet for eget "swaps"-badge.
   const pendingReceived = receivedOffers.filter(o =>
     o.status === "pending" || (o.status === "awaiting_confirmation" && !o.seller_confirmed)
+  ).length + receivedSwaps.filter(s =>
+    s.status === "pending" || (s.status === "awaiting_confirmation" && !s.receiving_confirmed)
   ).length;
   const pendingSent = sentOffers.filter(o =>
     o.status === "countered" || (o.status === "awaiting_confirmation" && !o.buyer_confirmed)
+  ).length + sentSwaps.filter(s =>
+    s.status === "countered" || (s.status === "awaiting_confirmation" && !s.proposing_confirmed)
   ).length;
-  const pendingSwaps = [
-    ...receivedSwaps.filter(s => s.status === "pending" || (s.status === "awaiting_confirmation" && !s.receiving_confirmed)),
-    ...sentSwaps.filter(s => s.status === "countered" || (s.status === "awaiting_confirmation" && !s.proposing_confirmed)),
-  ].length;
   const pendingLoans = lendingLoans.filter(l => l.status === "pending").length;
 
   // #58: pr-fane label + badge, delt af mode-båndet og sub-fane-båndet. Nøglerne
@@ -1525,7 +1393,6 @@ export default function TransfersPage() {
     received: { label: t("tabs.received"), badge: pendingReceived },
     sent:     { label: t("tabs.sent"),     badge: pendingSent },
     archive:  { label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
-    swaps:    { label: t("tabs.swaps"),    badge: pendingSwaps },
     loans:    { label: t("tabs.loans"),    badge: pendingLoans },
     market:   { label: t("tabs.market",   { count: listings.length }) },
   };
@@ -1648,7 +1515,7 @@ export default function TransfersPage() {
         <div>
           {tab === "received" && (
             <div className="flex flex-col gap-3">
-              {receivedOffers.length === 0 ? (
+              {receivedOffers.length === 0 && receivedSwaps.length === 0 ? (
                 <EmptyState
                   icon={<ExchangeIcon size={28} aria-hidden="true" />}
                   title={t("empty.received")}
@@ -1659,12 +1526,24 @@ export default function TransfersPage() {
                   <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
                 ))
               )}
+              {/* #2358: swap-fanen er fjernet — modtagne bytteforslag vises her, så de
+                  fortsat kan ses/besvares (nye forslag foreslås fra rytterprofilen). */}
+              {receivedSwaps.length > 0 && (
+                <div>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2 mt-2">{t("sections.receivedProposals")}</p>
+                  <div className="flex flex-col gap-3">
+                    {receivedSwaps.map(s => (
+                      <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {tab === "sent" && (
             <div className="flex flex-col gap-3">
-              {sentOffers.length === 0 ? (
+              {sentOffers.length === 0 && sentSwaps.length === 0 ? (
                 <EmptyState
                   icon={<ExchangeIcon size={28} aria-hidden="true" />}
                   title={t("empty.sent")}
@@ -1674,6 +1553,17 @@ export default function TransfersPage() {
                 sentOffers.map(o => (
                   <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
                 ))
+              )}
+              {/* #2358: sendte bytteforslag (proposeret fra rytterprofilen) vises her. */}
+              {sentSwaps.length > 0 && (
+                <div>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2 mt-2">{t("sections.sentProposals")}</p>
+                  <div className="flex flex-col gap-3">
+                    {sentSwaps.map(s => (
+                      <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1708,54 +1598,6 @@ export default function TransfersPage() {
                     </div>
                   )}
                 </>
-              )}
-            </div>
-          )}
-
-          {tab === "swaps" && (
-            <div className="flex flex-col gap-4">
-              {showNewSwap ? (
-                <NewSwapForm
-                  myRiders={myRiders}
-                  onSubmit={handleNewSwap}
-                  onCancel={() => setShowNewSwap(false)}
-                />
-              ) : (
-                <button onClick={() => setShowNewSwap(true)}
-                  className="min-h-[44px] w-full py-2.5 bg-cz-accent/10 text-cz-accent-t/80 border border-cz-accent/15 rounded-cz text-sm font-medium
-                    hover:bg-cz-accent/10 hover:text-cz-accent-t transition-all">
-                  {t("newSwap.newButton")}
-                </button>
-              )}
-
-              {receivedSwaps.length > 0 && (
-                <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.receivedProposals")}</p>
-                  <div className="flex flex-col gap-3">
-                    {receivedSwaps.map(s => (
-                      <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {sentSwaps.length > 0 && (
-                <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.sentProposals")}</p>
-                  <div className="flex flex-col gap-3">
-                    {sentSwaps.map(s => (
-                      <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {receivedSwaps.length === 0 && sentSwaps.length === 0 && !showNewSwap && (
-                <EmptyState
-                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
-                  title={t("empty.swaps")}
-                  description={t("empty.swapsHint")}
-                />
               )}
             </div>
           )}

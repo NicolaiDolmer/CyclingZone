@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minutters forlængelse",
-        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens lukning (kl. 24) med op til 1 time, så en auktion kan køre til kl. 01. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx bud kl. 00:55, auktionen slutter kl. 08:05)."
+        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen kan ikke løbe ud over dagens aktive vindue: ville de ekstra 10 minutter række ud over lukketid, springer auktionen i stedet direkte til næste vindues åbning, hvor kun de overskydende minutter føres med (fx et bud der ville have afsluttet auktionen 5 minutter efter lukketid, afslutter den i stedet 5 minutter inde i næste vindue)."
       },
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
@@ -146,6 +146,15 @@
           "Indtast dit tilbud i CZ$ og en valgfri besked.",
           "Klik 'Send tilbud'. Sælger modtager en notifikation.",
           "AI-ryttere kan ikke modtage direkte tilbud; de skal købes via auktion."
+        ]
+      },
+      "proposeSwap": {
+        "title": "Foreslå en byttehandel",
+        "steps": [
+          "Find rytteren du vil bytte med og gå til deres profilside.",
+          "Klik '⇄ Foreslå byttehandel', vælg en af dine egne ryttere at tilbyde, og tilføj evt. en kontant-justering.",
+          "Klik 'Send byttehandel'. Den anden manager modtager en notifikation.",
+          "Eksisterende bytteforslag vises stadig under Modtagne tilbud og Sendte tilbud på Transfers-siden, hvor du kan acceptere, give modbud eller trække dem tilbage."
         ]
       },
       "receiveAndReply": {
@@ -985,6 +994,26 @@
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",
       "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
+    },
+    "raceSignupFaq": {
+      "q": "Hvor tilmelder jeg mig et løb?",
+      "a": "Gå til Sæson & Resultater, Løb (eller åbn /races direkte). Kalender-fanen åbner som standard på din nuværende løbsdag, hvilket kan se tomt eller allerede i gang ud, hvis der ikke er noget tilbage at tilmelde sig i dag. Brug dag-navigationen (pilene Forrige/Næste dag) til at hoppe frem til en kommende løbsdag, og tilføj derefter ryttere til et af de løb der vises der. Vælger du ikke selv, udfylder din assistent automatisk en opstilling for dig, inden løbet starter."
+    },
+    "raceClassificationsFaq": {
+      "q": "Hvad er forskellen på GC, Klassiker/Monument og etapesejre?",
+      "a": "Hvert løb har en klasse (fx ProSeries, Monumenter eller en Grand Tour) og en type: etapeløb eller endagsløb. Etapeløb (fx Grand Tours) kører flere etaper og tæller to separate resultater: en etapesejr for at føre en enkelt etape, og en GC-sejr for at føre den samlede stilling når løbet slutter. Endagsløb (Klassikere og Monumenter) giver kun ét resultat når de slutter, så en sejr her tæller altid som en GC-sejr, aldrig som en etapesejr, selvom der ikke findes nogen flerdages-samlet-stilling. Din holdstatistik og achievements tæller etapesejre og GC-sejre hver for sig."
+    },
+    "newPlayerEconomyFaq": {
+      "q": "Hvor mange penge starter jeg med, og hvornår skal jeg tage et lån?",
+      "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger, drift og lånerenter trækkes automatisk ved hver sæsons start. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
+    },
+    "academyIntakeScoutingFaq": {
+      "q": "Hvor ofte får jeg nye akademi-emner, og resetter scouting?",
+      "a": "Akademi-indtag sker én gang pr. sæson: ved hver sæsons start (eller når du opretter dit hold) får du et lille kuld emner, du kan vurdere og signe 0-2 af ind i dit Akademi. Der kommer ikke et ekstra kuld midt i sæsonen. Scouting fungerer anderledes: du får 15 scouting-handlinger pr. sæson, som genopfyldes automatisk ved næste sæsonstart, og du kan bruge dem på enhver rytter, ikke kun dine egne akademi-emner, for at indsnævre hvor god han egentlig er."
+    },
+    "fatigueInjuryThresholdFaq": {
+      "q": "Hvor højt kan jeg presse trætheden, før træning risikerer en skade?",
+      "a": "Skaderisiko fra træning findes først, når en rytters Træthed når 70, og du sætter Hård intensitet; under 70 giver Hård træning slet ingen skaderisiko. Over det vokser risikoen med trætheden, så hold øje med risiko-mærket på rytteren, før du gemmer programmet. Det gælder også akademi-ryttere: de træner gennem det samme daglige program som din senior-trup og kan pådrage sig en skade fra Hård træning, selvom de endnu ikke kan udtages til løb."
     }
   }
 }
