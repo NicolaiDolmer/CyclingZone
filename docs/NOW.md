@@ -28,11 +28,11 @@
 
 > **Gap-memo 11/7: ALLE 7 §9-beslutninger LÅST (A) samme aften** — [memo m. §10-eksekverings-log](superpowers/specs/2026-07-11-verdensklasse-gap-analyse-strategisk-memo.md). MASTERPLAN omskrevet (ny kø-SSOT). 11 issues oprettet (#2351-#2361); #2224/#2034/#1176/#1997 scopet ind; #2217/#2218 frosset (claude:blocked). Session-disciplin: ≥2 ugentlige v3-sessions indtil S3 live.
 
-> **Race v3 status 12/7 aften (session 2, Fable + 3 sonnet-subagenter i worktrees):** **S3 roller/etape (#2034) ✅ MERGED (PR #2387)** — motor-resolution + effort→fatigue + stage-roles-API + etape-taktik-matrix m. førertrøje-genvej; race:gate grøn, flag-off bit-identisk. **free_role-UI (#2376) ✅ MERGED (PR #2386)**, flag-gated. Alt v3 S1-S3 er nu i prod bag `race_engine_v3_scoring='off'`; prod-deploy verificeret (main-status success). `race:gate:roles`: ét PRÆ-eksisterende rødt bånd (itt 59 %<60 %) — separat task spundet af. Salt-verify (#2351) ✅ 12/7: alle dagens 26 runs har `salt_version=1`.
+> **Race v3 status 12/7 aften:** S3 (#2034) + free_role-UI (#2376) ✅ MERGED (PR #2387/#2386); salt-verify (#2351) ✅. **S4 styrt/DNF (#1176) ✅ BYGGET (session 3, Fable + 3 sonnet-workers): PR [#2393](https://github.com/NicolaiDolmer/CyclingZone/pull/2393) afventer EJER-merge** (indeholder migration `race_incidents` — anvend FØR v3-flip; med flag off rører runtime aldrig tabellen). Kalibreret 3 seeds: DNF 0.39-0.41 %/etape (bånd 0.3-1.5 %), incident-bounds-oracle grøn, flag-off bit-identisk, playwright 27/27. Sample-recaps vist ejer 12/7; patch note/help bundles med flip. Kendt præ-eksisterende rødt bånd (itt) uændret.
 >
-> **🎯 Next action:** Ejer: **flip-beslutning** (`race_engine_v3_scoring`, mellem to løbsdage) — merge draft-PR [#2385](https://github.com/NicolaiDolmer/CyclingZone/pull/2385) (patch note v6.97 + help + Discord-udkast, tjekliste i PR) SAMMEN med flippet + godkend Discord-teksten ordret. Næste Claude-session: **v3 S4 styrt/DNF #1176**. Selvkørende: AI-trim heal-sweep (#2377 lukkes når 15/15 grupper = 24) · entry-generator retryer tomme løb hver time. Ejer 13/7: Alunta+CZ Pro (#1903) · flip-bølge-verify (#2357) · /training-verify · 📌 ovenfor.
+> **🎯 Next action:** Ejer: **flip-beslutning** (`race_engine_v3_scoring`, mellem to løbsdage) — merge draft-PR [#2385](https://github.com/NicolaiDolmer/CyclingZone/pull/2385) (patch note v6.97 + help + Discord-udkast) SAMMEN med flippet + godkend Discord-tekst ordret; **merge også S4-PR [#2393](https://github.com/NicolaiDolmer/CyclingZone/pull/2393) + anvend migrationen før flippet** (så flipper S1-S4 samlet). Næste Claude-session: **v3 S5 peak-planer** (spec §10). Selvkørende: AI-trim heal-sweep (#2377) · entry-generator hver time. Ejer 13/7: Alunta+CZ Pro (#1903) · flip-bølge-verify (#2357) · /training-verify · 📌 ovenfor.
 
-> **🤖 Working agent:** Claude Code (Fable) — v3 S4 styrt/DNF #1176, startet 12/7.
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
