@@ -90,6 +90,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
+  // Race v3 S1 (#2352, merged+applied 12/7): raceRunner persisterer komponent-rows
+  // KUN når race_engine_v3_scoring='on' — flaget er bevidst off indtil ejer-flip
+  // (forudsætninger: #2376). Skriv-path verificeret i raceRunner.js (persistRuns,
+  // hasRiderScores-gate). Fjern denne entry når flaget flippes og tabellen har rows.
+  "race_simulation_rider_scores",
   // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
   // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
