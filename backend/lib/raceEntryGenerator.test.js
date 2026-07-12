@@ -52,12 +52,15 @@ test("assignTeamAcrossRaces: hvert pick har en kaptajn-rolle", () => {
 
 // ── runRaceEntryGenerator (DB-orkestrator) ────────────────────────────────────
 // Minimal thenable per-tabel query-builder over et `state`-objekt. Udvidet med
-// .delete() (raceRunnerAutofill-versionen mangler den). __calls logger insert+delete
-// så testen kan assertere idempotent-skrivning vs. dry-run.
-function makeSupabase(state) {
+// .delete()/.update()/.upsert(). __calls logger alle writes så testen kan assertere
+// diff-skrivning vs. dry-run. race_entries-insert HÅNDHÆVER PK (race_id, rider_id)
+// som Postgres — en regression tilbage til rå insert med dublet fejler testen (#2375).
+// opts.failUpsert(ctx) → injicér upsert-fejl (never-emptier-/isolations-tests).
+function makeSupabase(state, { failUpsert = null } = {}) {
   const calls = [];
+  const entryKey = (r) => `${r.race_id}|${r.rider_id}`;
   function builder(table) {
-    const q = { table, filters: [], op: "select" };
+    const q = { table, filters: [], op: "select", values: null };
     const api = {
       select() { return api; },
       eq(col, val) { q.filters.push(["eq", col, val]); return api; },
@@ -67,7 +70,43 @@ function makeSupabase(state) {
       range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
       delete() { q.op = "delete"; return api; },
-      insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
+      update(values) { q.op = "update"; q.values = values; return api; },
+      insert(rows) {
+        // PK-håndhævelse som Postgres: dublet (race_id, rider_id) → duplicate key-fejl.
+        if (table === "race_entries") {
+          const seen = new Set((state[table] || []).map(entryKey));
+          for (const r of rows) {
+            if (seen.has(entryKey(r))) {
+              return Promise.resolve({ error: { message: 'duplicate key value violates unique constraint "race_entries_pkey"' } });
+            }
+            seen.add(entryKey(r));
+          }
+        }
+        calls.push({ table, insert: rows });
+        state[table] = [...(state[table] || []), ...rows];
+        return Promise.resolve({ error: null });
+      },
+      upsert(rows, opts = {}) {
+        if (failUpsert && failUpsert({ table, rows })) {
+          return Promise.resolve({ error: { message: "injected upsert failure" } });
+        }
+        calls.push({ table, insert: rows, upsert: true, opts });
+        if (table === "race_entries" && opts.ignoreDuplicates) {
+          // ON CONFLICT DO NOTHING-semantik: eksisterende (race,rytter) — uanset team —
+          // og intra-batch-dubletter springes stille over.
+          const seen = new Set((state[table] || []).map(entryKey));
+          const accepted = [];
+          for (const r of rows) {
+            if (seen.has(entryKey(r))) continue;
+            seen.add(entryKey(r));
+            accepted.push(r);
+          }
+          state[table] = [...(state[table] || []), ...accepted];
+          return Promise.resolve({ error: null });
+        }
+        state[table] = [...(state[table] || []), ...rows];
+        return Promise.resolve({ error: null });
+      },
       then(resolve) {
         let rows = [...(state[table] || [])];
         for (const [op, col, val] of q.filters) {
@@ -78,6 +117,11 @@ function makeSupabase(state) {
         if (q.op === "delete") {
           calls.push({ table, delete: true, filters: q.filters });
           state[table] = (state[table] || []).filter((r) => !rows.includes(r));
+          return resolve({ error: null });
+        }
+        if (q.op === "update") {
+          calls.push({ table, update: q.values, filters: q.filters });
+          for (const r of rows) Object.assign(r, q.values);
           return resolve({ error: null });
         }
         return resolve({ data: rows, error: null });
@@ -174,14 +218,18 @@ test("runRaceEntryGenerator: idempotent — manuelle entries bevares, auto-fille
   assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === false).length, manualA.length,
     "manuelle entries uberørt efter genkørsel");
   assert.equal(res2.generated, res.generated, "generated-count stabil");
-  // Genkørslen SKAL slette eksisterende auto-entries før insert (ægte idempotens).
-  const deletesOn2nd = supabase.__calls.slice(callsBefore).filter((c) => c.delete && c.table === "race_entries");
-  assert.ok(deletesOn2nd.length > 0, "2. kørsel sletter auto-filled før reinsert");
-  // Delete-filteret må ALDRIG ramme manuelle: det indeholder altid is_auto_filled=true.
-  for (const d of deletesOn2nd) {
-    assert.ok(d.filters.some(([op, col, val]) => op === "eq" && col === "is_auto_filled" && val === true),
-      "delete-filter er afgrænset til is_auto_filled=true");
-  }
+  // #2375: diff-baseret idempotens — en genkørsel med uændret input skriver INTET
+  // (ingen upsert-rækker, ingen delete, ingen update). Det gamle wholesale
+  // delete-then-insert-mønster kunne efterlade et løb tømt hvis insert fejlede
+  // efter delete (prod 12/7) og er bevidst afskaffet.
+  const writesOn2nd = supabase.__calls.slice(callsBefore).filter(
+    (c) => c.table === "race_entries" && (c.insert || c.delete || c.update)
+  );
+  assert.equal(writesOn2nd.length, 0, "2. kørsel er en ren no-op på race_entries (tom diff)");
+  assert.equal(res2.inserted, 0, "intet indsat ved uændret genkørsel");
+  assert.equal(res2.removed, 0, "intet fjernet ved uændret genkørsel");
+  assert.equal(res2.role_updated, 0, "ingen rolle-opdatering ved uændret genkørsel");
+  assert.equal(res2.failed_units, 0, "ingen fejlede enheder");
 });
 
 test("runRaceEntryGenerator: FULD manuel trup (6/6) top-fyldes IKKE", async () => {
@@ -398,6 +446,140 @@ test("runRaceEntryGenerator: holdets A-kæde-mål-løb prioriterer kerne-ryttere
   await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
   const aIds = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
   assert.ok(aIds.includes("t1-r7"), "A-kæde-rytter på mål-løb trods lav score");
+});
+
+// ── #2375-hotfix (12/7): PK-kollisioner, per-enhed-isolation + aldrig-tommere ──
+// Prod-crash: "duplicate key value violates unique constraint race_entries_pkey" ved
+// mid-sæson-kørsel. PK er (race_id, rider_id) UDEN team_id — wholesale delete(team-
+// scoped)+insert væltede på dublet-/ghost-rækker og efterlod løbet tømt for holdets
+// entries. Mockens insert håndhæver nu PK'en, så testene her ér repro-klassen.
+
+test("#2375: dubleret rytter-række i populationen (ustabil paginering) crasher ALDRIG og skriver ingen dublet", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Simulér paginerings-dublet: samme rytter-række to gange i riders-resultatet.
+  // Autopick deduper ikke input → picks kan indeholde t1-r0 to gange → med den gamle
+  // rå insert = race_entries_pkey-crash (præcis prod-fejlen 12/7).
+  state.riders.push({ id: "t1-r0", team_id: "t1", is_retired: false, is_academy: false });
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, "ingen enhed fejlede");
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  const uniqueKeys = new Set(aEntries.map((e) => `${e.race_id}|${e.rider_id}`));
+  assert.equal(uniqueKeys.size, aEntries.length, "ingen dublet (race_id, rider_id) skrevet");
+  assert.ok(aEntries.length > 0, "A blev autofyldt trods dublet-input");
+});
+
+test("#2375: residual (race,rytter)-række under et ANDET hold (ghost) vælter ikke kørslen", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Ghost: t1-r0 (nu på t1 efter transfer) har en gammel auto-række under sit EX-hold.
+  // Team-scoped delete for (A,t1) kan aldrig fjerne den → gammel rå insert = PK-crash.
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r0", team_id: "t-old", race_role: "helper", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, "ghost-kollision håndteres uden fejl (ignoreDuplicates)");
+  const r0Rows = state.race_entries.filter((e) => e.race_id === "A" && e.rider_id === "t1-r0");
+  assert.equal(r0Rows.length, 1, "præcis én række pr. (race, rytter) — PK respekteret");
+  assert.ok(
+    state.race_entries.filter((e) => e.race_id === "A" && e.team_id === "t1").length > 0,
+    "resten af t1's trup blev indsat trods ghosten"
+  );
+});
+
+test("#2375: insert-fejl efterlader ALDRIG løbet tommere end før (aldrig-tommere-garanti)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Eksisterende (delvis) auto-lineup: to af de ryttere generatoren også vil vælge igen.
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+
+  // Injicér upsert-fejl (fx netværk/FK) — den gamle kode havde på dette tidspunkt
+  // allerede slettet ALLE holdets auto-entries → løbet stod tømt (prod 12/7).
+  const supabase = makeSupabase(state, { failUpsert: ({ table }) => table === "race_entries" });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 1, "enheden rapporteres som fejlet");
+  assert.ok(res.errors.length >= 1 && /injected upsert failure/.test(res.errors[0]), "fejlen er i rapporten");
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  assert.ok(aEntries.length >= 2, `løbet er IKKE tommere end før (${aEntries.length} >= 2)`);
+  assert.ok(aEntries.some((e) => e.rider_id === "t1-r0"), "eksisterende entry t1-r0 overlevede fejlen");
+  assert.ok(aEntries.some((e) => e.rider_id === "t1-r1"), "eksisterende entry t1-r1 overlevede fejlen");
+});
+
+test("#2375: én enheds fejl aborterer IKKE de andre løb (per-enhed-isolation)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // To ikke-overlappende løb — fejl injiceres KUN på A's upsert.
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-07-05T10:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table, rows }) => table === "race_entries" && rows.some((r) => r.race_id === "A"),
+  });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 1, "kun A-enheden fejlede");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 0, "A fik intet (fejlet)");
+  assert.ok(state.race_entries.filter((e) => e.race_id === "B").length > 0, "B blev stadig autofyldt");
+});
+
+test("#2375: rolle-ændring på eksisterende auto-række opdateres via update (ikke delete+insert)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 6); // Class2 = præcis 6 → alle 6 vælges igen
+  // Samme 6 ryttere ligger allerede som auto-entries, men ALLE som helper —
+  // generatoren vil have t1-r0 som captain (stærkest) → rolle-diff, ingen insert/delete.
+  state.race_entries = ["t1-r0", "t1-r1", "t1-r2", "t1-r3", "t1-r4", "t1-r5"].map((rid) => (
+    { race_id: "A", rider_id: rid, team_id: "t1", race_role: "helper", is_auto_filled: true }
+  ));
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0);
+  assert.equal(res.inserted, 0, "ingen inserts — samme 6 ryttere");
+  assert.equal(res.removed, 0, "ingen deletes — samme 6 ryttere");
+  assert.ok(res.role_updated >= 1, "mindst én rolle opdateret (captain)");
+  const captains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "captain");
+  assert.equal(captains.length, 1, "præcis én kaptajn efter rolle-refresh");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 6, "stadig præcis 6 entries");
 });
 
 test("runRaceEntryGenerator: hold UDEN strategi-row → uændret (strategy=null)", async () => {

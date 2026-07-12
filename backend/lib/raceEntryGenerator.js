@@ -70,7 +70,7 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
 // raceRunner.js, hvor den er modul-privat — #1307-review.)
 const IN_CHUNK_SIZE = 200;
 const PAGE_SIZE = 1000;
-async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null }) {
+async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
     const chunk = ids.slice(i, i + IN_CHUNK_SIZE);
@@ -78,7 +78,15 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
     // TAVST (fx race_entries: 168 hold × 6-8 ryttere ≫ 1000 rækker pr. løb-chunk) →
     // manglende manuelle entries blev overskrevet (captain-constraint-brud). Bidt 25/6.
     for (let from = 0; ; from += PAGE_SIZE) {
-      let q = supabase.from(table).select(columns).in(inColumn, chunk).range(from, from + PAGE_SIZE - 1);
+      let q = supabase.from(table).select(columns).in(inColumn, chunk);
+      // #2375 (12/7): .range() UDEN ORDER BY er ustabil på tværs af side-queries —
+      // Postgres garanterer ingen rækkefølge, så samme række kan dubleres/springes
+      // over mellem sider. En dubleret rytter-række → autopick vælger ham to gange →
+      // dublet (race_id, rider_id) i insert-batchen → race_entries_pkey-crash i prod.
+      // Callers angiver en UNIK nøgle via orderBy; fallback = inColumn (grupperende —
+      // bedre end ingen, men kun en unik nøgle giver hård stabilitets-garanti).
+      for (const col of orderBy || [inColumn]) q = q.order(col);
+      q = q.range(from, from + PAGE_SIZE - 1);
       if (extra) q = extra(q);
       const { data, error } = await q;
       if (error) return { data: null, error };
@@ -91,12 +99,17 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
 
 /**
  * DB-orkestrator: for én sæson, fyld puljernes løb proaktivt med assistent-udtagne
- * hold. Idempotent — sletter kun is_auto_filled=true og genskaber; manuelle entries
- * (is_auto_filled=false) røres ALDRIG. Binding-bevidst (én rytter pr. tidsvindue) via
- * den rene kerne assignTeamAcrossRaces. Afmeldte hold (race_withdrawals) springes over.
+ * hold. Idempotent + diff-baseret (#2375): indsætter kun manglende, sletter kun
+ * forældede og rolle-opdaterer kun ændrede is_auto_filled=true-rækker; manuelle
+ * entries (is_auto_filled=false) røres ALDRIG. Binding-bevidst (én rytter pr.
+ * tidsvindue) via den rene kerne assignTeamAcrossRaces. Afmeldte hold
+ * (race_withdrawals) springes over. Én (race,team)-enheds fejl aborterer ikke
+ * resten — se failed_units/errors i resultatet.
  *
  * @param {{ supabase: object, seasonId: string, dryRun?: boolean }} args
- * @returns {Promise<{dryRun:boolean, races:number, teams:number, generated:number, skipped:number}>}
+ * @returns {Promise<{dryRun:boolean, races:number, teams:number, generated:number,
+ *   skipped:number, inserted:number, removed:number, role_updated:number,
+ *   failed_units:number, errors:Array<string>}>}
  */
 export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true }) {
   // 1. Sæsonens løb.
@@ -113,7 +126,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // 2. Tidsvinduer pr. løb (fra race_stage_schedule). Løb uden vindue kan ikke binde.
   const { data: schedRows, error: schedErr } = await selectInChunks({
     supabase, table: "race_stage_schedule", columns: "race_id, scheduled_at",
-    inColumn: "race_id", ids: raceIds,
+    inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "stage_number"], // PK → stabil paginering (#2375)
   });
   if (schedErr) throw new Error(`race_stage_schedule: ${schedErr.message}`);
   const schedByRace = new Map();
@@ -130,7 +143,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   const { data: profileRows, error: profileErr } = await selectInChunks({
     supabase, table: "race_stage_profiles",
     columns: "race_id, stage_number, profile_type, finale_type, demand_vector",
-    inColumn: "race_id", ids: raceIds,
+    inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "stage_number"], // unik nøgle → stabil paginering (#2375)
   });
   if (profileErr) throw new Error(`race_stage_profiles: ${profileErr.message}`);
   const stagesByRace = new Map();
@@ -170,7 +183,8 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // så vi undgår at hente ~200k auto-rækker bare for at finde de manuelle.
   const { data: manualRows, error: entryErr } = await selectInChunks({
     supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
-    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("is_auto_filled", false),
+    inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "rider_id"], // PK → stabil paginering (#2375)
+    extra: (q) => q.eq("is_auto_filled", false),
   });
   if (entryErr) throw new Error(`race_entries (manual scan): ${entryErr.message}`);
   const manualByRaceTeam = new Set();
@@ -186,7 +200,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   if (startedRaceIds.size) {
     const { data: startedRows, error: sErr } = await selectInChunks({
       supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
-      inColumn: "race_id", ids: [...startedRaceIds],
+      inColumn: "race_id", ids: [...startedRaceIds], orderBy: ["race_id", "rider_id"], // PK (#2375)
     });
     if (sErr) throw new Error(`race_entries (started lock): ${sErr.message}`);
     for (const e of startedRows || []) {
@@ -199,7 +213,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // 7. Afmeldinger pr. løb (race_withdrawals) — batched.
   const { data: wRows, error: wErr } = await selectInChunks({
     supabase, table: "race_withdrawals", columns: "race_id, team_id",
-    inColumn: "race_id", ids: raceIds,
+    inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "team_id"], // PK → stabil paginering (#2375)
   });
   if (wErr) throw new Error(`race_withdrawals: ${wErr.message}`);
   const withdrawnByRace = new Map();
@@ -216,7 +230,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       supabase, table: "riders", columns: "id, team_id", inColumn: "team_id",
       // Rod B: ét delt eligibility-filter (ikke-akademi + ikke-pensioneret). Tidligere
       // manglede is_academy her → akademiryttere blev auto-valgt (#1742/#1800).
-      ids: eligibleTeamIds, extra: (q) => applyRiderEligibilityFilter(q),
+      // orderBy id (PK): DENNE fetch var #2375-synderen — en 200-holds-chunk er langt
+      // over 1000 rytter-rækker (flere sider), og uden ORDER BY kunne samme rytter
+      // dubleres mellem sider → autopick valgte ham to gange → PK-crash i prod 12/7.
+      ids: eligibleTeamIds, orderBy: ["id"], extra: (q) => applyRiderEligibilityFilter(q),
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
     const riderIds = (riders || []).map((r) => r.id);
@@ -226,6 +243,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       const { data: abilities, error: aErr } = await selectInChunks({
         supabase, table: "rider_derived_abilities",
         columns: ["rider_id", ...ABILITY_KEYS].join(", "), inColumn: "rider_id", ids: riderIds,
+        orderBy: ["rider_id"], // PK → stabil paginering (#2375)
       });
       if (aErr) throw new Error(`rider_derived_abilities: ${aErr.message}`);
       for (const a of abilities || []) abilityByRider.set(a.rider_id, a);
@@ -236,7 +254,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     if (riderIds.length) {
       const { data: conditions, error: condErr } = await selectInChunks({
         supabase, table: "rider_condition", columns: "rider_id, fatigue",
-        inColumn: "rider_id", ids: riderIds,
+        inColumn: "rider_id", ids: riderIds, orderBy: ["rider_id"], // PK → stabil paginering (#2375)
       });
       if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
     }
@@ -314,29 +332,112 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     }
   }
 
-  // 10. Idempotent skrivning (kun hvis !dryRun): slet is_auto_filled=true for (race,team),
-  // indsæt nye. Manuelle (is_auto_filled=false) er aldrig i delete-filteret.
+  // 10. Idempotente, DIFF-baserede skrivninger (kun hvis !dryRun) — #2375-hotfix 12/7.
+  // PK er (race_id, rider_id) UDEN team_id. Den gamle wholesale delete(team-scoped)+insert
+  // kunne (a) crashe på race_entries_pkey når batchen indeholdt en dublet-rytter eller en
+  // residual (race,rytter)-række under et ANDET hold (ghost) overlevede den team-scopede
+  // delete, og (b) efterlade et løb TØMT for holdets entries når insert fejlede EFTER
+  // delete (prod: Grand Prix du Saint-Laurent, hold 34ea9bcb). Nu pr. (race,team)-enhed:
+  //   1) upsert KUN manglende ryttere (ignoreDuplicates → PK-kollision kan aldrig vælte),
+  //   2) slet KUN forældede ryttere, 3) opdatér KUN rolle-ændrede — insert FØR delete,
+  //   så en fejl aldrig efterlader løbet tommere end før. Per-enhed try/catch: én enheds
+  //   fejl aborterer ikke resten (heal-sweep-mønsteret). Manuelle (is_auto_filled=false)
+  //   er aldrig i delete-/update-filtrene, og ignoreDuplicates opdaterer aldrig en
+  //   eksisterende række — manuelle entries kan strukturelt ikke røres.
   let generated = 0;
-  for (const { race_id, team_id, picks } of staged) {
-    const rows = picks.map((p) => ({
-      race_id, rider_id: p.rider_id, team_id, race_role: p.race_role, is_auto_filled: true,
-    }));
-    if (!dryRun) {
-      // Forward-guard (#2074): et igangværende løb (frosset felt) må ALDRIG få slettet
-      // entries. staged indeholder allerede aldrig startede løb (skip-grenen ovenfor),
-      // men vi gør invarianten lokal til delete'en så en fremtidig refaktor ikke kan
-      // nulstille et aktivt startfelt. startedRaceIds er allerede beregnet (ingen query).
-      if (startedRaceIds.has(race_id)) {
-        throw new Error(`race_lineup_frozen: refusing to delete race_entries for in-flight race ${race_id} (raceEntryGenerator)`);
-      }
-      const { error: delErr } = await supabase
-        .from("race_entries").delete()
-        .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true);
-      if (delErr) throw new Error(`race_entries delete (${race_id}/${team_id}): ${delErr.message}`);
-      const { error: insErr } = await supabase.from("race_entries").insert(rows);
-      if (insErr) throw new Error(`race_entries insert (${race_id}/${team_id}): ${insErr.message}`);
+  let inserted = 0;
+  let removed = 0;
+  let roleUpdated = 0;
+  let failedUnits = 0;
+  const errors = [];
+
+  // Eksisterende auto-rækker for de berørte løb (kun live-kørsel) → diff-grundlag.
+  const existingByUnit = new Map(); // "race|team" → Map(rider_id → race_role)
+  if (!dryRun && staged.length) {
+    const stagedRaceIds = [...new Set(staged.map((s) => s.race_id))];
+    const { data: autoRows, error: autoErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id, race_role",
+      inColumn: "race_id", ids: stagedRaceIds, orderBy: ["race_id", "rider_id"], // PK (#2375)
+      extra: (q) => q.eq("is_auto_filled", true),
+    });
+    if (autoErr) throw new Error(`race_entries (auto scan): ${autoErr.message}`);
+    for (const e of autoRows || []) {
+      const key = `${e.race_id}|${e.team_id}`;
+      if (!existingByUnit.has(key)) existingByUnit.set(key, new Map());
+      existingByUnit.get(key).set(e.rider_id, e.race_role);
     }
-    generated += rows.length;
+  }
+
+  for (const { race_id, team_id, picks } of staged) {
+    // Intra-batch-dedup på rider_id (defense-in-depth, #2375): skulle en rytter trods
+    // stabil paginering optræde to gange i picks, må batchen ALDRIG indeholde dubletten.
+    // Første forekomst vinder (autopick-rækkefølgen bestemmer rollen).
+    const desired = new Map(); // rider_id → race_role
+    for (const p of picks) if (!desired.has(p.rider_id)) desired.set(p.rider_id, p.race_role);
+    generated += desired.size;
+    if (dryRun) continue;
+
+    // Forward-guard (#2074): et igangværende løb (frosset felt) må ALDRIG røres. staged
+    // indeholder aldrig startede løb (skip-grenen ovenfor), men invarianten holdes lokal
+    // til skrivningen så en fremtidig refaktor ikke kan nulstille et aktivt startfelt.
+    if (startedRaceIds.has(race_id)) {
+      failedUnits += 1;
+      if (errors.length < 5) errors.push(`${race_id}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
+      continue;
+    }
+
+    try {
+      const existing = existingByUnit.get(`${race_id}|${team_id}`) || new Map();
+      const toInsert = [...desired]
+        .filter(([riderId]) => !existing.has(riderId))
+        .map(([riderId, role]) => ({
+          race_id, rider_id: riderId, team_id, race_role: role, is_auto_filled: true,
+        }));
+      const toDelete = [...existing.keys()].filter((riderId) => !desired.has(riderId));
+      const roleChanges = [...desired].filter(
+        ([riderId, role]) => existing.has(riderId) && existing.get(riderId) !== role
+      );
+
+      // Insert FØRST (aldrig-tommere-garantien): fejler noget herefter, står løbet
+      // aldrig med færre entries end før enheden startede. ignoreDuplicates: en
+      // residual (race,rytter)-række under et andet hold (ghost) springes stille over
+      // i stedet for at vælte kørslen — næste tick samler den op, når det andet holds
+      // stale-delete har fjernet den.
+      if (toInsert.length) {
+        const { error: insErr } = await supabase
+          .from("race_entries")
+          .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
+        if (insErr) throw new Error(`race_entries upsert: ${insErr.message}`);
+        inserted += toInsert.length;
+      }
+      if (toDelete.length) {
+        const { error: delErr } = await supabase
+          .from("race_entries").delete()
+          .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true)
+          .in("rider_id", toDelete);
+        if (delErr) throw new Error(`race_entries delete: ${delErr.message}`);
+        removed += toDelete.length;
+      }
+      if (roleChanges.length) {
+        // Grupperet pr. mål-rolle → maks 3 updates pr. enhed (captain/sprint_captain/helper).
+        const byRole = new Map();
+        for (const [riderId, role] of roleChanges) {
+          if (!byRole.has(role)) byRole.set(role, []);
+          byRole.get(role).push(riderId);
+        }
+        for (const [role, riderIds] of byRole) {
+          const { error: updErr } = await supabase
+            .from("race_entries").update({ race_role: role })
+            .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true)
+            .in("rider_id", riderIds);
+          if (updErr) throw new Error(`race_entries role update: ${updErr.message}`);
+          roleUpdated += riderIds.length;
+        }
+      }
+    } catch (err) {
+      failedUnits += 1;
+      if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
+    }
   }
 
   // 11. Antal hold der reelt blev behandlet i mindst én pulje.
@@ -351,5 +452,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     teams: processedTeamIds.size,
     generated,
     skipped,
+    inserted,
+    removed,
+    role_updated: roleUpdated,
+    failed_units: failedUnits,
+    errors,
   };
 }
