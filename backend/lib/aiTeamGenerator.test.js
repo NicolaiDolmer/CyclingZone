@@ -34,6 +34,7 @@ function makeSupabase(initial = {}) {
         if (f.t === "neq") return row[f.c] !== f.v;
         if (f.t === "in") return f.v.includes(row[f.c]);
         if (f.t === "gt") return (row[f.c] ?? 0) > f.v;
+        if (f.t === "is") return f.v === null ? row[f.c] == null : row[f.c] === f.v;
         return true;
       });
     }
@@ -43,6 +44,7 @@ function makeSupabase(initial = {}) {
       neq(c, v) { filters.push({ t: "neq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       gt(c, v) { filters.push({ t: "gt", c, v }); return builder; },
+      is(c, v) { filters.push({ t: "is", c, v }); return builder; },
       order() { return builder; },
       // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
       // in-memory mock; from=0 → alle matchende rækker, ellers tom (loopet stopper).
@@ -79,6 +81,7 @@ function makeSupabase(initial = {}) {
         const upd = {
           eq(c, v) { filters.push({ t: "eq", c, v }); return upd; },
           in(c, v) { filters.push({ t: "in", c, v }); return upd; },
+          is(c, v) { filters.push({ t: "is", c, v }); return upd; },
           then(res, rej) {
             for (const row of rows()) if (matches(row)) Object.assign(row, JSON.parse(JSON.stringify(payload)));
             return Promise.resolve({ data: null, error: null }).then(res, rej);
@@ -493,6 +496,50 @@ test("#2269 removeAiTeams: alle kandidater låst → 0 trimmet, intet kast (defe
 
   assert.equal(summary.removed, 0, "ingen trim når alle hold er låst");
   assert.equal(countTeamsInPool(supabase.state, poolId), POOL_TARGET_SIZE + 1, "puljen forbliver midlertidigt over target");
+});
+
+// ── #2187 · removeAiTeams markerer udskudte hold pending_removal_at, så en heal-
+// sweep kan fuldføre trimmet uden at afvente et nyt signup i SAMME pulje (rod-
+// årsagen til at Division 4 B/C blev hængende på 26 hold i stedet for 24). ────────
+
+test("#2187 removeAiTeams: blokeret kandidat markeres pending_removal_at (selvhelende trim)", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  const lockedId = aiIds[0];
+  for (const id of aiIds) {
+    lockTeamInInflightRace(supabase.state, id, "race-inflight-1");
+  }
+
+  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  const lockedTeam = supabase.state.teams.find((t) => t.id === lockedId);
+  assert.ok(lockedTeam.pending_removal_at, "det blokerede hold er markeret til udskudt trim");
+  // Ægte managere i puljen må ALDRIG få markøren (defense-in-depth — markPendingRemoval
+  // kaldes kun med blokerede AI-kandidat-id'er, men verificér ingen lækage).
+  const realManagers = supabase.state.teams.filter((t) => t.league_division_id === poolId && !t.is_ai);
+  assert.ok(realManagers.every((t) => !t.pending_removal_at), "ægte managere aldrig markeret");
+});
+
+test("#2187 removeAiTeams: gentagen udskydelse af samme hold flytter ikke det oprindelige tidspunkt", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  for (const id of aiIds) {
+    lockTeamInInflightRace(supabase.state, id, "race-inflight-all");
+  }
+
+  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+  const firstMark = supabase.state.teams.find((t) => t.id === aiIds[0]).pending_removal_at;
+  assert.ok(firstMark, "markeret efter første udskudte forsøg");
+
+  // Endnu et nyt ægte hold rykker ind → endnu et udskudt trim-forsøg for SAMME puljer/hold.
+  supabase.state.teams.push({
+    id: "second-new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    division: 3, league_division_id: poolId,
+  });
+  await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+  const secondMark = supabase.state.teams.find((t) => t.id === aiIds[0]).pending_removal_at;
+
+  assert.equal(secondMark, firstMark, "IS NULL-guarden bevarer det oprindelige udskydelses-tidspunkt (idempotent)");
 });
 
 test("#2269 removeAiTeams: entries i et COMPLETED eller endnu-ikke-startet løb låser ikke", async () => {

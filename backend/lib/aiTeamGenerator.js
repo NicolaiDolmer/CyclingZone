@@ -92,7 +92,8 @@ async function createAiTeam(supabase, { pool, ordinal, baseSeed, usedNames, allo
 // #2269: har holdets ryttere entries i et IGANGVÆRENDE løb (låst felt, samme
 // definition som #2074-guarden: ikke-completed + stages_completed>0)? Et låst hold
 // kan ikke hard-slettes — DB-triggeren trg_block_rider_delete_inflight kaster.
-async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) {
+// Eksporteret (#2187): genbruges af aiTeamTrimHealSweep til at re-tjekke udskudte hold.
+export async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) {
   if (!inflightRaceIds.length) return false;
   const { data: riders, error: rErr } = await supabase.from("riders").select("id").eq("team_id", teamId);
   if (rErr) throw new Error(`AI-trim (riders for ${teamId}): ${rErr.message}`);
@@ -107,36 +108,76 @@ async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) {
   return (entries || []).length > 0;
 }
 
-// Fjern N AI-hold fra en pulje (deterministisk: laveste id først). Sletter holdets
-// ryttere FØR holdet (riders.team_id -> teams er ON DELETE SET NULL i skemaet, men
-// vi vil ikke efterlade ejerløse AI-ryttere i markedet → eksplicit delete).
-// #2269: hold hvis ryttere har entries i et igangværende løb SPRINGES OVER (DB-guarden
-// fra #2074 blokerer hard delete af dem) — næste kandidat i id-ordenen tages i stedet.
-// Er der ikke nok ledige kandidater, trimmes færre end ønsket (deferred): en senere
-// reconcile/relaunch tager resten når løbet er kørt færdigt.
-async function removeAiTeams(supabase, aiTeams, count) {
-  const sorted = [...aiTeams].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  if (!sorted.length || count <= 0) return 0;
-
+// Delt inflight-race-lookup (#2187): samme "igangværende løb"-definition brugt af
+// removeAiTeams OG heal-sweep-retryen, ét sted.
+export async function getInflightRaceIds(supabase) {
   const { data: inflight, error: infErr } = await supabase
     .from("races")
     .select("id")
     .neq("status", "completed")
     .gt("stages_completed", 0);
   if (infErr) throw new Error(`AI-trim (inflight races): ${infErr.message}`);
-  const inflightRaceIds = (inflight || []).map((r) => r.id);
+  return (inflight || []).map((r) => r.id);
+}
+
+// #2187: markér AI-hold der IKKE kunne slettes nu (inflight-blokeret) til udskudt
+// trim, så en heal-sweep kan fuldføre dem senere (uden at en ny signup i SAMME pulje
+// skal ske for at give trimmet en ny chance — det var rod-årsagen til at Division 4
+// B/C blev hængende på 26 hold, jf. #2187/#2377). IS NULL-guarden bevarer det
+// ORIGINALE udskydelses-tidspunkt (idempotent — gentagne udskydelser af samme hold
+// flytter ikke "uret" for heal-sweep'ens stale-detektion).
+async function markPendingRemoval(supabase, teamIds) {
+  if (!teamIds.length) return;
+  const { error } = await supabase
+    .from("teams")
+    .update({ pending_removal_at: new Date().toISOString() })
+    .in("id", teamIds)
+    .is("pending_removal_at", null);
+  if (error) throw new Error(`AI-trim (pending_removal_at mark): ${error.message}`);
+}
+
+// #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
+// (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
+// præcise hold-id den skal forsøge igen.
+export async function deleteAiTeamById(supabase, teamId) {
+  const { error: rErr } = await supabase.from("riders").delete().eq("team_id", teamId);
+  if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
+  const { error: tErr } = await supabase.from("teams").delete().eq("id", teamId);
+  if (tErr) throw new Error(`AI-team delete (${teamId}): ${tErr.message}`);
+}
+
+// Fjern N AI-hold fra en pulje (deterministisk: laveste id først). Sletter holdets
+// ryttere FØR holdet (riders.team_id -> teams er ON DELETE SET NULL i skemaet, men
+// vi vil ikke efterlade ejerløse AI-ryttere i markedet → eksplicit delete).
+// #2269: hold hvis ryttere har entries i et igangværende løb SPRINGES OVER (DB-guarden
+// fra #2074 blokerer hard delete af dem) — næste kandidat i id-ordenen tages i stedet.
+// #2187: er der ikke nok ledige kandidater, trimmes færre end ønsket, og de sprungne
+// (blokerede) hold markeres pending_removal_at — en heal-sweep (aiTeamTrimHealSweep.js)
+// retryer dem periodisk, uafhængigt af om puljen får et nyt signup igen.
+async function removeAiTeams(supabase, aiTeams, count) {
+  const sorted = [...aiTeams].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (!sorted.length || count <= 0) return 0;
+
+  const inflightRaceIds = await getInflightRaceIds(supabase);
 
   const toRemove = [];
+  const blockedIds = [];
   for (const team of sorted) {
     if (toRemove.length >= count) break;
-    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)) continue;
+    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)) {
+      blockedIds.push(team.id);
+      continue;
+    }
     toRemove.push(team);
   }
   if (toRemove.length < count) {
     console.warn(
       `  ⏳ AI-trim deferred: ${count - toRemove.length} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
-      `og kan ikke trimmes nu — tages af en senere reconcile (#2269).`
+      `og kan ikke trimmes nu — markeret pending_removal_at (#2187), en heal-sweep fuldfører når løbet er kørt færdigt.`
     );
+    if (blockedIds.length) {
+      await markPendingRemoval(supabase, blockedIds);
+    }
   }
   if (!toRemove.length) return 0;
   const ids = toRemove.map((t) => t.id);
