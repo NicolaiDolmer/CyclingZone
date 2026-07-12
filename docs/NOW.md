@@ -16,7 +16,7 @@
 
 > **Session 11/7 (komprimeret):** #2311, #2328, #2329, #2264, #1894, #1895 m.fl. merged (v6.81-6.87 + v6.89-6.92); detaljer i git-log/issues. **Ejer-verify samlet:** /training i prod (trænbarheds-markører, ugerytme, individuel plan) · dashboard-punkterne i #2328 · #2263 afventer rytter-ID.
 
-> **NATBØLGE 11-12/7 + morgen-salve 12/7: ALLE 10 PR'er (#2365-#2374) MERGED, alle 4 migrationer applied & verificeret** ([artifact](audits/night-wave-2026-07-12.md)). Race v3 S1+S2 i prod bag flag off (τ=0.5-kompression ejer-valgt; alle 7 bånd grønne). Lån (#1994) fjernet end-to-end inkl. DROP applied i sikker rækkefølge. Sentry 28/29 resolved · #2149 lukket · #2375-rod-årsag fundet (entry-generator kører kun ved sæsonskifte → cron-wiring-PR på vej, afventer ejer-merge).
+> **11-12/7 samlet: natbølge + salve + eftermiddag = 16 PR'er merged (#2365-#2374, #2378-#2382, #2384), 6 migrationer applied & verificeret** ([nat-artifact](audits/night-wave-2026-07-12.md)). Race v3 S1+S2 i prod bag flag off (τ=0.5, alle bånd grønne). **24-holds-invarianten:** rod-årsag fixet (#2187 lukket, selvhelende trim), daglig vagt live (#2379), reparation kørt — 11/15 grupper på 24, resten auto-fuldføres. **Entry-generator:** kører hver time (#2375 lukket efter 2 hotfixes: idempotent diff-skrivning + vacate-før-insert; tomme løb 132→9, resten = bindings-udtømning). Patch note v6.96 live. NYT: #2383 (NotificationsPage-crash, 1 spiller, triage).
 
 > **📌 Ejer-påmindelser (næste session):** (1) Supabase-dashboard-klik ~5 min: OTP-expiry <1t + leaked password protection — vejledning i #2258-kommentar; lukker #2258+#929. (2) Palmarès-småvalg (#1997-kommentar: win-rate-def, værdi-kurve-slice) — ejer bad om at blive spurgt senere. (3) #1996 del 2 = kort fælles session (plan + dagsorden ligger på issuet, claude:blocked). (4) v3-flip-forudsætninger #2376 = anden session (pick-up-klar).
 
@@ -30,7 +30,7 @@
 
 > **Race v3 status 11/7 aften:** salt (#2351) ✅ lukket (verify næste løbsdag: nye runs har `salt_version=1`). **S0 harness+baseline (#2224) ✅ MERGED** (PR #2364, Fable-arkitekt + 3 sonnet-subagenter i worktree): dominans-metrik-lib + prod-population-snapshot (committet, 368 hold/5.650 ryttere) + sektion F-scorecard (`--enforce-dominance` = gate fra S1). **Baseline dokumenteret:** [docs/audits/2026-07-11-race-v3-s0-baseline.md](audits/2026-07-11-race-v3-s0-baseline.md) — max sæson-win-rate 87-89 % (bånd ≤45), hjælper-tab 0 (mål 10-30); reproducerer prod-symptomet. Issue #2224 åben (S1+S2 løser det). Sidefix: stale audit-whitelist `training_week_plans` fjernet (chore på main).
 >
-> **🎯 Next action:** Ejer merger entry-generator-cron-PR'en (#2375-fix) når den er grøn → Div 4 C-G-felterne fyldes automatisk. Næste v3-slice = **S3 roller/etape #2034**. Ejer i morgen 13/7: Alunta+CZ Pro-testkøb (#1903) → Claude åbner salg · flip-bølge-verify (#2357) · /training-verify · 📌-påmindelserne ovenfor.
+> **🎯 Next action:** Næste v3-slice = **S3 roller/etape #2034**. Selvkørende (ingen handling): 5 markerede AI-hold trimmes automatisk når blokerende løb slutter (heal-sweep; vagten bekræfter → luk #2377 når alle 15 grupper = 24) · 9 tomme Div4 E/F-løb = bindings-udtømning, generator retryer hver time. Ejer 13/7: Alunta+CZ Pro (#1903) → Claude åbner salg · flip-bølge-verify (#2357) · /training-verify · 📌 ovenfor · post Discord-teksten (godkendt udkast i session 12/7).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
