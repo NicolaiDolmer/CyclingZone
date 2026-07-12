@@ -1009,6 +1009,10 @@
     "dayFormFaq": {
       "q": "Why do race results vary from day to day?",
       "a": "Every rider gets a day form for each race day, so the same rider can fly one day and struggle the next. On rare days a rider cracks completely and loses big, and favorites are not immune. Riders in good form crack less often, and form also counts more in the result itself, so form management pays twice. Over a long stage race the good and bad days largely even out, but a single collapse on a mountain stage can decide a GC, just like in real cycling."
+    },
+    "crashesFaq": {
+      "q": "What are crashes and abandons?",
+      "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result, but some force the rider to abandon the race: an abandoned rider is out of the remaining stages and all classifications, and is injured for a few days afterwards. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Abandons are listed on the race page."
     }
   }
 }

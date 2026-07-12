@@ -52,6 +52,20 @@ export const PATCHES = [
           "body": "I etapeløb kan du nu sætte roller pr. etape og ændre taktik mens løbet køres: kørte etaper er låst, kommende etaper er åbne. Hver rytter får også en indsats pr. etape: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Spar kræfter holder igen og restituerer mere til i morgen. Tager din rytter førertrøjen, gør ét klik ham til kaptajn for de resterende etaper."
         },
         "refs": [2034]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Crashes, mechanicals and abandons",
+          "body": "Riders can now crash or suffer a mechanical during a stage. Most lose time on the result; a few are forced to abandon the race and need a few days to recover. Incidents are rare, hit hectic finales and cobbles hardest, and riders with good field positioning are hit less often. Abandons are listed on the race page, and the race recap tells the story when a crash ruined someone's day."
+        },
+        "da": {
+          "title": "Styrt, mekaniske defekter og opgivelser",
+          "body": "Ryttere kan nu styrte eller få en mekanisk defekt undervejs på en etape. De fleste taber tid i resultatet; enkelte må udgå af løbet og skal bruge et par dage på at komme sig. Uheld er sjældne, rammer hektiske finaler og brosten hårdest, og ryttere med god feltplacering rammes sjældnere. Udgåede vises på løbssiden, og løbs-recap'en fortæller historien når et styrt ødelagde nogens dag."
+        },
+        "refs": [1176]
       }
     ]
   },
