@@ -10,6 +10,7 @@ import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
+import { captureException } from "./sentry.js";
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -137,7 +138,10 @@ export async function runTrainingSweep({
   try {
     valueRefresh = await refreshValues(supabase, { log: (m) => console.log(`  ${m}`) });
   } catch (err) {
+    // #2389 A2: fejler refresh'en, driver base_value ud af sync med udviklede
+    // evner uden alarm (samme klasse som #2392) — capture.
     console.error("  ❌ value-refresh efter sweep fejlede:", err.message);
+    captureException(err, { tags: { cron: "training sweep", stage: "value-refresh" } });
   }
 
   const base = failed > 0 ? { swept, failed } : { swept };

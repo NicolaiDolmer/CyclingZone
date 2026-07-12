@@ -1,4 +1,5 @@
 import { createAluntaClient } from "./alunta.js";
+import { captureException } from "./sentry.js";
 
 // Plan-id'er kommer fra Infisical (oprettes i Alunta). Læses ved modul-load;
 // hvis de mangler (endnu ikke sat), fejler checkout pænt med 400.
@@ -28,6 +29,9 @@ export function createCheckoutHandler({
       });
       return res.status(200).json({ checkout_url: checkoutUrl });
     } catch (err) {
+      // #2389 A2: betalings-/omsætningskritisk flow — en fejlet checkout var kun
+      // synlig som 502 hos klienten, aldrig i Sentry-triage.
+      captureException(err, { tags: { flow: "billing", stage: "checkout" }, teamId: req.team.id, interval });
       return res.status(502).json({ error: "Checkout failed", detail: String(err.message || err) });
     }
   };

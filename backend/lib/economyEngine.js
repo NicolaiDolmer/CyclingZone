@@ -66,6 +66,9 @@ import {
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
 import { getActiveContract } from "./sponsorContractsService.js";
+import { fetchAllRows } from "./supabasePagination.js";
+import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
+import { captureException } from "./sentry.js";
 
 let defaultSupabaseClientPromise;
 
@@ -92,8 +95,11 @@ const PROMOTION_SLOTS = 2;         // Top 2 op til forælder-pulje
 const RELEGATION_SLOTS = 4;        // Bund 4 ned, delt 2+2 til de to børne-puljer
 // MIN_DIVISION / MAX_DIVISION lever nu i economyConstants.js (#962) — delt med
 // fyld-fra-toppen i teamProfileEngine, så bounds ikke duplikeres.
-const SUPABASE_PAGE_SIZE = 1000;
 const RIDER_VALUE_PATCH_CONCURRENCY = 25;
+// PostgREST .in() encoder id-listen i URL'en; ved kalender-skala (1.100+ løb/sæson,
+// op til 3 sæsoner i værdi-vinduet) fejler fetchen hårdt ("fetch failed", Sentry
+// CYCLINGZONE-1J/1K + #2392). 120 ids ≈ 4,5K tegn URL — robust uanset vækst.
+const RACE_IDS_IN_CHUNK = 120;
 
 // Backward-compat alias for SPONSOR_INCOME_BASE — fjernes i 07b.
 // Importeres af betaResetService, boardAutoAccept og api.js.
@@ -405,7 +411,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
       progression = await developFn({ supabase: supabaseClient, seasonId, seasonNumber });
       console.log(`  ✅ Rytterudvikling: ${progression.developed} udviklet · ${progression.grew}↑ ${progression.declined}↓ · ${progression.retired} pensioneret`);
     } catch (err) {
+      // #2389 A2: progression.error-feltet overvåges ikke af nogen — capture, ellers
+      // gennemføres en sæson-transition tavst UDEN rytterudvikling.
       console.error(`  ⚠️ Rytterudvikling fejlede (transition fuldføres; kan re-køres): ${err.message}`);
+      captureException(err, { tags: { flow: "season-transition", stage: "rider-progression" } });
       progression = { error: err.message };
     }
   }
@@ -1468,7 +1477,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           );
         }
       } catch (error) {
+        // #2389 A2: en fejlet bestyrelses-udskiftning efterlader boardet i limbo — capture.
         console.error(`  ⚠️  board replacement-trigger failed for ${team.name}:`, error.message);
+        captureException(error, { tags: { flow: "season-transition", stage: "board-replacement" }, teamId: team.id });
       }
     } else {
       // Plan still running — update cumulative stats, keep goals
@@ -1560,7 +1571,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
       });
     } catch (error) {
+      // #2389 A2: en tavs fejl her betyder at en reel spil-konsekvens (fyring,
+      // budget-nedskæring) aldrig blev anvendt — capture.
       console.error(`  ⚠️  board consequences failed for ${team.name}:`, error.message);
+      captureException(error, { tags: { flow: "season-transition", stage: "board-consequences" }, teamId: team.id });
     }
 
     console.log(
@@ -1571,21 +1585,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
 }
 
 // ─── Rider Value & Salary Recalculation ──────────────────────────────────────
-
-async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
-  const rows = [];
-
-  for (let from = 0; ; from += pageSize) {
-    const to = from + pageSize - 1;
-    const { data, error } = await buildQuery().range(from, to);
-    if (error) throw new Error(error.message);
-
-    rows.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-  }
-
-  return rows;
-}
+// fetchAllRows kommer fra supabasePagination.js (#2392): den deler paginering med
+// resten af backend OG retry'er transiente gateway-fejl pr. side — den tidligere
+// fil-lokale kopi havde ingen retry, så ét "fetch failed" væltede hele recalc'en.
 
 // Fixed valuation window: prize_earnings_bonus averages a rider's prize earnings
 // over this many seasons, dividing by the window size even before it is full
@@ -1658,6 +1660,7 @@ export async function updateRiderValues(supabaseClient) {
         .from("races")
         .select("id, season_id")
         .in("season_id", seasonIds)
+        .order("id", { ascending: true })
     ));
 
     const raceIds = (races || []).map(r => r.id);
@@ -1665,13 +1668,22 @@ export async function updateRiderValues(supabaseClient) {
     if (raceIds.length > 0) {
       const raceSeasonMap = Object.fromEntries((races || []).map(r => [r.id, r.season_id]));
 
-      const results = await fetchAllRows(() => (
-        supabaseClient
-          .from("race_results")
-          .select("rider_id, race_id, prize_money")
-          .in("race_id", raceIds)
-          .gt("prize_money", 0)
-      ));
+      // #2392: .in() med ALLE vinduets race-ids sprængte URL-grænsen ved kalender-
+      // skala → "TypeError: fetch failed" ved hver præmie-udbetaling, og rytter-
+      // værdier drev aldrig live. Chunk id-listen (mirror updateStandings' fix P0 2/7).
+      const results = [];
+      for (let i = 0; i < raceIds.length; i += RACE_IDS_IN_CHUNK) {
+        const chunk = raceIds.slice(i, i + RACE_IDS_IN_CHUNK);
+        const rows = await fetchAllRows(() => (
+          supabaseClient
+            .from("race_results")
+            .select("rider_id, race_id, prize_money")
+            .in("race_id", chunk)
+            .gt("prize_money", 0)
+            .order("id", { ascending: true })
+        ));
+        results.push(...rows);
+      }
 
       for (const row of results || []) {
         const sid = raceSeasonMap[row.race_id];
@@ -1687,6 +1699,7 @@ export async function updateRiderValues(supabaseClient) {
     supabaseClient
       .from("riders")
       .select("id")
+      .order("id", { ascending: true })
   ));
 
   // Fixed 3-season window: divide by 3 regardless of how many seasons have data,
@@ -1711,13 +1724,15 @@ export async function updateRiderValues(supabaseClient) {
 
   for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
     const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
-    await Promise.all(batch.map(async ({ id, ...payload }) => {
+    // withSupabaseRetry (#2392): opdateringen er idempotent (samme payload pr. rytter),
+    // så et transient gateway-hikke midt i tusindvis af PATCHes skal ikke vælte recalc'en.
+    await Promise.all(batch.map(({ id, ...payload }) => withSupabaseRetry(async () => {
       const { error } = await supabaseClient
         .from("riders")
         .update(payload)
         .eq("id", id);
-      if (error) throw new Error(error.message);
-    }));
+      if (error) throw error;
+    })));
   }
 
   const ridersUpdated = allRiders?.length || 0;
@@ -1909,10 +1924,9 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     // CYCLINGZONE-1J/1K/1H). Kæden efter result-write knækkede dermed på HVERT
     // etape-run: rangliste frosset, finalization/præmier kørte aldrig. Chunk
     // derfor id-listen; 120 ids ≈ 4,5K tegn URL — robust uanset kalender-vækst.
-    const IN_CHUNK = 120;
     const results = [];
-    for (let i = 0; i < raceIds.length; i += IN_CHUNK) {
-      const chunk = raceIds.slice(i, i + IN_CHUNK);
+    for (let i = 0; i < raceIds.length; i += RACE_IDS_IN_CHUNK) {
+      const chunk = raceIds.slice(i, i + RACE_IDS_IN_CHUNK);
       const rows = await fetchAllRows(() => (
         supabaseClient
           .from("race_results")

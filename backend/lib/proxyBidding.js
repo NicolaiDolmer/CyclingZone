@@ -3,6 +3,15 @@ import {
   getMinimumAuctionBid,
 } from "./auctionRules.js";
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
+import { captureException } from "./sentry.js";
+
+// #2389 A2: in-app "du er overbudt"-notifikationer fejlede før kun til console —
+// spillere mistede beskeden uden at nogen så det i Sentry. Fælles fail-handler
+// (fire-and-forget bevares; notifikation må aldrig vælte budet).
+const onProxyNotifFailed = (auctionId) => (e) => {
+  console.error("[proxy-notif] failed", { auctionId, e });
+  captureException(e, { tags: { flow: "auction", stage: "proxy-notif" }, auctionId });
+};
 
 const MAX_PROXY_ITERATIONS = 30;
 
@@ -162,7 +171,7 @@ export async function resolveProxyBids({
             `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
             auctionId,
             { riderId: auction.rider_id },
-          ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
+          ).catch(onProxyNotifFailed(auctionId));
         }
         continue;
       }
@@ -201,7 +210,7 @@ export async function resolveProxyBids({
           `${leaderName}'s autobud matchede dit bud på ${riderName} og beholder føringen ved identisk bud`,
           auctionId,
           { riderId: auction.rider_id },
-        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+        ).catch(onProxyNotifFailed(auctionId));
       }
       // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
       // bid_received for det udløsende bud på samme beløb.
@@ -291,7 +300,7 @@ export async function resolveProxyBids({
           `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
           auctionId,
           { riderId: auction.rider_id },
-        ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
+        ).catch(onProxyNotifFailed(auctionId));
       }
       // Ingen bid-insert; loop fortsætter med næste challenger.
       continue;
@@ -342,7 +351,7 @@ export async function resolveProxyBids({
           `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
           auctionId,
           { riderId: auction.rider_id }
-        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+        ).catch(onProxyNotifFailed(auctionId));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
         await trackedNotify(
@@ -352,7 +361,7 @@ export async function resolveProxyBids({
           `${bidderName}'s autobud overbød dig på ${riderName}`,
           auctionId,
           { riderId: auction.rider_id }
-        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+        ).catch(onProxyNotifFailed(auctionId));
       }
 
       // Notify seller (only if real human selling own rider — mirrors manual bid flow)
@@ -374,7 +383,7 @@ export async function resolveProxyBids({
               riderName,
             },
           }
-        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+        ).catch(onProxyNotifFailed(auctionId));
       }
     }
 
@@ -388,7 +397,7 @@ export async function resolveProxyBids({
         teamId: exhaustedTeam,
         isAuto: true,
         exhausted: true,
-      }).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+      }).catch(onProxyNotifFailed(auctionId));
     }
 
     // Winner countered challenger successfully — no more iterations needed

@@ -20,6 +20,7 @@ import {
   getArchetypeByKey,
 } from "./boardArchetypes.js";
 import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
+import { captureException } from "./sentry.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
 export const IDENTITY_PICKS = 3;
@@ -343,7 +344,12 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
           teamId,
           identityBasis: existing.season_1_identity_basis,
           dnaKey: previousKey,
-        }).catch(() => {});
+        }).catch((rollbackError) => {
+          // #2389 A2: dobbelt-fejl i kompenserende transaktion — fejler selve
+          // rollback'en, står holdet med inkonsistent DNA-nøgle vs. board. Var
+          // før HELT stille (tom catch) → capture.
+          captureException(rollbackError, { tags: { flow: "board-dna", stage: "rollback" }, teamId });
+        });
         throw regenError;
       }
       return { rechosen: true, dnaKey, members: switchedMembers.members || [] };

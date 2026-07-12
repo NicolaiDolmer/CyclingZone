@@ -775,7 +775,8 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
             return {
               in(column, value) {
                 assert.equal(column, "season_id");
-                return {
+                const builder = {
+                  order() { return builder; },
                   range(from, to) {
                     const rows = clone(state.races)
                       .filter(race => value.includes(race.season_id))
@@ -786,6 +787,7 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                     });
                   },
                 };
+                return builder;
               },
             };
           },
@@ -803,7 +805,8 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                   gt(gtColumn, gtValue) {
                     assert.equal(gtColumn, "prize_money");
                     assert.equal(gtValue, 0);
-                    return {
+                    const builder = {
+                      order() { return builder; },
                       range(from, to) {
                         const rows = clone(state.results)
                           .filter(result => value.includes(result.race_id))
@@ -815,6 +818,7 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                         });
                       },
                     };
+                    return builder;
                   },
                 };
               },
@@ -827,7 +831,8 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
         return {
           select(columns) {
             assert.equal(columns, "id");
-            return {
+            const builder = {
+              order() { return builder; },
               range(from, to) {
                 return Promise.resolve({
                   data: clone(state.riders).slice(from, to + 1),
@@ -835,6 +840,7 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                 });
               },
             };
+            return builder;
           },
           update(payload) {
             return {

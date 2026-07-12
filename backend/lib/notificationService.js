@@ -1,3 +1,5 @@
+import { captureException } from "./sentry.js";
+
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function buildRecentDuplicateLookup({
@@ -190,8 +192,12 @@ export async function emitContractExpiringNotifications({
       const res = await notify({ supabase, userId: rider.user_id, ...payload });
       if (res?.delivered) stats.delivered += 1;
       else if (res?.deduped) stats.deduped += 1;
-    } catch {
+    } catch (err) {
+      // #2389 A2: var 100% stille (end ikke logget) — et systemisk problem kunne
+      // kun ses som faldende delivered-tal, som ingen overvåger.
       stats.failed += 1;
+      console.error(`  ❌ contract-expiring-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "contract-expiring" }, riderId: rider.id });
     }
   }
   return stats;
@@ -273,8 +279,12 @@ export async function emitRaceResultNotifications({
       });
       if (res?.delivered) stats.delivered += 1;
       else if (res?.deduped) stats.deduped += 1;
-    } catch {
+    } catch (err) {
+      // #2389 A2: var 100% stille — spillere mistede "dit løb er kørt"-beskeden
+      // uden noget logspor overhovedet.
       stats.failed += 1;
+      console.error(`  ❌ race-result-notifikation fejlede (løb ${race?.id}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "race-result" }, raceId: race?.id });
     }
   }
   return stats;
