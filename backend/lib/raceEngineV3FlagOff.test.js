@@ -189,3 +189,52 @@ test("buildRaceResults: v3=true + race_stage_roles-overrides ÆNDRER faktisk res
   // Checksum skal også afvige (stageRoles-nøglen er nu med i payloaden).
   assert.notEqual(withoutOverrides.runs[0].input_checksum, withOverrides.runs[0].input_checksum);
 });
+
+// ── Race v3 S4 (#1176): styrt/mekaniske uheld + DNF — flag-off-gate ───────────
+// Spec §5 samme krav som S1-S3: v3=false SKAL forblive dormant. Uheld har deres
+// EGEN rng-stream ("incident:"-præfiks, raceIncidents.js) og køres KUN i
+// simulateStage's v3-gren (efter gap-modellen) — v3=false rører den kode-sti
+// slet ikke, så flag-off er bit-identisk med FØR S4 fandtes.
+
+// Seed 2/62 på ENTRANTS+cobbles giver et kendt uheld når v3=true (verificeret
+// eksplicit i raceSimulatorIncidents.test.js: seed 2 = time_loss for helperA1,
+// seed 62 = abandon for freeC). Bruges her til at bevise at v3=false på PRÆCIS
+// samme seeds er upåvirket — dvs. testen ovenfor er ikke triviel af mangel på
+// et uheld at undertrykke.
+const COBBLES_STAGE = { profile_type: "cobbles", demand_vector: DEMAND_VECTORS.cobbles };
+
+test("simulateStage S4: v3=false på seeds der KENDES at trigge uheld når v3=true — incidents=[], ranked uændret (8 ryttere, alle components.incident=0)", () => {
+  for (const seed of [2, 62]) {
+    const withoutV3 = simulateStage({ entrants: ENTRANTS, stageProfile: COBBLES_STAGE, seed });
+    const explicitFalse = simulateStage({ entrants: ENTRANTS, stageProfile: COBBLES_STAGE, seed, v3: false });
+    assert.deepEqual(withoutV3, explicitFalse, `seed ${seed}`);
+    assert.deepEqual(explicitFalse.incidents, [], `seed ${seed}: incidents skal være tom`);
+    assert.equal(explicitFalse.ranked.length, ENTRANTS.length, `seed ${seed}: ingen skal fjernes`);
+    for (const r of explicitFalse.ranked) assert.equal(r.components.incident, 0, `seed ${seed}/${r.rider_id}`);
+  }
+});
+
+test("simulateStage S4: v3=true på SAMME seeds rent faktisk ÆNDRER resultatet (sanity — beviser at testen ovenfor undertrykker en ægte effekt)", () => {
+  const timeLoss = simulateStage({ entrants: ENTRANTS, stageProfile: COBBLES_STAGE, seed: 2, v3: true });
+  assert.equal(timeLoss.incidents.length, 1, "seed 2 skal give ét time_loss-uheld når v3=true");
+  assert.equal(timeLoss.ranked.length, ENTRANTS.length, "time_loss fjerner ingen");
+  assert.notEqual(timeLoss.ranked.find((r) => r.rider_id === "helperA1").components.incident, 0);
+
+  const abandon = simulateStage({ entrants: ENTRANTS, stageProfile: COBBLES_STAGE, seed: 62, v3: true });
+  assert.equal(abandon.incidents.length, 1, "seed 62 skal give ét abandon-uheld når v3=true");
+  assert.equal(abandon.ranked.length, ENTRANTS.length - 1, "abandon skal fjerne præcis én rytter");
+});
+
+// buildRaceResults/buildStageRowsAccumulated: v3=false SKAL ignorere uheld
+// fuldstændigt selv på uheldsudsatte seeds — samme mønster som S3's
+// stageRoleOverrides-gate ovenfor, men for S4's dormant incident-sti.
+test("buildRaceResults S4: v3=false på en STAGES-liste der rammer de kendte uheld-seeds → resultat uændret ift. v3 udeladt (incidents=[])", () => {
+  const stages = [{ stage_number: 1, profile_type: "cobbles", demand_vector: DEMAND_VECTORS.cobbles }];
+  // #2351-saltet stableSeed afhænger af race.id+etapenummer, ikke et rå tal vi kan
+  // pinne direkte her — vi verificerer derfor invarianten generelt (v3 udeladt ===
+  // v3=false, og incidents er ALTID tom) frem for at jage et specifikt seed-hit.
+  const a = buildRaceResults({ race: STAGE_RACE, stages, entrants: ENTRANTS, pointsLookup: POINTS });
+  const b = buildRaceResults({ race: STAGE_RACE, stages, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
+  assert.deepEqual(a, b);
+  assert.deepEqual(a.incidents, [], "v3=false/udeladt skal ALTID give tom incidents-liste");
+});

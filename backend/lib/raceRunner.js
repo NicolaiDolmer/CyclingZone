@@ -50,6 +50,9 @@ import {
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+// S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
+// persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
+import { loadAbandonedRiderIds } from "./raceIncidents.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
@@ -154,7 +157,10 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  *     (kald-stedets ansvar at udelade den når v3=false — flag-off skal forblive
  *     bit-identisk). undefined/tom Map = ingen overrides, ren fallback til
  *     entrant.race_role/'normal', bit-identisk med før S3.
- * @returns {{ resultRows, runs, finalFatigue }}
+ * @returns {{ resultRows, runs, finalFatigue, incidents }}
+ *   incidents: S4 (#1176) — flad liste af ALLE uheld på tværs af løbets etaper
+ *   ({stage_number, rider_id, kind, outcome, time_loss_seconds, injury_days, u}).
+ *   ALTID [] når v3=false (dormant, samme mønster som riderScores).
  */
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
@@ -169,6 +175,16 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const pointsComp = new Map();
   const komComp = new Map();
   const byId = new Map();
+  // S4 (#1176): hvilke etaper hver rytter FAKTISK har en 'stage'-række på (dvs.
+  // var i `ranked` — abandons udelades af simulateStage selv) + hvilke etaper er
+  // behandlet indtil videre. filterCompletedEntrants (raceClassifications.js)
+  // ekskluderer enhver rytter der mangler en etape fra ALLE klassementer —
+  // v3=false: alle er altid med på alle etaper → classified === entrants
+  // (indhold/orden uændret) → bit-identisk flag-off.
+  const stagesByRider = new Map();
+  const stageNumbersSoFar = new Set();
+  const abandonedSet = new Set();
+  const allIncidents = [];
   // #1993: holdnavn-snapshot pr. team_id (fra de berigede entrants). Bruges til hold-
   // rækker (pushTeam), der ikke har en enkelt entrant at læse navnet fra.
   const teamNameByTeam = new Map();
@@ -239,7 +255,17 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     }
     const isFinal = i === stagesSorted.length - 1;
     const seed = stableSeed(raceSeedInput(race.id, stageNumber));
-    const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed, v3 });
+    // S4 (#1176): abandons fra en TIDLIGERE etape (denne loop-instans' egen
+    // abandonedSet — whole-race-stien er ét kald, ingen DB-rundtur nødvendig)
+    // udelukkes fra dagens felt, FØR simulateStage kaldes.
+    const stageEntrants = abandonedSet.size
+      ? simEntrants.filter((se) => !abandonedSet.has(se.rider_id))
+      : simEntrants;
+    const { ranked, incidents } = simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
+    for (const inc of incidents) {
+      allIncidents.push({ stage_number: stageNumber, ...inc });
+      if (inc.outcome === "abandon") abandonedSet.add(inc.rider_id);
+    }
     // #1499: deskriptive udbruds-etiketter for denne etapes finish-order (ren read).
     const breakawayStatus = deriveBreakawayStatus(ranked);
     const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
@@ -268,14 +294,22 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
     });
 
+    stageNumbersSoFar.add(stageNumber);
     for (const r of ranked) {
       add(cumTime, r.rider_id, r.stageGap);
       add(posSum, r.rider_id, r.rank);
       add(pointsComp, r.rider_id, classPointsForRank(r.rank));
       if (CLIMB_PROFILES.has(stage.profile_type)) add(komComp, r.rider_id, classPointsForRank(r.rank));
+      if (!stagesByRider.has(r.rider_id)) stagesByRider.set(r.rider_id, new Set());
+      stagesByRider.get(r.rider_id).add(stageNumber);
     }
 
-    const gc = rankByCumTimeAsc(entrants, cumTime, posSum);
+    // S4 (#1176): klassements-berettigede ryttere = dem der har fuldført ALLE
+    // etaper behandlet indtil videre (samme funktion buildStageRowsAccumulated
+    // allerede bruger). v3=false: ingen abandons nogensinde → classified har
+    // SAMME indhold/orden som entrants → bit-identisk flag-off.
+    const classified = filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar);
+    const gc = rankByCumTimeAsc(classified, cumTime, posSum);
     const leaderTime = gc.length ? gc[0].time : 0;
     const gcFinish = (entry) => formatGap(entry.time - leaderTime);
 
@@ -283,7 +317,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // ENDAGSLØB: gc(all) + team. Ingen 'stage' (= dobbelttælling, jf. PCM).
       // gc-finish-order = denne ene etapes finish-order → udbruds-etiketten gælder direkte.
       for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: 1, finish_time: gcFinish(g), ...bwOf(g.rider_id) });
-      for (const t of teamClassification(entrants, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: 1 });
+      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: 1 });
       break;
     }
 
@@ -297,24 +331,24 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // beholder "holder trøjen"-pointet (race_points har KUN rank 1 for dag-typerne);
       // rank 2+ har intet opslag → points_earned 0, også under rederiveSeasonRacePoints.
       // leader-rækker bærer GC-gap (display af løbende samlet stilling).
-      const young = rankByCumTimeAsc(entrants.filter((e) => e.is_u25), cumTime, posSum);
-      const pointsCls = rankByCompDesc(entrants, pointsComp);
-      const komCls = rankByCompDesc(entrants, komComp);
+      const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
+      const pointsCls = rankByCompDesc(classified, pointsComp);
+      const komCls = rankByCompDesc(classified, komComp);
       for (const g of gc) pushIndiv({ result_type: "leader", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
       for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
       for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(entrants, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
+      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
     } else {
       // Slut-etape: hele klassementet udbetales.
-      const young = rankByCumTimeAsc(entrants.filter((e) => e.is_u25), cumTime, posSum);
-      const pointsCls = rankByCompDesc(entrants, pointsComp);
-      const komCls = rankByCompDesc(entrants, komComp);
+      const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
+      const pointsCls = rankByCompDesc(classified, pointsComp);
+      const komCls = rankByCompDesc(classified, komComp);
       for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
       for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
       for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(entrants, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
     }
   }
 
@@ -325,7 +359,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     entrants.map((e) => [e.rider_id, fatigueSeqById.get(e.rider_id)[lastIdx]])
   );
 
-  return { resultRows, runs, finalFatigue };
+  return { resultRows, runs, finalFatigue, incidents: allIncidents };
 }
 
 // ── I/O: indlæsning ───────────────────────────────────────────────────────────
@@ -815,6 +849,65 @@ async function persistRuns({ supabase, race, runs, source = null }) {
   }
 }
 
+// Beregn injured_until-dato: dateStr (YYYY-MM-DD) + days → YYYY-MM-DD. Noon UTC
+// undgår DST-kanttilfælde ved dato-aritmetik. Duplikeret fra dailyTrainingEngine.js
+// (ikke eksporteret derfra) — samme lille helper, samme begrundelse som fnv1a32-
+// duplikationen i raceDayForm.js/raceIncidents.js (undgår krydsimport for én linje).
+function addDaysToDate(dateStr, days) {
+  const d = new Date(dateStr + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// S4 (#1176): persistér race_incidents (idempotent delete-then-insert pr.
+// (race_id, stageNumbers i DENNE kørsel) — spejrer persistRuns' mønster) +
+// upsert rider_condition.injured_until/injury_cause for abandons. KUN kaldt
+// når v3=true OG incidents ikke er tom (kald-stedets ansvar). Upsert-semantikken
+// (supabase-js: UPDATE-stien rører KUN de angivne kolonner) betyder form/fatigue
+// ALDRIG røres her — spejler raceFatigue.applyRaceFatigue's samme garanti.
+async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
+  if (!incidents?.length) return;
+  const rows = incidents.map((inc) => ({
+    race_id: race.id,
+    stage_number: inc.stage_number,
+    rider_id: inc.rider_id,
+    kind: inc.kind,
+    outcome: inc.outcome,
+    time_loss_seconds: inc.time_loss_seconds,
+    injury_days: inc.injury_days,
+  }));
+  await supabase.from("race_incidents").delete().eq("race_id", race.id)
+    .in("stage_number", [...new Set(stageNumbers)]);
+  const { error } = await supabase.from("race_incidents").insert(rows);
+  if (error) throw new Error(`race_incidents: ${error.message}`);
+
+  const abandons = incidents.filter((inc) => inc.outcome === "abandon");
+  if (!abandons.length) return;
+  const today = copenhagenDateString();
+  const injuryRows = abandons.map((inc) => ({
+    rider_id: inc.rider_id,
+    injured_until: addDaysToDate(today, Number.isFinite(inc.injury_days) ? inc.injury_days : 1),
+    injury_cause: "race_crash",
+  }));
+  const { error: injErr } = await supabase.from("rider_condition").upsert(injuryRows, { onConflict: "rider_id" });
+  if (injErr) throw new Error(`rider_condition (incident injury): ${injErr.message}`);
+}
+
+// S4 (#1176): race_incidents bærer kun rider_id (samme mønster som
+// race_results/persistIncidents ovenfor) — ét let riders-opslag før
+// notifyDiscord, så buildRaceSimEmbed's DNF-linje kan vise navne uden selv at
+// kende supabase. Fejlfri degradering: et opslags-problem giver rider_name=null
+// i stedet for at vælte Discord-notifikationen (som selv er try/catch'et af
+// kald-stederne).
+async function enrichIncidentsForDiscord({ supabase, incidents }) {
+  if (!incidents?.length) return [];
+  const riderIds = [...new Set(incidents.map((inc) => inc.rider_id).filter(Boolean))];
+  if (!riderIds.length) return incidents;
+  const { data: riders } = await supabase.from("riders").select("id, firstname, lastname").in("id", riderIds);
+  const nameById = new Map((riders || []).map((r) => [r.id, [r.firstname, r.lastname].filter(Boolean).join(" ") || null]));
+  return incidents.map((inc) => ({ ...inc, rider_name: nameById.get(inc.rider_id) ?? null }));
+}
+
 /**
  * I/O-orchestrator: afvikl ét løb via motoren og skriv via den UÆNDREDE
  * applyRaceResults. Spejler pcmResultsImport's idempotens + efter-orkestrering.
@@ -867,7 +960,7 @@ export async function simulateRace({
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
 
-  const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
+  const { resultRows, runs, incidents } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -902,6 +995,11 @@ export async function simulateRace({
   });
 
   await persistRuns({ supabase, race, runs });
+  // S4 (#1176): KUN når v3 (buildRaceResults returnerer incidents=[] ved v3=false,
+  // så dette no-op'er uden DB-kald — persistIncidents selv guard'er på tom liste).
+  if (v3 && incidents.length) {
+    await persistIncidents({ supabase, race, incidents, stageNumbers: stages.map((s) => s.stage_number || 1) });
+  }
   await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
@@ -947,7 +1045,11 @@ export async function simulateRace({
 
   if (notifyDiscord) {
     try {
-      await notifyDiscord({ race, resultRows });
+      // S4 (#1176): incidents er allerede HELE løbets (buildRaceResults, ingen
+      // stage-filtrering her, modsat stage-by-stage-stien nedenfor) — intet
+      // ekstra DB-kald nødvendigt ud over navne-opslaget.
+      const incidentsForDiscord = v3 ? await enrichIncidentsForDiscord({ supabase, incidents }) : [];
+      await notifyDiscord({ race, resultRows, incidents: incidentsForDiscord });
     } catch {
       // Discord-fejl må ikke vælte afviklingen.
     }
@@ -1022,8 +1124,12 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  * @param {Map} [stageRoleOverrides]  S3 (#2034) — se buildRaceResults' jsdoc. KUN
  *   anvendt når v3=true; her nok med DENNE etapes overrides (ingen fatigue-
  *   akkumulering sker i denne funktion, i modsætning til buildRaceResults).
- * @returns {{ resultRows, runs }}  alle rækker bærer stage_number = dagens etape,
- *   så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
+ * @returns {{ resultRows, runs, incidents }}  alle rækker bærer stage_number = dagens
+ *   etape, så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
+ *   incidents: S4 (#1176) — dagens rollIncidents-output, stemplet med stage_number.
+ *   ALTID [] når v3=false. Abandon-eksklusion af DENNE etapes felt (rytteren styrtede
+ *   på en TIDLIGERE etape) er kald-stedets ansvar (simulateStageByIndex filtrerer
+ *   `entrants` FØR denne funktion kaldes — se loadAbandonedRiderIds).
  */
 export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
@@ -1065,7 +1171,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   });
 
   const seed = stableSeed(raceSeedInput(race.id, stageNumber));
-  const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
+  const { ranked, incidents } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
+  // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
+  const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
   // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
   const breakawayStatus = deriveBreakawayStatus(ranked);
   const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
@@ -1135,7 +1243,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     for (const t of teamClassification(classified, acc.cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
   }
 
-  return { resultRows, runs };
+  return { resultRows, runs, incidents: stampedIncidents };
 }
 
 /**
@@ -1229,11 +1337,20 @@ export async function simulateStageByIndex({
   let entrants = [];
   let resultRows = [];
   let runs = [];
+  let incidents = [];
   let applied = { rowsImported: 0 };
 
   if (!finalizationPending) {
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
     entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0 });
+
+    // #2352: kill-switch læst ÉN gang pr. etape-invokation (hver stageIndex-kald
+    // er sit eget I/O-kald — flippes flaget mellem to etaper, gælder den NYE
+    // værdi fra den næste etape, hvilket er den tilsigtede kill-switch-adfærd).
+    // Flyttet OP hertil (S4, #1176): abandon-eksklusionen nedenfor SKAL ske FØR
+    // #1844-fysningen, ellers rapporterer freezeEntrantsToStartField en abandon
+    // som en "forsvundet" start-felt-rytter (falsk #1847-alarm).
+    const v3 = await checkV3Enabled(supabase);
 
     // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
     // ændre sig mellem etaper — en rytter der kom ind midt i løbet (manuelt edit pre-#1838,
@@ -1242,7 +1359,22 @@ export async function simulateStageByIndex({
     // → loadStartFieldRiderIds=null → ingen frysning.
     if (stageIndex > 0) {
       const startField = await loadStartFieldRiderIds({ supabase, raceId: race.id });
-      const { frozen, added, missing } = freezeEntrantsToStartField(entrants, startField);
+      // S4 (#1176): ryttere der er udgået (styrt/mekanisk DNF) på en TIDLIGERE
+      // etape udelukkes FØR frysningen — både fra det aktuelle felt OG fra
+      // start-felt-snapshottet, så de aldrig trigger #1844's missing-warning
+      // (de er ikke "forsvundet", de er korrekt DNF'et og allerede persisteret
+      // som sådan via race_incidents/manglende senere etape-rækker).
+      let effectiveStartField = startField;
+      if (v3) {
+        const abandonedIds = await loadAbandonedRiderIds({ supabase, raceId: race.id });
+        if (abandonedIds.size) {
+          entrants = entrants.filter((e) => !abandonedIds.has(e.rider_id));
+          if (effectiveStartField) {
+            effectiveStartField = effectiveStartField.filter((id) => !abandonedIds.has(id));
+          }
+        }
+      }
+      const { frozen, added, missing } = freezeEntrantsToStartField(entrants, effectiveStartField);
       if (added.length) {
         console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${added.length} mid-race-rytter(e) ekskluderet fra GC (#1844): ${added.slice(0, 5).join(",")}${added.length > 5 ? "…" : ""}`);
       }
@@ -1271,11 +1403,8 @@ export async function simulateStageByIndex({
     const racePoints = await loadRacePoints(supabase, race.race_class);
     const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
-    // #2352: kill-switch læst ÉN gang pr. etape-invokation (hver stageIndex-kald
-    // er sit eget I/O-kald — flippes flaget mellem to etaper, gælder den NYE
-    // værdi fra den næste etape, hvilket er den tilsigtede kill-switch-adfærd).
-    const v3 = await checkV3Enabled(supabase);
     // S3 (#2034): overrides hentes KUN når v3=true — samme begrundelse som simulateRace.
+    // (v3 selv er læst tidligere, FØR #1844-frysningen — se abandon-eksklusionen ovenfor.)
     const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
 
     if (race.race_type === "stage_race") {
@@ -1284,15 +1413,16 @@ export async function simulateStageByIndex({
       const priorStageRows = stageIndex > 0
         ? await loadPriorStageRows({ supabase, raceId: race.id, beforeStageNumber: stageNumber })
         : [];
-      ({ resultRows, runs } = buildStageRowsAccumulated({
+      ({ resultRows, runs, incidents } = buildStageRowsAccumulated({
         race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3, stageRoleOverrides,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente.
-      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
+      const { resultRows: allRows, runs: allRuns, incidents: allIncidents } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
+      incidents = (allIncidents || []).filter((inc) => inc.stage_number === stageNumber);
     }
 
     if (dryRun) {
@@ -1351,6 +1481,12 @@ export async function simulateStageByIndex({
     await updateStandings(race.season_id, race.id);
 
     await persistRuns({ supabase, race, runs, source: runSource });
+    // S4 (#1176): KUN denne etapes incidents — persistIncidents scoper delete-
+    // then-insert til [stageNumber] alene, andre etapers race_incidents-rækker
+    // røres ikke (samme idempotens-mønster som persistRuns/apply_stage_result).
+    if (v3 && incidents.length) {
+      await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber] });
+    }
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
@@ -1401,13 +1537,34 @@ export async function simulateStageByIndex({
         .from("race_results")
         .select("result_type, rank, rider_name, stage_number")
         .eq("race_id", race.id);
+      // S4 (#1176): stage-by-stage-stiens `incidents`-variabel er scopet til KUN
+      // final-etapen (linje ~1483 filtrerer på stageNumber) — for DNF-linjen i
+      // hele-løbet-embeddet re-hentes derfor race_incidents for HELE løbet her.
+      // Ingen v3-gate nødvendig: `v3` er blok-scopet til `if (!finalizationPending)`
+      // ovenfor og findes IKKE i recovery-grenen — men det er også overflødigt,
+      // for var flaget OFF da løbet blev afviklet, er der ganske enkelt aldrig
+      // skrevet nogen rækker for dette race_id, og forespørgslen returnerer [] helt
+      // af sig selv. Samme graceful-degradation-regel som frontendens forespørgsel
+      // (RaceDetailPage.jsx): tabellen er endnu ikke migreret i prod ved denne
+      // slices merge, en fejl må ALDRIG vælte afviklingen — kun logges + [].
+      let incidentsForDiscord = [];
+      try {
+        const { data: incRows, error: incErr } = await supabase
+          .from("race_incidents")
+          .select("stage_number, rider_id, kind, outcome")
+          .eq("race_id", race.id);
+        if (incErr) throw incErr;
+        incidentsForDiscord = await enrichIncidentsForDiscord({ supabase, incidents: incRows || [] });
+      } catch (err) {
+        console.warn(`  ⚠️  race_incidents fetch failed (Discord DNF-linje udelades): ${err.message}`);
+      }
       // FIX 1: undgå dobbelt-send ved re-finalization. Et discord_sent-flag i admin_log
       // ville kræve en CHECK-constraint-migration (uden for scope); i stedet er denne
       // notifyDiscord-callback selv idempotent (cron-laget de-duper på løb), OG recovery
       // sker kun efter et crash hvor en embed sjældent allerede nåede ud. Vi sender derfor
       // KUN hvis dette IKKE er en recovery-genkørsel — den normale final-etape sender én gang.
       if (!finalizationPending) {
-        await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows });
+        await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows, incidents: incidentsForDiscord });
       }
     } catch {
       // Discord-fejl må ikke vælte afviklingen.

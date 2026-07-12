@@ -343,3 +343,98 @@ export function helperCounterfactualDeltas({ rankedRoles = [], rankedCounterfact
   }
   return deltas;
 }
+
+/**
+ * S4 (#1176) — observér ÉT etape-instans' uheld/DNF-udfald. Ren, ingen I/O.
+ * Parallel til observeRace(): tager rollIncidents-outputtet (evt. tomt, altid
+ * [] når v3=false) + den FAKTISKE feltstørrelse VED DENNE ETAPES START (for en
+ * Grand Tour-etape efter tidligere abandons: mindre end løbets oprindelige
+ * startfelt — se aggregateIncidentObservations-kald-stedet i
+ * scripts/simulateSeasonDryRun.js for hvordan feltstørrelsen deriveres kumulativt)
+ * og folder det til andele af DETTE felt.
+ *
+ * @param {object} args
+ * @param {Array<{rider_id:string, outcome:'time_loss'|'abandon'}>} [args.incidents]
+ * @param {number} args.fieldSize  feltstørrelse ved denne etapes start
+ * @param {string} [args.profileType]  stageProfile.profile_type, videreføres uændret i output
+ * @returns {{
+ *   profileType: string|undefined, fieldSize: number,
+ *   hitCount: number, hitSharePct: number,
+ *   dnfCount: number, dnfSharePct: number,
+ *   timeLossCount: number, timeLossSharePct: number
+ * }}
+ */
+export function observeIncidents({ incidents = [], fieldSize, profileType } = {}) {
+  const hitCount = incidents.length;
+  const dnfCount = incidents.filter((i) => i.outcome === "abandon").length;
+  const timeLossCount = hitCount - dnfCount;
+  const pct = (n) => (fieldSize > 0 ? (100 * n) / fieldSize : 0);
+  return {
+    profileType,
+    fieldSize,
+    hitCount,
+    hitSharePct: pct(hitCount),
+    dnfCount,
+    dnfSharePct: pct(dnfCount),
+    timeLossCount,
+    timeLossSharePct: pct(timeLossCount),
+  };
+}
+
+/**
+ * S4 (#1176) — aggregér en liste af observeIncidents()-observationer (én pr.
+ * etape-instans) til de sæson-niveau-stats evaluateIncidentBoundsOracle
+ * (raceDryRunOracles.js) konsumerer. Uvægtet middelværdi over ETAPE-instanser
+ * (samme konvention som aggregateObservations' favoriteWinRate — hver etape
+ * tæller lige meget, uanset feltstørrelse), IKKE et rytter-vægtet gennemsnit.
+ *
+ * @param {Array<ReturnType<typeof observeIncidents>>} observations
+ * @returns {{
+ *   stages: number, meanDnfRatePct: number|null, meanIncidentRatePct: number|null,
+ *   maxIncidentSharePct: number|null, abandonShareOfIncidents: number|null,
+ *   perProfile: Record<string, {stages:number, meanDnfRatePct:number, meanIncidentRatePct:number}>
+ * }}
+ */
+export function aggregateIncidentObservations(observations = []) {
+  const stages = observations.length;
+  if (stages === 0) {
+    return {
+      stages: 0, meanDnfRatePct: null, meanIncidentRatePct: null,
+      maxIncidentSharePct: null, abandonShareOfIncidents: null, perProfile: {},
+    };
+  }
+
+  let sumDnfPct = 0, sumHitPct = 0, maxHitPct = 0, totalHits = 0, totalDnf = 0;
+  const perProfile = {};
+  for (const obs of observations) {
+    sumDnfPct += obs.dnfSharePct;
+    sumHitPct += obs.hitSharePct;
+    if (obs.hitSharePct > maxHitPct) maxHitPct = obs.hitSharePct;
+    totalHits += obs.hitCount;
+    totalDnf += obs.dnfCount;
+
+    const key = obs.profileType ?? "_unknown";
+    if (!perProfile[key]) perProfile[key] = { stages: 0, sumDnfPct: 0, sumHitPct: 0 };
+    perProfile[key].stages++;
+    perProfile[key].sumDnfPct += obs.dnfSharePct;
+    perProfile[key].sumHitPct += obs.hitSharePct;
+  }
+
+  const perProfileOut = {};
+  for (const [profileType, agg] of Object.entries(perProfile)) {
+    perProfileOut[profileType] = {
+      stages: agg.stages,
+      meanDnfRatePct: agg.sumDnfPct / agg.stages,
+      meanIncidentRatePct: agg.sumHitPct / agg.stages,
+    };
+  }
+
+  return {
+    stages,
+    meanDnfRatePct: sumDnfPct / stages,
+    meanIncidentRatePct: sumHitPct / stages,
+    maxIncidentSharePct: maxHitPct,
+    abandonShareOfIncidents: totalHits > 0 ? totalDnf / totalHits : null,
+    perProfile: perProfileOut,
+  };
+}

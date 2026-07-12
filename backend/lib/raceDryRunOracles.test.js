@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle } from "./raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle } from "./raceDryRunOracles.js";
 
 const healthyTerrain = (over = {}) => ({
   terrain: "flat", keyAb: "sprint", races: 300,
@@ -105,4 +105,104 @@ test("liveness-oracle: mode-bevidst gulv (seam-modes lavere) (#1122)", () => {
   // terræn-kraft (neutral) påvirkes ikke af condition-gulvet
   const neutral = [{ ability: "tempo", terrain: "mountain", mode: "neutral", rankGain: 0.04 }];
   assert.equal(evaluateAbilityLivenessOracle(neutral, { floorByMode: { condition: 0.02 } }).length, 1);
+});
+
+// ── evaluateIncidentBoundsOracle (S4, #1176) ─────────────────────────────────
+
+const healthyIncidentStats = (over = {}) => ({
+  stages: 300,
+  meanDnfRatePct: 0.8,
+  meanIncidentRatePct: 3.0,
+  maxIncidentSharePct: 4.5,
+  abandonShareOfIncidents: 0.25,
+  perProfile: {
+    itt: { stages: 50, meanDnfRatePct: 0.1, meanIncidentRatePct: 0.3 },
+    flat: { stages: 100, meanDnfRatePct: 0.7, meanIncidentRatePct: 2.5 },
+    cobbles: { stages: 50, meanDnfRatePct: 1.2, meanIncidentRatePct: 4.0 },
+  },
+  ...over,
+});
+
+test("incident-bounds-oracle: ingen data (stages=0) → ingen brud", () => {
+  assert.deepEqual(evaluateIncidentBoundsOracle({ stages: 0 }), []);
+  assert.deepEqual(evaluateIncidentBoundsOracle(null), []);
+});
+
+test("incident-bounds-oracle: sund kalibrering giver ingen brud", () => {
+  assert.deepEqual(evaluateIncidentBoundsOracle(healthyIncidentStats()), []);
+});
+
+test("incident-bounds-oracle: DNF-rate under bånd fanges", () => {
+  const failures = evaluateIncidentBoundsOracle(healthyIncidentStats({ meanDnfRatePct: 0.1 }));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /DNF-rate/);
+});
+
+test("incident-bounds-oracle: DNF-rate over bånd fanges", () => {
+  const failures = evaluateIncidentBoundsOracle(healthyIncidentStats({ meanDnfRatePct: 3.0 }));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /DNF-rate/);
+});
+
+test("incident-bounds-oracle: hård cap-brud fanges (maxIncidentSharePct > cap)", () => {
+  const failures = evaluateIncidentBoundsOracle(healthyIncidentStats({ maxIncidentSharePct: 6.5 }));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /hård cap brudt/);
+});
+
+test("incident-bounds-oracle: cap er konfigurerbar via targets", () => {
+  const stats = healthyIncidentStats({ maxIncidentSharePct: 6.5 });
+  assert.deepEqual(evaluateIncidentBoundsOracle(stats, { maxFieldSharePct: 10 }), []);
+});
+
+test("incident-bounds-oracle: abandon-andel udenfor 25%±10pp fanges", () => {
+  const tooLow = evaluateIncidentBoundsOracle(healthyIncidentStats({ abandonShareOfIncidents: 0.05 }));
+  assert.equal(tooLow.length, 1);
+  assert.match(tooLow[0], /abandon-andel/);
+
+  const tooHigh = evaluateIncidentBoundsOracle(healthyIncidentStats({ abandonShareOfIncidents: 0.5 }));
+  assert.equal(tooHigh.length, 1);
+  assert.match(tooHigh[0], /abandon-andel/);
+});
+
+test("incident-bounds-oracle: ITT skal have LAVESTE uheldsrate — fanges hvis ikke", () => {
+  const stats = healthyIncidentStats({
+    perProfile: {
+      itt: { stages: 50, meanDnfRatePct: 0.5, meanIncidentRatePct: 5.0 }, // højere end flat!
+      flat: { stages: 100, meanDnfRatePct: 0.7, meanIncidentRatePct: 2.5 },
+      cobbles: { stages: 50, meanDnfRatePct: 1.2, meanIncidentRatePct: 6.0 },
+    },
+  });
+  const failures = evaluateIncidentBoundsOracle(stats);
+  assert.equal(failures.filter((f) => f.startsWith("itt:")).length, 1);
+});
+
+test("incident-bounds-oracle: cobbles skal have HØJESTE uheldsrate — fanges hvis ikke", () => {
+  const stats = healthyIncidentStats({
+    perProfile: {
+      itt: { stages: 50, meanDnfRatePct: 0.1, meanIncidentRatePct: 0.3 },
+      flat: { stages: 100, meanDnfRatePct: 0.7, meanIncidentRatePct: 2.5 },
+      cobbles: { stages: 50, meanDnfRatePct: 0.5, meanIncidentRatePct: 1.0 }, // lavere end flat!
+    },
+  });
+  const failures = evaluateIncidentBoundsOracle(stats);
+  assert.equal(failures.filter((f) => f.startsWith("cobbles:")).length, 1);
+});
+
+test("incident-bounds-oracle: ttt behandles som solo-profil på lige fod med itt", () => {
+  const stats = healthyIncidentStats({
+    perProfile: {
+      ttt: { stages: 20, meanDnfRatePct: 0.05, meanIncidentRatePct: 0.2 },
+      flat: { stages: 100, meanDnfRatePct: 0.7, meanIncidentRatePct: 2.5 },
+      cobbles: { stages: 50, meanDnfRatePct: 1.2, meanIncidentRatePct: 4.0 },
+    },
+  });
+  assert.deepEqual(evaluateIncidentBoundsOracle(stats), []);
+});
+
+test("incident-bounds-oracle: kun én profil (ingen sammenligning mulig) → ingen ordens-brud", () => {
+  const stats = healthyIncidentStats({
+    perProfile: { flat: { stages: 300, meanDnfRatePct: 0.8, meanIncidentRatePct: 3.0 } },
+  });
+  assert.deepEqual(evaluateIncidentBoundsOracle(stats), []);
 });

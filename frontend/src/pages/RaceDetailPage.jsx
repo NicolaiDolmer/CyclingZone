@@ -132,6 +132,7 @@ export default function RaceDetailPage() {
   const [results, setResults] = useState([]);
   const [stageProfiles, setStageProfiles] = useState([]);
   const [schedule, setSchedule] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -206,15 +207,29 @@ export default function RaceDetailPage() {
       .eq("race_id", raceId)
       .order("stage_number", { ascending: true });
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }] = await Promise.all([
-      myTeamPromise, rowsPromise, profilesPromise, schedulePromise,
+    // S4 (#1176): race_incidents (styrt/mekanisk defekt/DNF). Tabellen committes
+    // som .sql men anvendes først af ejeren POST-merge — degradér ærligt: en fejl
+    // (tabel findes ikke endnu, RLS afviser) må ALDRIG vælte race-siden, kun logges
+    // + falde tilbage til tom liste (samme mønster som profiles/schedule ovenfor,
+    // her med et eksplicit warn fordi det er en helt ny tabel under udrulning).
+    const incidentsPromise = supabase
+      .from("race_incidents")
+      .select("id, stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(id, firstname, lastname)")
+      .eq("race_id", raceId);
+
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise,
     ]);
+    if (incidentsError) {
+      console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
+    }
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
     setStageProfiles(profiles ?? []);
     setSchedule(scheduleRows ?? []);
+    setIncidents(incidentRows ?? []);
     setLoading(false);
   }, [raceId]);
 
@@ -494,7 +509,8 @@ export default function RaceDetailPage() {
 
           {activeTab === "samlet" && (
             <div className="space-y-5">
-              <RaceRecap results={results} scopeType="overall" />
+              <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+              <DnfSection incidents={incidents} scopeType="overall" t={t} />
               {liveStandings
                 ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />
                 : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />}
@@ -502,7 +518,7 @@ export default function RaceDetailPage() {
           )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
             <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
-              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} t={t} />
+              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents} t={t} />
           ))}
         </>
       )}
@@ -511,7 +527,8 @@ export default function RaceDetailPage() {
       {hasAnyResults && !isStageRace && (
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
-          <RaceRecap results={results} scopeType="overall" />
+          <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+          <DnfSection incidents={incidents} scopeType="overall" t={t} />
           {teamFilterBar}
           <ResultTable
             title={t("detail.tableResult")}
@@ -529,11 +546,13 @@ export default function RaceDetailPage() {
 
 // #1311 Tekst-recap: skabelon-fortælling udledt af persisterede race_results (ren
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
-function RaceRecap({ results, scopeType, stageNumber }) {
+// S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
+// samme output som før S4 (ingen abandon/notableCrash-momenter).
+function RaceRecap({ results, scopeType, stageNumber, incidents }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber } }),
-    [results, scopeType, stageNumber],
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents }),
+    [results, scopeType, stageNumber, incidents],
   );
   if (!moments.length) return null;
   return (
@@ -548,6 +567,44 @@ function RaceRecap({ results, scopeType, stageNumber }) {
             {t(`detail.recap.${m.key}`, m.params)}
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+// S4 (#1176): kompakt DNF-liste — supplerer referatets (maks 2) abandon-momenter
+// med den FULDE liste af udgåede for den valgte etape/hele løbet (navn, etape,
+// årsag). Dormant hvis incidents=[] (flag off/tabel ikke migreret endnu) —
+// ingen fejl-UI, bare intet render (samme mønster som RaceRecap).
+function DnfSection({ incidents, scopeType, stageNumber, t }) {
+  const rows = useMemo(() => {
+    const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
+    const scoped = scopeType === "stage"
+      ? abandons.filter((inc) => (inc.stage_number ?? 1) === stageNumber)
+      : abandons;
+    return [...scoped].sort((a, b) => (a.stage_number ?? 1) - (b.stage_number ?? 1));
+  }, [incidents, scopeType, stageNumber]);
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+      <p className="text-cz-2 text-xs uppercase tracking-wider mb-2 font-semibold">{t("detail.incidents.title")}</p>
+      <ul className="space-y-1.5">
+        {rows.map((inc) => {
+          const name = inc.rider ? `${inc.rider.firstname ?? ""} ${inc.rider.lastname ?? ""}`.trim() : null;
+          return (
+            <li key={inc.id} className="text-sm flex items-center justify-between gap-3">
+              <RiderLink id={inc.rider?.id} className="text-cz-1 hover:text-cz-accent-t transition-colors truncate">
+                {name || "—"}
+              </RiderLink>
+              <span className="text-cz-3 text-xs shrink-0 font-mono">
+                {scopeType !== "stage" && `${t("detail.tabStage", { number: inc.stage_number ?? 1 })} · `}
+                {t(`detail.incidents.${inc.kind === "crash" ? "crash" : "mechanical"}`)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -592,7 +649,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId }) {
   );
 }
 
-function StageTab({ stage, results, profile, filterRows, myTeamId, t }) {
+function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, t }) {
   const [classTab, setClassTab] = useState("stage");
 
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
@@ -610,7 +667,8 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, t }) {
   return (
     <div className="space-y-5">
       <StageProfileCard profile={profile} />
-      <RaceRecap results={results} scopeType="stage" stageNumber={stage} />
+      <RaceRecap results={results} scopeType="stage" stageNumber={stage} incidents={incidents} />
+      <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
       {jerseys.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-4">
           <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>

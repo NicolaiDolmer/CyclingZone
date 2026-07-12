@@ -464,7 +464,14 @@
       "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
-      "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains."
+      "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
+      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} other {{rider} abandoned.}}",
+      "notableCrash": "{rider} crashed and lost {marginText}."
+    },
+    "incidents": {
+      "title": "Abandons",
+      "crash": "Crash",
+      "mechanical": "Mechanical"
     },
     "jersey": {
       "leader": "Leader",

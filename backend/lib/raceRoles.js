@@ -121,6 +121,47 @@ export const RACE_V3_TUNING = Object.freeze({
   // endelige 3-seeds-tal: docs/audits/2026-07-12-race-v3-s2-calibration.md
   // ("Eksplorative prober" + "Beslutning (ejer 12/7)").
   TOP_COMPRESSION_TAU: envNum("RACE_V3_TOP_COMPRESSION_TAU", 0.5),
+
+  // ── S4 (#1176): styrt/mekaniske uheld + DNF ─────────────────────────────────
+  // Pr.-etape hit-sandsynlighed pr. rytter, FØR positioning-reduktion/descent-
+  // multiplikator (raceIncidents.incidentProbability). Grid-kalibreret 2026-07-12
+  // mod harnessets DNF-bånd (evaluateIncidentBoundsOracle, raceDryRunOracles.js;
+  // scorecard-log i simulateSeasonDryRun.js) — se den log for den fulde sweep.
+  // Env-override pr. profil (samme mønster som S1/S2's RACE_V3_*-envs) muliggør
+  // fremtidige re-kalibreringer uden kode-ændring. cobbles/classic højest
+  // (pavé/teknisk); itt/ttt lavest (soloindsats, ingen felt-dynamik). _default
+  // dækker ukendte profiler.
+  INCIDENT_BASE_BY_PROFILE: Object.freeze({
+    flat: envNum("RACE_V3_INCIDENT_BASE_FLAT", 0.017),
+    rolling: envNum("RACE_V3_INCIDENT_BASE_ROLLING", 0.017),
+    hilly: envNum("RACE_V3_INCIDENT_BASE_HILLY", 0.015),
+    mountain: envNum("RACE_V3_INCIDENT_BASE_MOUNTAIN", 0.013),
+    high_mountain: envNum("RACE_V3_INCIDENT_BASE_HIGH_MOUNTAIN", 0.013),
+    itt: envNum("RACE_V3_INCIDENT_BASE_ITT", 0.003),
+    ttt: envNum("RACE_V3_INCIDENT_BASE_TTT", 0.003),
+    cobbles: envNum("RACE_V3_INCIDENT_BASE_COBBLES", 0.040),
+    classic: envNum("RACE_V3_INCIDENT_BASE_CLASSIC", 0.024),
+    _default: envNum("RACE_V3_INCIDENT_BASE_DEFAULT", 0.017),
+  }),
+  // Descent-finale (finale_type='descent') skalerer basissandsynligheden op —
+  // nedkørsler er hvor de fleste alvorlige styrt sker i virkeligheden.
+  INCIDENT_DESCENT_FINALE_MULT: envNum("RACE_V3_INCIDENT_DESCENT_MULT", 1.5),
+  // Positioning (0-99) dæmper p lineært: p *= 1 − reduction·(positioning/99).
+  // Manglende positioning → 0 (ingen dæmpning, fuld eksponering).
+  INCIDENT_POSITIONING_MAX_REDUCTION: envNum("RACE_V3_INCIDENT_POSITIONING_MAX_REDUCTION", 0.4),
+  // Hård determinstisk cap: højst ⌈MAX_FIELD_SHARE × felt⌉ uheld pr. etape —
+  // beskytter mod et urealistisk masse-styrt-felt på uheldige seeds.
+  INCIDENT_MAX_FIELD_SHARE: envNum("RACE_V3_INCIDENT_MAX_FIELD_SHARE", 0.05),
+  // Udfald givet et hit: ABANDON_SHARE = andelen der udgår (DNF); resten = time_loss.
+  INCIDENT_ABANDON_SHARE: envNum("RACE_V3_INCIDENT_ABANDON_SHARE", 0.25),
+  // Art givet et hit: MECHANICAL_SHARE = andelen mekaniske defekter; resten = styrt.
+  INCIDENT_MECHANICAL_SHARE: envNum("RACE_V3_INCIDENT_MECHANICAL_SHARE", 0.3),
+  // time_loss-magnitude: uniform i [MIN, MAX] sekunder, lagt til rytterens stageGap.
+  INCIDENT_TIME_LOSS_MIN_S: envNum("RACE_V3_INCIDENT_TIME_LOSS_MIN_S", 30),
+  INCIDENT_TIME_LOSS_MAX_S: envNum("RACE_V3_INCIDENT_TIME_LOSS_MAX_S", 300),
+  // abandon-magnitude: uniform i [MIN, MAX] skadedage → rider_condition.injured_until.
+  INCIDENT_INJURY_MIN_DAYS: envNum("RACE_V3_INCIDENT_INJURY_MIN_DAYS", 1),
+  INCIDENT_INJURY_MAX_DAYS: envNum("RACE_V3_INCIDENT_INJURY_MAX_DAYS", 5),
 });
 
 // GC-relevante profiler (spec §6): helper-arbejde her koster WORK_COST_HELPER_GC.
@@ -230,4 +271,19 @@ export function formRaceWeightV3() {
  */
 export function topCompressionTau() {
   return RACE_V3_TUNING.TOP_COMPRESSION_TAU;
+}
+
+/**
+ * Basis-hit-sandsynlighed (S4, #1176) for en given etapeprofil, FØR positioning-
+ * reduktion/descent-multiplikator (raceIncidents.incidentProbability lægger dem
+ * oven på). Ukendt profil → INCIDENT_BASE_BY_PROFILE._default. Samme
+ * lookup-mønster som breakawayMaxBonus i raceSimulator.js.
+ *
+ * @param {string} profileType
+ * @returns {number}
+ */
+export function incidentBaseProbability(profileType) {
+  const map = RACE_V3_TUNING.INCIDENT_BASE_BY_PROFILE;
+  const v = map[profileType];
+  return Number.isFinite(v) ? v : map._default;
 }
