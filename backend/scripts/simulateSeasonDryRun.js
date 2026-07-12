@@ -39,12 +39,13 @@ import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValu
 import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS, FORM_RACE_WEIGHT, FATIGUE_RACE_WEIGHT } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
-import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
 import { autopickTeamSelection } from "../lib/raceAutopick.js";
+import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import {
   observeRace, aggregateObservations, winRateStats, giniOverWins, helperPlacementDeltas,
-  helperCounterfactualDeltas, median, quantile,
+  helperCounterfactualDeltas, median, quantile, observeIncidents, aggregateIncidentObservations,
 } from "../lib/raceDominanceMetrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -210,6 +211,55 @@ const TARGETS = {
 //   1-7 %) — puljerne er langt mere evne-homogene end den genererede 800-population, så
 //   udbruds-bonussen afgør langt flere løb. Kontekst for #1021-refit + S1/S2-kalibrering.
 // S1-mål: helperLossMedianGc + share4Plus i bånd; S2-mål: favorit/max-win-rates i bånd.
+//
+// ── KALIBRERINGS-LOG (2026-07-12, #1176 Race v3 S4) — uheld/DNF-bånd, 3 seeds grønne ──
+// evaluateIncidentBoundsOracle (raceDryRunOracles.js) + observeIncidents/
+// aggregateIncidentObservations (raceDominanceMetrics.js) wired ind i harnesset
+// (enkelt-dags-terrain-loop + GT's 21 etaper, feltstørrelse deriveret kumulativt
+// pr. abandon — se buildRaceResults-kaldet). Mål: DNF-rate (abandon alene)
+// 0,3-1,5 % af feltet/etape, hård cap ≤ INCIDENT_MAX_FIELD_SHARE (5 %), itt/ttt
+// laveste uheldsrate, cobbles højeste, abandon-andel 25 %±10pp.
+// RUN 1 (Worker A's oprindelige kandidater, uændrede — flat/rolling 0.008,
+//   hilly 0.007, mountain/high_mountain 0.006, itt/ttt 0.002, cobbles 0.025,
+//   classic 0.015): meanDnfRatePct 0,227 % (seed 2026) — UNDER gulvet 0,3 %.
+//   AFVIST: basen var for lav til at ramme spec-båndet (abandon-andel 25,6 %
+//   var i sig selv fin — det er uheldsraten der skal op, ikke ABANDON_SHARE).
+// RUN 2 (+~18-20 % oven på RUN 3's kandidat: flat/rolling/_default 0.020,
+//   hilly 0.017, mountain/high_mountain 0.015, cobbles 0.045, classic 0.027):
+//   meanDnfRatePct 0,446-0,461 % på tværs af 3 seeds — i bånd, men KUN marginalt
+//   bedre margin end RUN 3 (0,40→0,45 %) for en uforholdsmæssig stor basis-
+//   forhøjelse (~14 % DNF-stigning for ~20 % base-stigning — sub-lineær pga.
+//   hard cap + positioning-dæmpning). AFVIST: ikke nok gevinst til at
+//   retfærdiggøre at gå uden for task-spec'ens foreslåede interval
+//   (flat 0,014-0,02 · cobbles 0,03-0,04).
+// VALGT (RUN 3, baget ind i RACE_V3_TUNING, env-override pr. profil tilføjet
+//   — RACE_V3_INCIDENT_BASE_<PROFIL>, samme mønster som S1/S2):
+//   flat/rolling/_default 0.017 · hilly 0.015 · mountain/high_mountain 0.013 ·
+//   itt/ttt 0.003 (uændret ift. kandidat — "meget lav" var allerede opfyldt) ·
+//   cobbles 0.040 · classic 0.024.
+// Målt pr. seed (--v3 --roles --enforce-dominance, 8 terræner × 300 løb + GT):
+//   seed 2026: DNF ⌀0,408 % · uheldsrate ⌀1,622 % · maks-etape 5,00 % (= cap,
+//     IKKE over) · abandon-andel 25,2 %. Pr. profil (uheld/DNF): cobbles
+//     3,388/0,893 % · classic 2,131/0,517 % · flat 1,546/0,381 % · rolling
+//     1,541/0,368 % · mountain 1,535/0,430 % · hilly 1,335/0,340 % ·
+//     high_mountain 1,267/0,266 % · itt 0,252/0,076 %.
+//   seed 7: DNF ⌀0,393 % · uheldsrate ⌀1,620 % · maks-etape 5,00 % · abandon
+//     24,3 %. cobbles højest (3,286 %), itt lavest (0,258 %) — orden holder.
+//   seed 42: DNF ⌀0,408 % · uheldsrate ⌀1,619 % · maks-etape 5,00 % · abandon
+//     25,2 %. cobbles højest (3,338 %), itt lavest (0,262 %) — orden holder.
+// Alle 3 seeds: evaluateIncidentBoundsOracle → ✓ (0 brud). ITT/TTT laveste og
+// cobbles højeste uheldsrate holder på ALLE 3 seeds uden undtagelse.
+// REGRESSIONS-CHECK: dominans-scorecardets ØVRIGE bånd (favoriteWinRate,
+//   maxSeasonWinRate, favoritePodiumRate, share4PlusSameTeamTop10,
+//   avgDistinctTeamsTop10) forblev ✓ på alle 3 seeds, PRÆCIS som FØR denne
+//   ændring (baseline målt før S4-harness-wiring). De 2-3 kendte røde bånd
+//   (ittFavoriteWinRate — kun seed 2026 · helperLossMedianGc ·
+//   helperLossTop15MedianGc — alle 3 seeds) er UÆNDREDE pre-eksisterende S1/S2-
+//   fund (ikke S4's ansvar) — INGEN nye brud introduceret af uheld/DNF.
+// FUND: DNF-raten er sub-lineær i base-sandsynligheden (hard cap ved 5 %
+//   klipper cobbles-halen, positioning-dæmpning klipper resten) — en
+//   fremtidig re-kalibrering der vil have MERE margin fra 0,3 %-gulvet skal
+//   forvente at skulle skrue markant mere end proportionalt op.
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
@@ -484,6 +534,10 @@ const GC_RELEVANT_PROFILES = new Set(["rolling", "hilly", "mountain", "high_moun
 // — spec §12-bånd 2-5%. Ren post-hoc læsning af components; kun ≠0 når --v3.
 let jourSansHits = 0;
 let riderStageCount = 0;
+// S4 (#1176): observeIncidents()-observationer, én pr. simuleret etape-instans
+// (enkelt-dags-løb + GT's 21 etaper) — KUN fyldt når V3_MODE (rollIncidents er
+// dormant ellers, simulateStage returnerer incidents=[] uconditionelt).
+const incidentObservations = [];
 function recordDominanceObservation(ranked, teamByRider, terrain) {
   allDominanceObservations.push(observeRace({ ranked, teamByRider, terrain }));
   for (const rr of ranked) {
@@ -541,7 +595,7 @@ if (POPULATION_MODE) {
       }
       if (entrants.length < 2) continue; // degenereret pulje/felt — spring løbet over
       const raceSeed = stableSeed(`${terrain}:${i}`);
-      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
       racesRun++;
       const w = byId.get(ranked[0].rider_id);
       bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
@@ -560,6 +614,10 @@ if (POPULATION_MODE) {
 
       const teamByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
       recordDominanceObservation(ranked, teamByRider, terrain);
+      // S4 (#1176): entrants.length = feltstørrelse VED DENNE (endags-)løbs start —
+      // enkelt-dags-races i denne loop starter altid friskt (ingen cross-race-
+      // abandon-arv), så entrants.length er altid den korrekte nævner.
+      if (V3_MODE) incidentObservations.push(observeIncidents({ incidents: stageIncidents, fieldSize: entrants.length, profileType: terrain }));
 
       if (ROLES_MODE) {
         const neutralEntrants = entrants.map(({ race_role: _race_role, ...rest }) => rest);
@@ -614,12 +672,15 @@ if (POPULATION_MODE) {
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
 
       // #2224 Section F: ren post-hoc bogføring — INGEN rng-forbrug, ingen ændring
       // af rækkefølgen af eksisterende kald ovenfor/nedenfor.
       const teamByRiderGen = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
       recordDominanceObservation(ranked, teamByRiderGen, terrain);
+      // S4 (#1176): se population-grenens tvilling-kommentar — entrants.length er
+      // altid feltstørrelsen ved dette (endags-)løbs start.
+      if (V3_MODE) incidentObservations.push(observeIncidents({ incidents: stageIncidents, fieldSize: entrants.length, profileType: terrain }));
 
       const w = byId.get(ranked[0].rider_id);
       bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
@@ -842,12 +903,33 @@ if (POPULATION_MODE) {
   }
 }
 
-const { resultRows } = buildRaceResults({
+const { resultRows, incidents: gtIncidents } = buildRaceResults({
   race: { id: "gt-dry", race_type: "stage_race" },
   stages: gtStages, entrants: gtEntrants, pointsLookup: {}, v3: V3_MODE,
 });
 const finalStage = GT_TEMPLATE.length;
 const rowsOf = (type, stage) => resultRows.filter((x) => x.result_type === type && x.stage_number === stage).sort((a, b) => a.rank - b.rank);
+
+// S4 (#1176): buildRaceResults (raceRunner.js) ekskluderer allerede abandons fra
+// SENERE etapers eget `ranked`-felt internt (dens egen abandonedSet) — det er IKKE
+// noget der skal genopbygges her. Denne blok deriverer blot den SAMME kumulative
+// abandon-tilstand UDEFRA (ren læsning af gtIncidents' stage_number-stempler) for
+// at få den korrekte feltstørrelses-nævner til incident-statistikken pr. etape —
+// GC-feltet skrumper realistisk over de 21 etaper, og nævneren skal følge med.
+if (V3_MODE) {
+  const gtIncidentsByStage = new Map();
+  for (const inc of gtIncidents) {
+    if (!gtIncidentsByStage.has(inc.stage_number)) gtIncidentsByStage.set(inc.stage_number, []);
+    gtIncidentsByStage.get(inc.stage_number).push(inc);
+  }
+  let gtAbandonedSoFar = 0;
+  for (const stage of gtStages) {
+    const stageIncidents = gtIncidentsByStage.get(stage.stage_number) || [];
+    const fieldSizeAtStage = gtEntrants.length - gtAbandonedSoFar;
+    incidentObservations.push(observeIncidents({ incidents: stageIncidents, fieldSize: fieldSizeAtStage, profileType: stage.profile_type }));
+    gtAbandonedSoFar += stageIncidents.filter((inc) => inc.outcome === "abandon").length;
+  }
+}
 
 // Per-etape struktur til HTML
 const gtStageData = gtStages.map((s) => {
@@ -1106,6 +1188,17 @@ const helperLossMedianGc = ROLES_MODE ? median(helperDeltasAll) : null;
 const helperLossTop15MedianGc = ROLES_MODE ? median(helperTop15DeltasAll) : null;
 const helperLossTop15P25 = ROLES_MODE ? quantile(helperTop15DeltasAll, 0.25) : null;
 const helperLossTop15P75 = ROLES_MODE ? quantile(helperTop15DeltasAll, 0.75) : null;
+// S4 (#1176): uhelds/DNF-scorecard — MÅLT (erstatter den tidligere forward-
+// reference "0% — komponent endnu ikke i motoren"). incidentObservations er
+// altid [] når v3=false (rollIncidents dormant) → incidentStats.stages=0 →
+// evaluateIncidentBoundsOracle returnerer [] uconditionelt (n/a-håndtering).
+const incidentStats = aggregateIncidentObservations(incidentObservations);
+// Håndhæves sammen med --enforce-dominance (samme gating-idiom som
+// DOMINANCE_TARGETS) — cap-målet sendes ind LEVENDE fra RACE_V3_TUNING, så en
+// env-override af RACE_V3_INCIDENT_MAX_FIELD_SHARE altid matcher oraklets bånd.
+const incidentBoundFailures = V3_MODE
+  ? evaluateIncidentBoundsOracle(incidentStats, { maxFieldSharePct: RACE_V3_TUNING.INCIDENT_MAX_FIELD_SHARE * 100 })
+  : [];
 
 const dominanceMeasured = {
   favoriteWinRate: dominanceAgg.favoriteWinRate,
@@ -1161,13 +1254,33 @@ console.log(`\n   Gini (sejre, alle startere): ${seasonGini == null ? "n/a" : se
 // #2353: realiseret jour-sans-rate måles når --v3 (spec §12-bånd 2-5% af rytter-
 // etaper; rapport-only — basen er en direkte tunings-konstant, ikke en emergent).
 const jourSansRatePct = riderStageCount ? (100 * jourSansHits / riderStageCount) : 0;
-console.log(`   Jour-sans-rate: ${V3_MODE ? `${jourSansRatePct.toFixed(2)}% (bånd 2-5%, rapport-only)` : "0% (kræver --v3)"} · DNF-rate: 0% (S4 — komponent endnu ikke i motoren; indgår ikke i --enforce-dominance)`);
+const dnfLine = V3_MODE && incidentStats.stages
+  ? `⌀${incidentStats.meanDnfRatePct.toFixed(3)}% af feltet/etape (bånd 0.3-1.5%) · uheldsrate ⌀${incidentStats.meanIncidentRatePct.toFixed(3)}% · maks. enkelt-etape ${incidentStats.maxIncidentSharePct.toFixed(2)}% (cap ${(RACE_V3_TUNING.INCIDENT_MAX_FIELD_SHARE * 100).toFixed(1)}%) · abandon-andel ${(incidentStats.abandonShareOfIncidents * 100).toFixed(1)}% (mål 25%±10pp)`
+  : V3_MODE ? "n/a (0 etape-observationer)" : "0% (kræver --v3)";
+console.log(`   Jour-sans-rate: ${V3_MODE ? `${jourSansRatePct.toFixed(2)}% (bånd 2-5%, rapport-only)` : "0% (kræver --v3)"} · DNF-rate: ${dnfLine}`);
 console.log(`   GT (final-GC-top10): favorit vandt=${gtDominanceObservation.favoriteWon} podium=${gtDominanceObservation.favoritePodium} · maxSameTeamTop10=${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10=${gtDominanceObservation.distinctTeamsTop10}`);
 if (ROLES_MODE) {
   // #2352: fordelings-kontekst for top-terrain-linsen (medianen står i tabellen).
   console.log(`   helperLossTop15 (counterfactual, n=${helperTop15DeltasAll.length}): p25=${helperLossTop15P25 ?? "n/a"} · median=${helperLossTop15MedianGc ?? "n/a"} · p75=${helperLossTop15P75 ?? "n/a"} (positiv = tabte pladser)`);
 } else {
   console.log(`   helperLossMedianGc/helperLossTop15MedianGc: n/a (kræver --roles)`);
+}
+if (V3_MODE) {
+  console.log(`\n   UHELDS/DNF-BÅND pr. profil (S4, #1176; håndhæves sammen med --enforce-dominance):`);
+  const profileRows = Object.entries(incidentStats.perProfile).sort((a, b) => b[1].meanIncidentRatePct - a[1].meanIncidentRatePct);
+  for (const [profile, agg] of profileRows) {
+    console.log(`   ${padE(profile, 14)} uheld ⌀${padS(agg.meanIncidentRatePct.toFixed(3), 7)}%   DNF ⌀${padS(agg.meanDnfRatePct.toFixed(3), 7)}%   (n=${agg.stages})`);
+  }
+  if (incidentBoundFailures.length) {
+    if (ENFORCE_DOMINANCE) {
+      console.log(`   ❌ ${incidentBoundFailures.length} uhelds/DNF-mål udenfor bånd (--enforce-dominance aktiv → exit 1): ${incidentBoundFailures.join(" · ")}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`   ⚠ ${incidentBoundFailures.length} uhelds/DNF-mål udenfor bånd (rapport-only; håndhæv med --enforce-dominance): ${incidentBoundFailures.join(" · ")}`);
+    }
+  } else {
+    console.log(`   ✓ alle uhelds/DNF-mål inden for bånd`);
+  }
 }
 
 if (dominanceFailures.length) {
@@ -1290,7 +1403,7 @@ ${POPULATION_MODE ? `<p class="sub">⚠ population-mode: "født-som" = "afledt" 
 <div class="grid2">
   <div>
     <table><thead><tr><th>Metrik</th><th class="num">Målt</th><th class="num">Bånd</th><th>Status</th></tr></thead><tbody>${dominanceRowsHtml}</tbody></table>
-    <p class="sub">Gini (sejre): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only) · Jour-sans/DNF: 0% (S2/S4, ikke i motoren endnu)</p>
+    <p class="sub">Gini (sejre): ${seasonGini == null ? "n/a" : seasonGini.toFixed(3)} (rapport-only) · Jour-sans: ${V3_MODE ? `${jourSansRatePct.toFixed(2)}%` : "n/a (kræver --v3)"} · DNF-rate: ${V3_MODE && incidentStats.stages ? `⌀${incidentStats.meanDnfRatePct.toFixed(2)}%/etape` : "n/a (kræver --v3)"}</p>
     <p class="sub">GT (final-GC-top10): favorit vandt ${gtDominanceObservation.favoriteWon ? "ja" : "nej"} · podium ${gtDominanceObservation.favoritePodium ? "ja" : "nej"} · maxSameTeamTop10 ${gtDominanceObservation.maxSameTeamTop10} · distinctTeamsTop10 ${gtDominanceObservation.distinctTeamsTop10}</p>
   </div>
   <div>

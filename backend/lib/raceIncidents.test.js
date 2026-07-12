@@ -15,12 +15,12 @@ function field(n, positioning = 50) {
 // ── incidentProbability ────────────────────────────────────────────────────
 
 test("incidentProbability: matcher basis-tabellen for kendte profiler (positioning=0 → ingen dæmpning)", () => {
-  const cases = [
-    ["flat", 0.008], ["rolling", 0.008], ["hilly", 0.007],
-    ["mountain", 0.006], ["high_mountain", 0.006],
-    ["itt", 0.002], ["ttt", 0.002], ["cobbles", 0.025], ["classic", 0.015],
-  ];
-  for (const [profile_type, expected] of cases) {
+  // Kalibrerede værdier (2026-07-12, #1176 S4-kalibreringslog i
+  // simulateSeasonDryRun.js) — IKKE Worker A's oprindelige kandidat-tal;
+  // asserter mod den LEVENDE tunings-flade (ikke hardkodede literals), så
+  // testen ikke driver ud af sync med en fremtidig re-kalibrering af defaults.
+  for (const [profile_type, expected] of Object.entries(RACE_V3_TUNING.INCIDENT_BASE_BY_PROFILE)) {
+    if (profile_type === "_default") continue;
     const p = incidentProbability({ stageProfile: { profile_type }, positioning: null });
     assert.ok(Math.abs(p - expected) < 1e-12, `${profile_type}: forventet ${expected}, fik ${p}`);
   }

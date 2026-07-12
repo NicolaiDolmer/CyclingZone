@@ -124,14 +124,24 @@ export const RACE_V3_TUNING = Object.freeze({
 
   // ── S4 (#1176): styrt/mekaniske uheld + DNF ─────────────────────────────────
   // Pr.-etape hit-sandsynlighed pr. rytter, FØR positioning-reduktion/descent-
-  // multiplikator (raceIncidents.incidentProbability). KANDIDAT-værdier — ikke
-  // grid-kalibreret endnu (S4 har ingen harness-sweep i denne slice; kommende
-  // kalibrering justerer via RACE_V3_INCIDENT_*-envs, samme sweep-mønster som
-  // S1/S2). cobbles/classic højest (pavé/teknisk); itt/ttt lavest (soloindsats,
-  // ingen felt-dynamik). _default dækker ukendte profiler.
+  // multiplikator (raceIncidents.incidentProbability). Grid-kalibreret 2026-07-12
+  // mod harnessets DNF-bånd (evaluateIncidentBoundsOracle, raceDryRunOracles.js;
+  // scorecard-log i simulateSeasonDryRun.js) — se den log for den fulde sweep.
+  // Env-override pr. profil (samme mønster som S1/S2's RACE_V3_*-envs) muliggør
+  // fremtidige re-kalibreringer uden kode-ændring. cobbles/classic højest
+  // (pavé/teknisk); itt/ttt lavest (soloindsats, ingen felt-dynamik). _default
+  // dækker ukendte profiler.
   INCIDENT_BASE_BY_PROFILE: Object.freeze({
-    flat: 0.008, rolling: 0.008, hilly: 0.007, mountain: 0.006, high_mountain: 0.006,
-    itt: 0.002, ttt: 0.002, cobbles: 0.025, classic: 0.015, _default: 0.008,
+    flat: envNum("RACE_V3_INCIDENT_BASE_FLAT", 0.017),
+    rolling: envNum("RACE_V3_INCIDENT_BASE_ROLLING", 0.017),
+    hilly: envNum("RACE_V3_INCIDENT_BASE_HILLY", 0.015),
+    mountain: envNum("RACE_V3_INCIDENT_BASE_MOUNTAIN", 0.013),
+    high_mountain: envNum("RACE_V3_INCIDENT_BASE_HIGH_MOUNTAIN", 0.013),
+    itt: envNum("RACE_V3_INCIDENT_BASE_ITT", 0.003),
+    ttt: envNum("RACE_V3_INCIDENT_BASE_TTT", 0.003),
+    cobbles: envNum("RACE_V3_INCIDENT_BASE_COBBLES", 0.040),
+    classic: envNum("RACE_V3_INCIDENT_BASE_CLASSIC", 0.024),
+    _default: envNum("RACE_V3_INCIDENT_BASE_DEFAULT", 0.017),
   }),
   // Descent-finale (finale_type='descent') skalerer basissandsynligheden op —
   // nedkørsler er hvor de fleste alvorlige styrt sker i virkeligheden.
