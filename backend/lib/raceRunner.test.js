@@ -7,7 +7,7 @@ import {
   simulateRace,
   deriveIsU25FromBirthdate,
 } from "./raceRunner.js";
-import { isRaceEngineV2Enabled } from "./raceEngineFlag.js";
+import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { PRIZE_PER_POINT } from "./economyConstants.js";
 import { ABILITY_KEYS, stableSeed } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
@@ -292,6 +292,15 @@ test("flag: beta-stage kun for beta-testere", async () => {
   assert.equal(await isRaceEngineV2Enabled(makeSupabase({ app_config: [{ value: "beta" }] })), false);
 });
 
+// ── #2352 (Race v3 S1): race_engine_v3_scoring kill-switch ────────────────────
+test("v3-flag: true KUN når app_config.value === true|'on'; ellers false (default off)", async () => {
+  assert.equal(await isRaceEngineV3ScoringEnabled(makeSupabase({ app_config: [{ value: true }] })), true);
+  assert.equal(await isRaceEngineV3ScoringEnabled(makeSupabase({ app_config: [{ value: "on" }] })), true);
+  assert.equal(await isRaceEngineV3ScoringEnabled(makeSupabase({ app_config: [{ value: "off" }] })), false);
+  assert.equal(await isRaceEngineV3ScoringEnabled(makeSupabase({ app_config: [] })), false, "manglende række → off (fail-safe)");
+  assert.equal(await isRaceEngineV3ScoringEnabled(null), false);
+});
+
 // ── loadEntrantsForRace ───────────────────────────────────────────────────────
 test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async () => {
   const supabase = makeSupabase({
@@ -522,6 +531,70 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   assert.equal(upd.obj.status, "completed");
   // run-snapshot persisteret.
   assert.ok(supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert"));
+});
+
+// #2352 (Race v3 S1): checkV3Enabled=false (default-mock) → INGEN
+// race_simulation_rider_scores-skrivning, race_simulation_runs uden client-side id.
+test("simulateRace: v3=false (kill-switch off) — ingen race_simulation_rider_scores skrives", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => {},
+    checkV3Enabled: async () => false,
+  });
+  assert.ok(!supabase.__writes.find((w) => w.table === "race_simulation_rider_scores"), "v3=false må ikke skrive rider_scores");
+  const runsInsert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+  for (const row of runsInsert.rows) {
+    assert.equal(row.engine_version, 1);
+    assert.equal(row.id, undefined, "v3=false: intet client-side id — DB-default bevares");
+  }
+});
+
+// #2352: checkV3Enabled=true → race_simulation_rider_scores skrives med run_id
+// der matcher det EKSPLICITTE client-side id på race_simulation_runs-rækkerne
+// (§11.3 — ingen select-roundtrip nødvendig).
+test("simulateRace: v3=true — race_simulation_rider_scores persisteres, run_id matcher runs-insert, engine_version=2", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => {},
+    checkV3Enabled: async () => true,
+  });
+  const runsInsert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+  assert.ok(runsInsert, "race_simulation_runs blev ikke skrevet");
+  const runIds = new Set();
+  for (const row of runsInsert.rows) {
+    assert.equal(row.engine_version, 2, "v3=true → ENGINE_VERSION_V3");
+    assert.ok(typeof row.id === "string" && row.id.length > 0, "v3=true: client-side UUID forventet");
+    runIds.add(row.id);
+  }
+  assert.equal(runIds.size, runsInsert.rows.length, "hvert run skal have sit EGET unikke id");
+
+  const scoresInsert = supabase.__writes.find((w) => w.table === "race_simulation_rider_scores" && w.op === "insert");
+  assert.ok(scoresInsert, "race_simulation_rider_scores blev ikke skrevet");
+  assert.ok(scoresInsert.rows.length > 0);
+  for (const row of scoresInsert.rows) {
+    assert.ok(runIds.has(row.run_id), `rider_score.run_id ${row.run_id} matcher ikke noget runs-insert-id`);
+    assert.ok(typeof row.rider_id === "string");
+    assert.ok(Number.isInteger(row.rank) && row.rank >= 1);
+    assert.ok(row.components && typeof row.components === "object");
+  }
 });
 
 // #2351: Race v3 salt — provably-fair seed-salt på resultat-seeds. Uden env sat

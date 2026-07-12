@@ -15,6 +15,7 @@ import {
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
+  SEED_RIDER_PALMARES_RESULTS,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
@@ -91,14 +92,23 @@ export function restRows(table, requestUrl = "") {
       return SEED_STAGE_SCHEDULE;
     }
     case "race_results": {
-      // KUN den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-
-      // resultater. Alle andre race_results-queries (dashboard/standings/season-
-      // aggregater) → tom, præcis som før → uændrede core-smoke-snapshots.
+      // Den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-resultater.
       const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACE_RESULTS.filter(r => r.race_id === id);
       }
+      // #1997 S1: rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows →
+      // Resultater-/Palmarès-fanen: rider_id=eq.<id>) får palmarès-seedet
+      // (race:-embed-shape). KUN rider-1 (Ada Pedersen) har seedede resultater —
+      // andre ryttere ser den tilsigtede tomme tilstand.
+      const riderMatch = url.search.match(/rider_id=eq\.([^&]+)/);
+      if (riderMatch) {
+        const id = decodeURIComponent(riderMatch[1]);
+        return id === "rider-1" ? SEED_RIDER_PALMARES_RESULTS : [];
+      }
+      // Alle andre race_results-queries (dashboard/standings/season-aggregater) →
+      // tom, præcis som før → uændrede core-smoke-snapshots.
       return [];
     }
     case "auction_proxy_bids":

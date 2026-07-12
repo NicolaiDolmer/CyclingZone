@@ -45,37 +45,28 @@ test("(a) ingen race_results trods stages_completed>=stages → finding (anomali
   assert.match(findings[0].detail, /ingen race_results/);
 });
 
-// ── (b) scheduler-progress-stall (global throughput-signal) ───────────────────
+// ── (b) etape-stall (PRÆCIS, pr. løb) + (b2) etape-gennemløb (info) — #2251 ────
 
 // Fælles: standings sat = results (lag 0) så check (d) ikke også fyrer.
 const standingsFresh = (h) => ({ maxStandingsUpdated: hoursAgo(h), maxResultsImported: hoursAgo(h) });
 
-test("(b) kø m. startfelt + INGEN resultater i >2t → scheduler-stall (global)", () => {
+test("(b) forfalden etape m. startfelt uden resultater → PRÆCIS stage-finding pr. løb (uanset globalt resultsAge)", () => {
   const findings = evaluateStallFindings({
     now: NOW,
     dueStages: [
-      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 3, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
     ],
-    standings: standingsFresh(4), // sidste resultat 4t siden → scheduler producerer intet
+    standings: standingsFresh(0.1), // globalt FRISK — men denne etape er stadig hængt
   });
-  assert.equal(findings.length, 1);
-  assert.equal(findings[0].type, "stage");
-  assert.equal(findings[0].queuedCount, 1);
-  assert.match(findings[0].detail, /Vuelta Y/);
+  const stageFindings = findings.filter((f) => f.type === "stage");
+  assert.equal(stageFindings.length, 1, "#2251: fyrer uafhængigt af det globale resultsAge-signal");
+  assert.equal(stageFindings[0].raceId, "r2");
+  assert.equal(stageFindings[0].raceName, "Vuelta Y");
+  assert.equal(stageFindings[0].stageNumber, 3);
+  assert.match(stageFindings[0].detail, /Etape 3/);
 });
 
-test("(b) kø m. startfelt MEN resultater friske (<2t) → INGEN finding (scheduler kører)", () => {
-  const findings = evaluateStallFindings({
-    now: NOW,
-    dueStages: [
-      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(103), has_results: false, has_entries: true },
-    ],
-    standings: standingsFresh(0.4), // sidste resultat 24 min siden → normal kø-catch-up
-  });
-  assert.equal(findings.length, 0);
-});
-
-test("(b) kun tomme spøgelsesløb (has_entries=false) + gamle resultater → INGEN finding", () => {
+test("(b) kun tomme spøgelsesløb (has_entries=false) → INGEN stage-finding", () => {
   const findings = evaluateStallFindings({
     now: NOW,
     dueStages: [
@@ -83,10 +74,10 @@ test("(b) kun tomme spøgelsesløb (has_entries=false) + gamle resultater → IN
     ],
     standings: standingsFresh(9),
   });
-  assert.equal(findings.length, 0);
+  assert.equal(findings.filter((f) => f.type === "stage").length, 0);
 });
 
-test("(b) al kø HAR resultater + gamle results → INGEN finding", () => {
+test("(b) etape MED resultater → INGEN stage-finding for den etape", () => {
   const findings = evaluateStallFindings({
     now: NOW,
     dueStages: [
@@ -94,16 +85,65 @@ test("(b) al kø HAR resultater + gamle results → INGEN finding", () => {
     ],
     standings: standingsFresh(9),
   });
-  assert.equal(findings.length, 0);
+  assert.equal(findings.filter((f) => f.type === "stage").length, 0);
 });
 
-test("(b) ingen forfalden kø → INGEN finding trods gamle resultater", () => {
+test("(b) ingen forfalden kø → INGEN stage-finding", () => {
+  const findings = evaluateStallFindings({ now: NOW, dueStages: [], standings: standingsFresh(10) });
+  assert.equal(findings.filter((f) => f.type === "stage").length, 0);
+});
+
+test("(b) to forskellige løb i køen → to separate stage-findings (ikke aggregeret)", () => {
   const findings = evaluateStallFindings({
     now: NOW,
-    dueStages: [],
-    standings: standingsFresh(10),
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
+      { race_id: "r5", race_name: "Giro Z", stage_number: 2, scheduled_at: hoursAgo(3), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(9),
   });
-  assert.equal(findings.length, 0);
+  const stageFindings = findings.filter((f) => f.type === "stage");
+  assert.equal(stageFindings.length, 2);
+  assert.deepEqual(stageFindings.map((f) => f.raceId).sort(), ["r2", "r5"]);
+});
+
+test("(b2) globalt gennemløbs-signal: kø + ingen resultater NOGET sted i >2t → INFO-finding (ikke error)", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(4), // sidste resultat 4t siden → scheduler producerer intet
+  });
+  const throughput = findings.filter((f) => f.type === "stage_throughput");
+  assert.equal(throughput.length, 1);
+  assert.equal(throughput[0].level, "info", "#2251: globalt throughput-signal er INFO, ikke error");
+  assert.equal(throughput[0].queuedCount, 1);
+  assert.match(throughput[0].detail, /Vuelta Y/);
+});
+
+test("(b2) globalt gennemløbs-signal springes over når resultater er friske (<2t) — normal kø-catch-up", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(103), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(0.4), // sidste resultat 24 min siden → normal kø-catch-up
+  });
+  assert.equal(findings.filter((f) => f.type === "stage_throughput").length, 0);
+  // Den PRÆCISE stage-finding fyrer stadig for den enkelte hængende etape.
+  assert.equal(findings.filter((f) => f.type === "stage").length, 1);
+});
+
+test("(b2) kun tomme spøgelsesløb → INGEN gennemløbs-finding", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    dueStages: [
+      { race_id: "ghost", race_name: "Empty", stage_number: 1, scheduled_at: hoursAgo(100), has_results: false, has_entries: false },
+    ],
+    standings: standingsFresh(9),
+  });
+  assert.equal(findings.filter((f) => f.type === "stage_throughput").length, 0);
 });
 
 // ── (c) prize-payout-stall ────────────────────────────────────────────────────
@@ -224,11 +264,12 @@ test("clean baseline (alt tomt) → 0 findings", () => {
 
 // ── findingKey / dedup ────────────────────────────────────────────────────────
 
-test("findingKey — finalize/prize race-scoped; stage/standings/matview sæson-globalt", () => {
+test("findingKey — finalize/prize/stage (#2251: nu pr.-løb) race-scoped; standings/stage_throughput/matview sæson-globalt", () => {
   assert.equal(findingKey({ type: "finalize", raceId: "r1" }, NOW), "finalize:r1:2026-07-03");
   assert.equal(findingKey({ type: "prize", raceId: "r9" }, NOW), "prize:r9:2026-07-03");
+  assert.equal(findingKey({ type: "stage", raceId: "r2" }, NOW), "stage:r2:2026-07-03");
   assert.equal(findingKey({ type: "standings" }, NOW), "standings:2026-07-03");
-  assert.equal(findingKey({ type: "stage" }, NOW), "stage:2026-07-03");
+  assert.equal(findingKey({ type: "stage_throughput" }, NOW), "stage_throughput:2026-07-03");
   assert.equal(findingKey({ type: "matview" }, NOW), "matview:2026-07-03");
 });
 
@@ -313,4 +354,59 @@ test("processStallWatchdog — dedup: samme stall alarmerer ikke to gange samme 
 test("processStallWatchdog — bruger default-thresholds når ikke override", () => {
   assert.equal(STALL_WATCHDOG_DEFAULT_THRESHOLDS.finalizeHours, 2);
   assert.equal(STALL_WATCHDOG_DEFAULT_THRESHOLDS.prizeHours, 1);
+});
+
+// ── #2251: info-niveau (stage_throughput) logges men alarmerer ALDRIG Discord/Sentry ──
+
+test("processStallWatchdog — info-finding (stage_throughput) logges, men fylder IKKE Discord/Sentry; præcis stage-finding gør", async () => {
+  const webhookCalls = [];
+  const sentryCalls = [];
+  const result = await processStallWatchdog({
+    supabase: { from() {} },
+    now: NOW,
+    fetchStateFn: async () =>
+      fakeState({
+        dueStages: [
+          { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
+        ],
+        standings: standingsFresh(4), // trigger'er BÅDE (b) præcis + (b2) info
+      }),
+    sendWebhookFn: async (url, payload) => webhookCalls.push({ url, payload }),
+    getOpsWebhookFn: async () => "https://x/ops",
+    captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }),
+  });
+  assert.equal(result.alerted, true);
+  assert.equal(result.newFindings.length, 1, "kun den PRÆCISE stage-finding tæller som alert");
+  assert.equal(result.newFindings[0].type, "stage");
+  assert.equal(result.infoFindings.length, 1);
+  assert.equal(result.infoFindings[0].type, "stage_throughput");
+  assert.equal(webhookCalls.length, 1);
+  assert.equal(webhookCalls[0].payload.embeds[0].fields.length, 1, "kun alert-findings i Discord-embed — info udelades");
+  assert.equal(sentryCalls.length, 1);
+  assert.deepEqual(sentryCalls[0].ctx.tags, { cron: "stall-watchdog", check: "stage" });
+});
+
+test("processStallWatchdog — dedup gælder OGSÅ info-findings (samme dag alarmerer/logger ikke to gange)", async () => {
+  const seenKeys = new Set();
+  const state = fakeState({
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(4),
+  });
+  const opts = {
+    supabase: { from() {} },
+    now: NOW,
+    seenKeys,
+    fetchStateFn: async () => state,
+    sendWebhookFn: async () => {},
+    getOpsWebhookFn: async () => "https://x/ops",
+    captureExceptionFn: () => {},
+  };
+  const first = await processStallWatchdog(opts);
+  const second = await processStallWatchdog(opts);
+  assert.equal(first.infoFindings.length, 1);
+  assert.equal(second.infoFindings.length, 0, "info-finding dedup'es ligesom alert-findings");
+  assert.equal(second.newFindings.length, 0);
+  assert.equal(second.alerted, false);
 });

@@ -25,6 +25,41 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "6.94",
+    "date": "2026-07-11",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Hall of Fame",
+        "en": {
+          "title": "Hall of Fame makes way for the coming world history",
+          "body": "The Hall of Fame page is no longer linked from navigation; direct links now take you to Standings instead. It will be replaced by a proper world-history feature."
+        },
+        "da": {
+          "title": "Hall of Fame gør plads til den kommende verdenshistorik",
+          "body": "Hall of Fame-siden er ikke længere linket fra navigationen; direkte links sender dig nu til Standings i stedet. Den afløses senere af en rigtig verdenshistorik-feature."
+        },
+        "refs": [2359]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Swaps moved to the rider's profile",
+          "body": "The separate Swaps tab on the Transfers page is gone. Propose a rider swap directly from a rider's profile page instead (\"⇄ Propose swap\"). Open swap offers still show up under Received offers and Sent offers, where you can accept, counter or withdraw them as before."
+        },
+        "da": {
+          "title": "Byttehandler er flyttet til rytterprofilen",
+          "body": "Den separate Swaps-fane på Transfers-siden er væk. Foreslå i stedet en byttehandel direkte fra en rytters profilside (\"⇄ Foreslå byttehandel\"). Åbne bytteforslag vises stadig under Modtagne tilbud og Sendte tilbud, hvor du kan acceptere, give modbud eller trække dem tilbage som før."
+        },
+        "refs": [2358]
+      }
+    ]
+  },
+  {
     "version": "6.93",
     "date": "2026-07-11",
     "label": "Beta",

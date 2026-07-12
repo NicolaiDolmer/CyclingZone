@@ -52,6 +52,7 @@ const EXEMPT_FILES = new Map([
   ["frontend/src/pages/AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side — ikke player-facing."],
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj — ikke player-facing."],
   ["frontend/src/pages/AdminAttributionPage.jsx", "Admin-only signup-attribution-dashboard (#679) — ikke player-facing."],
+  ["frontend/src/pages/AdminRetentionPage.jsx", "Admin-only retention-scorecard (#2360) — ikke player-facing."],
 ]);
 
 // Kendte, endnu-ikke-konverterede player-facing leaks. Listet her så de er

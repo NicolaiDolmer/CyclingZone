@@ -229,6 +229,41 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
 ];
 
+// #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
+// RiderStatsPage.fetchAllRiderSeasonRows). Egen shape (race:-embed, IKKE rider:-embed
+// som SEED_RACE_RESULTS ovenfor bruges til RaceDetailPage) — ingen delt lookup mod
+// SEED_RACES, embeds er inlinede pr. række ligesom resten af denne fil.
+//
+// Dækker: GC-sejr + etapesejr + point-trøje + leder-dag (stage_race), en endagssejr,
+// og en 3.-plads for et TIDLIGERE hold (team_name = RIVAL_TEAM) samme sæson — viser
+// #1993-holdsnapshottet (holdet KAN skifte mellem resultater i samme sæson).
+export const SEED_RIDER_PALMARES_RESULTS = [
+  {
+    rank: 1, prize_money: 15000, points_earned: 220, result_type: "gc", stage_number: 3, team_name: TEST_TEAM.name,
+    race: { id: "race-palmares-gc", name: "Vuelta a Preview", race_type: "stage_race", race_class: "ProSeries", stages: 3, status: "completed", scheduled_for: "2026-06-05T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "mountain_tour" } },
+  },
+  {
+    rank: 1, prize_money: 3000, points_earned: 40, result_type: "stage", stage_number: 2, team_name: TEST_TEAM.name,
+    race: { id: "race-palmares-gc", name: "Vuelta a Preview", race_type: "stage_race", race_class: "ProSeries", stages: 3, status: "completed", scheduled_for: "2026-06-05T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "mountain_tour" } },
+  },
+  {
+    rank: 1, prize_money: 2000, points_earned: 60, result_type: "points", stage_number: 3, team_name: TEST_TEAM.name,
+    race: { id: "race-palmares-gc", name: "Vuelta a Preview", race_type: "stage_race", race_class: "ProSeries", stages: 3, status: "completed", scheduled_for: "2026-06-05T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "mountain_tour" } },
+  },
+  {
+    rank: 1, prize_money: 200, points_earned: 5, result_type: "leader", stage_number: 2, team_name: TEST_TEAM.name,
+    race: { id: "race-palmares-gc", name: "Vuelta a Preview", race_type: "stage_race", race_class: "ProSeries", stages: 3, status: "completed", scheduled_for: "2026-06-05T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "mountain_tour" } },
+  },
+  {
+    rank: 1, prize_money: 4000, points_earned: 45, result_type: "gc", stage_number: 1, team_name: TEST_TEAM.name,
+    race: { id: "race-palmares-oneday", name: "Trofeo Preview", race_type: "single", race_class: "Class1", stages: 1, status: "completed", scheduled_for: "2026-06-20T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "puncheur" } },
+  },
+  {
+    rank: 3, prize_money: 800, points_earned: 18, result_type: "gc", stage_number: 1, team_name: RIVAL_TEAM.name,
+    race: { id: "race-palmares-podium", name: "Coppa Preview", race_type: "single", race_class: "Class2", stages: 1, status: "completed", scheduled_for: "2026-05-10T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "hilly_classic" } },
+  },
+];
+
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).

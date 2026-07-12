@@ -258,6 +258,7 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
+import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
 import { aggregateTraffic } from "../lib/trafficMetrics.js";
@@ -5005,6 +5006,36 @@ router.get("/admin/attribution", requireAdmin, async (req, res) => {
     res.json({ rows: detail, total: aggregates.total, limit, offset, aggregates });
   } catch (error) {
     res.status(500).json({ error: error.message || "Kunne ikke hente attribution-data" });
+  }
+});
+
+// GET /api/admin/retention — retention-scorecard v2 (#2360, afløser #135):
+// D1/D7/D30 pr. signup-uge-kohorte for RIGTIGE managere. Gater #1279's
+// GO/NO-GO for betalt marketing.
+//
+// Henter rå aktivitets-rows via RPC get_retention_scorecard_activity (real-manager-
+// filter + MAX(player_events.created_at) pr. user gjort i SQL, se
+// database/2026-07-11-retention-scorecard-v2-rpc.sql) og lader Node gøre selve
+// cohort-bucketing/eligibility-beregningen (backend/lib/retentionScorecard.js,
+// unit-testet uden DB). MAX-aggregering skal ske i SQL og IKKE ved at hente rå
+// player_events-rows til klienten: PostgREST-aggregater er slået fra på dette
+// projekt, og en naiv select ville tavst trunkeres til 1000 rows (player_events
+// har 90k+ rows for blot 8 ugers rigtige managere) og give forkert (for gammel)
+// last_activity for aktive brugere.
+router.get("/admin/retention", requireAdmin, async (req, res) => {
+  try {
+    const weeksParam = parseInt(req.query.weeks, 10);
+    const weeks = Number.isFinite(weeksParam) ? Math.min(Math.max(weeksParam, 1), 52) : 8;
+    const now = new Date();
+
+    const { data: rows, error: rpcErr } = await supabase.rpc("get_retention_scorecard_activity", { p_weeks: weeks });
+    if (rpcErr) throw rpcErr;
+
+    const users = (rows || []).map(r => ({ id: r.user_id, created_at: r.signup_at, last_seen: r.last_activity }));
+    const result = computeRetentionCohorts(users, new Map(), { now, weeks });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Kunne ikke hente retention-data" });
   }
 });
 

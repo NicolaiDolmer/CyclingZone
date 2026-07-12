@@ -139,6 +139,7 @@
       "scouting": "Scouting",
       "history": "Historik",
       "results": "Resultater",
+      "palmares": "Palmarès",
       "interest": "Interesse"
     },
     "switcher": {
@@ -211,6 +212,47 @@
       "emptySeason": "Ingen resultater i denne sæson.",
       "seasonShort": "S{n}",
       "loadError": "Resultaterne kunne ikke hentes lige nu."
+    },
+    "palmares": {
+      "trophyTitle": "Trofæskab",
+      "trophy": {
+        "gcWins": "GC-sejre",
+        "oneDayWins": "Endagssejre",
+        "stageWins": "Etapesejre",
+        "jerseyWins": "Endelige trøjer",
+        "jerseyDays": "Dage i trøje",
+        "podiums": "Podier"
+      },
+      "jerseyDayLine": {
+        "leader": "Førertrøje · {n, plural, one {# dag} other {# dage}}",
+        "points_day": "Pointtrøje · {n, plural, one {# dag} other {# dage}}",
+        "mountain_day": "Bjergtrøje · {n, plural, one {# dag} other {# dage}}",
+        "young_day": "Ungdomstrøje · {n, plural, one {# dag} other {# dage}}"
+      },
+      "totalsTitle": "Karrieretotaler",
+      "totals": {
+        "races": "Løb",
+        "winRate": "Sejrsprocent",
+        "points": "Ranking-point",
+        "prize": "Præmiepenge"
+      },
+      "seasonHonoursTitle": "Sæson for sæson",
+      "teamFallback": "Ukendt hold",
+      "achievement": {
+        "gcWin": "Vinder (GC)",
+        "raceWin": "Vinder",
+        "podium2": "2. plads",
+        "podium3": "3. plads",
+        "stageWin": "Vinder af etape {n}",
+        "jersey": {
+          "points": "Pointkonkurrencen",
+          "mountain": "Bjergkonkurrencen",
+          "young": "Ungdomskonkurrencen"
+        }
+      },
+      "emptyTitle": "Ingen palmarès endnu",
+      "emptyBody": "Enhver karriere starter blank. Det første resultat skriver åbningslinjen.",
+      "loadError": "Palmarès kunne ikke hentes lige nu."
     },
     "scouting": {
       "loading": "Henter scouting-rapport...",

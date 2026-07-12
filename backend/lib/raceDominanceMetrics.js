@@ -279,3 +279,67 @@ export function median(xs = []) {
   if (sorted.length % 2 === 1) return sorted[mid];
   return (sorted[mid - 1] + sorted[mid]) / 2;
 }
+
+/**
+ * Kvantil (nearest-rank, floor-indeks) af et talarray. Samme konvention som
+ * harnessets percentile()-helper. Sorterer internt, ændrer ikke input.
+ *
+ * @param {number[]} xs
+ * @param {number} p  ∈ [0,1]
+ * @returns {number|null}  null hvis tom
+ */
+export function quantile(xs = [], p) {
+  if (xs.length === 0) return null;
+  const sorted = [...xs].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+}
+
+/**
+ * S1 counterfactual hjælper-tab (#2352): parret placering-delta for TOP-hjælpere
+ * mellem to kørsler af SAMME løb med SAMME seed — roller som tildelt vs. alle
+ * ryttere uden arbejds-forpligtelse (all-free_role / rolle-strippet: bit-
+ * identiske counterfactuals, da hverken free_role eller manglende rolle betaler
+ * work-cost eller bidrager til helperSupport, og work_cost/team konsumerer
+ * ingen rng — same-seed-parringen er derfor ren).
+ *
+ * LINSE-RATIONALE (afløser fuld-felt-medianen som S1's bindende metrik): i et
+ * realistisk pulje-felt er næsten ALLE ryttere hjælpere, så fuld-felt-medianen
+ * er ~0 uanset work-cost-styrke (alle får samme straf → indbyrdes rækkefølge
+ * uændret). Ejerens "A — MARKANT"-bånd (10-30 tabte pladser) handler om
+ * hjælpere der ELLERS ville køre med i toppen — derfor filtreres til ryttere
+ * med role=helper OG terrain-score i feltets top-N (default 15).
+ *
+ * Fortegns-konvention (samme som helperPlacementDeltas): delta = rankRoles −
+ * rankCounterfactual, POSITIV = tabte pladser pga. hjælperarbejdet.
+ *
+ * @param {object} args
+ * @param {Array<{rider_id:string, rank:number, components:{terrain:number}}>} args.rankedRoles
+ *   kørsel MED roller (v3) — components.terrain bruges til top-N-filteret
+ * @param {Array<{rider_id:string, rank:number}>} args.rankedCounterfactual
+ *   kørsel med samme entrants+seed uden arbejds-roller
+ * @param {Map<string, string>} args.roleByRider  rider_id → race_role
+ * @param {number} [args.topTerrainN=15]  kun hjælpere blandt feltets top-N på terrain
+ * @returns {number[]}
+ */
+export function helperCounterfactualDeltas({ rankedRoles = [], rankedCounterfactual = [], roleByRider, topTerrainN = 15 } = {}) {
+  if (!roleByRider || rankedRoles.length === 0) return [];
+
+  // Top-N på terrain (deterministisk tiebreak på rider_id, som motoren selv).
+  const byTerrain = [...rankedRoles].sort((a, b) =>
+    ((b.components?.terrain ?? -Infinity) - (a.components?.terrain ?? -Infinity)) ||
+    String(a.rider_id).localeCompare(String(b.rider_id))
+  );
+  const topIds = new Set(byTerrain.slice(0, topTerrainN).map((r) => r.rider_id));
+
+  const rolesRankById = new Map(rankedRoles.map((r) => [r.rider_id, r.rank]));
+  const cfRankById = new Map(rankedCounterfactual.map((r) => [r.rider_id, r.rank]));
+
+  const deltas = [];
+  for (const [riderId, role] of roleByRider.entries()) {
+    if (role !== "helper") continue;
+    if (!topIds.has(riderId)) continue;
+    if (!rolesRankById.has(riderId) || !cfRankById.has(riderId)) continue;
+    deltas.push(rolesRankById.get(riderId) - cfRankById.get(riderId));
+  }
+  return deltas;
+}

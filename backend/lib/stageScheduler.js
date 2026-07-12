@@ -20,11 +20,6 @@ import { copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
 
-// P0 2/7: per-løb-per-dag-dedup for Sentry-captures i per-løb-catchen (17 fejlende
-// løb × 288 ticks/døgn må ikke spamme). Process-lokal er fint — formålet er at få
-// ÉT synligt event pr. løb pr. dag, ikke fuld tælling.
-const sentryCapturedRaces = new Set();
-
 // Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
 // (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
 // scheduled_at-tiderne (planRaceSchedules). Derfor skal cap'et sidde KOMFORTABELT over
@@ -79,6 +74,13 @@ export async function runStageScheduler({
   isStageSchedulerEnabled,
   isRaceEngineV2Enabled,
   runStageFn,
+  // #2251: per-løb-per-dag-dedup for BÅDE log-støj og Sentry-captures (mirror
+  // stallWatchdog's seenKeys-mønster). Caller (cron.js) holder en persistent Set
+  // på tværs af ticks, så et løb der er fastlåst (fx "No start list" — tyndt/tomt
+  // felt i lav-division, #2251) kun logges/captures ÉN gang pr. dag, ikke hvert
+  // 5-min-tick. Default new Set() for isolerede kald/tests.
+  seenKeys = new Set(),
+  captureExceptionFn = captureException,
 }) {
   if (!(await isStageSchedulerEnabled(supabase))) return { ran: 0, errors: 0, skipped: "flag_off" };
   if (!(await isRaceEngineV2Enabled(supabase, { isBetaTester: true }))) {
@@ -186,16 +188,24 @@ export async function runStageScheduler({
   let recovered = 0;
   const failRace = (race, err) => {
     errors++;
-    console.error(`  ❌ stage-scheduler: race ${race.name ?? race.id} failed: ${err.message}`);
-    // P0 2/7 forward-guard: per-løb-fejl var 100% tavse (kun console.error) —
-    // incidenten 30/6-2/7 kørte usynligt i ~44 timer. Capture til Sentry med
-    // per-løb-per-dag-dedup så gentagne ticks ikke spammer.
+    // #2251: løbet skippes (loopet fortsætter til øvrige due/recovery-løb nedenfor) —
+    // men log + Sentry-capture dedupes ÉN gang pr. (løb, dag), så et fastlåst løb
+    // (fx "No start list" — tyndt/tomt felt i lav-division) ikke spammer Railway-logs
+    // og Sentry hvert 5-min-tick (P0 2/7 deduperede kun Sentry; #2251 dedup'er nu OGSÅ
+    // selve loggen og gør den struktureret).
     const dedupeKey = `${race.id}:${now.toISOString().slice(0, 10)}`;
-    if (!sentryCapturedRaces.has(dedupeKey)) {
-      if (sentryCapturedRaces.size > 500) sentryCapturedRaces.clear();
-      sentryCapturedRaces.add(dedupeKey);
-      captureException(err, { tags: { cron: "stage-scheduler" }, raceId: race.id, raceName: race.name });
-    }
+    if (seenKeys.has(dedupeKey)) return;
+    if (seenKeys.size > 500) seenKeys.clear();
+    seenKeys.add(dedupeKey);
+    console.error(JSON.stringify({
+      event: "stage_scheduler_race_failed",
+      raceId: race.id,
+      raceName: race.name ?? null,
+      leagueDivisionId: race.league_division_id ?? null,
+      error: err.message,
+      tick: now.toISOString(),
+    }));
+    captureExceptionFn(err, { tags: { cron: "stage-scheduler" }, raceId: race.id, raceName: race.name });
   };
 
   for (const race of recoveryRaces) {

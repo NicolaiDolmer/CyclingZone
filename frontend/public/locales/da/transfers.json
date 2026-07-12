@@ -10,7 +10,6 @@
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
     "archive": "Historik ({count})",
-    "swaps": "Byttehandler",
     "market": "Marked ({count})"
   },
   "modes": {
@@ -125,21 +124,6 @@
     "cancel": "Annullér",
     "confirmRemoveButton": "Ja, fjern"
   },
-  "newSwap": {
-    "title": "Foreslå byttehandel",
-    "offeredLabel": "Din rytter du tilbyder",
-    "selectRider": "Vælg rytter…",
-    "requestedLabel": "Rytter du ønsker (søg på efternavn)",
-    "lastnamePlaceholder": "Efternavn...",
-    "selectedRider": "Valgt: {firstname} {lastname} ({team})",
-    "cashLabel": "Kontantbetaling fra dig (CZ$) · 0 = ren bytte · negativt = du modtager",
-    "messageLabel": "Besked (valgfri)",
-    "messagePlaceholder": "Fx. begrundelse eller kommentar...",
-    "sending": "Sender...",
-    "submit": "Send forslag",
-    "cancel": "Annuller",
-    "newButton": "+ Foreslå ny byttehandel"
-  },
   "history": {
     "title": "Transferhistorik",
     "seasonFilterAll": "Alle sæsoner",
@@ -187,8 +171,6 @@
     "sent": "Du har ikke sendt nogen tilbud endnu",
     "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
     "archive": "Ingen arkiverede tilbud",
-    "swaps": "Ingen aktive byttehandler",
-    "swapsHint": "Foreslå en byttehandel ved at klikke knappen ovenfor",
     "marketNoListings": "Ingen ryttere til salg",
     "marketNoMatches": "Ingen ryttere matcher filteret"
   },
@@ -211,7 +193,6 @@
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",
-    "swapProposalSent": "✅ Bytteforslag sendt!",
     "priceUpdated": "✅ Pris opdateret",
     "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },
@@ -223,6 +204,10 @@
     "swapDone": {
       "title": "Byttehandel gennemført! 🎉",
       "subtitle": "Ryttere er nu skiftet"
+    },
+    "buyoutDone": {
+      "title": "Rytter købt! 🎉",
+      "subtitle": "Købsoptionen er udnyttet"
     }
   },
   "marketSort": {

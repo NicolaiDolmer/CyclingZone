@@ -157,3 +157,33 @@ test("stageEnteringFatigues: clamp ved 100 over en lang tour", () => {
 test("stageEnteringFatigues: tom etape-liste → tom sekvens", () => {
   assert.deepEqual(stageEnteringFatigues(50, []), []);
 });
+
+// ── Race v3 S1 (#2352): effort-kobling (dormant seam, default='normal') ───────
+
+test("stageEnteringFatigues: uden opts (default) er BIT-IDENTISK med eksplicit effort='normal'", () => {
+  assert.deepEqual(
+    stageEnteringFatigues(0, ["flat", "mountain", "high_mountain"]),
+    stageEnteringFatigues(0, ["flat", "mountain", "high_mountain"], { effort: "normal" }),
+  );
+});
+
+test("stageEnteringFatigues: effort='protect' giver +20% belastning pr. etape", () => {
+  // flat=10 → protect: 10*1.2=12. Entering: [0, 12].
+  const seq = stageEnteringFatigues(0, ["flat", "flat"], { effort: "protect" });
+  assert.deepEqual(seq, [0, 12]);
+});
+
+test("stageEnteringFatigues: effort='save' giver -30% belastning pr. etape", () => {
+  // flat=10 → save: 10*0.7=7. Entering: [0, 7].
+  const seq = stageEnteringFatigues(0, ["flat", "flat"], { effort: "save" });
+  assert.deepEqual(seq, [0, 7]);
+});
+
+test("stageEnteringFatigues: protect > normal > save i akkumuleret belastning", () => {
+  const profiles = ["mountain", "mountain", "mountain"];
+  const protect = stageEnteringFatigues(0, profiles, { effort: "protect" });
+  const normal = stageEnteringFatigues(0, profiles);
+  const save = stageEnteringFatigues(0, profiles, { effort: "save" });
+  assert.ok(protect[2] > normal[2], `protect (${protect[2]}) skal være > normal (${normal[2]})`);
+  assert.ok(normal[2] > save[2], `normal (${normal[2]}) skal være > save (${save[2]})`);
+});

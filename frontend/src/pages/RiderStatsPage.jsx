@@ -43,6 +43,7 @@ import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab
 import RiderScoutingTab from "../components/rider/profile/RiderScoutingTab.jsx";
 import RiderHistoryTab from "../components/rider/profile/RiderHistoryTab.jsx";
 import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
+import RiderPalmaresTab from "../components/rider/profile/RiderPalmaresTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
@@ -62,7 +63,7 @@ async function fetchAllRiderSeasonRows(riderId) {
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("race_results")
-      .select(`rank, prize_money, points_earned, result_type, stage_number,
+      .select(`rank, prize_money, points_earned, result_type, stage_number, team_name,
         race:race_id(id, name, race_type, race_class, stages, status, scheduled_for,
           season:season_id(number), pool:pool_race_id(terrain_archetype))`)
       .eq("rider_id", riderId)
@@ -1501,6 +1502,7 @@ export default function RiderStatsPage() {
           { key: "scouting",    label: t("profile.tabs.scouting") },
           { key: "history",     label: t("profile.tabs.history") },
           { key: "results",     label: t("profile.tabs.results") },
+          { key: "palmares",    label: t("profile.tabs.palmares") },
           { key: "interest",    label: t("profile.tabs.interest") },
         ]}
         activeTab={tab}
@@ -1511,6 +1513,7 @@ export default function RiderStatsPage() {
           if (key === "scouting") logEvent("feature_rider_scouting_tab_opened", { rider_id: rider.id });
           if (key === "history") logEvent("feature_rider_history_tab_opened", { rider_id: rider.id });
           if (key === "results") logEvent("feature_rider_results_tab_opened", { rider_id: rider.id });
+          if (key === "palmares") logEvent("feature_rider_palmares_tab_opened", { rider_id: rider.id });
           if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
         }}
       />
@@ -1551,6 +1554,11 @@ export default function RiderStatsPage() {
           Interesse (ægte interesse-signaler) og Historik (kompakt handels-tabel).
           key={id} nulstiller fanens lokale state (filter/udfoldning) ved rytter-skift. */}
       {tab === "results" && <RiderResultsTab key={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
+
+      {/* #1997 S1 — Palmarès: trofæskab + karrieretotaler + sæson-æresliste
+          m. holdet ved hvert resultat (#1993-snapshot). Samme seasonRows som
+          Resultater-fanen, ingen dublet-fetch. */}
+      {tab === "palmares" && <RiderPalmaresTab key={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
 
       {tab === "interest" && (
         <RiderInterestTab

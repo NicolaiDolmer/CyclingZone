@@ -10,7 +10,6 @@
     "received": "Received offers",
     "sent": "Sent offers",
     "archive": "History ({count})",
-    "swaps": "Swaps",
     "market": "Market ({count})"
   },
   "modes": {
@@ -125,21 +124,6 @@
     "cancel": "Cancel",
     "confirmRemoveButton": "Yes, remove"
   },
-  "newSwap": {
-    "title": "Propose swap",
-    "offeredLabel": "Your rider to offer",
-    "selectRider": "Select rider…",
-    "requestedLabel": "Rider you want (search by lastname)",
-    "lastnamePlaceholder": "Lastname...",
-    "selectedRider": "Selected: {firstname} {lastname} ({team})",
-    "cashLabel": "Cash payment from you (CZ$) · 0 = pure swap · negative = you receive",
-    "messageLabel": "Message (optional)",
-    "messagePlaceholder": "E.g. reason or comment...",
-    "sending": "Sending...",
-    "submit": "Send proposal",
-    "cancel": "Cancel",
-    "newButton": "+ Propose new swap"
-  },
   "history": {
     "title": "Transfer history",
     "seasonFilterAll": "All seasons",
@@ -187,8 +171,6 @@
     "sent": "You haven't sent any offers yet",
     "sentHint": "Find a rider and click \"Send transfer offer\" on their page",
     "archive": "No archived offers",
-    "swaps": "No active swaps",
-    "swapsHint": "Propose a swap by clicking the button above",
     "marketNoListings": "No riders for sale",
     "marketNoMatches": "No riders match the filter"
   },
@@ -211,7 +193,6 @@
     "swapCancelled": "Swap cancelled",
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",
-    "swapProposalSent": "✅ Swap proposal sent!",
     "priceUpdated": "✅ Asking price updated",
     "priceUpdateFailed": "Could not update the price"
   },
@@ -223,6 +204,10 @@
     "swapDone": {
       "title": "Swap complete! 🎉",
       "subtitle": "Riders have been exchanged"
+    },
+    "buyoutDone": {
+      "title": "Rider bought! 🎉",
+      "subtitle": "The buy option has been exercised"
     }
   },
   "marketSort": {

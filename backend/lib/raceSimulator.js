@@ -25,8 +25,13 @@
 //   → samme rang. Stabil tiebreaker (rider_id) ved score-lighed. Ingen Math.random/Date.
 
 import { makeRng, gaussian } from "./fictionalRiderGenerator.js";
+import { workCost, teamRaceWeightV3 } from "./raceRoles.js";
 
 export const ENGINE_VERSION = 1;
+// Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
+// er ON (raceRunner.js vælger mellem denne og ENGINE_VERSION ud fra flaget —
+// simulateStage selv er version-agnostisk, den tager blot `v3`-boolean'en).
+export const ENGINE_VERSION_V3 = 2;
 
 // rider_derived_abilities-kolonnerne = terræn-scoringens dimensioner. Skal matche
 // ABILITY_DIMENSIONS i raceStageProfileGenerator.js (demand_vector-nøgler ⊆ disse
@@ -131,7 +136,7 @@ function finaleModifier(entrant, stageProfile) {
   return ((clamp(d, 0, 99) - 50) / 49) * DESCENDING_FINALE_WEIGHT;
 }
 
-export function buildTeamContext({ entrants, terrainById }) {
+export function buildTeamContext({ entrants, terrainById, v3 = false }) {
   const byTeam = new Map();
   for (const e of entrants) {
     if (!e.team_id || !e.race_role) continue;
@@ -139,6 +144,11 @@ export function buildTeamContext({ entrants, terrainById }) {
     const t = byTeam.get(e.team_id);
     if (e.race_role === "captain") t.captainId = e.rider_id;
     else if (e.race_role === "sprint_captain") t.sprintCaptainId = e.rider_id;
+    // Race v3 S1 (#2352): free_role = "kør dit eget løb" — 0 holdbidrag, tæller
+    // IKKE med i helperSupport. v1 (v3=false) kender ikke free_role og forbliver
+    // bit-identisk (rollen puttes ind i helpers som i dag — men v1-data kan aldrig
+    // indeholde 'free_role', jf. race_entries' CHECK-constraint før S1-migrationen).
+    else if (v3 && e.race_role === "free_role") continue;
     else t.helpers.push(e); // helper + hunter arbejder begge for lederen
   }
   const ctx = new Map();
@@ -161,14 +171,31 @@ export function buildTeamContext({ entrants, terrainById }) {
   return ctx;
 }
 
-function teamComponent(entrant, stageProfile, teamContext) {
+function teamComponent(entrant, stageProfile, teamContext, v3 = false) {
   if (!teamContext || !entrant?.team_id) return 0;
   const t = teamContext.get(entrant.team_id);
   if (!t) return 0;
   const isSprintStage = SPRINT_PROFILES.has(stageProfile?.profile_type);
   const protectedId = isSprintStage ? (t.sprintCaptainId ?? t.captainId) : t.captainId;
   if (!protectedId || entrant.rider_id !== protectedId) return 0;
-  return TEAM_RACE_WEIGHT * t.helperSupport;
+  // Race v3 S1 (#2352): kaptajnens modydelse hæves (0.024 → teamRaceWeightV3())
+  // så holdet reelt køber noget for hjælpernes work-cost-ofre (spec §6).
+  const weight = v3 ? teamRaceWeightV3() : TEAM_RACE_WEIGHT;
+  return weight * t.helperSupport;
+}
+
+// ── Race v3 S1 (#2352): work-cost — arbejde for holdet koster egen placering ──
+// Ren, deterministisk lookup (backend/lib/raceRoles.js) — INGEN rng-forbrug,
+// så noise/breakaway-sekvenserne er upåvirkede uanset v3-tilstand. Dormant når
+// v3=false (returnerer altid 0) → flag-off er bit-identisk.
+// team_id-guard (natbølge-review 12/7): en rytter UDEN hold (fx race_entries.
+// team_id NULL efter ON DELETE SET NULL) kan ikke arbejde FOR nogen — han må
+// ikke betale work-cost for et hold der ikke findes. Spejler teamComponent's
+// `!entrant?.team_id`-no-op, så pris og modydelse følger samme eksistens-regel.
+function workCostComponent(entrant, stageProfile, v3) {
+  if (!v3 || !entrant?.race_role || !entrant?.team_id) return 0;
+  // effort er en S3-seam (race_stage_roles.effort) — 'normal' indtil den findes.
+  return workCost(entrant.race_role, stageProfile?.profile_type, entrant.effort || "normal");
 }
 
 // ── Udbrud (#1307, spec 8.3) ──────────────────────────────────────────────────
@@ -306,15 +333,18 @@ function gapFor(profileType, deficit) {
 
 /**
  * Simulér ÉN etape. Ren funktion — ingen DB, ingen Math.random/Date.
- * @param {{entrants:Array, stageProfile:object, seed:number}} args
+ * @param {{entrants:Array, stageProfile:object, seed:number, v3?:boolean}} args
  *   entrants: [{ rider_id, team_id?, abilities:{climbing,...positioning} }]
  *   stageProfile: { profile_type, demand_vector, stage_number? }
  *   seed: heltal (udledes typisk af raceRunner via stableSeed)
+ *   v3: Race v3 S1 (#2352, flag `race_engine_v3_scoring`) — aktiverer work_cost
+ *     + den kalibrerede TEAM_RACE_WEIGHT_V3. default false → BIT-IDENTISK med
+ *     dagens motor (ingen rng-forbrug ændres, ingen ny komponent bidrager).
  * @returns {{ seed:number, ranked:Array }}
  *   ranked: [{ rider_id, team_id, rank, finalScore, stageGap, components }]
  *   sorteret bedst→dårligst; rank 1..N; stageGap = sekunder bag etapevinderen (≥0).
  */
-export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
+export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } = {}) {
   if (!stageProfile?.demand_vector) throw new Error("stageProfile.demand_vector kræves");
   if (!Number.isInteger(seed)) throw new Error("seed (heltal) kræves");
 
@@ -334,22 +364,26 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
   const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
-  const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile });
+  const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile, v3 });
 
   const scored = ordered.map((e) => {
     const terrain = terrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
     const form = formComponent(e, stageProfile, rng);
     const fatigue = fatigueComponent(e, stageProfile);
-    const team = teamComponent(e, stageProfile, teamCtx);
+    const team = teamComponent(e, stageProfile, teamCtx, v3);
     const breakaway = breakawayById.get(e.rider_id) || 0;
     const finale = finaleModifier(e, stageProfile);
-    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale;
+    // Race v3 S1 (#2352): workCost er allerede negativ (eller 0) — "+" her er
+    // korrekt (samme fortegns-konvention som breakaway/finale, modsat fatigue
+    // der er en positiv magnitude trukket fra separat).
+    const workCostDelta = workCostComponent(e, stageProfile, v3);
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team, breakaway, finale },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta },
     };
   });
 

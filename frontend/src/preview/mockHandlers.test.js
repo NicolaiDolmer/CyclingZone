@@ -36,6 +36,20 @@ test("race_results uden race_id-filter → tom (uændret dashboard-adfærd)", ()
   assert.equal(rows.length, 0);
 });
 
+// #1997 S1 — Palmarès-fanens rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows).
+test("race_results rider_id=eq.rider-1 → palmarès-seed med race:-embed + team_name", () => {
+  const rows = restRows("race_results", "https://x/rest/v1/race_results?rider_id=eq.rider-1&select=rank,team_name");
+  assert.ok(rows.length >= 1, "forventede palmarès-resultater for rider-1");
+  assert.ok(rows.every(r => r.race && r.race.id), "hver række har et race:-embed (ikke rider:-embed)");
+  assert.ok(rows.every(r => typeof r.team_name === "string" && r.team_name.length > 0), "hver række har et holdnavn (#1993-snapshot)");
+  assert.ok(rows.some(r => r.result_type === "gc" && r.rank === 1), "mindst én GC-/endagssejr");
+});
+
+test("race_results rider_id=eq.<ukendt> → tom (kun rider-1 har palmarès-seed)", () => {
+  const rows = restRows("race_results", "https://x/rest/v1/race_results?rider_id=eq.rider-2");
+  assert.equal(rows.length, 0);
+});
+
 test("/api/races/distribution returnerer board-payload", () => {
   const r = apiResponse("/api/races/distribution");
   assert.ok(r && r.enabled === true);
