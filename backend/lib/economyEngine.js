@@ -1889,6 +1889,31 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
  */
 export async function updateStandings(seasonId, raceId = null, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
+
+  // #2391 fast-path: fuld re-derivation som ÉT set-baseret Postgres-statement
+  // (~190 ms) i stedet for at streame HELE sæsonens race_results (166k+ rækker,
+  // ~166 paginerede round-trips) over PostgREST og aggregere i JS (40-120 s/kald).
+  // Den Node-baserede sti nedenfor bevares som fallback: den bruges (a) af unit-
+  // tests (mock-klienten har ingen .rpc), og (b) i prod i vinduet mellem code-deploy
+  // og migration-apply, hvor recompute_season_standings endnu ikke findes (PGRST202).
+  // Semantik er beviseligt ækvivalent (verificeret read-only mod prod, se migrationen).
+  if (!deps.forceLegacy && typeof supabaseClient.rpc === "function") {
+    const { data, error } = await supabaseClient.rpc("recompute_season_standings", { p_season_id: seasonId });
+    if (!error) {
+      const rowsUpdated = Number(data?.rows_updated) || 0;
+      const teamsWithPoints = data?.teams_with_points == null ? null : Number(data.teams_with_points);
+      console.log(`  📊 Standings recalculated (RPC) for ${rowsUpdated} teams${raceId ? ` after race ${raceId}` : ""}`);
+      return { rowsUpdated, teamsWithPoints };
+    }
+    // Fald KUN tilbage hvis funktionen ikke findes endnu (migration ikke anvendt).
+    // Enhver ANDEN fejl er en ægte fejl og skal kastes — en brudt RPC må ikke
+    // maskeres tavst af den langsomme fallback.
+    const functionMissing = error.code === "PGRST202"
+      || /recompute_season_standings/.test(error.message || "");
+    if (!functionMissing) throw new Error(error.message);
+    console.warn("  ⚠️  recompute_season_standings RPC mangler — falder tilbage til Node-recompute (#2391; anvend migrationen)");
+  }
+
   const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
     supabaseClient.from("teams").select("id, division, league_division_id"),
     supabaseClient.from("races").select("id").eq("season_id", seasonId),

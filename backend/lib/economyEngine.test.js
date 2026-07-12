@@ -2017,6 +2017,66 @@ test("updateStandings filtrerer hold slettet under recalc fra upsert (#2389, Sen
   assert.deepEqual(supabase.state.upserts[0].rows.map(row => row.team_id), ["team-a"]);
 });
 
+test("updateStandings bruger recompute_season_standings-RPC når den findes (#2391)", async () => {
+  let rpcArgs = null;
+  let fromCalled = false;
+  const supabase = {
+    rpc(name, params) {
+      rpcArgs = { name, params };
+      return Promise.resolve({ data: { rows_updated: 42, teams_with_points: 17 }, error: null });
+    },
+    from() {
+      fromCalled = true;
+      throw new Error("updateStandings må ikke læse tabeller når RPC'en lykkes");
+    },
+  };
+
+  const summary = await updateStandings("season-9", "race-x", { supabase });
+
+  assert.deepEqual(rpcArgs, {
+    name: "recompute_season_standings",
+    params: { p_season_id: "season-9" },
+  });
+  assert.deepEqual(summary, { rowsUpdated: 42, teamsWithPoints: 17 });
+  assert.equal(fromCalled, false, "det set-baserede RPC-kald erstatter Node-aggregeringen helt");
+});
+
+test("updateStandings falder tilbage til Node-recompute når RPC'en mangler (PGRST202, #2391)", async () => {
+  // Vinduet mellem code-deploy og migration-apply: recompute_season_standings
+  // findes endnu ikke → PGRST202. updateStandings skal falde tavst tilbage til
+  // den (langsomme men korrekte) Node-sti, IKKE kaste.
+  const supabase = createStandingsSupabase({
+    teams: [{ id: "team-a", division: 1 }],
+    races: [{ id: "race-1" }],
+    results: [
+      { race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 1, points_earned: 20, rider: null },
+    ],
+  });
+  supabase.rpc = () => Promise.resolve({
+    data: null,
+    error: { code: "PGRST202", message: "Could not find the function public.recompute_season_standings(p_season_id) in the schema cache" },
+  });
+
+  const summary = await updateStandings("season-1", "race-1", { supabase });
+
+  assert.equal(summary.rowsUpdated, 1, "Node-fallback kørte og skrev standings");
+  assert.equal(supabase.state.upserts.length, 1);
+  assert.equal(supabase.state.upserts[0].rows[0].total_points, 20);
+});
+
+test("updateStandings kaster ved en ÆGTE RPC-fejl (ikke missing-function) (#2391)", async () => {
+  // En brudt RPC (fx en constraint-violation) må ALDRIG maskeres tavst af den
+  // langsomme fallback — kun missing-function (PGRST202) udløser fallback.
+  const supabase = {
+    rpc: () => Promise.resolve({ data: null, error: { code: "P0001", message: "boom" } }),
+    from() {
+      throw new Error("må ikke falde tilbage til Node-stien ved en ægte RPC-fejl");
+    },
+  };
+
+  await assert.rejects(() => updateStandings("season-1", null, { supabase }), /boom/);
+});
+
 test("updateRiderValues recomputes prize_earnings_bonus from the last 3 completed seasons (no active → legacy mean)", async () => {
   // Backward-compat: with no active season the divisor = completed-season count,
   // so the formula reduces bit-for-bit to the old equal-weight mean.
