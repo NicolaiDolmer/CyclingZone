@@ -45,6 +45,11 @@ const MAX_STAGES_PER_DAY = Math.ceil(FULL_PYRAMID_PEAK_STAGES_PER_DAY * 1.5); //
 // cron-laget). Admin-fuld-sim (simulateRace) og manuelle stage-runs skriver NULL → tælles ikke.
 const SCHEDULER_RUN_SOURCE = "scheduler";
 
+// #2389: et løb der STADIG fejler så længe efter første capture har ikke løst sig
+// selv (transient hikke gør) — send én NY capture med escalated=true så det ikke
+// forsvinder i dagens dedupe. 3 timer = 36 fejlende 5-min-ticks.
+const ESCALATION_AFTER_MS = 3 * 60 * 60 * 1000;
+
 // Tæl KUN scheduler-drevne etape-runs siden dansk midnat (FIX 4). En admin-fuld-simulering
 // skriver én race_simulation_runs-række PR. ETAPE (source=NULL); ville den blive talt med,
 // kunne ét admin-fuld-sim af et 5-etapers løb opbruge hele dagens stage-budget. Dag-grænsen
@@ -75,11 +80,12 @@ export async function runStageScheduler({
   isRaceEngineV2Enabled,
   runStageFn,
   // #2251: per-løb-per-dag-dedup for BÅDE log-støj og Sentry-captures (mirror
-  // stallWatchdog's seenKeys-mønster). Caller (cron.js) holder en persistent Set
+  // stallWatchdog's seenKeys-mønster). Caller (cron.js) holder en persistent Map
   // på tværs af ticks, så et løb der er fastlåst (fx "No start list" — tyndt/tomt
   // felt i lav-division, #2251) kun logges/captures ÉN gang pr. dag, ikke hvert
-  // 5-min-tick. Default new Set() for isolerede kald/tests.
-  seenKeys = new Set(),
+  // 5-min-tick. #2389: Map (var Set) — værdien {firstFailedAt, escalated} driver
+  // eskaleringen nedenfor, så en VEDVARENDE fejl ikke forstummer efter første capture.
+  seenKeys = new Map(),
   captureExceptionFn = captureException,
 }) {
   if (!(await isStageSchedulerEnabled(supabase))) return { ran: 0, errors: 0, skipped: "flag_off" };
@@ -194,9 +200,33 @@ export async function runStageScheduler({
     // og Sentry hvert 5-min-tick (P0 2/7 deduperede kun Sentry; #2251 dedup'er nu OGSÅ
     // selve loggen og gør den struktureret).
     const dedupeKey = `${race.id}:${now.toISOString().slice(0, 10)}`;
-    if (seenKeys.has(dedupeKey)) return;
+    const seen = seenKeys.get(dedupeKey);
+    if (seen) {
+      // #2389: eskalering. Dedupen gjorde vedvarende fejl USYNLIGE efter første
+      // capture (Tour of the Isles fejlede tavst hvert tick i timevis). Fejler
+      // samme løb stadig ESCALATION_AFTER_MS efter første capture, sendes ÉN ny
+      // capture med escalated=true — derefter tavshed igen resten af dagen.
+      if (!seen.escalated && now.getTime() - seen.firstFailedAt >= ESCALATION_AFTER_MS) {
+        seen.escalated = true;
+        console.error(JSON.stringify({
+          event: "stage_scheduler_race_failed_escalated",
+          raceId: race.id,
+          raceName: race.name ?? null,
+          leagueDivisionId: race.league_division_id ?? null,
+          error: err.message,
+          firstFailedAt: new Date(seen.firstFailedAt).toISOString(),
+          tick: now.toISOString(),
+        }));
+        captureExceptionFn(err, {
+          tags: { cron: "stage-scheduler", escalated: "true" },
+          raceId: race.id,
+          raceName: race.name,
+        });
+      }
+      return;
+    }
     if (seenKeys.size > 500) seenKeys.clear();
-    seenKeys.add(dedupeKey);
+    seenKeys.set(dedupeKey, { firstFailedAt: now.getTime(), escalated: false });
     console.error(JSON.stringify({
       event: "stage_scheduler_race_failed",
       raceId: race.id,

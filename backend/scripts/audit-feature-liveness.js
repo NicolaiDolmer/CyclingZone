@@ -95,12 +95,14 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // (forudsætninger: #2376). Skriv-path verificeret i raceRunner.js (persistRuns,
   // hasRiderScores-gate). Fjern denne entry når flaget flippes og tabellen har rows.
   "race_simulation_rider_scores",
-  // Race v3 S3 (#2034): manager-satte roller/effort pr. etape. Skriv-paths:
-  // raceStageRolesApi.js (PUT /races/:id/stage-roles, delete+insert) — men UI'et
-  // der skriver er gated bag race_engine_v3_scoring='off' (matrix renderes ikke),
-  // så tabellen er bevidst tom indtil ejer-flip (#2376). Fjern denne entry når
-  // flaget flippes og tabellen har rows.
-  "race_stage_roles",
+  // race_stage_roles fjernet fra whitelisten 12/7 (v3-flip #2357/#2393): tabellen
+  // har rows i prod og daekkes nu af Detector A igen.
+  //
+  // Race v3 S4 (#2393, merged+applied 12/7 aften): raceRunner skriver race_incidents
+  // KUN naar der faktisk sker styrt/uheld paa en v3-loebsdag (DNF-rate 0.39-0.41%/etape)
+  // — foerste v3-loebsdag er 13/7, saa tabellen er naturligt tom ved merge. Skriv-path
+  // verificeret i raceRunner.js/raceIncidents.js. Fjern denne entry naar tabellen har rows.
+  "race_incidents",
   // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
   // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
@@ -672,7 +674,7 @@ if (JSON_OUT) {
     for (const f of findingsA) {
       console.log(`  ${f.table}`);
       console.log(`    reason: ${f.reason}`);
-      console.log(`    backend: ${f.backend_files.join(", ")}`);
+      if (f.backend_files) console.log(`    backend: ${f.backend_files.join(", ")}`);
     }
     console.log();
   }

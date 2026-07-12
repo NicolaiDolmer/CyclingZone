@@ -375,7 +375,7 @@ test("#2251: gentagne 'No start list'-fejl for SAMME løb dedupes (log + Sentry)
     races,
     race_stage_schedule: () => schedule,
   });
-  const seenKeys = new Set();
+  const seenKeys = new Map();
   const sentryCalls = [];
   const originalConsoleError = console.error;
   const logLines = [];
@@ -446,7 +446,7 @@ test("#2251: ny dag nulstiller dedup — samme løb kan logge/alarmere igen efte
   const supabase = makeSupabase({
     seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
   });
-  const seenKeys = new Set();
+  const seenKeys = new Map();
   const sentryCalls = [];
   const runStageFn = async () => { throw new Error("No start list for race rGhost"); };
   await runStageScheduler({
@@ -461,4 +461,34 @@ test("#2251: ny dag nulstiller dedup — samme løb kan logge/alarmere igen efte
     seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }), runStageFn,
   });
   assert.equal(sentryCalls.length, 2, "ny dag = ny dedup-nøgle → alarmerer igen");
+});
+
+test("#2389: vedvarende fejl eskalerer efter 3 timer med escalated-tag — og kun ÉN gang", async () => {
+  const races = [{ id: "rGhost", season_id: "s1", name: "Tyndt felt", stages: 1, stages_completed: 0, status: "scheduled" }];
+  const schedule = [{ race_id: "rGhost", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }], race_simulation_runs: [], races, race_stage_schedule: () => schedule,
+  });
+  const seenKeys = new Map();
+  const sentryCalls = [];
+  const runStageFn = async () => { throw new Error("No start list for race rGhost"); };
+  const tick = (now) => runStageScheduler({
+    supabase, now,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }), runStageFn,
+  });
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    await tick(NOW); // 13:00 — første capture
+    await tick(new Date("2026-06-21T14:00:00Z")); // +1t — dedupet, INGEN ny capture
+    assert.equal(sentryCalls.length, 1, "under eskaleringstærsklen → stadig dedupet");
+    await tick(new Date("2026-06-21T16:05:00Z")); // +3t5m — eskalering fyrer
+    assert.equal(sentryCalls.length, 2, "≥3 timer vedvarende fejl → NY capture");
+    assert.equal(sentryCalls[1].ctx.tags.escalated, "true", "eskalerings-capture bærer escalated-tag");
+    await tick(new Date("2026-06-21T17:00:00Z")); // +4t — eskaleret én gang, tavs igen
+    assert.equal(sentryCalls.length, 2, "eskalering fyrer kun ÉN gang pr. (løb,dag)");
+  } finally {
+    console.error = originalConsoleError;
+  }
 });

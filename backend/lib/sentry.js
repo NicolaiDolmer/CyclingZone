@@ -1,6 +1,32 @@
 import * as Sentry from "@sentry/node";
+import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 let enabled = false;
+
+// #2389 (A3): Supabase-js' query-fejl er PLAIN OBJECTS ({message, code, details,
+// hint}), ikke Error-instanser. Sendes de rå til Sentry.captureException, bliver
+// issue-titlen "captureException"/"<unknown>" og ALT grupperer i én bunke. Der er
+// 30+ `throw someError;`-steder i lib/ der ender her via trackedTick m.fl., så
+// normalisér centralt: syntetisér et Error med beskrivende besked, bevar code/
+// details, og STRIP stacken — den syntetiske stack ville pege på denne fil for
+// alle fejl og få Sentry til at gruppere ALT som ét issue; uden stack grupperer
+// Sentry på type+besked, hvilket er præcis den ønskede adfærd for DB-fejl.
+export function toSentryError(error) {
+  if (error instanceof Error) return error;
+  const rawMessage = error == null
+    ? ""
+    : (typeof error.message === "string" && error.message) ||
+      (typeof error === "string" ? error : "") ||
+      (() => { try { return JSON.stringify(error); } catch { return String(error); } })();
+  const err = new Error(normalizeSupabaseErrorMessage(rawMessage) || "Unknown error (non-Error captured)");
+  if (error && typeof error === "object") {
+    if (error.code != null) err.code = error.code;
+    if (error.details != null) err.details = error.details;
+    if (error.hint != null) err.hint = error.hint;
+  }
+  err.stack = ""; // gruppér på besked, ikke på den syntetiske wrap-stack
+  return err;
+}
 
 function releaseName() {
   return process.env.SENTRY_RELEASE ||
@@ -42,7 +68,7 @@ export function initSentry() {
 export function captureException(error, context = {}) {
   if (!enabled) return;
   const { tags, ...extra } = context;
-  Sentry.captureException(error, {
+  Sentry.captureException(toSentryError(error), {
     extra,
     ...(tags ? { tags } : {}),
   });

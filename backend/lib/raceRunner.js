@@ -56,6 +56,7 @@ import { loadAbandonedRiderIds } from "./raceIncidents.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
+import { captureException } from "./sentry.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
@@ -1017,7 +1018,9 @@ export async function simulateRace({
       const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stage.stage_number || 1) : null;
       await applyFatigue({ supabase, riderIds, profileType: stage.profile_type, effortByRider });
     } catch (err) {
+      // #2389 A2: en fejlet fatigue-skrivning lader træthed drive ud af sync — capture.
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber: stage.stage_number });
     }
   }
 
@@ -1039,7 +1042,10 @@ export async function simulateRace({
         race: { id: race.id, name: race.name },
       });
     } catch (error) {
+      // #2389 A2: fanger fejl FØR processBoardWeekends interne captures (fx
+      // forudsætnings-queries) — de nåede aldrig Sentry.
       console.error("  ⚠️  board weekend update failed after race simulation:", error.message);
+      captureException(error, { tags: { flow: "race-run", stage: "board-weekend" }, raceId: race.id });
     }
   }
 
@@ -1496,7 +1502,9 @@ export async function simulateStageByIndex({
       const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
       await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
     } catch (err) {
+      // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber });
     }
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──
@@ -1525,7 +1533,9 @@ export async function simulateStageByIndex({
         race: { id: race.id, name: race.name },
       });
     } catch (error) {
+      // #2389 A2: mirror fuld-sim-grenen — capture.
       console.error("  ⚠️  board weekend update failed after stage simulation:", error.message);
+      captureException(error, { tags: { flow: "race-run", stage: "board-weekend" }, raceId: race.id });
     }
   }
 

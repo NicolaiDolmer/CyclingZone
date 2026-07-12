@@ -1,4 +1,5 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { captureException } from "./sentry.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { updateRiderValues } from "./economyEngine.js";
 import {
@@ -286,6 +287,9 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
     // A value-recalc failure must not roll back a successful payout; surface it
     // in the response so the admin can re-run the recalc (idempotent) manually.
     console.error("⚠️  Rider-value recalc efter præmie-udbetaling fejlede:", err.message);
+    // #2392: fejlede tavst (kun console) i ugevis — prize_earnings_bonus drev
+    // aldrig live. Capture så gentagne recalc-fejl er synlige i Sentry-triage.
+    captureException(err, { tags: { cron: "auto-prize", stage: "rider-value-recalc" } });
     riders_updated = null;
   }
 

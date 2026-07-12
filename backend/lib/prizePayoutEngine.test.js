@@ -200,6 +200,7 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
             const builder = {
               eq: () => builder,
               in: () => builder,
+              order: () => builder,
               range: (from, to) => {
                 const rows = racesRows
                   .map(r => (columns === "id, season_id" ? { id: r.id, season_id: r.season_id } : r))
@@ -272,7 +273,7 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
       }
       if (table === "riders") {
         return {
-          select: () => ({ range: (from, to) => Promise.resolve({ data: riders.slice(from, to + 1), error: null }) }),
+          select: () => ({ order: () => ({ range: (from, to) => Promise.resolve({ data: riders.slice(from, to + 1), error: null }) }) }),
           update: (payload) => ({ eq: (_c, id) => { state.riderUpdates.push({ id, ...payload }); return Promise.resolve({ error: null }); } }),
         };
       }
@@ -451,6 +452,7 @@ function makeConcurrentPayoutSupabase({ pendingRace }) {
             const builder = {
               eq: () => builder,
               in: () => builder,
+              order: () => builder,
               range: (from, to) => {
                 const rows = [racesRow]
                   .map(r => (columns === "id, season_id" ? { id: r.id, season_id: r.season_id } : r))
@@ -499,7 +501,7 @@ function makeConcurrentPayoutSupabase({ pendingRace }) {
           : { gt: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }) }) };
       }
       if (table === "riders") {
-        return { select: () => ({ range: () => Promise.resolve({ data: [], error: null }) }), update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+        return { select: () => ({ order: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) }), update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
       }
       throw new Error(`uventet tabel: ${table}`);
     },

@@ -67,12 +67,48 @@ dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// #2077 — Sentry cron-monitor-config for de to race-kritiske 5-min-ticks. Udebliver
-// et tick (proces død/deploy-hang) fyrer Sentry en MISSED-alarm ud fra schedulen.
+// #2077 — Sentry cron-monitor-configs. Udebliver et tick (proces død/deploy-hang)
+// fyrer Sentry en MISSED-alarm ud fra schedulen; hænger et tick over maxRuntime
+// regnes det TIMEOUT. #2389/B5: udvidet fra kun auto-prize/stage-scheduler til ALLE
+// periodiske jobs — en cron der tavst holder op med at ticke var ellers usynlig
+// indtil en spiller opdagede symptomet. Margins er rundhåndede: en Railway-deploy
+// genstarter processen og nulstiller alle setInterval-timere.
+const CRON_MONITOR_1MIN = {
+  schedule: { type: "interval", value: 1, unit: "minute" },
+  checkinMargin: 3,
+  maxRuntime: 10,
+  timezone: "Etc/UTC",
+};
 const CRON_MONITOR_5MIN = {
   schedule: { type: "interval", value: 5, unit: "minute" },
   checkinMargin: 5, // min forsinkelse før et manglende tick regnes MISSED
   maxRuntime: 15, // min før et in_progress-tick regnes TIMEOUT
+  timezone: "Etc/UTC",
+};
+const CRON_MONITOR_10MIN = {
+  schedule: { type: "interval", value: 10, unit: "minute" },
+  checkinMargin: 10,
+  maxRuntime: 20,
+  timezone: "Etc/UTC",
+};
+const CRON_MONITOR_30MIN = {
+  schedule: { type: "interval", value: 30, unit: "minute" },
+  checkinMargin: 15,
+  maxRuntime: 30,
+  timezone: "Etc/UTC",
+};
+const CRON_MONITOR_60MIN = {
+  schedule: { type: "interval", value: 60, unit: "minute" },
+  checkinMargin: 30,
+  maxRuntime: 60,
+  timezone: "Etc/UTC",
+};
+// 24h-ticks: margin 3 timer — setInterval-baseret døgn-rytme drifter med deploys,
+// og en deploy-genstart + immediate-run checker ind længe før marginen rammes.
+const CRON_MONITOR_24H = {
+  schedule: { type: "interval", value: 1, unit: "day" },
+  checkinMargin: 180,
+  maxRuntime: 60,
   timezone: "Etc/UTC",
 };
 
@@ -288,7 +324,11 @@ async function runBoardAutoAcceptCron() {
       );
     }
   } catch (err) {
+    // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
+    // som processBoardAutoAcceptCron's interne per-team-catch aldrig ser — capture,
+    // ellers når fejlen hverken Sentry eller trackedTick.
     console.error("Cron error (board auto-accept):", err.message);
+    sentryCapture(err, { tags: { cron: "board auto-accept" } });
   }
 }
 
@@ -311,7 +351,9 @@ async function runMidSeasonReviewCron() {
       );
     }
   } catch (err) {
+    // #2389 A2: mirror board auto-accept — top-level-fejl skal captures her.
     console.error("Cron error (mid-season review):", err.message);
+    sentryCapture(err, { tags: { cron: "board mid-season" } });
   }
 }
 
@@ -332,7 +374,10 @@ async function runSeasonAutoTransitionCron() {
       );
     }
   } catch (err) {
+    // #2389 A2: sæson-transition er det mest forretningskritiske flow i denne fil
+    // (jf. incident 2026-05-21) — en fejl her var 100% usynlig i Sentry før nu.
     console.error("Cron error (season auto-transition):", err.message);
+    sentryCapture(err, { tags: { cron: "season auto-transition" } });
   }
 }
 
@@ -457,6 +502,12 @@ async function runTrainingSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ Trænings-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+    // #2389 A2: én aggregeret capture pr. tick (mirror entry-generator-mønstret) —
+    // daglig træning er kerne-gameplay; systemiske fejl var usynlige i Sentry.
+    sentryCapture(new Error(`training sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "training sweep" },
+      extra: { swept: result.swept, failed: result.failed },
+    });
   }
 }
 
@@ -470,6 +521,11 @@ async function runScoutSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ Scout-sweep: ${result.failed} opgave(r) fejlede (per-hold try/catch isolerede)`);
+    // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).
+    sentryCapture(new Error(`scout sweep: ${result.failed} opgaver fejlede`), {
+      tags: { cron: "scout sweep" },
+      extra: { swept: result.swept, failed: result.failed },
+    });
   }
 }
 
@@ -482,6 +538,11 @@ async function runGraduationSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ Graduerings-sweep: ${result.failed} fejlede (per-rytter try/catch isolerede)`);
+    // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).
+    sentryCapture(new Error(`graduation sweep: ${result.failed} ryttere fejlede`), {
+      tags: { cron: "graduation sweep" },
+      extra: { resolved: result.resolved, failed: result.failed },
+    });
   }
 }
 
@@ -496,6 +557,11 @@ async function runStarterSquadHealSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ Start-trup heal-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+    // #2389 A2: fejler heal'en, står holdet med tom trup UDEN alarm — capture.
+    sentryCapture(new Error(`starter-squad heal sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "starter-squad heal sweep" },
+      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
+    });
   }
 }
 
@@ -511,6 +577,11 @@ async function runAcademyHealSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ Akademi-kuld heal-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+    // #2389 A2: mirror starter-squad heal — en fejlende heal må ikke være tavs.
+    sentryCapture(new Error(`academy heal sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "academy heal sweep" },
+      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
+    });
   }
 }
 
@@ -544,6 +615,11 @@ async function runAiTeamTrimHealSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ AI-trim heal-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    // #2389 A2: akutte per-hold-fejl (den stale-gren nedenfor dækker kun >48t).
+    sentryCapture(new Error(`ai-trim heal sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "ai-trim heal sweep" },
+      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
+    });
   }
   if (result.stale?.length) {
     console.error(
@@ -614,10 +690,11 @@ const ensureSeasonStandingsCron = makeEnsureSeasonStandings(supabase);
 // (Volta Algarvia st2-3, Hauts Plateaux st8). Ét tick ad gangen — altid.
 let stageSchedulerTickRunning = false;
 
-// #2251: delt dedup-Set på tværs af ticks (mirror stallWatchdogSeenKeys nedenfor) —
+// #2251: delt dedup på tværs af ticks (mirror stallWatchdogSeenKeys nedenfor) —
 // et fastlåst løb ("No start list" — tyndt/tomt felt i lav-division) logges/captures
-// kun ÉN gang pr. løb pr. dag i stedet for hvert 5-min-tick.
-const stageSchedulerSeenKeys = new Set();
+// kun ÉN gang pr. løb pr. dag i stedet for hvert 5-min-tick. #2389: Map (var Set) —
+// {firstFailedAt, escalated} pr. nøgle driver eskalerings-capturen efter 3 timer.
+const stageSchedulerSeenKeys = new Map();
 
 async function runStageSchedulerCron() {
   if (stageSchedulerTickRunning) {
@@ -685,7 +762,11 @@ async function runRankingMatviewRefreshCron() {
 async function runTrafficRetentionCron() {
   const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase.from("traffic_events").delete().lt("occurred_at", cutoff);
-  if (error) console.error("  ❌ traffic_events retention fejlede:", error.message);
+  if (error) {
+    // #2389 A2: vedvarende fejl her = GDPR-relevant rå-data ryddes aldrig op — alarm.
+    console.error("  ❌ traffic_events retention fejlede:", error.message);
+    sentryCapture(error, { tags: { cron: "traffic retention" } });
+  }
 }
 
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
@@ -728,13 +809,22 @@ export function startCron() {
   console.log("⏱  Cron jobs started");
 
   // Every 60 seconds: finalize auctions
-  setInterval(trackedTick("auctions", finalizeExpiredAuctions), 60 * 1000);
+  setInterval(
+    trackedTick("auctions", monitorCron("auctions", finalizeExpiredAuctions, CRON_MONITOR_1MIN)),
+    60 * 1000
+  );
 
   // Every 5 minutes: deadline day warnings + final whistle
-  setInterval(trackedTick("deadline day", runDeadlineDayCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("deadline day", monitorCron("deadline-day", runDeadlineDayCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
-  setInterval(trackedTick("squad enforcement", runSquadEnforcementCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("squad enforcement", monitorCron("squad-enforcement", runSquadEnforcementCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
   // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
@@ -749,57 +839,96 @@ export function startCron() {
 
   // Every 24 hours: check debt (#607 — 6h → 24h. notifyUser-dedup virker nu da
   // message er statisk; matcher cadence-pattern fra processDailySeasonCountCheck).
-  setInterval(trackedTick("debt", checkDebtWarnings), 24 * 60 * 60 * 1000);
+  setInterval(
+    trackedTick("debt", monitorCron("debt-warnings", checkDebtWarnings, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
 
   // Every 30 minutes: board auto-accept reminders + auto-accept (S-02b).
   // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
-  setInterval(trackedTick("board auto-accept", runBoardAutoAcceptCron), 30 * 60 * 1000);
+  setInterval(
+    trackedTick("board auto-accept", monitorCron("board-auto-accept", runBoardAutoAcceptCron, CRON_MONITOR_30MIN)),
+    30 * 60 * 1000
+  );
 
   // Every 30 minutes: board mid-season review (S-02g).
   // Per-board-per-season dedupe (eksplicit notification-tabel-tjek) gør cron idempotent.
-  setInterval(trackedTick("board mid-season", runMidSeasonReviewCron), 30 * 60 * 1000);
+  setInterval(
+    trackedTick("board mid-season", monitorCron("board-mid-season", runMidSeasonReviewCron, CRON_MONITOR_30MIN)),
+    30 * 60 * 1000
+  );
 
   // Every 24 hours: daily season-count safety-net (forward-guard mod cron-loop).
   setInterval(
-    trackedTick("daily season-count check", runDailySeasonCountCheck),
+    trackedTick("daily season-count check", monitorCron("daily-season-count-check", runDailySeasonCountCheck, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
 
   // Every 24 hours: Discord bot-token safety-net (forward-guard mod tavs token-drift).
-  setInterval(trackedTick("discord bot-token check", runDiscordBotTokenCheck), 24 * 60 * 60 * 1000);
+  setInterval(
+    trackedTick("discord bot-token check", monitorCron("discord-bot-token-check", runDiscordBotTokenCheck, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
 
   // Every 24 hours: reconcile Discord division-roller mod spillets tilstand (#2153).
-  setInterval(trackedTick("discord division-role sync", runDiscordRoleSyncCron), 24 * 60 * 60 * 1000);
+  setInterval(
+    trackedTick("discord division-role sync", monitorCron("discord-role-sync", runDiscordRoleSyncCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
 
   // Every 5 minutes: Discord DM-outbox drain (#1115 — retry af fejlede DMs).
-  setInterval(trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("discord dm-outbox drain", monitorCron("discord-dm-outbox-drain", runDiscordDmOutboxDrain, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
-  setInterval(trackedTick("training sweep", runTrainingSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
-  setInterval(trackedTick("graduation sweep", runGraduationSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("graduation sweep", monitorCron("graduation-sweep", runGraduationSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
-  setInterval(trackedTick("scout sweep", runScoutSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563).
   // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
-  setInterval(trackedTick("starter-squad heal sweep", runStarterSquadHealSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("starter-squad heal sweep", monitorCron("starter-squad-heal", runStarterSquadHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Akademi-kuld heal: reparér nye hold hvis signup-akademi-seedingen fejlede (#1584).
   // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
-  setInterval(trackedTick("academy heal sweep", runAcademyHealSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("academy heal sweep", monitorCron("academy-heal", runAcademyHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Rytter-derive heal: re-deriver strandede ryttere uden derive-lag (#1673).
   // RYTTER-data-gatet (ikke team-markør) → fanger free agents OG ryttere på hold.
   // Idempotent + deterministisk, ingen flag. Cadence matcher de andre heal-sweeps.
-  setInterval(trackedTick("rider-derive heal sweep", runRiderDeriveHealSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("rider-derive heal sweep", monitorCron("rider-derive-heal", runRiderDeriveHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // AI-trim heal: fuldfør udskudte AI-hold-trims når blokerende løb er kørt færdigt
   // (#2187/#2377). Markør-gatet (pending_removal_at) → idempotent, rører aldrig ægte
   // hold. Cadence matcher de andre heal-sweeps.
-  setInterval(trackedTick("ai-trim heal sweep", runAiTeamTrimHealSweepCron), 5 * 60 * 1000);
+  setInterval(
+    trackedTick("ai-trim heal sweep", monitorCron("ai-trim-heal", runAiTeamTrimHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via
@@ -827,15 +956,24 @@ export function startCron() {
   // finalization-hooken + fersk-holder under igangværende etapeløb. Best-effort;
   // bevidst INGEN immediate-run (finalization-hooken dækker friske resultater, og
   // en refresh skal ikke fyre ved hver genstart — mirror stage-scheduler-mønstret).
-  setInterval(trackedTick("ranking matview refresh", runRankingMatviewRefreshCron), 10 * 60 * 1000);
+  setInterval(
+    trackedTick("ranking matview refresh", monitorCron("ranking-matview-refresh", runRankingMatviewRefreshCron, CRON_MONITOR_10MIN)),
+    10 * 60 * 1000
+  );
 
   // Every 30 minutes: stall-watchdog (#2077) — fanger tavse stalls uden exception.
   // Bevidst INGEN immediate-run: cadencen er nok, og en alarm skal ikke fyre ved
   // hver genstart (mirror auto-prize/stage-scheduler-mønstret).
-  setInterval(trackedTick("stall-watchdog", runStallWatchdogCron), 30 * 60 * 1000);
+  setInterval(
+    trackedTick("stall-watchdog", monitorCron("stall-watchdog", runStallWatchdogCron, CRON_MONITOR_30MIN)),
+    30 * 60 * 1000
+  );
 
   // Every 24 hours: traffic_events retention (#2040 — slet rå anonyme events >180 dage).
-  setInterval(trackedTick("traffic retention", runTrafficRetentionCron), 24 * 60 * 60 * 1000);
+  setInterval(
+    trackedTick("traffic retention", monitorCron("traffic-retention", runTrafficRetentionCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
 
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
@@ -844,7 +982,7 @@ export function startCron() {
   // ikke opstår ofte. Kombineret med immediate-run nedenfor fylder et deploy huller
   // med det samme i stedet for at vente op til en time.
   setInterval(
-    trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron),
+    trackedTick("entry-generator sweep", monitorCron("entry-generator", runRaceEntryGeneratorSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
 
@@ -858,6 +996,14 @@ export function startCron() {
   // #2375: kør entry-generatoren straks ved boot, så et deploy fylder mid-sæson-
   // genskabte 0-entry-løb med det samme frem for at vente op til en time.
   trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron)();
+  // #2389/B5: de tre 24h-crons UDEN immediate-run kørte reelt sjældent/aldrig —
+  // setInterval(24h) nulstilles ved hvert deploy, og der deployes tit oftere end
+  // dagligt. Alle tre er idempotente/dedup-beskyttede (debt: statisk besked +
+  // 24h notif-dedup pr. hold; role-sync: ren reconcile; retention: idempotent
+  // delete), så boot-run er sikkert og gør 24h-monitorerne ovenfor ærlige.
+  trackedTick("debt", checkDebtWarnings)();
+  trackedTick("discord division-role sync", runDiscordRoleSyncCron)();
+  trackedTick("traffic retention", runTrafficRetentionCron)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

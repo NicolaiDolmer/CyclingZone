@@ -35,6 +35,7 @@ function makeClient({ seasons, races, raceResults, riders }) {
       const api = {
         select: () => api,
         in: (_col, ids) => { b.ids = ids; return api; },
+        order: () => api,
         range: (from0) => Promise.resolve({
           data: from0 === 0 ? races.filter(r => b.ids.includes(r.season_id)) : [],
           error: null,
@@ -43,11 +44,14 @@ function makeClient({ seasons, races, raceResults, riders }) {
       return api;
     }
     if (table === "race_results") {
+      // #2392: updateRiderValues chunker nu race-id-listen (RACE_IDS_IN_CHUNK) —
+      // hvert chunk laver sin egen builder, så filter-state SKAL nulstilles pr. kald.
       const b = { ids: [], gt: 0 };
       const api = {
         select: () => api,
         in: (_col, ids) => { b.ids = ids; return api; },
         gt: (_col, val) => { b.gt = val; return api; },
+        order: () => api,
         range: (from0) => Promise.resolve({
           data: from0 === 0
             ? raceResults.filter(r => b.ids.includes(r.race_id) && (r.prize_money || 0) > b.gt)
@@ -60,7 +64,9 @@ function makeClient({ seasons, races, raceResults, riders }) {
     if (table === "riders") {
       return {
         select: () => ({
-          range: (from0) => Promise.resolve({ data: from0 === 0 ? riders : [], error: null }),
+          order: () => ({
+            range: (from0) => Promise.resolve({ data: from0 === 0 ? riders : [], error: null }),
+          }),
         }),
         update: (payload) => ({
           eq: (_col, id) => { updatedRiders[id] = payload; return Promise.resolve({ error: null }); },
