@@ -633,10 +633,10 @@ async function runStageSchedulerCron() {
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
       runStageFn: async ({ raceId, stageIndex }) => {
-        const notifyDiscord = async ({ race, resultRows }) => {
+        const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const urls = await getResultWebhooks(race.league_division_id);
           if (!urls.length) return;
-          const embed = buildRaceSimEmbed({ race, resultRows });
+          const embed = buildRaceSimEmbed({ race, resultRows, incidents });
           for (const url of urls) {
             await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
           }

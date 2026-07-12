@@ -223,12 +223,25 @@ export async function runAdminSimulateStage({
   });
 }
 
-export function buildRaceSimEmbed({ race, resultRows }) {
+// S4 (#1176): kind → kort dansk årsags-tekst til DNF-linjen.
+function incidentKindLabel(kind) {
+  return kind === "crash" ? "styrt" : "mekanisk defekt";
+}
+
+export function buildRaceSimEmbed({ race, resultRows, incidents = [] }) {
   const rows = resultRows || [];
   const gcWinner = rows.find((r) => r.result_type === "gc" && r.rank === 1);
   const stageWinners = rows
     .filter((r) => r.result_type === "stage" && r.rank === 1)
     .sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
+
+  // S4 (#1176): DNF-linje — kun når der rent faktisk var udgåede i denne
+  // afvikling (incidents=[] ved flag-off/tabel-ikke-migreret/ingen abandons →
+  // linjen udelades helt, ingen "DNF: (ingen)"-støj).
+  const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
+  const dnfLine = abandons.length
+    ? `**DNF:** ${abandons.map((inc) => `${inc.rider_name ?? "Ukendt rytter"} (${incidentKindLabel(inc.kind)})`).join(", ")}`
+    : null;
 
   return {
     title: `🏁 ${race.name} afviklet (race-motor V2)`,
@@ -237,6 +250,7 @@ export function buildRaceSimEmbed({ race, resultRows }) {
       stageWinners.length > 1
         ? `**Etapevindere:** ${stageWinners.map((r) => `${r.stage_number}. ${r.rider_name ?? "Ukendt rytter"}`).join(" · ")}`
         : null,
+      dnfLine,
     ]
       .filter(Boolean)
       .join("\n"),

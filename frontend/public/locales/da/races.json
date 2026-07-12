@@ -464,7 +464,14 @@
       "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
-      "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg."
+      "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
+      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} other {{rider} udgik.}}",
+      "notableCrash": "{rider} styrtede og tabte {marginText}."
+    },
+    "incidents": {
+      "title": "Udgåede",
+      "crash": "Styrt",
+      "mechanical": "Mekanisk defekt"
     },
     "jersey": {
       "leader": "Fører",

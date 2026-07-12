@@ -280,6 +280,41 @@ test("buildRaceSimEmbed: titel indeholder løbsnavn, beskrivelse indeholder GC-v
   assert.ok(typeof embed.color === "number", "color skal være et tal");
 });
 
+// S4 (#1176): DNF-linje — kun når der rent faktisk er abandons blandt incidents.
+test("buildRaceSimEmbed: incidents med abandons → DNF-linje med navn + årsag", () => {
+  const race = { id: "r1", name: "Test GP" };
+  const resultRows = [
+    { result_type: "gc", rank: 1, rider_name: "A", rider_id: "a", stage_number: null },
+  ];
+  const incidents = [
+    { stage_number: 2, rider_id: "b4", kind: "crash", outcome: "abandon", rider_name: "Jens Berg" },
+    { stage_number: 2, rider_id: "b5", kind: "mechanical", outcome: "abandon", rider_name: "Ole Holm" },
+    { stage_number: 1, rider_id: "b6", kind: "crash", outcome: "time_loss", rider_name: "Ada Time", time_loss_seconds: 60 },
+  ];
+
+  const embed = buildRaceSimEmbed({ race, resultRows, incidents });
+
+  assert.ok(embed.description.includes("DNF"), `beskrivelse skal indeholde en DNF-linje — fik: ${embed.description}`);
+  assert.ok(embed.description.includes("Jens Berg (styrt)"), `forventet "Jens Berg (styrt)" — fik: ${embed.description}`);
+  assert.ok(embed.description.includes("Ole Holm (mekanisk defekt)"), `forventet "Ole Holm (mekanisk defekt)" — fik: ${embed.description}`);
+  assert.ok(!embed.description.includes("Ada Time"), "time_loss (ikke abandon) må ikke optræde i DNF-linjen");
+});
+
+// Ingen abandons/ingen incidents-param → ingen DNF-linje (dormant flag-off-adfærd).
+test("buildRaceSimEmbed: ingen abandons → ingen DNF-linje, ingen crash på manglende incidents-param", () => {
+  const race = { id: "r1", name: "Test GP" };
+  const resultRows = [{ result_type: "gc", rank: 1, rider_name: "A", rider_id: "a", stage_number: null }];
+
+  const embedNoIncidents = buildRaceSimEmbed({ race, resultRows });
+  assert.ok(!embedNoIncidents.description.includes("DNF"), "ingen incidents-param → ingen DNF-linje");
+
+  const embedTimeLossOnly = buildRaceSimEmbed({
+    race, resultRows,
+    incidents: [{ stage_number: 1, rider_id: "b1", kind: "crash", outcome: "time_loss", rider_name: "B", time_loss_seconds: 40 }],
+  });
+  assert.ok(!embedTimeLossOnly.description.includes("DNF"), "kun time_loss (ingen abandon) → ingen DNF-linje");
+});
+
 // ── runAdminSimulateStage (WS1 Fase 3) ────────────────────────────────────────
 
 // stageIndex udledes af stages_completed; flag ON → stub kaldt med korrekt index.

@@ -893,6 +893,21 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
   if (injErr) throw new Error(`rider_condition (incident injury): ${injErr.message}`);
 }
 
+// S4 (#1176): race_incidents bærer kun rider_id (samme mønster som
+// race_results/persistIncidents ovenfor) — ét let riders-opslag før
+// notifyDiscord, så buildRaceSimEmbed's DNF-linje kan vise navne uden selv at
+// kende supabase. Fejlfri degradering: et opslags-problem giver rider_name=null
+// i stedet for at vælte Discord-notifikationen (som selv er try/catch'et af
+// kald-stederne).
+async function enrichIncidentsForDiscord({ supabase, incidents }) {
+  if (!incidents?.length) return [];
+  const riderIds = [...new Set(incidents.map((inc) => inc.rider_id).filter(Boolean))];
+  if (!riderIds.length) return incidents;
+  const { data: riders } = await supabase.from("riders").select("id, firstname, lastname").in("id", riderIds);
+  const nameById = new Map((riders || []).map((r) => [r.id, [r.firstname, r.lastname].filter(Boolean).join(" ") || null]));
+  return incidents.map((inc) => ({ ...inc, rider_name: nameById.get(inc.rider_id) ?? null }));
+}
+
 /**
  * I/O-orchestrator: afvikl ét løb via motoren og skriv via den UÆNDREDE
  * applyRaceResults. Spejler pcmResultsImport's idempotens + efter-orkestrering.
@@ -1030,7 +1045,11 @@ export async function simulateRace({
 
   if (notifyDiscord) {
     try {
-      await notifyDiscord({ race, resultRows });
+      // S4 (#1176): incidents er allerede HELE løbets (buildRaceResults, ingen
+      // stage-filtrering her, modsat stage-by-stage-stien nedenfor) — intet
+      // ekstra DB-kald nødvendigt ud over navne-opslaget.
+      const incidentsForDiscord = v3 ? await enrichIncidentsForDiscord({ supabase, incidents }) : [];
+      await notifyDiscord({ race, resultRows, incidents: incidentsForDiscord });
     } catch {
       // Discord-fejl må ikke vælte afviklingen.
     }
@@ -1518,13 +1537,34 @@ export async function simulateStageByIndex({
         .from("race_results")
         .select("result_type, rank, rider_name, stage_number")
         .eq("race_id", race.id);
+      // S4 (#1176): stage-by-stage-stiens `incidents`-variabel er scopet til KUN
+      // final-etapen (linje ~1483 filtrerer på stageNumber) — for DNF-linjen i
+      // hele-løbet-embeddet re-hentes derfor race_incidents for HELE løbet her.
+      // Ingen v3-gate nødvendig: `v3` er blok-scopet til `if (!finalizationPending)`
+      // ovenfor og findes IKKE i recovery-grenen — men det er også overflødigt,
+      // for var flaget OFF da løbet blev afviklet, er der ganske enkelt aldrig
+      // skrevet nogen rækker for dette race_id, og forespørgslen returnerer [] helt
+      // af sig selv. Samme graceful-degradation-regel som frontendens forespørgsel
+      // (RaceDetailPage.jsx): tabellen er endnu ikke migreret i prod ved denne
+      // slices merge, en fejl må ALDRIG vælte afviklingen — kun logges + [].
+      let incidentsForDiscord = [];
+      try {
+        const { data: incRows, error: incErr } = await supabase
+          .from("race_incidents")
+          .select("stage_number, rider_id, kind, outcome")
+          .eq("race_id", race.id);
+        if (incErr) throw incErr;
+        incidentsForDiscord = await enrichIncidentsForDiscord({ supabase, incidents: incRows || [] });
+      } catch (err) {
+        console.warn(`  ⚠️  race_incidents fetch failed (Discord DNF-linje udelades): ${err.message}`);
+      }
       // FIX 1: undgå dobbelt-send ved re-finalization. Et discord_sent-flag i admin_log
       // ville kræve en CHECK-constraint-migration (uden for scope); i stedet er denne
       // notifyDiscord-callback selv idempotent (cron-laget de-duper på løb), OG recovery
       // sker kun efter et crash hvor en embed sjældent allerede nåede ud. Vi sender derfor
       // KUN hvis dette IKKE er en recovery-genkørsel — den normale final-etape sender én gang.
       if (!finalizationPending) {
-        await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows });
+        await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows, incidents: incidentsForDiscord });
       }
     } catch {
       // Discord-fejl må ikke vælte afviklingen.

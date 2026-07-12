@@ -12,6 +12,14 @@ import { resultEntity } from "./raceResultEntity.js";
 const SOLO_THRESHOLD_S = 10;
 const MAX_MOMENTS = 5;
 
+// S4 (#1176): styrt/mekaniske uheld (race_incidents). Cap på abandon-momenter
+// (mange samtidige DNF'er ville ellers oversvømme referatet — den fulde liste
+// vises i stedet i en separat kompakt DNF-sektion, se RaceDetailPage). En
+// time_loss tæller kun som "notable" hvis den ramte en topplaceret rytter for
+// ≥30s — ellers spammer småuheld referatet med støj uden fortælleværdi.
+const ABANDON_MOMENT_LIMIT = 2;
+const NOTABLE_CRASH_TIME_LOSS_S = 30;
+
 export function parseGapSeconds(gap) {
   if (!gap || typeof gap !== "string") return null;
   const m = gap.match(/(\d+):(\d{2})/);
@@ -25,6 +33,35 @@ function formatMargin(gap) {
 
 function maxStage(rows) {
   return rows.reduce((mx, r) => Math.max(mx, r.stage_number ?? 1), 0);
+}
+
+// Rytternavn på en incident-række — enten et joinet rider-objekt (frontend:
+// supabase-embed `rider:rider_id(firstname,lastname)`, samme mønster som
+// raceResultEntity.js) eller en fladt-navngivet enrichment fra backenden
+// (Discord-embed'ens `rider_name`, spejler race_results' egen konvention).
+function incidentRiderName(inc) {
+  const r = inc?.rider;
+  if (r && (r.firstname || r.lastname)) return `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
+  return inc?.rider_name || null;
+}
+
+// Sekunder → "M:SS" til recap-tekst (fx et tabt tidsrum efter et styrt).
+function formatClock(totalSeconds) {
+  const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${String(rem).padStart(2, "0")}`;
+}
+
+// Uheld inden for den valgte scope — etape-scope viser kun DEN etapes uheld,
+// samlet-scope viser hele løbets (den kompakte DNF-sektion filtrerer selv
+// yderligere ved behov).
+function scopedIncidents(incidents, scope) {
+  if (!incidents?.length) return [];
+  if (scope.type === "stage") {
+    return incidents.filter((inc) => (inc.stage_number ?? 1) === scope.stageNumber);
+  }
+  return incidents;
 }
 
 // Finish-orden for scope: etape → 'stage'-rækker for etapen; samlet → 'gc' ved
@@ -57,7 +94,7 @@ function jerseyWinnerName(results, type) {
   return first ? resultEntity(first).name : null;
 }
 
-export function buildRaceRecap({ results = [], scope } = {}) {
+export function buildRaceRecap({ results = [], scope, incidents = [] } = {}) {
   const sc = scope || { type: "overall" };
   const moments = [];
   const finish = selectFinishOrder(results, sc);
@@ -108,6 +145,31 @@ export function buildRaceRecap({ results = [], scope } = {}) {
     if (points && mountain) {
       moments.push({ key: "jerseys", params: { points, mountain } });
     }
+  }
+
+  // 5+6) S4 (#1176): uheld/DNF — kun når motoren rent faktisk har skrevet
+  // race_incidents (v3-flaget er ON). incidents=[] (flag OFF/tabel ikke
+  // migreret endnu) → ingen momenter, ingen fejl (samme degradér-ærligt-regel
+  // som resten af filen).
+  const scoped = scopedIncidents(incidents, sc);
+
+  const abandons = scoped.filter((inc) => inc.outcome === "abandon" && incidentRiderName(inc));
+  for (const inc of abandons.slice(0, ABANDON_MOMENT_LIMIT)) {
+    moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind } });
+  }
+
+  const topRiderIds = new Set(finish.slice(0, 3).map((r) => r.rider_id).filter(Boolean));
+  const notableCrash = scoped.find((inc) =>
+    inc.outcome === "time_loss"
+    && (inc.time_loss_seconds ?? 0) >= NOTABLE_CRASH_TIME_LOSS_S
+    && topRiderIds.has(inc.rider_id)
+    && incidentRiderName(inc)
+  );
+  if (notableCrash) {
+    moments.push({
+      key: "notableCrash",
+      params: { rider: incidentRiderName(notableCrash), marginText: formatClock(notableCrash.time_loss_seconds) },
+    });
   }
 
   return moments.slice(0, MAX_MOMENTS);
