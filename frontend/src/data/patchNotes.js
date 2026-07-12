@@ -3,6 +3,58 @@
 // audience-rettelser redigeres her direkte (re-kør IKKE transformen oven på dem).
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
+  // FLIP-PAKKE (#2376): merges af ejeren SAMMEN med at race_engine_v3_scoring flippes 'on'.
+  // Ved flip: justér version/date hvis 6.97 er taget, og brug [patch-notes-snapshot-ok]
+  // i merge-commit (eller refresh snapshots) jf. scripts/check-patch-notes-version.js.
+  {
+    "version": "6.97",
+    "date": "2026-07-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Riders have good days and bad days",
+          "body": "Every rider now gets a day form for each race day: some days the legs are excellent, some days they are heavy. On rare days a rider can crack completely, and that can happen to the favorite too. Riders in good form crack less often, so form work now buys both speed and insurance. Expect fewer foregone conclusions and more results worth arguing about."
+        },
+        "da": {
+          "title": "Ryttere har gode og dårlige dage",
+          "body": "Hver rytter får nu en dagsform for hver løbsdag: nogle dage er benene fremragende, andre dage er de tunge. På sjældne dage kan en rytter knække helt, og det kan også ramme favoritten. Ryttere i god form knækker sjældnere, så formarbejde køber nu både fart og forsikring. Forvent færre løb der er afgjort på forhånd og flere resultater der er værd at diskutere."
+        },
+        "refs": [2224, 2353]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team work has a price, and it buys real protection",
+          "body": "Helpers now spend themselves working for their captain and lose places doing it, while the captain gets a much stronger boost from strong, fresh helpers. A new Free role lets a rider skip team duties and ride his own race, with no work cost and no captain support. Picking who works, who is protected and who rides free is now a real decision."
+        },
+        "da": {
+          "title": "Holdarbejde har en pris, og den køber ægte beskyttelse",
+          "body": "Hjælpere bruger nu kræfter på at arbejde for deres kaptajn og taber selv placeringer på det, mens kaptajnen får et markant stærkere boost fra stærke, friske hjælpere. En ny Fri rolle lader en rytter droppe holdarbejdet og køre sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte. At vælge hvem der arbejder, hvem der beskyttes, og hvem der kører frit, er nu en ægte beslutning."
+        },
+        "refs": [2352, 2376]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage races: plan roles and effort stage by stage",
+          "body": "In stage races you can now set roles per stage and change tactics while the race runs: completed stages are locked, upcoming stages stay open. Each rider also gets an effort setting per stage: Work goes all in for the team today but builds extra fatigue, Save legs eases off and recovers more for tomorrow. If your rider takes the leader's jersey, one click makes him captain for the remaining stages."
+        },
+        "da": {
+          "title": "Etapeløb: planlæg roller og indsats etape for etape",
+          "body": "I etapeløb kan du nu sætte roller pr. etape og ændre taktik mens løbet køres: kørte etaper er låst, kommende etaper er åbne. Hver rytter får også en indsats pr. etape: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Spar kræfter holder igen og restituerer mere til i morgen. Tager din rytter førertrøjen, gør ét klik ham til kaptajn for de resterende etaper."
+        },
+        "refs": [2034]
+      }
+    ]
+  },
   {
     "version": "6.96",
     "date": "2026-07-12",

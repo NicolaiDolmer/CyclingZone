@@ -680,8 +680,12 @@
         "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. Skadede ryttere kan ikke udtages; brug Skjul skadede for at fjerne dem fra listen mens du vælger."
       },
       "roles": {
-        "title": "Kaptajn, spurt-kaptajn og udbruds-jæger",
-        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe."
+        "title": "Kaptajn, spurt-kaptajn, udbruds-jæger og fri rolle",
+        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe. Holdarbejde har en pris: hjælpere taber placeringer på at arbejde for kaptajnen, og det arbejde er præcis det der køber kaptajnens boost. En rytter i Fri rolle dropper holdarbejdet og kører sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte."
+      },
+      "stageTactics": {
+        "title": "Etapeløb: roller og indsats pr. etape",
+        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Normal kører normalt, og Spar kræfter holder igen for at være friskere til de dage der tæller. Tager en rytter førertrøjen, gør en genvej ham til kaptajn for de resterende etaper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
       },
       "strategy": {
         "title": "Holdstrategi (stående præferencer)",
@@ -1001,6 +1005,10 @@
     "fatigueInjuryThresholdFaq": {
       "q": "Hvor højt kan jeg presse trætheden, før træning risikerer en skade?",
       "a": "Skaderisiko fra træning findes først, når en rytters Træthed når 70, og du sætter Hård intensitet; under 70 giver Hård træning slet ingen skaderisiko. Over det vokser risikoen med trætheden, så hold øje med risiko-mærket på rytteren, før du gemmer programmet. Det gælder også akademi-ryttere: de træner gennem det samme daglige program som din senior-trup og kan pådrage sig en skade fra Hård træning, selvom de endnu ikke kan udtages til løb."
+    },
+    "dayFormFaq": {
+      "q": "Hvorfor svinger løbsresultaterne fra dag til dag?",
+      "a": "Hver rytter får en dagsform for hver løbsdag, så den samme rytter kan flyve den ene dag og hænge den næste. På sjældne dage knækker en rytter helt og taber stort, og favoritter er ikke fredet. Ryttere i god form knækker sjældnere, og form tæller også mere i selve resultatet, så formstyring betaler sig dobbelt. Over et langt etapeløb udligner de gode og dårlige dage sig stort set, men ét enkelt kollaps på en bjergetape kan afgøre en GC, præcis som i virkelighedens cykelsport."
     }
   }
 }
