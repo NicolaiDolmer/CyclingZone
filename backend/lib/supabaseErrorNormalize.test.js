@@ -63,6 +63,24 @@ test("ikke-string input returneres uændret (defensivt)", () => {
   assert.equal(normalizeSupabaseErrorMessage(undefined), undefined);
 });
 
+test("ReDoS-guard (#169): HTML-side med mange mellemrum + manglende '<' normaliseres hurtigt", () => {
+  // Pre-fix polynomisk backtracking: `|000:` + langt mellemrums-run uden efterfølgende
+  // `<` fik `([^<\n]+?)\s*<` til at backtracke O(n²). Med den lineære regex er dette
+  // millisekunder. En generøs tærskel (500 ms) skelner sikkert fix (~1 ms) fra ReDoS (sek).
+  const pathological = "<!doctype html> |000:" + " ".repeat(50000);
+  const start = performance.now();
+  const result = normalizeSupabaseErrorMessage(pathological);
+  const elapsed = performance.now() - start;
+  assert.equal(result, "Supabase unavailable (HTML error page)");
+  assert.ok(elapsed < 500, `normalisering tog ${elapsed.toFixed(0)} ms — mulig ReDoS-regression`);
+});
+
+test("normaliserer stadig korrekt med usædvanlig whitespace omkring koden", () => {
+  // Regressionsvagt for #169-regex-ændringen: ekstra mellemrum før/efter kode + tekst.
+  const html = '<!doctype html><title>supabase.co |   504  :   Gateway timeout   </title>';
+  assert.equal(normalizeSupabaseErrorMessage(html), "Supabase unavailable (504 Gateway timeout)");
+});
+
 // ── isTransientSupabaseError ─────────────────────────────────────────────────
 
 test("Cloudflare 5xx-side er transient", () => {
