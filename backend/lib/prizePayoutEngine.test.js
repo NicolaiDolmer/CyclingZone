@@ -174,7 +174,7 @@ test("getSeasonPrizePreview reconcilerer betalt løb: results-sum vs finance-sum
 
 // Stateful mock covering BOTH the payout path (rpc + races.update + import_log)
 // and the updateRiderValues recalc it now triggers (seasons + riders.update).
-function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, completedSeasons = [], failRecalc = false }) {
+function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, completedSeasons = [], failRecalc = false, missingTeamIds = [] }) {
   const state = { rpcCalls: [], racesPaidAt: [], importLogs: [], riderUpdates: [] };
 
   const racesRows = [{ id: pendingRace.id, name: pendingRace.name, prize_paid_at: null, status: "completed", season_id: "season-1" }];
@@ -184,6 +184,11 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
     state,
     rpc(name, params) {
       state.rpcCalls.push({ name, params });
+      // #2389: simulér et hold slettet mellem preview-læsning og kreditering —
+      // increment_balance_with_audit-RPC'en fejler med P0002 ("Team % not found").
+      if (missingTeamIds.includes(params.p_team_id)) {
+        return Promise.resolve({ data: null, error: { code: "P0002", message: `Team ${params.p_team_id} not found` } });
+      }
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
@@ -305,6 +310,52 @@ test("paySeasonPrizesToDate triggers fixed-window rider-value recalc after payin
   assert.deepEqual(supabase.state.riderUpdates, [
     { id: "rider-1", prize_earnings_bonus: 2667 },
   ]);
+});
+
+test("paySeasonPrizesToDate skipper slettet hold (P0002) og betaler resten (#2389, Sentry CYCLINGZONE-2E/26)", async () => {
+  // 'team-ghost' blev slettet (AI-trim) mellem preview-læsningen og krediteringen.
+  // Før #2389 væltede P0002 hele payout-ticket → INGEN løb udbetalt + rød cron-monitor.
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [
+        { race_id: "race-1", team_id: "team-alive", rider_id: "rider-1", prize_money: 5000 },
+        { race_id: "race-1", team_id: "team-ghost", rider_id: "rider-2", prize_money: 3000 },
+      ],
+    },
+    riders: [{ id: "rider-1" }, { id: "rider-2" }],
+    activeSeason: { id: "season-1", number: 1, race_days_completed: 6, race_days_total: 60 },
+    missingTeamIds: ["team-ghost"],
+  });
+
+  const result = await paySeasonPrizesToDate("season-1", "admin-1", supabase);
+
+  // Begge krediteringer FORSØGES; ghost skippes, løbet claimes stadig.
+  assert.equal(supabase.state.rpcCalls.length, 2, "begge hold forsøgt krediteret");
+  assert.equal(supabase.state.racesPaidAt.length, 1, "løbet markeres prize_paid_at trods skip");
+  assert.equal(result.races_paid, 1);
+  assert.deepEqual(result.teams_skipped, [
+    { race_id: "race-1", team_id: "team-ghost", prize: 3000 },
+  ]);
+});
+
+test("paySeasonPrizesToDate kaster stadig på ikke-P0002-fejl fra balance-RPC'en (#2389)", async () => {
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 1000 }],
+    },
+    riders: [{ id: "rider-1" }],
+  });
+  // Overstyr rpc til en anden fejlklasse — må IKKE sluges af P0002-skippet.
+  supabase.rpc = () => Promise.resolve({ data: null, error: { code: "57014", message: "statement timeout" } });
+
+  await assert.rejects(
+    () => paySeasonPrizesToDate("season-1", "admin-1", supabase),
+    (err) => err?.code === "57014",
+  );
 });
 
 test("paySeasonPrizesToDate still succeeds when the rider-value recalc throws", async () => {

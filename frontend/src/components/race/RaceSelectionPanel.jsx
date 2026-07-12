@@ -26,7 +26,11 @@ import { ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
 
 const API = import.meta.env.VITE_API_URL;
 
-const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null };
+// #2376: freeRoleIds er en additiv rolle (flere ryttere kan dele den) — round-trip er
+// OBLIGATORISK (GET → state → PUT uændret, filtreret til ryttere stadig i truppen) så et
+// gem fra dette panel ikke wiper free_role'r sat af boardet. Panelet har intet fuldt
+// redigerings-UI for rollen (rollens editor er boardets rollekort); den vises kun som badge.
+const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [] };
 
 async function authHeaders() {
   const { data } = await getSession();
@@ -79,6 +83,7 @@ export default function RaceSelectionPanel({
             captainId: body.selection.captain_id ?? null,
             sprintCaptainId: body.selection.sprint_captain_id ?? null,
             hunterId: body.selection.hunter_id ?? null,
+            freeRoleIds: body.selection.free_role_ids ?? [],
           });
         }
       } catch {
@@ -108,6 +113,9 @@ export default function RaceSelectionPanel({
   // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede
   // valgt (fx efter en reschedule) vises en konflikt-markering, men han kan fjernes.
   const boundByRider = new Map((data.bound_riders || []).map((b) => [b.rider_id, b]));
+  // #2376: free_role vises som badge (rollens editor er boardets rollekort, ikke dette
+  // panel) — round-trip'et i save() sikrer at badge'n matcher hvad der reelt gemmes.
+  const freeRoleSet = new Set(sel.freeRoleIds || []);
   const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
@@ -164,6 +172,11 @@ export default function RaceSelectionPanel({
     if (!headers) return;
     setStatus("saving");
     setErrorKey(null);
+    // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
+    // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
+    // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
+    // efterlader et forældet id i arrayet.
+    const freeRoleIds = (sel.freeRoleIds || []).filter((id) => sel.riderIds.includes(id));
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection`, {
         method: "PUT",
@@ -173,6 +186,7 @@ export default function RaceSelectionPanel({
           captain_id: sel.captainId,
           sprint_captain_id: sel.sprintCaptainId,
           hunter_id: sel.hunterId,
+          free_role_ids: freeRoleIds,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -191,6 +205,7 @@ export default function RaceSelectionPanel({
               captain_id: sel.captainId,
               sprint_captain_id: sel.sprintCaptainId,
               hunter_id: sel.hunterId,
+              free_role_ids: freeRoleIds,
               is_auto_filled: false,
             },
           }
@@ -290,6 +305,11 @@ export default function RaceSelectionPanel({
                         {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
                       </span>
                     )}
+                    {checked && freeRoleSet.has(rider.id) && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30">
+                        {t("selection.freeRole")}
+                      </span>
+                    )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </div>
                   <div className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-cz-2">
@@ -360,6 +380,11 @@ export default function RaceSelectionPanel({
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
                           : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
                           {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
+                        </span>
+                      )}
+                      {checked && freeRoleSet.has(rider.id) && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30 whitespace-nowrap">
+                          {t("selection.freeRole")}
                         </span>
                       )}
                     </label>

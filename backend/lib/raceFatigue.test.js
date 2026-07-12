@@ -187,3 +187,54 @@ test("stageEnteringFatigues: protect > normal > save i akkumuleret belastning", 
   assert.ok(protect[2] > normal[2], `protect (${protect[2]}) skal være > normal (${normal[2]})`);
   assert.ok(normal[2] > save[2], `normal (${normal[2]}) skal være > save (${save[2]})`);
 });
+
+// ── Race v3 S3 (#2034): efforts-array (ét effort PR. ETAPE) ────────────────────
+
+test("stageEnteringFatigues: uden 'efforts' er BIT-IDENTISK med det gamle enkelt-effort-flow", () => {
+  const profiles = ["flat", "mountain", "high_mountain"];
+  assert.deepEqual(stageEnteringFatigues(0, profiles), stageEnteringFatigues(0, profiles, {}));
+});
+
+test("stageEnteringFatigues: 'efforts' giver ét effort pr. etape, uafhængigt af hinanden", () => {
+  // flat=10, mountain=18. Etape 1 protect (10*1.2=12), etape 2 save (18*0.7=12.6).
+  const seq = stageEnteringFatigues(0, ["flat", "mountain"], { efforts: ["protect", "save"] });
+  assert.deepEqual(seq, [0, 12]);
+});
+
+test("stageEnteringFatigues: 'efforts' kortere end profileTypes → manglende etaper falder til 'normal'", () => {
+  const withShortEfforts = stageEnteringFatigues(0, ["flat", "flat"], { efforts: ["protect"] });
+  const withExplicitNormal = stageEnteringFatigues(0, ["flat", "flat"], { efforts: ["protect", "normal"] });
+  assert.deepEqual(withShortEfforts, withExplicitNormal);
+});
+
+test("stageEnteringFatigues: 'efforts' vinder over 'effort' når begge er sat", () => {
+  const seq = stageEnteringFatigues(0, ["flat", "flat"], { effort: "save", efforts: ["protect", "protect"] });
+  // Havde 'effort' (save) vundet, ville load være 7 pr. etape; 'efforts' (protect) giver 12.
+  assert.deepEqual(seq, [0, 12]);
+});
+
+// ── Race v3 S3 (#2034): applyRaceFatigue({ effortByRider }) ───────────────────
+
+test("applyRaceFatigue: uden effortByRider er BIT-IDENTISK med multiplikator 1.0 (før S3)", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  await applyRaceFatigue({ supabase, riderIds: ["r1"], profileType: "mountain" }); // load=18
+  const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r1");
+  assert.equal(row.fatigue, 38); // 20 + 18*1.0
+});
+
+test("applyRaceFatigue: effortByRider ganger DENNE rytters load med effortFatigueMultiplier", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  const effortByRider = new Map([["r1", "protect"]]);
+  await applyRaceFatigue({ supabase, riderIds: ["r1"], profileType: "mountain", effortByRider }); // load=18*1.2=21.6
+  const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r1");
+  assert.ok(Math.abs(row.fatigue - 41.6) < 1e-9, `forventet ~41.6, fik ${row.fatigue}`); // 20 + 18*1.2
+});
+
+test("applyRaceFatigue: rytter uden nøgle i effortByRider falder til multiplikator 1.0 (normal)", async () => {
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }, { rider_id: "r2", fatigue: 20 }] });
+  const effortByRider = new Map([["r1", "save"]]); // kun r1 nævnt
+  await applyRaceFatigue({ supabase, riderIds: ["r1", "r2"], profileType: "flat", effortByRider }); // load=10
+  const rows = supabase.__calls.find((c) => c.op === "upsert").rows;
+  assert.equal(rows.find((r) => r.rider_id === "r1").fatigue, 27); // 20 + 10*0.7
+  assert.equal(rows.find((r) => r.rider_id === "r2").fatigue, 30); // 20 + 10*1.0 (ikke i map → normal)
+});

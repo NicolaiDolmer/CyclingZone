@@ -200,6 +200,42 @@ test("runs: én pr. etape med seed + entrant-snapshot", () => {
   }
 });
 
+// ── Race v3 S3 (#2034): input_checksum + stageRoleOverrides ──────────────────
+
+test("checksum: v3=true, stageRoleOverrides udeladt vs. tom Map → SAMME checksum (bagudkompatibel)", () => {
+  const a = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true });
+  const b = buildRaceResults({
+    race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true,
+    stageRoleOverrides: new Map(),
+  });
+  assert.deepEqual(a.runs.map((r) => r.input_checksum), b.runs.map((r) => r.input_checksum));
+});
+
+test("checksum: v3=true + IKKE-tomme overrides → ANDEN checksum end uden overrides", () => {
+  const overrides = new Map([[1, new Map([["climber", { race_role: "helper", effort: "protect" }]])]]);
+  const without = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true });
+  const withOv = buildRaceResults({
+    race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, stageRoleOverrides: overrides,
+  });
+  assert.notEqual(without.runs[0].input_checksum, withOv.runs[0].input_checksum);
+});
+
+test("checksum: v3=false + IKKE-tomme overrides → checksum UÆNDRET (overrides ignoreres helt)", () => {
+  const overrides = new Map([[1, new Map([["climber", { race_role: "helper", effort: "protect" }]])]]);
+  const without = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
+  const withOv = buildRaceResults({
+    race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: false, stageRoleOverrides: overrides,
+  });
+  assert.equal(without.runs[0].input_checksum, withOv.runs[0].input_checksum);
+});
+
+test("checksum: samme overrides → deterministisk (samme checksum på tværs af kald)", () => {
+  const overrides = new Map([[2, new Map([["b1", { race_role: "hunter", effort: "save" }]])]]);
+  const a = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, stageRoleOverrides: overrides });
+  const b = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, stageRoleOverrides: overrides });
+  assert.deepEqual(a.runs.map((r) => r.input_checksum), b.runs.map((r) => r.input_checksum));
+});
+
 test("endagsløb: kun gc(all) + team — ingen stage/dag-ledere", () => {
   const single = { id: "race-single-1", race_type: "single", race_class: "ProSeries", season_id: "s1" };
   const stages = [{ stage_number: 1, profile_type: "hilly", demand_vector: DEMAND_VECTORS.hilly }];

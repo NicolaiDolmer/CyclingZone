@@ -108,9 +108,14 @@ test("v3: all-free_role hold = kaptajnen (hvis en fandtes) får intet team-boost
   assert.equal(ranked.find((r) => r.rider_id === "a0").components.team, 0);
 });
 
-// ── v1-buildTeamContext uændret (v3=false, default) ───────────────────────────
-
-test("buildTeamContext uden v3 (default false): 'free_role'-værdi (selvom ugyldig i v1-data) puttes i helpers som før — ren defensiv bagudkompatibilitet", () => {
+// ── buildTeamContext: free_role udelades UBETINGET (v3=false, default) ────────
+// #2376: UI'et kan nu skrive free_role-data uafhængigt af v3-flaget (selection-
+// kontrakten er ikke v3-gated, kun motorens SCORE-adfærd er). Derfor må free_role
+// ALDRIG tælle som helper-arbejde, heller ikke når v3 er off — modsat den
+// oprindelige S1-defensive bagudkompatibilitet (dengang kunne v1-data aldrig
+// indeholde 'free_role', så en helper-fallback var harmløs; det er den ikke
+// længere). flag-off er stadig bit-identisk for AL data UDEN free_role.
+test("buildTeamContext uden v3 (default false): 'free_role' tæller IKKE med i helperSupport (#2376, ubetinget skip)", () => {
   const entrants = team("a", ["captain", "free_role"]);
   const ctx = buildTeamContext({
     entrants,
@@ -118,7 +123,7 @@ test("buildTeamContext uden v3 (default false): 'free_role'-værdi (selvom ugyld
     stageProfile: MOUNTAIN,
     // v3 udeladt → default false
   });
-  assert.ok(ctx.get("a").helperSupport > 0, "v1-branchen behandler ukendte roller som helper (uændret adfærd)");
+  assert.equal(ctx.get("a").helperSupport, 0, "free_role bidrager ikke til support, uanset v3-tilstand");
 });
 
 // ── TEAM_RACE_WEIGHT_V3 > v1 for samme helperSupport ──────────────────────────

@@ -562,6 +562,50 @@ test("#2269 removeAiTeams: entries i et COMPLETED eller endnu-ikke-startet løb 
   assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[0]), "laveste id trimmes som normalt");
 });
 
+// ── #2389 · removeAiTeams må ikke slette et hold med UUDBETALTE præmier — sletningen
+// kolliderer ellers med auto-prize-sweepen (P0002 midt i payout-ticket) og standings-
+// recalc (FK-fejl) (Sentry CYCLINGZONE-26/2E/2F). Samme udskudt-trim-mekanik som
+// inflight-guarden; auto-prize sweeper hvert 5. minut, så blokeringen er kortvarig. ──
+
+test("#2389 removeAiTeams: hold med præmier i et UUDBETALT løb springes over, næste kandidat trimmes", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  const blockedId = aiIds[0]; // laveste id = den kandidat trimmen ellers ville tage
+  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
+  supabase.state.race_results = [{ race_id: "race-unpaid", team_id: blockedId, prize_money: 5000 }];
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1, "trimmen lykkes stadig (næste kandidat taget)");
+  assert.ok(supabase.state.teams.some((t) => t.id === blockedId), "holdet med uudbetalte præmier er IKKE slettet");
+  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[1]), "næste kandidat i id-orden trimmet i stedet");
+});
+
+test("#2389 removeAiTeams: ALLE kandidater præmie-blokeret → 0 trimmet, alle markeret pending_removal_at", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
+  supabase.state.race_results = aiIds.map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 0, "ingen trim når alle hold afventer præmie-udbetaling");
+  const marked = supabase.state.teams.filter((t) => aiIds.includes(t.id) && t.pending_removal_at);
+  assert.ok(marked.length > 0, "blokerede hold markeret til udskudt trim (heal-sweep samler op efter udbetaling)");
+});
+
+test("#2389 removeAiTeams: præmier i et UDBETALT løb blokerer ikke trim", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  supabase.state.races = [{ id: "race-paid", status: "completed", stages_completed: 5, prize_paid_at: "2026-07-10T00:00:00Z" }];
+  supabase.state.race_results = [{ race_id: "race-paid", team_id: aiIds[0], prize_money: 5000 }];
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1);
+  assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[0]), "udbetalt løb → laveste id trimmes som normalt");
+});
+
 // ── 2026-06-30 · defaultAllocateSquadForTeam: 24-trup, divisions-kvalitet via
 // AI_TIER_FRACTIONS (tier 1/2) eller clamp-vindue (tier 3/4). #2065-postmortem:
 // v1 klampede ALLE stats i ét smalt vindue for alle tiers → urealistisk alsidige

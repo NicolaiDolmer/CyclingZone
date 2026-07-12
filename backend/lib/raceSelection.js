@@ -9,7 +9,7 @@ import { applyRiderEligibilityFilter } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 
 export function validateSelection({
-  riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
+  riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
   teamRiderIds, injuredRiderIds, sizeRule,
 }) {
   const errors = [];
@@ -42,23 +42,35 @@ export function validateSelection({
   for (const roleId of [sprintCaptainId, hunterId]) {
     if (roleId && !unique.has(roleId)) errors.push("selection_role_not_selected");
   }
+  // free_role_ids (#2376): flere ryttere kan dele rollen (additiv udvidelse af den ellers
+  // én-rytter-pr-rolle-kontrakt) — dedupliceres ved indgang så en dublet-id i inputtet aldrig
+  // selv tæller som et overlap. Hver id skal være i den valgte trup, ligesom de øvrige roller.
+  const freeRoleIdSet = new Set(freeRoleIds);
+  for (const id of freeRoleIdSet) {
+    if (!unique.has(id)) { errors.push("selection_role_not_selected"); break; }
+  }
   const roleIds = [captainId, sprintCaptainId, hunterId].filter(Boolean);
   if (new Set(roleIds).size !== roleIds.length) errors.push("selection_role_overlap");
+  // free_role må ikke overlappe captain/sprint_captain/hunter — én rolle pr. rytter.
+  for (const id of freeRoleIdSet) {
+    if (roleIds.includes(id)) { errors.push("selection_role_overlap"); break; }
+  }
 
   return { ok: errors.length === 0, errors };
 }
 
-function roleFor(riderId, { captainId, sprintCaptainId, hunterId }) {
+function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }) {
   if (riderId === captainId) return "captain";
   if (riderId === sprintCaptainId) return "sprint_captain";
   if (riderId === hunterId) return "hunter";
+  if (freeRoleIdSet?.has(riderId)) return "free_role";
   return "helper";
 }
 
 // Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
 // replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
 // ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
-export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null }) {
+export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [] }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
@@ -68,9 +80,12 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
   // løbet med 0 entries (tavst tab). replace_race_selection kører delete+insert i
   // ÉN transaktion under advisory-lås på holdet, så et gem enten lykkes fuldt
   // eller ruller helt tilbage (og en samtidig PUT til samme hold serialiseres).
+  // #2376: free_role_ids flyder igennem som almindelige race_role-værdier — RPC'en tager
+  // parallelle rider_id/role-arrays uden at kende roller specifikt, så ingen RPC-ændring.
+  const freeRoleIdSet = new Set(freeRoleIds);
   const rows = riderIds.map((rider_id) => ({
     race_id: race.id, rider_id, team_id: teamId,
-    race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId }),
+    race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }),
     is_auto_filled: false,
   }));
   const { error: rpcErr } = await supabase.rpc("replace_race_selection", {
@@ -163,6 +178,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
         captain_id: entries.find((e) => e.race_role === "captain")?.rider_id ?? null,
         sprint_captain_id: entries.find((e) => e.race_role === "sprint_captain")?.rider_id ?? null,
         hunter_id: entries.find((e) => e.race_role === "hunter")?.rider_id ?? null,
+        // #2376: free_role kan gælde FLERE ryttere → array (additiv, ikke ét *_id-felt).
+        free_role_ids: entries.filter((e) => e.race_role === "free_role").map((e) => e.rider_id),
         is_auto_filled: entries.every((e) => e.is_auto_filled),
       }
     : null;

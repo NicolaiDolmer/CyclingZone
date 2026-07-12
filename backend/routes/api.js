@@ -126,11 +126,12 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
-import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
+import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel } from "../lib/raceCalendar.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1966,6 +1967,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    // #2376: v3-scoring-flaget eksponeres uafhængigt af v2 (selection-UI'et gater
+    // free_role-valgmuligheden på DETTE felt) — læses altid, billigt key/value-opslag.
+    const raceV3Enabled = await isRaceEngineV3ScoringEnabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
       .select("id, name, race_type, race_class, stages, status, season_id, league_division_id")
@@ -1973,7 +1977,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
-    if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status } });
+    if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status }, race_v3_enabled: raceV3Enabled });
 
     // #1954: pulje-eligibility op-front (samme gate som PUT, lib/raceBinding.teamInRacePool)
     // så UI kan vise et read-only "ikke dit løb"-panel i stedet for at lade en hel
@@ -2005,7 +2009,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders });
+    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -2176,11 +2180,14 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
-    if (!enabled) return res.json({ enabled: false });
+    // #2376: v3-scoring-flaget eksponeres uafhængigt af v2 — board'et gater free_role-
+    // rollekortet på DETTE felt (dukker automatisk op når ejeren flipper flaget).
+    const raceV3Enabled = await isRaceEngineV3ScoringEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false, race_v3_enabled: raceV3Enabled });
 
     const { data: season } = await supabase
       .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
-    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null });
+    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null, race_v3_enabled: raceV3Enabled });
 
     const { data: races } = await supabase
       .from("races")
@@ -2295,7 +2302,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       teamDivisionId: req.team.league_division_id, currentDay, totalDays,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline });
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -2510,15 +2517,19 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
-    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null } = req.body || {};
+    // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
+    // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
+    // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
+    // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
+    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = req.body || {};
 
-    if (!Array.isArray(riderIds)) {
+    if (!Array.isArray(riderIds) || !Array.isArray(freeRoleIds)) {
       return res.status(400).json({ error: "selection_invalid_body" });
     }
 
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
     const result = validateSelection({
-      riderIds, captainId, sprintCaptainId, hunterId,
+      riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
       teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
       injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
       sizeRule: ctx.size,
@@ -2538,13 +2549,89 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound });
     }
 
-    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
+    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds });
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
     if (err?.code === "selection_rider_bound") {
       return res.status(409).json({ error: "selection_rider_bound" });
     }
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══ Race v3 (#2224), slice S3 (#2034): STAGE-ROLLER + EFFORT PR. ETAPE ═══════
+//
+// I MODSÆTNING til /selection (frosset når stages_completed>0, #1825) er dette
+// endpoint BEVIDST tilladt mens løbet er LIVE — taktik-skift undervejs for
+// KOMMENDE etaper er hele pointen (#2034). Frysningen ovenfor gælder STARTFELTET
+// (race_entries — hvem der er udtaget), ikke fremtidige etapers roller/effort.
+// Kun løbets FÆRDIGGØRELSE (status='completed') lukker for redigering; kørte
+// etaper (stage_number <= stages_completed) er ALTID skrivebeskyttede (håndhævet
+// i raceStageRolesApi.js, ikke her).
+
+// GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
+router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    res.json({
+      enabled,
+      stages_completed: ctx.stages_completed,
+      stage_count: ctx.stage_count,
+      riders: ctx.riders,
+      overrides: ctx.overrides,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/races/:raceId/stage-roles — gem/erstat manager-overrides for redigerbare etaper.
+router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const { overrides = [] } = req.body || {};
+    if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
+
+    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const result = validateStageRoleOverrides({
+      overrides,
+      raceCompleted: race.status === "completed",
+      stageCount: ctx.stage_count,
+      stagesCompleted: ctx.stages_completed,
+      teamRiderIds: ctx.teamRiderIds,
+    });
+    if (!result.ok) {
+      const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;
+      return res.status(status).json({ error: result.errors[0], errors: result.errors });
+    }
+
+    await saveStageRoleOverrides({
+      supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds,
+      stagesCompleted: ctx.stages_completed, overrides,
+    });
+    res.json({ ok: true });
+  } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
   }
