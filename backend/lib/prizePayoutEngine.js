@@ -208,29 +208,43 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
   // men import_log-indsættelsen var ikke gatet og kunne dublere audit-rækken.
   const claimedRaces = [];
 
+  // #2389 (Sentry CYCLINGZONE-2E/26): hold slettet (AI-trim heal-sweep) mellem
+  // preview-læsningen og krediteringen. Deres præmie er void (kun AI-hold kan
+  // slettes den vej) — de skippes, resten af udbetalingen fortsætter.
+  const skippedMissingTeams = [];
+
   for (const race of preview.pending_payment) {
     for (const team of race.by_team) {
       // Slice 07c: balance + finance_transactions atomic via RPC.
       // 07d Fase B: admin-trigger → actor_type=admin, actor_id=adminUserId.
       // idempotency_key (race_prize:race:team) supplerer prize_paid_at-gaten.
-      await incrementBalanceWithAudit(supabase, {
-        teamId: team.team_id,
-        delta: team.prize,
-        payload: {
-          type: "prize",
-          amount: team.prize,
-          description: `Præmiepenge — ${race.race_name}`,
-          season_id: seasonId,
-          race_id: race.race_id,
-          actor_type: actorType,
-          actor_id: adminUserId || null,
-          source_path: "prizePayoutEngine.paySeasonPrizesToDate",
-          reason_code: FINANCE_REASON.RACE_PRIZE_PAYOUT,
-          related_entity_type: FINANCE_RELATED_ENTITY.RACE,
-          related_entity_id: race.race_id,
-          idempotency_key: `race_prize:${race.race_id}:${team.team_id}`,
-        },
-      }, { allowDuplicate: true });
+      try {
+        await incrementBalanceWithAudit(supabase, {
+          teamId: team.team_id,
+          delta: team.prize,
+          payload: {
+            type: "prize",
+            amount: team.prize,
+            description: `Præmiepenge — ${race.race_name}`,
+            season_id: seasonId,
+            race_id: race.race_id,
+            actor_type: actorType,
+            actor_id: adminUserId || null,
+            source_path: "prizePayoutEngine.paySeasonPrizesToDate",
+            reason_code: FINANCE_REASON.RACE_PRIZE_PAYOUT,
+            related_entity_type: FINANCE_RELATED_ENTITY.RACE,
+            related_entity_id: race.race_id,
+            idempotency_key: `race_prize:${race.race_id}:${team.team_id}`,
+          },
+        }, { allowDuplicate: true });
+      } catch (err) {
+        // P0002 (no_data_found) = RPC'ens "Team % not found". Én slettet AI-holds
+        // kreditering må ikke abortere HELE payout-ticket (det efterlod alle løb
+        // uudbetalte + rød cron-monitor, CYCLINGZONE-26). Alt andet kastes videre.
+        if (err?.code !== "P0002") throw err;
+        skippedMissingTeams.push({ race_id: race.race_id, team_id: team.team_id, prize: team.prize });
+        console.warn(`  ⚠️  Præmie skippet — hold ${team.team_id} findes ikke længere (${race.race_name}, ${team.prize} CZ$) (#2389)`);
+      }
     }
 
     // #1573: gat opdateringen på prize_paid_at IS NULL og læs de faktisk ramte
@@ -282,6 +296,9 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
     races_paid: claimedRaces.length,
     total_paid: claimedRaces.reduce((s, r) => s + r.total_prize, 0),
     riders_updated,
+    // #2389: slettede hold hvis kreditering blev skippet (void præmie) — surfaces
+    // i cron-svaret så et mønster kan opdages i loggen.
+    teams_skipped: skippedMissingTeams,
     by_race: claimedRaces.map(r => ({
       race_name: r.race_name,
       total_prize: r.total_prize,

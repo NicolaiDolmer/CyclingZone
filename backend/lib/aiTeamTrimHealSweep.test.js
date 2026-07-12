@@ -43,6 +43,7 @@ test("#2187 sweep: hold der IKKE længere er blokeret slettes og tælles healed"
     supabase: teamsMock(rows),
     now,
     isBlocked: async () => false,
+    hasUnpaidPrizes: async () => false,
     removeTeam: async (_sb, id) => { removed.push(id); },
     getInflightIds: async () => [],
   });
@@ -111,6 +112,7 @@ test("#2187 sweep: per-hold fejl isoleres (én fejler, resten heales)", async ()
       if (id === "a") throw new Error("DB nede");
       return false;
     },
+    hasUnpaidPrizes: async () => false,
     removeTeam: async (_sb, id) => { removed.push(id); },
     getInflightIds: async () => [],
   });
@@ -120,6 +122,46 @@ test("#2187 sweep: per-hold fejl isoleres (én fejler, resten heales)", async ()
   assert.equal(res.failed, 1);
   assert.equal(res.errors[0].teamId, "a");
   assert.deepEqual(removed, ["b"]);
+});
+
+test("#2389 sweep: hold med uudbetalte præmier udskydes (trim kolliderer ellers med auto-prize)", async () => {
+  const now = new Date("2026-07-12T12:00:00Z");
+  const rows = [
+    { id: "ai-unpaid", name: "AI Unpaid", is_ai: true, league_division_id: "pool-a", pending_removal_at: "2026-07-12T10:00:00Z" },
+  ];
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    isBlocked: async () => false, // ikke inflight-blokeret — kun præmie-blokeret
+    hasUnpaidPrizes: async () => true,
+    removeTeam: async (_sb, id) => { removed.push(id); },
+    getInflightIds: async () => [],
+  });
+
+  assert.deepEqual(removed, [], "hold med uudbetalte præmier slettes IKKE");
+  assert.equal(res.healed, 0);
+  assert.equal(res.failed, 0);
+  assert.deepEqual(res.stale, [], "2t gammel — udskudt, ikke stale");
+});
+
+test("#2389 sweep: præmie-blokeret hold >staleHours rapporteres stale (samme eskalation som inflight)", async () => {
+  const now = new Date("2026-07-12T12:00:00Z");
+  const pendingSince = new Date(now.getTime() - (STALE_PENDING_HOURS + 2) * 60 * 60 * 1000).toISOString();
+  const rows = [
+    { id: "ai-unpaid-stale", name: "AI Unpaid Stale", is_ai: true, league_division_id: "pool-c", pending_removal_at: pendingSince },
+  ];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    isBlocked: async () => false,
+    hasUnpaidPrizes: async () => true,
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => [],
+  });
+
+  assert.equal(res.stale.length, 1, "vedvarende præmie-blokering eskaleres som stale");
+  assert.equal(res.stale[0].teamId, "ai-unpaid-stale");
 });
 
 test("#2187 sweep: ingen kandidater → no-op", async () => {
