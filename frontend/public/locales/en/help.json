@@ -148,6 +148,15 @@
           "AI riders cannot receive direct offers; they must be bought via auction."
         ]
       },
+      "proposeSwap": {
+        "title": "Propose a rider swap",
+        "steps": [
+          "Find the rider you want in a swap and go to their profile page.",
+          "Click '⇄ Propose swap', pick one of your own riders to offer, and optionally add a cash adjustment.",
+          "Click 'Send swap'. The other manager gets a notification.",
+          "Existing swap proposals still show up under Received offers and Sent offers on the Transfers page, where you can accept, counter or withdraw them."
+        ]
+      },
       "receiveAndReply": {
         "title": "Receive and reply to offers",
         "text": "Go to Transfers, Received offers. Here you see all offers on your riders. You can accept, reject or send a counter-offer with your own price."

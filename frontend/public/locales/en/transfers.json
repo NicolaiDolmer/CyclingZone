@@ -10,7 +10,6 @@
     "received": "Received offers",
     "sent": "Sent offers",
     "archive": "History ({count})",
-    "swaps": "Swaps",
     "loans": "Loans",
     "market": "Market ({count})"
   },
@@ -151,21 +150,6 @@
     "cancel": "Cancel",
     "confirmRemoveButton": "Yes, remove"
   },
-  "newSwap": {
-    "title": "Propose swap",
-    "offeredLabel": "Your rider to offer",
-    "selectRider": "Select rider…",
-    "requestedLabel": "Rider you want (search by lastname)",
-    "lastnamePlaceholder": "Lastname...",
-    "selectedRider": "Selected: {firstname} {lastname} ({team})",
-    "cashLabel": "Cash payment from you (CZ$) · 0 = pure swap · negative = you receive",
-    "messageLabel": "Message (optional)",
-    "messagePlaceholder": "E.g. reason or comment...",
-    "sending": "Sending...",
-    "submit": "Send proposal",
-    "cancel": "Cancel",
-    "newButton": "+ Propose new swap"
-  },
   "newLoan": {
     "title": "Propose loan",
     "riderLabel": "Rider to loan (search by lastname)",
@@ -231,8 +215,6 @@
     "sent": "You haven't sent any offers yet",
     "sentHint": "Find a rider and click \"Send transfer offer\" on their page",
     "archive": "No archived offers",
-    "swaps": "No active swaps",
-    "swapsHint": "Propose a swap by clicking the button above",
     "loans": "No active loans",
     "loansHint": "Propose a loan by clicking the button above",
     "marketNoListings": "No riders for sale",
@@ -257,7 +239,6 @@
     "swapCancelled": "Swap cancelled",
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",
-    "swapProposalSent": "✅ Swap proposal sent!",
     "loanActivated": "✅ Loan activated",
     "loanRejected": "Loan proposal rejected",
     "loanCancelled": "Loan cancelled",
