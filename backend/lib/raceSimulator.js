@@ -150,11 +150,15 @@ export function buildTeamContext({ entrants, terrainById, v3 = false }) {
     const t = byTeam.get(e.team_id);
     if (e.race_role === "captain") t.captainId = e.rider_id;
     else if (e.race_role === "sprint_captain") t.sprintCaptainId = e.rider_id;
-    // Race v3 S1 (#2352): free_role = "kør dit eget løb" — 0 holdbidrag, tæller
-    // IKKE med i helperSupport. v1 (v3=false) kender ikke free_role og forbliver
-    // bit-identisk (rollen puttes ind i helpers som i dag — men v1-data kan aldrig
-    // indeholde 'free_role', jf. race_entries' CHECK-constraint før S1-migrationen).
-    else if (v3 && e.race_role === "free_role") continue;
+    // Race v3 S1/#2376: free_role = "kør dit eget løb" — 0 holdbidrag, tæller ALDRIG
+    // med i helperSupport, uanset v3-flagets tilstand. Oprindeligt kun udeladt når
+    // v3=true (v1-data kunne dengang aldrig indeholde 'free_role', CHECK-constraint
+    // låst før S1). #2376 gav UI'et lov til at skrive free_role UANSET flag-tilstand
+    // (kill-switch-semantik: motor-ADFÆRD er v3-gated, men rå persisteret data må
+    // aldrig utilsigtet tælle som helper-arbejde bare fordi v3 er slukket) — derfor
+    // ubetinget skip her. flag-off er stadig bit-identisk for AL data uden free_role
+    // (dvs. alt pre-S1-data), som er den eneste determinisme-garanti spec §5 kræver.
+    else if (e.race_role === "free_role") continue;
     else t.helpers.push(e); // helper + hunter arbejder begge for lederen
   }
   const ctx = new Map();

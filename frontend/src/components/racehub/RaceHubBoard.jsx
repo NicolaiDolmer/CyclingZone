@@ -33,10 +33,15 @@ function selectionDirty(draft, serverSel) {
   const s = serverSel || {};
   const a = [...(draft.rider_ids || [])].sort().join(",");
   const b = [...(s.rider_ids || [])].sort().join(",");
+  // #2376: free_role_ids er et array (flere ryttere kan dele rollen) — sorteret join,
+  // samme mønster som rider_ids ovenfor.
+  const fa = [...(draft.free_role_ids || [])].sort().join(",");
+  const fb = [...(s.free_role_ids || [])].sort().join(",");
   return a !== b
     || (draft.captain_id ?? null) !== (s.captain_id ?? null)
     || (draft.sprint_captain_id ?? null) !== (s.sprint_captain_id ?? null)
-    || (draft.hunter_id ?? null) !== (s.hunter_id ?? null);
+    || (draft.hunter_id ?? null) !== (s.hunter_id ?? null)
+    || fa !== fb;
 }
 
 export default function RaceHubBoard() {
@@ -133,6 +138,7 @@ export default function RaceHubBoard() {
     captain_id: col.selection?.captain_id ?? null,
     sprint_captain_id: col.selection?.sprint_captain_id ?? null,
     hunter_id: col.selection?.hunter_id ?? null,
+    free_role_ids: col.selection?.free_role_ids || [],
   };
   // Ugemte ændringer (ejer 28/6: INGEN auto-gem — eksplicit Gem-knap).
   const columnDirty = (col) => selectionDirty(drafts[col.id], col.selection);
@@ -166,14 +172,18 @@ export default function RaceHubBoard() {
       let sprint = ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null;
       let hunter = ids.includes(sel.hunter_id) ? sel.hunter_id : null;
       let captain = ids.includes(sel.captain_id) ? sel.captain_id : null;
+      // #2376: free_role_ids filtreres til IDS (den delmængde der rent faktisk gemmes i
+      // denne fase — fase 1 gemmer kun det beholdte sæt, ikke hele kladden).
+      let freeRoles = (sel.free_role_ids || []).filter((id) => ids.includes(id));
       if (!captain && ids.length) {
         // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
         const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
         captain = pickFallbackCaptain({ riderIds: ids, sprintId: sprint, hunterId: hunter, suitabilityOf });
         if (captain === sprint) sprint = null;
         if (captain === hunter) hunter = null;
+        freeRoles = freeRoles.filter((id) => id !== captain);
       }
-      const body = { rider_ids: ids, captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter };
+      const body = { rider_ids: ids, captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoles };
       // #2173: putColumn returnerer et resultat-objekt i stedet for selv at kalde setError.
       // Én PUT der fejler må IKKE stoppe de andre kolonners gem (det var rod-årsagen: et
       // `break` efterlod resten ugemt, mens KUN én fejl blev vist → manageren troede alt
@@ -271,12 +281,16 @@ export default function RaceHubBoard() {
       captain_id: cur.captain_id === riderId ? null : cur.captain_id,
       sprint_captain_id: cur.sprint_captain_id === riderId ? null : cur.sprint_captain_id,
       hunter_id: cur.hunter_id === riderId ? null : cur.hunter_id,
+      free_role_ids: (cur.free_role_ids || []).filter((id) => id !== riderId),
     });
   };
 
   // Klik rytter → rolle: ryd rytteren fra alle roller, sæt den valgte. Kaptajn er
   // påkrævet, så hvis vi rydder kaptajnen uden at sætte en ny, falder vi tilbage til
   // første rytter der ikke har en anden rolle (matcher backend-validering).
+  // #2376: free_role er additiv (flere ryttere kan have den samtidig) — "captain"/
+  // "sprint_captain"/"hunter" forbliver ét-rytter-pr-rolle, men "free_role" TILFØJER
+  // riderId til free_role_ids i stedet for at erstatte et enkelt felt.
   function setRole(raceId, riderId, role) {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
@@ -284,23 +298,26 @@ export default function RaceHubBoard() {
     const riderIds = sel.rider_ids || [];
     if (!riderIds.includes(riderId)) return;
     let captain = sel.captain_id, sprint = sel.sprint_captain_id, hunter = sel.hunter_id;
+    let freeRoleIds = (sel.free_role_ids || []).filter((id) => id !== riderId);
     if (captain === riderId) captain = null;
     if (sprint === riderId) sprint = null;
     if (hunter === riderId) hunter = null;
     if (role === "captain") captain = riderId;
     else if (role === "sprint_captain") sprint = riderId;
     else if (role === "hunter") hunter = riderId;
-    // Kaptajn er påkrævet og skal være forskellig fra sprint/jæger. Find en rytter uden
-    // anden rolle; findes ingen (lille trup hvor alle har en rolle), tag den første og
-    // fjern dens evt. anden rolle, så trekanten forbliver distinkt (ellers role_overlap).
+    else if (role === "free_role") freeRoleIds = [...freeRoleIds, riderId];
+    // Kaptajn er påkrævet og skal være forskellig fra sprint/jæger/free_role. Find en
+    // rytter uden anden rolle; findes ingen (lille trup hvor alle har en rolle), tag den
+    // første og fjern dens evt. anden rolle, så rollerne forbliver distinkte (ellers role_overlap).
     if (!captain) {
       // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
       const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
       captain = pickFallbackCaptain({ riderIds, sprintId: sprint, hunterId: hunter, suitabilityOf });
       if (captain === sprint) sprint = null;
       if (captain === hunter) hunter = null;
+      freeRoleIds = freeRoleIds.filter((id) => id !== captain);
     }
-    commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter });
+    commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoleIds });
   }
 
   const toggleWithdraw = (raceId, withdraw) =>
@@ -434,7 +451,8 @@ export default function RaceHubBoard() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   {g.columns.map((c) => (
                     <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
-                      onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
+                      onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
+                      raceV3Enabled={!!data.race_v3_enabled} />
                   ))}
                 </div>
               </div>
@@ -443,7 +461,8 @@ export default function RaceHubBoard() {
             <div className="grid sm:grid-cols-2 gap-3 mb-4">
               {effectiveColumns.map((c) => (
                 <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
-                  onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
+                  onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
+                  raceV3Enabled={!!data.race_v3_enabled} />
               ))}
             </div>
           )}

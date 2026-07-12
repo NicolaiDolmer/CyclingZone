@@ -19,6 +19,9 @@ const ROSTER = Array.from({ length: 12 }, (_, i) => ({
 
 const DISTRIBUTION = {
   enabled: true,
+  // #2376: v3-scoring-flaget — default OFF, så eksisterende tests (der ikke sætter det
+  // eksplicit) fortsat verificerer "free_role skjult"-tilstanden implicit.
+  race_v3_enabled: false,
   season: { id: "s1", number: 1 },
   currentDay: 24,
   focusDay: 24,
@@ -189,6 +192,44 @@ test("board: klik udtagen rytter åbner rolle-vælger (#1823)", async ({ page })
   // Rolle-menuens valg vises (rene menu-labels, ikke andre steder på board'et).
   await expect(board.getByRole("button", { name: /Kun rytter/ })).toBeVisible();
   await expect(board.getByRole("button", { name: /Sprint-kaptajn/ })).toBeVisible();
+});
+
+// #2376: free_role-rollekortet er v3-gated — dukker kun op i rolle-vælgeren når
+// race_v3_enabled er true (backend-flaget race_engine_v3_scoring). Testene kører
+// dansk locale (stabilizePage sætter cz_lang=da), så vi bruger DA-labels.
+test("board: free_role-rollekort vises KUN når race_v3_enabled er true (#2376)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page, { ...DISTRIBUTION, race_v3_enabled: false });
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  // Åbn rolle-vælgeren for en udtagen rytter — v1-listen (4 roller) vises, IKKE "Fri rolle".
+  await board.getByRole("button", { name: /Rider 0/ }).first().click();
+  await expect(board.getByRole("button", { name: /Kun rytter/ })).toBeVisible();
+  await expect(board.getByRole("button", { name: /Fri rolle/ })).toHaveCount(0);
+});
+
+test("board: free_role-rollekort vises når race_v3_enabled er true (#2376)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  // FULL_RACE_A (6/6, r0=kaptajn): klik en IKKE-kaptajn (Rider 1) — vælges kaptajnen selv
+  // fri rollen, tvinges kaptajn-kravet den straks tilbage (mandatory-fallback, uændret
+  // adfærd), så testen bruger en hjælper for at observere det faktiske rolle-skift.
+  await mockDistribution(page, { ...FULL_RACE_A, race_v3_enabled: true });
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  await board.getByRole("button", { name: /Rider 1/ }).first().click();
+  await expect(board.getByRole("button", { name: /Fri rolle/ })).toBeVisible();
+
+  // Vælg fri rolle → rytteren får free_role-badget i kolonnen.
+  await board.getByRole("button", { name: /Fri rolle/ }).click();
+  await expect(board.getByText("Fri rolle", { exact: true }).first()).toBeVisible();
 });
 
 // S6 (#1835): read-only "andre divisioner" — pulje-vælger + PCS-style bruttotrupper.

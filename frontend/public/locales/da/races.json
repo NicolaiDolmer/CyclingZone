@@ -59,6 +59,16 @@
           "cobbles": "Ingen særlig rolle. Hjælper med at placere dine ledere over brostenene.",
           "itt": "Ingen særlig rolle. Hver rytter kører enkeltstarten alene."
         }
+      },
+      "free_role": {
+        "title": "Fri rolle",
+        "hint": {
+          "flat": "Kører sit eget løb på det flade. Intet holdarbejde, ingen kaptajnstøtte.",
+          "hilly": "Kører sit eget løb på stigningerne. Intet holdarbejde, ingen kaptajnstøtte.",
+          "mountain": "Kører sit eget løb i bjergene. Intet holdarbejde, ingen kaptajnstøtte.",
+          "cobbles": "Kører sit eget løb over brostenene. Intet holdarbejde, ingen kaptajnstøtte.",
+          "itt": "Kører sit eget løb i enkeltstarten. Intet holdarbejde, ingen kaptajnstøtte."
+        }
       }
     },
     "breakawayStrength": {
@@ -236,6 +246,7 @@
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
     "hunter": "Udbruds-jæger (valgfri)",
+    "freeRole": "Fri rolle",
     "noRole": "Ingen",
     "thRider": "Rytter",
     "type": "Type",
