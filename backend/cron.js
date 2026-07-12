@@ -59,6 +59,7 @@ import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
+import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { captureException as sentryCapture, monitorCron } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -525,6 +526,24 @@ async function runRiderDeriveHealSweepCron() {
   }
 }
 
+// ─── Entry-generator sweep (#2375) ───────────────────────────────────────────
+// Rod-årsag: den proaktive entry-generator (raceEntryGenerator.js, #1810) kørte hidtil
+// KUN ved sæson-transition. Løb oprettet/genskabt MIDT i en aktiv sæson (fx admin
+// regenererer en pulje) fik derfor aldrig deltagere automatisk — Division 4-grupperne
+// C-G stod med 0-entry-løb 10/7. Denne sweep kører generatoren periodisk for den
+// aktive sæson, så et deploy/tick straks fylder ethvert hul. Idempotent (kun
+// is_auto_filled=true rykkes, manuelle entries røres aldrig) + gated bag
+// auto_entry_generator_enabled (fail-safe OFF, mirror auto-prize-sweepen nedenfor).
+
+async function runRaceEntryGeneratorSweepCron() {
+  const result = await runRaceEntryGeneratorSweep({ supabase });
+  if (result.ran) {
+    console.log(
+      `🏁 Entry-generator sweep: sæson ${result.seasonId} — ${result.races} løb, ${result.teams} hold, ${result.generated} entries genereret, ${result.skipped} sprunget over`
+    );
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -769,6 +788,17 @@ export function startCron() {
   // Every 24 hours: traffic_events retention (#2040 — slet rå anonyme events >180 dage).
   setInterval(trackedTick("traffic retention", runTrafficRetentionCron), 24 * 60 * 60 * 1000);
 
+  // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
+  // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
+  // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
+  // scheduler-idempotens, men uden 5-min race-kritisk kadence da nye/genskabte løb
+  // ikke opstår ofte. Kombineret med immediate-run nedenfor fylder et deploy huller
+  // med det samme i stedet for at vente op til en time.
+  setInterval(
+    trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron),
+    60 * 60 * 1000
+  );
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -776,6 +806,9 @@ export function startCron() {
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
   trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
+  // #2375: kør entry-generatoren straks ved boot, så et deploy fylder mid-sæson-
+  // genskabte 0-entry-løb med det samme frem for at vente op til en time.
+  trackedTick("entry-generator sweep", runRaceEntryGeneratorSweepCron)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
