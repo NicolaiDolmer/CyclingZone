@@ -19,7 +19,11 @@ import { TERRAIN_BUCKETS, terrainBucket } from "./stageTerrain.js";
 // De fire taktik-roller en rytter kan tildeles (matcher RaceColumn ROLE_OPTIONS +
 // race_entries.race_role: captain/sprint_captain/hunter/helper, hvor "rider" = helper).
 export const ROLE_KEYS = ["captain", "sprint_captain", "hunter", "rider"];
-const ROLE_SET = new Set(ROLE_KEYS);
+// #2376: v3-listen — samme fire + free_role. Kun vist når race_engine_v3_scoring er ON
+// (raceRoles.js VALID_RACE_ROLES kender rollen backend-side allerede; UI-eksponeringen
+// er det der er v3-gated her). Rækkefølgen sætter grid-positionen i RoleCard-udvalget.
+export const ROLE_KEYS_V3 = ["captain", "sprint_captain", "hunter", "free_role", "rider"];
+const ROLE_SET = new Set(ROLE_KEYS_V3);
 
 // Bonus-skalar → læsbart styrke-bånd. Tærskler valgt så de spejler BREAKAWAY_BONUS-
 // fordelingen: ≥0.30 (flad/bakke/bjerg-finaler hvor udbrud reelt holder) = high,

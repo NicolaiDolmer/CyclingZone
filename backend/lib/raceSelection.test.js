@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows, getSelectionContext } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext, saveSelection } from "./raceSelection.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -61,6 +61,40 @@ test("fremmede, skadede og duplikerede ryttere afvises", () => {
   assert.ok(validateSelection({ ...base, riderIds: ["r1", "r1", "r2", "r3", "r4", "r5"] }).errors.includes("selection_duplicate_rider"));
 });
 
+// #2376: free_role_ids — additiv rolle-udvidelse (flere ryttere kan dele rollen).
+test("validateSelection: free_role_ids — gyldig når i trup, afvist når fremmed eller overlappende", () => {
+  // Gyldig: to ryttere i truppen (ingen overlap med captain/sprint/hunter).
+  assert.equal(validateSelection({ ...base, freeRoleIds: ["r2", "r3"] }).ok, true);
+  // Ikke i den valgte trup → selection_role_not_selected (mirrors sprint/hunter-tjekket).
+  assert.ok(validateSelection({ ...base, freeRoleIds: ["r9"] }).errors.includes("selection_role_not_selected"));
+  // Overlap med kaptajn → selection_role_overlap.
+  assert.ok(validateSelection({ ...base, freeRoleIds: ["r1"] }).errors.includes("selection_role_overlap"));
+  // Overlap med sprint_captain/hunter → selection_role_overlap.
+  assert.ok(validateSelection({ ...base, sprintCaptainId: "r2", freeRoleIds: ["r2"] }).errors.includes("selection_role_overlap"));
+  assert.ok(validateSelection({ ...base, hunterId: "r2", freeRoleIds: ["r2"] }).errors.includes("selection_role_overlap"));
+  // Dubletter i freeRoleIds selv → deduperet ved indgang, ikke en fejl.
+  assert.equal(validateSelection({ ...base, freeRoleIds: ["r2", "r2", "r3"] }).ok, true);
+  // Udeladt (default []) → ingen fejl, uændret adfærd.
+  assert.equal(validateSelection(base).ok, true);
+});
+
+// #2376: saveSelection mapper freeRoleIds til race_role='free_role' i RPC-kaldets p_roles —
+// roleFor() er ikke eksporteret, så vi verificerer mappingen via saveSelection's RPC-payload.
+test("saveSelection: freeRoleIds mappes til race_role='free_role' i replace_race_selection-kaldet", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0 };
+  await saveSelection({
+    supabase, race, teamId: "t1",
+    riderIds: ["r1", "r2", "r3", "r4"],
+    captainId: "r1", sprintCaptainId: null, hunterId: null,
+    freeRoleIds: ["r2", "r3"],
+  });
+  assert.equal(rpcArgs.name, "replace_race_selection");
+  assert.deepEqual(rpcArgs.args.p_rider_ids, ["r1", "r2", "r3", "r4"]);
+  assert.deepEqual(rpcArgs.args.p_roles, ["captain", "free_role", "free_role", "helper"]);
+});
+
 // Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.
 // Mock-supabase: thenable builder pr. tabel; eq/in/or registreres så riders-queriet
 // kan respektere is_academy-filteret (akademiryttere ekskluderes fra rosteren).
@@ -114,6 +148,27 @@ test("getSelectionContext: ghost-entries (akademi/off-roster) udelades fra selec
   assert.ok(!ctx.selection.rider_ids.includes("academy"), "akademi-ghost udeladt af selection");
   assert.equal(ctx.selection.rider_ids.length, 5, "kun de 5 gyldige tæller (ærlig count)");
   assert.ok(!ctx.riders.some((r) => r.id === "academy"), "akademirytter ikke i rosteren");
+});
+
+// #2376: getSelectionContext skal surface free_role_ids (array — flere ryttere kan dele rollen).
+test("getSelectionContext: selection.free_role_ids samler ALLE free_role-entries", async () => {
+  const teamId = "t1";
+  const state = {
+    riders: ["r1", "r2", "r3", "r4"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [{ race_id: "race1", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [
+      { race_id: "race1", team_id: teamId, rider_id: "r1", race_role: "captain", is_auto_filled: false },
+      { race_id: "race1", team_id: teamId, rider_id: "r2", race_role: "free_role", is_auto_filled: false },
+      { race_id: "race1", team_id: teamId, rider_id: "r3", race_role: "free_role", is_auto_filled: false },
+      { race_id: "race1", team_id: teamId, rider_id: "r4", race_role: "helper", is_auto_filled: false },
+    ],
+    rider_derived_abilities: [],
+    rider_condition: [],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({ supabase, race: { id: "race1", race_class: "Class2" }, teamId });
+  assert.deepEqual(ctx.selection.free_role_ids, ["r2", "r3"]);
+  assert.equal(ctx.selection.captain_id, "r1");
 });
 
 // S4: per-etape rute-match — buildRiderRows mapper evner+profiler til riderRows.

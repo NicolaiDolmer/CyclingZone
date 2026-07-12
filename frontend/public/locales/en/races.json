@@ -59,6 +59,16 @@
           "cobbles": "No special role. Helps position your leaders over the cobbles.",
           "itt": "No special role. Each rider races the time trial alone."
         }
+      },
+      "free_role": {
+        "title": "Free role",
+        "hint": {
+          "flat": "Rides their own race on the flat. No team duties, no captain support.",
+          "hilly": "Rides their own race on the climbs. No team duties, no captain support.",
+          "mountain": "Rides their own race in the mountains. No team duties, no captain support.",
+          "cobbles": "Rides their own race over the cobbles. No team duties, no captain support.",
+          "itt": "Rides their own race in the time trial. No team duties, no captain support."
+        }
       }
     },
     "breakawayStrength": {
@@ -236,6 +246,7 @@
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
     "hunter": "Breakaway hunter (optional)",
+    "freeRole": "Free role",
     "noRole": "None",
     "thRider": "Rider",
     "type": "Type",

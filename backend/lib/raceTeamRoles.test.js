@@ -59,6 +59,21 @@ test("hunter tæller som hjælper i boostet; hold uden roller er fuldt neutrale"
   assert.ok(r2.ranked.every((r) => r.components.team === 0));
 });
 
+// #2376: free_role skal ALDRIG tælle med i helperSupport, uanset v3-flagets tilstand
+// (kill-switch-semantik — UI'et kan nu skrive free_role-data mens v3 er off).
+test("buildTeamContext: free_role-rytter tæller IKKE med i helperSupport, v3=false", () => {
+  const entrants = [
+    { rider_id: "a0", team_id: "a", race_role: "captain", abilities: ab(70) },
+    { rider_id: "a1", team_id: "a", race_role: "free_role", abilities: ab(70) },
+  ];
+  const terrainById = new Map(entrants.map((e) => [e.rider_id, 0.9]));
+  const ctxFalse = buildTeamContext({ entrants, terrainById, v3: false });
+  const ctxTrue = buildTeamContext({ entrants, terrainById, v3: true });
+  // Ingen hjælpere tilbage (kun captain + free_role) → helperSupport = 0 begge veje.
+  assert.equal(ctxFalse.get("a").helperSupport, 0, "v3=false: free_role bidrager ikke");
+  assert.equal(ctxTrue.get("a").helperSupport, 0, "v3=true: free_role bidrager stadig ikke");
+});
+
 test("buildTeamContext: helperSupport ∈ [0,1], hold uden kaptajn udelades", () => {
   const entrants = [...team("a", ["captain", "helper"]), ...team("b", ["helper", "helper"])];
   const terrainById = new Map(entrants.map((e) => [e.rider_id, 0.65]));

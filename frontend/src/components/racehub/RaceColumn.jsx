@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { computeColumnStatus, freshnessTier } from "../../lib/raceHubLogic.js";
 import { terrainBucket } from "../../lib/stageTerrain.js";
-import { ROLE_KEYS } from "../../lib/roleHint.js";
+import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
@@ -20,7 +20,9 @@ const STATUS_CLASS = {
   withdrawn: "bg-cz-subtle text-cz-3 border-cz-border",
   locked: "bg-cz-subtle text-cz-2 border-cz-border",
 };
-const ROLE_KEY = { captain: "captain", sprint_captain: "sprintCaptain", hunter: "hunter" };
+// #2376: freeRole tilføjet — badge-label slår op i "selection.freeRole" (samme
+// opslagssti som de øvrige roller, se RoleBadge).
+const ROLE_KEY = { captain: "captain", sprint_captain: "sprintCaptain", hunter: "hunter", free_role: "freeRole" };
 const FRESH_CLASS = { fresh: "text-cz-success", ok: "text-cz-2", tired: "text-cz-warning" };
 
 function RoleBadge({ t, role }) {
@@ -31,7 +33,7 @@ function RoleBadge({ t, role }) {
   );
 }
 
-export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider }) {
+export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false }) {
   const { t } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
@@ -41,12 +43,16 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
   // S5: profil-bevidste rolle-hints. primaryProfileType = løbets dominerende terræn
   // (backend); mangler det (gamle løb) → terrainBucket defaulter til "flat".
   const bucket = terrainBucket(column.primaryProfileType);
+  // #2376: rolle-kort-udvalget er v3-gated — free_role dukker kun op når
+  // race_engine_v3_scoring er ON (prop fra board'et, læst af distribution-svaret).
+  const roleKeys = raceV3Enabled ? ROLE_KEYS_V3 : ROLE_KEYS;
   const roleOf = (id) => {
     const s = column.selection;
     if (!s) return null;
     if (id === s.captain_id) return "captain";
     if (id === s.sprint_captain_id) return "sprint_captain";
     if (id === s.hunter_id) return "hunter";
+    if (s.free_role_ids?.includes(id)) return "free_role";
     return null;
   };
   // #2195: synlig in-game løbsdag, så to løb på samme rigtige eftermiddag er tydeligt
@@ -142,7 +148,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
                 {roleMenuFor === id && (
                   <div className="absolute z-dropdown right-3 mt-0.5 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 w-[19rem] max-w-[calc(100vw-2rem)]">
                     <div className="grid grid-cols-2 gap-1.5">
-                      {ROLE_KEYS.map((opt) => (
+                      {roleKeys.map((opt) => (
                         <RoleCard key={opt} role={opt}
                           active={role === opt || (opt === "rider" && !role)}
                           terrainBucket={bucket}

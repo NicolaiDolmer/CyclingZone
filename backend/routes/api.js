@@ -131,8 +131,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
-import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
-import { isRaceEngineV3ScoringEnabled } from "../lib/raceEngineFlag.js";
+import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel } from "../lib/raceCalendar.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1968,6 +1967,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    // #2376: v3-scoring-flaget eksponeres uafhængigt af v2 (selection-UI'et gater
+    // free_role-valgmuligheden på DETTE felt) — læses altid, billigt key/value-opslag.
+    const raceV3Enabled = await isRaceEngineV3ScoringEnabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
       .select("id, name, race_type, race_class, stages, status, season_id, league_division_id")
@@ -1975,7 +1977,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
-    if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status } });
+    if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status }, race_v3_enabled: raceV3Enabled });
 
     // #1954: pulje-eligibility op-front (samme gate som PUT, lib/raceBinding.teamInRacePool)
     // så UI kan vise et read-only "ikke dit løb"-panel i stedet for at lade en hel
@@ -2007,7 +2009,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders });
+    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -2178,11 +2180,14 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
-    if (!enabled) return res.json({ enabled: false });
+    // #2376: v3-scoring-flaget eksponeres uafhængigt af v2 — board'et gater free_role-
+    // rollekortet på DETTE felt (dukker automatisk op når ejeren flipper flaget).
+    const raceV3Enabled = await isRaceEngineV3ScoringEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false, race_v3_enabled: raceV3Enabled });
 
     const { data: season } = await supabase
       .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
-    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null });
+    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null, race_v3_enabled: raceV3Enabled });
 
     const { data: races } = await supabase
       .from("races")
@@ -2297,7 +2302,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       teamDivisionId: req.team.league_division_id, currentDay, totalDays,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline });
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -2512,15 +2517,19 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
-    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null } = req.body || {};
+    // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
+    // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
+    // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
+    // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
+    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = req.body || {};
 
-    if (!Array.isArray(riderIds)) {
+    if (!Array.isArray(riderIds) || !Array.isArray(freeRoleIds)) {
       return res.status(400).json({ error: "selection_invalid_body" });
     }
 
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
     const result = validateSelection({
-      riderIds, captainId, sprintCaptainId, hunterId,
+      riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
       teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
       injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
       sizeRule: ctx.size,
@@ -2540,7 +2549,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound });
     }
 
-    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
+    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds });
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.

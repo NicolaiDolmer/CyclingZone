@@ -6,6 +6,7 @@ import {
   strengthFromBonus,
   BREAKAWAY_STRENGTH,
   ROLE_KEYS,
+  ROLE_KEYS_V3,
 } from "./roleHint.js";
 import { TERRAIN_BUCKETS } from "./stageTerrain.js";
 
@@ -39,6 +40,20 @@ test("roleHint: ukendt/null bucket → falder tilbage til flat-hint (defensiv)",
 
 test("ROLE_KEYS: præcis de fire taktik-roller i stabil rækkefølge", () => {
   assert.deepEqual(ROLE_KEYS, ["captain", "sprint_captain", "hunter", "rider"]);
+});
+
+// #2376: v3-listen tilføjer free_role (v3-gated i UI'et, ikke i denne rene helper).
+test("ROLE_KEYS_V3: de fem v3-roller (+ free_role) i stabil rækkefølge", () => {
+  assert.deepEqual(ROLE_KEYS_V3, ["captain", "sprint_captain", "hunter", "free_role", "rider"]);
+});
+
+test("roleHint: free_role × alle 5 buckets → gyldige i18n-nøgler", () => {
+  for (const bucket of TERRAIN_BUCKETS) {
+    const hint = roleHint("free_role", bucket);
+    assert.ok(hint, `hint for free_role/${bucket} should exist`);
+    assert.equal(hint.titleKey, "racehub.roleCard.free_role.title");
+    assert.equal(hint.descKey, `racehub.roleCard.free_role.hint.${bucket}`);
+  }
 });
 
 // ── strengthFromBonus: tærskel-mapping (spejler BREAKAWAY_BONUS-skalaen) ────────
