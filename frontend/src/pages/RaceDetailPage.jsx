@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams, useLocation } from "react-router-dom"
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
+import StageRoleMatrix from "../components/race/StageRoleMatrix.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
@@ -455,6 +456,20 @@ export default function RaceDetailPage() {
             />
           )}
         </div>
+      )}
+
+      {/* #2034 (Race Engine v3 S3): etape-taktik pr. rytter/etape. Vises BÅDE
+          når løbet endnu ikke er startet OG mens det er live — taktik-skift
+          undervejs (roller/effort for KOMMENDE etaper) er hele pointen, og
+          lineup-frysningen ovenfor gælder kun startfeltet. Komponenten gater
+          selv på race-engine-v3-scoring-flaget og på om holdet har ryttere i
+          løbet (renderer intet ellers). */}
+      {race.status === "scheduled" && race.race_type === "stage_race" && race.stages > 1 && (
+        <StageRoleMatrix
+          raceId={race.id}
+          profileByStage={profileByStage}
+          gcRows={liveStandings?.byType?.gc ?? []}
+        />
       )}
 
       {!hasAnyResults && race.status !== "scheduled" && (

@@ -42,6 +42,13 @@ import { isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
+import {
+  loadStageRoleOverrides,
+  resolveStageEntrant,
+  effortsSequenceForRider,
+  effortByRiderForStage,
+  serializeStageRoleOverrides,
+} from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
@@ -135,16 +142,21 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  * REN kerne: simulér et helt løb og byg race_results-kompatible rækker + run-metadata.
  * Ingen DB. Determinisk givet (race.id, stages, entrants).
  *
- * @param {{race, stages, entrants, pointsLookup, v3?:boolean}} args
+ * @param {{race, stages, entrants, pointsLookup, v3?:boolean, stageRoleOverrides?:Map}} args
  *   race: { id, race_type }  (race_type 'stage_race' ellers behandlet som endagsløb)
  *   stages: [{ stage_number, profile_type, demand_vector }]  (usorteret ok)
  *   entrants: [{ rider_id, team_id, rider_name?, is_u25?, abilities:{...10}, form?, fatigue?, race_role? }]
  *   pointsLookup: fra buildRacePointsLookup (result_type__rank → point)
  *   v3: Race v3 S1 (#2352, flag `race_engine_v3_scoring`) — default false =
  *     BIT-IDENTISK med i dag (samme engine_version, ingen riderScores på runs).
- * @returns {{ resultRows, runs }}
+ *   stageRoleOverrides: S3 (#2034) — Map(stage_number → Map(rider_id → {race_role,
+ *     effort})) fra raceStageRoles.loadStageRoleOverrides. KUN anvendt når v3=true
+ *     (kald-stedets ansvar at udelade den når v3=false — flag-off skal forblive
+ *     bit-identisk). undefined/tom Map = ingen overrides, ren fallback til
+ *     entrant.race_role/'normal', bit-identisk med før S3.
+ * @returns {{ resultRows, runs, finalFatigue }}
  */
-export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false }) {
+export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -184,8 +196,16 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   // (rider_condition.fatigue, eller 0) + summen af tidligere etapers belastning.
   // Fylder seamen raceSimulator.js:74 beskriver, uden at røre simulateStage-kontrakten.
   const stageProfiles = stagesSorted.map((s) => s.profile_type);
+  const stageNumbers = stagesSorted.map((s) => s.stage_number || 1);
+  // S3 (#2034): per-rytter per-etape effort-sekvens til fatigue-akkumuleringen —
+  // KUN når v3=true (flag-off skal forblive bit-identisk). effortsSequenceForRider
+  // returnerer null når stageRoleOverrides er tom/undefined → stageEnteringFatigues
+  // falder tilbage til sit gamle enkelt-effort-flow, uændret adfærd.
   const fatigueSeqById = new Map(
-    entrants.map((e) => [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles)])
+    entrants.map((e) => {
+      const efforts = v3 ? effortsSequenceForRider(stageRoleOverrides, e.rider_id, stageNumbers) : null;
+      return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, efforts ? { efforts } : {})];
+    })
   );
 
   const simEntrants = entrants.map((e) => ({
@@ -200,9 +220,23 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 
   for (let i = 0; i < stagesSorted.length; i++) {
     const stage = stagesSorted[i];
-    // Akkumuleret træthed gående ind til DENNE etape (idx i).
-    for (const se of simEntrants) se.fatigue = fatigueSeqById.get(se.rider_id)[i];
     const stageNumber = stage.stage_number || 1;
+    // S3 (#2034): denne etapes race_stage_roles-overrides — KUN opslået/anvendt
+    // når v3=true. Resolution kører altid mod det ORIGINALE entrant (entrants[idx],
+    // ikke det mutérede simEntrants[idx]) så en etapes override aldrig lækker ind i
+    // en senere etape uden sin egen override (hver etape resolves uafhængigt).
+    const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
+    for (let idx = 0; idx < simEntrants.length; idx++) {
+      const se = simEntrants[idx];
+      // Akkumuleret træthed gående ind til DENNE etape (idx i).
+      se.fatigue = fatigueSeqById.get(se.rider_id)[i];
+      if (v3) {
+        const resolved = resolveStageEntrant(entrants[idx], overridesForStage);
+        if (resolved.race_role) se.race_role = resolved.race_role;
+        else delete se.race_role;
+        se.effort = resolved.effort;
+      }
+    }
     const isFinal = i === stagesSorted.length - 1;
     const seed = stableSeed(raceSeedInput(race.id, stageNumber));
     const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed, v3 });
@@ -221,6 +255,12 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         roles: simEntrants.filter((e) => e.race_role).map((e) => [e.rider_id, e.race_role]).sort(),
         demand: stage.demand_vector,
         profile: stage.profile_type,
+        // S3 (#2034): kun tilføjet når v3=true OG der findes overrides for løbet —
+        // ellers uændret payload (bagudkompatible checksums, jf. determinisme-
+        // guard-testen for flag-off). Flad repræsentation af HELE løbets overrides
+        // (ikke kun denne etapes) — whole-race-fatigue-akkumuleringen gør at en
+        // tidligere etapes override kan påvirke DENNE etapes entering-fatigue.
+        ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       })),
       // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
       // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
@@ -795,6 +835,9 @@ export async function simulateRace({
   // #2352 (Race v3 S1): injectable som de øvrige samarbejdspartnere ovenfor —
   // default læser den ægte kill-switch (app_config.race_engine_v3_scoring).
   checkV3Enabled = isRaceEngineV3ScoringEnabled,
+  // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true
+  // (se nedenfor) — undgår et unødvendigt DB-kald ved flag-off.
+  loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -820,8 +863,11 @@ export async function simulateRace({
   // #2352: kill-switch læst ÉN gang pr. afvikling — hele løbet simuleres med
   // samme v3-tilstand (ingen mid-race-flip).
   const v3 = await checkV3Enabled(supabase);
+  // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
+  // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
+  const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
 
-  const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup, v3 });
+  const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -868,7 +914,10 @@ export async function simulateRace({
   const riderIds = entrants.map((e) => e.rider_id);
   for (const stage of stages) {
     try {
-      await applyFatigue({ supabase, riderIds, profileType: stage.profile_type });
+      // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) ganger
+      // dagens fatigue-load — se raceFatigue.applyRaceFatigue's jsdoc.
+      const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stage.stage_number || 1) : null;
+      await applyFatigue({ supabase, riderIds, profileType: stage.profile_type, effortByRider });
     } catch (err) {
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
     }
@@ -970,10 +1019,13 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  * Ren + deterministisk givet (race.id, stagesSorted, entrants, priorStageRows).
  *
  * @param {boolean} [v3=false]  Race v3 S1 (#2352) — se buildRaceResults' jsdoc.
+ * @param {Map} [stageRoleOverrides]  S3 (#2034) — se buildRaceResults' jsdoc. KUN
+ *   anvendt når v3=true; her nok med DENNE etapes overrides (ingen fatigue-
+ *   akkumulering sker i denne funktion, i modsætning til buildRaceResults).
  * @returns {{ resultRows, runs }}  alle rækker bærer stage_number = dagens etape,
  *   så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
  */
-export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false }) {
+export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stagesSorted?.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -994,14 +1046,23 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const resultRows = [];
   const { pushIndiv, pushTeam } = makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows });
 
-  const simEntrants = entrants.map((e) => ({
-    rider_id: e.rider_id,
-    team_id: e.team_id,
-    abilities: e.abilities,
-    ...(e.form != null ? { form: e.form } : {}),
-    fatigue: Math.max(0, Math.min(100, Number(e.fatigue) || 0)),
-    ...(e.race_role ? { race_role: e.race_role } : {}),
-  }));
+  // S3 (#2034): denne etapes race_stage_roles-overrides — KUN opslået/anvendt når
+  // v3=true (flag-off skal forblive bit-identisk, jf. buildRaceResults' note).
+  const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
+  const simEntrants = entrants.map((e) => {
+    const resolved = v3 ? resolveStageEntrant(e, overridesForStage) : null;
+    return {
+      rider_id: e.rider_id,
+      team_id: e.team_id,
+      abilities: e.abilities,
+      ...(e.form != null ? { form: e.form } : {}),
+      fatigue: Math.max(0, Math.min(100, Number(e.fatigue) || 0)),
+      ...(v3
+        ? (resolved.race_role ? { race_role: resolved.race_role } : {})
+        : (e.race_role ? { race_role: e.race_role } : {})),
+      ...(v3 ? { effort: resolved.effort } : {}),
+    };
+  });
 
   const seed = stableSeed(raceSeedInput(race.id, stageNumber));
   const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
@@ -1020,6 +1081,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       roles: simEntrants.filter((e) => e.race_role).map((e) => [e.rider_id, e.race_role]).sort(),
       demand: thisStage.demand_vector,
       profile: thisStage.profile_type,
+      // S3 (#2034): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
+      ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
     })),
     // #2352 (Race v3 S1, spec §11.3): se buildRaceResults' tilsvarende note.
     ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
@@ -1114,6 +1177,8 @@ export async function simulateStageByIndex({
   applyStageResult = applyStageResultAtomic,
   // #2352 (Race v3 S1): injectable, default læser den ægte kill-switch.
   checkV3Enabled = isRaceEngineV3ScoringEnabled,
+  // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true.
+  loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -1210,6 +1275,8 @@ export async function simulateStageByIndex({
     // er sit eget I/O-kald — flippes flaget mellem to etaper, gælder den NYE
     // værdi fra den næste etape, hvilket er den tilsigtede kill-switch-adfærd).
     const v3 = await checkV3Enabled(supabase);
+    // S3 (#2034): overrides hentes KUN når v3=true — samme begrundelse som simulateRace.
+    const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
 
     if (race.race_type === "stage_race") {
       // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
@@ -1218,12 +1285,12 @@ export async function simulateStageByIndex({
         ? await loadPriorStageRows({ supabase, raceId: race.id, beforeStageNumber: stageNumber })
         : [];
       ({ resultRows, runs } = buildStageRowsAccumulated({
-        race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3,
+        race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3, stageRoleOverrides,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente.
-      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup, v3 });
+      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
     }
@@ -1288,7 +1355,10 @@ export async function simulateStageByIndex({
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
     try {
-      await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type });
+      // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) — se
+      // raceFatigue.applyRaceFatigue's jsdoc.
+      const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
+      await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
     } catch (err) {
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
     }
