@@ -29,6 +29,7 @@
 // buildRacePointsLookup — motoren opfinder ALDRIG point. finish_time er display-
 // only (gc-RANK driver points); standings/schema er uændret.
 
+import { randomUUID } from "node:crypto";
 import {
   applyRaceResults as applyRaceResultsShared,
   buildRacePointsLookup,
@@ -36,7 +37,8 @@ import {
 } from "./raceResultsEngine.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
-import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
+import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
+import { isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
@@ -133,14 +135,16 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  * REN kerne: simulér et helt løb og byg race_results-kompatible rækker + run-metadata.
  * Ingen DB. Determinisk givet (race.id, stages, entrants).
  *
- * @param {{race, stages, entrants, pointsLookup}} args
+ * @param {{race, stages, entrants, pointsLookup, v3?:boolean}} args
  *   race: { id, race_type }  (race_type 'stage_race' ellers behandlet som endagsløb)
  *   stages: [{ stage_number, profile_type, demand_vector }]  (usorteret ok)
  *   entrants: [{ rider_id, team_id, rider_name?, is_u25?, abilities:{...10}, form?, fatigue?, race_role? }]
  *   pointsLookup: fra buildRacePointsLookup (result_type__rank → point)
+ *   v3: Race v3 S1 (#2352, flag `race_engine_v3_scoring`) — default false =
+ *     BIT-IDENTISK med i dag (samme engine_version, ingen riderScores på runs).
  * @returns {{ resultRows, runs }}
  */
-export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {} }) {
+export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -201,7 +205,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const stageNumber = stage.stage_number || 1;
     const isFinal = i === stagesSorted.length - 1;
     const seed = stableSeed(raceSeedInput(race.id, stageNumber));
-    const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed });
+    const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed, v3 });
     // #1499: deskriptive udbruds-etiketter for denne etapes finish-order (ren read).
     const breakawayStatus = deriveBreakawayStatus(ranked);
     const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
@@ -210,7 +214,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       stage_number: stageNumber,
       seed,
       salt_version: activeSaltVersion(),
-      engine_version: ENGINE_VERSION,
+      engine_version: v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION,
       entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
       input_checksum: stableSeed(JSON.stringify({
         ids: simEntrants.map((e) => e.rider_id).sort(),
@@ -218,6 +222,10 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         demand: stage.demand_vector,
         profile: stage.profile_type,
       })),
+      // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
+      // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
+      // ingen riderScores-nøgle → runs-formen er UÆNDRET (determinisme-test-guard).
+      ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
     });
 
     for (const r of ranked) {
@@ -721,9 +729,18 @@ async function loadRacePoints(supabase, raceClass) {
 
 // source: diskriminator til stage-schedulerens daglige cap (FIX 4). 'scheduler' →
 // tælles i cap'en; null (admin-fuld-sim / manuel afvikling) → tælles ikke.
+//
+// #2352 (Race v3 S1, spec §11.3): når runs bærer `riderScores` (kun når v3 var
+// ON i buildRaceResults/buildStageRowsAccumulated) genereres run-id'et CLIENT-
+// SIDE (randomUUID) i stedet for at læne sig på DB'ens DEFAULT — så vi kan
+// linke race_simulation_rider_scores.run_id UDEN en select-roundtrip efter
+// insert. v3=false (langt de fleste kald i dag) rører IKKE denne sti — id
+// forbliver DB-genereret som altid, adfærd uændret.
 async function persistRuns({ supabase, race, runs, source = null }) {
   if (!runs.length) return;
+  const hasRiderScores = runs.some((r) => Array.isArray(r.riderScores));
   const rows = runs.map((r) => ({
+    ...(hasRiderScores ? { id: randomUUID() } : {}),
     race_id: race.id,
     stage_number: r.stage_number,
     seed: r.seed,
@@ -736,11 +753,30 @@ async function persistRuns({ supabase, race, runs, source = null }) {
     // (salten aktiveres alligevel først når ejeren sætter env efter migrationen).
     ...(r.salt_version != null ? { salt_version: r.salt_version } : {}),
   }));
-  // Idempotent: slet tidligere runs for de samme etaper før insert.
+  // Idempotent: slet tidligere runs for de samme etaper før insert. §11.3:
+  // race_simulation_rider_scores.run_id har ON DELETE CASCADE → gamle
+  // rider_scores-rækker ryddes automatisk op sammen med deres run — ingen
+  // separat delete af rider_scores nødvendig.
   await supabase.from("race_simulation_runs").delete().eq("race_id", race.id)
     .in("stage_number", [...new Set(rows.map((r) => r.stage_number))]);
   const { error } = await supabase.from("race_simulation_runs").insert(rows);
   if (error) throw new Error(`race_simulation_runs: ${error.message}`);
+
+  if (hasRiderScores) {
+    const scoreRows = [];
+    for (let i = 0; i < runs.length; i++) {
+      const run = runs[i];
+      if (!Array.isArray(run.riderScores)) continue;
+      const runId = rows[i].id;
+      for (const rs of run.riderScores) {
+        scoreRows.push({ run_id: runId, rider_id: rs.rider_id, rank: rs.rank, components: rs.components });
+      }
+    }
+    if (scoreRows.length) {
+      const { error: scoreErr } = await supabase.from("race_simulation_rider_scores").insert(scoreRows);
+      if (scoreErr) throw new Error(`race_simulation_rider_scores: ${scoreErr.message}`);
+    }
+  }
 }
 
 /**
@@ -760,6 +796,9 @@ export async function simulateRace({
   notifyDiscord = null,
   notifyInApp = null,
   applyFatigue = applyRaceFatigue,
+  // #2352 (Race v3 S1): injectable som de øvrige samarbejdspartnere ovenfor —
+  // default læser den ægte kill-switch (app_config.race_engine_v3_scoring).
+  checkV3Enabled = isRaceEngineV3ScoringEnabled,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -782,7 +821,11 @@ export async function simulateRace({
   const racePoints = await loadRacePoints(supabase, race.race_class);
   const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
-  const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup });
+  // #2352: kill-switch læst ÉN gang pr. afvikling — hele løbet simuleres med
+  // samme v3-tilstand (ingen mid-race-flip).
+  const v3 = await checkV3Enabled(supabase);
+
+  const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup, v3 });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -930,10 +973,11 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  * priorStageRows injiceres af kalderen (I/O adskilt fra beregning — testbar kerne).
  * Ren + deterministisk givet (race.id, stagesSorted, entrants, priorStageRows).
  *
+ * @param {boolean} [v3=false]  Race v3 S1 (#2352) — se buildRaceResults' jsdoc.
  * @returns {{ resultRows, runs }}  alle rækker bærer stage_number = dagens etape,
  *   så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
  */
-export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [] }) {
+export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stagesSorted?.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -964,7 +1008,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   }));
 
   const seed = stableSeed(raceSeedInput(race.id, stageNumber));
-  const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed });
+  const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
   const breakawayStatus = deriveBreakawayStatus(ranked);
   const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
@@ -973,7 +1017,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     stage_number: stageNumber,
     seed,
     salt_version: activeSaltVersion(),
-    engine_version: ENGINE_VERSION,
+    engine_version: v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION,
     entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
     input_checksum: stableSeed(JSON.stringify({
       ids: simEntrants.map((e) => e.rider_id).sort(),
@@ -981,6 +1025,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       demand: thisStage.demand_vector,
       profile: thisStage.profile_type,
     })),
+    // #2352 (Race v3 S1, spec §11.3): se buildRaceResults' tilsvarende note.
+    ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
   }];
 
   // Dagens etaperækker (samme form som buildRaceResults' stage-emission).
@@ -1070,6 +1116,8 @@ export async function simulateStageByIndex({
   notifyInApp = null,
   applyFatigue = applyRaceFatigue,
   applyStageResult = applyStageResultAtomic,
+  // #2352 (Race v3 S1): injectable, default læser den ægte kill-switch.
+  checkV3Enabled = isRaceEngineV3ScoringEnabled,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -1162,6 +1210,11 @@ export async function simulateStageByIndex({
     const racePoints = await loadRacePoints(supabase, race.race_class);
     const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
+    // #2352: kill-switch læst ÉN gang pr. etape-invokation (hver stageIndex-kald
+    // er sit eget I/O-kald — flippes flaget mellem to etaper, gælder den NYE
+    // værdi fra den næste etape, hvilket er den tilsigtede kill-switch-adfærd).
+    const v3 = await checkV3Enabled(supabase);
+
     if (race.race_type === "stage_race") {
       // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
       // persisterede etaperækker — slut-GC kan aldrig modsige publicerede gaps.
@@ -1169,12 +1222,12 @@ export async function simulateStageByIndex({
         ? await loadPriorStageRows({ supabase, raceId: race.id, beforeStageNumber: stageNumber })
         : [];
       ({ resultRows, runs } = buildStageRowsAccumulated({
-        race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows,
+        race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente.
-      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup });
+      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup, v3 });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
     }
