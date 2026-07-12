@@ -680,8 +680,12 @@
         "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. Injured riders can't be picked; use Hide injured to remove them from the list while you choose."
       },
       "roles": {
-        "title": "Captain, sprint captain and breakaway hunter",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack."
+        "title": "Captain, sprint captain, breakaway hunter and free role",
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+      },
+      "stageTactics": {
+        "title": "Stage races: roles and effort per stage",
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: Work goes all in for the team today but builds extra fatigue, Normal rides normally, and Save legs eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut makes him captain for the remaining stages. Stages where you set nothing simply use the rider's race role."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
@@ -1001,6 +1005,14 @@
     "fatigueInjuryThresholdFaq": {
       "q": "How high can I push fatigue before training risks an injury?",
       "a": "Injury risk from training only kicks in once a rider's Fatigue reaches 70 and you set Hard intensity; below 70, Hard training carries no injury risk at all. Above that, the risk grows with fatigue, so keep an eye on the risk badge on the rider before you save the program. This applies to Academy riders too: they train through the same daily program as your senior squad and can pick up an injury from Hard training, even though they can't be selected for races yet."
+    },
+    "dayFormFaq": {
+      "q": "Why do race results vary from day to day?",
+      "a": "Every rider gets a day form for each race day, so the same rider can fly one day and struggle the next. On rare days a rider cracks completely and loses big, and favorites are not immune. Riders in good form crack less often, and form also counts more in the result itself, so form management pays twice. Over a long stage race the good and bad days largely even out, but a single collapse on a mountain stage can decide a GC, just like in real cycling."
+    },
+    "crashesFaq": {
+      "q": "What are crashes and abandons?",
+      "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result, but some force the rider to abandon the race: an abandoned rider is out of the remaining stages and all classifications, and is injured for a few days afterwards. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Abandons are listed on the race page."
     }
   }
 }
