@@ -56,7 +56,7 @@ CREATE POLICY "race_stage_roles_owner_select"
       JOIN public.teams t ON t.id = re.team_id
       WHERE re.race_id = race_stage_roles.race_id
         AND re.rider_id = race_stage_roles.rider_id
-        AND t.owner_id = auth.uid()
+        AND t.user_id = auth.uid()  -- teams har user_id, ikke owner_id (apply-fejl fanget 12/7)
     )
   );
 
