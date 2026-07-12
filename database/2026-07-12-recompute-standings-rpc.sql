@@ -124,7 +124,11 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.recompute_season_standings(uuid) FROM PUBLIC;
+-- Stram grants: KUN service_role. REVOKE FROM PUBLIC alene er ikke nok — Supabase's
+-- ALTER DEFAULT PRIVILEGES auto-grant'er EXECUTE på nye public-funktioner til anon +
+-- authenticated ved CREATE, så de skal revokes eksplicit (defense-in-depth oven på
+-- auth.role()-gaten; jf. #2327 for-brede RPC-grants).
+REVOKE ALL ON FUNCTION public.recompute_season_standings(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.recompute_season_standings(uuid) TO service_role;
 
 COMMENT ON FUNCTION public.recompute_season_standings(uuid) IS
