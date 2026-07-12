@@ -73,34 +73,47 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // periodiske jobs — en cron der tavst holder op med at ticke var ellers usynlig
 // indtil en spiller opdagede symptomet. Margins er rundhåndede: en Railway-deploy
 // genstarter processen og nulstiller alle setInterval-timere.
+//
+// #2395 — failureIssueThreshold=2 på sub-døgn-jobs: en Railway-deploy tager
+// processen ned længe nok til at et 5-min-tick misser sit check-in, og med Sentrys
+// default-tærskel (1) blev HVER deploy til en byge af "missed check-in"-outage-issues
+// på tværs af alle korte crons (12/7: 2 deploys → 20 falske issues). En ægte død cron
+// misser check-in FLERE gange i træk → 2 fanger den stadig (10-20 min forsinkelse),
+// mens en enkelt deploy-afbrydelse ties. Påvirker KUN monitor-heartbeat-issuet;
+// ægte exceptions fra cron-logikken captures uændret via trackedTick/captureException.
 const CRON_MONITOR_1MIN = {
   schedule: { type: "interval", value: 1, unit: "minute" },
   checkinMargin: 3,
   maxRuntime: 10,
+  failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
 const CRON_MONITOR_5MIN = {
   schedule: { type: "interval", value: 5, unit: "minute" },
   checkinMargin: 5, // min forsinkelse før et manglende tick regnes MISSED
   maxRuntime: 15, // min før et in_progress-tick regnes TIMEOUT
+  failureIssueThreshold: 2, // #2395: én deploy-miss alarmerer ikke; 2 i træk = ægte fejl
   timezone: "Etc/UTC",
 };
 const CRON_MONITOR_10MIN = {
   schedule: { type: "interval", value: 10, unit: "minute" },
   checkinMargin: 10,
   maxRuntime: 20,
+  failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
 const CRON_MONITOR_30MIN = {
   schedule: { type: "interval", value: 30, unit: "minute" },
   checkinMargin: 15,
   maxRuntime: 30,
+  failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
 const CRON_MONITOR_60MIN = {
   schedule: { type: "interval", value: 60, unit: "minute" },
   checkinMargin: 30,
   maxRuntime: 60,
+  failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
 // 24h-ticks: margin 3 timer — setInterval-baseret døgn-rytme drifter med deploys,

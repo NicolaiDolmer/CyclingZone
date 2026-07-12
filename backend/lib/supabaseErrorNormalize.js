@@ -15,7 +15,14 @@
 // Cloudflares fejlsider har formen:
 //   <title>supabase.co | 522: Connection timed out</title>
 //   <span class="code-label">Error code 525</span>
-const CF_TITLE_RE = /\|\s*(\d{3})\s*:\s*([^<\n]+?)\s*</;
+//
+// #169 (code-scanning js/polynomial-redos): de tidligere `\s*` DIREKTE op ad
+// capture-gruppen (`:\s*([^<\n]+?)\s*<`) var flertydige — både `\s*` og `[^<\n]`
+// matcher mellemrum, så en fejlside med lange mellemrums-runs og manglende `<`
+// gav polynomisk backtracking. Fjernet de to omkringliggende `\s*`; capture-gruppen
+// er nu afgrænset af FASTE tegn (`:` og `<`) → lineær. Ledende/afsluttende mellemrum
+// trimmes stadig i JS (title[2].trim() nedenfor), så resultatet er uændret.
+const CF_TITLE_RE = /\|\s*(\d{3})\s*:([^<\n]+?)</;
 const CF_CODE_LABEL_RE = /Error code\s+(\d{3})/i;
 
 // Netværks-/socket-fejl der typisk forsvinder ved et retry.
