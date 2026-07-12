@@ -35,20 +35,15 @@ ALTER TABLE public.race_incidents ENABLE ROW LEVEL SECURITY;
 
 -- RLS: SELECT for holdets ejer (join teams.owner_id via race_entries) + admin;
 -- write = service_role (backend, bypasser RLS) — spejler race_stage_roles'
--- policy-mønster ordret (database/2026-07-12-race-v3-s1-work-cost.sql).
+-- RETTET 12/7 før apply: uheld er OFFENTLIG løbsinformation (DNF-sektion,
+-- recap, Discord) — læs-policy spejler race_results (læs for alle authenticated),
+-- IKKE race_stage_roles (taktik = hemmelig pr. hold). Ejer-scoped SELECT ville
+-- have gjort DNF-listen tom for alle andres ryttere.
 DROP POLICY IF EXISTS "race_incidents_owner_select" ON public.race_incidents;
-CREATE POLICY "race_incidents_owner_select"
+DROP POLICY IF EXISTS "race_incidents_read" ON public.race_incidents;
+CREATE POLICY "race_incidents_read"
   ON public.race_incidents FOR SELECT TO authenticated
-  USING (
-    public.is_admin()
-    OR EXISTS (
-      SELECT 1 FROM public.race_entries re
-      JOIN public.teams t ON t.id = re.team_id
-      WHERE re.race_id = race_incidents.race_id
-        AND re.rider_id = race_incidents.rider_id
-        AND t.user_id = auth.uid()  -- teams har user_id, ikke owner_id
-    )
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "race_incidents_admin_write" ON public.race_incidents;
 CREATE POLICY "race_incidents_admin_write"
