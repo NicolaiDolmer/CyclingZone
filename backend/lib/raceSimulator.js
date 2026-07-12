@@ -142,7 +142,9 @@ function finaleModifier(entrant, stageProfile) {
   return ((clamp(d, 0, 99) - 50) / 49) * DESCENDING_FINALE_WEIGHT;
 }
 
-export function buildTeamContext({ entrants, terrainById, v3 = false }) {
+// NB: tager ikke længere v3 — free_role-skippet nedenfor er ubetinget (#2376),
+// og intet andet her afhænger af flaget. Kaldere må gerne stadig sende v3 med.
+export function buildTeamContext({ entrants, terrainById }) {
   const byTeam = new Map();
   for (const e of entrants) {
     if (!e.team_id || !e.race_role) continue;
