@@ -1,20 +1,16 @@
 -- Refs #1994: remove the player-facing "rider loan" (udlån/leje) feature.
--- loan_agreements has had ZERO rows in prod, ever (verified before this PR) —
--- the feature is being fully removed rather than migrated. All application
--- code that read/wrote this table (backend/routes/api.js loan routes,
--- backend/lib/loanEngine.js's rider-loan season-fee helpers,
--- backend/lib/loanAgreementWindowing.js, and the various dual-purpose
--- read-paths in marketUtils.js/teamTransferHistory.js/riderHistory.js/
--- inboxPending.js/betaResetService.js/financeForecast.js/squadEnforcement.js)
--- was removed in the same PR as this migration.
+-- APPLY-KORREKTION 12/7: PR-kommentaren påstod "ZERO rows ever" — ved apply
+-- indeholdt tabellen 2 rækker, BEGGE status='rejected' (afviste tilbud 3/7 +
+-- 8/7, ingen aktive aftaler eller økonomiske forpligtelser). Droppet mister
+-- derfor kun historik om to afviste tilbud. Applied mod prod 12/7 EFTER
+-- Railway-deploy af den kode-fjernede backend (rækkefølge: kode først, DDL
+-- bagefter). All application code that read/wrote this table was removed in
+-- the same PR as this migration.
 --
 -- Do NOT confuse this with the unrelated "team debt loan" feature (tables
 -- `loans` / `loan_config`, short/long/emergency loans against a team's own
--- balance) — that feature is untouched and stays live.
+-- balance) — that feature is untouched and stays live (35 rows at apply).
 --
 -- CASCADE drops the table's own indexes, constraints, and RLS policies
--- (including the "Loan participants can read own agreements" policy from
--- database/2026-06-16-rls-initplan-and-hot-indexes.sql) along with it — none
--- of those objects are referenced by any other table, so there is nothing
--- else to name explicitly.
+-- along with it — none of those objects are referenced by any other table.
 DROP TABLE IF EXISTS loan_agreements CASCADE;
