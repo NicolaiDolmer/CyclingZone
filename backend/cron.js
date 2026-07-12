@@ -571,8 +571,20 @@ async function runRaceEntryGeneratorSweepCron() {
   const result = await runRaceEntryGeneratorSweep({ supabase });
   if (result.ran) {
     console.log(
-      `🏁 Entry-generator sweep: sæson ${result.seasonId} — ${result.races} løb, ${result.teams} hold, ${result.generated} entries genereret, ${result.skipped} sprunget over`
+      `🏁 Entry-generator sweep: sæson ${result.seasonId} — ${result.races} løb, ${result.teams} hold, ${result.generated} ønskede entries (${result.inserted ?? 0} indsat, ${result.removed ?? 0} fjernet, ${result.role_updated ?? 0} rolle-opdateret), ${result.skipped} sprunget over`
     );
+  }
+  // #2375-hotfix: generatoren isolerer nu fejl pr. (race,team)-enhed i stedet for at
+  // kaste — én ødelagt enhed vælter ikke tick'et, men skal stadig ALARMERES, ellers
+  // fejler den tavst hver time. Én samlet Sentry-capture pr. tick (ikke pr. enhed).
+  if (result.ran && result.failed_units > 0) {
+    console.error(
+      `❌ Entry-generator sweep: ${result.failed_units} (løb,hold)-enhed(er) fejlede — ${(result.errors || []).join("; ")}`
+    );
+    sentryCapture(new Error(`entry-generator sweep: ${result.failed_units} failed units`), {
+      tags: { cron: "entry-generator sweep" },
+      extra: { errors: result.errors, seasonId: result.seasonId },
+    });
   }
 }
 
