@@ -29,6 +29,9 @@ import { workCost, teamRaceWeightV3, formRaceWeightV3, topCompressionTau } from 
 // S2 (#2353): dagsform + jour sans — per-rytter-hashede, dedikerede streams
 // (raceDayForm.js); kaldes KUN når v3=true, konsumerer intet fra main-rng.
 import { dayFormComponent, jourSansComponent } from "./raceDayForm.js";
+// S4 (#1176): styrt/mekaniske uheld + DNF — ligeledes per-rytter-hashet,
+// dedikeret stream, kaldes KUN når v3=true, konsumerer intet fra main-rng.
+import { rollIncidents } from "./raceIncidents.js";
 
 export const ENGINE_VERSION = 1;
 // Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
@@ -371,9 +374,12 @@ export function compressTopTerrain(terrainById, tau) {
  *   v3: Race v3 S1 (#2352, flag `race_engine_v3_scoring`) — aktiverer work_cost
  *     + den kalibrerede TEAM_RACE_WEIGHT_V3. default false → BIT-IDENTISK med
  *     dagens motor (ingen rng-forbrug ændres, ingen ny komponent bidrager).
- * @returns {{ seed:number, ranked:Array }}
+ * @returns {{ seed:number, ranked:Array, incidents:Array }}
  *   ranked: [{ rider_id, team_id, rank, finalScore, stageGap, components }]
  *   sorteret bedst→dårligst; rank 1..N; stageGap = sekunder bag etapevinderen (≥0).
+ *   incidents: S4 (#1176) — rå rollIncidents-output for denne etape (rider_id,
+ *     kind, outcome, time_loss_seconds, injury_days, u). ALTID [] når v3=false
+ *     (dormant seam, samme mønster som dagform/jour_sans).
  */
 export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } = {}) {
   if (!stageProfile?.demand_vector) throw new Error("stageProfile.demand_vector kræves");
@@ -427,7 +433,14 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans },
+      // S4 (#1176): incident er GAP-SPACE (sekunder tabt til styrt/mekanisk defekt),
+      // IKKE score-space — den rører ALDRIG finalScore (adskilt fortegns-konvention
+      // fra de øvrige komponenter ovenfor). 0 her, udfyldt efter ranking nedenfor
+      // (uheld kan først rulles når hele feltets rangorden + stageGap kendes).
+      // Unconditionelt til stede (også v3=false) → flag-off-deepEqual-testen
+      // (raceEngineV3FlagOff.test.js) forbliver grøn, da BEGGE sider af den
+      // sammenligning får samme nøgle=0.
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, incident: 0 },
     };
   });
 
@@ -438,7 +451,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   );
 
   const winnerScore = scored.length ? scored[0].finalScore : 0;
-  const ranked = scored.map((r, i) => ({
+  let ranked = scored.map((r, i) => ({
     rider_id: r.rider_id,
     team_id: r.team_id,
     rank: i + 1,
@@ -447,7 +460,50 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     components: r.components,
   }));
 
-  return { seed: seed >>> 0, ranked };
+  // ── Race v3 S4 (#1176): styrt/mekaniske uheld + DNF ───────────────────────
+  // KUN v3=true (dormant ellers → incidents altid [], ranked uændret → flag-off
+  // bit-identisk). Kører EFTER gap-modellen med VILJE (spec-lock): time_loss
+  // adderer sekunder i GAP-SPACE (ikke score-space), og abandon skal fjerne
+  // rytteren fra den FÆRDIGE rangering, ikke genstarte score-beregningen.
+  let incidents = [];
+  if (v3) {
+    incidents = rollIncidents({ entrants: ordered, stageProfile, stageSeed: seed });
+    if (incidents.length) {
+      const incidentByRider = new Map(incidents.map((inc) => [inc.rider_id, inc]));
+      const abandonedIds = new Set(
+        incidents.filter((inc) => inc.outcome === "abandon").map((inc) => inc.rider_id)
+      );
+      // Abandon: REMOVE fra ranked — ingen etape-række (=DNF), automatisk
+      // GC-eksklusion via raceClassifications.filterCompletedEntrants nedstrøms.
+      // time_loss: tilføj sekunder til stageGap + stempl components.incident
+      // (gap-space, finalScore URØRT).
+      const survivors = ranked
+        .filter((r) => !abandonedIds.has(r.rider_id))
+        .map((r) => {
+          const inc = incidentByRider.get(r.rider_id);
+          if (!inc || inc.outcome !== "time_loss") return r;
+          return {
+            ...r,
+            stageGap: clamp(r.stageGap + inc.time_loss_seconds, 0, MAX_STAGE_GAP_SECONDS),
+            components: { ...r.components, incident: inc.time_loss_seconds },
+          };
+        });
+      // Re-rank survivors: stageGap asc, stabil tiebreak på tidligere rank
+      // (bevarer den oprindelige score-baserede orden ved gap-lighed).
+      survivors.sort((a, b) => (a.stageGap - b.stageGap) || (a.rank - b.rank));
+      // Normalisér: vinderen (blandt overlevende) skal stå ved gap 0 — en
+      // uheldsramt tidligere vinder må ikke efterlade et "hul" i front af feltet
+      // (display + GC-aritmetik er relativ, så et konstant skift er ærligt).
+      const minGap = survivors.length ? survivors[0].stageGap : 0;
+      ranked = survivors.map((r, i) => ({
+        ...r,
+        rank: i + 1,
+        stageGap: clamp(r.stageGap - minGap, 0, MAX_STAGE_GAP_SECONDS),
+      }));
+    }
+  }
+
+  return { seed: seed >>> 0, ranked, incidents };
 }
 
 // ── #1499: DESKRIPTIV udbruds-status (ren read, ZERO balance-effekt) ──────────
