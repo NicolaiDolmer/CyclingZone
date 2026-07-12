@@ -32,7 +32,7 @@
 >
 > **🎯 Next action:** Ejer: **flip-beslutning** (`race_engine_v3_scoring`, mellem to løbsdage) — merge draft-PR [#2385](https://github.com/NicolaiDolmer/CyclingZone/pull/2385) (patch note v6.97 + help + Discord-udkast, tjekliste i PR) SAMMEN med flippet + godkend Discord-teksten ordret. Næste Claude-session: **v3 S4 styrt/DNF #1176**. Selvkørende: AI-trim heal-sweep (#2377 lukkes når 15/15 grupper = 24) · entry-generator retryer tomme løb hver time. Ejer 13/7: Alunta+CZ Pro (#1903) · flip-bølge-verify (#2357) · /training-verify · 📌 ovenfor.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable) — v3 S4 styrt/DNF #1176, startet 12/7.
 
 ## Standing context (forever-relaunch)
 
