@@ -163,6 +163,8 @@ export async function runScoutSweep({
         }
         swept += 1;
       } catch (err) {
+        // best-effort pr. assignment: fejlen tælles i `failed`, som runScoutSweepCron
+        // capturer AGGREGERET pr. tick (cron.js) — én Sentry-issue frem for pr. rytter.
         failed += 1;
         console.error(`  ❌ scout-sweep fejlede for assignment ${assignment.id}:`, err.message);
       }

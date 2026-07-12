@@ -137,8 +137,18 @@ export async function sendWebhook(webhookUrl, payload) {
     });
     if (!res.ok) {
       console.error(`Discord webhook failed: ${res.status} ${await res.text()}`);
+      // #2395: en 4xx (≠429) = webhooken er død/fejlkonfigureret (slettet kanal,
+      // forkert id) — en PERSISTENT fejl der ellers tavst stopper alle resultat-
+      // posteringer. 429 (rate limit) + 5xx = transient → kun log.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        sentryCapture(new Error(`Discord webhook ${res.status} (persistent config/routing error)`), {
+          tags: { lib: "discordNotifier", status: String(res.status) },
+        });
+      }
     }
   } catch (err) {
+    // best-effort: et transient netværks-/socket-hikke på én webhook-post må ikke
+    // vælte kalderen, og er ikke capture-værdigt (#2395).
     console.error("Discord webhook error:", err.message);
   }
 }

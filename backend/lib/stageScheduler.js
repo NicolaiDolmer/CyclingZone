@@ -104,7 +104,12 @@ export async function runStageScheduler({
   try {
     await detectInFlightRacesWithoutEntries({ supabase, seasonId: season.id, now });
   } catch (err) {
+    // Best-effort (må aldrig stoppe afviklingen) MEN ikke tavs: fejler selve
+    // detektions-queryen, er #2074-guarden blind uden at nogen ved det (#2395,
+    // "overvågeren uden overvågning"). raceActiveGuard capturer sine FUND, ikke
+    // en fejl i selve detektionen — derfor capture her.
     console.error(`  ⚠️ stage-scheduler: startfelt-detektion fejlede (ikke-fatal): ${err.message}`);
+    captureException(err, { tags: { cron: "stage-scheduler", check: "startfield-detection" } });
   }
 
   // Hard-cap: hvor mange etaper er allerede afviklet i dag? (loop-prævention)
