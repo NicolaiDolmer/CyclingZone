@@ -126,6 +126,7 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -2555,6 +2556,82 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (err?.code === "selection_rider_bound") {
       return res.status(409).json({ error: "selection_rider_bound" });
     }
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══ Race v3 (#2224), slice S3 (#2034): STAGE-ROLLER + EFFORT PR. ETAPE ═══════
+//
+// I MODSÆTNING til /selection (frosset når stages_completed>0, #1825) er dette
+// endpoint BEVIDST tilladt mens løbet er LIVE — taktik-skift undervejs for
+// KOMMENDE etaper er hele pointen (#2034). Frysningen ovenfor gælder STARTFELTET
+// (race_entries — hvem der er udtaget), ikke fremtidige etapers roller/effort.
+// Kun løbets FÆRDIGGØRELSE (status='completed') lukker for redigering; kørte
+// etaper (stage_number <= stages_completed) er ALTID skrivebeskyttede (håndhævet
+// i raceStageRolesApi.js, ikke her).
+
+// GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
+router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    res.json({
+      enabled,
+      stages_completed: ctx.stages_completed,
+      stage_count: ctx.stage_count,
+      riders: ctx.riders,
+      overrides: ctx.overrides,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/races/:raceId/stage-roles — gem/erstat manager-overrides for redigerbare etaper.
+router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, status, stages, stages_completed")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+
+    const { overrides = [] } = req.body || {};
+    if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
+
+    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const result = validateStageRoleOverrides({
+      overrides,
+      raceCompleted: race.status === "completed",
+      stageCount: ctx.stage_count,
+      stagesCompleted: ctx.stages_completed,
+      teamRiderIds: ctx.teamRiderIds,
+    });
+    if (!result.ok) {
+      const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;
+      return res.status(status).json({ error: result.errors[0], errors: result.errors });
+    }
+
+    await saveStageRoleOverrides({
+      supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds,
+      stagesCompleted: ctx.stages_completed, overrides,
+    });
+    res.json({ ok: true });
+  } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
   }

@@ -304,6 +304,39 @@
       "saveAllPartial": "These lineups weren't saved: {races}. Your changes are still here, so try saving again."
     }
   },
+  "stageTactics": {
+    "title": "Stage tactics",
+    "help": "Completed stages are locked. Changes apply to upcoming stages only.",
+    "riderCol": "Rider",
+    "stageCol": "Stage {number}",
+    "roleAria": "Role for {rider}, stage {stage}",
+    "effortAria": "Effort for {rider}, stage {stage}",
+    "role": {
+      "free_role": "Free role"
+    },
+    "effort": {
+      "protect": "Work",
+      "normal": "Normal",
+      "save": "Save legs"
+    },
+    "jerseyShortcutHint": "{name} is your rider in the leader's jersey.",
+    "jerseyShortcut": "Make {name} captain for the remaining stages",
+    "unsaved": "You have unsaved changes",
+    "save": "Save tactics",
+    "saving": "Saving…",
+    "saved": "Tactics saved.",
+    "errors": {
+      "stage_roles_invalid_body": "Couldn't save your tactics. Try again.",
+      "stage_roles_stage_locked": "One of the changes is on a completed stage, so it can't be saved.",
+      "stage_roles_rider_not_entered": "One of the riders isn't entered in this race.",
+      "stage_roles_invalid_role": "One of the roles isn't valid.",
+      "stage_roles_invalid_effort": "One of the effort settings isn't valid.",
+      "stage_roles_role_overlap": "Only one rider can be captain, and only one can be sprint captain, per stage.",
+      "stage_roles_duplicate": "The same rider appears twice for the same stage.",
+      "stage_roles_race_completed": "This race is finished, so tactics can't be changed anymore.",
+      "generic": "Couldn't save your tactics. Try again."
+    }
+  },
   "strategy": {
     "title": "Team strategy",
     "subtitle": "Standing preferences your assistant uses to build every lineup.",

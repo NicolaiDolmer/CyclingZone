@@ -95,6 +95,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // (forudsætninger: #2376). Skriv-path verificeret i raceRunner.js (persistRuns,
   // hasRiderScores-gate). Fjern denne entry når flaget flippes og tabellen har rows.
   "race_simulation_rider_scores",
+  // Race v3 S3 (#2034): manager-satte roller/effort pr. etape. Skriv-paths:
+  // raceStageRolesApi.js (PUT /races/:id/stage-roles, delete+insert) — men UI'et
+  // der skriver er gated bag race_engine_v3_scoring='off' (matrix renderes ikke),
+  // så tabellen er bevidst tom indtil ejer-flip (#2376). Fjern denne entry når
+  // flaget flippes og tabellen har rows.
+  "race_stage_roles",
   // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
   // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når

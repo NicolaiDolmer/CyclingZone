@@ -38,24 +38,30 @@ export function raceFatigueLoad(profileType) {
  *
  * Race v3 S1 (#2352): valgfri `effort`-parameter kobler roller til trætheden
  * (spec §6 — "hjælper der arbejder (protect-effort) +20% race-fatigue; save
- * -30%"). DORMANT seam: default 'normal' → multiplikator 1.0 → adfærd UÆNDRET
- * (bit-identisk med før S1). raceRunner.js kalder i dag altid med 'normal'
- * (ingen per-etape effort-datamodel findes endnu — det er S3's
- * race_stage_roles-tabel); denne funktion er klar til at modtage rigtige
- * værdier uden signaturændring, samme mønster som #1306's form/fatigue-seams.
+ * -30%"). DORMANT seam i S1: default 'normal' → multiplikator 1.0 → adfærd
+ * UÆNDRET (bit-identisk med før S1).
+ *
+ * S3 (#2034): valgfri `efforts`-array giver ÉT effort PR. ETAPE (i stedet for ét
+ * fælles `effort` for hele løbet) — raceRunner.js sender rytterens per-etape-
+ * resolverede overrides (race_stage_roles) her når v3=true. Bagudkompatibelt:
+ * `efforts` udeladt → falder tilbage til det gamle enkelt-`effort`-flow (default
+ * 'normal', BIT-IDENTISK med før S3). `efforts[i]` falsy (huller/for kort array,
+ * bør ikke ske men defensivt) → 'normal' for den etape.
  *
  * @param {number|null|undefined} startFatigue
  * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
- * @param {{effort?: 'protect'|'normal'|'save'}} [opts]
+ * @param {{effort?: 'protect'|'normal'|'save', efforts?: string[]}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
-export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal" } = {}) {
+export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts } = {}) {
   let f = Number.isFinite(Number(startFatigue))
     ? Math.max(0, Math.min(100, Number(startFatigue)))
     : 0;
-  const mult = effortFatigueMultiplier(effort);
   const out = [];
-  for (const p of profileTypes) {
+  for (let i = 0; i < profileTypes.length; i++) {
+    const p = profileTypes[i];
+    const stageEffort = Array.isArray(efforts) ? (efforts[i] || "normal") : effort;
+    const mult = effortFatigueMultiplier(stageEffort);
     out.push(f);
     f = Math.min(100, f + raceFatigueLoad(p) * mult);
   }
@@ -69,10 +75,16 @@ export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "no
  * condition-række får én (form defaulter til 50 via DB-schema). Fejl herfra
  * KASTES til kald-stedet — kald-stedet sluger dem (non-blocking, mirror B2).
  *
- * @param {{ supabase, riderIds: string[], profileType: string, now?: Date }}
+ * S3 (#2034): valgfrit `effortByRider` (Map<rider_id, effort>) ganger DENNE
+ * dags load med effortFatigueMultiplier PR. RYTTER (protect +20%, save -30%,
+ * normal/manglende nøgle = ×1.0). Bagudkompatibelt: `effortByRider` udeladt/null
+ * → alle ryttere ganges med 1.0 — BIT-IDENTISK med før S3. Kald-stedet
+ * (raceRunner.js) sender kun et udfyldt Map når v3=true.
+ *
+ * @param {{ supabase, riderIds: string[], profileType: string, now?: Date, effortByRider?: Map<string,string>|null }}
  * @returns {{ updated: number }}
  */
-export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date() }) {
+export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date(), effortByRider = null }) {
   if (!riderIds?.length) return { updated: 0 };
   const load = raceFatigueLoad(profileType);
 
@@ -83,11 +95,14 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
   if (error) throw new Error(`rider_condition (race fatigue): ${error.message}`);
 
   const by = new Map((data ?? []).map((r) => [r.rider_id, r.fatigue]));
-  const rows = riderIds.map((id) => ({
-    rider_id: id,
-    fatigue: Math.min(100, (Number(by.get(id)) || 0) + load),
-    updated_at: now.toISOString(),
-  }));
+  const rows = riderIds.map((id) => {
+    const mult = effortByRider?.has(id) ? effortFatigueMultiplier(effortByRider.get(id)) : 1;
+    return {
+      rider_id: id,
+      fatigue: Math.min(100, (Number(by.get(id)) || 0) + load * mult),
+      updated_at: now.toISOString(),
+    };
+  });
 
   const { error: upErr } = await supabase
     .from("rider_condition")

@@ -304,6 +304,39 @@
       "saveAllPartial": "Disse holdudtagelser blev ikke gemt: {races}. Dine ændringer er her stadig, så prøv at gemme igen."
     }
   },
+  "stageTactics": {
+    "title": "Etape-taktik",
+    "help": "Kørte etaper er låst. Ændringer gælder kun kommende etaper.",
+    "riderCol": "Rytter",
+    "stageCol": "Etape {number}",
+    "roleAria": "Rolle for {rider}, etape {stage}",
+    "effortAria": "Indsats for {rider}, etape {stage}",
+    "role": {
+      "free_role": "Fri rolle"
+    },
+    "effort": {
+      "protect": "Arbejd",
+      "normal": "Normal",
+      "save": "Spar kræfter"
+    },
+    "jerseyShortcutHint": "{name} er din rytter i førertrøjen.",
+    "jerseyShortcut": "Gør {name} til kaptajn for de resterende etaper",
+    "unsaved": "Du har ikke-gemte ændringer",
+    "save": "Gem taktik",
+    "saving": "Gemmer…",
+    "saved": "Taktikken er gemt.",
+    "errors": {
+      "stage_roles_invalid_body": "Kunne ikke gemme din taktik. Prøv igen.",
+      "stage_roles_stage_locked": "En af ændringerne er på en kørt etape og kan ikke gemmes.",
+      "stage_roles_rider_not_entered": "En af rytterne er ikke tilmeldt dette løb.",
+      "stage_roles_invalid_role": "En af rollerne er ugyldig.",
+      "stage_roles_invalid_effort": "En af indsats-indstillingerne er ugyldig.",
+      "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, og kun én kan være spurtkaptajn, pr. etape.",
+      "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
+      "stage_roles_race_completed": "Løbet er afsluttet, så taktikken kan ikke længere ændres.",
+      "generic": "Kunne ikke gemme din taktik. Prøv igen."
+    }
+  },
   "strategy": {
     "title": "Holdstrategi",
     "subtitle": "Stående præferencer din assistent bruger til at bygge hver opstilling.",
