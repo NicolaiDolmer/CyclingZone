@@ -283,7 +283,7 @@ export async function emitRaceResultNotifications({
       // #2389 A2: var 100% stille — spillere mistede "dit løb er kørt"-beskeden
       // uden noget logspor overhovedet.
       stats.failed += 1;
-      console.error(`  ❌ race-result-notifikation fejlede (løb ${race?.id}):`, err?.message || err);
+      console.error(`  ❌ race-result-notifikation fejlede (race ${race?.id}):`, err?.message || err);
       captureException(err, { tags: { flow: "notifications", stage: "race-result" }, raceId: race?.id });
     }
   }
