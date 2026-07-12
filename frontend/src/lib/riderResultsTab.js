@@ -10,8 +10,16 @@
 //
 // Point/præmie pr. løb summerer ALLE rytterens rækker i løbet (også trøje-dage)
 // — det er de reelt optjente ranking-point og CZ$.
+//
+// teamName: immutabelt (team_id, team_name)-snapshot pr. resultat (#1993) —
+// samme hold på alle rækker for ét løb (frozen entrant-team_id, #1844), så
+// første ikke-null værdi er nok. Bruges af Palmarès-fanen (#1997 S1) til at
+// vise hvilket hold rytteren opnåede resultatet med.
+// dayLeads: trøje-dags-optællinger (leder/point/bjerg/ungdom-dage, distinkt
+// fra den ENDELIGE klassementstrøje i `jerseys`) — også Palmarès-fanens input.
 
 const JERSEY_TYPES = ["points", "mountain", "young"];
+const DAY_JERSEY_TYPES = ["leader", "mountain_day", "points_day", "young_day"];
 
 export function groupRiderRaces(rows = []) {
   const byRace = new Map();
@@ -31,6 +39,7 @@ export function groupRiderRaces(rows = []) {
         status: race.status ?? null,
         date: race.scheduled_for ?? null,
         season: race.season?.number ?? null,
+        teamName: null,
         finalRank: null,
         gcPoints: 0,
         gcPrize: 0,
@@ -38,11 +47,13 @@ export function groupRiderRaces(rows = []) {
         prize: 0,
         stageRows: [],
         jerseys: {},
+        dayLeads: {},
       });
     }
     const g = byRace.get(id);
     g.points += r.points_earned || 0;
     g.prize += r.prize_money || 0;
+    if (r.team_name && !g.teamName) g.teamName = r.team_name;
     if (r.result_type === "gc") {
       g.finalRank = r.rank ?? null;
       g.gcPoints = r.points_earned || 0;
@@ -51,6 +62,8 @@ export function groupRiderRaces(rows = []) {
       g.stageRows.push({ stage: r.stage_number ?? 1, rank: r.rank ?? null, points: r.points_earned || 0, prize: r.prize_money || 0 });
     } else if (JERSEY_TYPES.includes(r.result_type)) {
       g.jerseys[r.result_type] = r.rank ?? null;
+    } else if (DAY_JERSEY_TYPES.includes(r.result_type)) {
+      g.dayLeads[r.result_type] = (g.dayLeads[r.result_type] || 0) + 1;
     }
   }
   const races = [...byRace.values()];
