@@ -14,6 +14,7 @@
 //   • Self-heal (samme mønster som getStaffProfileHandler): mangler ability-rækken
 //     (staff ansat før A4-migrationen) afledes profilen deterministisk on-the-fly.
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
+import { captureException } from "./sentry.js";
 
 const NEUTRAL = Object.freeze({ facilityTier: 0, staff: null });
 
@@ -53,7 +54,11 @@ export async function loadTrainingStaffContext(supabase, teamId) {
     }
     return { facilityTier, staff };
   } catch (err) {
+    // Best-effort adfærd (neutral kontekst, ingen crash) MEN ikke tavs: en
+    // persistent fejl her deaktiverer den betalte facilitets-/staff-bonus for ALLE
+    // hold usynligt (#2395). Capture så det opdages; NEUTRAL bevarer træningsdagen.
     console.error(`  ⚠️ trainingStaffContext load failed for team ${teamId} (continuing without bonus):`, err.message);
+    captureException(err, { tags: { lib: "trainingStaffContext" }, extra: { teamId } });
     return NEUTRAL;
   }
 }

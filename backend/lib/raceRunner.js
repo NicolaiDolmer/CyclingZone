@@ -1057,7 +1057,8 @@ export async function simulateRace({
       const incidentsForDiscord = v3 ? await enrichIncidentsForDiscord({ supabase, incidents }) : [];
       await notifyDiscord({ race, resultRows, incidents: incidentsForDiscord });
     } catch {
-      // Discord-fejl må ikke vælte afviklingen.
+      // best-effort: Discord-fejl må ikke vælte afviklingen; sendWebhook capturer selv
+      // persistente 4xx-routing-fejl (#2395), så en tavs slugning her er bevidst.
     }
   }
 
@@ -1067,7 +1068,8 @@ export async function simulateRace({
     try {
       await notifyInApp({ race });
     } catch {
-      // In-app notif-fejl må ikke vælte afviklingen.
+      // best-effort: in-app notif-fejl må ikke vælte afviklingen; notificationService
+      // capturer internt (#2394), så en tavs slugning her er bevidst (#2395).
     }
   }
 
@@ -1577,7 +1579,8 @@ export async function simulateStageByIndex({
         await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows, incidents: incidentsForDiscord });
       }
     } catch {
-      // Discord-fejl må ikke vælte afviklingen.
+      // best-effort: Discord-fejl må ikke vælte afviklingen; sendWebhook capturer selv
+      // persistente 4xx-routing-fejl (#2395), så en tavs slugning her er bevidst.
     }
   }
 
@@ -1588,7 +1591,8 @@ export async function simulateStageByIndex({
     try {
       await notifyInApp({ race });
     } catch {
-      // In-app notif-fejl må ikke vælte afviklingen.
+      // best-effort: in-app notif-fejl må ikke vælte afviklingen; notificationService
+      // capturer internt (#2394), så en tavs slugning her er bevidst (#2395).
     }
   }
 

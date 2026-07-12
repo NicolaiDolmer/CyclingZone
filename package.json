@@ -36,6 +36,8 @@
     "test:lint-rankings-fetch": "node --test scripts/lint-rankings-raceresults-fetch.test.mjs",
     "lint:riders-column-grant": "node scripts/lint-riders-column-grant.mjs",
     "test:lint-riders-column-grant": "node --test scripts/lint-riders-column-grant.test.mjs",
+    "lint:catches": "node scripts/lint-swallowed-catches.mjs",
+    "test:lint-catches": "node --test scripts/lint-swallowed-catches.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",

@@ -11,6 +11,10 @@
 // Bevidst minimal (ingen tunge imports): economyEngine.js importerer denne fil, så
 // orkestrering (open/close) der trækker betaResetService ind bor i
 // boardTestModeService.js for at undgå cyklus economyEngine → betaResetService.
+//
+// sentry.js er et leaf-util (ingen økonomi-imports) → capturen bryder ikke den
+// bevidste minimalisme / cyklus-frihed.
+import { captureException } from "./sentry.js";
 
 /**
  * @param {object} supabase — Supabase client
@@ -25,9 +29,16 @@ export async function isBoardTestModeActive(supabase) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) return false;
+    // #2395: fail-forkert retning — en fejl her får test-mode til at fremstå SLUKKET,
+    // så økonomi-laget anvender ægte konsekvenser (sponsor-modifier, tvangssalg) der
+    // skulle være suppress'et i et testvindue. Capture så det ikke sker tavst.
+    if (error) {
+      captureException(new Error(`isBoardTestModeActive query failed: ${error.message}`), { tags: { lib: "boardTestMode" } });
+      return false;
+    }
     return data?.board_test_mode === true;
-  } catch {
+  } catch (err) {
+    captureException(err, { tags: { lib: "boardTestMode" } });
     return false;
   }
 }

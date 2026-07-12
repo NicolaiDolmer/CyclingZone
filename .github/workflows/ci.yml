@@ -258,3 +258,27 @@ jobs:
 
       - name: Run riders-column-grant guard
         run: node scripts/lint-riders-column-grant.mjs
+
+  swallowed-catch-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod NYE svaltede catch-blokke (#2395 del 2). En catch der
+    # hverken captureException'er, rethrow'er eller bærer en '// best-effort'-markør
+    # skjuler fejl for Sentry (Sentry-hærdningen 12/7 fandt ~20 sådanne, flere ægte).
+    # Ratchet pr. fil: baseline låst efter audit-oprydningen — en net-ny svaltet
+    # catch fejler CI. Statisk (heuristik-scanner), ingen DB/runtime nødvendig.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test swallowed-catch guard
+        run: node --test scripts/lint-swallowed-catches.test.mjs
+
+      - name: Run swallowed-catch guard
+        run: node scripts/lint-swallowed-catches.mjs
