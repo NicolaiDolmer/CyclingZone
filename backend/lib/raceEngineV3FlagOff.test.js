@@ -133,3 +133,59 @@ test("buildStageRowsAccumulated: v3 udeladt er deepEqual med v3=false", () => {
   });
   assert.deepEqual(a, b);
 });
+
+// ── Race v3 S3 (#2034): race_stage_roles-overrides eksisterer, MEN v3=false ────
+// Spec §5: overrides må KUN anvendes når v3=true. Denne test er S3's eksplicitte
+// gate for det kravet — givet en IKKE-tom stageRoleOverrides-Map (som om en
+// manager havde gemt taktik-ændringer via PUT-endpointet), skal buildRaceResults
+// og buildStageRowsAccumulated stadig give BIT-IDENTISK output med v3=false og
+// INGEN overrides overhovedet.
+
+const STAGE_ROLE_OVERRIDES = new Map([
+  [1, new Map([
+    ["climber", { race_role: "helper", effort: "protect" }], // ville demote basis-kaptajnen hvis anvendt
+    ["helperA1", { race_role: "captain", effort: "save" }],
+  ])],
+  [2, new Map([
+    ["hunterA", { race_role: "free_role", effort: "protect" }],
+  ])],
+  [3, new Map([
+    ["sprinter", { race_role: "helper", effort: "save" }],
+  ])],
+]);
+
+test("buildRaceResults: v3=false + race_stage_roles-overrides findes → BIT-IDENTISK med v3=false uden overrides", () => {
+  const withoutOverrides = buildRaceResults({ race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
+  const withOverrides = buildRaceResults({
+    race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: false,
+    stageRoleOverrides: STAGE_ROLE_OVERRIDES,
+  });
+  assert.deepEqual(withoutOverrides, withOverrides, "v3=false skal ignorere stageRoleOverrides fuldstændigt");
+});
+
+test("buildStageRowsAccumulated: v3=false + race_stage_roles-overrides findes → BIT-IDENTISK med v3=false uden overrides", () => {
+  const entrantsWithFatigue = ENTRANTS.map((e) => ({ ...e, fatigue: 0 }));
+  const withoutOverrides = buildStageRowsAccumulated({
+    race: STAGE_RACE, stagesSorted: STAGES, stageIndex: 0,
+    entrants: entrantsWithFatigue, pointsLookup: POINTS, priorStageRows: [], v3: false,
+  });
+  const withOverrides = buildStageRowsAccumulated({
+    race: STAGE_RACE, stagesSorted: STAGES, stageIndex: 0,
+    entrants: entrantsWithFatigue, pointsLookup: POINTS, priorStageRows: [], v3: false,
+    stageRoleOverrides: STAGE_ROLE_OVERRIDES,
+  });
+  assert.deepEqual(withoutOverrides, withOverrides, "v3=false skal ignorere stageRoleOverrides fuldstændigt");
+});
+
+// Sanity (spejler mønsteret for v3=true ovenfor): overrides SKAL ændre resultatet
+// når v3=true — ellers ville testene ovenfor være trivielle (ingen-op uanset).
+test("buildRaceResults: v3=true + race_stage_roles-overrides ÆNDRER faktisk resultatet vs. ingen overrides", () => {
+  const withoutOverrides = buildRaceResults({ race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: true });
+  const withOverrides = buildRaceResults({
+    race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: true,
+    stageRoleOverrides: STAGE_ROLE_OVERRIDES,
+  });
+  assert.notDeepEqual(withoutOverrides.resultRows, withOverrides.resultRows);
+  // Checksum skal også afvige (stageRoles-nøglen er nu med i payloaden).
+  assert.notEqual(withoutOverrides.runs[0].input_checksum, withOverrides.runs[0].input_checksum);
+});
