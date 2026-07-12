@@ -20,6 +20,7 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186)/[
 
 ## 3 · Aug-sep
 10. ⚪ **v3 færdig:** S4 styrt [#1176](https://github.com/NicolaiDolmer/CyclingZone/issues/1176) → S5 peaks [#2354](https://github.com/NicolaiDolmer/CyclingZone/issues/2354) → S6 why-rapport [#2355](https://github.com/NicolaiDolmer/CyclingZone/issues/2355).
+10b. ⚪ **Motor-audit 12/7 (ejer-batch):** sidestrøm NU: drift-vagt [#2414](https://github.com/NicolaiDolmer/CyclingZone/issues/2414) (+ gap-scorecard [#2415](https://github.com/NicolaiDolmer/CyclingZone/issues/2415), TTT-pause [#2411](https://github.com/NicolaiDolmer/CyclingZone/issues/2411)); efter S6: tidslinje-design [#2410](https://github.com/NicolaiDolmer/CyclingZone/issues/2410) · udbrud v2 [#2416](https://github.com/NicolaiDolmer/CyclingZone/issues/2416) · τ-exit [#2417](https://github.com/NicolaiDolmer/CyclingZone/issues/2417) · TTT-mekanik [#2412](https://github.com/NicolaiDolmer/CyclingZone/issues/2412) · bonussek. [#2413](https://github.com/NicolaiDolmer/CyclingZone/issues/2413).
 11. ⚪ **Træning/ungdom-spec fase 1-3** (efter v3 S2; sim+scorecard-gates): [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922)/[#2262](https://github.com/NicolaiDolmer/CyclingZone/issues/2262)/[#1974](https://github.com/NicolaiDolmer/CyclingZone/issues/1974) — #2082-nerf'en foldes ind her.
 12. ⚪ **Sæsonritual** [#2361](https://github.com/NicolaiDolmer/CyclingZone/issues/2361): op/nedrykning verificeret+aktiv + sæson-recap + catch-up — SKAL være klar før næste sæsongrænse.
 
