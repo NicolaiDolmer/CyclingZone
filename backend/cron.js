@@ -59,6 +59,7 @@ import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
+import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
 import { captureException as sentryCapture, monitorCron } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -525,6 +526,37 @@ async function runRiderDeriveHealSweepCron() {
   }
 }
 
+// ─── AI-trim heal: fuldfør udskudte AI-hold-trims (#2187/#2377) ───────────────
+// Markør-gatet (teams.pending_removal_at NOT NULL, kun is_ai=true) — rører kun
+// AI-hold som removeAiTeams selv har udskudt pga. inflight-entries i et igangværende
+// løb (#2269); ægte hold rammes aldrig. Uden denne sweep sad en pulje fast over
+// 24-holds-target indtil et helt NYT signup i SAMME pulje tilfældigvis gav trimmet
+// endnu en chance (sjældent — rod-årsagen til at Division 4 B/C blev hængende på 26).
+// Persistente udskydelser (>48t, STALE_PENDING_HOURS) Sentry-alarmeres pr. hold —
+// det er længere end noget realistisk etapeløb varer, så det signalerer et
+// strukturelt problem, ikke bare "løbet er ikke færdigt endnu".
+
+async function runAiTeamTrimHealSweepCron() {
+  const result = await runAiTeamTrimHealSweep({ supabase, now: new Date() });
+  if (result.healed) {
+    console.log(`🧹 AI-trim heal-sweep: ${result.healed} udskudt(e) AI-hold trimmet (løb kørt færdigt siden sidst)`);
+  }
+  if (result.failed) {
+    console.error(`❌ AI-trim heal-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+  }
+  if (result.stale?.length) {
+    console.error(
+      `🚨 AI-trim heal-sweep: ${result.stale.length} AI-hold udskudt >48t uden fremdrift — se Sentry (#2187)`
+    );
+    for (const s of result.stale) {
+      sentryCapture(new Error(`AI-trim persistent stall: hold ${s.teamId} udskudt ${s.ageHours}t`), {
+        tags: { cron: "ai-team-trim-heal", poolId: String(s.poolId ?? "") },
+        extra: s,
+      });
+    }
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -732,6 +764,11 @@ export function startCron() {
   // RYTTER-data-gatet (ikke team-markør) → fanger free agents OG ryttere på hold.
   // Idempotent + deterministisk, ingen flag. Cadence matcher de andre heal-sweeps.
   setInterval(trackedTick("rider-derive heal sweep", runRiderDeriveHealSweepCron), 5 * 60 * 1000);
+
+  // AI-trim heal: fuldfør udskudte AI-hold-trims når blokerende løb er kørt færdigt
+  // (#2187/#2377). Markør-gatet (pending_removal_at) → idempotent, rører aldrig ægte
+  // hold. Cadence matcher de andre heal-sweeps.
+  setInterval(trackedTick("ai-trim heal sweep", runAiTeamTrimHealSweepCron), 5 * 60 * 1000);
 
   // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via
