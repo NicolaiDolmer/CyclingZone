@@ -7,10 +7,9 @@ test("buildHistoryRows normaliserer event-typer og sorterer nyeste først", () =
     events: [
       { type: "transfer", date: "2026-06-01T10:00:00Z", price: 5000 },
       { type: "auction", date: "2026-06-10T10:00:00Z", price: 9000, no_sale: false },
-      { type: "loan", date: "2026-05-20T10:00:00Z", loan_fee: 300 },
     ],
   });
-  assert.deepEqual(rows.map((r) => r.kind), ["auction", "transfer", "loan"]);
+  assert.deepEqual(rows.map((r) => r.kind), ["auction", "transfer"]);
 });
 
 test("no_sale-auktioner får egen kind (ingen antydet handel)", () => {
@@ -52,8 +51,6 @@ test("beløbs-mapping pr. kind", () => {
   assert.equal(historyRowAmount({ kind: "bid", amount: 800 }), 800);
   assert.equal(historyRowAmount({ kind: "transfer", price: 700 }), 700);
   assert.equal(historyRowAmount({ kind: "swap", cash_adjustment: -250 }), -250);
-  assert.equal(historyRowAmount({ kind: "loan", loan_fee: 90 }), 90);
-  assert.equal(historyRowAmount({ kind: "loan", loan_fee: 0 }), null);
 });
 
 test("tom input giver tom liste", () => {

@@ -77,15 +77,6 @@ const OFFER_STATUS = {
   withdrawn:             { labelKey: "offerStatus.withdrawn",             cls: "bg-cz-subtle text-cz-3 border-cz-border" },
 };
 
-const LOAN_STATUS = {
-  pending:   { labelKey: "loanStatus.pending",   cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
-  active:    { labelKey: "loanStatus.active",    cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
-  completed: { labelKey: "loanStatus.completed", cls: "bg-cz-subtle text-cz-2 border-cz-border" },
-  rejected:  { labelKey: "loanStatus.rejected",  cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
-  cancelled: { labelKey: "loanStatus.cancelled", cls: "bg-cz-subtle text-cz-3 border-cz-border" },
-  buyout:    { labelKey: "loanStatus.buyout",    cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
-};
-
 function SectionHeader({ title, count }) {
   return (
     <div className="px-4 py-2.5 bg-cz-subtle border-b border-cz-border flex items-center gap-2">
@@ -147,13 +138,7 @@ export default function ActivityPage() {
   const [completedAuctions, setCompletedAuctions] = useState([]);
   const [sentOffers, setSentOffers]             = useState([]);
   const [receivedOffers, setReceivedOffers]     = useState([]);
-  const [lendingLoans, setLendingLoans]         = useState([]);
-  const [borrowingLoans, setBorrowingLoans]     = useState([]);
-  const [historicalLoans, setHistoricalLoans]   = useState([]);
   const [watchlist, setWatchlist]               = useState([]);
-
-  // Loan/offer counterparty + season detail line.
-  const seasonDetail = (l) => t("detail.season", { start: l.start_season, end: l.end_season });
 
   async function loadAll({ silent = false } = {}) {
     if (silent) setRefreshing(true); else setLoading(true);
@@ -167,7 +152,7 @@ export default function ActivityPage() {
     const { data: { session } } = await supabase.auth.getSession();
     const headers = { Authorization: `Bearer ${session.access_token}` };
 
-    const [activeRes, completedRes, offersData, loansData, watchlistRes, histLoansRes] = await Promise.all([
+    const [activeRes, completedRes, offersData, watchlistRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, team_id),
@@ -189,33 +174,17 @@ export default function ActivityPage() {
         .then(r => r.json())
         .catch(err => { console.warn("activity: my-offers load failed", err); return { sent: [], received: [] }; }),
 
-      fetch(`${API}/api/loans`, { headers })
-        .then(r => r.json())
-        .catch(err => { console.warn("activity: loans load failed", err); return { lending: [], borrowing: [] }; }),
-
       supabase.from("rider_watchlist")
         .select(`id, created_at, rider:rider_id(id, firstname, lastname, market_value, team:team_id(name))`)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
-
-      supabase.from("loan_agreements")
-        .select(`id, loan_fee, start_season, end_season, status, updated_at,
-          rider:rider_id(id, firstname, lastname, market_value),
-          from_team:from_team_id(id, name), to_team:to_team_id(id, name)`)
-        .in("status", ["rejected", "cancelled", "completed", "buyout"])
-        .or(`from_team_id.eq.${team.id},to_team_id.eq.${team.id}`)
-        .order("updated_at", { ascending: false })
-        .limit(30),
     ]);
 
     setActiveAuctions(activeRes.data || []);
     setCompletedAuctions(completedRes.data || []);
     setSentOffers(offersData.sent || []);
     setReceivedOffers(offersData.received || []);
-    setLendingLoans(loansData.lending || []);
-    setBorrowingLoans(loansData.borrowing || []);
     setWatchlist(watchlistRes.data || []);
-    setHistoricalLoans(histLoansRes.data || []);
     setLastLoaded(new Date());
     setLoading(false);
     setRefreshing(false);
@@ -238,12 +207,11 @@ export default function ActivityPage() {
     ...receivedOffers.filter(o => o.status === "awaiting_confirmation" && !o.seller_confirmed),
     ...sentOffers.filter(o => o.status === "awaiting_confirmation" && !o.buyer_confirmed),
   ];
-  const actionLoans = lendingLoans.filter(l => l.status === "pending");
   const urgentAuctions = activeAuctions.filter(a => {
     const diff = new Date(a.calculated_end) - new Date();
     return diff > 0 && diff < 3600000;
   });
-  const actionCount = actionTransfers.length + actionLoans.length;
+  const actionCount = actionTransfers.length;
 
   // Transfers tab — split active vs history
   const activeReceivedOffers = receivedOffers.filter(o => ["pending", "countered", "awaiting_confirmation"].includes(o.status));
@@ -262,7 +230,6 @@ export default function ActivityPage() {
     { key: "action",    label: t("tabs.action"),              count: actionCount },
     { key: "auctions",  label: tCommon("nav.item.auctions"),  count: activeAuctions.length },
     { key: "transfers", label: t("tabs.transfers"),           count: activeReceivedOffers.length + activeSentOffers.length },
-    { key: "loans",     label: t("tabs.loans"),               count: lendingLoans.length + borrowingLoans.length },
     { key: "watchlist", label: tCommon("nav.item.watchlist"), count: watchlist.length },
     { key: "history",   label: t("tabs.history"),             count: 0 },
   ];
@@ -341,22 +308,6 @@ export default function ActivityPage() {
                         onClick={() => navigate("/transfers")} />
                     );
                   })}
-                </>
-              )}
-
-              {actionLoans.length > 0 && (
-                <>
-                  <SectionHeader title={t("section.loanProposals")} count={actionLoans.length} />
-                  {actionLoans.map(l => (
-                    <Row key={l.id}
-                      badge={t("badge.loanProposal")} badgeCls="bg-cz-info-bg text-cz-info border-cz-info/30"
-                      rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
-                      riderId={l.rider?.id}
-                      detail={`${t("detail.from", { name: l.to_team?.name })} · ${seasonDetail(l)}`}
-                      amount={l.loan_fee || null}
-                      time={formatRelativeTime(l.updated_at)}
-                      onClick={() => navigate("/transfers")} />
-                  ))}
                 </>
               )}
 
@@ -480,57 +431,6 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {/* ── LOANS ── */}
-      {tab === "loans" && (
-        <div className="space-y-4">
-          {lendingLoans.length + borrowingLoans.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-cz">
-              <EmptyState icon={<ExchangeIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.loansTitle")} sub={t("empty.loansSub")} />
-            </div>
-          ) : (
-            <>
-              {lendingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <SectionHeader title={t("section.iLend")} count={lendingLoans.length} />
-                  {lendingLoans.map(l => {
-                    const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
-                    return (
-                      <Row key={l.id}
-                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
-                        rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
-                        riderId={l.rider?.id}
-                        detail={`${t("detail.to", { name: l.to_team?.name })} · ${seasonDetail(l)}`}
-                        amount={l.loan_fee || null}
-                        time={formatRelativeTime(l.updated_at)}
-                        onClick={() => navigate("/transfers")} />
-                    );
-                  })}
-                </div>
-              )}
-
-              {borrowingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <SectionHeader title={t("section.iBorrow")} count={borrowingLoans.length} />
-                  {borrowingLoans.map(l => {
-                    const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
-                    return (
-                      <Row key={l.id}
-                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
-                        rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
-                        riderId={l.rider?.id}
-                        detail={`${t("detail.from", { name: l.from_team?.name })} · ${seasonDetail(l)}`}
-                        amount={l.loan_fee || null}
-                        time={formatRelativeTime(l.updated_at)}
-                        onClick={() => navigate("/transfers")} />
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
       {/* ── WATCHLIST ── */}
       {tab === "watchlist" && (
         <div>
@@ -584,7 +484,7 @@ export default function ActivityPage() {
       {/* ── HISTORY ── */}
       {tab === "history" && (
         <div className="space-y-4">
-          {completedAuctions.length + histSentOffers.length + histReceivedOffers.length + historicalLoans.length === 0 ? (
+          {completedAuctions.length + histSentOffers.length + histReceivedOffers.length === 0 ? (
             <div className="bg-cz-card border border-cz-border rounded-cz">
               <EmptyState icon={<InboxIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.historyTitle")} sub={t("empty.historySub")} />
             </div>
@@ -638,28 +538,6 @@ export default function ActivityPage() {
                           onClick={() => o.rider?.id && navigate(`/riders/${o.rider.id}`)} />
                       );
                     })}
-                </div>
-              )}
-
-              {historicalLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <SectionHeader title={t("section.loans")} count={historicalLoans.length} />
-                  {historicalLoans.map(l => {
-                    const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.completed;
-                    const isLender = l.from_team?.id === myTeamId;
-                    return (
-                      <Row key={l.id}
-                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
-                        rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
-                        riderId={l.rider?.id}
-                        detail={isLender
-                          ? `${t("detail.loanedTo", { name: l.to_team?.name })} · ${seasonDetail(l)}`
-                          : `${t("detail.loanedFrom", { name: l.from_team?.name })} · ${seasonDetail(l)}`}
-                        amount={l.loan_fee || null}
-                        time={formatRelativeTime(l.updated_at)}
-                        onClick={() => l.rider?.id && navigate(`/riders/${l.rider.id}`)} />
-                    );
-                  })}
                 </div>
               )}
             </>

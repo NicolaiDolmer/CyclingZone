@@ -125,11 +125,10 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
               <p>Transfer-opslag trukket: {betaResult.cancelled.transfer_listings}</p>
               <p>Transfer-tilbud afvist: {betaResult.cancelled.transfer_offers}</p>
               <p>Swap-tilbud afvist: {betaResult.cancelled.swap_offers}</p>
-              <p>Låneaftaler annulleret: {betaResult.cancelled.loan_agreements}</p>
             </div>
           )}
           {betaResult.rider_history && (
-            <p className="mb-1">Rytter-historik slettet: {betaResult.rider_history.auctions} auktioner ({betaResult.rider_history.auction_bids} bud) · {betaResult.rider_history.transfer_listings} listings · {betaResult.rider_history.transfer_offers} tilbud · {betaResult.rider_history.swap_offers} swaps · {betaResult.rider_history.loan_agreements} leje-aftaler</p>
+            <p className="mb-1">Rytter-historik slettet: {betaResult.rider_history.auctions} auktioner ({betaResult.rider_history.auction_bids} bud) · {betaResult.rider_history.transfer_listings} listings · {betaResult.rider_history.transfer_offers} tilbud · {betaResult.rider_history.swap_offers} swaps</p>
           )}
           {betaResult.transfer_archive && (
             <p className="mb-1">Transferarkiv slettet: {betaResult.transfer_archive.transfer_listings} listings · {betaResult.transfer_archive.transfer_offers} tilbud · {betaResult.transfer_archive.swap_offers} swaps</p>

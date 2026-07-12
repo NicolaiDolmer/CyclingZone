@@ -11,7 +11,6 @@
  */
 
 import {
-  processLoanAgreementSeasonFees,
   processLoanInterest,
   createEmergencyLoan,
   getTotalDebt,
@@ -178,8 +177,7 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
  * Rækkefølge per sæson-start:
  *   PASS A (loop over alle hold):
  *     1. Sponsor +  (board-modifier × pullout-faktor × intro/variabel-base)
- *     2. Loan-agreement-fees − (løbende rytter-lån)
- *     3. Ensure board-profiles (1yr/3yr/5yr) eksisterer
+ *     2. Ensure board-profiles (1yr/3yr/5yr) eksisterer
  *   PASS B = runSeasonPayroll (separat loop over alle hold, EFTER pass A):
  *     1. processLoanInterest − (rente på hvert aktivt lån)
  *     2. Salary − (sum af riders.salary). Emergency-lån + hvis shortfall.
@@ -194,8 +192,6 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
 export async function processSeasonStart(seasonId, deps = {}) {
   console.log(`\n🏁 Processing season start: ${seasonId}`);
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
-  const processLoanAgreementSeasonFeesFn =
-    deps.processLoanAgreementSeasonFees ?? processLoanAgreementSeasonFees;
 
   const { data: season } = await supabaseClient
     .from("seasons")
@@ -305,13 +301,6 @@ export async function processSeasonStart(seasonId, deps = {}) {
       );
     }
 
-    const chargedLoanFees = await processLoanAgreementSeasonFeesFn(
-      team.id,
-      seasonNumber,
-      seasonId,
-      supabaseClient
-    );
-
     // Ensure all three plan types exist
     const existingPlanTypes = new Set(boards.map(b => b.plan_type));
     for (const planType of ["5yr", "3yr", "1yr"]) {
@@ -330,23 +319,19 @@ export async function processSeasonStart(seasonId, deps = {}) {
       }
     }
 
-    const totalLoanFees = chargedLoanFees.reduce((sum, loan) => sum + (loan.loan_fee || 0), 0);
     results.push({
       team: team.name,
       sponsor: skipSponsor ? 0 : sponsorPayout,
       sponsor_skipped: skipSponsor,
       sponsor_breakdown: sponsorBreakdown,
-      recurring_loan_fees: totalLoanFees,
       pullout_applied: pulloutFactor < 1.0,
     });
     if (!skipSponsor) {
       console.log(
         `  ✅ ${team.name}: +${sponsorPayout} pts sponsor${
           pulloutFactor < 1.0 ? " (sponsor-pullout aktiv)" : ""
-        }${totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""}`
+        }`
       );
-    } else if (totalLoanFees > 0) {
-      console.log(`  ${team.name}: -${totalLoanFees} pts lejegebyrer`);
     }
   }
 
@@ -367,7 +352,6 @@ export async function processSeasonStart(seasonId, deps = {}) {
   //   2. Loan-interest (debit) — årlig rente på aktive lån
   //   3. Salary (debit) — sum af riders.salary, med emergency-lån hvis shortfall
   //   4. Negative-balance interest (debit) — 10% på resterende negativ balance
-  //   5. Loan-agreement fees — allerede behandlet i processLoanAgreementSeasonFees pr. hold
   // Managers ser dermed ét samlet sæson-start-cashflow i stedet for at vente
   // til sæson-slut for at få regningen.
   // Payroll injicerbar via deps.runSeasonPayroll så sponsor-fokuserede tests

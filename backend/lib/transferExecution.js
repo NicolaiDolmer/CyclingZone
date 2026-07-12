@@ -184,16 +184,6 @@ export function getSwapCancelIssue(swap) {
   return null;
 }
 
-// #156: en aktiv lejeaftale er en bindende kontrakt — manager kan ikke annullere
-// ensidigt. Pending må stadig trækkes tilbage (lender har ikke accepteret endnu).
-export function getLoanCancelIssue(loan) {
-  if (loan?.status === "active") {
-    return { code: "loan_already_active" };
-  }
-
-  return null;
-}
-
 // #270: ejeren må fjerne sin egen listing i både "open" og "negotiating" status.
 // Aktive offers påvirkes ikke — køber kan stadig trække tilbage / sælger afvise via
 // offers-flowet. not_found returneres bevidst (i stedet for at differentiere

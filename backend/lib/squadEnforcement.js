@@ -79,17 +79,9 @@ async function getSquadSnapshot(supabase, teamId) {
     .eq("is_academy", false);
   ensureNoError(ownedError);
 
-  const { data: activeLoans, error: loanError } = await supabase
-    .from("loan_agreements")
-    .select("id")
-    .eq("to_team_id", teamId)
-    .eq("status", "active");
-  ensureNoError(loanError);
-
   return {
     team,
     ownedRiders: ownedRiders || [],
-    activeLoanCount: (activeLoans || []).length,
   };
 }
 
@@ -349,7 +341,7 @@ export async function enforceTeamSquadCompliance({
   limitsOverride = null,
 }) {
   const snapshot = await getSquadSnapshot(supabase, teamId);
-  const { team, ownedRiders, activeLoanCount } = snapshot;
+  const { team, ownedRiders } = snapshot;
 
   if (team.is_ai || team.is_bank || !team.user_id) {
     return { ok: true, code: "skipped_non_human", teamId };
@@ -359,7 +351,7 @@ export async function enforceTeamSquadCompliance({
   }
 
   const limits = limitsOverride ?? getSquadLimits(team.division);
-  const effectiveCount = ownedRiders.length + activeLoanCount;
+  const effectiveCount = ownedRiders.length;
 
   let purchases = [];
   let sales = [];

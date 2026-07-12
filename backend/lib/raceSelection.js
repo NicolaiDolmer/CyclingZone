@@ -6,7 +6,6 @@ import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
-import { loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 
 export function validateSelection({
@@ -137,16 +136,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
-  const allRiders = ridersRes.data || [];
+  const riders = ridersRes.data || [];
   const stages = profilesRes.data || [];
-  // Loan-aware (#1906): en udlånt rytter beholder ejer-holdets team_id men kører for
-  // låneren — udelad ham fra ejerens valgbare trup, så han hverken vises, tæller i
-  // kapacitet eller kan udtages (ellers fantom-rytter + mulig dobbelt-feltning).
-  const { data: loanedOut, error: loanErr } = await loadLoanedOutRiderIds({
-    supabase, riderIds: allRiders.map((r) => r.id),
-  });
-  if (loanErr) throw new Error(`loan_agreements: ${loanErr.message}`);
-  const riders = allRiders.filter((r) => !loanedOut.has(r.id));
   const riderIds = riders.map((r) => r.id);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");

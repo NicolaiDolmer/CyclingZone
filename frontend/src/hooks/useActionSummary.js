@@ -7,13 +7,12 @@ const API = import.meta.env.VITE_API_URL;
 const EMPTY = {
   transfer_offers: [],
   swap_offers: [],
-  loan_offers: [],
-  counts: { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 },
+  counts: { transfer_offers: 0, swap_offers: 0, total: 0 },
 };
 
 // Tabeller hvis ændringer kan påvirke "kræver handling"-summen. Modul-konstant
 // (stabil reference) så useRealtimeRefetch ikke re-subscriber hver render.
-const PENDING_TABLES = ["transfer_offers", "swap_offers", "loan_agreements"];
+const PENDING_TABLES = ["transfer_offers", "swap_offers"];
 
 /**
  * Kanonisk "kræver handling"-summary for det indloggede team. Komponerer

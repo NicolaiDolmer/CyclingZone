@@ -11,9 +11,7 @@ import {
   buildTransferOfferAcceptedNotification,
   buildSwapProposedNotification,
   buildSwapCompletedNotification,
-  buildLoanProposalNotification,
   buildAdminTransferCancelledNotification,
-  buildAdminLoanCancelledNotification,
 } from "./transferNotifications.js";
 
 test("bidReceived: EN-first + code + params + riderId", () => {
@@ -61,24 +59,6 @@ test("swapCompleted: deferred vælger messageDeferred", () => {
   assert.equal(now.metadata.messageCode, "notif.transfer.swapCompleted.message");
 });
 
-test("loanProposal: valgt kode afhænger af buy-option + sæson-range", () => {
-  assert.equal(
-    buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 3, seasonTo: 3, fee: 100, buyOption: null, riderId: "r6" }).metadata.messageCode,
-    "notif.transfer.loanProposal.messageSingle"
-  );
-  assert.equal(
-    buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 3, seasonTo: 5, fee: 100, buyOption: null, riderId: "r6" }).metadata.messageCode,
-    "notif.transfer.loanProposal.messageRange"
-  );
-  assert.equal(
-    buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 3, seasonTo: 3, fee: 100, buyOption: 900, riderId: "r6" }).metadata.messageCode,
-    "notif.transfer.loanProposal.messageBuySingle"
-  );
-  assert.equal(
-    buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 3, seasonTo: 5, fee: 100, buyOption: 900, riderId: "r6" }).metadata.messageCode,
-    "notif.transfer.loanProposal.messageBuyRange"
-  );
-});
 
 test("admin-annulleringer: reason-variant vælger messageReason", () => {
   const noReason = buildAdminTransferCancelledNotification({ riderName: "R", reason: "" });
@@ -88,10 +68,3 @@ test("admin-annulleringer: reason-variant vælger messageReason", () => {
   assert.equal(withReason.metadata.messageParams.reason, "duplicate deal");
 });
 
-test("adminLoanCancelled: refund-variant vælger *Refund-kode", () => {
-  const refund = buildAdminLoanCancelledNotification({ riderName: "R", reason: "", refundedFee: 250 });
-  assert.equal(refund.metadata.messageCode, "notif.transfer.adminLoanCancelled.messageRefund");
-  assert.equal(refund.metadata.messageParams.refundedFee, 250);
-  const reasonRefund = buildAdminLoanCancelledNotification({ riderName: "R", reason: "x", refundedFee: 250 });
-  assert.equal(reasonRefund.metadata.messageCode, "notif.transfer.adminLoanCancelled.messageReasonRefund");
-});

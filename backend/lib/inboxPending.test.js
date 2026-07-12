@@ -10,12 +10,10 @@ const OTHER = "team-other";
 function createInboxSupabase({
   transferOffers = [],
   swapOffers = [],
-  loanAgreements = [],
 } = {}) {
   const tableData = {
     transfer_offers: transferOffers,
     swap_offers: swapOffers,
-    loan_agreements: loanAgreements,
   };
 
   function buildQuery(table) {
@@ -130,7 +128,7 @@ test("classifySwapOfferRole — awaiting_confirmation, my proposing side hasn't 
   assert.equal(role, "proposing_confirm");
 });
 
-test("getPendingInboxItems aggregates transfer + swap + loan with correct counts", async () => {
+test("getPendingInboxItems aggregates transfer + swap with correct counts", async () => {
   const supabase = createInboxSupabase({
     transferOffers: [
       {
@@ -186,31 +184,13 @@ test("getPendingInboxItems aggregates transfer + swap + loan with correct counts
         receiving_team: { id: TEAM, name: "My Team" },
       },
     ],
-    loanAgreements: [
-      {
-        id: "loan-1",
-        status: "pending",
-        loan_fee: 30000,
-        start_season: 7,
-        end_season: 7,
-        buy_option_price: null,
-        from_team_id: TEAM,
-        to_team_id: OTHER,
-        rider_id: "rider-5",
-        created_at: "2026-05-04T08:00:00Z",
-        updated_at: "2026-05-04T08:00:00Z",
-        rider: { id: "rider-5", firstname: "Remco", lastname: "Evenepoel" },
-        to_team: { id: OTHER, name: "Other Team" },
-      },
-    ],
   });
 
   const result = await getPendingInboxItems({ supabase, teamId: TEAM });
 
-  assert.equal(result.counts.total, 3);
+  assert.equal(result.counts.total, 2);
   assert.equal(result.counts.transfer_offers, 1);
   assert.equal(result.counts.swap_offers, 1);
-  assert.equal(result.counts.loan_offers, 1);
 
   // to-1: I am seller of pending received offer
   assert.equal(result.transfer_offers[0].id, "to-1");
@@ -225,11 +205,6 @@ test("getPendingInboxItems aggregates transfer + swap + loan with correct counts
   assert.equal(result.swap_offers[0].id, "swap-1");
   assert.equal(result.swap_offers[0].role, "receiving_decide");
   assert.equal(result.swap_offers[0].cash_adjustment, 25000);
-
-  assert.equal(result.loan_offers[0].id, "loan-1");
-  assert.equal(result.loan_offers[0].role, "lender_decide");
-  assert.equal(result.loan_offers[0].counterparty_team_name, "Other Team");
-  assert.equal(result.loan_offers[0].loan_fee, 30000);
 });
 
 test("getPendingInboxItems excludes awaiting_confirmation where my side already confirmed", async () => {

@@ -154,10 +154,10 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 
 // Mock-supabase: svarer pr. tabel; ignorerer filtre (testen verificerer kombinations-
 // logikken, ikke query-filtrene). Mønster fra raceFatigue.test.js.
-// Loaderen (#1906) henter nu riders + loan_agreements til eligibility-krydsning: default
-// returnerer den alle entry-ryttere som berettigede (team_id=teamId, ej akademi/pensioneret)
-// og ingen udlån. ghostRiderIds/loanedOutRiderIds gør specifikke ryttere ubrettigede.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], loanedOutRiderIds = [] } = {}) {
+// Loaderen (#1906) henter nu riders til eligibility-krydsning: default returnerer
+// alle entry-ryttere som berettigede (team_id=teamId, ej akademi/pensioneret).
+// ghostRiderIds gør specifikke ryttere ubrettigede.
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [] } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -180,9 +180,6 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           data = ids.map((id) => ({
             id, team_id: ghostRiderIds.includes(id) ? null : teamId, is_academy: false, is_retired: false,
           }));
-        } else if (table === "loan_agreements") {
-          const ids = f.in_rider_id || [];
-          data = ids.filter((id) => loanedOutRiderIds.includes(id)).map((rider_id) => ({ rider_id, status: "active" }));
         } else if (table === "race_withdrawals") {
           data = withdrawnRaceIds.map((race_id) => ({ race_id }));
         }
@@ -238,10 +235,10 @@ test("loadTeamBindingContext: afmeldt løb udelades fra otherRaces (frigør bind
     "r1/r2 er frie til race-this efter afmelding af race-a");
 });
 
-// #1906/#1823 rod-årsag: en ghost-entry (rytter solgt/fyret efter udtagelse) eller en
-// udlånt rytter må IKKE phantom-binde. Tidligere læste loadTeamBindingContext rå entries
-// → den ægte rytter blev rapporteret bundet → PUT /selection afviste med 409.
-test("loadTeamBindingContext: ghost- og udlåns-entries phantom-binder ikke (rod-årsag)", async () => {
+// #1906/#1823 rod-årsag: en ghost-entry (rytter solgt/fyret efter udtagelse) må IKKE
+// phantom-binde. Tidligere læste loadTeamBindingContext rå entries → den ægte rytter
+// blev rapporteret bundet → PUT /selection afviste med 409.
+test("loadTeamBindingContext: ghost-entries phantom-binder ikke (rod-årsag)", async () => {
   const supabase = makeSupabase({
     scheduleByRace: {
       "race-this": [{ race_id: "race-this", scheduled_at: "2026-06-23T10:30:00Z" }],
@@ -250,18 +247,16 @@ test("loadTeamBindingContext: ghost- og udlåns-entries phantom-binder ikke (rod
     teamEntries: [
       { race_id: "race-a", rider_id: "r1" }, // gyldig
       { race_id: "race-a", rider_id: "ghost" }, // solgt/fyret efter udtagelse
-      { race_id: "race-a", rider_id: "onloan" }, // udlånt
     ],
     ghostRiderIds: ["ghost"],
-    loanedOutRiderIds: ["onloan"],
   });
   const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
   assert.equal(ctx.otherRaces.length, 1);
-  assert.deepEqual(ctx.otherRaces[0].riderIds, ["r1"], "kun den gyldige rytter binder; ghost+udlånt droppet");
-  // ghost/onloan er frie til race-this (ingen falsk 409).
+  assert.deepEqual(ctx.otherRaces[0].riderIds, ["r1"], "kun den gyldige rytter binder; ghost droppet");
+  // ghost er fri til race-this (ingen falsk 409).
   assert.deepEqual(
-    findRiderBindingConflicts({ riderIds: ["ghost", "onloan"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
-    [], "ghost+udlånt rytter er frie til det overlappende løb");
+    findRiderBindingConflicts({ riderIds: ["ghost"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
+    [], "ghost-rytter er fri til det overlappende løb");
 });
 
 test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {

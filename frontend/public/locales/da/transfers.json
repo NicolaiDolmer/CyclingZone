@@ -5,12 +5,11 @@
     "balance": "Balance",
     "loadingAria": "Indlæser transfers"
   },
-  "marketIntro": "Transfermarkedet er hvor managers sætter deres egne ryttere til salg til en fast pris. Køb med det samme eller send et tilbud. Auktioner er noget andet (tidsbestemte bud), og swaps og loans er valgfrie måder at handle på.",
+  "marketIntro": "Transfermarkedet er hvor managers sætter deres egne ryttere til salg til en fast pris. Køb med det samme eller send et tilbud. Auktioner er noget andet (tidsbestemte bud).",
   "tabs": {
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
     "archive": "Historik ({count})",
-    "loans": "Lejeaftaler",
     "market": "Marked ({count})"
   },
   "modes": {
@@ -26,18 +25,10 @@
     "rejected": "Afvist",
     "withdrawn": "Trukket tilbage"
   },
-  "loanStatus": {
-    "pending": "Afventer svar",
-    "active": "Aktiv",
-    "buyout": "Købt",
-    "cancelled": "Annulleret",
-    "rejected": "Afvist"
-  },
   "type": {
     "auction": "Auktion",
     "transfer": "Transfer",
     "swap": "Swap",
-    "loan": "Lån",
     "academy": "Akademi"
   },
   "direction": {
@@ -118,23 +109,6 @@
       "selfConfirmed": "Du har bekræftet · afventer den anden part"
     }
   },
-  "loanCard": {
-    "to": "Til",
-    "from": "Fra",
-    "seasonsSingle": "Sæson {start}",
-    "seasonsRange": "Sæson {start}–{end}",
-    "feeLabel": "Lejegebyr/sæson",
-    "valueLabel": "Værdi",
-    "buyOptionLabel": "Købsoption",
-    "noBuyOption": "—",
-    "buttons": {
-      "accept": "✓ Accepter",
-      "reject": "✕ Afvis",
-      "withdraw": "Træk forslag tilbage",
-      "exerciseBuyout": "Udnyt købsoption ({amount} CZ$)"
-    },
-    "bindingNote": "Aktive lejeaftaler er bindende og kan kun annulleres af en admin."
-  },
   "transferCard": {
     "send": "Send",
     "messagePlaceholder": "Besked (valgfri)...",
@@ -149,21 +123,6 @@
     "savePrice": "Gem",
     "cancel": "Annullér",
     "confirmRemoveButton": "Ja, fjern"
-  },
-  "newLoan": {
-    "title": "Foreslå lejeaftale",
-    "riderLabel": "Rytter du ønsker at leje (søg på efternavn)",
-    "lastnamePlaceholder": "Efternavn...",
-    "selectedRider": "Valgt: {firstname} {lastname} ({team})",
-    "seasonLabel": "Sæson (max 1 sæson)",
-    "seasonPlaceholder": "fx. 3",
-    "feeLabel": "Lejegebyr per sæson (CZ$)",
-    "buyOptionLabel": "Købsoption (CZ$) · valgfri",
-    "buyOptionPlaceholder": "Efterlad tom for ingen option",
-    "sending": "Sender...",
-    "submit": "Send forslag",
-    "cancel": "Annuller",
-    "newButton": "+ Foreslå ny lejeaftale"
   },
   "history": {
     "title": "Transferhistorik",
@@ -181,7 +140,6 @@
       "amount": "Beløb"
     },
     "aiTag": "(AI)",
-    "loanTag": "(lån)",
     "swapZero": "0 CZ$",
     "noBids": "Ingen bud",
     "academySource": "Akademi",
@@ -205,9 +163,7 @@
     "archivedReceived": "Arkiverede modtagne tilbud",
     "archivedSent": "Arkiverede sendte tilbud",
     "receivedProposals": "Modtagne forslag",
-    "sentProposals": "Sendte forslag",
-    "yourLending": "Dine udlejninger",
-    "yourBorrowing": "Dine lejeaftaler"
+    "sentProposals": "Sendte forslag"
   },
   "empty": {
     "received": "Ingen modtagne tilbud",
@@ -215,8 +171,6 @@
     "sent": "Du har ikke sendt nogen tilbud endnu",
     "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
     "archive": "Ingen arkiverede tilbud",
-    "loans": "Ingen aktive lejeaftaler",
-    "loansHint": "Foreslå en lejeaftale ved at klikke knappen ovenfor",
     "marketNoListings": "Ingen ryttere til salg",
     "marketNoMatches": "Ingen ryttere matcher filteret"
   },
@@ -239,10 +193,6 @@
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",
-    "loanActivated": "✅ Lejeaftale aktiveret",
-    "loanRejected": "Lejeforslag afvist",
-    "loanCancelled": "Lejeaftale annulleret",
-    "loanProposalSent": "✅ Lejeforslag sendt!",
     "priceUpdated": "✅ Pris opdateret",
     "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },

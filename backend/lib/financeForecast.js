@@ -26,8 +26,6 @@ export function computeFinanceForecast({
   pulloutFactor = 1.0,
   riders = [],
   activeLoans = [],
-  inboundLoanAgreements = [],
-  outboundLoanAgreements = [],
   totalDebt = 0,
   debtCeiling = null,
   currentSeasonNumber = null,
@@ -84,23 +82,11 @@ export function computeFinanceForecast({
     0
   ) || 0;
 
-  // Lejegebyr for lejede ryttere (vi betaler) — kun aftaler der stadig dækker
-  // næste sæson. shouldChargeLoanAgreementSeasonFee i loanEngine: charge når
-  // seasonNumber > start_season AND seasonNumber <= end_season.
-  const nextSeason = Number.isInteger(currentSeasonNumber)
-    ? currentSeasonNumber + 1
-    : null;
-  // Normaliser -0 → 0 så strict-equality-tests og JSON-output forbliver rene.
-  const projectedLoanFees = -sumLoanFees(inboundLoanAgreements, nextSeason) || 0;
-  const projectedLoanFeesReceived = sumLoanFees(outboundLoanAgreements, nextSeason);
-
   const projectedNet =
     projectedSponsor +
     projectedPrize +
     projectedSalary +
-    projectedLoanInterest +
-    projectedLoanFees +
-    projectedLoanFeesReceived;
+    projectedLoanInterest;
 
   // ±20% på prize, der er mest variable input. Sponsor/løn/rente er deterministiske
   // i et givent sæson-perspektiv — usikkerheden bor i hvor meget holdet faktisk
@@ -149,8 +135,6 @@ export function computeFinanceForecast({
     projected_prize: projectedPrize,
     projected_salary: projectedSalary,
     projected_loan_interest: projectedLoanInterest,
-    projected_loan_fees: projectedLoanFees,
-    projected_loan_fees_received: projectedLoanFeesReceived,
     projected_net: projectedNet,
     confidence_low: confidenceLow,
     confidence_high: confidenceHigh,
@@ -175,30 +159,10 @@ export function computeFinanceForecast({
       debt_ratio: debtRatio,
       rider_count: (riders || []).length,
       active_loan_count: (activeLoans || []).length,
-      inbound_agreement_count: (inboundLoanAgreements || []).length,
-      outbound_agreement_count: (outboundLoanAgreements || []).length,
       current_season_number: currentSeasonNumber,
       target_season_number: seasonNumber,
     },
   };
-}
-
-function sumLoanFees(agreements, nextSeason) {
-  if (!Array.isArray(agreements) || agreements.length === 0) return 0;
-  return agreements.reduce((sum, agr) => {
-    const fee = agr?.loan_fee || 0;
-    if (fee <= 0) return sum;
-    if (agr?.status && agr.status !== "active") return sum;
-    if (nextSeason !== null) {
-      const start = agr?.start_season;
-      const end = agr?.end_season;
-      // Charge sker når seasonNumber > start_season AND seasonNumber <= end_season.
-      // Replikerer shouldChargeLoanAgreementSeasonFee i loanEngine.js.
-      if (Number.isInteger(start) && nextSeason <= start) return sum;
-      if (Number.isInteger(end) && nextSeason > end) return sum;
-    }
-    return sum + fee;
-  }, 0);
 }
 
 function computeRiskTier({
@@ -318,8 +282,6 @@ export const FORECAST_THRESHOLDS = Object.freeze({
  *     i live ved updateRiderValues, men det modellerer vi ikke her)
  *   - Loan-interest = decay: amount_remaining × 0.75 per sæson som proxy for
  *     gradvis afdrag (manager kan også optage nye lån — ikke modelleret)
- *   - Loan-agreements = match start_season ≤ N ≤ end_season per aftale
- *   - Lejegebyrer ind/ud = uændret hvis aftalen stadig dækker N
  *   - Balance ruller frem: balance_{N+1} = balance_N + projected_net_N
  *
  * Sæson 0 (open-beta): forecast giver kun mening fra sæson 1+. Hvis target
@@ -337,8 +299,6 @@ export function computeMultiSeasonForecast({
   pulloutFactor = 1.0,
   riders = [],
   activeLoans = [],
-  inboundLoanAgreements = [],
-  outboundLoanAgreements = [],
   debtCeiling = null,
   currentSeasonNumber = null,
   lastSeasonStanding = null,
@@ -369,8 +329,6 @@ export function computeMultiSeasonForecast({
       pulloutFactor,
       riders,
       activeLoans: rollingActiveLoans,
-      inboundLoanAgreements,
-      outboundLoanAgreements,
       totalDebt: rollingTotalDebt,
       debtCeiling,
       currentSeasonNumber: targetSeasonNumber - 1,

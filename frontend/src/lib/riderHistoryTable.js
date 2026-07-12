@@ -1,5 +1,5 @@
 // Historik-fanens rækkemodel (#2000): normalisér buildRiderHistory-events
-// (GET /api/riders/:id/history — auction/transfer/swap/loan) + auktionsbud fra
+// (GET /api/riders/:id/history — auction/transfer/swap) + auktionsbud fra
 // bid-timelinen (GET /api/riders/:id/bid-timeline) til ÉN kronologisk tabel.
 //
 // Bud-rækker dækker kun rytterens SENESTE auktion — det er alt endpointet
@@ -14,7 +14,7 @@
 // datalag endnu (kontraktændringer logges ikke historisk) — de kan tilføjes
 // når/hvis et event-lag findes, frem for at opfinde rækker.
 
-export const HISTORY_KINDS = ["auction", "auction_no_sale", "bid", "transfer", "swap", "loan"];
+export const HISTORY_KINDS = ["auction", "auction_no_sale", "bid", "transfer", "swap"];
 
 // Beløbet pr. kind — null → "—" i tabellen.
 export function historyRowAmount(row) {
@@ -23,7 +23,6 @@ export function historyRowAmount(row) {
     case "bid": return row.amount ?? null;
     case "transfer": return row.price ?? null;
     case "swap": return row.cash_adjustment || null; // 0 = intet mellemværende → "—"
-    case "loan": return row.loan_fee || null;
     default: return null;
   }
 }

@@ -13,8 +13,6 @@ const ARCHETYPES = {
       prize_earnings_bonus: 6_000,
     })),
     activeLoans: [],
-    inboundLoanAgreements: [],
-    outboundLoanAgreements: [],
     totalDebt: 0,
     debtCeiling: 900_000,
     currentSeasonNumber: 1,
@@ -28,8 +26,6 @@ const ARCHETYPES = {
       prize_earnings_bonus: 1_500,
     })),
     activeLoans: [{ amount_remaining: 200_000, interest_rate: 0.10 }],
-    inboundLoanAgreements: [],
-    outboundLoanAgreements: [],
     totalDebt: 350_000,
     debtCeiling: 600_000,
     currentSeasonNumber: 1,
@@ -43,8 +39,6 @@ const ARCHETYPES = {
       prize_earnings_bonus: 7_000,
     })),
     activeLoans: [{ amount_remaining: 1_000_000, interest_rate: 0.10 }],
-    inboundLoanAgreements: [],
-    outboundLoanAgreements: [],
     totalDebt: 1_050_000,
     debtCeiling: 1_200_000,
     currentSeasonNumber: 1,
@@ -58,10 +52,6 @@ const ARCHETYPES = {
       prize_earnings_bonus: 800,
     })),
     activeLoans: [{ amount_remaining: 500_000, interest_rate: 0.10 }],
-    inboundLoanAgreements: [
-      { loan_fee: 25_000, start_season: 1, end_season: 3, status: "active" },
-    ],
-    outboundLoanAgreements: [],
     totalDebt: 550_000,
     debtCeiling: 600_000,
     currentSeasonNumber: 1,
@@ -106,11 +96,11 @@ test("computeFinanceForecast: gæld-stor manager → rød (debt > 80%)", () => {
 
 test("computeFinanceForecast: konkurs-tæt manager → rød (net + trend)", () => {
   const result = computeFinanceForecast(ARCHETYPES.nearBankrupt);
-  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K,
-  // rente = -50K, lejegebyr = -25K. net = 192_000 + 9_600 - 264_000 - 50_000 - 25_000 = -137_400.
-  assert.equal(result.projected_net, -137_400);
+  // sponsor = 240K × 0.8 = 192K, prize = 12 × 800 = 9.6K, salary = -264K, rente = -50K.
+  // net = 192_000 + 9_600 - 264_000 - 50_000 = -112_400.
+  assert.equal(result.projected_net, -112_400);
   assert.equal(result.risk_tier, "red");
-  // Trend: 550K + 2×137.4K = 824.8K > 600K ceiling → trend-warning aktiv.
+  // Trend: 550K + 2×112.4K = 774.8K > 600K ceiling → trend-warning aktiv.
   const trendWarn = result.warnings.find((w) => w.code === "debt_trend");
   assert.ok(trendWarn, "skal have debt_trend warning");
 });
@@ -122,58 +112,6 @@ test("computeFinanceForecast: tomt input giver default grøn med 0-net", () => {
   assert.equal(result.projected_salary, 0);
   assert.equal(result.projected_net, 240_000);
   assert.equal(result.risk_tier, "green");
-});
-
-test("computeFinanceForecast: lejegebyr indregnes kun hvis aftalen dækker næste sæson", () => {
-  const base = {
-    team: { id: "x", sponsor_income: 240_000 },
-    riders: [],
-    activeLoans: [],
-    totalDebt: 0,
-    debtCeiling: 900_000,
-    currentSeasonNumber: 5,
-  };
-
-  // Aftale slutter sæson 5 (= currentSeason). Næste sæson er 6 → IKKE inkluderet.
-  const expired = computeFinanceForecast({
-    ...base,
-    inboundLoanAgreements: [
-      { loan_fee: 30_000, start_season: 4, end_season: 5, status: "active" },
-    ],
-  });
-  assert.equal(expired.projected_loan_fees, 0);
-
-  // Aftale dækker sæson 4-7 → inkluderet for sæson 6.
-  const active = computeFinanceForecast({
-    ...base,
-    inboundLoanAgreements: [
-      { loan_fee: 30_000, start_season: 4, end_season: 7, status: "active" },
-    ],
-  });
-  assert.equal(active.projected_loan_fees, -30_000);
-
-  // Status != active → ignoreres.
-  const cancelled = computeFinanceForecast({
-    ...base,
-    inboundLoanAgreements: [
-      { loan_fee: 30_000, start_season: 4, end_season: 7, status: "cancelled" },
-    ],
-  });
-  assert.equal(cancelled.projected_loan_fees, 0);
-});
-
-test("computeFinanceForecast: outbound loan_fee bidrager positivt", () => {
-  const result = computeFinanceForecast({
-    team: { sponsor_income: 240_000 },
-    riders: [],
-    outboundLoanAgreements: [
-      { loan_fee: 30_000, start_season: 1, end_season: 3, status: "active" },
-    ],
-    debtCeiling: 900_000,
-    currentSeasonNumber: 1,
-  });
-  assert.equal(result.projected_loan_fees_received, 30_000);
-  assert.equal(result.projected_net, 240_000 + 30_000);
 });
 
 test("computeFinanceForecast: pullout-factor reducerer sponsor", () => {

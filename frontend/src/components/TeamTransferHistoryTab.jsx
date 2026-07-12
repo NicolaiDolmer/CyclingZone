@@ -9,7 +9,7 @@ import { useTableSort } from "../lib/useTableSort.js";
 import SortableTh from "./ui/SortableTh.jsx";
 import { Card, Select, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
 
-const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan", academy: "type.academy" };
+const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };
 
 // #2329: begge tabeller i denne fane bruger den kanoniske SortableTh/useTableSort
 // (lib/useTableSort.js) i stedet for en lokal hand-rolled header. Historik-tabellen
@@ -312,7 +312,6 @@ export default function TeamTransferHistoryTab({ teamId }) {
                           {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
                         </span>
                       : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
-                    {ev.type === "loan" && <span className="text-cz-3 ms-1">{t("history.loanTag")}</span>}
                   </td>
                 </tr>
               ))}

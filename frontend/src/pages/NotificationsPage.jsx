@@ -28,13 +28,11 @@ const PENDING_ROLE_KEYS = {
   proposing_decide: "proposingDecide",
   receiving_confirm: "receivingConfirm",
   proposing_confirm: "proposingConfirm",
-  lender_decide: "lenderDecide",
 };
 
 const PENDING_KIND_ICON = {
   transfer_offer: ExchangeIcon,
   swap_offer: ExchangeIcon,
-  loan_offer: CoinIcon,
 };
 
 const TYPE_CONFIG = {
@@ -351,27 +349,6 @@ export default function NotificationsPage() {
             role,
           })
         : t("pending.swapSecondaryNoCash", { team, role });
-      return { ...item, primary, secondary };
-    }),
-    ...pending.loan_offers.map(item => {
-      const primary = t("pending.loanPrimary", {
-        rider: item.rider_name,
-        fee: formatNumber(item.loan_fee || 0),
-      });
-      const team = item.counterparty_team_name || t("pending.unknownTeam");
-      const role = pendingRoleLabel(t, item.role);
-      const secondary = item.end_season !== item.start_season
-        ? t("pending.loanSecondaryMultiSeason", {
-            team,
-            start: item.start_season,
-            end: item.end_season,
-            role,
-          })
-        : t("pending.loanSecondarySingleSeason", {
-            team,
-            start: item.start_season,
-            role,
-          });
       return { ...item, primary, secondary };
     }),
   ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));

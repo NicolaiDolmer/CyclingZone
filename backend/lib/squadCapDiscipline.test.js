@@ -32,7 +32,8 @@ test("TRANSFER_WINDOW_SOFT_CAP_BUFFER er stadig 2 (gameplay-spec match)", () => 
 });
 
 const CALLSITE_FILES = [
-  { rel: "../routes/api.js", expectedCalls: 4 },
+  // #1994: rider-loan agreement accept/buyout routes removed — dropped from 4 to 2.
+  { rel: "../routes/api.js", expectedCalls: 2 },
   { rel: "./auctionFinalization.js", expectedCalls: 1 },
   { rel: "./transferExecution.js", expectedCalls: 1 },
 ];

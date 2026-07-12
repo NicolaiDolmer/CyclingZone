@@ -31,8 +31,6 @@
       "seniors": "Seniorer ({count})",
       "academy": "Akademi ({count})"
     },
-    "loanedIn": "Lejede ryttere ({count})",
-    "loanedOut": "Udlejede ryttere ({count})",
     "emptyState": "Din trup er tom",
     "emptyStateBody": "Skriv dine første ryttere fra markedet og begynd at bygge dit hold.",
     "emptyStateCta": "Find ryttere",
@@ -50,14 +48,6 @@
       "contract": "Kontrakt",
       "contractValue": "Udløber efter S{season}",
       "action": "Handling"
-    },
-    "tags": {
-      "loanedIn": "På leje",
-      "loanedOut": "Udlejet"
-    },
-    "tooltips": {
-      "loanedFrom": "Lejet fra {team} · sæson {start}–{end}",
-      "loanedTo": "Udlejet til {team} · sæson {start}–{end}"
     },
     "actionButton": "Sælg / Auktion"
   },

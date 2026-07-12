@@ -42,7 +42,6 @@ import {
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
-  getSpendIssue,
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
@@ -112,11 +111,6 @@ import {
   computeReleaseBuyoutFee,
   computeContractExtension,
 } from "../lib/contractSeed.js";
-import {
-  getLoanAgreementAcceptedStatus,
-  getLoanBuyoutRiderUpdate,
-  getLoanBuyoutStatus,
-} from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
@@ -228,7 +222,6 @@ import {
   confirmTransferOffer,
   getListingCancelIssue,
   getListingPriceUpdateIssue,
-  getLoanCancelIssue,
   getSwapCancelIssue,
   getTransferCancelIssue,
 } from "../lib/transferExecution.js";
@@ -4662,325 +4655,6 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
   return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
 });
 
-// ── Loan Agreements ───────────────────────────────────────────────────────────
-
-const LOAN_FIELDS = `id, loan_fee, start_season, end_season, buy_option_price, status, created_at, updated_at,
-  rider:rider_id(id, firstname, lastname, market_value, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
-  from_team:from_team_id(id, name),
-  to_team:to_team_id(id, name)`;
-
-// GET /api/loans — active/pending loans for my team (lending + borrowing)
-router.get("/loans", requireAuth, async (req, res) => {
-  const [lendingRes, borrowingRes] = await Promise.all([
-    supabase.from("loan_agreements").select(LOAN_FIELDS)
-      .eq("from_team_id", req.team.id)
-      .not("status", "in", '("rejected","cancelled","completed")')
-      .order("updated_at", { ascending: false }),
-    supabase.from("loan_agreements").select(LOAN_FIELDS)
-      .eq("to_team_id", req.team.id)
-      .not("status", "in", '("rejected","cancelled","completed")')
-      .order("updated_at", { ascending: false }),
-  ]);
-  res.json({ lending: lendingRes.data || [], borrowing: borrowingRes.data || [] });
-});
-
-// POST /api/loans — propose a loan (borrowing team initiates)
-router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!(await assertMarketOpen(req, res, "market"))) return;
-  if (!assertTeamNotTransferFrozen(req, res)) return;
-  const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price } = req.body;
-  if (!rider_id || !start_season || !end_season)
-    return res.status(400).json({ error: "rider_id, start_season and end_season are required", errorCode: "loan_fields_required" });
-  if (end_season < start_season)
-    return res.status(400).json({ error: "end_season must be greater than or equal to start_season", errorCode: "loan_end_before_start" });
-  if (end_season > start_season)
-    return res.status(400).json({ error: "A loan can cover one season at most. Set the start and end to the same season number.", errorCode: "loan_max_one_season" });
-
-  const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
-  if (!rider || !rider.team_id)
-    return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
-  if (rider.is_retired)
-    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes", errorCode: "rider_retired_loan" });
-  if (rider.team_id === req.team.id)
-    return res.status(400).json({ error: "Du kan ikke leje din egen rytter", errorCode: "cannot_loan_own_rider" });
-
-  // 2026-06-30: AI-ejede ryttere må ikke kunne lejes — samme is_ai-spærre som
-  // auktion/direct-offer/swap, ellers er lånevejen et åbent hul ind i AI-trupperne.
-  const { data: lenderTeam } = await supabase
-    .from("teams").select("is_bank, is_ai").eq("id", rider.team_id).single();
-  if (lenderTeam?.is_bank || lenderTeam?.is_ai)
-    return res.status(400).json({ error: "AI riders can't be loaned.", errorCode: "ai_rider_no_loan" });
-
-  // Check no active loan already exists for this rider
-  const { data: existing } = await supabase.from("loan_agreements")
-    .select("id").eq("rider_id", rider_id).in("status", ["pending","active"]).limit(1);
-  if (existing && existing.length > 0)
-    return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag", errorCode: "rider_already_loaned" });
-
-  const borrowerState = await getTeamMarketState(supabase, req.team.id);
-  // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
-  const proposalSquadViolation = getIncomingSquadViolation(borrowerState, {
-    softCapBuffer: 0,
-  });
-  if (proposalSquadViolation)
-    return res.status(400).json({
-      error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders}${proposalSquadViolation.softCapBuffer ? ` + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke oprettes.`,
-      errorCode: proposalSquadViolation.softCapBuffer ? "squad_full_loan_propose_buffer" : "squad_full_loan_propose",
-      errorParams: { effectiveCap: proposalSquadViolation.effectiveCap, division: borrowerState.division || 3, maxRiders: proposalSquadViolation.maxRiders, buffer: proposalSquadViolation.softCapBuffer },
-    });
-
-  const { data, error } = await supabase.from("loan_agreements").insert({
-    rider_id,
-    from_team_id: rider.team_id,
-    to_team_id: req.team.id,
-    loan_fee,
-    start_season,
-    end_season,
-    buy_option_price: buy_option_price || null,
-    status: "pending",
-  }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-
-  await notifyTeamOwnerBuilt(rider.team_id, transferNotif.buildLoanProposalNotification({
-    proposerName: req.team.name,
-    riderName: `${rider.firstname} ${rider.lastname}`,
-    seasonFrom: start_season, seasonTo: end_season,
-    fee: loan_fee, buyOption: buy_option_price || null, riderId: rider.id,
-  }), data.id);
-
-  res.status(201).json(data);
-});
-
-// PATCH /api/loans/:id — accept, reject, cancel, or buyout
-router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => {
-  const { action } = req.body;
-
-  // Market pause: allow only cleanup actions (reject/cancel) when paused.
-  if (isActionBlockedDuringMarketPause(action)) {
-    if (!(await assertMarketOpen(req, res, "market"))) return;
-  }
-
-  const { data: loan } = await supabase
-    .from("loan_agreements")
-    // #1309: salary/base_value/prize_earnings_bonus med så buyout's contract-on-
-    // acquire kan afgøre create-if-missing vs. inherit-if-present.
-    .select(`*, rider:rider_id(id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus)`)
-    .eq("id", req.params.id).single();
-  if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet", errorCode: "loan_not_found" });
-
-  const isLender   = loan.from_team_id === req.team.id;
-  const isBorrower = loan.to_team_id   === req.team.id;
-  if (!isLender && !isBorrower)
-    return res.status(403).json({ error: "Ikke involveret i denne lejeaftale", errorCode: "not_involved_loan" });
-
-  // ACCEPT — lending team accepts
-  if (action === "accept" && isLender && loan.status === "pending") {
-    const borrowerState = await getTeamMarketState(supabase, loan.to_team_id);
-    // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
-    const activationSquadViolation = getIncomingSquadViolation(borrowerState, {
-      softCapBuffer: 0,
-    });
-    if (activationSquadViolation)
-      return res.status(400).json({
-        error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders}${activationSquadViolation.softCapBuffer ? ` + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke aktiveres.`,
-        errorCode: activationSquadViolation.softCapBuffer ? "squad_full_loan_accept_buffer" : "squad_full_loan_accept",
-        errorParams: { effectiveCap: activationSquadViolation.effectiveCap, division: borrowerState.division || 3, maxRiders: activationSquadViolation.maxRiders, buffer: activationSquadViolation.softCapBuffer },
-      });
-
-    // Deduct first season's loan fee from borrower if > 0
-    if (loan.loan_fee > 0) {
-      const { data: borrower } = await supabase.from("teams").select("balance").eq("id", loan.to_team_id).single();
-      if (!borrower)
-        return res.status(400).json({ error: "Lejer-hold ikke fundet", errorCode: "borrower_team_not_found" });
-      // #44: lejegebyret må ikke pushe lejer i underbalance ift. eksisterende auktioner.
-      const { commitment: borrowerCommitment } = await fetchTeamCommitment(supabase, loan.to_team_id);
-      const spendIssue = getSpendIssue({
-        teamBalance: borrower.balance,
-        commitment: borrowerCommitment,
-        attemptedSpend: loan.loan_fee,
-      });
-      if (spendIssue?.code === "insufficient_available_balance") {
-        return res.status(400).json({
-          error: `The borrower only has ${spendIssue.availableBalance.toLocaleString()} CZ$ available after active bids and can't pay the loan fee of ${loan.loan_fee.toLocaleString()} CZ$`,
-          errorCode: "loan_fee_insufficient",
-          errorParams: { available: spendIssue.availableBalance, fee: loan.loan_fee },
-        });
-      }
-      // Slice 07c: balance + finance_transactions atomic via RPC.
-      // 07d Fase B / #240: api-actor; lender bekræfter aktivering så req.user.id = lender.
-      // season_id sættes eksplicit fra activeSeason — triggeren er en safety-net, ikke en undskyldning.
-      const { data: loanAcceptSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-      const loanAcceptSeasonId = loanAcceptSeason?.id ?? null;
-      await incrementBalanceWithAudit(supabase, {
-        teamId: loan.to_team_id,
-        delta: -loan.loan_fee,
-        payload: {
-          type: "transfer_out",
-          amount: -loan.loan_fee,
-          description: `Lejegebyr: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
-          season_id: loanAcceptSeasonId,
-          actor_type: FINANCE_ACTOR_TYPE.API,
-          actor_id: req.user.id,
-          source_path: "api.loans.accept.borrower",
-          reason_code: FINANCE_REASON.LOAN_FEE_PAID,
-          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-          related_entity_id: loan.id,
-        },
-      });
-      await incrementBalanceWithAudit(supabase, {
-        teamId: loan.from_team_id,
-        delta: loan.loan_fee,
-        payload: {
-          type: "transfer_in",
-          amount: loan.loan_fee,
-          description: `Lejegebyr modtaget: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
-          season_id: loanAcceptSeasonId,
-          actor_type: FINANCE_ACTOR_TYPE.API,
-          actor_id: req.user.id,
-          source_path: "api.loans.accept.lender",
-          reason_code: FINANCE_REASON.LOAN_FEE_RECEIVED,
-          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-          related_entity_id: loan.id,
-        },
-      });
-    }
-    // #1996: markedet er altid åbent → lejeaftaler aktiveres straks (aldrig parkeret).
-    const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: true });
-    await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", loan.id);
-    await notifyTeamOwnerBuilt(loan.to_team_id, transferNotif.buildLoanActivatedNotification({
-      lenderName: req.team.name, riderName: `${loan.rider.firstname} ${loan.rider.lastname}`,
-      riderId: loan.rider.id,
-    }), loan.id);
-    return res.json({ success: true, action: nextStatus });
-  }
-
-  // REJECT — lending team rejects
-  if (action === "reject" && isLender && loan.status === "pending") {
-    await supabase.from("loan_agreements").update({ status: "rejected" }).eq("id", loan.id);
-    await notifyTeamOwnerBuilt(loan.to_team_id, transferNotif.buildLoanRejectedNotification({
-      lenderName: req.team.name, riderName: `${loan.rider.firstname} ${loan.rider.lastname}`,
-      riderId: loan.rider.id,
-    }), loan.id);
-    return res.json({ success: true, action: "rejected" });
-  }
-
-  // CANCEL — kun pending kan trækkes tilbage ensidigt (ingen kontrakt endnu).
-  // #156: aktive lejeaftaler er bindende — kun admin kan annullere via
-  // POST /api/admin/loans/:id/cancel.
-  if (action === "cancel" && loan.status === "pending") {
-    await supabase.from("loan_agreements").update({ status: "cancelled" }).eq("id", loan.id);
-    const otherTeamId = isLender ? loan.to_team_id : loan.from_team_id;
-    await notifyTeamOwnerBuilt(otherTeamId, transferNotif.buildLoanCancelledNotification({
-      actorName: req.team.name, riderName: `${loan.rider.firstname} ${loan.rider.lastname}`,
-      riderId: loan.rider.id,
-    }), loan.id);
-    return res.json({ success: true, action: "cancelled" });
-  }
-  if (action === "cancel" && getLoanCancelIssue(loan)) {
-    return res.status(400).json({
-      error: "Lejeaftalen er aktiv og kan ikke annulleres ensidigt — kontakt en admin.",
-      errorCode: "loan_active_no_unilateral_cancel",
-    });
-  }
-
-  // BUYOUT — borrowing team exercises buy option
-  if (action === "buyout" && isBorrower && loan.status === "active" && loan.buy_option_price) {
-    const price = loan.buy_option_price;
-    const { data: borrower } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
-    if (!borrower)
-      return res.status(400).json({ error: "Hold ikke fundet", errorCode: "team_not_found" });
-    // #44: købsoption må ikke pushe i underbalance ift. eksisterende auktioner.
-    const { commitment: buyerCommitment } = await fetchTeamCommitment(supabase, req.team.id);
-    const buyoutIssue = getSpendIssue({
-      teamBalance: borrower.balance,
-      commitment: buyerCommitment,
-      attemptedSpend: price,
-    });
-    if (buyoutIssue?.code === "insufficient_available_balance") {
-      return res.status(400).json({
-        error: `You only have ${buyoutIssue.availableBalance.toLocaleString()} CZ$ available after active bids and can't exercise the buy option of ${price.toLocaleString()} CZ$`,
-        errorCode: "buyout_insufficient",
-        errorParams: { available: buyoutIssue.availableBalance, price },
-      });
-    }
-
-    // #19 audit (finding #3): claim the rider with the SAME atomicity guard the
-    // transfer/swap parking paths use, BEFORE moving any money. The rider must
-    // still be owned by the lender and not already parked for another deal; a
-    // 0-row result means a competing deal claimed the rider, so we abort before
-    // debiting. #1996: markedet er altid åbent → ejerskabet flyttes med det samme.
-    const boughtAt = new Date().toISOString();
-    // #1309 kontrakt-on-acquire: lejeren erhverver rytteren permanent via
-    // købsoption → opret standard-kontrakt hvis kontraktløs (salary == null);
-    // ellers arves den uændret. Slå aktiv sæson op ÉN gang: number →
-    // contract_end_season, id → season_id-stamp.
-    const { data: buyoutSeason } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
-    const buyoutSeasonId = buyoutSeason?.id ?? null;
-    const buyoutSeasonNumber = buyoutSeason?.number ?? 1;
-    const buyoutContractPatch = contractOnAcquirePatch(loan.rider, buyoutSeasonNumber);
-    const { data: claimedRider, error: claimErr } = await supabase.from("riders")
-      .update({
-        ...getLoanBuyoutRiderUpdate({ windowOpen: true, borrowerTeamId: req.team.id, timestamp: boughtAt }),
-        ...buyoutContractPatch,
-      })
-      .eq("id", loan.rider_id)
-      .eq("team_id", loan.from_team_id)
-      .is("pending_team_id", null)
-      .select("id");
-    if (claimErr) return res.status(500).json({ error: claimErr.message });
-    if (!claimedRider || claimedRider.length === 0)
-      return res.status(409).json({ error: "This rider is no longer available for the buy option; it's already part of another deal.", errorCode: "buyout_rider_unavailable" });
-
-    // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
-    // season_id sættes eksplicit fra activeSeason (slået op ovenfor).
-    await incrementBalanceWithAudit(supabase, {
-      teamId: req.team.id,
-      delta: -price,
-      payload: {
-        type: "transfer_out",
-        amount: -price,
-        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
-        season_id: buyoutSeasonId,
-        actor_type: FINANCE_ACTOR_TYPE.API,
-        actor_id: req.user.id,
-        source_path: "api.loans.buyout.buyer",
-        reason_code: FINANCE_REASON.LOAN_BUYOUT,
-        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-        related_entity_id: loan.id,
-      },
-    });
-    await incrementBalanceWithAudit(supabase, {
-      teamId: loan.from_team_id,
-      delta: price,
-      payload: {
-        type: "transfer_in",
-        amount: price,
-        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
-        season_id: buyoutSeasonId,
-        actor_type: FINANCE_ACTOR_TYPE.API,
-        actor_id: req.user.id,
-        source_path: "api.loans.buyout.seller",
-        reason_code: FINANCE_REASON.LOAN_BUYOUT,
-        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-        related_entity_id: loan.id,
-      },
-    });
-    // #1996: markedet er altid åbent → købsoptionen gennemføres straks (aldrig parkeret).
-    const nextStatus = getLoanBuyoutStatus({ windowOpen: true });
-    await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
-    await notifyTeamOwnerBuilt(loan.from_team_id, transferNotif.buildLoanBuyoutNotification({
-      buyerName: req.team.name, riderName: `${loan.rider.firstname} ${loan.rider.lastname}`, price,
-    }), loan.id);
-    // Buyout moves rider permanently or parks a pending owner-change; drop /api/riders cache.
-    invalidateNamespace("riders");
-    return res.json({ success: true, action: nextStatus, price });
-  }
-
-  return res.status(400).json({ error: "Ugyldig handling" });
-});
-
 // POST /api/admin/override-rider — manually move a rider to a team
 router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
@@ -5552,7 +5226,7 @@ router.get("/training/today-status", requireAuth, async (req, res) => {
 // GET /api/me/finance-forecast — slice 07g manager finance-forecast + risk-tier
 //
 // Aggregerer alle inputs til pure-function computeFinanceForecast og returnerer
-// projected sponsor/prize/salary/loan_interest/loan_fees + 🟢/🟡/🔴 risk-tier +
+// projected sponsor/prize/salary/loan_interest + 🟢/🟡/🔴 risk-tier +
 // warnings. Kaldes fra Dashboard og FinancePage.
 router.get("/me/finance-forecast", requireAuth, async (req, res) => {
   try {
@@ -5563,8 +5237,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       teamRes,
       ridersRes,
       activeLoansRes,
-      inboundAgreementsRes,
-      outboundAgreementsRes,
       boardsRes,
       pulloutRes,
       activeSeasonRes,
@@ -5583,16 +5255,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .from("loans")
         .select("amount_remaining, interest_rate")
         .eq("team_id", teamId)
-        .eq("status", "active"),
-      supabase
-        .from("loan_agreements")
-        .select("loan_fee, start_season, end_season, status")
-        .eq("to_team_id", teamId)
-        .eq("status", "active"),
-      supabase
-        .from("loan_agreements")
-        .select("loan_fee, start_season, end_season, status")
-        .eq("from_team_id", teamId)
         .eq("status", "active"),
       supabase
         .from("board_profiles")
@@ -5618,8 +5280,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
 
     const riders = ridersRes.data || [];
     const activeLoans = activeLoansRes.data || [];
-    const inboundLoanAgreements = inboundAgreementsRes.data || [];
-    const outboundLoanAgreements = outboundAgreementsRes.data || [];
 
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
     // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
@@ -5698,8 +5358,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       pulloutFactor,
       riders,
       activeLoans,
-      inboundLoanAgreements,
-      outboundLoanAgreements,
       totalDebt,
       debtCeiling,
       currentSeasonNumber,
@@ -6088,109 +5746,6 @@ router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, adminWriteLimiter
     });
 
     res.json({ success: true, offered_name: offeredName, requested_name: requestedName, message: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName}` });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/admin/loans/:id/cancel — admin annullerer en aktiv lejeaftale (#156)
-// Refunderer betalt loan_fee til lejer og trækker fra udlejer (2A).
-router.post("/admin/loans/:id/cancel", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    const { data: loan, error: fetchErr } = await supabase
-      .from("loan_agreements")
-      .select(`id, rider_id, from_team_id, to_team_id, loan_fee, start_season, status,
-        rider:rider_id(id, firstname, lastname)`)
-      .eq("id", id)
-      .maybeSingle();
-
-    if (fetchErr) throw fetchErr;
-    if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet" });
-
-    if (!["pending", "active"].includes(loan.status)) {
-      return res.status(409).json({ error: `Lejeaftalen kan ikke annulleres fra status: ${loan.status}` });
-    }
-
-    const riderName = loan.rider ? `${loan.rider.firstname} ${loan.rider.lastname}` : "unknown rider";
-    let refundedFee = 0;
-
-    // Refund loan_fee hvis den allerede er udvekslet (status=active + fee > 0).
-    if (loan.status === "active" && loan.loan_fee > 0) {
-      const [{ data: borrower }, { data: lender }] = await Promise.all([
-        supabase.from("teams").select("balance").eq("id", loan.to_team_id).single(),
-        supabase.from("teams").select("balance").eq("id", loan.from_team_id).single(),
-      ]);
-      if (!borrower || !lender) {
-        return res.status(500).json({ error: "Kunne ikke hente hold-balancer for refusion" });
-      }
-      // Slice 07c: balance + finance_transactions atomic via RPC.
-      // 07d Fase B / #240: admin-trigger → actor_type=admin, actor_id=req.user.id,
-      // season_id eksplicit fra activeSeason.
-      const { data: refundSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-      const refundSeasonId = refundSeason?.id ?? null;
-      await incrementBalanceWithAudit(supabase, {
-        teamId: loan.to_team_id,
-        delta: loan.loan_fee,
-        payload: {
-          type: "transfer_in",
-          amount: loan.loan_fee,
-          description: `Lejegebyr refunderet (admin-annullering): ${riderName}`,
-          season_id: refundSeasonId,
-          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
-          actor_id: req.user.id,
-          source_path: "api.admin.loans.cancel.refundBorrower",
-          reason_code: FINANCE_REASON.LOAN_FEE_REFUNDED,
-          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-          related_entity_id: loan.id,
-        },
-      });
-      await incrementBalanceWithAudit(supabase, {
-        teamId: loan.from_team_id,
-        delta: -loan.loan_fee,
-        payload: {
-          type: "transfer_out",
-          amount: -loan.loan_fee,
-          description: `Lejegebyr tilbageført (admin-annullering): ${riderName}`,
-          season_id: refundSeasonId,
-          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
-          actor_id: req.user.id,
-          source_path: "api.admin.loans.cancel.clawbackLender",
-          reason_code: FINANCE_REASON.LOAN_FEE_REFUNDED,
-          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
-          related_entity_id: loan.id,
-        },
-      });
-      refundedFee = loan.loan_fee;
-    }
-
-    await supabase.from("loan_agreements").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", loan.id);
-
-    const loanCancelPayload = transferNotif.buildAdminLoanCancelledNotification({ riderName, reason, refundedFee });
-
-    await Promise.allSettled([
-      notifyTeamOwnerBuilt(loan.from_team_id, loanCancelPayload, loan.id),
-      notifyTeamOwnerBuilt(loan.to_team_id, loanCancelPayload, loan.id),
-    ]);
-
-    await supabase.from("admin_log").insert({
-      admin_user_id: req.user.id,
-      action_type: ADMIN_ACTION_TYPE.LOAN_AGREEMENT_ADMIN_CANCEL,
-      description: `Lejeaftale annulleret: ${riderName} (status: ${loan.status}, refund: ${refundedFee.toLocaleString("da-DK")} CZ$)${reason ? ` — ${reason}` : ""}`,
-      target_rider_id: loan.rider_id,
-      meta: {
-        loan_id: loan.id,
-        from_team_id: loan.from_team_id,
-        to_team_id: loan.to_team_id,
-        prior_status: loan.status,
-        refunded_fee: refundedFee,
-        reason: reason || null,
-      },
-    });
-
-    res.json({ success: true, rider_name: riderName, refunded_fee: refundedFee, message: `Lejeaftale annulleret: ${riderName}` });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

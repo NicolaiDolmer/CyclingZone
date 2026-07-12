@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.95",
+    "date": "2026-07-12",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Rider loans removed",
+          "body": "The rider loan feature (lending a rider to another team) has been removed. It was never used, and its scoring attribution was misleading. Buy, sell, auction and swap riders as usual. If a better-designed loan system makes sense later, it can return."
+        },
+        "da": {
+          "title": "Rytter-lejeaftaler fjernet",
+          "body": "Udlåns-featuren (at leje en rytter ud til et andet hold) er fjernet. Den blev aldrig brugt, og dens point-kreditering var misvisende. Køb, sælg, auktionér og byt ryttere som normalt. Giver et bedre designet leje-system mening senere, kan det vende tilbage."
+        },
+        "refs": [1994]
+      }
+    ]
+  },
+  {
     "version": "6.94",
     "date": "2026-07-11",
     "label": "Beta",

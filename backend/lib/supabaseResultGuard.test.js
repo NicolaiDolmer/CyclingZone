@@ -97,12 +97,12 @@ test("buildRiderHistory — returnerer stadig [] når alt lykkes uden rækker", 
 });
 
 test("buildTeamTransferHistory — kaster når en query fejler (#1338)", async () => {
-  const supabase = createErroringSupabase("loan_agreements", { message: "permission denied for table loan_agreements" });
+  const supabase = createErroringSupabase("swap_offers", { message: "permission denied for table swap_offers" });
   await assert.rejects(
     () => buildTeamTransferHistory(supabase, "team-X"),
     (err) => {
       assert.equal(err.code, "SUPABASE_QUERY_ERROR");
-      assert.match(err.message, /loan_agreements/);
+      assert.match(err.message, /swap_offers/);
       return true;
     }
   );

@@ -24,8 +24,6 @@
     "forcedDebtRepaymentRemaining": "Provenu fra tvangssalg afdrog gæld (resterende: {remaining} CZ$)",
     "loanInterest": "Lånerente ({rate}%): lagt til lånegælden, ikke trukket fra saldoen",
     "emergencyLoan": "Nødlån oprettet automatisk (gebyr: {feeRate}%, rente: {interestRate}%/sæson)",
-    "loanFeePaid": "Lejegebyr: {riderName} (sæson {season})",
-    "loanFeeReceived": "Lejegebyr modtaget: {riderName} (sæson {season})",
     "squadFineSingle": "Trupstørrelse-bøde: {count} afvigende rytter × {amount} CZ$",
     "squadFineMulti": "Trupstørrelse-bøde: {count} afvigende ryttere × {amount} CZ$",
     "auctionBuy": "Købte {riderName} på auktion",
@@ -291,29 +289,6 @@
         "title": "Byttehandel annulleret",
         "message": "{actorName} har trukket sig fra byttehandlen."
       },
-      "loanProposal": {
-        "title": "Lejeforslag modtaget",
-        "messageSingle": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}, {fee} CZ$/sæson)",
-        "messageRange": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}–{seasonTo}, {fee} CZ$/sæson)",
-        "messageBuySingle": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}, {fee} CZ$/sæson · købsoption {buyOption} CZ$)",
-        "messageBuyRange": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}–{seasonTo}, {fee} CZ$/sæson · købsoption {buyOption} CZ$)"
-      },
-      "loanActivated": {
-        "title": "Lejeaftale aktiveret",
-        "message": "{lenderName} har accepteret din lejeforespørgsel på {riderName}"
-      },
-      "loanRejected": {
-        "title": "Lejeforespørgsel afvist",
-        "message": "{lenderName} afslog dit lejeforslag på {riderName}"
-      },
-      "loanCancelled": {
-        "title": "Lejeaftale annulleret",
-        "message": "{actorName} har annulleret lejeaftalen på {riderName}"
-      },
-      "loanBuyout": {
-        "title": "Købsoption udnyttet",
-        "message": "{buyerName} har udnyttet købsoptionen på {riderName} for {price} CZ$"
-      },
       "adminTransferCancelled": {
         "title": "Handel annulleret af admin",
         "message": "Handlen på {riderName} er annulleret af en admin.",
@@ -323,13 +298,6 @@
         "title": "Byttehandel annulleret af admin",
         "message": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin.",
         "messageReason": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin: {reason}"
-      },
-      "adminLoanCancelled": {
-        "title": "Lejeaftale annulleret af admin",
-        "message": "Lejeaftalen på {riderName} er annulleret af en admin.",
-        "messageReason": "Lejeaftalen på {riderName} er annulleret af en admin: {reason}",
-        "messageRefund": "Lejeaftalen på {riderName} er annulleret af en admin. Lejegebyr ({refundedFee} CZ$) er refunderet.",
-        "messageReasonRefund": "Lejeaftalen på {riderName} er annulleret af en admin: {reason} Lejegebyr ({refundedFee} CZ$) er refunderet."
       }
     }
   },

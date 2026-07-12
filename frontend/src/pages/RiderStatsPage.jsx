@@ -177,74 +177,6 @@ function SwapOfferButton({ rider, myTeamId }) {
   );
 }
 
-function LoanOfferButton({ rider }) {
-  const { t } = useTranslation("rider");
-  const [show, setShow]         = useState(false);
-  const [loanFee, setLoanFee]   = useState(0);
-  const [season, setSeason]     = useState("");
-  const [buyOption, setBuyOption] = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [result, setResult]     = useState(null);
-
-  async function sendLoan() {
-    if (!season) return;
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/loans`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({
-          rider_id: rider.id,
-          loan_fee: loanFee,
-          start_season: parseInt(season),
-          end_season: parseInt(season),
-          buy_option_price: buyOption ? parseInt(buyOption) : null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) { setResult({ ok: true, msg: t("loanOffer.toast.success") }); setShow(false); }
-      else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
-    } catch {
-      setResult({ ok: false, msg: t("auth:error.connectionFailed") });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setResult(null), 4000);
-    }
-  }
-
-  return (
-    <div className="contents">
-      {result && (
-        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
-          ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
-          {result.msg}
-        </div>
-      )}
-      <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
-        {t("loanOffer.buttonOpen")}
-      </button>
-      {show && (
-        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
-          <input type="number" value={season} onChange={e => setSeason(e.target.value)}
-            placeholder={t("loanOffer.seasonPlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
-          <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
-            placeholder={t("loanOffer.feePlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
-          <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
-            placeholder={t("loanOffer.buyOptionPlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
-          <button onClick={sendLoan} disabled={loading || !season}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-            {loading ? t("loanOffer.sending") : t("loanOffer.submit")}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function DirectOfferButton({ rider }) {
   const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
@@ -1554,7 +1486,6 @@ export default function RiderStatsPage() {
               )}
               {canDirectOffer && <DirectOfferButton rider={rider} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
-              {canDirectOffer && <LoanOfferButton rider={rider} />}
             </div>
           }
         />

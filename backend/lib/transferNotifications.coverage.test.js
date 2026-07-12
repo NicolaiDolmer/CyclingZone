@@ -60,22 +60,10 @@ const SAMPLES = [
   builders.buildSwapCompletedNotification({ offeredName: "A", requestedName: "B", deferred: true }),
   builders.buildSwapPulledOutNotification({ actorName: "P" }),
   builders.buildSwapCancelledStaleNotification({ riderName: "R" }),
-  builders.buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 1, seasonTo: 1, fee: 1, buyOption: null, riderId: "r" }),
-  builders.buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 1, seasonTo: 2, fee: 1, buyOption: null, riderId: "r" }),
-  builders.buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 1, seasonTo: 1, fee: 1, buyOption: 9, riderId: "r" }),
-  builders.buildLoanProposalNotification({ proposerName: "P", riderName: "R", seasonFrom: 1, seasonTo: 2, fee: 1, buyOption: 9, riderId: "r" }),
-  builders.buildLoanActivatedNotification({ lenderName: "L", riderName: "R", riderId: "r" }),
-  builders.buildLoanRejectedNotification({ lenderName: "L", riderName: "R", riderId: "r" }),
-  builders.buildLoanCancelledNotification({ actorName: "A", riderName: "R", riderId: "r" }),
-  builders.buildLoanBuyoutNotification({ buyerName: "B", riderName: "R", price: 1 }),
   builders.buildAdminTransferCancelledNotification({ riderName: "R", reason: "" }),
   builders.buildAdminTransferCancelledNotification({ riderName: "R", reason: "x" }),
   builders.buildAdminSwapCancelledNotification({ offeredName: "A", requestedName: "B", reason: "" }),
   builders.buildAdminSwapCancelledNotification({ offeredName: "A", requestedName: "B", reason: "x" }),
-  builders.buildAdminLoanCancelledNotification({ riderName: "R", reason: "", refundedFee: 0 }),
-  builders.buildAdminLoanCancelledNotification({ riderName: "R", reason: "x", refundedFee: 0 }),
-  builders.buildAdminLoanCancelledNotification({ riderName: "R", reason: "", refundedFee: 5 }),
-  builders.buildAdminLoanCancelledNotification({ riderName: "R", reason: "x", refundedFee: 5 }),
 ];
 
 // describeTransferIssue/describeSwapIssue-koder (fra transferExecution) — hardkodet

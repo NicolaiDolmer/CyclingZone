@@ -31,8 +31,6 @@
       "seniors": "Seniors ({count})",
       "academy": "Academy ({count})"
     },
-    "loanedIn": "Loaned riders ({count})",
-    "loanedOut": "Riders on loan out ({count})",
     "emptyState": "Your squad is empty",
     "emptyStateBody": "Sign your first riders from the market to start building your team.",
     "emptyStateCta": "Browse riders",
@@ -50,14 +48,6 @@
       "contract": "Contract",
       "contractValue": "Expires after S{season}",
       "action": "Action"
-    },
-    "tags": {
-      "loanedIn": "On loan",
-      "loanedOut": "Loaned out"
-    },
-    "tooltips": {
-      "loanedFrom": "Loaned from {team} · season {start}–{end}",
-      "loanedTo": "Loaned to {team} · season {start}–{end}"
     },
     "actionButton": "Sell / Auction"
   },

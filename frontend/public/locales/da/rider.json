@@ -607,22 +607,6 @@
       "label": "Bytte",
       "teamFallback": "Ukendt",
       "cashAdjustment": "Kontantjustering: {amount} CZ$"
-    },
-    "loan": {
-      "label": "Lån",
-      "borrows": "lejer af",
-      "toFallback": "Ukendt",
-      "fromFallback": "Ukendt",
-      "seasonRange": "Sæson {start}–{end}",
-      "feeSuffix": "· {amount} CZ$ gebyr",
-      "status": {
-        "active": "aktiv",
-        "completed": "afsluttet",
-        "buyout": "købsoption",
-        "pending": "afventer",
-        "cancelled": "annulleret",
-        "rejected": "afvist"
-      }
     }
   },
   "auctionPanel": {
@@ -770,18 +754,6 @@
     "sending": "Sender...",
     "toast": {
       "success": "✅ Byttehandel foreslået!",
-      "errorPrefix": "❌"
-    }
-  },
-  "loanOffer": {
-    "buttonOpen": "📋 Foreslå lejeaftale",
-    "seasonPlaceholder": "Sæsonnummer (fx. 3)",
-    "feePlaceholder": "Lejegebyr (CZ$)",
-    "buyOptionPlaceholder": "Købsoption (CZ$), valgfri",
-    "submit": "Send lejeforslag",
-    "sending": "Sender...",
-    "toast": {
-      "success": "✅ Lejeforslag sendt!",
       "errorPrefix": "❌"
     }
   },

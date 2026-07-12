@@ -19,15 +19,6 @@ export const DASHBOARD_SQUAD_LIMITS = {
   3: { min: 0, max: MAX_SQUAD_SIZE },
 };
 
-// #1090: SKAL matche backend getTeamMarketState (marketUtils.js) — den
-// autoritative kapacitets-beregning som auktions-/transfer-/swap-/lån-
-// validering bruger. "window_pending" = lejeaftale accepteret mens vinduet
-// var lukket; rytteren ankommer når vinduet åbner (næste sæson), så han
-// tæller med i fremtidens trup. "buyout_pending" er BEVIDST udeladt: en
-// parkeret buyout sætter rider.pending_team_id = lejer, så rytteren tælles
-// allerede via pending-incoming — at tælle lånet også ville dobbelt-tælle.
-export const INCOMING_LOAN_STATUSES = ["active", "window_pending"];
-
 export function getSquadLimits(division) {
   return DASHBOARD_SQUAD_LIMITS[division] || DASHBOARD_SQUAD_LIMITS[3];
 }
@@ -38,11 +29,8 @@ export function getSquadLimits(division) {
 //     stedet for bare `.neq(team_id, mig)`, fordi SQL's trevalente logik
 //     ellers smider ryttere med team_id = NULL (fri agent vundet på auktion
 //     mens vinduet var lukket) ud af tællingen.
-//   - indgående lån: status IN ("active", "window_pending") — ikke kun
-//     "active", ellers er en lejeaftale parkeret til næste vindue usynlig
-//     for trupstørrelse-advarslen.
 export async function fetchSquadCountInputs(supabase, teamId) {
-  const [pendingIncomingRes, loansInRes] = await Promise.all([
+  const [pendingIncomingRes] = await Promise.all([
     // #1308: akademiryttere tæller ikke mod senior-cap
     supabase
       .from("riders")
@@ -50,23 +38,16 @@ export async function fetchSquadCountInputs(supabase, teamId) {
       .eq("pending_team_id", teamId)
       .eq("is_academy", false)
       .or(`team_id.is.null,team_id.neq.${teamId}`),
-    supabase
-      .from("loan_agreements")
-      .select("id", { count: "exact", head: true })
-      .eq("to_team_id", teamId)
-      .in("status", INCOMING_LOAN_STATUSES),
   ]);
 
   return {
     pendingIncomingCount: pendingIncomingRes.count || 0,
-    incomingLoanCount: loansInRes.count || 0,
   };
 }
 
 export function computeDashboardSquadStats({
   riders = [],
   pendingIncomingCount = 0,
-  incomingLoanCount = 0,
   myTeamId,
   division,
 }) {
@@ -76,7 +57,7 @@ export function computeDashboardSquadStats({
   ).length;
 
   const futureRiderCount =
-    ownedNow - outgoingCount + pendingIncomingCount + incomingLoanCount;
+    ownedNow - outgoingCount + pendingIncomingCount;
 
   const limits = getSquadLimits(division);
 
@@ -105,7 +86,6 @@ export function computeDashboardSquadStats({
     ownedNow,
     outgoingCount,
     pendingIncomingCount,
-    incomingLoanCount,
     futureRiderCount,
     limits,
     warning,
