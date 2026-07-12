@@ -16,7 +16,9 @@
 
 > **Session 11/7 (komprimeret):** #2311, #2328, #2329, #2264, #1894, #1895 m.fl. merged (v6.81-6.87 + v6.89-6.92); detaljer i git-log/issues. **Ejer-verify samlet:** /training i prod (trænbarheds-markører, ugerytme, individuel plan) · dashboard-punkterne i #2328 · #2263 afventer rytter-ID.
 
-> **NATBØLGE 11-12/7 (Fable + 9 sonnet-agenter): 10 grønne PR'er #2365-#2374, 0 merged (aftalt morgen-salve).** Fuld rækkefølge + ejer-beslutninger: [docs/audits/night-wave-2026-07-12.md](audits/night-wave-2026-07-12.md). 🔴 FØRST: PR #2372 (security — 11 RPC'er var reelt PUBLIC-kaldbare trods #2345; merge+apply STRAKS). Race v3: S1 #2369 kalibreret+reviewet klar; S2 #2370 draft m. beslutningsgrundlag (probe: τ=0.5-kompression rammer favorit-båndet, ren varians kan ikke — anbefaling option 2). Palmarès #2368 draft m. screenshots. Sentry 28/29 resolved; #2149 lukket; NYT #2375 (kapacitets-gate, needs-decision).
+> **NATBØLGE 11-12/7 + morgen-salve 12/7: ALLE 10 PR'er (#2365-#2374) MERGED, alle 4 migrationer applied & verificeret** ([artifact](audits/night-wave-2026-07-12.md)). Race v3 S1+S2 i prod bag flag off (τ=0.5-kompression ejer-valgt; alle 7 bånd grønne). Lån (#1994) fjernet end-to-end inkl. DROP applied i sikker rækkefølge. Sentry 28/29 resolved · #2149 lukket · #2375-rod-årsag fundet (entry-generator kører kun ved sæsonskifte → cron-wiring-PR på vej, afventer ejer-merge).
+
+> **📌 Ejer-påmindelser (næste session):** (1) Supabase-dashboard-klik ~5 min: OTP-expiry <1t + leaked password protection — vejledning i #2258-kommentar; lukker #2258+#929. (2) Palmarès-småvalg (#1997-kommentar: win-rate-def, værdi-kurve-slice) — ejer bad om at blive spurgt senere. (3) #1996 del 2 = kort fælles session (plan + dagsorden ligger på issuet, claude:blocked). (4) v3-flip-forudsætninger #2376 = anden session (pick-up-klar).
 
 > **Narrativ design 11/7 (Fable):** spec + content-batch leveret — [specs/2026-07-11-narrative-systems-design.md](superpowers/specs/2026-07-11-narrative-systems-design.md) + [drafts/2026-07-11-narrative-content-batch.md](superpowers/drafts/2026-07-11-narrative-content-batch.md) (recap v2, karrieremål/traits, verdenshistorik+klubmuseum som HoF-afløser, feed). Design-delen af MASTERPLAN-punkt 7 (#1145/#1147); ejer vælger slices (anbefalet S1 palmarès + S2 recap v2). Tier 2-vokabular koordinerer med race-engine-dybde-spec'en.
 
@@ -28,7 +30,7 @@
 
 > **Race v3 status 11/7 aften:** salt (#2351) ✅ lukket (verify næste løbsdag: nye runs har `salt_version=1`). **S0 harness+baseline (#2224) ✅ MERGED** (PR #2364, Fable-arkitekt + 3 sonnet-subagenter i worktree): dominans-metrik-lib + prod-population-snapshot (committet, 368 hold/5.650 ryttere) + sektion F-scorecard (`--enforce-dominance` = gate fra S1). **Baseline dokumenteret:** [docs/audits/2026-07-11-race-v3-s0-baseline.md](audits/2026-07-11-race-v3-s0-baseline.md) — max sæson-win-rate 87-89 % (bånd ≤45), hjælper-tab 0 (mål 10-30); reproducerer prod-symptomet. Issue #2224 åben (S1+S2 løser det). Sidefix: stale audit-whitelist `training_week_plans` fjernet (chore på main).
 >
-> **🎯 Next action:** **MORGEN-SALVE:** merge nattens 10 PR'er i rækkefølgen fra [night-wave-artifact'en](audits/night-wave-2026-07-12.md) — #2372 security FØRST (apply migration straks), migrations-PR'er (#2365/#2369/#2371/#2372) applies manuelt af ejer, done-flip pr. merge. **Ejer-beslutninger:** S2 varians-vej (anbefalet: τ=0.5) · palmarès-undraft efter visuelt kig · #2375/#1996-valg. Derefter: Alunta+testkøb 13/7 (#1903) · flip-bølge-verify (#2357) · /training-verify.
+> **🎯 Next action:** Ejer merger entry-generator-cron-PR'en (#2375-fix) når den er grøn → Div 4 C-G-felterne fyldes automatisk. Næste v3-slice = **S3 roller/etape #2034**. Ejer i morgen 13/7: Alunta+CZ Pro-testkøb (#1903) → Claude åbner salg · flip-bølge-verify (#2357) · /training-verify · 📌-påmindelserne ovenfor.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
