@@ -7,6 +7,7 @@
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
 import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
+import { plannerMockRoute } from "./plannerMock.js";
 import { TEST_USER } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
@@ -84,6 +85,17 @@ export function installPreviewMock() {
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = clubMockRoute(method, u.pathname, u.search, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
+      // Statefuld Season Planner-mock (#1834-test-flow): rout /api/peak-plans* FØR
+      // den generiske /api/-blok, så sæt/om-målret/fjern/auto-plan muterer state og
+      // gennemklikket er ægte (samme mønster som clubMock).
+      if (/\/api\/peak-plans/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = plannerMockRoute(method, u.pathname, u.search, body);
         if (res) return jsonResponse(res.body, res.status);
       }
 

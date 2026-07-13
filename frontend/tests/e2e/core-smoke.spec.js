@@ -25,6 +25,10 @@ const CORE_PAGES = [
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
   { path: "/finance", heading: /^(Finanser|Finance)$/, snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
+  // S5 Season Planner — data-drevet SVG-bræt (deterministisk mock: fast "i dag" +
+  // seed-peaks). Højere threshold dækker cross-engine AA på de tynde form-kurver +
+  // brackets uden at miste blank-screen-detektion. Readiness-gate i ROUTE_READINESS.
+  { path: "/planner", heading: /^(Season planner|Sæsonplanlægger)$/, snapshot: "planner.png", route: "/planner", maxDiffPixelRatio: 0.03 },
   { path: "/seasons", heading: /^(Sæson|Season)/, snapshot: "seasons.png" },
   // Inbox har meget dynamisk indhold (notifikations-list med timestamps, count-
   // badges, ulæst-prikker) der falder uden for `main`-text-masken og naturligt
@@ -119,6 +123,12 @@ const TRANSLATED_PAGE_SMOKE = [
     en: [/Inbox/i, /No notifications in this category/i],
     da: [/Indbakke/i, /Ingen notifikationer i denne kategori/i],
     rawKeys: ["notifications:page.title", "page.title", "empty.noneUnread"],
+  },
+  {
+    path: "/planner",
+    en: [/Season planner/i, /My races/i],
+    da: [/Sæsonplanlægger/i, /Mine løb/i],
+    rawKeys: ["planner:page.title", "page.title", "filter.mine"],
   },
 ];
 

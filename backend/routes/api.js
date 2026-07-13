@@ -134,7 +134,9 @@ import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjec
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON } from "../lib/riderPeakPlans.js";
-import { dateStringToOrdinal, loadTargetRaceDemands } from "../lib/racePeakPlans.js";
+import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
+import { RACE_V3_TUNING } from "../lib/raceRoles.js";
+import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks } from "../lib/plannerBoard.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -2052,11 +2054,19 @@ async function activePeakSeason() {
   return data ?? null;
 }
 
+// Launch-gate MED beta/admin-preview (samme mønster som træning/race-endpoints):
+// flag 'on' → alle; flag 'beta' → kun beta-testere/admins (ejeren) — så Planneren
+// kan previewes med ÆGTE data FØR den flippes 'on' for alle; off/fravær → ingen.
+// Uden dette kunne ejeren kun se featuren via den lokale mock, ikke sit rigtige hold.
+async function peakPlannerEnabledFor(req) {
+  return isPeakPlannerEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+}
+
 // GET /api/peak-plans — holdets peak-planer for EGNE ryttere i den aktive sæson.
 router.get("/peak-plans", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.json({ enabled: false, plans: [] });
+    if (!(await peakPlannerEnabledFor(req))) return res.json({ enabled: false, plans: [] });
     const season = await activePeakSeason();
     if (!season) return res.json({ enabled: true, season: null, plans: [] });
 
@@ -2095,7 +2105,7 @@ router.post("/peak-plans", requireAuth, marketWriteLimiter, async (req, res) => 
   if (typeof riderId !== "string" || !riderId) return res.status(400).json({ error: "invalid_rider_id" });
   if (typeof targetRaceId !== "string" || !targetRaceId) return res.status(400).json({ error: "invalid_target_race_id" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const season = await activePeakSeason();
     if (!season) return res.status(409).json({ error: "No active season" });
 
@@ -2154,7 +2164,7 @@ router.patch("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, res
   const { target_race_id: targetRaceId } = req.body ?? {};
   if (typeof targetRaceId !== "string" || !targetRaceId) return res.status(400).json({ error: "invalid_target_race_id" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const owned = await loadOwnedPeakPlan(planId, req.team.id);
     if (owned.error) return res.status(owned.status).json({ error: owned.error });
     const plan = owned.plan;
@@ -2204,7 +2214,7 @@ router.delete("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, re
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const planId = req.params.id;
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const owned = await loadOwnedPeakPlan(planId, req.team.id);
     if (owned.error) return res.status(owned.status).json({ error: owned.error });
 
@@ -2213,6 +2223,239 @@ router.delete("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, re
     const { error: delErr } = await supabase.from("rider_peak_plans").delete().eq("id", planId);
     if (delErr) throw new Error(`rider_peak_plans (delete): ${delErr.message}`);
     res.json({ ok: true, id: planId });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/peak-plans/board — aggregat for Season Planner-cockpittet (spec §3/§5).
+// Ét kald samler ALT master-canvasset + begge skuffer har brug for: holdets ryttere
+// (OVR-input + condition + peaks m. trænings-kvalitets-prognose + status + foreslået
+// blok) og den fælles sæson-kalender (løb m. datoer, etape-profiler, demand-vektor,
+// rival-neutralisering). OVR + egnethed beregnes KLIENT-side fra abilities+demand
+// (holder payloaden lille); tq-prognosen bruger den SAMME motor-konsistente kobling
+// som race-motoren (resolvePeakTrainingQualities). Launch-gated (flag OFF → enabled:false).
+router.get("/peak-plans/board", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    if (!(await peakPlannerEnabledFor(req))) return res.json({ enabled: false });
+    const season = await activePeakSeason();
+    const today = copenhagenDateString(new Date());
+    const leadup = RACE_V3_TUNING.PEAK_LEADUP_DAYS;
+    if (!season) return res.json({ enabled: true, season: null, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
+
+    const nowOrd = peakNowOrdinal();
+
+    // ── Holdets ryttere + evner + condition + peaks ───────────────────────────
+    const { data: riders, error: ridErr } = await supabase
+      .from("riders")
+      .select("id, firstname, lastname, nationality_code, primary_type, secondary_type, is_academy")
+      .eq("team_id", req.team.id)
+      .eq("is_retired", false);
+    if (ridErr) throw new Error(`riders (planner board): ${ridErr.message}`);
+    const riderIds = (riders || []).map((r) => r.id);
+    if (!riderIds.length) {
+      return res.json({ enabled: true, season, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
+    }
+
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [abilitiesRes, condRes, plansRes] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds),
+      supabase.from("rider_condition").select("rider_id, form, fatigue, injured_until").in("rider_id", riderIds),
+      supabase.from("rider_peak_plans")
+        .select("id, rider_id, season_id, target_race_id, window_start, window_end, locked_at, created_at")
+        .eq("season_id", season.id).in("rider_id", riderIds),
+    ]);
+    if (abilitiesRes.error) throw new Error(`rider_derived_abilities (planner board): ${abilitiesRes.error.message}`);
+    if (condRes.error) throw new Error(`rider_condition (planner board): ${condRes.error.message}`);
+    if (plansRes.error) throw new Error(`rider_peak_plans (planner board): ${plansRes.error.message}`);
+
+    const abilByRider = new Map();
+    for (const row of abilitiesRes.data || []) {
+      const ab = {};
+      for (const k of RACE_SIM_ABILITY_KEYS) ab[k] = row[k] ?? 0;
+      abilByRider.set(row.rider_id, ab);
+    }
+    const condByRider = new Map((condRes.data || []).map((c) => [c.rider_id, c]));
+
+    // Trænings-kvalitets-prognose pr. peak-vindue: samme kobling motoren bruger.
+    // loadPeakPlans → ordinaler; resolvePeakTrainingQualities muterer vinduerne
+    // in-place med .trainingQuality ud fra de fire optakts-signaler (spec §2).
+    const peakPlansByRider = await loadPeakPlans({ supabase, seasonId: season.id, riderIds });
+    if (peakPlansByRider.size) {
+      await resolvePeakTrainingQualities({
+        supabase,
+        entrants: riderIds.map((id) => ({ rider_id: id, team_id: req.team.id })),
+        peakPlansByRider,
+      });
+    }
+    const tqByRiderRace = new Map();
+    for (const [rid, windows] of peakPlansByRider) {
+      for (const w of windows) {
+        if (w.targetRaceId != null) tqByRiderRace.set(`${rid}:${w.targetRaceId}`, w.trainingQuality ?? null);
+      }
+    }
+
+    const targetRaceIds = [...new Set((plansRes.data || []).map((p) => p.target_race_id).filter(Boolean))];
+    const demandForTargets = await loadTargetRaceDemands({ supabase, raceIds: targetRaceIds });
+
+    // ── Sæson-kalender (genbrug buildCalendarModel) + fulde etape-profiler ─────
+    const [racesRes, divisionsRes] = await Promise.all([
+      supabase.from("races")
+        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start")
+        .eq("season_id", season.id),
+      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+    ]);
+    if (racesRes.error) throw new Error(`races (planner board): ${racesRes.error.message}`);
+    if (divisionsRes.error) throw new Error(`league_divisions (planner board): ${divisionsRes.error.message}`);
+    const raceList = racesRes.data || [];
+    const allRaceIds = raceList.map((r) => r.id);
+
+    const [scheduleRows, fullProfiles] = await Promise.all([
+      fetchAllScheduleRowsWithGameDay(supabase, allRaceIds),
+      fetchAllStageProfiles(supabase, allRaceIds, "race_id, stage_number, profile_type, finale_type, demand_vector"),
+    ]);
+
+    const model = buildCalendarModel({
+      races: raceList,
+      scheduleRows,
+      profileRows: fullProfiles.map((r) => ({ race_id: r.race_id, stage_number: r.stage_number, profile_type: r.profile_type })),
+      divisions: divisionsRes.data || [],
+      teamDivisionId: req.team.league_division_id ?? null,
+    });
+
+    const profByRace = new Map();
+    for (const row of fullProfiles) {
+      if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
+      profByRace.get(row.race_id).push(row);
+    }
+    const stripByRace = new Map();
+    const demandByRace = new Map();
+    for (const [rid, rows] of profByRace) {
+      stripByRace.set(rid, stageProfileStrip(rows));
+      demandByRace.set(rid, aggregateDemandVector(rows.map((x) => ({ demand_vector: x.demand_vector }))));
+    }
+
+    // Rival-neutralisering: alle sæsonens peak-planer m. holds-tilhør → distinkte
+    // rival-hold pr. løb (service_role ser alle holds planer).
+    const { data: allSeasonPlans, error: rpErr } = await supabase
+      .from("rider_peak_plans")
+      .select("target_race_id, rider:rider_id(team_id)")
+      .eq("season_id", season.id);
+    if (rpErr) throw new Error(`rider_peak_plans (rivals): ${rpErr.message}`);
+    const rivalCounts = countRivalPeaks(
+      (allSeasonPlans || []).map((p) => ({ target_race_id: p.target_race_id, team_id: p.rider?.team_id ?? null })),
+      req.team.id
+    );
+
+    const raceById = new Map(model.entries.map((e) => [e.id, e]));
+
+    const ridersOut = (riders || []).map((r) => {
+      const cond = condByRider.get(r.id) || {};
+      const plans = (plansRes.data || []).filter((p) => p.rider_id === r.id);
+      return {
+        id: r.id,
+        firstname: r.firstname,
+        lastname: r.lastname,
+        nationality: r.nationality_code ?? null,
+        primaryType: r.primary_type ?? null,
+        secondaryType: r.secondary_type ?? null,
+        isAcademy: !!r.is_academy,
+        abilities: abilByRider.get(r.id) || {},
+        form: cond.form ?? null,
+        fatigue: cond.fatigue ?? null,
+        injuredUntil: cond.injured_until ?? null,
+        peaks: plans.map((p) => {
+          const tq = tqByRiderRace.has(`${r.id}:${p.target_race_id}`) ? tqByRiderRace.get(`${r.id}:${p.target_race_id}`) : null;
+          const startOrd = dateStringToOrdinal(p.window_start);
+          const recommendedFocus = recommendFocusForDemand(demandForTargets.get(p.target_race_id));
+          const targetRace = p.target_race_id ? raceById.get(p.target_race_id) : null;
+          return {
+            ...serializePlan(p, nowOrd),
+            targetRaceName: targetRace ? targetRace.name : null,
+            trainingQuality: tq,
+            status: peakStatus({ trainingQuality: tq, todayOrdinal: nowOrd, windowStartOrdinal: startOrd, leadupDays: leadup }),
+            recommendedFocus,
+            suggestedTrainingBlock: buildSuggestedTrainingBlock({ recommendedFocus }),
+          };
+        }),
+      };
+    });
+
+    const racesOut = model.entries
+      .filter((e) => e.date)
+      .map((e) => {
+        const strip = stripByRace.get(e.id) || [];
+        return {
+          id: e.id,
+          name: e.name,
+          raceClass: e.raceClass,
+          division: e.division,
+          isMine: e.isMine,
+          date: e.date,
+          gameDayStart: e.gameDayStart,
+          gameDayEnd: e.gameDayEnd,
+          stages: e.stages,
+          terrain: e.terrain,
+          stageProfiles: strip,
+          profileSummary: raceProfileSummary(strip),
+          demandVector: demandByRace.get(e.id) || null,
+          rivalPeakCount: rivalCounts.get(e.id) || 0,
+        };
+      });
+
+    res.json({
+      enabled: true,
+      season,
+      maxPerRider: MAX_PEAK_PLANS_PER_SEASON,
+      today,
+      leadupDays: leadup,
+      riders: ridersOut,
+      races: racesOut,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/peak-plans/:id/accept-training — skriv den valgte uges rytme fra
+// suggestedTrainingBlock til rytterens individuelle training_week_plans (per-rytter
+// override, #1895). IKKE-DESTRUKTIVT: sker kun ved eksplicit accept fra skuffen
+// ("Auto-plan training"). Body: { week: "build" | "taper" }. Launch-gated.
+router.post("/peak-plans/:id/accept-training", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const planId = req.params.id;
+  const week = req.body?.week;
+  if (week !== "build" && week !== "taper") return res.status(400).json({ error: "invalid_week" });
+  try {
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
+    const owned = await loadOwnedPeakPlan(planId, req.team.id);
+    if (owned.error) return res.status(owned.status).json({ error: owned.error });
+    const plan = owned.plan;
+
+    const block = await suggestedBlockForRace(plan.target_race_id);
+    const days = block.weekRhythms?.[week];
+    if (!isValidWeekPlanDays(days)) return res.status(500).json({ error: "invalid_suggested_days" });
+
+    // Manuel select-then-write: partial unique index kan ikke udtrykkes via onConflict
+    // (samme mønster som PUT /training/week-plan/:riderId).
+    const { data: existing, error: selErr } = await supabase
+      .from("training_week_plans").select("id")
+      .eq("team_id", req.team.id).eq("rider_id", plan.rider_id).maybeSingle();
+    if (selErr) throw new Error(`training_week_plans (accept select): ${selErr.message}`);
+    const now = new Date().toISOString();
+    if (existing) {
+      const { error: updErr } = await supabase
+        .from("training_week_plans").update({ days, updated_at: now }).eq("id", existing.id);
+      if (updErr) throw new Error(`training_week_plans (accept update): ${updErr.message}`);
+    } else {
+      const { error: insErr } = await supabase
+        .from("training_week_plans").insert({ team_id: req.team.id, rider_id: plan.rider_id, days, updated_at: now });
+      if (insErr) throw new Error(`training_week_plans (accept insert): ${insErr.message}`);
+    }
+    res.json({ ok: true, riderId: plan.rider_id, week, days, recommendedFocus: block.recommendedFocus });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

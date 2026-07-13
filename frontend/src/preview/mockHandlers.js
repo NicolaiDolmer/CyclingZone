@@ -2,6 +2,7 @@
 // OG runtime-preview-mocken (installPreviewMock.js). Ingen route/@playwright/test-
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
+import { previewPlannerBoard } from "./plannerMock.js";
 import {
   TEST_USER,
   TEST_TEAM,
@@ -238,6 +239,10 @@ export function apiResponse(pathname) {
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+
+  // S5 Season Planner: statisk board til read-only smoke (mutationer i preview går
+  // gennem den stateful plannerMock, ikke her).
+  if (pathname.endsWith("/api/peak-plans/board")) return previewPlannerBoard();
 
   // #2100 Udvikling-fane: registreret kurve + fuzzy loft-projektion. Projektion-ruten
   // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).

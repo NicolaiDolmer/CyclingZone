@@ -706,6 +706,14 @@
     }
   },
   "faq": {
+    "seasonPlanner": {
+      "q": "Hvad er Sæsonplanlæggeren?",
+      "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Sigt mod et nøgleløb for en rytter, så bygger planlæggeren en optakt der løfter hans form til den dag. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
+    },
+    "peakTraining": {
+      "q": "Hvordan virker peak-træning?",
+      "a": "Når du sætter en peak, foreslår planlæggeren en opbygningsuge og en taper-uge til optakten. Accepter en fra rytter-skuffen, så skrives den rytme til rytterens ugentlige træning. At træne det rigtige fokus for løbets profil, holde konsistensen og nå taperen udhvilet løfter alt sammen hvor meget af peaket du realiserer. En peak låses tre dage før dens vindue starter, så planlæg i forvejen."
+    },
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",
       "a": "Løb overlapper når deres etaper falder på samme in-game-løbsdag, og en rytter kan kun køre ét løb pr. in-game-dag, så det er et strategisk valg at fordele truppen mellem overlappende løb. Flere løb kan ligge på samme kalenderdato uden at konflikte, når de falder på forskellige in-game-dage. Hvert løb viser sin løbsdag (for eksempel Løbsdag 11), så to løb på samme eftermiddag tydeligt er forskellige spil-dage; at genbruge en rytter på tværs af to løbsdage er tilladt, men han bærer træthed med ind i det senere løb, så det er et trade-off. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det, men fjerner du ham, er han straks ledig igen til et andet løb. Dine ændringer holdes lokalt indtil du trykker Gem ændringer (en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer). Du kan også gemme en delvis trup: de pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."

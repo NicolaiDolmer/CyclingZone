@@ -218,6 +218,10 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "POST /peak-plans",
   "PATCH /peak-plans/:id",
   "DELETE /peak-plans/:id",
+  // accept-training (#2224 Planner-slice): wiret af usePlanner via DYNAMISK URL
+  // (`/api/peak-plans` + `/${planId}/accept-training`), så den statiske caller-grep
+  // ikke matcher path-mønstret. Desuden launch-gated bag peak_planner_enabled.
+  "POST /peak-plans/:id/accept-training",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).

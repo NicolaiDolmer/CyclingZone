@@ -1,0 +1,98 @@
+{
+  "page": {
+    "title": "Season planner",
+    "subtitle": "Plan your whole squad's peaks in one place. Form is earned in the lead-up, not handed out."
+  },
+  "empty": {
+    "title": "Season planner isn't live yet",
+    "description": "This is where you'll plan each rider's form peaks across the season. Check back soon."
+  },
+  "firstRun": {
+    "title": "Plan your first peak",
+    "body": "Every rider is riding flat right now. Target a race and the planner builds a lead-up that lifts their form for the day that matters. Each rider can peak for up to {max} races a season, so choose where it counts.",
+    "cta": "Pick a rider lane to start, or open a race to see who fits it."
+  },
+  "filter": { "mine": "My races", "all": "All races" },
+  "legend": {
+    "potential": "Potential top",
+    "realized": "Realized (trained)",
+    "block": "Build / taper",
+    "token": "Peak token",
+    "drag": "Drag a bracket to re-target"
+  },
+  "status": {
+    "onTrack": "Taper on track",
+    "atRisk": "Peak at risk",
+    "pending": "Lead-up not started",
+    "locked": "Locked"
+  },
+  "tokens": { "label": "{used} of {max} peaks used" },
+  "ovr": { "label": "OVR" },
+  "today": "Today",
+  "academy": "Academy",
+  "form": { "now": "Current form {value}" },
+  "lane": { "noPeaks": "No peaks set. A flat season until you plan one." },
+  "drawer": {
+    "close": "Close",
+    "race": {
+      "summary": "{stages} stages · {summits, plural, =0 {no summit finishes} one {# summit finish} other {# summit finishes}}",
+      "rankedTitle": "Your riders, ranked by suitability",
+      "rivalThreat": "Rival threat",
+      "rivalCount": "{count, plural, =0 {No rivals peak here} one {# rival also peaks here} other {# rivals also peak here}}",
+      "viewProfiles": "View stage profiles",
+      "hideProfiles": "Hide stage profiles",
+      "setPeak": "Set peak",
+      "demands": "This race demands",
+      "alreadyPeaking": "Peaking here"
+    },
+    "rider": {
+      "abilities": "Abilities",
+      "suggestedBlock": "Suggested lead-up",
+      "autoPlan": "Auto-plan training",
+      "build": "Build week",
+      "taper": "Taper week",
+      "focus": "Recommended focus: {focus}",
+      "accepted": "{week} written to {name}'s training",
+      "noPeak": "No peak yet. Pick a target race to plan one.",
+      "peakFor": "Peak for {race}",
+      "pickRace": "Pick a target race",
+      "removePeak": "Remove peak",
+      "windowLabel": "Peak window {start} – {end}"
+    }
+  },
+  "type": {
+    "sprinter": "Sprinter",
+    "tt": "Time-trialist",
+    "climber": "Climber",
+    "puncheur": "Puncheur",
+    "brostensrytter": "Classics rider",
+    "baroudeur": "Baroudeur",
+    "rouleur": "Rouleur",
+    "gc": "GC rider"
+  },
+  "terrain": {
+    "flat": "Flat",
+    "hilly": "Hilly",
+    "mountain": "Mountain",
+    "itt": "ITT",
+    "ttt": "TTT",
+    "cobbles": "Cobbles"
+  },
+  "focus": {
+    "vo2max": "VO2max",
+    "threshold": "Threshold",
+    "sprint": "Sprint",
+    "endurance": "Endurance",
+    "technique": "Technique",
+    "aero": "Aero"
+  },
+  "error": {
+    "max_reached": "This rider already has the maximum of {max} peaks.",
+    "duplicate_target": "This rider already peaks for that race.",
+    "locked": "This peak is locked and can no longer be changed.",
+    "race_not_in_calendar": "That race isn't in your division's calendar.",
+    "race_not_scheduled": "That race isn't scheduled yet.",
+    "generic": "Something went wrong. Try again."
+  },
+  "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+}
