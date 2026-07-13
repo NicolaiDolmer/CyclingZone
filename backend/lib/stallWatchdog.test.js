@@ -98,13 +98,38 @@ test("(b) to forskellige løb i køen → to separate stage-findings (ikke aggre
     now: NOW,
     dueStages: [
       { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(5), has_results: false, has_entries: true },
-      { race_id: "r5", race_name: "Giro Z", stage_number: 2, scheduled_at: hoursAgo(3), has_results: false, has_entries: true },
+      { race_id: "r5", race_name: "Giro Z", stage_number: 2, scheduled_at: hoursAgo(6), has_results: false, has_entries: true },
     ],
     standings: standingsFresh(9),
   });
   const stageFindings = findings.filter((f) => f.type === "stage");
   assert.equal(stageFindings.length, 2);
   assert.deepEqual(stageFindings.map((f) => f.raceId).sort(), ["r2", "r5"]);
+});
+
+// #2251: ALARMEN (b) kræver stageAlarmHours (4t), ikke stageHours (2t). En løbsdags-
+// klynge (empirisk 22 etaper 18:00 dansk) drænes sundt over 1-2t og krydser kortvarigt
+// 2t — det gav før eskalerende Discord/Sentry-støj (CYCLINGZONE-2G) uden ét ægte hang.
+test("(b) forfalden 2-4t (normal klynge-dræning) → INGEN stage-ALARM (#2251)", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(3), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(0.1), // scheduleren producerer stadig → sund dræning
+  });
+  assert.equal(findings.filter((f) => f.type === "stage").length, 0, "3t < stageAlarmHours(4) → ingen alarm");
+});
+
+test("(b) forfalden lige over 4t → stage-ALARM fyrer (ægte enkelt-løbs-hang, #2251)", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    dueStages: [
+      { race_id: "r2", race_name: "Vuelta Y", stage_number: 1, scheduled_at: hoursAgo(4.5), has_results: false, has_entries: true },
+    ],
+    standings: standingsFresh(0.1),
+  });
+  assert.equal(findings.filter((f) => f.type === "stage").length, 1, "4.5t > stageAlarmHours(4) → alarm");
 });
 
 test("(b2) globalt gennemløbs-signal: kø + ingen resultater NOGET sted i >2t → INFO-finding (ikke error)", () => {
