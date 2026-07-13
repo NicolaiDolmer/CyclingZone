@@ -40,6 +40,8 @@
 >
 > **🎯 Next action (14/7 — [#2430](https://github.com/NicolaiDolmer/CyclingZone/issues/2430), ejer-planlagt):** **Verificér stage-scheduler-throughput i prod + luk resterende stall-årsag.** #2391's kode-fix (set-baseret `recompute_season_standings`-RPC ~190ms, PR #2396) er merged+applied MEN aldrig prod-verificeret (Railway-MCP var ikke auth'et). Opgave: (1) auth Railway → tjek stage-scheduler-loggen viser standings `(RPC)` + INGEN `⏭️ forrige tick kører stadig`-overlap; (2) hvis 18:00-klyngen (22 etaper) stadig kan dræne >2t, find den resterende langsomme del (etape-sim / persist / Discord-notify pr. resultat) — #2429 dæmpede kun *alarm-støjen*, ikke dræne-tiden. Relateret: #2251/CYCLINGZONE-24. **Ejer 13/7-rest:** Alunta+CZ Pro (#1903) · flip-bølge-verify (#2357) · /training-verify · Sentry-regression-klik.
 
+> **💰 Værdimodel v4 (13/7, Fable): spec EJER-GODKENDT, pick-up-klar** — [#2428](https://github.com/NicolaiDolmer/CyclingZone/issues/2428) + [specs/2026-07-13-rider-valuation-v4-production-value-design.md](superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md). Værdi = karriere-NPV af simuleret sæsonproduktion; type-forskelle måles i spillets egen sim (anchors → validering → udfases). Slice 1 = sim-harness + fit + admin shadow-preview (ingen migration, ingen økonomi-ændring).
+
 > **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
