@@ -154,13 +154,18 @@ export function runawayGate(v3Values, v4Values, { maxRatio = RUNAWAY_MAX_RATIO }
 // tilføjer selv "ikke dominant"-kriteriet fra v4-specs §5.3, da det ikke fandtes
 // nogen steder i kode:
 //   (a) NET-POSITIV: bvAtHorizon − bvStart − omkostninger > 0.
-//   (b) IKKE DOMINANT: den bedste unge prospekts værdi overstiger ikke loftet =
-//       en prime peak-stjernes værdi. VIGTIGT (#2428, rettet efter shadow-kørsel
-//       13/7): loftet er en PEAK-stjerne, IKKE en veteran. Under NPV-modellen SKAL
-//       en ung talent være mere værd end en aldrende veteran (§3.3: "unge prises for
-//       fremtiden, veteraner for resten") — at teste dominans mod en veteran ville
-//       flagge den ØNSKEDE symmetri som en fejl. Dominans betyder korrekt: at
-//       udvikle-og-sælge overgår at eje en superstjerne i sin prime.
+//   (b) IKKE DOMINANT: AFKASTET (ROI = pnl / investeret) er begrænset. VIGTIGT
+//       (#2428, rettet 13/7 efter shadow-kørsler): "dominans" måles på ØKONOMIEN,
+//       ikke på en værdi-sammenligning. Tidligere versioner testede top-ung-værdi
+//       mod veteran (forkert — NPV SKAL prise unge over veteraner) og derefter mod
+//       en peak-stjerne (også forkert — den sammenligner en FREMTIDIG projekteret
+//       værdi mod en NUTIDIG, så en top-prospect fejler altid; det er hele pointen
+//       med at udvikle talent at det overgår nuværende ryttere). Den korrekte test:
+//       udvikl-og-sælg må ikke give et så højt garanteret afkast at det bliver den
+//       dominerende strategi. ROI ≤ maxRoi (default 50% over hele vinduet) = sundt
+//       incitament til ungdom uden at dominere. Ejer-tunbar.
+export const MAX_DEVELOP_SELL_ROI = 0.5;
+
 export function developAndSellPnl({ bvStart, bvAtHorizon, seasons, academy = ACADEMY } = {}) {
   if (![bvStart, bvAtHorizon, seasons].every(finite)) return null;
   const salaryPerSeason = academy.SALARY_RATE * bvStart;
@@ -172,30 +177,31 @@ export function developAndSellGate({
   bvStart,
   bvAtHorizon,
   seasons,
-  topYoungValue,
-  dominanceCeiling,
+  maxRoi = MAX_DEVELOP_SELL_ROI,
   academy = ACADEMY,
 } = {}) {
   const calc = developAndSellPnl({ bvStart, bvAtHorizon, seasons, academy });
   const netPositive = calc != null && calc.pnl > 0;
-  const haveDominanceCheck = finite(topYoungValue) && finite(dominanceCeiling);
-  const notDominant = !haveDominanceCheck || topYoungValue <= dominanceCeiling;
+  const invested = calc != null ? bvStart + calc.cost : null;
+  const roi = calc != null && invested > 0 ? calc.pnl / invested : null;
+  const notDominant = roi == null || roi <= maxRoi;
   const ok = calc != null && netPositive && notDominant;
   const parts = [
     calc != null
       ? `pnl=${fmtCZ(calc.pnl)} CZ$ (bvStart=${fmtCZ(bvStart)}→bvHorisont=${fmtCZ(bvAtHorizon)}, cost=${fmtCZ(calc.cost)}, ${seasons} sæsoner)`
       : "utilstrækkelig data til P&L",
     `net-positiv=${netPositive}`,
-    haveDominanceCheck
-      ? `ikke-dominant=${notDominant} (top-ung ${fmtCZ(topYoungValue)} vs peak-stjerne-loft ${fmtCZ(dominanceCeiling)})`
-      : "ikke-dominant=ubekræftet (manglende topYoungValue/dominanceCeiling)",
+    roi != null
+      ? `ikke-dominant=${notDominant} (ROI ${(roi * 100).toFixed(0)}% vs loft ${(maxRoi * 100).toFixed(0)}%)`
+      : "ikke-dominant=ubekræftet (manglende P&L)",
   ];
   return {
-    name: "Udvikl-og-sælg P&L: ung prospect net-positiv, ikke dominant",
+    name: "Udvikl-og-sælg P&L: ung prospect net-positiv, ikke dominant (ROI-begrænset)",
     hard: true,
     ok,
     detail: parts.join(" · "),
     pnl: calc?.pnl ?? null,
+    roi,
   };
 }
 

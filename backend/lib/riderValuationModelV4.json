@@ -1,7 +1,7 @@
 {
   "version": 4,
   "method": "sim-production-npv",
-  "fitted_at": "2026-07-13T21:32:44.093Z",
+  "fitted_at": "2026-07-13T21:37:43.902Z",
   "sim_run_id": "75507b50",
   "K": 30,
   "season_id": "00000000-0000-0000-0000-000000000001",
@@ -77,7 +77,7 @@
   },
   "soft_cap": {
     "threshold": 199699,
-    "gamma": 0.5,
+    "gamma": 0.65,
     "pct": 0.95
   },
   "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft (potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."

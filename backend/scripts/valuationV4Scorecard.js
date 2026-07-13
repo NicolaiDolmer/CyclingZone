@@ -148,9 +148,8 @@ async function main() {
   // samme matematik som riderCareerNpv.js's interne fremskrivning, se lib-filens kommentar).
   const prospects = rows.filter((r) => r.age != null && r.age <= 21 && Number(r.potentiale) >= HIGH_POTENTIALE);
   const bestProspect = prospects.reduce((best, r) => (r.v4Value > (best?.v4Value ?? -Infinity) ? r : best), null);
-  // Dominans-loft = en prime peak-stjerne (25-29å). Under NPV-modellen SKAL en ung
-  // talent være mere værd end en aldrende veteran (§3.3-symmetri), så veteranen er
-  // det FORKERTE loft — superstjernen i sin prime er det rigtige (se developAndSellGate).
+  // Peak-stjerne (25-29å, top v4-værdi) — kun til symmetri-arketypen nedenfor.
+  // Dominans MÅLES nu på ROI i developAndSellGate (ikke en værdi-sammenligning).
   const peakStars = rows.filter((r) => r.age != null && r.age >= 25 && r.age <= 29);
   const dominanceCeiling = peakStars.length ? Math.max(...peakStars.map((r) => r.v4Value)) : null;
 
@@ -166,13 +165,10 @@ async function main() {
       projectedAbilities,
       v4Model
     );
-    const topYoungValue = Math.max(bestProspect.v4Value, bvAtHorizon ?? bestProspect.v4Value);
     gPnl = developAndSellGate({
       bvStart: bestProspect.v4Value,
       bvAtHorizon: bvAtHorizon ?? bestProspect.v4Value,
       seasons: DEVELOP_SELL_SEASONS,
-      topYoungValue,
-      dominanceCeiling,
     });
   } else {
     gPnl = {

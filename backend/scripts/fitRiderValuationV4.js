@@ -50,7 +50,10 @@ const BETA_PT = Number(arg("beta-pt", 0));
 // Blødt top-loft (#2428): komprimér base_value over p{SOFT_CAP_PCT} med eksponent
 // gamma ∈ (0,1). gamma=1 → slået fra. Tærsklen sættes > median → rører ikke skala-
 // kontinuiteten. Ejer-tunbart ved cutover-review.
-const SOFT_CAP_GAMMA = Number(arg("soft-cap-gamma", 0.5));
+// Default 0,65 = balanceret punkt på gamma-frontieren (#2428, målt 13/7): sund
+// ungdoms-ROI (~15%), kontrolleret runaway (~×1,4), fornuftig top-rytter (~2M).
+// 0,50 kvæler ungdomsudvikling; 1,0 (fra) giver 9M-top + dominerende udvikl-og-sælg.
+const SOFT_CAP_GAMMA = Number(arg("soft-cap-gamma", 0.65));
 const SOFT_CAP_PCT = Number(arg("soft-cap-pct", 0.95));
 
 const fmtM = (n) => (n / 1e6).toFixed(2) + "M";

@@ -173,49 +173,43 @@ test("developAndSellPnl: reproducerer #1364-omkostningsmodellen", () => {
   assert.equal(result.pnl, 200000 - 100000 - 53000);
 });
 
-test("developAndSellGate: net-positiv + ikke-dominant → ok", () => {
+test("developAndSellGate: net-positiv + moderat ROI → ok", () => {
+  // pnl=47000, invested=100000+53000=153000, ROI=30.7% ≤ 50% → ikke dominant.
   const gate = developAndSellGate({
-    bvStart: 100000,
-    bvAtHorizon: 200000,
-    seasons: 3,
-    topYoungValue: 200000,
-    dominanceCeiling: 5000000,
-    academy: TEST_ACADEMY,
+    bvStart: 100000, bvAtHorizon: 200000, seasons: 3, academy: TEST_ACADEMY,
   });
   assert.equal(gate.hard, true);
   assert.equal(gate.ok, true);
   assert.equal(gate.pnl, 47000);
+  assert.ok(gate.roi > 0.3 && gate.roi < 0.31);
 });
 
-test("developAndSellGate: negativ P&L fejler uanset dominans", () => {
+test("developAndSellGate: negativ P&L fejler (net-positiv=false)", () => {
   const gate = developAndSellGate({
-    bvStart: 100000,
-    bvAtHorizon: 140000, // pnl = 140000-100000-53000 = -13000
-    seasons: 3,
-    topYoungValue: 140000,
-    dominanceCeiling: 5000000,
-    academy: TEST_ACADEMY,
+    bvStart: 100000, bvAtHorizon: 140000, seasons: 3, academy: TEST_ACADEMY,
   });
   assert.equal(gate.ok, false);
   assert.ok(gate.pnl < 0);
 });
 
-test("developAndSellGate: dominant ung prospect fejler selvom net-positiv", () => {
+test("developAndSellGate: for højt ROI = dominant strategi → fejler selvom net-positiv", () => {
+  // bvAtHorizon 400000 → pnl=247000, ROI=247000/153000=161% > 50% → dominant.
   const gate = developAndSellGate({
-    bvStart: 100000,
-    bvAtHorizon: 200000, // pnl positiv (47000)
-    seasons: 3,
-    topYoungValue: 6000000,
-    dominanceCeiling: 5000000, // ung > peak-loft
-    academy: TEST_ACADEMY,
+    bvStart: 100000, bvAtHorizon: 400000, seasons: 3, academy: TEST_ACADEMY,
   });
   assert.equal(gate.ok, false);
   assert.match(gate.detail, /ikke-dominant=false/);
 });
 
-test("developAndSellGate: manglende topYoung/dominanceCeiling gør dominans-tjek ubekræftet, men blokerer ikke net-positiv-check", () => {
-  const gate = developAndSellGate({ bvStart: 100000, bvAtHorizon: 200000, seasons: 3, academy: TEST_ACADEMY });
-  assert.equal(gate.ok, true);
+test("developAndSellGate: maxRoi er tunbar (samme P&L, strammere loft → dominant)", () => {
+  const args = { bvStart: 100000, bvAtHorizon: 200000, seasons: 3, academy: TEST_ACADEMY };
+  assert.equal(developAndSellGate({ ...args, maxRoi: 0.5 }).ok, true);  // 30.7% ≤ 50%
+  assert.equal(developAndSellGate({ ...args, maxRoi: 0.2 }).ok, false); // 30.7% > 20%
+});
+
+test("developAndSellGate: manglende data (ingen seasons) → ubekræftet, ok=false", () => {
+  const gate = developAndSellGate({ bvStart: 100000, bvAtHorizon: 200000, academy: TEST_ACADEMY });
+  assert.equal(gate.ok, false);
   assert.match(gate.detail, /ubekræftet/);
 });
 
