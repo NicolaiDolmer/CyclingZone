@@ -123,6 +123,13 @@ const WHITELIST_EMPTY_TABLES = new Set([
   "subscriptions",
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
   // første rækker — featuren er levende, Detector A overvåger den normalt igen.)
+  // Race v3 S5 peak-planer (#2224, PR #2419 merged 13/7): CRUD-API'et skriver
+  // rider_peak_plans, men er LAUNCH-GATED bag peak_planner_enabled (default OFF)
+  // + har ingen frontend-kalder endnu (Planner-cockpit er næste slice). Bevidst
+  // tom indtil ejer flipper flaget + Planner-UI'et lander. Skriv-path verificeret
+  // mod prod (RLS ejer-scope + insert i rulle-tilbage-tx). Fjern denne entry når
+  // tabellen har rows (efter peak_planner_enabled='on' + første oprettede plan).
+  "rider_peak_plans",
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
@@ -203,6 +210,14 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "GET /club/staff/candidates",
   "POST /club/staff/hire",
   "POST /club/staff/fire",
+  // Race v3 S5 peak-planer (#2224, PR #2419): CRUD-API'et shippet FØR Planner-
+  // cockpittet (næste slice wirer UI'et mod disse endpoints). Desuden launch-gated
+  // bag peak_planner_enabled=OFF — ingen kalder dem endnu by design. Intentional
+  // orphaned indtil Planner-slicen lander; fjern disse fire når UI'et wirer dem.
+  "GET /peak-plans",
+  "POST /peak-plans",
+  "PATCH /peak-plans/:id",
+  "DELETE /peak-plans/:id",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
