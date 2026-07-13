@@ -64,7 +64,7 @@ test("simulateStage: v3 udeladt (default) er deepEqual med v3=false, alle profil
   }
 });
 
-test("simulateStage: v3=false komponenter — work_cost/dayform/jour_sans altid 0, komponentsummen holder", () => {
+test("simulateStage: v3=false komponenter — work_cost/dayform/jour_sans/peak altid 0, komponentsummen holder", () => {
   const stageProfile = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain };
   const { ranked } = simulateStage({ entrants: ENTRANTS, stageProfile, seed: 42, v3: false });
   for (const r of ranked) {
@@ -72,10 +72,12 @@ test("simulateStage: v3=false komponenter — work_cost/dayform/jour_sans altid 
     // S2 (#2353): dagsform + jour sans er ligeledes døde i v1-stien.
     assert.equal(r.components.dayform, 0, r.rider_id);
     assert.equal(r.components.jour_sans, 0, r.rider_id);
+    // S5 (#2224): peak er ligeledes død i v1-stien.
+    assert.equal(r.components.peak, 0, r.rider_id);
     const sum = r.components.terrain + r.components.noise + r.components.form
       - r.components.fatigue + r.components.team + (r.components.breakaway ?? 0)
       + (r.components.finale ?? 0) + r.components.work_cost
-      + r.components.dayform + r.components.jour_sans;
+      + r.components.dayform + r.components.jour_sans + r.components.peak;
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, `finalScore matcher ikke komponenter (${r.rider_id})`);
   }
 });
@@ -237,4 +239,71 @@ test("buildRaceResults S4: v3=false på en STAGES-liste der rammer de kendte uhe
   const b = buildRaceResults({ race: STAGE_RACE, stages, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
   assert.deepEqual(a, b);
   assert.deepEqual(a.incidents, [], "v3=false/udeladt skal ALTID give tom incidents-liste");
+});
+
+// ── Race v3 S5 (#2224): form-peaks — flag-off-gate ────────────────────────────
+// Spec §5 samme krav som S1-S4: peak må KUN anvendes når v3=true. peak er DETER-
+// MINISTISK fra data (peakWindows på entrant + peakDay på stage), ingen egen rng —
+// men den score-space-komponent skal alligevel være dormant (0) ved flag-off.
+
+// En etape hvis peakDay ligger INDE i en entrants vindue → peak fyrer når v3=true.
+const PEAK_DAY = 100;
+const PEAK_STAGE = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain, peakDay: PEAK_DAY };
+// Giv climber+sprinter et vindue der dækker peakDay; resten ingen plan.
+const ENTRANTS_WITH_PEAK = ENTRANTS.map((e) =>
+  (e.rider_id === "climber" || e.rider_id === "sprinter")
+    ? { ...e, peakWindows: [{ start: PEAK_DAY - 2, end: PEAK_DAY + 2 }], peakTrainingQuality: 1 }
+    : e
+);
+
+test("simulateStage S5: v3=false på entrants MED peakWindows + stage MED peakDay → peak=0, bit-identisk med ingen peak-data", () => {
+  const withPeakData = simulateStage({ entrants: ENTRANTS_WITH_PEAK, stageProfile: PEAK_STAGE, seed: 7, v3: false });
+  const withoutPeakData = simulateStage({ entrants: ENTRANTS, stageProfile: { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain }, seed: 7, v3: false });
+  // Rangering + scores skal være identiske — v3=false ignorerer peak-data fuldstændigt.
+  assert.deepEqual(
+    withPeakData.ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, finalScore: r.finalScore })),
+    withoutPeakData.ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, finalScore: r.finalScore })),
+  );
+  for (const r of withPeakData.ranked) assert.equal(r.components.peak, 0, r.rider_id);
+});
+
+test("simulateStage S5: v3=true → peak-vindue giver components.peak = +PEAK_MAX (tq=1) for rytteren i vinduet, 0 for resten", () => {
+  const { ranked } = simulateStage({ entrants: ENTRANTS_WITH_PEAK, stageProfile: PEAK_STAGE, seed: 7, v3: true });
+  const climber = ranked.find((r) => r.rider_id === "climber");
+  const helper = ranked.find((r) => r.rider_id === "helperA1"); // ingen plan
+  assert.ok(Math.abs(climber.components.peak - 0.02) < 1e-12, `climber.peak skal være PEAK_MAX (0.02), var ${climber.components.peak}`);
+  assert.equal(helper.components.peak, 0, "rytter uden plan skal have peak=0");
+});
+
+test("simulateStage S5: v3=true payback — en etape i payback-vinduet (efter peak) giver components.peak = -PEAK_PAYBACK", () => {
+  // peakDay=110 ligger efter vinduet [98..102], inden for payback (7 dage) → -0.01.
+  const paybackStage = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain, peakDay: 106 };
+  const { ranked } = simulateStage({ entrants: ENTRANTS_WITH_PEAK, stageProfile: paybackStage, seed: 7, v3: true });
+  const climber = ranked.find((r) => r.rider_id === "climber");
+  assert.ok(Math.abs(climber.components.peak - -0.01) < 1e-12, `climber.peak skal være -PEAK_PAYBACK (-0.01), var ${climber.components.peak}`);
+});
+
+test("buildRaceResults S5: v3=false ignorerer entrants' peakWindows fuldstændigt (bit-identisk)", () => {
+  const withoutPeak = buildRaceResults({ race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
+  const withPeak = buildRaceResults({ race: STAGE_RACE, stages: STAGES, entrants: ENTRANTS_WITH_PEAK, pointsLookup: POINTS, v3: false });
+  assert.deepEqual(withoutPeak, withPeak, "v3=false skal ignorere peakWindows fuldstændigt");
+});
+
+test("buildRaceResults S5: v3=true tråder peak hele vejen — riderScores.components.peak, ændret resultat + peaks i checksum", () => {
+  // Etaper med peakDay: etape 1 (flat) ligger i climber+sprinters vindue → peak fyrer.
+  const stagesWithDay = STAGES.map((s, i) => ({ ...s, peakDay: PEAK_DAY + i }));
+  const noPeak = buildRaceResults({ race: STAGE_RACE, stages: stagesWithDay, entrants: ENTRANTS, pointsLookup: POINTS, v3: true });
+  const withPeak = buildRaceResults({ race: STAGE_RACE, stages: stagesWithDay, entrants: ENTRANTS_WITH_PEAK, pointsLookup: POINTS, v3: true });
+
+  // 1) peak-komponenten er stemplet på riderScores (why-laget).
+  const stage1Run = withPeak.runs.find((r) => r.stage_number === 1);
+  const climberScore = stage1Run.riderScores.find((rs) => rs.rider_id === "climber");
+  assert.ok(Math.abs(climberScore.components.peak - 0.02) < 1e-12, `climber.peak i riderScores skal være 0.02, var ${climberScore.components.peak}`);
+
+  // 2) peak ændrer faktisk resultatet vs. ingen plan (ikke en no-op).
+  assert.notDeepEqual(noPeak.resultRows, withPeak.resultRows, "peak-plan skal ændre resultRows");
+
+  // 3) checksum afviger (peaks-nøglen er nu i payloaden → determinisme-garantien).
+  assert.notEqual(stage1Run.input_checksum, noPeak.runs.find((r) => r.stage_number === 1).input_checksum,
+    "peaks i input_checksum → checksum skal afvige fra samme løb uden peaks");
 });

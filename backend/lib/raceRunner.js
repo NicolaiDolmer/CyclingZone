@@ -50,6 +50,15 @@ import {
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+// S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
+// traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
+// identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
+import {
+  loadPeakPlans,
+  loadStageDayOrdinals,
+  resolvePeakTrainingQuality,
+  serializePeakInputs,
+} from "./racePeakPlans.js";
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
@@ -233,7 +242,20 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // fatigue sættes per etape i loopet (akkumulerende); start = etape 0's entering.
     fatigue: fatigueSeqById.get(e.rider_id)[0],
     ...(e.race_role ? { race_role: e.race_role } : {}),
+    // S5 (#2224): peak-vinduer (CET-ordinaler) + traeningskvalitet — KUN når v3
+    // OG rytteren har mindst ét vindue (flag-off / v3-uden-plan skal give
+    // bit-identisk simEntrant-form). Konstant på tværs af etaper (vinduer/tq er
+    // pre-race-værdier); simulateStage vælger fasen pr. etape via stage.peakDay.
+    ...(v3 && e.peakWindows?.length
+      ? { peakWindows: e.peakWindows, peakTrainingQuality: e.peakTrainingQuality ?? 1 }
+      : {}),
   }));
+
+  // S5 (#2224): deterministisk peak-input-signatur til input_checksum — konstant
+  // på tværs af etaper (kun peakDay varierer, tilføjes pr. etape nedenfor). Tom
+  // når ingen entrant har et vindue → checksum-payloaden er bagudkompatibel med
+  // v3-løb uden peaks (samme mønster som S3's stageRoles-nøgle).
+  const peakInputs = v3 ? serializePeakInputs(simEntrants) : [];
 
   for (let i = 0; i < stagesSorted.length; i++) {
     const stage = stagesSorted[i];
@@ -288,6 +310,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // (ikke kun denne etapes) — whole-race-fatigue-akkumuleringen gør at en
         // tidligere etapes override kan påvirke DENNE etapes entering-fatigue.
         ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
+        // S5 (#2224): peak-inputs (vinduer/tq konstant + DENNE etapes peakDay) —
+        // KUN når der faktisk findes peaks (bagudkompatibel checksum). peakDay
+        // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
+        // to identiske inputs giver identisk output (determinisme-garantien).
+        ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
       })),
       // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
       // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
@@ -388,6 +415,28 @@ async function loadStageProfiles(supabase, raceId) {
     .order("stage_number", { ascending: true });
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
   return data || [];
+}
+
+// S5 (#2224): resolvér peak-kontekst for ét løb og hæft den på stages + entrants
+// (muterer de friskt-loadede objekter — samme livscyklus som fatigue/role-
+// berigelsen). KUN kaldt når v3=true, så flag-off rører ALDRIG disse loadere.
+// Loaderne + tq-resolveren er injectable (default = de ægte) så simulateRace/
+// simulateStageRace kan testes uden ægte peak-planer. Entrants uden vindue får
+// INGEN peak-felter (holder simEntrant-formen bit-identisk med v3-uden-plan).
+async function attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQFn }) {
+  const stageDayByNumber = await loadStageDayOrdinalsFn({ supabase, raceId: race.id });
+  for (const s of stages) s.peakDay = stageDayByNumber.get(s.stage_number ?? 1) ?? null;
+
+  const peakPlansByRider = await loadPeakPlansFn({
+    supabase, seasonId: race.season_id, riderIds: entrants.map((e) => e.rider_id),
+  });
+  for (const e of entrants) {
+    const windows = peakPlansByRider.get(e.rider_id);
+    if (windows?.length) {
+      e.peakWindows = windows;
+      e.peakTrainingQuality = resolveTQFn({ riderId: e.rider_id });
+    }
+  }
 }
 
 // Range-pagineret fetch (PostgREST default-cap = 1000 rækker → tavs trunkering; #1839).
@@ -932,6 +981,10 @@ export async function simulateRace({
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true
   // (se nedenfor) — undgår et unødvendigt DB-kald ved flag-off.
   loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
+  // S5 (#2224): injectable peak-loadere + tq-resolver. Kun kaldt når v3=true.
+  loadPeakPlans: loadPeakPlansFn = loadPeakPlans,
+  loadStageDayOrdinals: loadStageDayOrdinalsFn = loadStageDayOrdinals,
+  resolvePeakTrainingQuality: resolveTQFn = resolvePeakTrainingQuality,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -960,6 +1013,9 @@ export async function simulateRace({
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
+  // S5 (#2224): peak-kontekst hæftes på stages + entrants KUN når v3=true → flag-off
+  // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
+  if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQFn });
 
   const { resultRows, runs, incidents } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
 
@@ -1175,8 +1231,15 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
         ? (resolved.race_role ? { race_role: resolved.race_role } : {})
         : (e.race_role ? { race_role: e.race_role } : {})),
       ...(v3 ? { effort: resolved.effort } : {}),
+      // S5 (#2224): peak-vinduer + tq — se buildRaceResults' tilsvarende note.
+      ...(v3 && e.peakWindows?.length
+        ? { peakWindows: e.peakWindows, peakTrainingQuality: e.peakTrainingQuality ?? 1 }
+        : {}),
     };
   });
+
+  // S5 (#2224): peak-input-signatur til checksum (bagudkompatibel når tom).
+  const peakInputs = v3 ? serializePeakInputs(simEntrants) : [];
 
   const seed = stableSeed(raceSeedInput(race.id, stageNumber));
   const { ranked, incidents } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
@@ -1199,6 +1262,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       profile: thisStage.profile_type,
       // S3 (#2034): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
+      // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
+      ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
     })),
     // #2352 (Race v3 S1, spec §11.3): se buildRaceResults' tilsvarende note.
     ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
@@ -1295,6 +1360,10 @@ export async function simulateStageByIndex({
   checkV3Enabled = isRaceEngineV3ScoringEnabled,
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true.
   loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
+  // S5 (#2224): injectable peak-loadere + tq-resolver. Kun kaldt når v3=true.
+  loadPeakPlans: loadPeakPlansFn = loadPeakPlans,
+  loadStageDayOrdinals: loadStageDayOrdinalsFn = loadStageDayOrdinals,
+  resolvePeakTrainingQuality: resolveTQFn = resolvePeakTrainingQuality,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -1414,6 +1483,10 @@ export async function simulateStageByIndex({
     // S3 (#2034): overrides hentes KUN når v3=true — samme begrundelse som simulateRace.
     // (v3 selv er læst tidligere, FØR #1844-frysningen — se abandon-eksklusionen ovenfor.)
     const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
+    // S5 (#2224): peak-kontekst — KUN når v3=true. entrants er nu finaliseret
+    // (#1844-frosset for stageIndex>0); stagesSorted deler objekt-refs med stages,
+    // så peakDay-mutationen ses i begge grene nedenfor. Bit-identisk ved flag-off.
+    if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQFn });
 
     if (race.race_type === "stage_race") {
       // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
