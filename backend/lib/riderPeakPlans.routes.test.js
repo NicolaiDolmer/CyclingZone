@@ -76,3 +76,38 @@ test("PATCH + DELETE håndhæver ejerskab + lås-guard (kun redigerbar)", () => 
     assert.match(block, /"locked"/, `${marker} skal svare 409 locked`);
   }
 });
+
+// ── S5 Planner-cockpit: aggregat-board + accept-training (spec §3/§5) ──────────
+const COCKPIT_ROUTES = [
+  { name: "GET /peak-plans/board", marker: 'router.get("/peak-plans/board"' },
+  { name: "POST /peak-plans/:id/accept-training", marker: 'router.post("/peak-plans/:id/accept-training"' },
+];
+
+for (const { name, marker } of COCKPIT_ROUTES) {
+  test(`${name} er registreret med requireAuth`, () => {
+    assert.match(handlerBlock(marker), /requireAuth/, `${name} skal kræve auth`);
+  });
+  test(`${name} gates bag peak_planner_enabled (launch-switch)`, () => {
+    assert.match(handlerBlock(marker), /isPeakPlannerEnabled/, `${name} skal tjekke launch-flaget`);
+  });
+}
+
+test("GET /peak-plans/board bruger den motor-konsistente tq-kobling + rival-aggregat", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /resolvePeakTrainingQualities/, "board skal bruge motorens tq-kobling, ikke en ad-hoc beregning");
+  assert.match(block, /countRivalPeaks/, "board skal aggregere rival-neutralisering server-side");
+});
+
+test("POST accept-training rate-limites + håndhæver ejerskab (egen rytter)", () => {
+  const block = handlerBlock('router.post("/peak-plans/:id/accept-training"');
+  assert.match(block, /marketWriteLimiter/, "accept-training skal rate-limites");
+  assert.match(block, /loadOwnedPeakPlan/, "accept-training skal verificere ejerskab");
+});
+
+test("POST accept-training er ikke-destruktivt: kun build/taper-ugen, valideret, til training_week_plans", () => {
+  const block = handlerBlock('router.post("/peak-plans/:id/accept-training"');
+  assert.match(block, /invalid_week/, "kun 'build'|'taper' må accepteres");
+  assert.match(block, /week !== "build" && week !== "taper"/, "ugen skal begrænses til build/taper");
+  assert.match(block, /isValidWeekPlanDays/, "de skrevne dage skal valideres mod week-plan-kontrakten");
+  assert.match(block, /training_week_plans/, "accept skal skrive den valgte rytme til training_week_plans");
+});
