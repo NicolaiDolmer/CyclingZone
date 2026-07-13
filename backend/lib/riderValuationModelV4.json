@@ -1,8 +1,8 @@
 {
   "version": 4,
   "method": "sim-production-npv",
-  "fitted_at": "2026-07-13T20:45:33.052Z",
-  "sim_run_id": "ac8d39c6",
+  "fitted_at": "2026-07-13T21:32:44.093Z",
+  "sim_run_id": "75507b50",
   "K": 30,
   "season_id": "00000000-0000-0000-0000-000000000001",
   "prize_per_point": 75,
@@ -10,70 +10,75 @@
   "discount": 0.8,
   "horizon_model": "survival-weighted",
   "fit": {
-    "alpha": 0.5,
-    "a": 4.471847,
-    "b": 0.20176201,
-    "c": -0.001121248,
+    "alpha": 1,
+    "a": 4.598962,
+    "b": 0.09534681,
+    "c": -0.00009818051,
     "offset": {
-      "sprinter": -0.142922,
-      "tt": -0.137872,
-      "climber": 0.260997,
-      "puncheur": 0.929792,
-      "brostensrytter": 1.37822,
-      "baroudeur": -0.209785,
-      "rouleur": -0.13304,
-      "gc": -0.545719
+      "sprinter": -0.119959,
+      "tt": -0.139083,
+      "climber": 0.184899,
+      "puncheur": 2.030708,
+      "brostensrytter": 1.046779,
+      "baroudeur": 0.159048,
+      "rouleur": 0.184802,
+      "gc": 0.580036
     },
-    "r2_log": 0.3597,
-    "n_samples": 5247
+    "r2_log": 0.2605,
+    "n_samples": 5999
   },
   "type_stats": {
     "sprinter": {
-      "n": 1125,
-      "median_prize": 2790,
-      "p90_prize": 16985
+      "n": 1189,
+      "median_prize": 1538,
+      "p90_prize": 15705
     },
     "tt": {
-      "n": 2316,
-      "median_prize": 831,
-      "p90_prize": 4403
+      "n": 2610,
+      "median_prize": 521,
+      "p90_prize": 4128
     },
     "climber": {
-      "n": 1661,
-      "median_prize": 3530,
-      "p90_prize": 36735
+      "n": 1930,
+      "median_prize": 469,
+      "p90_prize": 18853
     },
     "puncheur": {
-      "n": 16,
-      "median_prize": 59708,
-      "p90_prize": 192960
+      "n": 19,
+      "median_prize": 57660,
+      "p90_prize": 264548
     },
     "brostensrytter": {
-      "n": 34,
-      "median_prize": 25255,
-      "p90_prize": 77975
+      "n": 59,
+      "median_prize": 21675,
+      "p90_prize": 64040
     },
     "baroudeur": {
-      "n": 22,
-      "median_prize": 20604,
-      "p90_prize": 152793
+      "n": 34,
+      "median_prize": 6863,
+      "p90_prize": 48855
     },
     "rouleur": {
-      "n": 71,
-      "median_prize": 8468,
-      "p90_prize": 70813
+      "n": 123,
+      "median_prize": 6575,
+      "p90_prize": 49998
     },
     "gc": {
-      "n": 2,
-      "median_prize": 68003,
-      "p90_prize": 84275
+      "n": 35,
+      "median_prize": 74093,
+      "p90_prize": 456905
     }
   },
-  "scale": 0.96806443,
+  "scale": 2.5985837,
   "scale_ref": {
     "median_current_base_value": 6972,
-    "median_v4_raw_npv": 7202,
+    "median_v4_raw_npv": 2683,
     "n_calibration": 6643
   },
-  "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R² (riderValuationFitV4.js). scale = global faktor så median(v4 karriere-NPV) matcher median(nuværende base_value) over hele populationen (intet økonomi-chok ved cutover). Styrer INGEN økonomi (shadow, ingen migration)."
+  "soft_cap": {
+    "threshold": 199699,
+    "gamma": 0.5,
+    "pct": 0.95
+  },
+  "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft (potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
 }

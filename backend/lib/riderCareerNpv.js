@@ -124,6 +124,20 @@ function simulateCareer(rider, abilities, model) {
   return { npv, trajectory };
 }
 
+// Blødt top-loft (#2428): glat aftagende-udbytte-kompression over en tærskel.
+// value > threshold → threshold · (value/threshold)^gamma, gamma ∈ (0,1). Bevarer
+// rangorden (monoton) og rører IKKE værdier ≤ threshold (tærsklen sættes > median,
+// så skala-kontinuiteten holder). gamma=1 / manglende soft_cap → ingen kompression.
+// Tæmmer den tunge hale (få dominerende ryttere i den svage beta-population) uden
+// et fladt loft. threshold + gamma er ejer-tunbare og ligger i model.soft_cap.
+export function applySoftCap(value, softCap) {
+  if (!softCap) return value;
+  const threshold = Number(softCap.threshold);
+  const gamma = Number(softCap.gamma);
+  if (!(threshold > 0) || !(gamma > 0) || gamma >= 1 || !(value > threshold)) return value;
+  return threshold * Math.pow(value / threshold, gamma);
+}
+
 // Karriere-NPV base_value (v4). Samme kald-form som predictBaseValue (v3).
 // rider: { primary_type, potentiale, age } (age = heltal, sat af kalderen).
 // abilities: rider_derived_abilities-form (VISIBLE_ABILITIES-nøgler).
@@ -137,7 +151,8 @@ export function predictBaseValueV4(rider, abilities, model /*, opts */) {
   if (!Number.isFinite(npv) || npv <= 0) return null;
 
   const scale = Number.isFinite(Number(model.scale)) ? Number(model.scale) : 1;
-  const baseValue = Math.round(scale * npv);
+  const capped = applySoftCap(scale * npv, model.soft_cap);
+  const baseValue = Math.round(capped);
   if (!Number.isFinite(baseValue)) return null;
   return Math.max(1, baseValue);
 }

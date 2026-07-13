@@ -47,6 +47,11 @@ const SAMPLE_PATH = join(__dirname, "..", String(arg("sample", "lib/riderProduct
 const OUT_PATH = join(__dirname, "..", String(arg("out", "lib/riderValuationModelV4.json")));
 const DISCOUNT = Number(arg("discount", 0.8));
 const BETA_PT = Number(arg("beta-pt", 0));
+// Blødt top-loft (#2428): komprimér base_value over p{SOFT_CAP_PCT} med eksponent
+// gamma ∈ (0,1). gamma=1 → slået fra. Tærsklen sættes > median → rører ikke skala-
+// kontinuiteten. Ejer-tunbart ved cutover-review.
+const SOFT_CAP_GAMMA = Number(arg("soft-cap-gamma", 0.5));
+const SOFT_CAP_PCT = Number(arg("soft-cap-pct", 0.95));
 
 const fmtM = (n) => (n / 1e6).toFixed(2) + "M";
 
@@ -170,7 +175,7 @@ async function main() {
   }
 
   // --- sim_run_id: stabil hash over sim-input-nøglen ---
-  const simRunKey = `${artefact.season_id}:${artefact.K}:${artefact.base_seed}:${artefact.v3_scoring}`;
+  const simRunKey = `${artefact.season_id}:${artefact.K}:${artefact.base_seed}:${artefact.v3_scoring}:fa=${!!artefact.free_agents}`;
   const simRunId = djb2(simRunKey);
 
   // --- Skala-kalibrering (read-only, kun SELECT) ---
@@ -229,6 +234,19 @@ async function main() {
     `median(v4 rå NPV, scale=1, n=${rawNpvs.length})=${fmtM(medianV4RawNpv)} · scale=${scale.toExponential(4)}`
   );
 
+  // Blødt top-loft: tærskel = p{SOFT_CAP_PCT} af de SKALEREDE (ukappede) v4-værdier,
+  // så loftet rører kun den øverste hale (> median → skala-kontinuitet uændret).
+  const scaledVals = rawNpvs.map((v) => v * scale);
+  const softCapThreshold = Math.round(quantile(scaledVals, SOFT_CAP_PCT));
+  const softCap = SOFT_CAP_GAMMA > 0 && SOFT_CAP_GAMMA < 1
+    ? { threshold: softCapThreshold, gamma: SOFT_CAP_GAMMA, pct: SOFT_CAP_PCT }
+    : null;
+  console.log(
+    softCap
+      ? `Blødt top-loft: threshold=p${(SOFT_CAP_PCT * 100).toFixed(0)}=${fmtM(softCapThreshold)} · gamma=${SOFT_CAP_GAMMA} (komprimerer halen; median urørt)`
+      : `Blødt top-loft: SLÅET FRA (gamma=${SOFT_CAP_GAMMA} ∉ (0,1))`
+  );
+
   const model = {
     version: 4,
     method: "sim-production-npv",
@@ -256,12 +274,14 @@ async function main() {
       median_v4_raw_npv: Math.round(medianV4RawNpv),
       n_calibration: rawNpvs.length,
     },
+    soft_cap: softCap,
     notes:
       "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion " +
-      "(scripts/simulateSeasonProduction.js), ikke på ejer-anchors som v3. alpha valgt " +
-      "via grid-search over log-R² (riderValuationFitV4.js). scale = global faktor så " +
-      "median(v4 karriere-NPV) matcher median(nuværende base_value) over hele populationen " +
-      "(intet økonomi-chok ved cutover). Styrer INGEN økonomi (shadow, ingen migration).",
+      "(scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke " +
+      "på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global " +
+      "faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft " +
+      "(potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. " +
+      "Styrer INGEN økonomi (shadow, ingen migration).",
   };
 
   if (DRY_RUN) {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { predictBaseValueV4, careerTrajectory, hazard } from "./riderCareerNpv.js";
+import { predictBaseValueV4, careerTrajectory, hazard, applySoftCap } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -195,4 +195,47 @@ test("predictBaseValueV4 falder tilbage til laveste offset for en type uden kali
   );
   // ukendt type skal IKKE arve gc's høje offset (skal være billigere, ikke dyrere).
   assert.ok(value < gcValue);
+});
+
+// ── Blødt top-loft (#2428) ─────────────────────────────────────────────────────
+
+test("applySoftCap: værdi ≤ threshold er urørt", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  assert.equal(applySoftCap(500, sc), 500);
+  assert.equal(applySoftCap(1000, sc), 1000);
+});
+
+test("applySoftCap: værdi > threshold komprimeres (potens-kompression)", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  // 4× threshold → threshold · 4^0.5 = 2× threshold (halveret log-overskud).
+  assert.equal(applySoftCap(4000, sc), 2000);
+  // 100× → threshold · 100^0.5 = 10× threshold.
+  assert.equal(applySoftCap(100000, sc), 10000);
+});
+
+test("applySoftCap: gamma=1 eller manglende cap → ingen kompression", () => {
+  assert.equal(applySoftCap(9999, { threshold: 1000, gamma: 1 }), 9999);
+  assert.equal(applySoftCap(9999, null), 9999);
+  assert.equal(applySoftCap(9999, { threshold: 0, gamma: 0.5 }), 9999);
+});
+
+test("applySoftCap: monoton (bevarer rangorden over threshold)", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  const a = applySoftCap(2000, sc), b = applySoftCap(5000, sc), c = applySoftCap(20000, sc);
+  assert.ok(a < b && b < c);
+});
+
+test("predictBaseValueV4: soft_cap komprimerer høj-værdi-rytter men ikke median", () => {
+  const strong = makeAbilities({ climbing: 95, tempo: 90, endurance: 88, punch: 85 });
+  const rider = { primary_type: "climber", potentiale: 3, age: 26 };
+  const uncapped = predictBaseValueV4(rider, strong, fixtureModel());
+  // sæt tærskel LANGT under den stærke rytters værdi → skal komprimeres ned.
+  const capped = predictBaseValueV4(rider, strong, fixtureModel({ soft_cap: { threshold: Math.floor(uncapped / 4), gamma: 0.5 } }));
+  assert.ok(capped < uncapped, `capped ${capped} skal være < uncapped ${uncapped}`);
+  assert.ok(capped > 1);
+  // en svag rytter under tærsklen er urørt.
+  const weak = makeAbilities({ climbing: 20, tempo: 15 });
+  const weakUncapped = predictBaseValueV4({ ...rider }, weak, fixtureModel());
+  const weakCapped = predictBaseValueV4({ ...rider }, weak, fixtureModel({ soft_cap: { threshold: weakUncapped * 10, gamma: 0.5 } }));
+  assert.equal(weakCapped, weakUncapped);
 });

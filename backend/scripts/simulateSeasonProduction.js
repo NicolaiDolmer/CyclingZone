@@ -64,6 +64,11 @@ const K = parseInt(arg("k", "30"), 10);
 // uafhængige-men-reproducerbare sample-sæt (seed-robusthed i scorecardet).
 const BASE_SEED = parseInt(arg("seed", "2026"), 10);
 const V3_SCORING = !!arg("v3", false);
+// #2428: inkludér free agents (team_id NULL, usignerede) via ability-matchede
+// virtuelle hold fordelt over divisionerne — så modellen MÅLER deres produktion
+// ("hvad ville de producere hvis signeret") i stedet for at ekstrapolere. Uden
+// flaget: kun holdsatte ryttere (den oprindelige, teamed-only baseline).
+const FREE_AGENTS = !!arg("free-agents", false);
 const OUT_PATH = resolve(arg("out", join(__dirname, "../lib/riderProductionSample.json")));
 const SEASON_ARG = arg("season", null);
 
@@ -250,7 +255,68 @@ async function main() {
     if (!ridersByTeam.has(r.team_id)) ridersByTeam.set(r.team_id, []);
     ridersByTeam.get(r.team_id).push(entry);
   }
-  console.log(`  ${riderRecordById.size} ryttere har abilities (${excludedNoAbilities} ekskluderet: ingen abilities-række).\n`);
+  console.log(`  ${riderRecordById.size} holdsatte ryttere har abilities (${excludedNoAbilities} ekskluderet: ingen abilities-række).`);
+
+  // ── 1b. Free agents (#2428, valgfrit) — virtuelle hold ────────────────────
+  // Usignerede ryttere (team_id NULL) kører ikke løb i drift, men modellen skal
+  // prissætte dem. I stedet for at ekstrapolere fit-kurven ud i uvalideret land
+  // MÅLER vi deres produktion: hver free agent placeres i et virtuelt hold fordelt
+  // round-robin over de RIGTIGE divisioner (som ikke er stratificeret efter styrke
+  // pr. 13/7 — alle felter er lige svage), så autopick + felt-tildeling behandler
+  // dem præcis som rigtige hold. Round-robin på id-sorteret liste spreder stærke
+  // free agents ud over de virtuelle hold, så hver får løbstid (ikke benched bag
+  // en anden stærk på samme hold). Deterministisk (id-sorteret, ingen RNG).
+  let freeAgentsIncluded = 0;
+  if (FREE_AGENTS) {
+    console.log("Henter free agents (team_id NULL) → virtuelle hold...");
+    const faRaw = await fetchAllRows(() => supabase
+      .from("riders")
+      .select("id, primary_type, birthdate")
+      .eq("is_academy", false)
+      .eq("is_retired", false)
+      .is("team_id", null)
+      .order("id", { ascending: true }));
+    const faIds = faRaw.map((r) => r.id);
+    const { data: faAbRaw, error: faAbErr } = await selectInChunks({
+      supabase, table: "rider_derived_abilities", columns: raceAbilityCols, inColumn: "rider_id", ids: faIds,
+    });
+    if (faAbErr) throw new Error(`rider_derived_abilities (FA): ${faAbErr.message}`);
+    const faAbById = new Map((faAbRaw || []).map((a) => [a.rider_id, a]));
+    const { data: faCondRaw, error: faCondErr } = await selectInChunks({
+      supabase, table: "rider_condition", columns: "rider_id, form, fatigue", inColumn: "rider_id", ids: faIds,
+    });
+    if (faCondErr) throw new Error(`rider_condition (FA): ${faCondErr.message}`);
+    const faCondById = new Map((faCondRaw || []).map((c) => [c.rider_id, c]));
+
+    const faWithAb = faRaw.filter((r) => faAbById.has(r.id));
+    const divisions = [...teamsByDivision.keys()].sort((a, b) => a - b);
+    if (!divisions.length) throw new Error("Ingen divisioner at fordele free agents over (teamsByDivision tom).");
+    const FA_TEAM_SIZE = 8;
+    const numVirtual = Math.max(1, Math.ceil(faWithAb.length / FA_TEAM_SIZE));
+    faWithAb.forEach((r, i) => {
+      const v = i % numVirtual; // round-robin → spreder stærke free agents over holdene
+      const vTeamId = `FA::${v}`;
+      const division = divisions[v % divisions.length];
+      const teamList = teamsByDivision.get(division);
+      if (!teamList.includes(vTeamId)) teamList.push(vTeamId);
+      const { rider_id: _rid, ...abilityValues } = faAbById.get(r.id);
+      const cond = faCondById.get(r.id);
+      riderRecordById.set(r.id, {
+        team_id: vTeamId, primary_type: r.primary_type ?? null, birthdate: r.birthdate,
+        abilities: abilityValues, form: cond?.form ?? null, fatigue: cond?.fatigue ?? null,
+      });
+      const entry = {
+        rider_id: r.id, abilities: abilityValues,
+        ...(cond?.form != null ? { form: cond.form } : {}),
+        ...(cond?.fatigue != null ? { fatigue: cond.fatigue } : {}),
+      };
+      if (!ridersByTeam.has(vTeamId)) ridersByTeam.set(vTeamId, []);
+      ridersByTeam.get(vTeamId).push(entry);
+      freeAgentsIncluded++;
+    });
+    console.log(`  ${freeAgentsIncluded} free agents i ${numVirtual} virtuelle hold over ${divisions.length} divisioner.`);
+  }
+  console.log("");
 
   // ── 2. Felt-tildeling (REN, ÉN gang, fast på tværs af alle K runs) ────────
 
@@ -340,12 +406,14 @@ async function main() {
     K,
     base_seed: BASE_SEED,
     v3_scoring: V3_SCORING,
+    free_agents: FREE_AGENTS,
     prize_per_point: PRIZE_PER_POINT,
     population: {
       riders: riderRecordById.size,
       teams: teamsIncluded.length,
       races: entrantsByRaceId.size,
       excluded_no_abilities: excludedNoAbilities,
+      free_agents_included: freeAgentsIncluded,
     },
     samples,
   };
