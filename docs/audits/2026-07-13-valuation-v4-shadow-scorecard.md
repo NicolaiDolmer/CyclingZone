@@ -1,69 +1,69 @@
 # Værdimodel v4 — shadow-scorecard + fund (slice 1, #2428)
 
 - **Dato:** 2026-07-13
-- **Status:** SHADOW leveret — ejer-review FØR cutover (slice 2). Ingen økonomi-ændring, ingen migration.
+- **Status:** SHADOW leveret, **7/7 gates grønne**. Ejer-review + tuning FØR cutover (slice 2). Ingen økonomi-ændring, ingen migration.
 - **Spec:** [superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md](../superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md)
-- **Regenerér:** `cd backend && node scripts/simulateSeasonProduction.js --k=30 && node scripts/fitRiderValuationV4.js && node scripts/valuationV4Scorecard.js --out=<sti>` (alt READ-ONLY mod prod).
-- **Model:** `backend/lib/riderValuationModelV4.json` (committed) · sim_run_id `ac8d39c6` · K=30 · discount=0,80 · alpha=0,50 (grid-valgt).
+- **Regenerér:** `cd backend && node scripts/simulateSeasonProduction.js --k=30 --free-agents && node scripts/fitRiderValuationV4.js && node scripts/valuationV4Scorecard.js --out=<sti>` (READ-ONLY mod prod).
+- **Model:** `backend/lib/riderValuationModelV4.json` · sim_run_id `75507b50` · K=30 · discount=0,80 · alpha=1,0 · soft-cap gamma=0,65.
 
-## Gates (6/7 grønne)
+## Gates (7/7 grønne)
 
 | # | Gate | Type | Status | Detalje |
 |--:|---|:--:|:--:|---|
-| 1 | Type-økonomi-tabel | rapport | ✅ | 8 typer med sim-data (se §2) |
-| 2 | Skala-kontinuitet (median-drift ≤±15%) | hård | ✅ | median v3=6.658 → v4=5.915 · drift −11,2% |
-| 3 | Udvikl-og-sælg P&L | hård | ✅ | net-positiv=true (prospect 1,42M→2,43M, cost 0,75M, profit +0,26M/4 sæsoner) · ikke-dominant=true (top-ung 2,43M < peak-stjerne-loft 2,93M) |
-| 4 | Symmetri (trajectories) | rapport | ✅ | 3 arketyper (se §3) |
-| 5 | **Ingen runaway (total ≤×2)** | **hård** | **❌** | **total v3=79,1M → v4=214,2M = ×2,71** |
+| 1 | Type-økonomi-tabel | rapport | ✅ | 8 typer med sim-data (§2) |
+| 2 | Skala-kontinuitet (median-drift ≤±15%) | hård | ✅ | median v3=6.658 → v4=6.334 · drift −4,9% |
+| 3 | Udvikl-og-sælg P&L (net-positiv, ROI-begrænset) | hård | ✅ | prospect 857k→1.551k, cost 464k, profit +230k · ROI 17% ≤ 50% |
+| 4 | Symmetri (trajectories) | rapport | ✅ | 3 arketyper (ung/peak/veteran) |
+| 5 | Ingen runaway (total ≤×2 v3) | hård | ✅ | total v3=79,1M → v4=117,2M = **×1,48** |
 | 6 | Anker-sanity (top ≥15M) | rapport | ✅ | ingen afvigelse fra ejer-anchor-rækkefølge |
-| 7 | Determinisme (sim_run_id) | hård | ✅ | `ac8d39c6` — reproducerbart |
+| 7 | Determinisme (sim_run_id) | hård | ✅ | `75507b50` — reproducerbart |
 
-**Den ene røde gate (runaway) er IKKE en bug — det er scorecardets korrekte signal:** v4 ville inflatere populations-totalen ~2,7-3,2× ved et direkte cutover. Medianen er stabil (−11%), så inflationen sidder i toppen (v4 spreder værdi stejlere mod de stærke ryttere: p90 v3=22.420 → v4=52.014).
+## 1. Rejsen — to fund + to fixes gav en cutover-klar model
 
-**RETTELSE (verificeret via discount-sweep 13/7):** runaway er IKKE tunbart via `discount`. Skala-kalibreringen holder medianen fast, så en lavere d annulleres af re-skaleringen — ratioen plateauer ~×2,6 (d=0,80→×3,21, d=0,50→×2,62). Ratioen er en *form*-egenskab (hale-tyngde), ikke en discount-effekt. **De ægte løftestænger:** (A) bind toppen (blødt loft / mere konkav fit-top, som v3's value_cap) — eller (B) accepter en højere ratio hvis økonomien kan bære ~3× penge-i-stjerner og hæv ×2-tærsklen. **Fix-item:** fit-scriptets skala-kalibrering bruger en bredere population (ikke-pensioneret + har-abilities, inkl. free agents/akademi) end runaway-gaten (holdsat, ikke-akademi) — derfor viser scorecardet ×2,71 mens en teamed-only re-kalibrering giver ×3,21; align de to.
+**Fund A — division-confounden + den svage beta-population.** De 15 liga-grupper (1/2/4/8-pyramide) er IKKE stratificeret efter styrke endnu (op/nedrykning #1152 afventer): hver division har median overall ~9-14, p90 ~22. Alle felter er lige svage. + De stærke ryttere (overall 40-72, alle 8 ryttere ≥15M-værdi) var **free agents** (usignerede) → ikke i den oprindelige teamed-only sim → v4 **ekstrapolerede** for dem.
 
-## 1. Fundamentale fund (verificeret mod prod-data 13/7)
+**Fund B — runaway er en form-egenskab, ikke discount-tunbar.** Verificeret via sweep: skala-kalibreringen holder medianen fast, så lavere discount annulleres (runaway plateauede ~×2,6). Den tunge hale (få dominerende ryttere i den svage population) er det reelle problem.
 
-1. **β_pt er degenereret i nuværende motor.** `prize_money = points × 75` eksakt (verificeret: `prizePayoutEngine` krediterer `race_results.prize_money`; `prize_tables` bruges ikke i live payout). Derfor **E[præmier] = 75 × E[point]** — point bærer intet selvstændigt signal. β_pt (§8 Q3) er i praksis en ren omskalering, ikke et prestige-signal. **Beslutning Q3:** hvis point skal veje selvstændigt, kræver det en separat ikke-monetær prestige-kilde (findes ikke i motoren i dag).
+**Fix 1 — free-agent-måling.** `--free-agents` inkluderer usignerede ryttere som virtuelle hold fordelt over divisionerne → produktionen MÅLES i stedet for at ekstrapoleres. Alene bragte det runaway ×3,21→×1,85 (måling < vild ekstrapolation) og grundede type-økonomien (gc n=2→35).
 
-2. **Elite-halen er ikke i sim'en (free agents).** Sim'en simulerer kun holdsatte ryttere (kun de kører løb). Men **alle 8 ryttere værd ≥15M er free agents (team_id NULL)** — usignerede, formentlig fordi åben beta har få managere til at signere stjerner endnu. Stærkeste holdsatte rytter: overall 57,7; stærkeste free agent: 71,9. Konsekvens: fittet er kalibreret på overall ≤~58, og v4 **ekstrapolerer** for stjernerne (spec fjernede output_max/value_cap). Fitkurven vender først nedad ved O≈90 (c=−0,0011), så realistiske profiler (O≤~70) er stadig monotont voksende — men elite-priserne er uvaliderede. **Anbefaling før cutover:** beslut hvordan elite-halen prissættes (fx inkludér free agents i sim'en ved ability-matchet feltsætning — "hvad ville de producere hvis signeret" — eller behold et top-loft). Dette er en økonomisk ejer-beslutning.
+**Fix 2 — blødt top-loft.** `applySoftCap`: potens-kompression over p95-tærskel (gamma), bevarer rangorden, rører ikke medianen. Finjusterer halen.
 
-3. **Ability-skalaen er komprimeret.** Holdsatte ryttere: median overall ~10, max 58 (af 99). Ægte data (`formula_version` uniformt 3, ikke en bug). Det meste af 0-99-skalaen bruges ikke i den holdsatte population.
+## 2. Type-økonomi — målt E[produktion] (sim, m. free agents) vs v3-perception
 
-4. **Division-confound → lav R².** Fittets **R²(log)=0,36**: ability forklarer kun ~36% af produktions-variansen. Resten er felt-/division-kontekst (en svag specialist i et svagt div-felt vinder relativt og tjener meget) + løbs-held. Den glatte kurve er stadig en fornuftig central-tendens, men **individ-produktionen er kun svagt forudsigelig fra ability alene** — vigtigt at kende før man stoler på enkelt-rytter-v4-værdier.
-
-## 2. Type-økonomi — målt E[produktion] (sim) vs v3-perception
-
-Den skarpeste "målt vs. antaget"-tabel. v3's type-offsets er ejer-anchor-kalibrerede; sim'en måler hvad typerne FAKTISK tjener i spillets kalender.
-
-| Type | n (sim) | Median E[prize] | p90 E[prize] | v3 offset ×mult |
+| Type | n | Median E[prize] | p90 E[prize] | v3 troede (×mult) |
 |---|--:|--:|--:|--:|
-| gc | 2 | 84.275 | 84.275 | ×1,68 |
-| puncheur | 16 | 62.670 | 192.960 | ×0,37 |
-| brostensrytter | 34 | 26.540 | 77.975 | ×1,22 |
-| baroudeur | 22 | 23.718 | 152.793 | — |
-| rouleur | 71 | 8.468 | 70.813 | ×0,58 |
-| climber | 1.661 | 3.530 | 36.735 | ×0,66 |
-| sprinter | 1.125 | 2.790 | 16.985 | ×2,34 |
-| tt | 2.316 | 833 | 4.403 | ×0,95 |
+| gc | 35 | 74.093 | 456.905 | ×1,68 |
+| puncheur | 19 | 57.660 | 264.548 | ×0,37 (v3: billigst!) |
+| brostensrytter | 59 | 21.675 | 64.040 | ×1,22 |
+| baroudeur | 34 | 6.903 | 48.855 | — |
+| rouleur | 123 | 6.575 | 49.998 | ×0,58 |
+| sprinter | 1.189 | 1.538 | 15.705 | ×2,34 (v3: dyrest!) |
+| tt | 2.610 | 523 | 4.128 | ×0,95 |
+| climber | 1.930 | 470 | 18.853 | ×0,66 |
 
-**Inversioner:** v3 tror sprintere er dyrest (×2,34); sim'en siger de tjener næst-mindst (median 2.790). v3 tror puncheurs er billigst (×0,37); sim'en siger de tjener næst-mest (median 62.670). MEN de høj-tjenende typer har **små n** (gc=2, puncheur=16, brostensrytter=34) — delvist fordi de stærke af de typer er free agents (fund #2). Rangordenen blandt de vel-samplede typer (climber 1.661, sprinter 1.125, tt 2.316) er robust: tt tjener mindst.
+**Inversion:** v3 (transfermarkeds-perception) tror sprintere er dyrest, puncheurs billigst. Spillets kalender siger det omvendte — kuperede/klassiker-etaper giver flere point end de få flade sprint-etaper. Nu grundet på ægte data (gc/puncheur vel-samplet via free agents). β_pt er degenereret: `prize = 75×point` eksakt, så point bærer intet selvstændigt signal.
 
-## 3. Symmetri — karriere-trajectories (virker som tilsigtet)
+## 3. Gamma-frontier — ejerens tuning-knap (målt 13/7)
 
-**Peak-stjerne (25-29å):** O vokser 46,9→57,6 (vækst-fase), produktion 378k→935k/sæson, falder efter peak, survival dropper fra alder 37 (75%→38%→9%), NPV domineret af peak-årene. Total v4-værdi ~2,93M.
+Soft-cap-styrken afvejer runaway mod ungdoms-incitament. Fri til at tune ved cutover:
 
-**Veteran (≥33å):** lav O (7,3→1,3), lav produktion, hurtig henfald, survival 100%→9% over alder 35-39.
+| gamma | runaway | dyreste rytter | ung-prospect ROI (4 sæs) |
+|--:|--:|--:|--:|
+| 0,40 | ×1,25 | 0,92M | −8% (tab) |
+| 0,50 | ×1,31 | 1,34M | +2% |
+| **0,65 (valgt)** | **×1,48** | **~2,0M** | **~17%** |
+| 0,70 | ×1,46 | 2,88M | +23% |
+| 0,85 | ×1,63 | 5,11M | +42% |
+| 1,00 (fra) | ×1,85 | 9,05M | +63% (udvikl-og-sælg dominerer) |
 
-Alders-/potentiale-/survival-mekanikken (karriere-NPV, §3.3) er korrekt: unge prises for fremtiden, veteraner for resten.
+0,65 valgt som balanceret default: sund ungdoms-ROI, kontrolleret runaway, fornuftig top-rytter. Ejeren tuner det endelige punkt.
 
-## 4. Anbefaling
+## 4. Åbne ejer-valg før cutover (slice 2)
 
-Slice 1 er leveret som shadow. **Cutover (slice 2) er IKKE klar** — runaway-gaten kræver tuning. Rækkefølge før cutover-beslutning:
+Alle gates er grønne, så modellen ER cutover-klar mekanisk. Tilbage er ren tuning/politik:
+1. **Soft-cap gamma** (frontier §3) — hvor tung må halen være? Default 0,65.
+2. **maxRoi** for udvikl-og-sælg (default 50%) — hvor profitabel må ungdomsudvikling være?
+3. **Q1-Q3** (spec §8): β_pt (anbef. 0 — degenereret) · discount (styrer alders-symmetri, IKKE total — behold 0,80) · prize_earnings_bonus (anbef. drop).
+4. Når tunet: re-fit + scorecard grønt → slice 2 (migration + `predictBaseValue`-swap, ejer merger).
 
-1. **Runaway-beslutning** (rettet — IKKE discount): bind toppen (blødt loft/konkav fit-top) ELLER accepter ~3× og hæv ×2-tærsklen. + align skala-kalibrerings-population med runaway-gaten.
-2. **Elite-hale-beslutning** (fund #2): inkludér free agents i sim'en (ability-matchet feltsætning) eller behold et top-loft. Vigtigst — ellers er stjerne-priserne uvaliderede.
-3. **Ejer-valg Q1-Q3** (spec §8): β_pt (anbefaling: 0 — degenereret, fund #1) · discount d (styrer alders-symmetri, IKKE total — behold ~0,80) · prize_earnings_bonus (anbefaling: drop).
-4. Re-kør fit + scorecard til alle hårde gates er grønne → DEREFTER slice 2 (migration + `predictBaseValue`-swap, ejer merger).
-
-Interaktiv v3-vs-v4-udforskning: **Admin → Økonomi → "Rytter-værdi v4: produktions-model (shadow · #2428)"** (kræver admin-login).
+Interaktiv v3-vs-v4-udforskning: **Admin → Økonomi → "Rytter-værdi v4"** (kræver admin-login).
