@@ -18,7 +18,9 @@
 | 6 | Anker-sanity (top ≥15M) | rapport | ✅ | ingen afvigelse fra ejer-anchor-rækkefølge |
 | 7 | Determinisme (sim_run_id) | hård | ✅ | `ac8d39c6` — reproducerbart |
 
-**Den ene røde gate (runaway) er IKKE en bug — det er scorecardets korrekte signal:** v4 fittet med discount=0,80 ville inflatere populations-totalen 2,71× ved et direkte cutover. Medianen er stabil (−11%), så inflationen sidder i toppen (v4 spreder værdi stejlere mod de stærke ryttere: p90 v3=22.420 → v4=52.014). **Tunbart via `discount` (Q2)** — en lavere d komprimerer NPV-halen. Skal afgøres ved cutover-review, ikke nu.
+**Den ene røde gate (runaway) er IKKE en bug — det er scorecardets korrekte signal:** v4 ville inflatere populations-totalen ~2,7-3,2× ved et direkte cutover. Medianen er stabil (−11%), så inflationen sidder i toppen (v4 spreder værdi stejlere mod de stærke ryttere: p90 v3=22.420 → v4=52.014).
+
+**RETTELSE (verificeret via discount-sweep 13/7):** runaway er IKKE tunbart via `discount`. Skala-kalibreringen holder medianen fast, så en lavere d annulleres af re-skaleringen — ratioen plateauer ~×2,6 (d=0,80→×3,21, d=0,50→×2,62). Ratioen er en *form*-egenskab (hale-tyngde), ikke en discount-effekt. **De ægte løftestænger:** (A) bind toppen (blødt loft / mere konkav fit-top, som v3's value_cap) — eller (B) accepter en højere ratio hvis økonomien kan bære ~3× penge-i-stjerner og hæv ×2-tærsklen. **Fix-item:** fit-scriptets skala-kalibrering bruger en bredere population (ikke-pensioneret + har-abilities, inkl. free agents/akademi) end runaway-gaten (holdsat, ikke-akademi) — derfor viser scorecardet ×2,71 mens en teamed-only re-kalibrering giver ×3,21; align de to.
 
 ## 1. Fundamentale fund (verificeret mod prod-data 13/7)
 
@@ -59,8 +61,9 @@ Alders-/potentiale-/survival-mekanikken (karriere-NPV, §3.3) er korrekt: unge p
 
 Slice 1 er leveret som shadow. **Cutover (slice 2) er IKKE klar** — runaway-gaten kræver tuning. Rækkefølge før cutover-beslutning:
 
-1. **Ejer-valg Q1-Q3** (spec §8): β_pt (anbefaling: 0 — degenereret, se fund #1) · discount d (tune ned fra 0,80 for at ramme runaway-gaten) · prize_earnings_bonus-skæbne.
-2. **Elite-hale-beslutning** (fund #2): inkludér free agents i sim'en, eller behold et top-loft.
-3. Re-kør fit + scorecard til alle hårde gates er grønne → DEREFTER slice 2 (migration + `predictBaseValue`-swap, ejer merger).
+1. **Runaway-beslutning** (rettet — IKKE discount): bind toppen (blødt loft/konkav fit-top) ELLER accepter ~3× og hæv ×2-tærsklen. + align skala-kalibrerings-population med runaway-gaten.
+2. **Elite-hale-beslutning** (fund #2): inkludér free agents i sim'en (ability-matchet feltsætning) eller behold et top-loft. Vigtigst — ellers er stjerne-priserne uvaliderede.
+3. **Ejer-valg Q1-Q3** (spec §8): β_pt (anbefaling: 0 — degenereret, fund #1) · discount d (styrer alders-symmetri, IKKE total — behold ~0,80) · prize_earnings_bonus (anbefaling: drop).
+4. Re-kør fit + scorecard til alle hårde gates er grønne → DEREFTER slice 2 (migration + `predictBaseValue`-swap, ejer merger).
 
 Interaktiv v3-vs-v4-udforskning: **Admin → Økonomi → "Rytter-værdi v4: produktions-model (shadow · #2428)"** (kræver admin-login).
