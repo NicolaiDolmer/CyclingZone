@@ -99,7 +99,9 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
     const mult = effortByRider?.has(id) ? effortFatigueMultiplier(effortByRider.get(id)) : 1;
     return {
       rider_id: id,
-      fatigue: Math.min(100, (Number(by.get(id)) || 0) + load * mult),
+      // rider_condition.fatigue er smallint — afrund så load*mult ikke sender
+      // en float (fx 53.599999999999994) til DB → 22P02 invalid-input-fejl.
+      fatigue: Math.max(0, Math.min(100, Math.round((Number(by.get(id)) || 0) + load * mult))),
       updated_at: now.toISOString(),
     };
   });
