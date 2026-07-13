@@ -4,12 +4,17 @@ import assert from "node:assert/strict";
 
 import {
   dateStringToOrdinal,
+  ordinalToDateString,
   scheduledAtToOrdinal,
-  resolvePeakTrainingQuality,
   loadStageDayOrdinals,
   loadPeakPlans,
   serializePeakInputs,
+  summarizeLeadupTraining,
+  aggregateDemandVector,
+  resolvePeakTrainingQualities,
 } from "./racePeakPlans.js";
+import { RACE_V3_TUNING as T } from "./raceRoles.js";
+import { TRAINING_FOCUSES } from "./training.js";
 
 const DAY_MS = 86_400_000;
 
@@ -50,11 +55,51 @@ test("scheduledAtToOrdinal: ugyldig → null", () => {
   assert.equal(scheduledAtToOrdinal(null), null);
 });
 
-// ── resolvePeakTrainingQuality (dormant seam) ─────────────────────────────────
+// ── ordinalToDateString (invers af dateStringToOrdinal) ───────────────────────
 
-test("resolvePeakTrainingQuality: dormant seam returnerer loft (1) indtil koblings-resolveren lander", () => {
-  assert.equal(resolvePeakTrainingQuality({ riderId: "r1" }), 1);
-  assert.equal(resolvePeakTrainingQuality(), 1);
+test("ordinalToDateString: rundtur med dateStringToOrdinal", () => {
+  assert.equal(ordinalToDateString(dateStringToOrdinal("2026-07-13")), "2026-07-13");
+  assert.equal(ordinalToDateString(0), "1970-01-01");
+});
+
+test("ordinalToDateString: ugyldig → null", () => {
+  assert.equal(ordinalToDateString(null), null);
+  assert.equal(ordinalToDateString(NaN), null);
+});
+
+// ── summarizeLeadupTraining (report.riders-dag-entries → konsistens + fokus) ───
+
+test("summarizeLeadupTraining: tæller trænede dage (status != rest) + fokus-fordeling", () => {
+  const out = summarizeLeadupTraining([
+    { status: "trained", focus: "vo2max" },
+    { status: "trained", focus: "vo2max" },
+    { status: "rest", focus: "vo2max" },      // rest tæller ikke
+    { status: "breakthrough", focus: "sprint" },
+  ]);
+  assert.equal(out.trainedDays, 3);
+  assert.deepEqual(out.focusCounts, { vo2max: 2, sprint: 1 });
+});
+
+test("summarizeLeadupTraining: tom/manglende → 0 trænede dage", () => {
+  assert.deepEqual(summarizeLeadupTraining([]), { trainedDays: 0, focusCounts: {} });
+  assert.deepEqual(summarizeLeadupTraining(null), { trainedDays: 0, focusCounts: {} });
+});
+
+// ── aggregateDemandVector (gennemsnit af mål-løbets etape-demand-vektorer) ─────
+
+test("aggregateDemandVector: gennemsnitter etape-vektorer nøgle for nøgle", () => {
+  const dv = aggregateDemandVector([
+    { demand_vector: { climbing: 0.6, flat: 0.2 } },
+    { demand_vector: { climbing: 0.4, sprint: 0.4 } },
+  ]);
+  assert.ok(Math.abs(dv.climbing - 0.5) < 1e-9);
+  assert.ok(Math.abs(dv.flat - 0.1) < 1e-9);   // 0.2/2
+  assert.ok(Math.abs(dv.sprint - 0.2) < 1e-9); // 0.4/2
+});
+
+test("aggregateDemandVector: ingen gyldige profiler → null", () => {
+  assert.equal(aggregateDemandVector([]), null);
+  assert.equal(aggregateDemandVector([{ demand_vector: null }]), null);
 });
 
 // ── Fake supabase (samme mønster som raceFatigue.test.js) ─────────────────────
@@ -137,20 +182,109 @@ test("loadPeakPlans: ugyldig dato på en plan → planen udelades", async () => 
 
 // ── serializePeakInputs (checksum-determinisme) ───────────────────────────────
 
-test("serializePeakInputs: kun entrants med vinduer, sorteret deterministisk", () => {
+test("serializePeakInputs: kun entrants med vinduer, per-vindue tq, sorteret deterministisk", () => {
   const a = serializePeakInputs([
-    { rider_id: "r2", peakWindows: [{ start: 5, end: 9 }], peakTrainingQuality: 1 },
-    { rider_id: "r1", peakWindows: [{ start: 20, end: 24 }, { start: 3, end: 7 }], peakTrainingQuality: 0.5 },
+    { rider_id: "r2", peakWindows: [{ start: 5, end: 9, trainingQuality: 1 }] },
+    { rider_id: "r1", peakWindows: [{ start: 20, end: 24, trainingQuality: 0.8 }, { start: 3, end: 7, trainingQuality: 0.5 }] },
     { rider_id: "r3", peakWindows: [] }, // udelades
   ]);
   assert.deepEqual(a, [
-    ["r1", [[3, 7], [20, 24]], 0.5],
-    ["r2", [[5, 9]], 1],
+    ["r1", [[3, 7, 0.5], [20, 24, 0.8]]],
+    ["r2", [[5, 9, 1]]],
   ]);
   // Input-orden må ikke ændre output (deterministisk nøgle).
   const b = serializePeakInputs([
-    { rider_id: "r1", peakWindows: [{ start: 3, end: 7 }, { start: 20, end: 24 }], peakTrainingQuality: 0.5 },
-    { rider_id: "r2", peakWindows: [{ start: 5, end: 9 }], peakTrainingQuality: 1 },
+    { rider_id: "r1", peakWindows: [{ start: 3, end: 7, trainingQuality: 0.5 }, { start: 20, end: 24, trainingQuality: 0.8 }] },
+    { rider_id: "r2", peakWindows: [{ start: 5, end: 9, trainingQuality: 1 }] },
   ]);
   assert.deepEqual(a, b);
+});
+
+test("serializePeakInputs: manglende per-vindue tq → 1 (afrundet, float-stabil nøgle)", () => {
+  const a = serializePeakInputs([{ rider_id: "r1", peakWindows: [{ start: 3, end: 7 }] }]);
+  assert.deepEqual(a, [["r1", [[3, 7, 1]]]]);
+});
+
+// ── resolvePeakTrainingQualities (orkestrator: loader + per-vindue tq) ─────────
+
+// Injicér fake sub-loadere, så orkestreringen testes uden DB-mock. Fælles felt:
+// climber med ét vindue [start=114, end=118] mod et bjerg-mål-løb; optaktsvindue
+// = [114 - PEAK_LEADUP_DAYS, 114).
+const LEADUP = T.PEAK_LEADUP_DAYS;
+// Ægte ordinal (fra en dato) — rider_condition.injured_until er en DATE-streng der
+// konverteres via dateStringToOrdinal, så vindue + skade skal ligge på samme skala.
+const WIN_START = dateStringToOrdinal("2026-08-01");
+const HIGH_MOUNTAIN = { climbing: 0.52, endurance: 0.18, tempo: 0.08, recovery: 0.06, punch: 0.04, randomness: 0.10 };
+
+test("resolvePeakTrainingQualities: perfekt optakt → per-vindue tq = 1", async () => {
+  const entrants = [{ rider_id: "climber", team_id: "teamA" }];
+  const peakPlansByRider = new Map([
+    ["climber", [{ start: WIN_START, end: WIN_START + 4, targetRaceId: "mtn" }]],
+  ]);
+  // Alle LEADUP optakts-dage trænet med vo2max (bedst match for bjerg).
+  const runs = [];
+  for (let d = WIN_START - LEADUP; d < WIN_START; d++) {
+    runs.push({ team_id: "teamA", ord: d, riderMap: new Map([["climber", { status: "trained", focus: "vo2max" }]]) });
+  }
+  await resolvePeakTrainingQualities({
+    supabase: null, entrants, peakPlansByRider, focusAbilitiesMap: TRAINING_FOCUSES,
+    loadTeamTrainingRuns: async () => runs,
+    loadRiderConditions: async () => new Map([["climber", { injured_until: null, fatigue: 0 }]]),
+    loadTargetRaceDemands: async () => new Map([["mtn", HIGH_MOUNTAIN]]),
+  });
+  assert.equal(peakPlansByRider.get("climber")[0].trainingQuality, 1);
+});
+
+test("resolvePeakTrainingQualities: elendig optakt (intet trænet, skadet, udmattet, forkert fokus) → gulvet", async () => {
+  const entrants = [{ rider_id: "climber", team_id: "teamA" }];
+  const peakPlansByRider = new Map([
+    ["climber", [{ start: WIN_START, end: WIN_START + 4, targetRaceId: "mtn" }]],
+  ]);
+  await resolvePeakTrainingQualities({
+    supabase: null, entrants, peakPlansByRider, focusAbilitiesMap: TRAINING_FOCUSES,
+    loadTeamTrainingRuns: async () => [], // ingen træning
+    loadRiderConditions: async () => new Map([["climber", { injured_until: ordinalToDateString(WIN_START - 1), fatigue: 100 }]]),
+    loadTargetRaceDemands: async () => new Map([["mtn", HIGH_MOUNTAIN]]),
+  });
+  assert.equal(peakPlansByRider.get("climber")[0].trainingQuality, T.PEAK_TQ_FLOOR);
+});
+
+test("resolvePeakTrainingQualities: 'on track' > 'behind' (koblingen skalerer)", async () => {
+  const entrants = [
+    { rider_id: "onTrack", team_id: "teamA" },
+    { rider_id: "behind", team_id: "teamB" },
+  ];
+  const peakPlansByRider = new Map([
+    ["onTrack", [{ start: WIN_START, end: WIN_START + 4, targetRaceId: "mtn" }]],
+    ["behind", [{ start: WIN_START, end: WIN_START + 4, targetRaceId: "mtn" }]],
+  ]);
+  const runs = [];
+  for (let d = WIN_START - LEADUP; d < WIN_START; d++) {
+    runs.push({ team_id: "teamA", ord: d, riderMap: new Map([["onTrack", { status: "trained", focus: "vo2max" }]]) });
+    // behind trænede kun halvdelen af dagene, forkert fokus
+    if (d % 2 === 0) runs.push({ team_id: "teamB", ord: d, riderMap: new Map([["behind", { status: "trained", focus: "sprint" }]]) });
+  }
+  await resolvePeakTrainingQualities({
+    supabase: null, entrants, peakPlansByRider, focusAbilitiesMap: TRAINING_FOCUSES,
+    loadTeamTrainingRuns: async () => runs,
+    loadRiderConditions: async () => new Map([
+      ["onTrack", { injured_until: null, fatigue: 10 }],
+      ["behind", { injured_until: null, fatigue: 70 }],
+    ]),
+    loadTargetRaceDemands: async () => new Map([["mtn", HIGH_MOUNTAIN]]),
+  });
+  const on = peakPlansByRider.get("onTrack")[0].trainingQuality;
+  const beh = peakPlansByRider.get("behind")[0].trainingQuality;
+  assert.ok(on > beh, `on track (${on}) skal have højere tq end behind (${beh})`);
+});
+
+test("resolvePeakTrainingQualities: intet at gøre (ingen vinduer) → ingen loader-kald", async () => {
+  let called = false;
+  await resolvePeakTrainingQualities({
+    supabase: null, entrants: [{ rider_id: "x", team_id: "t" }], peakPlansByRider: new Map(),
+    loadTeamTrainingRuns: async () => { called = true; return []; },
+    loadRiderConditions: async () => new Map(),
+    loadTargetRaceDemands: async () => new Map(),
+  });
+  assert.equal(called, false);
 });

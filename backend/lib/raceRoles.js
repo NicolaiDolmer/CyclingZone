@@ -142,6 +142,11 @@ export const RACE_V3_TUNING = Object.freeze({
   // lille løft (man MØDER stadig op udhvilet). Under dette bliver "sæt en peak"
   // meningsløst; over 0 straffer dårlig træning mærkbart. Tunes i harnesset.
   PEAK_TQ_FLOOR: envNum("RACE_V3_PEAK_TQ_FLOOR", 0.2),
+  // Optakts-vinduets længde i DAGE FØR peak-vinduets start (addendum §2: build→
+  // taper-blokken hvorover traeningskvalitet måles). Samme dag-enhed som racePeaks'
+  // ordinal-sammenligning. Kandidat = ~2 ugers periodisering; endelig værdi via
+  // S5-harness-sweep (peak-neutralitet + koblings-scorecard). Env-override som S1/S2/S4.
+  PEAK_LEADUP_DAYS: envNum("RACE_V3_PEAK_LEADUP_DAYS", 14),
   // Vægte for traeningskvalitet ∈ [0,1] (addendum §2): konsistens (trænede dage),
   // fokus-match (relevante evner for profilen), sundhed (ingen skade), trætheds-
   // styring (ramte taper udhvilet). Strukturelle (ikke env); summen normaliseres.

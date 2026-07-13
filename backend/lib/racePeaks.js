@@ -83,6 +83,114 @@ export function computeTrainingQuality(signals = {}, tuning = RACE_V3_TUNING) {
   return clamp(raw, tuning.PEAK_TQ_FLOOR, 1);
 }
 
+// ── Optakts-signaler → computeTrainingQuality (addendum §2) ───────────────────
+// Rene funktioner: den impure loader (racePeakPlans.js) udtrækker rå tal fra DB
+// (training_day_runs / rider_condition / race_stage_profiles) og fodrer dem herind.
+// Hver returnerer ∈[0,1] ELLER undefined ("intet signal") → computeTrainingQuality's
+// signal01 anvender så den neutrale default (sundhed 1, resten 0.5). At holde
+// "manglende data" adskilt fra "målt 0" er pointen: en rytter uden træningshistorik
+// straffes ikke som én der aktivt sprang hver dag over.
+
+/**
+ * Konsistens: andel af optakts-dage der faktisk blev trænet. leadupDays = hele
+ * optaktsvinduet (PEAK_LEADUP_DAYS); trainedDays = dage med status != "rest".
+ * @returns {number|undefined}
+ */
+export function consistencySignal(trainedDays, leadupDays) {
+  if (!(leadupDays > 0)) return undefined;
+  return clamp((Number(trainedDays) || 0) / leadupDays, 0, 1);
+}
+
+/**
+ * Hvor stor en andel af et mål-løbs demand_vector et fokus' evner dækker (sum af
+ * de efterspurgte vægte for netop de evner fokus træner). Ren lookup.
+ * @param {string[]} focusAbilities  TRAINING_FOCUSES[focusKey]
+ * @param {Record<string,number>} demandVector  race_stage_profiles.demand_vector (evne→vægt)
+ * @returns {number}
+ */
+export function focusCoverage(focusAbilities, demandVector) {
+  let s = 0;
+  for (const a of focusAbilities || []) {
+    const w = Number(demandVector?.[a]);
+    if (Number.isFinite(w) && w > 0) s += w;
+  }
+  return s;
+}
+
+/**
+ * Fokus-match ∈[0,1]: trænede rytteren evner relevante for MÅL-løbets profil?
+ * Vægtet gennemsnit af pr.-dag-fokussets demand-dækning, normaliseret mod det
+ * BEDST-matchende fokus for demand-vektoren (så 1 = trænede optimalt, 0 = trænede
+ * noget løbet slet ikke efterspørger). Ingen trænede dage / ukendt demand → undefined.
+ * @param {Record<string,number>} focusCounts  fokus-nøgle → antal trænede optakts-dage med det fokus
+ * @param {Record<string,number>} demandVector
+ * @param {Record<string,string[]>} focusAbilitiesMap  TRAINING_FOCUSES (injiceret; holder racePeaks decoupled fra training.js)
+ * @returns {number|undefined}
+ */
+export function focusMatchSignal(focusCounts, demandVector, focusAbilitiesMap) {
+  if (!demandVector || !focusAbilitiesMap) return undefined;
+  let best = 0;
+  for (const f of Object.keys(focusAbilitiesMap)) {
+    best = Math.max(best, focusCoverage(focusAbilitiesMap[f], demandVector));
+  }
+  if (!(best > 0)) return undefined; // demand dækker ingen kendte fokus-evner → kan ikke bedømmes
+  let weighted = 0, total = 0;
+  for (const [f, n] of Object.entries(focusCounts || {})) {
+    const c = Number(n) || 0;
+    if (c <= 0 || !focusAbilitiesMap[f]) continue;
+    weighted += focusCoverage(focusAbilitiesMap[f], demandVector) * c;
+    total += c;
+  }
+  if (!(total > 0)) return undefined; // ingen trænede dage at bedømme fokus ud fra
+  return clamp((weighted / total) / best, 0, 1);
+}
+
+/**
+ * Sundhed ∈[0,1]: skade i optakten reducerer. injuredUntil (ordinal, skadens
+ * slutdag) tolkes som at skaden løb fra optaktens start frem til den — vi kender
+ * ikke skadens start, så det er en bevidst konservativ proxy (senere injuredUntil
+ * = mere tabt optakt). Ingen skade / helet før optakt → 1. Ugyldigt vindue → undefined.
+ * @param {{injuredUntil:number|null, leadupStart:number, leadupEnd:number}} args
+ * @returns {number|undefined}
+ */
+export function healthSignal({ injuredUntil, leadupStart, leadupEnd } = {}) {
+  if (!(leadupEnd > leadupStart)) return undefined;
+  if (injuredUntil == null || !Number.isFinite(Number(injuredUntil))) return 1;
+  const total = leadupEnd - leadupStart;
+  const lostEnd = Math.min(leadupEnd, Number(injuredUntil) + 1); // injuredUntil-dagen selv er skadet
+  const lost = Math.max(0, lostEnd - leadupStart);
+  return clamp(1 - lost / total, 0, 1);
+}
+
+/**
+ * Trætheds-styring ∈[0,1]: at ramme taper udhvilet = høj kvalitet (kernen i
+ * periodisering). fatigue ∈[0,100] (rider_condition.fatigue). Lav fatigue → 1.
+ * @param {number} fatigue
+ * @returns {number|undefined}
+ */
+export function fatigueControlSignal(fatigue) {
+  if (fatigue == null) return undefined;
+  const f = Number(fatigue);
+  if (!Number.isFinite(f)) return undefined;
+  return clamp(1 - clamp(f, 0, 100) / 100, 0, 1);
+}
+
+/**
+ * Saml de 4 optakts-signaler for ÉT peak-vindue → traeningskvalitet via
+ * computeTrainingQuality. Rå kontekst udledes af den impure loader.
+ * @param {object} ctx  { trainedDays, leadupDays, focusCounts, demandVector, focusAbilitiesMap, injuredUntil, leadupStart, leadupEnd, fatigue }
+ * @param {object} [tuning=RACE_V3_TUNING]
+ * @returns {number} traeningskvalitet ∈ [PEAK_TQ_FLOOR, 1]
+ */
+export function trainingQualityForWindow(ctx = {}, tuning = RACE_V3_TUNING) {
+  return computeTrainingQuality({
+    consistency: consistencySignal(ctx.trainedDays, ctx.leadupDays),
+    focusMatch: focusMatchSignal(ctx.focusCounts, ctx.demandVector, ctx.focusAbilitiesMap),
+    health: healthSignal({ injuredUntil: ctx.injuredUntil, leadupStart: ctx.leadupStart, leadupEnd: ctx.leadupEnd }),
+    fatigueControl: fatigueControlSignal(ctx.fatigue),
+  }, tuning);
+}
+
 /**
  * Peak-score-komponent der adderes til finalScore (samme fortegns-konvention som
  * work_cost/jour_sans). REALISERET top = PEAK_MAX × traeningskvalitet (loft ×
@@ -98,13 +206,28 @@ export function peakScoreComponent({ phase, trainingQuality = 1, tuning = RACE_V
 }
 
 /**
- * Convenience: peak-komponent for en etape givet rytterens vinduer + allerede-
- * beregnede traeningskvalitet. Ingen vinduer → 0 (flag-off / ingen plan).
+ * Convenience: peak-komponent for en etape givet rytterens vinduer + deres
+ * traeningskvalitet. traeningskvalitet er PR. VINDUE (addendum §2: tq(rytter,
+ * optakts-vindue) — en rytter kan toppe godt for ét mål-løb og dårligt for et
+ * andet), så det AKTIVE vindues egen `trainingQuality` bruges; mangler den (fx
+ * motor-/flag-off-tests der sætter rytter-niveau-tq) falder vi tilbage til
+ * `trainingQuality`-parameteren. Ingen vinduer → 0 (flag-off / ingen plan).
  *
- * @param {{stageDay:number, windows?:Array<{start:number,end:number}>, trainingQuality?:number, tuning?:object}} args
+ * @param {{stageDay:number, windows?:Array<{start:number,end:number,trainingQuality?:number}>, trainingQuality?:number, tuning?:object}} args
  * @returns {number}
  */
 export function peakComponentForStage({ stageDay, windows, trainingQuality = 1, tuning = RACE_V3_TUNING } = {}) {
-  const phase = resolvePeakPhase(stageDay, windows, tuning.PEAK_PAYBACK_DAYS);
-  return peakScoreComponent({ phase, trainingQuality, tuning });
+  const d = Number(stageDay);
+  if (!Number.isFinite(d)) return 0;
+  let paybackHit = false;
+  for (const w of windows || []) {
+    if (!w || w.start == null || w.end == null) continue;
+    const phase = peakPhaseForWindow(d, w.start, w.end, tuning.PEAK_PAYBACK_DAYS);
+    if (phase === "peak") {
+      const tq = w.trainingQuality != null ? w.trainingQuality : trainingQuality;
+      return peakScoreComponent({ phase: "peak", trainingQuality: tq, tuning });
+    }
+    if (phase === "payback") paybackHit = true;
+  }
+  return paybackHit ? peakScoreComponent({ phase: "payback", tuning }) : 0;
 }

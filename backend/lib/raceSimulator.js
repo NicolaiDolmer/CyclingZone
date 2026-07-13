@@ -435,7 +435,9 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     // S5 (#2224): peak = spillervalgt formtop i et vindue om et mål-løb (realiseret
     // = PEAK_MAX × traeningskvalitet) + payback efter. Score-space (samme fortegns-
     // konvention som work_cost/dayform). Deterministisk fra e.peakWindows (CET-
-    // ordinaler, resolvet i raceRunner) + stageProfile.peakDay + e.peakTrainingQuality.
+    // ordinaler + PER-VINDUE traeningskvalitet, resolvet i raceRunner) + stageProfile.
+    // peakDay. peakComponentForStage vælger det aktive vindues egen tq; trainingQuality-
+    // parameteren er kun fallback for motor-/flag-off-tests der sætter rytter-niveau-tq.
     // Ingen vinduer / ingen peakDay → 0 (peakComponentForStage guard'er begge) → et
     // v3-løb uden peak-plan er bit-identisk med før S5.
     const peak = v3

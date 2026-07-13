@@ -8,8 +8,15 @@ import {
   computeTrainingQuality,
   peakScoreComponent,
   peakComponentForStage,
+  consistencySignal,
+  focusCoverage,
+  focusMatchSignal,
+  healthSignal,
+  fatigueControlSignal,
+  trainingQualityForWindow,
 } from "./racePeaks.js";
 import { RACE_V3_TUNING as T } from "./raceRoles.js";
+import { TRAINING_FOCUSES } from "./training.js";
 
 // ── peakPhaseForWindow ────────────────────────────────────────────────────────
 
@@ -131,4 +138,151 @@ test("stage: i payback → −PEAK_PAYBACK", () => {
 test("stage: deterministisk — samme inputs → samme output", () => {
   const args = { stageDay: 11, windows: [{ start: 10, end: 14 }], trainingQuality: 0.6 };
   assert.equal(peakComponentForStage(args), peakComponentForStage(args));
+});
+
+// ── per-vindue tq (addendum §2: trainingQuality er pr. (rytter, optakts-vindue)) ─
+
+test("stage: per-vindue trainingQuality vinder over rytter-niveau-fallback", () => {
+  // To vinduer med hver sin tq; etapen ligger i vindue B (tq=0.3) — B's tq bruges,
+  // ikke rytter-fallback (1) eller vindue A's tq (0.9).
+  const windows = [
+    { start: 10, end: 14, trainingQuality: 0.9 },
+    { start: 30, end: 34, trainingQuality: 0.3 },
+  ];
+  assert.equal(
+    peakComponentForStage({ stageDay: 32, windows, trainingQuality: 1 }),
+    T.PEAK_MAX * 0.3
+  );
+});
+
+test("stage: vindue uden per-vindue tq falder tilbage til rytter-niveau (bagudkompat, flag-off-test)", () => {
+  // Præcis formen fra raceEngineV3FlagOff.test.js: windows uden tq + rytter-tq.
+  assert.equal(
+    peakComponentForStage({ stageDay: 12, windows: [{ start: 10, end: 14 }], trainingQuality: 0.8 }),
+    T.PEAK_MAX * 0.8
+  );
+});
+
+test("stage: payback fra ét vindue mens intet vindue peaker → −PEAK_PAYBACK", () => {
+  const windows = [{ start: 10, end: 14, trainingQuality: 0.5 }];
+  assert.equal(peakComponentForStage({ stageDay: 16, windows }), -T.PEAK_PAYBACK);
+});
+
+// ── consistencySignal ─────────────────────────────────────────────────────────
+
+test("consistency: andel trænede optakts-dage", () => {
+  assert.equal(consistencySignal(7, 14), 0.5);
+  assert.equal(consistencySignal(14, 14), 1);
+  assert.equal(consistencySignal(0, 14), 0);
+});
+
+test("consistency: klampes til [0,1]; ingen optakts-dage → undefined (neutral default)", () => {
+  assert.equal(consistencySignal(20, 14), 1); // >100% klampes
+  assert.equal(consistencySignal(3, 0), undefined);
+  assert.equal(consistencySignal(3, -1), undefined);
+});
+
+// ── focusCoverage + focusMatchSignal ──────────────────────────────────────────
+
+const HIGH_MOUNTAIN = { climbing: 0.52, endurance: 0.18, tempo: 0.08, recovery: 0.06, punch: 0.04, tactics: 0.02, randomness: 0.10 };
+
+test("focusCoverage: summerer demand-vægte for fokus' evner", () => {
+  // vo2max = [climbing, punch, tempo] → 0.52 + 0.04 + 0.08 = 0.64
+  assert.ok(Math.abs(focusCoverage(TRAINING_FOCUSES.vo2max, HIGH_MOUNTAIN) - 0.64) < 1e-9);
+  // sprint = [sprint, acceleration] → 0 (bjerg efterspørger dem ikke)
+  assert.equal(focusCoverage(TRAINING_FOCUSES.sprint, HIGH_MOUNTAIN), 0);
+});
+
+test("focusMatch: trænede kun det bedst-matchende fokus → 1", () => {
+  const s = focusMatchSignal({ vo2max: 10 }, HIGH_MOUNTAIN, TRAINING_FOCUSES);
+  assert.ok(Math.abs(s - 1) < 1e-9, `forventede 1, fik ${s}`);
+});
+
+test("focusMatch: trænede kun irrelevant fokus → 0", () => {
+  assert.equal(focusMatchSignal({ sprint: 10 }, HIGH_MOUNTAIN, TRAINING_FOCUSES), 0);
+});
+
+test("focusMatch: blandet fokus ligger mellem 0 og 1 og er monotont", () => {
+  const mostlyRight = focusMatchSignal({ vo2max: 8, sprint: 2 }, HIGH_MOUNTAIN, TRAINING_FOCUSES);
+  const mostlyWrong = focusMatchSignal({ vo2max: 2, sprint: 8 }, HIGH_MOUNTAIN, TRAINING_FOCUSES);
+  assert.ok(mostlyRight > mostlyWrong, `${mostlyRight} skal være > ${mostlyWrong}`);
+  assert.ok(mostlyRight > 0 && mostlyRight < 1);
+});
+
+test("focusMatch: ingen trænede dage / manglende demand → undefined (neutral default)", () => {
+  assert.equal(focusMatchSignal({}, HIGH_MOUNTAIN, TRAINING_FOCUSES), undefined);
+  assert.equal(focusMatchSignal({ vo2max: 5 }, null, TRAINING_FOCUSES), undefined);
+});
+
+// ── healthSignal ──────────────────────────────────────────────────────────────
+
+test("health: ingen skade → 1", () => {
+  assert.equal(healthSignal({ injuredUntil: null, leadupStart: 100, leadupEnd: 114 }), 1);
+});
+
+test("health: skade helet før optakten → 1", () => {
+  assert.equal(healthSignal({ injuredUntil: 99, leadupStart: 100, leadupEnd: 114 }), 1);
+});
+
+test("health: skade der spiser optakts-dage reducerer monotont", () => {
+  // optakt [100,114): 14 dage. injuredUntil=106 → dage 100..106 = 7 tabte → 1-7/14 = 0.5
+  assert.ok(Math.abs(healthSignal({ injuredUntil: 106, leadupStart: 100, leadupEnd: 114 }) - 0.5) < 1e-9);
+  const early = healthSignal({ injuredUntil: 102, leadupStart: 100, leadupEnd: 114 });
+  const late = healthSignal({ injuredUntil: 110, leadupStart: 100, leadupEnd: 114 });
+  assert.ok(early > late, `tidlig-helet (${early}) skal give højere sundhed end sen (${late})`);
+});
+
+test("health: ugyldigt optakts-vindue → undefined", () => {
+  assert.equal(healthSignal({ injuredUntil: null, leadupStart: 114, leadupEnd: 114 }), undefined);
+});
+
+// ── fatigueControlSignal ──────────────────────────────────────────────────────
+
+test("fatigueControl: lav træthed ved taper = høj kvalitet", () => {
+  assert.equal(fatigueControlSignal(0), 1);
+  assert.equal(fatigueControlSignal(100), 0);
+  assert.equal(fatigueControlSignal(30), 0.7);
+});
+
+test("fatigueControl: manglende/ugyldig fatigue → undefined (neutral default)", () => {
+  assert.equal(fatigueControlSignal(null), undefined);
+  assert.equal(fatigueControlSignal(undefined), undefined);
+  assert.equal(fatigueControlSignal(NaN), undefined);
+});
+
+// ── trainingQualityForWindow (assemblér 4 signaler → computeTrainingQuality) ───
+
+test("tqForWindow: perfekt optakt → 1", () => {
+  const q = trainingQualityForWindow({
+    trainedDays: 14, leadupDays: 14,
+    focusCounts: { vo2max: 14 }, demandVector: HIGH_MOUNTAIN, focusAbilitiesMap: TRAINING_FOCUSES,
+    injuredUntil: null, leadupStart: 100, leadupEnd: 114,
+    fatigue: 0,
+  });
+  assert.equal(q, 1);
+});
+
+test("tqForWindow: elendig optakt → gulvet", () => {
+  const q = trainingQualityForWindow({
+    trainedDays: 0, leadupDays: 14,
+    focusCounts: { sprint: 1 }, demandVector: HIGH_MOUNTAIN, focusAbilitiesMap: TRAINING_FOCUSES,
+    injuredUntil: 113, leadupStart: 100, leadupEnd: 114,
+    fatigue: 100,
+  });
+  assert.equal(q, T.PEAK_TQ_FLOOR);
+});
+
+test("tqForWindow: tom kontekst → neutral (mellem gulv og 1) via computeTrainingQuality-defaults", () => {
+  const q = trainingQualityForWindow({ leadupDays: 0, leadupStart: 0, leadupEnd: 0 });
+  assert.ok(q > T.PEAK_TQ_FLOOR && q < 1, `forventede mellemværdi, fik ${q}`);
+});
+
+test("tqForWindow: monotont voksende i konsistens (alt andet lige)", () => {
+  const base = {
+    leadupDays: 14, focusCounts: { vo2max: 7 }, demandVector: HIGH_MOUNTAIN,
+    focusAbilitiesMap: TRAINING_FOCUSES, injuredUntil: null, leadupStart: 100, leadupEnd: 114, fatigue: 30,
+  };
+  const lo = trainingQualityForWindow({ ...base, trainedDays: 3 });
+  const hi = trainingQualityForWindow({ ...base, trainedDays: 13 });
+  assert.ok(hi > lo, `hi(${hi}) skal være > lo(${lo})`);
 });
