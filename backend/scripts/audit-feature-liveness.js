@@ -90,19 +90,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // Race v3 S1 (#2352, merged+applied 12/7): raceRunner persisterer komponent-rows
-  // KUN når race_engine_v3_scoring='on' — flaget er bevidst off indtil ejer-flip
-  // (forudsætninger: #2376). Skriv-path verificeret i raceRunner.js (persistRuns,
-  // hasRiderScores-gate). Fjern denne entry når flaget flippes og tabellen har rows.
-  "race_simulation_rider_scores",
-  // race_stage_roles fjernet fra whitelisten 12/7 (v3-flip #2357/#2393): tabellen
-  // har rows i prod og daekkes nu af Detector A igen.
-  //
-  // Race v3 S4 (#2393, merged+applied 12/7 aften): raceRunner skriver race_incidents
-  // KUN naar der faktisk sker styrt/uheld paa en v3-loebsdag (DNF-rate 0.39-0.41%/etape)
-  // — foerste v3-loebsdag er 13/7, saa tabellen er naturligt tom ved merge. Skriv-path
-  // verificeret i raceRunner.js/raceIncidents.js. Fjern denne entry naar tabellen har rows.
-  "race_incidents",
+  // Race v3-tabeller (race_simulation_rider_scores / race_stage_roles / race_incidents)
+  // fjernet fra whitelisten 13/7 efter foerste v3-loebsdag: race_engine_v3_scoring='on'
+  // (flippet 12/7 aften), foerste live v2-run 13/7 11:00 CEST stemplede 168 score-rows
+  // + 2 incidents. Alle tre tabeller har nu rows i prod og daekkes af Detector A igen
+  // (#2224 / #2393). Detector A tjekker total row-count, saa loebsfrie dage giver ikke
+  // false positives.
   // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
   // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
