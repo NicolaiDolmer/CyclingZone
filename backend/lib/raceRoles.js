@@ -122,6 +122,31 @@ export const RACE_V3_TUNING = Object.freeze({
   // ("Eksplorative prober" + "Beslutning (ejer 12/7)").
   TOP_COMPRESSION_TAU: envNum("RACE_V3_TOP_COMPRESSION_TAU", 0.5),
 
+  // ── S5 (#2224): form-peaks som spillerens våben (spec §10 + addendum §2) ─────
+  // peak = spillervalgt formtop i et 5-dages vindue om et mål-løb. Lægges på
+  // finalScore som en NAVNGIVET, forklarlig komponent (why-rapporten: "toppede
+  // for dette løb"). REALISERET top = PEAK_MAX × traeningskvalitet i optakten
+  // (racePeaks.computeTrainingQuality) — koblingen der gør formen tjent, ikke en
+  // gratis kalender-bonus (ejer 13/7: "koblingen er hele pointen"). Payback
+  // betales FULDT uanset træning (taper er et lån). Start-kandidater fra spec
+  // §10 (+0.02 / −0.01); endelige tal via S5-harness-sweep mod peak-neutralitets-
+  // oraklet + koblings-scorecardet FØR ship. Env-override = samme mønster som
+  // S1/S2/S4. Flag-off (race_engine_v3_scoring off) → racePeaks kaldes aldrig →
+  // peak=0 → bit-identisk.
+  PEAK_MAX: envNum("RACE_V3_PEAK_MAX", 0.02),
+  PEAK_PAYBACK: envNum("RACE_V3_PEAK_PAYBACK", 0.01),
+  // Payback-vinduets længde i DAGE efter peak-vinduet (formhul). Samme enhed som
+  // racePeaks' dag-sammenligning (dags-indeks). Kandidat = vindueslængden + lidt.
+  PEAK_PAYBACK_DAYS: envNum("RACE_V3_PEAK_PAYBACK_DAYS", 7),
+  // Gulv for realiseret peak-fraktion: selv med elendig optakt giver en peak et
+  // lille løft (man MØDER stadig op udhvilet). Under dette bliver "sæt en peak"
+  // meningsløst; over 0 straffer dårlig træning mærkbart. Tunes i harnesset.
+  PEAK_TQ_FLOOR: envNum("RACE_V3_PEAK_TQ_FLOOR", 0.2),
+  // Vægte for traeningskvalitet ∈ [0,1] (addendum §2): konsistens (trænede dage),
+  // fokus-match (relevante evner for profilen), sundhed (ingen skade), trætheds-
+  // styring (ramte taper udhvilet). Strukturelle (ikke env); summen normaliseres.
+  PEAK_TQ_WEIGHTS: Object.freeze({ consistency: 0.35, focusMatch: 0.25, health: 0.25, fatigue: 0.15 }),
+
   // ── S4 (#1176): styrt/mekaniske uheld + DNF ─────────────────────────────────
   // Pr.-etape hit-sandsynlighed pr. rytter, FØR positioning-reduktion/descent-
   // multiplikator (raceIncidents.incidentProbability). Grid-kalibreret 2026-07-12
