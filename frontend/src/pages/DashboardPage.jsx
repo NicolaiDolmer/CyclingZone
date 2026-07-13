@@ -357,7 +357,9 @@ export default function DashboardPage() {
     (async () => {
       const { count } = await supabase
         .from("race_entries")
-        .select("id", { count: "exact", head: true })
+        // race_entries har ingen id-kolonne (PK = race_id+rider_id); tæl på race_id.
+        // "id" gav 400/42703 hver dashboard-load → count=null → nudgen viste sig ALDRIG (#2296-regression).
+        .select("race_id", { count: "exact", head: true })
         .eq("race_id", nextRace.id)
         .eq("team_id", team.id)
         .eq("is_auto_filled", false);
