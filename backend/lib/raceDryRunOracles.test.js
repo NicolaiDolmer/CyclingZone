@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle } from "./raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle, evaluatePeakCouplingScorecard, evaluatePeakNeutralityOracle } from "./raceDryRunOracles.js";
 
 const healthyTerrain = (over = {}) => ({
   terrain: "flat", keyAb: "sprint", races: 300,
@@ -205,4 +205,99 @@ test("incident-bounds-oracle: kun én profil (ingen sammenligning mulig) → ing
     perProfile: { flat: { stages: 300, meanDnfRatePct: 0.8, meanIncidentRatePct: 3.0 } },
   });
   assert.deepEqual(evaluateIncidentBoundsOracle(stats), []);
+});
+
+// ── S5 (#2224): peak-koblings-scorecard ───────────────────────────────────────
+// Kontrollerede eksperimenter (samme felt/seed, kun tq varierer): peak_realiseret
+// skal skalere monotont med traeningskvalitet; payback er tq-uafhængig; "behind"
+// (lav tq) får målbart mindre top end "on track" (høj tq).
+
+const healthyCoupling = (over = {}) => ({
+  ladder: [
+    { tq: 0.0, peak: 0.004, meanRank: 8.0 },
+    { tq: 0.5, peak: 0.010, meanRank: 5.5 },
+    { tq: 1.0, peak: 0.020, meanRank: 3.0 },
+  ],
+  payback: [
+    { tq: 0.0, payback: -0.01 },
+    { tq: 1.0, payback: -0.01 },
+  ],
+  onTrackMeanRank: 3.0,
+  behindMeanRank: 8.0,
+  ...over,
+});
+
+test("peak-koblings-scorecard: sund baseline → ingen brud", () => {
+  assert.deepEqual(evaluatePeakCouplingScorecard(healthyCoupling()), []);
+});
+
+test("peak-koblings-scorecard: peak IKKE monoton i tq → brud", () => {
+  const obs = healthyCoupling({
+    ladder: [
+      { tq: 0.0, peak: 0.02, meanRank: 3.0 },  // høj peak ved tq=0 (invers)
+      { tq: 0.5, peak: 0.01, meanRank: 5.5 },
+      { tq: 1.0, peak: 0.004, meanRank: 8.0 },
+    ],
+  });
+  const f = evaluatePeakCouplingScorecard(obs);
+  assert.ok(f.some((x) => /monoton/i.test(x)), f.join(" | "));
+});
+
+test("peak-koblings-scorecard: payback afhænger af tq → brud", () => {
+  const obs = healthyCoupling({ payback: [{ tq: 0.0, payback: -0.02 }, { tq: 1.0, payback: -0.005 }] });
+  const f = evaluatePeakCouplingScorecard(obs);
+  assert.ok(f.some((x) => /payback/i.test(x)), f.join(" | "));
+});
+
+test("peak-koblings-scorecard: on track ikke målbart bedre end behind → brud", () => {
+  const obs = healthyCoupling({ onTrackMeanRank: 7.8, behindMeanRank: 8.0 }); // 0.2 < margin
+  const f = evaluatePeakCouplingScorecard(obs, { minTopMargin: 1.0 });
+  assert.ok(f.some((x) => /behind|top|margin/i.test(x)), f.join(" | "));
+});
+
+test("peak-koblings-scorecard: meanRank må ikke forværres når tq stiger", () => {
+  const obs = healthyCoupling({
+    ladder: [
+      { tq: 0.0, peak: 0.004, meanRank: 3.0 },
+      { tq: 0.5, peak: 0.010, meanRank: 5.5 },
+      { tq: 1.0, peak: 0.020, meanRank: 8.0 }, // højere tq → værre placering (invers)
+    ],
+  });
+  const f = evaluatePeakCouplingScorecard(obs);
+  assert.ok(f.some((x) => /placering|rank/i.test(x)), f.join(" | "));
+});
+
+test("peak-koblings-scorecard: tom/manglende data → ingen brud (n/a som øvrige oracles)", () => {
+  assert.deepEqual(evaluatePeakCouplingScorecard({}), []);
+  assert.deepEqual(evaluatePeakCouplingScorecard(null), []);
+});
+
+// ── S5 (#2224): peak-neutralitets-oracle ──────────────────────────────────────
+// To lige-stærke ryttere A og B i de samme to løb; A topper for løb 1, B for løb 2.
+// Peaken skal virke DÉR den er sat, og INGEN må dominere begge løb (ellers lækker
+// peaken globalt = bug). Ranks er middel over seeds; lavere = bedre.
+
+const healthyNeutrality = (over = {}) => ({
+  rankA_r1: 2.0, rankB_r1: 5.0, // A topper løb 1 → bedre dér
+  rankA_r2: 5.0, rankB_r2: 2.0, // B topper løb 2 → bedre dér
+  ...over,
+});
+
+test("peak-neutralitet: modsatte planer, hver dominerer kun eget mål → ingen brud", () => {
+  assert.deepEqual(evaluatePeakNeutralityOracle(healthyNeutrality()), []);
+});
+
+test("peak-neutralitet: A dominerer BEGGE løb (peak lækker globalt) → brud", () => {
+  const f = evaluatePeakNeutralityOracle(healthyNeutrality({ rankA_r2: 1.5, rankB_r2: 3.0 }));
+  assert.ok(f.some((x) => /domin|begge|neutral/i.test(x)), f.join(" | "));
+});
+
+test("peak-neutralitet: peak virker ikke ved eget mål (A ikke bedre i løb 1) → brud", () => {
+  const f = evaluatePeakNeutralityOracle(healthyNeutrality({ rankA_r1: 5.0, rankB_r1: 2.0 }));
+  assert.ok(f.length > 0, "forventede brud når A ikke topper sit eget mål-løb");
+});
+
+test("peak-neutralitet: tom/manglende data → ingen brud", () => {
+  assert.deepEqual(evaluatePeakNeutralityOracle({}), []);
+  assert.deepEqual(evaluatePeakNeutralityOracle(null), []);
 });

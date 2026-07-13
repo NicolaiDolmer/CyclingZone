@@ -186,3 +186,108 @@ export function evaluateIncidentBoundsOracle(stats, targets = {}) {
 
   return failures;
 }
+
+// ── S5 (#2224): peak-koblings-scorecard + peak-neutralitet ───────────────────
+// Håndhæves sammen med --enforce-dominance i simulatePeakCouplingDryRun.js (samme
+// gating-idiom som DOMINANCE/incident-oraclerne). Rene funktioner fodret af
+// kontrollerede peak-eksperimenter (samme felt/seed, kun peak-plan/tq varierer).
+
+const DEFAULT_PEAK_COUPLING_TARGETS = Object.freeze({
+  // Min. placeringsforskel (middel over seeds) mellem "on track" (høj tq) og
+  // "behind" (lav tq) i mål-løbet — koblingen skal være MÆRKBAR, ikke kun teknisk.
+  minTopMargin: 0.75,
+  // payback må variere højst dette (score-space) på tværs af tq (taper = lån,
+  // betales fuldt uanset træning). Ren float-støj-tolerance.
+  paybackEpsilon: 1e-6,
+});
+
+/**
+ * Evaluér peak-koblings-scorecardet (addendum §6). Fire krav:
+ *   1. peak_realiseret monotont ikke-aftagende i traeningskvalitet.
+ *   2. mål-løbs-placering ikke-stigende (bedre/lavere) når tq stiger.
+ *   3. payback tq-uafhængig (spredning ≤ ε).
+ *   4. "on track" (høj tq) målbart bedre end "behind" (lav tq): top-margin ≥ minTopMargin.
+ *
+ * @param {{ladder?:Array<{tq:number,peak:number,meanRank:number}>, payback?:Array<{tq:number,payback:number}>, onTrackMeanRank?:number, behindMeanRank?:number}} obs
+ * @param {{minTopMargin?:number, paybackEpsilon?:number}} [targets]
+ * @returns {string[]} brud (tom = OK; ingen data ⇒ tom, som de øvrige oracles)
+ */
+export function evaluatePeakCouplingScorecard(obs, targets = {}) {
+  const failures = [];
+  if (!obs || !Array.isArray(obs.ladder) || obs.ladder.length < 2) return failures;
+  const minTopMargin = targets.minTopMargin ?? DEFAULT_PEAK_COUPLING_TARGETS.minTopMargin;
+  const paybackEps = targets.paybackEpsilon ?? DEFAULT_PEAK_COUPLING_TARGETS.paybackEpsilon;
+
+  const ladder = [...obs.ladder].sort((a, b) => a.tq - b.tq);
+
+  for (let i = 1; i < ladder.length; i++) {
+    if (ladder[i].peak < ladder[i - 1].peak - 1e-12) {
+      failures.push(
+        `peak ikke monotont voksende i tq: tq=${ladder[i].tq} peak=${ladder[i].peak} < tq=${ladder[i - 1].tq} peak=${ladder[i - 1].peak}`
+      );
+      break;
+    }
+  }
+  for (let i = 1; i < ladder.length; i++) {
+    if (ladder[i].meanRank > ladder[i - 1].meanRank + 1e-9) {
+      failures.push(
+        `mål-løbs-placering forværres når tq stiger: tq=${ladder[i].tq} rank=${ladder[i].meanRank} > tq=${ladder[i - 1].tq} rank=${ladder[i - 1].meanRank}`
+      );
+      break;
+    }
+  }
+
+  if (Array.isArray(obs.payback) && obs.payback.length > 1) {
+    const vals = obs.payback.map((p) => Number(p.payback)).filter(Number.isFinite);
+    if (vals.length > 1) {
+      const spread = Math.max(...vals) - Math.min(...vals);
+      if (spread > paybackEps) {
+        failures.push(
+          `payback afhænger af tq (spredning ${spread.toExponential(2)} > ε ${paybackEps}) — taper er et lån, skal betales fuldt uanset træning`
+        );
+      }
+    }
+  }
+
+  if (Number.isFinite(obs.onTrackMeanRank) && Number.isFinite(obs.behindMeanRank)) {
+    const margin = obs.behindMeanRank - obs.onTrackMeanRank;
+    if (!(margin >= minTopMargin)) {
+      failures.push(
+        `"behind" (lav tq, ⌀rank ${obs.behindMeanRank}) ikke målbart dårligere end "on track" (høj tq, ⌀rank ${obs.onTrackMeanRank}): top-margin ${margin.toFixed(2)} < ${minTopMargin}`
+      );
+    }
+  }
+
+  return failures;
+}
+
+/**
+ * Evaluér peak-neutralitets-oraklet (§12.4 / addendum §6): to lige-stærke ryttere
+ * A og B i de samme to løb; A topper for løb 1, B for løb 2. Peaken skal virke DÉR
+ * den er sat, og INGEN må dominere begge løb (ellers lækker peaken uden for sit
+ * vindue = motor-bug). Ranks er middel over seeds; lavere = bedre.
+ *
+ * @param {{rankA_r1:number, rankB_r1:number, rankA_r2:number, rankB_r2:number}} obs
+ * @returns {string[]} brud (tom = OK; ingen data ⇒ tom)
+ */
+export function evaluatePeakNeutralityOracle(obs) {
+  const failures = [];
+  if (!obs) return failures;
+  const { rankA_r1, rankB_r1, rankA_r2, rankB_r2 } = obs;
+  if (![rankA_r1, rankB_r1, rankA_r2, rankB_r2].every((v) => Number.isFinite(v))) return failures;
+
+  if (!(rankA_r1 < rankB_r1)) {
+    failures.push(`peak virker ikke ved eget mål: A (topper løb 1) ⌀rank ${rankA_r1} ikke bedre end B ${rankB_r1}`);
+  }
+  if (!(rankB_r2 < rankA_r2)) {
+    failures.push(`peak virker ikke ved eget mål: B (topper løb 2) ⌀rank ${rankB_r2} ikke bedre end A ${rankA_r2}`);
+  }
+  const aDominatesBoth = rankA_r1 < rankB_r1 && rankA_r2 < rankB_r2;
+  const bDominatesBoth = rankB_r1 < rankA_r1 && rankB_r2 < rankA_r2;
+  if (aDominatesBoth || bDominatesBoth) {
+    failures.push(
+      `peak-neutralitet brudt: ${aDominatesBoth ? "A" : "B"} dominerer BEGGE løb — peaken lækker uden for sit vindue`
+    );
+  }
+  return failures;
+}

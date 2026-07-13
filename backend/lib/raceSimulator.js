@@ -32,6 +32,10 @@ import { dayFormComponent, jourSansComponent } from "./raceDayForm.js";
 // S4 (#1176): styrt/mekaniske uheld + DNF — ligeledes per-rytter-hashet,
 // dedikeret stream, kaldes KUN når v3=true, konsumerer intet fra main-rng.
 import { rollIncidents } from "./raceIncidents.js";
+// S5 (#2224): form-peaks — DETERMINISTISK fra data (spillervalgt vindue +
+// traeningskvalitet), IKKE fra rng. Kaldes KUN når v3=true; ingen vinduer / ingen
+// peakDay → 0, så flag-off (og v3-løb uden peak-plan) er bit-identisk.
+import { peakComponentForStage } from "./racePeaks.js";
 
 export const ENGINE_VERSION = 1;
 // Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
@@ -428,7 +432,18 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     // (noise-sekvensen ovenfor er bit-identisk med og uden v3).
     const dayform = v3 ? dayFormComponent({ riderId: e.rider_id, stageSeed: seed }) : 0;
     const jourSans = v3 ? jourSansComponent({ riderId: e.rider_id, stageSeed: seed, form: e.form }) : 0;
-    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans;
+    // S5 (#2224): peak = spillervalgt formtop i et vindue om et mål-løb (realiseret
+    // = PEAK_MAX × traeningskvalitet) + payback efter. Score-space (samme fortegns-
+    // konvention som work_cost/dayform). Deterministisk fra e.peakWindows (CET-
+    // ordinaler + PER-VINDUE traeningskvalitet, resolvet i raceRunner) + stageProfile.
+    // peakDay. peakComponentForStage vælger det aktive vindues egen tq; trainingQuality-
+    // parameteren er kun fallback for motor-/flag-off-tests der sætter rytter-niveau-tq.
+    // Ingen vinduer / ingen peakDay → 0 (peakComponentForStage guard'er begge) → et
+    // v3-løb uden peak-plan er bit-identisk med før S5.
+    const peak = v3
+      ? peakComponentForStage({ stageDay: stageProfile.peakDay, windows: e.peakWindows, trainingQuality: e.peakTrainingQuality })
+      : 0;
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans + peak;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
@@ -440,7 +455,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
       // Unconditionelt til stede (også v3=false) → flag-off-deepEqual-testen
       // (raceEngineV3FlagOff.test.js) forbliver grøn, da BEGGE sider af den
       // sammenligning får samme nøgle=0.
-      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, incident: 0 },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, peak, incident: 0 },
     };
   });
 
