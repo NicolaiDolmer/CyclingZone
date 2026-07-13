@@ -227,7 +227,19 @@ test("applyRaceFatigue: effortByRider ganger DENNE rytters load med effortFatigu
   const effortByRider = new Map([["r1", "protect"]]);
   await applyRaceFatigue({ supabase, riderIds: ["r1"], profileType: "mountain", effortByRider }); // load=18*1.2=21.6
   const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r1");
-  assert.ok(Math.abs(row.fatigue - 41.6) < 1e-9, `forventet ~41.6, fik ${row.fatigue}`); // 20 + 18*1.2
+  assert.equal(row.fatigue, 42); // 20 + 18*1.2 = 41.6 → afrundet 42 (smallint)
+});
+
+test("applyRaceFatigue: fatigue skrives ALTID som heltal (smallint) — aldrig float", async () => {
+  // Regression (Sentry CYCLINGZONE-30 / Supabase 22P02): 32 + mountain(18)*protect(1.2)
+  // = 53.599999999999994 i floating point → tidligere sendt rå til en smallint-kolonne
+  // → "invalid input syntax for type smallint". Skal nu afrundes til 54.
+  const supabase = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 32 }] });
+  const effortByRider = new Map([["r1", "protect"]]);
+  await applyRaceFatigue({ supabase, riderIds: ["r1"], profileType: "mountain", effortByRider });
+  const row = supabase.__calls.find((c) => c.op === "upsert").rows.find((r) => r.rider_id === "r1");
+  assert.ok(Number.isInteger(row.fatigue), `fatigue skal være heltal, fik ${row.fatigue}`);
+  assert.equal(row.fatigue, 54);
 });
 
 test("applyRaceFatigue: rytter uden nøgle i effortByRider falder til multiplikator 1.0 (normal)", async () => {

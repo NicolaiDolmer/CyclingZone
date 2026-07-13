@@ -3,6 +3,41 @@
 // audience-rettelser redigeres her direkte (re-kør IKKE transformen oven på dem).
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
+  {
+    "version": "6.98",
+    "date": "2026-07-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Squad reminder for your next race now works",
+          "body": "The dashboard reminder that tells you when your next race still needs a squad selection was not showing up. It now appears correctly whenever you have a race coming up that you have not picked a team for yet."
+        },
+        "da": {
+          "title": "Påmindelse om holdudtagelse til næste løb virker nu",
+          "body": "Dashboardets påmindelse om at dit næste løb stadig mangler en holdudtagelse blev ikke vist. Den dukker nu korrekt op, hver gang du har et kommende løb, du endnu ikke har udtaget et hold til."
+        },
+        "refs": [2420]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race-day fatigue now saves reliably",
+          "body": "A rare error could stop race-day fatigue from being saved for some riders after a race. Fatigue now always records correctly."
+        },
+        "da": {
+          "title": "Løbsdags-træthed gemmes nu pålideligt",
+          "body": "En sjælden fejl kunne forhindre, at løbsdags-træthed blev gemt for nogle ryttere efter et løb. Træthed registreres nu altid korrekt."
+        },
+        "refs": [2421]
+      }
+    ]
+  },
   // FLIP-PAKKE (#2376): merges af ejeren SAMMEN med at race_engine_v3_scoring flippes 'on'.
   // Ved flip: justér version/date hvis 6.97 er taget, og brug [patch-notes-snapshot-ok]
   // i merge-commit (eller refresh snapshots) jf. scripts/check-patch-notes-version.js.
