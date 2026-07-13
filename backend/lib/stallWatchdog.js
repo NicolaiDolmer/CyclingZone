@@ -42,6 +42,14 @@
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   finalizeHours: 2,
   stageHours: 2,
+  // #2251: stageHours (2t) er SQL-cutoff for dueStages + tærskel for det GLOBALE
+  // (b2)-info-gennemløbssignal. stageAlarmHours (4t) er den højere tærskel selve
+  // PR-LØB-ALARMEN (b) kræver: en løbsdags-klynge (empirisk 22 etaper forfalder
+  // 18:00 dansk) drænes sundt af scheduleren over 1-2t og krydser kortvarigt 2t —
+  // det er IKKE et hang. 4t ligger komfortabelt over normal klynge-dræning, men
+  // fanger stadig et ægte enkelt-løbs-hang. Balancerer #2251's "præcis pr. løb"-
+  // alarm mod klynge-støjen der eskalerede til Discord+Sentry (CYCLINGZONE-2G).
+  stageAlarmHours: 4,
   prizeHours: 1,
   standingsHours: 1,
   // 0.5t = 30 min. Refresh-cron kører hvert 10. min (+ finalization-hook straks),
@@ -132,6 +140,11 @@ export function evaluateStallFindings({
   const queuedWork = dueStages.filter((s) => s.has_entries && !s.has_results);
   for (const s of queuedWork) {
     const stageAge = ageHours(now, s.scheduled_at);
+    // #2251: kun ALARM når etapen er forfalden ud over stageAlarmHours (4t). 2-4t
+    // er normal klynge-dræning (18:00-klyngen: 22 etaper på én gang) — dækkes af
+    // (b2)-info-signalet nedenfor, ikke en Discord/Sentry-alarm. Et løb der stadig
+    // er tomt for resultater 4t+ efter forfald er derimod et ægte, actionabelt hang.
+    if (stageAge <= t.stageAlarmHours) continue;
     findings.push({
       type: "stage",
       raceId: s.race_id,
