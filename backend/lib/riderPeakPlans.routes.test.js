@@ -36,7 +36,7 @@ for (const { name, marker } of ROUTES) {
   });
   test(`${name} gates bag peak_planner_enabled (launch-switch)`, () => {
     const block = handlerBlock(marker);
-    assert.match(block, /isPeakPlannerEnabled/, `${name} skal tjekke launch-flaget`);
+    assert.match(block, /isPeakPlannerEnabled|peakPlannerEnabledFor/, `${name} skal tjekke launch-flaget`);
   });
 }
 
@@ -88,7 +88,7 @@ for (const { name, marker } of COCKPIT_ROUTES) {
     assert.match(handlerBlock(marker), /requireAuth/, `${name} skal kræve auth`);
   });
   test(`${name} gates bag peak_planner_enabled (launch-switch)`, () => {
-    assert.match(handlerBlock(marker), /isPeakPlannerEnabled/, `${name} skal tjekke launch-flaget`);
+    assert.match(handlerBlock(marker), /isPeakPlannerEnabled|peakPlannerEnabledFor/, `${name} skal tjekke launch-flaget`);
   });
 }
 
@@ -110,4 +110,12 @@ test("POST accept-training er ikke-destruktivt: kun build/taper-ugen, valideret,
   assert.match(block, /week !== "build" && week !== "taper"/, "ugen skal begrænses til build/taper");
   assert.match(block, /isValidWeekPlanDays/, "de skrevne dage skal valideres mod week-plan-kontrakten");
   assert.match(block, /training_week_plans/, "accept skal skrive den valgte rytme til training_week_plans");
+});
+
+test("gate-helperen giver ejer/beta-preview (isViewerBetaTester → isPeakPlannerEnabled)", () => {
+  const idx = apiSource.indexOf("async function peakPlannerEnabledFor");
+  assert.ok(idx !== -1, "peakPlannerEnabledFor skal findes");
+  const block = apiSource.slice(idx, idx + 400);
+  assert.match(block, /isViewerBetaTester/, "gaten skal udlede viewerens beta-status (admin/beta-tester)");
+  assert.match(block, /isPeakPlannerEnabled\(supabase,\s*\{\s*isBetaTester/, "gaten skal sende isBetaTester til flag-evalueringen (så 'beta'-stage virker)");
 });

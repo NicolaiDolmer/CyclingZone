@@ -2054,11 +2054,19 @@ async function activePeakSeason() {
   return data ?? null;
 }
 
+// Launch-gate MED beta/admin-preview (samme mønster som træning/race-endpoints):
+// flag 'on' → alle; flag 'beta' → kun beta-testere/admins (ejeren) — så Planneren
+// kan previewes med ÆGTE data FØR den flippes 'on' for alle; off/fravær → ingen.
+// Uden dette kunne ejeren kun se featuren via den lokale mock, ikke sit rigtige hold.
+async function peakPlannerEnabledFor(req) {
+  return isPeakPlannerEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+}
+
 // GET /api/peak-plans — holdets peak-planer for EGNE ryttere i den aktive sæson.
 router.get("/peak-plans", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.json({ enabled: false, plans: [] });
+    if (!(await peakPlannerEnabledFor(req))) return res.json({ enabled: false, plans: [] });
     const season = await activePeakSeason();
     if (!season) return res.json({ enabled: true, season: null, plans: [] });
 
@@ -2097,7 +2105,7 @@ router.post("/peak-plans", requireAuth, marketWriteLimiter, async (req, res) => 
   if (typeof riderId !== "string" || !riderId) return res.status(400).json({ error: "invalid_rider_id" });
   if (typeof targetRaceId !== "string" || !targetRaceId) return res.status(400).json({ error: "invalid_target_race_id" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const season = await activePeakSeason();
     if (!season) return res.status(409).json({ error: "No active season" });
 
@@ -2156,7 +2164,7 @@ router.patch("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, res
   const { target_race_id: targetRaceId } = req.body ?? {};
   if (typeof targetRaceId !== "string" || !targetRaceId) return res.status(400).json({ error: "invalid_target_race_id" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const owned = await loadOwnedPeakPlan(planId, req.team.id);
     if (owned.error) return res.status(owned.status).json({ error: owned.error });
     const plan = owned.plan;
@@ -2206,7 +2214,7 @@ router.delete("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, re
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const planId = req.params.id;
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const owned = await loadOwnedPeakPlan(planId, req.team.id);
     if (owned.error) return res.status(owned.status).json({ error: owned.error });
 
@@ -2231,7 +2239,7 @@ router.delete("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, re
 router.get("/peak-plans/board", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.json({ enabled: false });
+    if (!(await peakPlannerEnabledFor(req))) return res.json({ enabled: false });
     const season = await activePeakSeason();
     const today = copenhagenDateString(new Date());
     const leadup = RACE_V3_TUNING.PEAK_LEADUP_DAYS;
@@ -2422,7 +2430,7 @@ router.post("/peak-plans/:id/accept-training", requireAuth, marketWriteLimiter, 
   const week = req.body?.week;
   if (week !== "build" && week !== "taper") return res.status(400).json({ error: "invalid_week" });
   try {
-    if (!(await isPeakPlannerEnabled(supabase))) return res.status(404).json({ error: "not_found" });
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
     const owned = await loadOwnedPeakPlan(planId, req.team.id);
     if (owned.error) return res.status(owned.status).json({ error: owned.error });
     const plan = owned.plan;
