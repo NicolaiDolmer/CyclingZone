@@ -223,7 +223,6 @@ export async function resolvePeakTrainingQualities({
 }) {
   const leadup = tuning.PEAK_LEADUP_DAYS;
   // Ryttere med mindst ét vindue + deres hold (fra entrants).
-  const teamByRider = new Map((entrants || []).map((e) => [e.rider_id, e.team_id]));
   const withPlans = [];
   for (const e of entrants || []) {
     const windows = peakPlansByRider?.get(e.rider_id);
