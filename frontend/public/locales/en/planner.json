@@ -31,7 +31,7 @@
   "today": "Today",
   "academy": "Academy",
   "form": { "now": "Current form {value}" },
-  "lane": { "noPeaks": "No peaks set — flat season. Open this rider to plan one." },
+  "lane": { "noPeaks": "No peaks set. A flat season until you plan one." },
   "drawer": {
     "close": "Close",
     "race": {

@@ -226,7 +226,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
             {peaks.length > 0 && (
               <g>
                 <rect x={rx0} y={y0 + 40} width="118" height="18" rx="9" fill={chip.tone === "good" ? CZ.gold : "none"} stroke={chip.tone === "good" ? "none" : CZ.goldDeep} strokeWidth="1" opacity={chip.tone === "good" ? 0.92 : 1} />
-                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={chip.tone === "good" ? "#5c4600" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>{chip.glyph} {t(`status.${chip.key}`)}</text>
+                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>{chip.glyph} {t(`status.${chip.key}`)}</text>
               </g>
             )}
           </g>

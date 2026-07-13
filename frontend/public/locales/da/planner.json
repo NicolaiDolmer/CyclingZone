@@ -31,7 +31,7 @@
   "today": "I dag",
   "academy": "Akademi",
   "form": { "now": "Nuværende form {value}" },
-  "lane": { "noPeaks": "Ingen peaks sat — flad sæson. Åbn rytteren for at planlægge en." },
+  "lane": { "noPeaks": "Ingen peaks sat. En flad sæson indtil du planlægger en." },
   "drawer": {
     "close": "Luk",
     "race": {
