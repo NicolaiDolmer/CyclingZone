@@ -30,3 +30,16 @@ export const RACE_ENGINE_V3_SCORING_FLAG_KEY = "race_engine_v3_scoring";
 export async function isRaceEngineV3ScoringEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, RACE_ENGINE_V3_SCORING_FLAG_KEY), opts);
 }
+
+// Peak-planner (S5) — LAUNCH-switch for peak-plan-CRUD. Selvstændigt flag, IKKE
+// bundet til race_engine_v3_scoring: v3-scoring er allerede ON i prod, så en
+// oprettet peak-plan ville virke øjeblikkeligt. Indtil Planner-UI'et ligger live
+// + ejer flipper flaget skal CRUD-fladen være uigennemtrængelig (ingen player kan
+// nå den, og en direkte API-kalder må ikke kunne skabe en aktiv peak før launch).
+// flag-off (default, row fraværende) = alle CRUD-endpoints svarer enabled:false /
+// 404. Ingen migration — ejeren indsætter flag-rowen i app_config ved launch.
+export const PEAK_PLANNER_FLAG_KEY = "peak_planner_enabled";
+
+export async function isPeakPlannerEnabled(supabase, opts = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, PEAK_PLANNER_FLAG_KEY), opts);
+}
