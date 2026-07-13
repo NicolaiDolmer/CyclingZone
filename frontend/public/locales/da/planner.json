@@ -1,0 +1,98 @@
+{
+  "page": {
+    "title": "Sæsonplanlægger",
+    "subtitle": "Planlæg hele holdets peaks ét sted. Form tjenes i optakten, den bliver ikke foræret."
+  },
+  "empty": {
+    "title": "Sæsonplanlæggeren er ikke live endnu",
+    "description": "Her planlægger du hver rytters form-peaks henover sæsonen. Kig forbi snart."
+  },
+  "firstRun": {
+    "title": "Planlæg din første peak",
+    "body": "Alle ryttere kører fladt lige nu. Sigt mod et løb, så bygger planlæggeren en optakt der løfter deres form til den dag der tæller. Hver rytter kan peake mod op til {max} løb pr. sæson, så vælg hvor det gør en forskel.",
+    "cta": "Vælg en rytter-lane for at starte, eller åbn et løb for at se hvem der passer til det."
+  },
+  "filter": { "mine": "Mine løb", "all": "Alle løb" },
+  "legend": {
+    "potential": "Potentiel top",
+    "realized": "Realiseret (trænet)",
+    "block": "Opbygning / taper",
+    "token": "Peak-token",
+    "drag": "Træk en bracket for at ændre mål"
+  },
+  "status": {
+    "onTrack": "Taper på sporet",
+    "atRisk": "Peak i fare",
+    "pending": "Optakt ikke begyndt",
+    "locked": "Låst"
+  },
+  "tokens": { "label": "{used} af {max} peaks brugt" },
+  "ovr": { "label": "OVR" },
+  "today": "I dag",
+  "academy": "Akademi",
+  "form": { "now": "Nuværende form {value}" },
+  "lane": { "noPeaks": "Ingen peaks sat — flad sæson. Åbn rytteren for at planlægge en." },
+  "drawer": {
+    "close": "Luk",
+    "race": {
+      "summary": "{stages} etaper · {summits, plural, =0 {ingen bjergafslutninger} one {# bjergafslutning} other {# bjergafslutninger}}",
+      "rankedTitle": "Dine ryttere, rangeret efter egnethed",
+      "rivalThreat": "Rival-trussel",
+      "rivalCount": "{count, plural, =0 {Ingen rivaler topper her} one {# rival topper også her} other {# rivaler topper også her}}",
+      "viewProfiles": "Vis etape-profiler",
+      "hideProfiles": "Skjul etape-profiler",
+      "setPeak": "Sæt peak",
+      "demands": "Dette løb kræver",
+      "alreadyPeaking": "Topper her"
+    },
+    "rider": {
+      "abilities": "Evner",
+      "suggestedBlock": "Foreslået optakt",
+      "autoPlan": "Auto-planlæg træning",
+      "build": "Opbygningsuge",
+      "taper": "Taper-uge",
+      "focus": "Anbefalet fokus: {focus}",
+      "accepted": "{week} skrevet til {name}s træning",
+      "noPeak": "Ingen peak endnu. Vælg et mål-løb for at planlægge en.",
+      "peakFor": "Peak mod {race}",
+      "pickRace": "Vælg et mål-løb",
+      "removePeak": "Fjern peak",
+      "windowLabel": "Peak-vindue {start} – {end}"
+    }
+  },
+  "type": {
+    "sprinter": "Spurter",
+    "tt": "Enkeltstartsrytter",
+    "climber": "Klatrer",
+    "puncheur": "Puncheur",
+    "brostensrytter": "Brostensrytter",
+    "baroudeur": "Baroudeur",
+    "rouleur": "Rouleur",
+    "gc": "Klassementsrytter"
+  },
+  "terrain": {
+    "flat": "Flad",
+    "hilly": "Kuperet",
+    "mountain": "Bjerg",
+    "itt": "Enkeltstart",
+    "ttt": "Holdløb",
+    "cobbles": "Brosten"
+  },
+  "focus": {
+    "vo2max": "VO2max",
+    "threshold": "Tærskel",
+    "sprint": "Spurt",
+    "endurance": "Udholdenhed",
+    "technique": "Teknik",
+    "aero": "Aero"
+  },
+  "error": {
+    "max_reached": "Denne rytter har allerede det maksimale antal på {max} peaks.",
+    "duplicate_target": "Denne rytter topper allerede for det løb.",
+    "locked": "Denne peak er låst og kan ikke længere ændres.",
+    "race_not_in_calendar": "Det løb er ikke i din divisions kalender.",
+    "race_not_scheduled": "Det løb er ikke planlagt endnu.",
+    "generic": "Noget gik galt. Prøv igen."
+  },
+  "months": ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"]
+}

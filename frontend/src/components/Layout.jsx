@@ -14,6 +14,8 @@ import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
+import { plannerNavItem } from "../lib/plannerNavVisibility";
+import { usePlanner } from "../lib/usePlanner";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
@@ -43,7 +45,7 @@ function buildBottomItems(t) {
   ];
 }
 
-function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false) {
+function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
   return [
     {
       key: "klubhus", label: t("nav.group.klubhus"),
@@ -51,6 +53,7 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
         { to: "/dashboard",      label: t("nav.item.dashboard") },
         { to: "/team",           label: t("nav.item.team") },
         { to: "/training",       label: t("nav.item.training") },
+        ...plannerNavItem(peakPlannerEnabled, t),
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
         ...scoutingNavItem(scoutSystemEnabled, t),
         { to: "/board",          label: t("nav.item.board") },
@@ -289,6 +292,9 @@ export default function Layout() {
   // #2244 Fase 3: Scouting-central-nav gater på scout_system_enabled (kill-switch,
   // ikke beta-gate) — samme flag /api/scouting/me rapporterer til siden selv.
   const { enabled: scoutSystemEnabled } = useScoutingCentral();
+  // S5: Season Planner-nav gater på peak_planner_enabled (launch-switch) — samme
+  // flag /api/peak-plans/board rapporterer til selve /planner-siden.
+  const { enabled: peakPlannerEnabled } = usePlanner();
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
@@ -306,7 +312,7 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
+    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
     if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
@@ -318,7 +324,7 @@ export default function Layout() {
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, teamId, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
+  }, [location, teamId, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -461,7 +467,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
+  const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
   const navGroups = isAdmin
     ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
         { to: "/admin", label: t("nav.item.admin") },
