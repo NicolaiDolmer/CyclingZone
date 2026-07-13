@@ -20,6 +20,7 @@ import { setupSentryExpressErrorHandler } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import { isAllowedOrigin } from "./lib/corsOrigin.js";
 import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight } from "./cron.js";
 
@@ -45,7 +46,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:4173",
 ].filter(Boolean);
-app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin)), credentials: true }));
+app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin, ALLOWED_ORIGINS)), credentials: true }));
 // Webhooks skal have rå body (signatur/verifikation) → undtag fra JSON-parseren.
 // Rå-parseren sætter req._body, så den globale express.json() springer pathen over.
 app.use("/api/billing/alunta-webhook", express.raw({ type: "*/*" }));
