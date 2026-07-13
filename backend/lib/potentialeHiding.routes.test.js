@@ -39,21 +39,24 @@ test("POST /scouting/estimates er registreret FØR POST /scouting/:riderId (#116
   assert.ok(estimatesIdx < paramIdx, "estimates-routen skal registreres før :riderId-routen");
 });
 
-test("kun scouting-interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
-  // Whitelist: de tre interne reads der føder estimat-beregningen (sendes aldrig
-  // videre rå til klienten):
+test("kun interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
+  // Whitelist: interne server-side reads der føder maskerede/afledte beregninger —
+  // den rå potentiale sendes ALDRIG videre til klienten:
   //   1. POST /scouting/estimates — batch-estimater
   //   2. POST /scouting/:riderId   — enkelt-rytter scout
   //   3. GET  /academy/me          — akademi-kandidat potentiale-fetch (#1308)
   //   4. GET  /riders/:id/scouting-report — rapport-beregning (#1543); maskeres
   //      som bånd via buildScoutEstimate/buildTypeCeilingBands før response.
-  // Dukker en femte select med potentiale op, skal den reviewes bevidst —
+  //   5. GET  /admin/rider-valuation-preview-v4 — #2428 v4-NPV karriere-fremskrivning
+  //      (predictBaseValueV4); ADMIN-only (requireAdmin), potentiale forlader aldrig
+  //      responset (verificeret i egen test nedenfor).
+  // Dukker en sjette select med potentiale op, skal den reviewes bevidst —
   // den må ikke ende i et klient-response.
   const matches = apiSource.match(/\.select\([^)]*\bpotentiale\b[^)]*\)/g) ?? [];
   assert.equal(
     matches.length,
-    4,
-    `forventede præcis 3 scouting-interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
+    5,
+    `forventede præcis 5 interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
   );
   for (const m of matches) {
     assert.match(m, /id,\s*(team_id,\s*potentiale|potentiale)/, `uventet potentiale-select: ${m}`);
@@ -89,6 +92,22 @@ test("development-projection returnerer aldrig rå potentiale eller ability_caps
   // Routen må IKKE selecte potentiale (loft-båndet bærer den allerede maskeret).
   const selectBlock = block.slice(0, block.indexOf(".maybeSingle()"));
   assert.doesNotMatch(selectBlock, /\bpotentiale\b/, "development-projection må ikke selecte potentiale");
+});
+
+test("v4 shadow-preview læser potentiale server-side men emitter det aldrig (#2428/#1162)", () => {
+  const idx = apiSource.indexOf('"/admin/rider-valuation-preview-v4"');
+  assert.ok(idx !== -1, "GET /admin/rider-valuation-preview-v4 skal findes");
+  const block = apiSource.slice(idx, idx + 4500);
+  // Potentiale læses i en smal whitelistet select og bruges KUN til NPV-inputtet.
+  assert.match(block, /\.select\("id, potentiale, birthdate, team_id"\)/, "v4-preview skal læse potentiale i den smalle whitelistede select");
+  assert.match(block, /predictBaseValueV4\(/, "v4-preview skal beregne v4-værdien via predictBaseValueV4");
+  // Den ENESTE brug af potentiale-værdien er som input til predictBaseValueV4 —
+  // det klient-vendte rows.push-objekt (id/name/type/overall/age/v3_value/v4_value/
+  // delta/pct) må aldrig bære rå potentiale.
+  const pushIdx = block.indexOf("rows.push({");
+  assert.ok(pushIdx !== -1, "v4-preview skal bygge rows-objektet via rows.push");
+  const pushBlock = block.slice(pushIdx, pushIdx + 500);
+  assert.doesNotMatch(pushBlock, /\bpotentiale\b/, "rå potentiale må ikke indgå i den klient-vendte rytter-række");
 });
 
 test("migrationen maskerer både riders.potentiale og rider_derived_abilities.hidden_potential (#1162)", () => {

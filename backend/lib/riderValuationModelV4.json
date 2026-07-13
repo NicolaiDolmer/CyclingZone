@@ -1,0 +1,79 @@
+{
+  "version": 4,
+  "method": "sim-production-npv",
+  "fitted_at": "2026-07-13T20:45:33.052Z",
+  "sim_run_id": "ac8d39c6",
+  "K": 30,
+  "season_id": "00000000-0000-0000-0000-000000000001",
+  "prize_per_point": 75,
+  "beta_pt": 0,
+  "discount": 0.8,
+  "horizon_model": "survival-weighted",
+  "fit": {
+    "alpha": 0.5,
+    "a": 4.471847,
+    "b": 0.20176201,
+    "c": -0.001121248,
+    "offset": {
+      "sprinter": -0.142922,
+      "tt": -0.137872,
+      "climber": 0.260997,
+      "puncheur": 0.929792,
+      "brostensrytter": 1.37822,
+      "baroudeur": -0.209785,
+      "rouleur": -0.13304,
+      "gc": -0.545719
+    },
+    "r2_log": 0.3597,
+    "n_samples": 5247
+  },
+  "type_stats": {
+    "sprinter": {
+      "n": 1125,
+      "median_prize": 2790,
+      "p90_prize": 16985
+    },
+    "tt": {
+      "n": 2316,
+      "median_prize": 831,
+      "p90_prize": 4403
+    },
+    "climber": {
+      "n": 1661,
+      "median_prize": 3530,
+      "p90_prize": 36735
+    },
+    "puncheur": {
+      "n": 16,
+      "median_prize": 59708,
+      "p90_prize": 192960
+    },
+    "brostensrytter": {
+      "n": 34,
+      "median_prize": 25255,
+      "p90_prize": 77975
+    },
+    "baroudeur": {
+      "n": 22,
+      "median_prize": 20604,
+      "p90_prize": 152793
+    },
+    "rouleur": {
+      "n": 71,
+      "median_prize": 8468,
+      "p90_prize": 70813
+    },
+    "gc": {
+      "n": 2,
+      "median_prize": 68003,
+      "p90_prize": 84275
+    }
+  },
+  "scale": 0.96806443,
+  "scale_ref": {
+    "median_current_base_value": 6972,
+    "median_v4_raw_npv": 7202,
+    "n_calibration": 6643
+  },
+  "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R² (riderValuationFitV4.js). scale = global faktor så median(v4 karriere-NPV) matcher median(nuværende base_value) over hele populationen (intet økonomi-chok ved cutover). Styrer INGEN økonomi (shadow, ingen migration)."
+}

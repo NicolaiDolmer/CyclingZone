@@ -198,6 +198,12 @@ import {
   riderSpecialty,
   ABILITY_KEYS,
 } from "../lib/riderValuation.js";
+// #2428 værdimodel v4 slice 1 (shadow) — separat fra v3 ovenfor. predictBaseValueV4
+// bygges parallelt i riderCareerNpv.js (Kontrakt 3); route degraderer til 503 hvis
+// modellen (riderValuationModelV4.json) endnu ikke er fittet — se VALUATION_MODEL_V4.
+import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
@@ -385,6 +391,19 @@ try {
   );
 } catch {
   VALUATION_MODEL = null;
+}
+
+// #2428 værdimodel v4 slice 1 (SHADOW, separat fil fra v3 ovenfor). Fittes af
+// backend/scripts/fitRiderValuationV4.js (Kontrakt 2) — findes typisk ikke endnu
+// før første fit er kørt, så manglende fil degraderer pænt til null (503 i
+// GET /admin/rider-valuation-preview-v4, samme mønster som VALUATION_MODEL).
+let VALUATION_MODEL_V4 = null;
+try {
+  VALUATION_MODEL_V4 = JSON.parse(
+    readFileSync(join(__dirname, "../lib/riderValuationModelV4.json"), "utf8")
+  );
+} catch {
+  VALUATION_MODEL_V4 = null;
 }
 
 let RIDER_TYPES_BASELINE = null;
@@ -6198,6 +6217,155 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
     distribution,
     riders: rows,
   });
+});
+
+// GET /api/admin/rider-valuation-preview-v4 — #2428 SLICE 1 SHADOW: sammenlign
+// nuværende v3 (predictBaseValue) med den nye karriere-NPV-model v4
+// (predictBaseValueV4, Kontrakt 3) for hele populationen. READ-ONLY, ingen
+// DB-skrivning, ingen migration. Rører intet i økonomien. Degraderer til 503
+// hvis riderValuationModelV4.json endnu ikke er fittet (VALUATION_MODEL_V4=null).
+router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) => {
+  if (!VALUATION_MODEL_V4) {
+    return res.status(503).json({ error: "v4-model ikke fittet endnu" });
+  }
+
+  try {
+    const { data: activeSeason } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    const seasonNumber = activeSeason?.number ?? null;
+
+    const [riders, abilities, potentialeRows] = await Promise.all([
+      fetchAllRows(() => supabase
+        .from("riders")
+        .select("id, firstname, lastname, primary_type, birthdate, nationality_code, is_retired")
+        .order("id")),
+      fetchAllRows(() => supabase
+        .from("rider_derived_abilities")
+        .select("*")
+        .order("rider_id")),
+      // #1162: potentiale er skjult og læses i en SEPARAT smal, whitelistet select
+      // (id, potentiale, birthdate, team_id) — brugt KUN server-side til v4-NPV'ens
+      // karriere-fremskrivning (predictBaseValueV4), forlader aldrig responset (samme
+      // mønster som akademi-intake). Admin-only route (requireAdmin), service_role.
+      fetchAllRows(() => supabase
+        .from("riders")
+        .select("id, potentiale, birthdate, team_id")
+        .order("id")),
+    ]);
+    const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+    const potentialeByRider = new Map(potentialeRows.map((p) => [p.id, p.potentiale]));
+
+    // type -> { n, v3: number[], v4: number[] } — population-fordeling pr. type
+    // (bruges til type_economy nedenfor; n tælles uanset om v3/v4 kunne beregnes).
+    const byType = new Map();
+    const rows = [];
+
+    for (const r of riders) {
+      if (r.is_retired) continue;
+      const ab = abilityByRider.get(r.id);
+      if (!ab) continue;
+
+      const type = r.primary_type ?? riderSpecialty(ab);
+      const age = seasonNumber != null ? ageForSeason(r.birthdate, seasonNumber) : null;
+
+      const v3Value = predictBaseValue(r, ab, VALUATION_MODEL);
+      let v4Value = null;
+      if (age != null) {
+        try {
+          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, VALUATION_MODEL_V4);
+        } catch (err) {
+          // Én dårlig rytterrække (fx manglende potentiale) må ikke vælte hele
+          // shadow-preview'et — degradér til null for den ene rytter og log.
+          captureException(err);
+          v4Value = null;
+        }
+      }
+      if (v3Value == null && v4Value == null) continue;
+
+      if (type) {
+        if (!byType.has(type)) byType.set(type, { n: 0, v3: [], v4: [] });
+        const bucket = byType.get(type);
+        bucket.n += 1;
+        if (v3Value != null) bucket.v3.push(v3Value);
+        if (v4Value != null) bucket.v4.push(v4Value);
+      }
+
+      rows.push({
+        id: r.id,
+        name: `${r.firstname} ${r.lastname}`,
+        nationality_code: r.nationality_code,
+        type,
+        overall: riderOverall(ab, VALUATION_MODEL),
+        age,
+        v3_value: v3Value,
+        v4_value: v4Value,
+        delta: v3Value != null && v4Value != null ? v4Value - v3Value : null,
+        pct: v3Value > 0 && v4Value != null ? Math.round(((v4Value - v3Value) / v3Value) * 100) : null,
+      });
+    }
+
+    const pctile = (arr, p) => {
+      if (!arr.length) return null;
+      const s = [...arr].sort((a, b) => a - b);
+      return s[Math.min(s.length - 1, Math.floor(p * s.length))];
+    };
+    const v3s = rows.map((r) => r.v3_value).filter((v) => v != null);
+    const v4s = rows.map((r) => r.v4_value).filter((v) => v != null);
+    const distribution = {
+      count: rows.length,
+      v3: { p10: pctile(v3s, 0.1), median: pctile(v3s, 0.5), p90: pctile(v3s, 0.9), max: v3s.length ? Math.max(...v3s) : null },
+      v4: { p10: pctile(v4s, 0.1), median: pctile(v4s, 0.5), p90: pctile(v4s, 0.9), max: v4s.length ? Math.max(...v4s) : null },
+    };
+
+    // type_economy: v3_offset fra den fittede v3-model + v4-fordeling (median/p90)
+    // beregnet over den ægte population — kontraktens sim_median_prize/sim_p90_prize
+    // udfyldes KUN hvis fit-scriptet en dag begynder at persistere sim-stats direkte
+    // i riderValuationModelV4.json (Kontrakt 2 har ingen sådan felt i dag); ellers
+    // forbliver de null og v4-fordelingen pr. type er den ærlige erstatning.
+    const typeEconomy = RIDER_TYPE_KEYS.map((type) => {
+      const bucket = byType.get(type) || { n: 0, v3: [], v4: [] };
+      return {
+        type,
+        v3_offset: VALUATION_MODEL?.offset?.[type] ?? null,
+        sim_median_prize: VALUATION_MODEL_V4.type_stats?.[type]?.median_prize ?? null,
+        sim_p90_prize: VALUATION_MODEL_V4.type_stats?.[type]?.p90_prize ?? null,
+        n: bucket.n,
+        v4_median_value: pctile(bucket.v4, 0.5),
+        v4_p90_value: pctile(bucket.v4, 0.9),
+      };
+    });
+
+    res.json({
+      v3_model: {
+        version: 3,
+        fitted_at: VALUATION_MODEL?.fitted_at ?? null,
+        n_train: VALUATION_MODEL?.n_train ?? null,
+        alpha: VALUATION_MODEL?.alpha ?? null,
+        convexity_exponent: VALUATION_MODEL?.convexity_exponent ?? null,
+      },
+      v4_model: {
+        version: 4,
+        fitted_at: VALUATION_MODEL_V4.fitted_at ?? null,
+        method: VALUATION_MODEL_V4.method ?? null,
+        sim_run_id: VALUATION_MODEL_V4.sim_run_id ?? null,
+        K: VALUATION_MODEL_V4.K ?? null,
+        season_id: VALUATION_MODEL_V4.season_id ?? null,
+        discount: VALUATION_MODEL_V4.discount ?? null,
+        horizon_model: VALUATION_MODEL_V4.horizon_model ?? null,
+        fit: VALUATION_MODEL_V4.fit ?? null,
+        scale: VALUATION_MODEL_V4.scale ?? null,
+      },
+      type_economy: typeEconomy,
+      distribution,
+      riders: rows,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/admin/fictional-rider-preview — read-only preview af de 800 fiktive
