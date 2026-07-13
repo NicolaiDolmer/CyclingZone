@@ -109,21 +109,24 @@ function serialize(p) {
   return { ...p, locked: locked(p), status: status(p) };
 }
 
-function ridersOut() {
-  return RIDERS.map((r) => ({ ...r, peaks: peaks.filter((p) => p.riderId === r.id).map(serialize) }));
-}
-
-function board() {
+function buildBoard(peakList) {
   return {
     enabled: true,
     season: { id: "season-preview", number: 1 },
     maxPerRider: MAX_PER_RIDER,
     today: TODAY,
     leadupDays: LEADUP,
-    riders: ridersOut(),
+    riders: RIDERS.map((r) => ({ ...r, peaks: peakList.filter((p) => p.riderId === r.id).map(serialize) })),
     races: RACES,
   };
 }
+
+function board() { return buildBoard(peaks); }
+
+// Statisk, deterministisk board til read-only E2E-smoke (fixtures.installNetworkMocks).
+// Bygger fra en frisk seed uden at røre den stateful preview-state, så Playwright og
+// det interaktive preview-gennemklik ikke deler mutation.
+export function previewPlannerBoard() { return buildBoard(seedPeaks()); }
 
 /**
  * Rout /api/peak-plans* mod den in-memory-preview-state. Returnerer { status, body }

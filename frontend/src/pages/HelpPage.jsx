@@ -276,6 +276,8 @@ const FAQ_KEYS = [
   "howToWinRace",
   "riderAbilities",
   "trainingFocusFaq",
+  "seasonPlanner",
+  "peakTraining",
   "salaryShortfall",
   "debtCeiling",
   "prizeMoneyFaq",

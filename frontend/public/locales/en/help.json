@@ -706,6 +706,14 @@
     }
   },
   "faq": {
+    "seasonPlanner": {
+      "q": "What is the Season Planner?",
+      "a": "The Season Planner is where you plan form peaks for your whole squad. Target a key race for a rider and the planner builds a lead-up that lifts their form for that day. Form is earned through training in the lead-up, so a peak you prepare for pays off more than one you leave to chance. Each rider can peak for up to two races a season, and the target race must be in your division's calendar."
+    },
+    "peakTraining": {
+      "q": "How does peak training work?",
+      "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak locks three days before its window starts, so plan ahead."
+    },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
       "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."

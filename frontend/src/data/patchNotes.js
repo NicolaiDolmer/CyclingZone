@@ -3,6 +3,27 @@
 // audience-rettelser redigeres her direkte (re-kør IKKE transformen oven på dem).
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
+  {
+    "version": "6.98",
+    "date": "2026-07-13",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Plan your season peaks",
+          "body": "The new Season Planner lets you target key races and build each rider toward a form peak on the day that matters. Form is earned in the lead-up, so train the right focus and taper into the race. Each rider can peak for up to two races a season."
+        },
+        "da": {
+          "title": "Planlæg dine sæson-peaks",
+          "body": "Den nye Sæsonplanlægger lader dig sigte mod nøgleløb og bygge hver rytter op mod en form-top på den dag der tæller. Form tjenes i optakten, så træn det rigtige fokus og taper ind mod løbet. Hver rytter kan peake mod op til to løb pr. sæson."
+        },
+        "refs": [2224]
+      }
+    ]
+  },
   // FLIP-PAKKE (#2376): merges af ejeren SAMMEN med at race_engine_v3_scoring flippes 'on'.
   // Ved flip: justér version/date hvis 6.97 er taget, og brug [patch-notes-snapshot-ok]
   // i merge-commit (eller refresh snapshots) jf. scripts/check-patch-notes-version.js.
