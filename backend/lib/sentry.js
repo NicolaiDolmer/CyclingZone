@@ -65,12 +65,17 @@ export function initSentry() {
   });
 }
 
+// context: { tags?, fingerprint?, ...extra }. fingerprint (#2434) tvinger Sentry-
+// gruppering — sæt en FAST fingerprint på en aggregeret alarm, så den lander i ÉT
+// issue uanset at beskeden/antallet varierer pr. tick (ellers splitter Sentry på
+// den variable besked). Øvrige nøgler ender som `extra` på eventet.
 export function captureException(error, context = {}) {
   if (!enabled) return;
-  const { tags, ...extra } = context;
+  const { tags, fingerprint, ...extra } = context;
   Sentry.captureException(toSentryError(error), {
     extra,
     ...(tags ? { tags } : {}),
+    ...(fingerprint ? { fingerprint } : {}),
   });
 }
 

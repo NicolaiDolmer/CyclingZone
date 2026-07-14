@@ -1,4 +1,4 @@
-// #2187/#2377 — self-heal-sweep for udskudte AI-hold-trims.
+// #2187/#2377/#2434 — self-heal-sweep for udskudte AI-hold-trims.
 //
 // teamProfileEngine trimmer AI-fyld ved hvert nyt signup (reconcileAiTeamsForPool),
 // men kan IKKE slette et AI-hold hvis dets ryttere sidder i et igangværende
@@ -12,41 +12,55 @@
 //
 // Denne sweep kører periodisk (samme 5-min-kadence som de andre heal-sweeps i cron.js),
 // finder alle markerede AI-hold og forsøger sletningen igen. Er det blokerende løb
-// afviklet færdigt siden sidst, lykkes sletningen nu (teamHasInflightEntries tjekker
+// afviklet færdigt siden sidst, lykkes sletningen nu (teamInflightRaceIds tjekker
 // live DB-tilstand hver gang — idempotent). Er holdet STADIG blokeret, efterlades
-// markøren urørt (næste sweep prøver igen); har markøren stået >staleHours (default
-// 48t — længere end noget realistisk etapeløb varer), rapporteres holdet som "stale"
-// så cron-wrapperen kan Sentry-alarmere — det signalerer et strukturelt problem
-// (fx en race-scheduler der er gået i stå), ikke bare "løbet er ikke færdigt endnu".
+// markøren urørt (næste sweep prøver igen).
+//
+// STALE-DETEKTION (#2434 — løbs-bevidst, erstatter den rene 48t-alders-tærskel):
+// et udskudt hold rapporteres kun som "stale" (→ Sentry-alarm) når blokeringen er
+// REELT fastlåst, dvs. enten:
+//   (a) et af de blokerende løb er SELV stallet (getStalledInflightRaceIds — samme
+//       "en etape hænger"-definition som stall-watchdogen), ELLER
+//   (b) blokeringen overskrider STALE_BACKSTOP_HOURS (defense-in-depth mod ukendte
+//       fejlklasser: fejl-materialiseret schedule, en præmie-blokering auto-prize
+//       aldrig løfter).
+// Den gamle logik alarmerede rent på alder >48t. Det gav falsk-positiver (Sentry
+// CYCLINGZONE-31: 200+ events) fordi et multi-dag etapeløb LOVLIGT holder ryttere
+// inflight længere end 48t — holdet krydsede tærsklen mens løbet stadig kørte fint.
 //
 // Rører ALDRIG afviklede resultater eller ægte hold — kun AI-hold denne sweep selv
 // (via removeAiTeams) tidligere har forsøgt at fjerne.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import {
-  getInflightRaceIds,
-  teamHasInflightEntries,
+  teamInflightRaceIds,
   teamHasUnpaidPrizeResults,
+  getInflightRaceIds,
+  getStalledInflightRaceIds,
   deleteAiTeamById,
 } from "./aiTeamGenerator.js";
 
-// Længere end noget realistisk etapeløb varer (Cycling Zone's længste løb er ugelange
-// etapeløb) — en udskudt trim ældre end dette er ikke "vent på løbet", men et signal om
-// at noget andet er gået galt (fx en race-scheduler der er stallet, #2077-klassen).
-export const STALE_PENDING_HOURS = 48;
+// #2434: defense-in-depth-backstop. Den PRIMÆRE stale-detektion er løbs-bevidst
+// (alarmér når det blokerende løb selv er stallet). Denne backstop fanger blokeringer
+// der hænger uforklarligt længe UDEN at det blokerende løb ser stallet ud. Sat langt
+// over det længste etapeløbs kalender-spredning, så et lovligt kørende løb ALDRIG
+// udløser den — netop dét (en 48t-tærskel kortere end den spredning) var rod-årsagen
+// til CYCLINGZONE-31's falsk-positive spam.
+export const STALE_BACKSTOP_HOURS = 120;
 
 export async function runAiTeamTrimHealSweep({
   supabase,
   now = new Date(),
-  staleHours = STALE_PENDING_HOURS,
-  isBlocked = teamHasInflightEntries,
-  // #2389 (Sentry CYCLINGZONE-26/2E/2F): uudbetalte præmier blokerer også trim.
-  // Sletning FØR auto-prize-sweepen har krediteret løbet gav P0002 midt i payout-
-  // ticket + FK-fejl i standings-recalc. Auto-prize sweeper hvert 5. minut, så
-  // blokeringen løfter sig selv kort efter løbets finalization.
+  backstopHours = STALE_BACKSTOP_HOURS,
+  getInflightIds = getInflightRaceIds,
+  // #2434: hvilke inflight-løb er selv stallet (næste etape hænger). Injicerbar for test.
+  getStalledIds = getStalledInflightRaceIds,
+  // #2434: hvilke af inflight-løbene blokerer DETTE hold (distinkte race_ids).
+  teamBlockingRaceIds = teamInflightRaceIds,
+  // #2389: uudbetalte præmier blokerer også trim (sletning før auto-prize krediterer
+  // løbet gav P0002 + FK-fejl i standings-recalc). Auto-prize sweeper hvert 5. minut.
   hasUnpaidPrizes = teamHasUnpaidPrizeResults,
   removeTeam = deleteAiTeamById,
-  getInflightIds = getInflightRaceIds,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -67,7 +81,8 @@ export async function runAiTeamTrimHealSweep({
   }
 
   const inflightRaceIds = await getInflightIds(supabase);
-  const staleMs = staleHours * 60 * 60 * 1000;
+  const stalledRaceIds = new Set(await getStalledIds(supabase, now));
+  const backstopMs = backstopHours * 60 * 60 * 1000;
 
   let healed = 0;
   let failed = 0;
@@ -76,21 +91,38 @@ export async function runAiTeamTrimHealSweep({
 
   for (const team of candidates) {
     try {
-      const blocked = await isBlocked(supabase, team.id, inflightRaceIds)
-        || await hasUnpaidPrizes(supabase, team.id);
+      const blockingInflight = await teamBlockingRaceIds(supabase, team.id, inflightRaceIds);
+      // Præmie-blokering er en SELVSTÆNDIG grund (#2389); tjek den kun hvis holdet ikke
+      // allerede er inflight-blokeret (spar den dyrere præmie-query — mirror originalens `||`).
+      const prizeBlocked = blockingInflight.length > 0
+        ? false
+        : await hasUnpaidPrizes(supabase, team.id);
+      const blocked = blockingInflight.length > 0 || prizeBlocked;
+
       if (!blocked) {
         await removeTeam(supabase, team.id);
         healed += 1;
         continue;
       }
+
+      // Løbs-bevidst stale-detektion (#2434): reelt fastlåst = blokerende løb selv
+      // stallet, ELLER blokeringen har overskredet backstoppen.
+      const blockingStalled = blockingInflight.filter((id) => stalledRaceIds.has(id));
       const ageMs = now.getTime() - new Date(team.pending_removal_at).getTime();
-      if (ageMs > staleMs) {
+
+      let reason = null;
+      if (blockingStalled.length > 0) reason = "blocking_race_stalled";
+      else if (ageMs > backstopMs) reason = "pending_exceeds_backstop";
+
+      if (reason) {
         stale.push({
           teamId: team.id,
           name: team.name,
           poolId: team.league_division_id,
           pendingSince: team.pending_removal_at,
           ageHours: Math.round(ageMs / (60 * 60 * 1000)),
+          reason,
+          stalledRaceIds: blockingStalled,
         });
       }
     } catch (err) {
