@@ -21,7 +21,7 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { currentProductionValue, predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { riderOverall } from "../lib/riderValuation.js";
 import {
-  calibrateSalaryRatesByDivision, projectedSalary, wageBillsByDivision,
+  calibrateSalaryRatesByDivision, wageBillsByDivision,
   wageBillContinuityGate, talentFixGate, runawayGate,
 } from "../lib/salaryDecoupling.js";
 import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
