@@ -31,6 +31,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { fitProductionModel } from "../lib/riderValuationFitV4.js";
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
+import { riderOverall } from "../lib/riderValuation.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -47,14 +48,20 @@ const SAMPLE_PATH = join(__dirname, "..", String(arg("sample", "lib/riderProduct
 const OUT_PATH = join(__dirname, "..", String(arg("out", "lib/riderValuationModelV4.json")));
 const DISCOUNT = Number(arg("discount", 0.8));
 const BETA_PT = Number(arg("beta-pt", 0));
-// Blødt top-loft (#2428): komprimér base_value over p{SOFT_CAP_PCT} med eksponent
-// gamma ∈ (0,1). gamma=1 → slået fra. Tærsklen sættes > median → rører ikke skala-
-// kontinuiteten. Ejer-tunbart ved cutover-review.
-// Default 0,65 = balanceret punkt på gamma-frontieren (#2428, målt 13/7): sund
-// ungdoms-ROI (~15%), kontrolleret runaway (~×1,4), fornuftig top-rytter (~2M).
-// 0,50 kvæler ungdomsudvikling; 1,0 (fra) giver 9M-top + dominerende udvikl-og-sælg.
-const SOFT_CAP_GAMMA = Number(arg("soft-cap-gamma", 0.65));
-const SOFT_CAP_PCT = Number(arg("soft-cap-pct", 0.95));
+// Elite-præmie (#2428, ejer-retning 14/7): de enormt gode ryttere skal være
+// ukøbelige i UNBUYABLE_SEASONS sæsoner. Kalibreres mod den faktiske hold-økonomi:
+// råd-loft = rigeste holds saldo + N sæsoners max-opsparing (sponsor × SAVE_HEADROOM,
+// generøst for præmier + fuld opsparing). Top-stjernen sættes ELITE_TOP_MULT × loftet
+// (stor margin → ukøbelig langt ud over N sæsoner). Præmien rammer kun overall >
+// ELITE_O_THRESHOLD (bulk urørt). Alt ejer-tunbart.
+const ELITE_O_THRESHOLD = Number(arg("elite-overall-threshold", 45));
+const UNBUYABLE_SEASONS = Number(arg("unbuyable-seasons", 4));
+const ELITE_TOP_MULT = Number(arg("elite-top-mult", 20));
+const SAVE_HEADROOM = Number(arg("save-headroom", 3));
+// Elite-gulv: ryttere med overall ≥ ELITE_FLOOR_OVERALL er GARANTERET ukøbelige
+// (mindst FLOOR_MULT × råd-loftet), uanset produktion.
+const ELITE_FLOOR_OVERALL = Number(arg("elite-floor-overall", 58));
+const FLOOR_MULT = Number(arg("elite-floor-mult", 2));
 
 const fmtM = (n) => (n / 1e6).toFixed(2) + "M";
 
@@ -201,7 +208,7 @@ async function main() {
   const [riders, abilityRows] = await Promise.all([
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, base_value, potentiale, birthdate, primary_type, is_retired")
+      .select("id, base_value, potentiale, birthdate, primary_type, is_retired, is_academy")
       .order("id")),
     fetchAllRows(() => supabase
       .from("rider_derived_abilities").select("*").order("rider_id")),
@@ -220,14 +227,15 @@ async function main() {
     scale: 1,
   };
   const rawNpvs = [];
+  const rawByRider = []; // { overall, raw } — til elite-præmie-kalibrering
   for (const r of riders) {
-    if (r.is_retired) continue;
+    if (r.is_retired || r.is_academy) continue;
     const ab = abilityByRider.get(r.id);
     if (!ab) continue;
     const age = ageForSeason(r.birthdate, seasonNumber);
     if (age == null) continue;
     const raw = predictBaseValueV4({ primary_type: r.primary_type, potentiale: r.potentiale, age }, ab, modelForNpv);
-    if (Number.isFinite(raw) && raw > 0) rawNpvs.push(raw);
+    if (Number.isFinite(raw) && raw > 0) { rawNpvs.push(raw); rawByRider.push({ overall: riderOverall(ab), raw }); }
   }
   const medianV4RawNpv = median(rawNpvs);
   const scale = medianV4RawNpv > 0 ? medianCurrentBaseValue / medianV4RawNpv : 1;
@@ -237,17 +245,37 @@ async function main() {
     `median(v4 rå NPV, scale=1, n=${rawNpvs.length})=${fmtM(medianV4RawNpv)} · scale=${scale.toExponential(4)}`
   );
 
-  // Blødt top-loft: tærskel = p{SOFT_CAP_PCT} af de SKALEREDE (ukappede) v4-værdier,
-  // så loftet rører kun den øverste hale (> median → skala-kontinuitet uændret).
-  const scaledVals = rawNpvs.map((v) => v * scale);
-  const softCapThreshold = Math.round(quantile(scaledVals, SOFT_CAP_PCT));
-  const softCap = SOFT_CAP_GAMMA > 0 && SOFT_CAP_GAMMA < 1
-    ? { threshold: softCapThreshold, gamma: SOFT_CAP_GAMMA, pct: SOFT_CAP_PCT }
-    : null;
+  // Elite-præmie: kalibrér mod den ægte hold-økonomi så de enormt gode ryttere er
+  // ukøbelige i UNBUYABLE_SEASONS sæsoner (ejer-retning 14/7). READ-ONLY.
+  const teamsEcon = await fetchAllRows(() => supabase
+    .from("teams").select("balance, sponsor_income, is_test_account, is_frozen, is_bank").order("id"));
+  const realTeams = teamsEcon.filter((t) => !t.is_test_account && !t.is_frozen && !t.is_bank);
+  const maxBalance = Math.max(0, ...realTeams.map((t) => Number(t.balance) || 0));
+  const maxSponsor = Math.max(0, ...realTeams.map((t) => Number(t.sponsor_income) || 0));
+  // Råd-loft = rigeste saldo + N sæsoners max-opsparing (sponsor × SAVE_HEADROOM,
+  // generøst for præmier + at spare ALT op). Top-stjerne-mål = ELITE_TOP_MULT × loftet.
+  const affordabilityCeiling = maxBalance + UNBUYABLE_SEASONS * maxSponsor * SAVE_HEADROOM;
+  const targetTop = affordabilityCeiling * ELITE_TOP_MULT;
+  // Anker på den højeste-overall rytter: løs k så hans skalerede rå-værdi × præmie = targetTop.
+  const topRider = rawByRider.reduce((best, x) => (x.overall > (best?.overall ?? -Infinity) ? x : best), null);
+  let elitePremium = null;
+  if (topRider && topRider.overall > ELITE_O_THRESHOLD) {
+    const vTop = topRider.raw * scale;
+    const k = Math.max(0, Math.log(targetTop / vTop) / (topRider.overall - ELITE_O_THRESHOLD));
+    elitePremium = {
+      overall_threshold: ELITE_O_THRESHOLD,
+      k: Number(k.toPrecision(6)),
+      floor_overall: ELITE_FLOOR_OVERALL,
+      floor: Math.round(affordabilityCeiling * FLOOR_MULT),
+      affordability_ceiling: Math.round(affordabilityCeiling),
+      unbuyable_seasons: UNBUYABLE_SEASONS,
+      target_top: Math.round(targetTop),
+    };
+  }
   console.log(
-    softCap
-      ? `Blødt top-loft: threshold=p${(SOFT_CAP_PCT * 100).toFixed(0)}=${fmtM(softCapThreshold)} · gamma=${SOFT_CAP_GAMMA} (komprimerer halen; median urørt)`
-      : `Blødt top-loft: SLÅET FRA (gamma=${SOFT_CAP_GAMMA} ∉ (0,1))`
+    elitePremium
+      ? `Elite-præmie: overall>${ELITE_O_THRESHOLD} · k=${elitePremium.k} · gulv(overall≥${ELITE_FLOOR_OVERALL})=${fmtM(elitePremium.floor)} · råd-loft(${UNBUYABLE_SEASONS} sæs)=${fmtM(affordabilityCeiling)} · top-mål=${fmtM(targetTop)} (top overall ${topRider.overall})`
+      : `Elite-præmie: SLÅET FRA (ingen rytter over overall ${ELITE_O_THRESHOLD})`
   );
 
   const model = {
@@ -277,13 +305,14 @@ async function main() {
       median_v4_raw_npv: Math.round(medianV4RawNpv),
       n_calibration: rawNpvs.length,
     },
-    soft_cap: softCap,
+    elite_premium: elitePremium,
     notes:
-      "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion " +
+      "Værdimodel v4 (#2428, SHADOW) — fittet på simuleret sæson-produktion " +
       "(scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke " +
       "på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global " +
-      "faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft " +
-      "(potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. " +
+      "faktor så median(v4) matcher median(nuværende base_value). elite_premium = stejl " +
+      "konveks præmie over overall-tærskel så de enormt gode ryttere er ukøbelige i " +
+      "unbuyable_seasons sæsoner (kalibreret mod rigeste holds råd-loft); ejer-tunbart. " +
       "Styrer INGEN økonomi (shadow, ingen migration).",
   };
 

@@ -1,7 +1,7 @@
 {
   "version": 4,
   "method": "sim-production-npv",
-  "fitted_at": "2026-07-13T21:37:43.902Z",
+  "fitted_at": "2026-07-14T07:41:14.824Z",
   "sim_run_id": "75507b50",
   "K": 30,
   "season_id": "00000000-0000-0000-0000-000000000001",
@@ -69,16 +69,20 @@
       "p90_prize": 456905
     }
   },
-  "scale": 2.5985837,
+  "scale": 2.7492114,
   "scale_ref": {
     "median_current_base_value": 6972,
-    "median_v4_raw_npv": 2683,
-    "n_calibration": 6643
+    "median_v4_raw_npv": 2536,
+    "n_calibration": 6412
   },
-  "soft_cap": {
-    "threshold": 199699,
-    "gamma": 0.65,
-    "pct": 0.95
+  "elite_premium": {
+    "overall_threshold": 45,
+    "k": 0.0984017,
+    "floor_overall": 58,
+    "floor": 8215000,
+    "affordability_ceiling": 4107500,
+    "unbuyable_seasons": 4,
+    "target_top": 82150000
   },
-  "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft (potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
+  "notes": "Værdimodel v4 (#2428, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). elite_premium = stejl konveks præmie over overall-tærskel så de enormt gode ryttere er ukøbelige i unbuyable_seasons sæsoner (kalibreret mod rigeste holds råd-loft); ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
 }

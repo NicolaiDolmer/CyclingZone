@@ -70,10 +70,10 @@ function fitForAlpha(samples, alpha) {
 // og returnér dens fulde fit. samples: [{ primary_type, abilities, e_prize }].
 export function fitProductionModel(samples, { alphaGrid = [0, 0.25, 0.5, 0.75, 1] } = {}) {
   if (!Array.isArray(samples) || samples.length < 3) {
-    throw new Error(`fitProductionModel: for få samples (${samples?.length ?? 0}, min 3)`);
+    throw new Error(`fitProductionModel: too few samples (${samples?.length ?? 0}, min 3)`);
   }
   if (!Array.isArray(alphaGrid) || alphaGrid.length === 0) {
-    throw new Error("fitProductionModel: alphaGrid må ikke være tom");
+    throw new Error("fitProductionModel: alphaGrid must not be empty");
   }
 
   let best = null;

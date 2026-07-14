@@ -9,7 +9,7 @@
 // mirrored i den delte kontrakt-fil, Kontrakt 4):
 //   1. Type-økonomi          (RAPPORT)   2. Skala-kontinuitet   (HÅRD, ±15% median-drift)
 //   3. Udvikl-og-sælg P&L    (HÅRD)      4. Symmetri            (RAPPORT, career-trajectories)
-//   5. Ingen runaway         (HÅRD, ≤×2) 6. Anker-sanity        (BLØD — rapporteres, blokerer ALDRIG)
+//   5. Elite ukøbelig        (HÅRD)      6. Anker-sanity        (BLØD — rapporteres, blokerer ALDRIG)
 //   7. Determinisme          (HÅRD, sim_run_id sat)
 //
 // Hver gate-række har { name, hard, ok, detail, ... }. "hard: true" gates blokerer
@@ -120,27 +120,31 @@ export function scaleContinuityGate(v3Values, v4Values, { maxDriftPct = 0.15 } =
 }
 
 // ---------------------------------------------------------------------------
-// Gate 5 — Ingen runaway (HÅRD)
+// Gate 5 — Elite ukøbelig (HÅRD) — afløser den tidligere runaway-gate
 // ---------------------------------------------------------------------------
+// Ejer-retning 14/7: de ENORMT gode ryttere skal være ukøbelige i 3-4 sæsoner.
+// Runaway-gaten (total ≤ ×2) er derfor forældet — ejeren VIL have en tung top.
+// Ny hård gate: hver rytter med overall ≥ ELITE_CHECK_OVERALL skal koste MERE end
+// råd-loftet (rigeste holds saldo + N sæsoners max-opsparing, fra model.elite_premium),
+// dvs. bogstaveligt uden for rækkevidde. Tunbar tærskel.
+export const ELITE_CHECK_OVERALL = 55;
 
-// Kalibrerbar konstant (spec §5.5): populations-total v4 ≤ maxRatio × populations-total
-// v3. 2× er startpunktet — ejer kan justere ved re-fit/scorecard-genkørsel.
-export const RUNAWAY_MAX_RATIO = 2;
-
-export function runawayGate(v3Values, v4Values, { maxRatio = RUNAWAY_MAX_RATIO } = {}) {
-  const v3 = populationStats(v3Values);
-  const v4 = populationStats(v4Values);
-  const haveData = v3.total > 0;
-  const ratio = haveData ? v4.total / v3.total : null;
-  const ok = haveData && ratio <= maxRatio;
+export function eliteUnbuyableGate(riders = [], { ceiling, eliteOverall = ELITE_CHECK_OVERALL } = {}) {
+  const haveCeiling = Number.isFinite(Number(ceiling)) && Number(ceiling) > 0;
+  const elite = riders.filter((r) => Number(r.overall) >= eliteOverall && Number.isFinite(Number(r.v4Value)));
+  const minElite = elite.length ? Math.min(...elite.map((r) => Number(r.v4Value))) : null;
+  const maxV4 = riders.length ? Math.max(...riders.map((r) => Number(r.v4Value) || 0)) : null;
+  const ok = haveCeiling && elite.length > 0 && minElite > Number(ceiling);
   return {
-    name: `Ingen runaway: populations-total v4 ≤ ×${maxRatio} v3`,
+    name: `Elite ukøbelig: alle overall≥${eliteOverall} > råd-loft`,
     hard: true,
     ok,
-    detail: haveData
-      ? `total v3=${fmtCZ(v3.total)} · v4=${fmtCZ(v4.total)} · ×${ratio.toFixed(2)} (grænse ×${maxRatio})`
-      : "v3 populations-total er 0/tom — kan ikke beregne ratio",
-    stats: { v3total: v3.total, v4total: v4.total, ratio, maxRatio },
+    detail: !haveCeiling
+      ? "intet råd-loft i modellen (elite_premium mangler)"
+      : elite.length === 0
+        ? `ingen ryttere med overall≥${eliteOverall} i populationen`
+        : `${elite.length} elite-ryttere · billigste=${fmtCZ(minElite)} vs råd-loft=${fmtCZ(ceiling)} · dyreste=${fmtCZ(maxV4)}`,
+    stats: { nElite: elite.length, minElite, ceiling: Number(ceiling) || null, maxV4 },
   };
 }
 
