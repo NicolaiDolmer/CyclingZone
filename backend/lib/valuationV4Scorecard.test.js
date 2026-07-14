@@ -6,17 +6,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  RUNAWAY_MAX_RATIO,
+  ELITE_CHECK_OVERALL,
   allHardGatesPass,
   anchorSanityRow,
   determinismGate,
   developAndSellGate,
   developAndSellPnl,
+  eliteUnbuyableGate,
   formatTrajectoryTable,
   formatTypeEconomyTable,
   populationStats,
   projectAbilitiesForward,
-  runawayGate,
   scaleContinuityGate,
   symmetryReportRow,
   typeEconomyRows,
@@ -133,31 +133,46 @@ test("scaleContinuityGate: tom population fejler i stedet for at kaste", () => {
 });
 
 // ---------------------------------------------------------------------------
-// runawayGate — Gate 5 (hård, ≤×2)
+// eliteUnbuyableGate — Gate 5 (hård) — afløser runaway
 // ---------------------------------------------------------------------------
 
-test("runawayGate: ratio under grænsen er ok", () => {
-  const v3 = Array(5).fill(1000); // total 5000
-  const v4 = Array(5).fill(1900); // total 9500, ×1.9
-  const gate = runawayGate(v3, v4);
+test("eliteUnbuyableGate: alle elite over råd-loft → ok", () => {
+  const riders = [
+    { overall: 70, v4Value: 80_000_000 },
+    { overall: 60, v4Value: 20_000_000 },
+    { overall: 30, v4Value: 50_000 }, // ikke-elite, ignoreres
+  ];
+  const gate = eliteUnbuyableGate(riders, { ceiling: 5_000_000 });
   assert.equal(gate.hard, true);
   assert.equal(gate.ok, true);
-  assert.ok(Math.abs(gate.stats.ratio - 1.9) < 1e-9);
+  assert.equal(gate.stats.nElite, 2);
 });
 
-test("runawayGate: ratio over grænsen fejler", () => {
-  const v3 = Array(5).fill(1000);
-  const v4 = Array(5).fill(2100); // ×2.1
-  const gate = runawayGate(v3, v4);
+test("eliteUnbuyableGate: en elite UNDER råd-loft → fejler (købelig)", () => {
+  const riders = [
+    { overall: 70, v4Value: 80_000_000 },
+    { overall: 58, v4Value: 3_000_000 }, // under loft → købelig
+  ];
+  assert.equal(eliteUnbuyableGate(riders, { ceiling: 5_000_000 }).ok, false);
+});
+
+test("eliteUnbuyableGate: manglende råd-loft → fejler (kan ikke bekræfte)", () => {
+  const gate = eliteUnbuyableGate([{ overall: 70, v4Value: 80_000_000 }], {});
   assert.equal(gate.ok, false);
+  assert.match(gate.detail, /råd-loft/);
 });
 
-test("runawayGate: eksakt ×2-grænse er inklusiv (≤) og matcher RUNAWAY_MAX_RATIO-default", () => {
-  const v3 = Array(5).fill(1000);
-  const v4 = Array(5).fill(2000); // eksakt ×2
-  const gate = runawayGate(v3, v4);
-  assert.equal(gate.ok, true);
-  assert.equal(gate.stats.maxRatio, RUNAWAY_MAX_RATIO);
+test("eliteUnbuyableGate: ingen elite i populationen → fejler", () => {
+  const gate = eliteUnbuyableGate([{ overall: 30, v4Value: 50_000 }], { ceiling: 5_000_000 });
+  assert.equal(gate.ok, false);
+  assert.match(gate.detail, /ingen ryttere/);
+});
+
+test("eliteUnbuyableGate: tunbar overall-tærskel + default = ELITE_CHECK_OVERALL", () => {
+  const riders = [{ overall: 50, v4Value: 6_000_000 }];
+  assert.equal(eliteUnbuyableGate(riders, { ceiling: 5_000_000 }).ok, false); // 50 < 55 → ingen elite
+  assert.equal(eliteUnbuyableGate(riders, { ceiling: 5_000_000, eliteOverall: 45 }).ok, true);
+  assert.equal(ELITE_CHECK_OVERALL, 55);
 });
 
 // ---------------------------------------------------------------------------

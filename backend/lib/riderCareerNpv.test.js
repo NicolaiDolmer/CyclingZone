@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { predictBaseValueV4, careerTrajectory, hazard, applySoftCap } from "./riderCareerNpv.js";
+import { predictBaseValueV4, careerTrajectory, hazard, applyElitePremium } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -197,45 +197,54 @@ test("predictBaseValueV4 falder tilbage til laveste offset for en type uden kali
   assert.ok(value < gcValue);
 });
 
-// ── Blødt top-loft (#2428) ─────────────────────────────────────────────────────
+// ── Elite-præmie (#2428) ───────────────────────────────────────────────────────
 
-test("applySoftCap: værdi ≤ threshold er urørt", () => {
-  const sc = { threshold: 1000, gamma: 0.5 };
-  assert.equal(applySoftCap(500, sc), 500);
-  assert.equal(applySoftCap(1000, sc), 1000);
+test("applyElitePremium: overall ≤ threshold er urørt", () => {
+  const ep = { overall_threshold: 45, k: 0.08 };
+  assert.equal(applyElitePremium(1000, 30, ep), 1000);
+  assert.equal(applyElitePremium(1000, 45, ep), 1000);
 });
 
-test("applySoftCap: værdi > threshold komprimeres (potens-kompression)", () => {
-  const sc = { threshold: 1000, gamma: 0.5 };
-  // 4× threshold → threshold · 4^0.5 = 2× threshold (halveret log-overskud).
-  assert.equal(applySoftCap(4000, sc), 2000);
-  // 100× → threshold · 100^0.5 = 10× threshold.
-  assert.equal(applySoftCap(100000, sc), 10000);
+test("applyElitePremium: overall > threshold ganges op (eksponentiel)", () => {
+  const ep = { overall_threshold: 45, k: 0.08 };
+  // overall 70 → value · exp(0.08·25) = value · exp(2) ≈ value · 7,389.
+  assert.ok(Math.abs(applyElitePremium(1000, 70, ep) - 1000 * Math.exp(2)) < 1e-6);
+  // højere overall → større præmie.
+  assert.ok(applyElitePremium(1000, 70, ep) > applyElitePremium(1000, 60, ep));
 });
 
-test("applySoftCap: gamma=1 eller manglende cap → ingen kompression", () => {
-  assert.equal(applySoftCap(9999, { threshold: 1000, gamma: 1 }), 9999);
-  assert.equal(applySoftCap(9999, null), 9999);
-  assert.equal(applySoftCap(9999, { threshold: 0, gamma: 0.5 }), 9999);
+test("applyElitePremium: k≤0 eller manglende premium → ingen præmie", () => {
+  assert.equal(applyElitePremium(9999, 70, { overall_threshold: 45, k: 0 }), 9999);
+  assert.equal(applyElitePremium(9999, 70, null), 9999);
 });
 
-test("applySoftCap: monoton (bevarer rangorden over threshold)", () => {
-  const sc = { threshold: 1000, gamma: 0.5 };
-  const a = applySoftCap(2000, sc), b = applySoftCap(5000, sc), c = applySoftCap(20000, sc);
-  assert.ok(a < b && b < c);
+test("applyElitePremium: monoton i BÅDE value og overall", () => {
+  const ep = { overall_threshold: 45, k: 0.08 };
+  assert.ok(applyElitePremium(1000, 60, ep) < applyElitePremium(2000, 60, ep)); // value
+  assert.ok(applyElitePremium(1000, 50, ep) < applyElitePremium(1000, 65, ep)); // overall
 });
 
-test("predictBaseValueV4: soft_cap komprimerer høj-værdi-rytter men ikke median", () => {
-  const strong = makeAbilities({ climbing: 95, tempo: 90, endurance: 88, punch: 85 });
+test("applyElitePremium: elite-gulv garanterer minimum for overall ≥ floor_overall", () => {
+  const ep = { overall_threshold: 45, k: 0.08, floor_overall: 58, floor: 8_000_000 };
+  // lav-produktions elite-rytter (lille value) → løftes til gulvet.
+  assert.equal(applyElitePremium(100_000, 60, ep), 8_000_000);
+  // høj-produktions elite over gulvet → præmien vinder (ikke klemt ned til gulvet).
+  assert.ok(applyElitePremium(50_000_000, 70, ep) > 8_000_000);
+  // under floor_overall → intet gulv (kun præmie).
+  assert.ok(applyElitePremium(100_000, 55, ep) < 8_000_000);
+});
+
+test("predictBaseValueV4: elite-præmie løfter høj-overall-rytter men ikke lav-overall", () => {
+  const ep = { overall_threshold: 45, k: 0.1 };
   const rider = { primary_type: "climber", potentiale: 3, age: 26 };
-  const uncapped = predictBaseValueV4(rider, strong, fixtureModel());
-  // sæt tærskel LANGT under den stærke rytters værdi → skal komprimeres ned.
-  const capped = predictBaseValueV4(rider, strong, fixtureModel({ soft_cap: { threshold: Math.floor(uncapped / 4), gamma: 0.5 } }));
-  assert.ok(capped < uncapped, `capped ${capped} skal være < uncapped ${uncapped}`);
-  assert.ok(capped > 1);
-  // en svag rytter under tærsklen er urørt.
-  const weak = makeAbilities({ climbing: 20, tempo: 15 });
-  const weakUncapped = predictBaseValueV4({ ...rider }, weak, fixtureModel());
-  const weakCapped = predictBaseValueV4({ ...rider }, weak, fixtureModel({ soft_cap: { threshold: weakUncapped * 10, gamma: 0.5 } }));
-  assert.equal(weakCapped, weakUncapped);
+  // høj overall (alle abilities ~90) → stor præmie.
+  const eliteAb = makeAbilities(Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 90])));
+  const base = predictBaseValueV4(rider, eliteAb, fixtureModel());
+  const boosted = predictBaseValueV4(rider, eliteAb, fixtureModel({ elite_premium: ep }));
+  assert.ok(boosted > base * 5, `boosted ${boosted} skal være >> base ${base}`);
+  // lav overall (alle ~15, under tærsklen) → urørt.
+  const weakAb = makeAbilities(Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 15])));
+  const weakBase = predictBaseValueV4(rider, weakAb, fixtureModel());
+  const weakBoosted = predictBaseValueV4(rider, weakAb, fixtureModel({ elite_premium: ep }));
+  assert.equal(weakBoosted, weakBase);
 });

@@ -21,7 +21,7 @@
 // Model-input: Kontrakt 2-formen (backend/lib/riderValuationModelV4.json), se
 // docs/superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md.
 
-import { ABILITY_KEYS, blendedOutput } from "./riderValuation.js";
+import { ABILITY_KEYS, blendedOutput, riderOverall } from "./riderValuation.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import {
   PROGRESSION_CONFIG,
@@ -124,18 +124,38 @@ function simulateCareer(rider, abilities, model) {
   return { npv, trajectory };
 }
 
-// Blødt top-loft (#2428): glat aftagende-udbytte-kompression over en tærskel.
-// value > threshold → threshold · (value/threshold)^gamma, gamma ∈ (0,1). Bevarer
-// rangorden (monoton) og rører IKKE værdier ≤ threshold (tærsklen sættes > median,
-// så skala-kontinuiteten holder). gamma=1 / manglende soft_cap → ingen kompression.
-// Tæmmer den tunge hale (få dominerende ryttere i den svage beta-population) uden
-// et fladt loft. threshold + gamma er ejer-tunbare og ligger i model.soft_cap.
-export function applySoftCap(value, softCap) {
-  if (!softCap) return value;
-  const threshold = Number(softCap.threshold);
-  const gamma = Number(softCap.gamma);
-  if (!(threshold > 0) || !(gamma > 0) || gamma >= 1 || !(value > threshold)) return value;
-  return threshold * Math.pow(value / threshold, gamma);
+// Elite-præmie (#2428, ejer-retning 14/7): de ENORMT gode ryttere skal være
+// uoverkommeligt dyre (ukøbelige i 3-4 sæsoner), ikke prissat på ren produktion —
+// produktionen alene kapper en stjerne ved hvad han kan tjene (~1-2M i den svage
+// beta-økonomi), stik imod ejerens vision om eliten som utilgængelige trofæer.
+// Løsningen: en STEJL, konveks præmie over en overall-tærskel:
+//   value · exp(k · max(0, overall − overall_threshold))
+// Under tærsklen (bulk): præmie = 1 (produktions-NPV'en grunder de mange ryttere
+// fornuftigt). Over: eksplosiv vækst, så en overall-70-stjerne lander titals-
+// millioner over det rigeste holds råd-loft. Monoton i BÅDE value og overall
+// (bevarer rangorden). Erstatter det tidligere bløde top-loft (som trak den
+// FORKERTE vej — klemte eliten ned). overall_threshold + k er ejer-tunbare og
+// kalibreres i fitRiderValuationV4.js mod den faktiske hold-økonomi.
+export function applyElitePremium(value, overall, elitePremium) {
+  if (!elitePremium) return value;
+  const threshold = Number(elitePremium.overall_threshold);
+  const k = Number(elitePremium.k);
+  const o = Number(overall);
+  if (!Number.isFinite(o)) return value;
+  let v = value;
+  // Konveks præmie (glat vækst mod toppen).
+  if (k > 0 && Number.isFinite(threshold) && o > threshold) {
+    v = value * Math.exp(k * (o - threshold));
+  }
+  // Elite-gulv (#2428): de ENORMT gode ryttere (overall ≥ floor_overall) er GARANTERET
+  // ukøbelige — mindst `floor` (= flere gange råd-loftet), uanset deres produktion.
+  // Uden gulvet kan en top-overall rytter med lav produktion ende under råd-loftet.
+  const floor = Number(elitePremium.floor);
+  const floorOverall = Number(elitePremium.floor_overall);
+  if (floor > 0 && Number.isFinite(floorOverall) && o >= floorOverall) {
+    v = Math.max(v, floor);
+  }
+  return v;
 }
 
 // Karriere-NPV base_value (v4). Samme kald-form som predictBaseValue (v3).
@@ -151,8 +171,11 @@ export function predictBaseValueV4(rider, abilities, model /*, opts */) {
   if (!Number.isFinite(npv) || npv <= 0) return null;
 
   const scale = Number.isFinite(Number(model.scale)) ? Number(model.scale) : 1;
-  const capped = applySoftCap(scale * npv, model.soft_cap);
-  const baseValue = Math.round(capped);
+  // Elite-præmien keyer på rytterens NUVÆRENDE overall (ikke fremskrevet) — det er
+  // de dygtige NU der skal være uoverkommelige, ikke unge talenter (lav overall nu).
+  const overallNow = riderOverall(abilities);
+  const premium = applyElitePremium(scale * npv, overallNow, model.elite_premium);
+  const baseValue = Math.round(premium);
   if (!Number.isFinite(baseValue)) return null;
   return Math.max(1, baseValue);
 }

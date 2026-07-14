@@ -9,7 +9,7 @@
 // (docs/superpowers/specs/2026-07-13-rider-valuation-v4-production-value-design.md):
 //   1. Type-økonomi (rapport)      2. Skala-kontinuitet (hård, ±15% median-drift)
 //   3. Udvikl-og-sælg P&L (hård)   4. Symmetri (rapport, career-trajectories)
-//   5. Ingen runaway (hård, ≤×2)   6. Anker-sanity (blød — rapporteres, blokerer aldrig)
+//   5. Elite ukøbelig (hård)         6. Anker-sanity (blød — rapporteres, blokerer aldrig)
 //   7. Determinisme (hård, sim_run_id sat)
 //
 // Ren gate-matematik: ../lib/valuationV4Scorecard.js (node --test, ingen DB-afhængighed).
@@ -30,7 +30,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { predictBaseValue } from "../lib/riderValuation.js";
+import { predictBaseValue, riderOverall } from "../lib/riderValuation.js";
 // Kontrakt 3 (backend/lib/riderCareerNpv.js) — bygget parallelt, landet 13/7:
 //   predictBaseValueV4(rider, abilities, model) → number|null
 //   careerTrajectory(rider, abilities, model) → [{ s, age, O, prod, survival, discounted }]
@@ -45,7 +45,7 @@ import {
   formatTrajectoryTable,
   formatTypeEconomyTable,
   projectAbilitiesForward,
-  runawayGate,
+  eliteUnbuyableGate,
   scaleContinuityGate,
   symmetryReportRow,
   typeEconomyRows,
@@ -109,8 +109,11 @@ async function loadRealPopulation() {
     allTeams.filter((t) => !t.is_test_account && !t.is_frozen && !t.is_bank).map((t) => t.id)
   );
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+  // #2428 (14/7): INKLUDÉR free agents (team_id NULL) — de enormt gode ryttere er
+  // usignerede, og elite-ukøbelig-gaten skal netop verificere DEM. Ekskludér kun
+  // ryttere på test-/frost-/bank-hold. (Bulk-gates er robuste mod de ~11% free agents.)
   const riders = allRiders.filter(
-    (r) => r.is_academy === false && r.is_retired === false && r.team_id != null && teamIds.has(r.team_id)
+    (r) => r.is_academy === false && r.is_retired === false && (r.team_id == null || teamIds.has(r.team_id))
   );
   return riders.map((r) => ({ ...r, age: riderAge(r.birthdate), abilities: abilityByRider.get(r.id) || null }));
 }
@@ -123,6 +126,7 @@ async function main() {
   const rows = valued
     .map((r) => ({
       ...r,
+      overall: riderOverall(r.abilities),
       v3Value: predictBaseValue(r, r.abilities, v3Model),
       v4Value: predictBaseValueV4({ primary_type: r.primary_type, potentiale: r.potentiale, age: r.age }, r.abilities, v4Model),
     }))
@@ -137,8 +141,11 @@ async function main() {
   // --- Gate 2: skala-kontinuitet ---
   const gScale = scaleContinuityGate(v3Values, v4Values);
 
-  // --- Gate 5: ingen runaway ---
-  const gRunaway = runawayGate(v3Values, v4Values);
+  // --- Gate 5: elite ukøbelig ---
+  const gEliteUnbuyable = eliteUnbuyableGate(rows, {
+    ceiling: v4Model.elite_premium?.affordability_ceiling,
+    eliteOverall: v4Model.elite_premium?.floor_overall,
+  });
 
   // --- Gate 3: udvikl-og-sælg P&L ---
   // Repræsentativ ung prospect: højt potentiale (≥HIGH_POTENTIALE på 1-6-skalaen
@@ -215,7 +222,7 @@ async function main() {
     gScale,
     gPnl,
     gSymmetry,
-    gRunaway,
+    gEliteUnbuyable,
     gAnchor,
     gDeterminism,
   ];
