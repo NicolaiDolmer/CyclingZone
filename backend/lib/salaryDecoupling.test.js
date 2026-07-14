@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  calibrateSalaryRate, projectedSalary, wageBillsByDivision,
+  calibrateSalaryRate, calibrateSalaryRatesByDivision, projectedSalary, wageBillsByDivision,
   wageBillContinuityGate, talentFixGate, runawayGate,
 } from "./salaryDecoupling.js";
 
@@ -65,4 +65,37 @@ test("runawayGate (G4): ingen projiceret løn over loft", () => {
   // rate 0,3 → løn 30k og 270k, maks 270k.
   assert.equal(runawayGate(rows, 0.3, 240_000).pass, false); // maks 270k > 240k → fejl
   assert.equal(runawayGate(rows, 0.3, 300_000).pass, true);  // maks 270k ≤ 300k → pass
+});
+
+test("calibrateSalaryRatesByDivision: hver division får sin egen sats + global", () => {
+  const rows = [
+    { current_production_value: 100_000, current_salary: 30_000, division: 1 }, // 0,3
+    { current_production_value: 100_000, current_salary: 10_000, division: 2 }, // 0,1
+  ];
+  const rates = calibrateSalaryRatesByDivision(rows);
+  assert.ok(Math.abs(rates.byDiv[1] - 0.3) < 1e-9);
+  assert.ok(Math.abs(rates.byDiv[2] - 0.1) < 1e-9);
+  assert.ok(Math.abs(rates.global - 0.2) < 1e-9); // 40k/200k
+});
+
+test("per-division satser bevarer HVER divisions lønbyrde (G1 grøn ved konstruktion)", () => {
+  const rows = [
+    { current_production_value: 100_000, current_salary: 30_000, division: 1 },
+    { current_production_value: 200_000, current_salary: 60_000, division: 1 },
+    { current_production_value: 100_000, current_salary: 10_000, division: 2 },
+  ];
+  const rates = calibrateSalaryRatesByDivision(rows);
+  const g1 = wageBillContinuityGate(wageBillsByDivision(rows, rates), 0.15);
+  assert.equal(g1.pass, true);
+  for (const b of g1.rows) assert.ok(Math.abs(b.drift) < 0.02, `div ${b.division} drift ${b.drift}`);
+});
+
+test("wageBills/runaway/talentFix virker med BÅDE number og {byDiv,global}", () => {
+  const rows = [{ current_production_value: 100_000, current_salary: 30_000, division: 1 }];
+  const rates = calibrateSalaryRatesByDivision(rows);
+  assert.equal(wageBillsByDivision(rows, 0.3)[1].projected, 30_000);     // number (bagud-kompatibel)
+  assert.equal(wageBillsByDivision(rows, rates)[1].projected, 30_000);   // objekt
+  const talents = [{ current_production_value: 50_000, value_v4: 5_000_000, division: 1 }];
+  assert.equal(talentFixGate(talents, rates, { sponsor: 240_000, oldRate: 0.067 }).rows[0].newSalary, projectedSalary(50_000, 0.3));
+  assert.equal(runawayGate(rows, rates, 240_000).pass, true);
 });

@@ -21,7 +21,7 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { currentProductionValue, predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { riderOverall } from "../lib/riderValuation.js";
 import {
-  calibrateSalaryRate, projectedSalary, wageBillsByDivision,
+  calibrateSalaryRatesByDivision, projectedSalary, wageBillsByDivision,
   wageBillContinuityGate, talentFixGate, runawayGate,
 } from "../lib/salaryDecoupling.js";
 import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
@@ -72,7 +72,7 @@ async function main() {
   // udelades — de er ikke på lønningslisten.
   const [riders, abilityRows] = await Promise.all([
     fetchAllRows(() => supabase.from("riders")
-      .select("id, team_id, salary, base_value, prize_earnings_bonus, potentiale, birthdate, primary_type, is_retired, is_academy")
+      .select("id, team_id, salary, potentiale, birthdate, primary_type, is_retired")
       .not("team_id", "is", null).order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
@@ -97,7 +97,7 @@ async function main() {
     rows.push({ current_production_value: cpv, current_salary: Number(r.salary), division: team.division, value_v4 });
     // Talent-udvalg til G2: ung + højt potentiale (repræsentative for det problematiske tilfælde).
     if (age <= 22 && Number(r.potentiale) >= HIGH_POTENTIALE) {
-      talents.push({ id: r.id, age, overall: riderOverall(ab), current_production_value: cpv, value_v4 });
+      talents.push({ id: r.id, age, overall: riderOverall(ab), current_production_value: cpv, value_v4, division: team.division });
     }
   }
 
@@ -106,11 +106,15 @@ async function main() {
     process.exit(1);
   }
 
-  const rate = calibrateSalaryRate(rows);
-  const bills = wageBillsByDivision(rows, rate);
+  const rates = calibrateSalaryRatesByDivision(rows);
+  if (rates.global == null) {
+    console.error("❌ Kunne ikke kalibrere sats (ingen rækker med både løn og produktion).");
+    process.exit(1);
+  }
+  const bills = wageBillsByDivision(rows, rates);
   const g1 = wageBillContinuityGate(bills, TOLERANCE);
-  const g2 = talentFixGate(talents, rate, { sponsor: SPONSOR, oldRate: OLD_RATE });
-  const g4 = runawayGate(rows, rate, SPONSOR);
+  const g2 = talentFixGate(talents, rates, { sponsor: SPONSOR, oldRate: OLD_RATE });
+  const g4 = runawayGate(rows, rates, SPONSOR);
 
   const fmt = (n) => (n / 1e6).toFixed(2) + "M";
   const lines = [];
@@ -119,13 +123,16 @@ async function main() {
   say(`# Løn-decoupling slice A — shadow-scorecard (#2428)`);
   say(``);
   say(`- Population: ${rows.length} owned-ryttere med løn (${skipped} sprunget over)`);
-  say(`- **Kalibreret SALARY_RATE_PROD = ${rate.toFixed(4)}** (gammel market_value-rate: ${OLD_RATE})`);
+  say(`- Global reference-sats = ${rates.global.toFixed(4)} (gammel market_value-rate: ${OLD_RATE})`);
+  say(`- **Kalibreret SALARY_RATE_PROD pr. division:** ` +
+    Object.entries(rates.byDiv).sort(([a], [b]) => String(a).localeCompare(String(b)))
+      .map(([d, r]) => `D${d} ${r.toFixed(4)}`).join(" · "));
   say(``);
   say(`## G1 · Lønbyrde-kontinuitet pr. division (±${(TOLERANCE * 100).toFixed(0)}%) — ${g1.pass ? "✅" : "❌"}`);
-  say(`| Div | Nuværende | Projiceret | Drift | Ryttere |`);
-  say(`|--:|--:|--:|--:|--:|`);
+  say(`| Div | Sats | Nuværende | Projiceret | Drift | Ryttere |`);
+  say(`|--:|--:|--:|--:|--:|--:|`);
   for (const b of g1.rows.sort((a, c) => String(a.division).localeCompare(String(c.division)))) {
-    say(`| ${b.division} | ${fmt(b.current)} | ${fmt(b.projected)} | ${(b.drift * 100).toFixed(1)}% | ${b.count} |`);
+    say(`| ${b.division} | ${(rates.byDiv[b.division] ?? rates.global).toFixed(4)} | ${fmt(b.current)} | ${fmt(b.projected)} | ${(b.drift * 100).toFixed(1)}% | ${b.count} |`);
   }
   say(``);
   say(`## G2 · Talent-fix (løn < sponsor ${fmt(SPONSOR)} + lavere end market_value-kobling) — ${g2.pass ? "✅" : "❌"}`);
