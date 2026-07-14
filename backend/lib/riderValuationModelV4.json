@@ -1,0 +1,84 @@
+{
+  "version": 4,
+  "method": "sim-production-npv",
+  "fitted_at": "2026-07-13T21:37:43.902Z",
+  "sim_run_id": "75507b50",
+  "K": 30,
+  "season_id": "00000000-0000-0000-0000-000000000001",
+  "prize_per_point": 75,
+  "beta_pt": 0,
+  "discount": 0.8,
+  "horizon_model": "survival-weighted",
+  "fit": {
+    "alpha": 1,
+    "a": 4.598962,
+    "b": 0.09534681,
+    "c": -0.00009818051,
+    "offset": {
+      "sprinter": -0.119959,
+      "tt": -0.139083,
+      "climber": 0.184899,
+      "puncheur": 2.030708,
+      "brostensrytter": 1.046779,
+      "baroudeur": 0.159048,
+      "rouleur": 0.184802,
+      "gc": 0.580036
+    },
+    "r2_log": 0.2605,
+    "n_samples": 5999
+  },
+  "type_stats": {
+    "sprinter": {
+      "n": 1189,
+      "median_prize": 1538,
+      "p90_prize": 15705
+    },
+    "tt": {
+      "n": 2610,
+      "median_prize": 521,
+      "p90_prize": 4128
+    },
+    "climber": {
+      "n": 1930,
+      "median_prize": 469,
+      "p90_prize": 18853
+    },
+    "puncheur": {
+      "n": 19,
+      "median_prize": 57660,
+      "p90_prize": 264548
+    },
+    "brostensrytter": {
+      "n": 59,
+      "median_prize": 21675,
+      "p90_prize": 64040
+    },
+    "baroudeur": {
+      "n": 34,
+      "median_prize": 6863,
+      "p90_prize": 48855
+    },
+    "rouleur": {
+      "n": 123,
+      "median_prize": 6575,
+      "p90_prize": 49998
+    },
+    "gc": {
+      "n": 35,
+      "median_prize": 74093,
+      "p90_prize": 456905
+    }
+  },
+  "scale": 2.5985837,
+  "scale_ref": {
+    "median_current_base_value": 6972,
+    "median_v4_raw_npv": 2683,
+    "n_calibration": 6643
+  },
+  "soft_cap": {
+    "threshold": 199699,
+    "gamma": 0.65,
+    "pct": 0.95
+  },
+  "notes": "Værdimodel v4 (#2428 slice 1, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). soft_cap = blødt top-loft (potens-kompression over tærskel) der tæmmer den tunge hale uden fladt loft; ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
+}

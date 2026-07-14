@@ -89,3 +89,8 @@ docs/WEEKLY_PLANNING_GUIDE.md
 # backups must NEVER be committed — point BACKUP_DIR at OneDrive for off-site.
 /.backups/
 backend/scripts/backups/
+
+# Værdimodel v4 (#2428): sim-produktions-artefaktet er stort (~3 MB) og regenererbart
+# via scripts/simulateSeasonProduction.js. Kun den fittede model (riderValuationModelV4.json,
+# ~2 KB) committes — den er hvad route/preview loader ved runtime (som v3-modellen).
+backend/lib/riderProductionSample.json

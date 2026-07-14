@@ -1,0 +1,241 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { predictBaseValueV4, careerTrajectory, hazard, applySoftCap } from "./riderCareerNpv.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+function makeAbilities(overrides = {}) {
+  const a = {};
+  for (const k of VISIBLE_ABILITIES) a[k] = 50;
+  return { ...a, ...overrides };
+}
+
+function fixtureModel(overrides = {}) {
+  return {
+    version: 4,
+    method: "sim-production-npv",
+    fitted_at: "2026-07-13T00:00:00.000Z",
+    sim_run_id: "test-fixture",
+    K: 30,
+    season_id: 1,
+    prize_per_point: 75,
+    beta_pt: 0,
+    discount: 0.8,
+    horizon_model: "survival-weighted",
+    fit: {
+      alpha: 0.5,
+      a: 5,
+      b: 0.05,
+      c: 0,
+      offset: {
+        sprinter: 0, tt: 0, climber: 0, puncheur: 0,
+        brostensrytter: 0, baroudeur: 0, rouleur: 0, gc: 0,
+      },
+      r2_log: 0.9,
+      n_samples: 500,
+    },
+    scale: 1,
+    scale_ref: { median_current_base_value: 0, median_v4_raw_npv: 0 },
+    notes: "test fixture",
+    ...overrides,
+  };
+}
+
+// ── hazard() ──────────────────────────────────────────────────────────────────
+
+test("hazard: 0 under vinduet, lineær i vinduet, 1 fra guaranteedAge og opefter", () => {
+  assert.equal(hazard(30), 0);
+  assert.equal(hazard(36), 0);
+  assert.equal(hazard(38), 0.5);
+  assert.equal(hazard(40), 1);
+  assert.equal(hazard(45), 1);
+});
+
+// ── (1) Ung høj-potentiale rytter: fremskrivning HÆVER abilities tidligt ───────
+
+test("ung høj-potentiale rytter: forventede abilities + produktion stiger de første sæsoner", () => {
+  const rider = { id: "r-young", primary_type: "climber", potentiale: 6, age: 20 };
+  // climbing/tempo/punch/endurance er climber-signatur (positiv vægt) → vokser mod loft.
+  const abilities = makeAbilities({ climbing: 50, tempo: 50, punch: 50, endurance: 50 });
+  const model = fixtureModel();
+
+  const traj = careerTrajectory(rider, abilities, model);
+  assert.ok(traj.length >= 3, "skal have flere sæsoner i trajectory");
+  assert.ok(traj[1].O > traj[0].O, `O skal stige: ${traj[0].O} → ${traj[1].O}`);
+  assert.ok(traj[1].prod > traj[0].prod, `prod skal stige: ${traj[0].prod} → ${traj[1].prod}`);
+  assert.ok(traj[2].O > traj[1].O, `O skal blive ved at stige: ${traj[1].O} → ${traj[2].O}`);
+});
+
+// ── (2) Veteran: survival falder, S→0 ved 40, NPV domineret af nære sæsoner ────
+
+test("veteran (37 år): survival falder monotont og trajectory stopper før alder 40", () => {
+  const rider = { id: "r-vet", primary_type: "gc", potentiale: 3, age: 37 };
+  const abilities = makeAbilities();
+  const model = fixtureModel();
+
+  const traj = careerTrajectory(rider, abilities, model);
+  assert.ok(traj.length > 0, "skal have mindst én sæson");
+  assert.ok(traj[traj.length - 1].age < 40, "sidste sæson skal være under 40 (garanteret retirement)");
+  for (let i = 1; i < traj.length; i++) {
+    assert.ok(traj[i].survival < traj[i - 1].survival, "survival skal falde monotont");
+  }
+  // NPV domineret af nære sæsoner: første termin's bidrag > alle senere terminer tilsammen.
+  const total = traj.reduce((s, r) => s + r.discounted, 0);
+  assert.ok(traj[0].discounted > total - traj[0].discounted,
+    "første sæsons diskonterede bidrag skal dominere NPV'en");
+});
+
+test("garanteret retirement ved 40: en 39-årig rytter får højst 1 fremtidig sæson i trajectory", () => {
+  const rider = { id: "r-old", primary_type: "sprinter", potentiale: 2, age: 39 };
+  const abilities = makeAbilities();
+  const traj = careerTrajectory(rider, abilities, fixtureModel());
+  assert.ok(traj.length <= 2);
+  assert.ok(traj.every((r) => r.age < 40));
+});
+
+// ── (3) Determinisme ────────────────────────────────────────────────────────
+
+test("predictBaseValueV4 og careerTrajectory er deterministiske (samme input → samme output)", () => {
+  const rider = { id: "r-det", primary_type: "puncheur", potentiale: 4, age: 25 };
+  const abilities = makeAbilities({ punch: 65, tempo: 60 });
+  const model = fixtureModel();
+
+  const v1 = predictBaseValueV4(rider, abilities, model);
+  const v2 = predictBaseValueV4(rider, abilities, model);
+  assert.equal(v1, v2);
+  assert.ok(Number.isFinite(v1) && v1 > 0);
+
+  const t1 = careerTrajectory(rider, abilities, model);
+  const t2 = careerTrajectory(rider, abilities, model);
+  assert.deepEqual(t1, t2);
+});
+
+// ── (4) Monotoni: højere overall → højere base_value ───────────────────────────
+
+test("højere overall abilities giver højere v4 base_value (monotoni)", () => {
+  const model = fixtureModel();
+  const weakRider = { id: "r-weak", primary_type: "rouleur", potentiale: 3, age: 26 };
+  const strongRider = { id: "r-strong", primary_type: "rouleur", potentiale: 3, age: 26 };
+  const weakAbilities = makeAbilities({ flat: 40, endurance: 40 });
+  const strongAbilities = makeAbilities({ flat: 80, endurance: 80 });
+
+  const weakValue = predictBaseValueV4(weakRider, weakAbilities, model);
+  const strongValue = predictBaseValueV4(strongRider, strongAbilities, model);
+  assert.ok(strongValue > weakValue, `stærk (${strongValue}) skal slå svag (${weakValue})`);
+});
+
+test("monotoni holder på tværs af et par forskellige arketyper (sprinter + gc)", () => {
+  const model = fixtureModel();
+  const weakSprinter = predictBaseValueV4(
+    { id: "s-weak", primary_type: "sprinter", potentiale: 3, age: 24 },
+    makeAbilities({ acceleration: 35, sprint: 35 }),
+    model
+  );
+  const strongSprinter = predictBaseValueV4(
+    { id: "s-strong", primary_type: "sprinter", potentiale: 3, age: 24 },
+    makeAbilities({ acceleration: 85, sprint: 85 }),
+    model
+  );
+  assert.ok(strongSprinter > weakSprinter);
+
+  const weakGc = predictBaseValueV4(
+    { id: "g-weak", primary_type: "gc", potentiale: 3, age: 24 },
+    makeAbilities({ climbing: 35, time_trial: 35, recovery: 35, tempo: 35 }),
+    model
+  );
+  const strongGc = predictBaseValueV4(
+    { id: "g-strong", primary_type: "gc", potentiale: 3, age: 24 },
+    makeAbilities({ climbing: 85, time_trial: 85, recovery: 85, tempo: 85 }),
+    model
+  );
+  assert.ok(strongGc > weakGc);
+});
+
+// ── (5) Null-guards ─────────────────────────────────────────────────────────
+
+test("predictBaseValueV4 returnerer null ved manglende/ugyldig model", () => {
+  const rider = { id: "r1", primary_type: "gc", potentiale: 3, age: 25 };
+  const abilities = makeAbilities();
+  assert.equal(predictBaseValueV4(rider, abilities, null), null);
+  assert.equal(predictBaseValueV4(rider, abilities, undefined), null);
+  assert.equal(predictBaseValueV4(rider, abilities, {}), null); // ingen fit
+  assert.equal(predictBaseValueV4(rider, abilities, { fit: {} }), null); // fit uden a/b
+  assert.equal(predictBaseValueV4(rider, abilities, { fit: { a: 5 } }), null); // mangler b
+  assert.equal(predictBaseValueV4(rider, abilities, { fit: { b: 0.05 } }), null); // mangler a
+});
+
+test("predictBaseValueV4 returnerer null når abilities er helt fraværende", () => {
+  const rider = { id: "r1", primary_type: "gc", potentiale: 3, age: 25 };
+  const model = fixtureModel();
+  assert.equal(predictBaseValueV4(rider, {}, model), null);
+  assert.equal(predictBaseValueV4(rider, null, model), null);
+  assert.equal(predictBaseValueV4(rider, undefined, model), null);
+});
+
+test("careerTrajectory returnerer tomt array ved ugyldig model/abilities (ikke throw)", () => {
+  const rider = { id: "r1", primary_type: "gc", potentiale: 3, age: 25 };
+  assert.deepEqual(careerTrajectory(rider, makeAbilities(), null), []);
+  assert.deepEqual(careerTrajectory(rider, {}, fixtureModel()), []);
+});
+
+test("predictBaseValueV4 falder tilbage til laveste offset for en type uden kalibreret offset (#1231-mønster)", () => {
+  const rider = { id: "r1", primary_type: "ukendt-type", potentiale: 3, age: 25 };
+  const model = fixtureModel({
+    fit: {
+      alpha: 0.5, a: 5, b: 0.05, c: 0,
+      offset: { gc: Math.log(2), sprinter: Math.log(0.5) },
+      r2_log: 0.9, n_samples: 500,
+    },
+  });
+  const value = predictBaseValueV4(rider, makeAbilities(), model);
+  const gcValue = predictBaseValueV4(
+    { ...rider, primary_type: "gc" }, makeAbilities(), model
+  );
+  // ukendt type skal IKKE arve gc's høje offset (skal være billigere, ikke dyrere).
+  assert.ok(value < gcValue);
+});
+
+// ── Blødt top-loft (#2428) ─────────────────────────────────────────────────────
+
+test("applySoftCap: værdi ≤ threshold er urørt", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  assert.equal(applySoftCap(500, sc), 500);
+  assert.equal(applySoftCap(1000, sc), 1000);
+});
+
+test("applySoftCap: værdi > threshold komprimeres (potens-kompression)", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  // 4× threshold → threshold · 4^0.5 = 2× threshold (halveret log-overskud).
+  assert.equal(applySoftCap(4000, sc), 2000);
+  // 100× → threshold · 100^0.5 = 10× threshold.
+  assert.equal(applySoftCap(100000, sc), 10000);
+});
+
+test("applySoftCap: gamma=1 eller manglende cap → ingen kompression", () => {
+  assert.equal(applySoftCap(9999, { threshold: 1000, gamma: 1 }), 9999);
+  assert.equal(applySoftCap(9999, null), 9999);
+  assert.equal(applySoftCap(9999, { threshold: 0, gamma: 0.5 }), 9999);
+});
+
+test("applySoftCap: monoton (bevarer rangorden over threshold)", () => {
+  const sc = { threshold: 1000, gamma: 0.5 };
+  const a = applySoftCap(2000, sc), b = applySoftCap(5000, sc), c = applySoftCap(20000, sc);
+  assert.ok(a < b && b < c);
+});
+
+test("predictBaseValueV4: soft_cap komprimerer høj-værdi-rytter men ikke median", () => {
+  const strong = makeAbilities({ climbing: 95, tempo: 90, endurance: 88, punch: 85 });
+  const rider = { primary_type: "climber", potentiale: 3, age: 26 };
+  const uncapped = predictBaseValueV4(rider, strong, fixtureModel());
+  // sæt tærskel LANGT under den stærke rytters værdi → skal komprimeres ned.
+  const capped = predictBaseValueV4(rider, strong, fixtureModel({ soft_cap: { threshold: Math.floor(uncapped / 4), gamma: 0.5 } }));
+  assert.ok(capped < uncapped, `capped ${capped} skal være < uncapped ${uncapped}`);
+  assert.ok(capped > 1);
+  // en svag rytter under tærsklen er urørt.
+  const weak = makeAbilities({ climbing: 20, tempo: 15 });
+  const weakUncapped = predictBaseValueV4({ ...rider }, weak, fixtureModel());
+  const weakCapped = predictBaseValueV4({ ...rider }, weak, fixtureModel({ soft_cap: { threshold: weakUncapped * 10, gamma: 0.5 } }));
+  assert.equal(weakCapped, weakUncapped);
+});
