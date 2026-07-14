@@ -35,10 +35,10 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
         setNotFitted(true);
         setData(null);
       } else {
-        onMsg?.(`❌ ${adminErrorMessage(json, res)}`, "error");
+        onMsg?.(adminErrorMessage(json, res), "error");
       }
     } catch (e) {
-      onMsg?.(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+      onMsg?.(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
     } finally {
       setLoading(false);
     }
