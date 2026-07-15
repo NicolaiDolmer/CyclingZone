@@ -22,6 +22,8 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) (tier-preview + facilitets-help) · v3-flip-forudsætninger #2376 · Palmarès-småvalg (#1997) · #1996 del 2 (fælles session, claude:blocked) · entry-generator race condition [#2436](https://github.com/NicolaiDolmer/CyclingZone/issues/2436) (lav, kosmetisk, selv-helet). **Kendt bug:** test-konti wipes (#2245, high). Vercel-preview mangler mock (#1834) → ejer-gennemklik = lokal dev-server.
 
+> **🎨 UI/UX-audit 15/7 (research, ejer-gate passeret):** [audit](audits/2026-07-15-ui-ux-audit.md) + [plan](superpowers/specs/2026-07-15-ui-ux-audit-plan.md). Design-systemet er sundt (egenart 4/5 alle flader); problemet er 3 kontrakter UI-laget springer over. Mobil = **54,9% af app-besøg**. Nye: [#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) board-generalprøve · [#2469](https://github.com/NicolaiDolmer/CyclingZone/issues/2469) board context-drift (4. sti #2308 missede) · [#2466](https://github.com/NicolaiDolmer/CyclingZone/issues/2466) resultat-push (22/88) · [#2464](https://github.com/NicolaiDolmer/CyclingZone/issues/2464) auktion · [#2465](https://github.com/NicolaiDolmer/CyclingZone/issues/2465) feedback · [#2467](https://github.com/NicolaiDolmer/CyclingZone/issues/2467) småfund. **[#2468](https://github.com/NicolaiDolmer/CyclingZone/issues/2468) = masterplan-konsolidering (ejer-bestilt).** Board-hypotese: rigtig fornemmelse, forkert mekanisme — ingen dubletter, slå dem IKKE sammen.
+
 > **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
