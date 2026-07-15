@@ -56,9 +56,14 @@ export function abilityMult(ability, program) {
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults
 // (staff=null → staffTrainingBonus=1.0). Eksisterende callers, der ikke sender dem,
 // får et staffBonus på præcis 1.0 → bit-identisk output (nul regression, bevist i test).
+// #2437: academyRateMult er en MIDLERTIDIG interim-knap — akademi-raten kollapsede
+// ~9x efter #2202 (sæson-loft sendt som caps i stedet for livstids-loftet, se issue).
+// VALGFRI med sikker default 1.0 (bit-identisk, samme kontrakt som staff-parametrene
+// ovenfor); dailyTrainingEngine.js sender den IKKE endnu — rør ingen prod-adfærd før
+// ejeren har godkendt en model ud fra careerCurveSimulation.js.
 export function dailyAbilityDelta({
   ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
-  staff = null, facilityTier = null, riderLevel = null,
+  staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
@@ -75,8 +80,11 @@ export function dailyAbilityDelta({
   // Plan B (#1441): facilitets-MAGNITUDE (spec §2.1) — samme effectiveBonus som Klub-UI'et
   // viser. facilityTier null/0 → PRÆCIS 1.0 (nul regression for hold uden faciliteter).
   const facilityMult = facilityTrainingMultiplier({ facilityTier, staff });
+  // academyRateMult (#2437) ganges SIDST i kæden — samme "ekstra multiplikator-led,
+  // default 1.0" kontrakt som staffBonus/facilityMult. Interim-knap: ingen kalder i
+  // dagens prod sender den, så udeladt = uændret adfærd.
   return base * mult * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
-    * (bonus ? cfg.bonusMult : 1) * noise * staffBonus * facilityMult;
+    * (bonus ? cfg.bonusMult : 1) * noise * staffBonus * facilityMult * academyRateMult;
 }
 
 // #2082/#1938 (ejer-godkendt 5/7): sæson-budget-loft for akademi-alder — det EFFEKTIVE
@@ -103,9 +111,11 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults, så
 // eksisterende callers (uden staff) får bit-identisk adfærd. Trænings-motoren
 // (dailyTrainingEngine.js) sender dem videre til dailyAbilityDelta pr. evne.
+// #2437: academyRateMult sendes bare videre til dailyAbilityDelta pr. evne — samme
+// midlertidige interim-knap, samme sikre default 1.0 (se kommentar ved dailyAbilityDelta).
 export function applyDailyTick({
   riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
-  staff = null, facilityTier = null, riderLevel = null,
+  staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
@@ -119,7 +129,7 @@ export function applyDailyTick({
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
-      staff, facilityTier, riderLevel,
+      staff, facilityTier, riderLevel, academyRateMult,
     });
     if (delta <= 0) continue;
     score += delta;

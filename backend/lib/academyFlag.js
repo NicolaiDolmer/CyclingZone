@@ -33,6 +33,10 @@ export const ACADEMY = Object.freeze({
   // sæsonlængde), med en AFTAGENDE rate pr. alder — matcher ejerens mål om ~50%
   // af ungdomsloft-gappet lukket efter 5-7 sæsoner, men mere synlig fremgang
   // tidligt for nye akademi-spillere end en flad rate ville give.
+  // #2437: IKKE i brug i prod-stien længere (dailyTrainingEngine.js sender ikke
+  // længere et sæson-loft) — bevares fordi careerCurveSimulation.js bruger den til at
+  // modellere "current"-modellen (den gamle sæson-loft-adfærd) i før/efter-
+  // sammenligningen mod interim-modellerne (rate/N). Slet ikke uden at opdatere sim'en.
   SEASON_FRAC_BY_AGE: Object.freeze([
     { maxAge: 17, frac: 0.16 },
     { maxAge: 19, frac: 0.11 },
@@ -41,13 +45,25 @@ export const ACADEMY = Object.freeze({
   // Hård dags-cap: maks +1 evne-point/dag pr. evne for akademi-alder — sikkerhedsnet
   // mod enkelt-dags-spikes (prod-empiri #2082: værste +156 pt/10 dage for én rytter).
   HARD_DAILY_CAP: 1,
+
+  // #2437 — MIDLERTIDIG interim, fjernes igen når den rigtige model (jævn alders-taper,
+  // egen session) lander. #2202 lod dailyTrainingEngine.js sende sæson-loftet
+  // (SEASON_FRAC_BY_AGE/computeAcademySeasonCeiling) som `caps` i stedet for livstids-
+  // loftet — gappet i dailyAbilityDelta kollapsede ~9x og raten aftog eksponentielt
+  // derefter. Sæson-budgettet var IKKE opbrugt (83% ubrugt i prod): puljen var
+  // uopnåelig, ikke tømt. 1/3 er kalibreret i careerCurveSimulation.js mod den ægte
+  // prod-population (16-21 år) og ejer-godkendt 15/7: akademi-raten går fra
+  // 0,58 → 1,18 pt/dag/rytter, og 22-års-springet falder fra +102 til +51 point
+  // (mindre af det låste sæson-loft frigives på én gang).
+  INTERIM_RATE_MULT: 1 / 3,
 });
 
 export function isAcademyAge(age) {
   return Number.isFinite(age) && age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
 }
 
-// Sæson-budget-rate for akademi-alder — se ACADEMY.SEASON_FRAC_BY_AGE ovenfor.
+// #2437: IKKE i brug i prod-stien længere — se kommentaren ved SEASON_FRAC_BY_AGE.
+// Bruges kun af careerCurveSimulation.js til at modellere "current"-modellen.
 export function academySeasonFracForAge(age) {
   const table = ACADEMY.SEASON_FRAC_BY_AGE;
   for (const row of table) {

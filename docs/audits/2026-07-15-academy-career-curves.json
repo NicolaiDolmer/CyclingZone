@@ -1,0 +1,8132 @@
+{
+  "generated_for": "#2437",
+  "generated_at": "2026-07-15T17:40:36.459Z",
+  "note": "dailyAbilityDelta dividerer INTERNT altid med den frosne DAILY_TRAINING_CONFIG.daysPerSeason=28 — sæsonlængde-sweepet varierer ANTAL TICKS pr. simuleret sæson, ikke selve konstanten. Det er en pointe i modellen, ikke en fejl.",
+  "season_lengths": [
+    28,
+    60,
+    120,
+    200
+  ],
+  "cohorts": {
+    "4": {
+      "n": 88,
+      "label": "god (pot4)"
+    },
+    "5": {
+      "n": 63,
+      "label": "stærk (pot5)"
+    },
+    "6": {
+      "n": 29,
+      "label": "elite (pot6)"
+    }
+  },
+  "population": {
+    "raw_fetched": 570,
+    "null_caps_skipped": 0,
+    "simulated": 570
+  },
+  "series": [
+    {
+      "model": "pre2202",
+      "season_length": 28,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 532,
+          "avg_pct_gap_closed": 0.534,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 585.87,
+          "avg_pct_gap_closed": 0.643,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 600.69,
+          "avg_pct_gap_closed": 0.696,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 647.75,
+          "avg_pct_gap_closed": 0.822,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 672.07,
+          "avg_pct_gap_closed": 0.893,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 681.62,
+          "avg_pct_gap_closed": 0.918,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 691.76,
+          "avg_pct_gap_closed": 0.947,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 696.76,
+          "avg_pct_gap_closed": 0.961,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 700.76,
+          "avg_pct_gap_closed": 0.975,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 703.41,
+          "avg_pct_gap_closed": 0.982,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 704.72,
+          "avg_pct_gap_closed": 0.986,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 706.24,
+          "avg_pct_gap_closed": 0.99,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 707.14,
+          "avg_pct_gap_closed": 0.992,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 692.69,
+          "avg_pct_gap_closed": 0.95,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 678.34,
+          "avg_pct_gap_closed": 0.908,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 664.28,
+          "avg_pct_gap_closed": 0.867,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 649.52,
+          "avg_pct_gap_closed": 0.823,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 642.66,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 630.38,
+          "avg_pct_gap_closed": 0.768,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 610.59,
+          "avg_pct_gap_closed": 0.709,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 591.72,
+          "avg_pct_gap_closed": 0.652,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 707.14
+    },
+    {
+      "model": "pre2202",
+      "season_length": 28,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 456.5,
+          "avg_pct_gap_closed": 0.5,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 508,
+          "avg_pct_gap_closed": 0.635,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 515.23,
+          "avg_pct_gap_closed": 0.623,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 536.33,
+          "avg_pct_gap_closed": 0.669,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 553.89,
+          "avg_pct_gap_closed": 0.714,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 572.14,
+          "avg_pct_gap_closed": 0.762,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 598.7,
+          "avg_pct_gap_closed": 0.843,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 610.37,
+          "avg_pct_gap_closed": 0.879,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 619.84,
+          "avg_pct_gap_closed": 0.909,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 626.54,
+          "avg_pct_gap_closed": 0.929,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 629.92,
+          "avg_pct_gap_closed": 0.939,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 632.83,
+          "avg_pct_gap_closed": 0.948,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 635.11,
+          "avg_pct_gap_closed": 0.956,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 622.84,
+          "avg_pct_gap_closed": 0.92,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 610.21,
+          "avg_pct_gap_closed": 0.883,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 598.81,
+          "avg_pct_gap_closed": 0.849,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 584.95,
+          "avg_pct_gap_closed": 0.807,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 576.59,
+          "avg_pct_gap_closed": 0.786,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 563.79,
+          "avg_pct_gap_closed": 0.746,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 543.08,
+          "avg_pct_gap_closed": 0.687,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 523.87,
+          "avg_pct_gap_closed": 0.631,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 635.11
+    },
+    {
+      "model": "pre2202",
+      "season_length": 28,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 350.43,
+          "avg_pct_gap_closed": 0.46,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 420.82,
+          "avg_pct_gap_closed": 0.619,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 414.73,
+          "avg_pct_gap_closed": 0.507,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 444.49,
+          "avg_pct_gap_closed": 0.619,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 446.86,
+          "avg_pct_gap_closed": 0.646,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 456.2,
+          "avg_pct_gap_closed": 0.688,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 481.28,
+          "avg_pct_gap_closed": 0.778,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 493.86,
+          "avg_pct_gap_closed": 0.825,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 502.99,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 512.5,
+          "avg_pct_gap_closed": 0.898,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 515.77,
+          "avg_pct_gap_closed": 0.909,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 518.55,
+          "avg_pct_gap_closed": 0.919,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 521.6,
+          "avg_pct_gap_closed": 0.93,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 508.97,
+          "avg_pct_gap_closed": 0.873,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 497.13,
+          "avg_pct_gap_closed": 0.818,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 486.78,
+          "avg_pct_gap_closed": 0.772,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 472.86,
+          "avg_pct_gap_closed": 0.709,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 464.97,
+          "avg_pct_gap_closed": 0.677,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 454.95,
+          "avg_pct_gap_closed": 0.633,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 432.58,
+          "avg_pct_gap_closed": 0.535,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 409.3,
+          "avg_pct_gap_closed": 0.43,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 521.6
+    },
+    {
+      "model": "pre2202",
+      "season_length": 60,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 636.57,
+          "avg_pct_gap_closed": 0.808,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 663,
+          "avg_pct_gap_closed": 0.874,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 670.19,
+          "avg_pct_gap_closed": 0.898,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 695.57,
+          "avg_pct_gap_closed": 0.962,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 704.96,
+          "avg_pct_gap_closed": 0.991,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 704.69,
+          "avg_pct_gap_closed": 0.986,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 707.93,
+          "avg_pct_gap_closed": 0.995,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 708.86,
+          "avg_pct_gap_closed": 0.997,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.38,
+          "avg_pct_gap_closed": 0.999,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.72,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.83,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 668.03,
+          "avg_pct_gap_closed": 0.878,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 662.55,
+          "avg_pct_gap_closed": 0.865,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 658.1,
+          "avg_pct_gap_closed": 0.854,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 654.14,
+          "avg_pct_gap_closed": 0.845,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 637.41,
+          "avg_pct_gap_closed": 0.796,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 622,
+          "avg_pct_gap_closed": 0.75,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 709.83
+    },
+    {
+      "model": "pre2202",
+      "season_length": 60,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 560.25,
+          "avg_pct_gap_closed": 0.779,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 600.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 595.03,
+          "avg_pct_gap_closed": 0.846,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 603.41,
+          "avg_pct_gap_closed": 0.878,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 611.5,
+          "avg_pct_gap_closed": 0.898,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 622.86,
+          "avg_pct_gap_closed": 0.921,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 639.62,
+          "avg_pct_gap_closed": 0.971,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 643.57,
+          "avg_pct_gap_closed": 0.983,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 647.06,
+          "avg_pct_gap_closed": 0.993,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 647.65,
+          "avg_pct_gap_closed": 0.995,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 648.83,
+          "avg_pct_gap_closed": 0.998,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.16,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.19,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.19,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 599.32,
+          "avg_pct_gap_closed": 0.854,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 596.32,
+          "avg_pct_gap_closed": 0.851,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 590.35,
+          "avg_pct_gap_closed": 0.836,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 565.52,
+          "avg_pct_gap_closed": 0.761,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 554.54,
+          "avg_pct_gap_closed": 0.732,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 649.19
+    },
+    {
+      "model": "pre2202",
+      "season_length": 60,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 447.71,
+          "avg_pct_gap_closed": 0.746,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 500.36,
+          "avg_pct_gap_closed": 0.855,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 484.78,
+          "avg_pct_gap_closed": 0.764,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 510.12,
+          "avg_pct_gap_closed": 0.851,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 502.8,
+          "avg_pct_gap_closed": 0.857,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 506.84,
+          "avg_pct_gap_closed": 0.873,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 526.05,
+          "avg_pct_gap_closed": 0.944,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 532.43,
+          "avg_pct_gap_closed": 0.969,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 536.09,
+          "avg_pct_gap_closed": 0.982,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 538.64,
+          "avg_pct_gap_closed": 0.992,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 539.24,
+          "avg_pct_gap_closed": 0.994,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 539.93,
+          "avg_pct_gap_closed": 0.996,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 540.44,
+          "avg_pct_gap_closed": 0.998,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 525.72,
+          "avg_pct_gap_closed": 0.933,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.27,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 498.88,
+          "avg_pct_gap_closed": 0.815,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 492.57,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 488.39,
+          "avg_pct_gap_closed": 0.777,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 476.73,
+          "avg_pct_gap_closed": 0.726,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 457.89,
+          "avg_pct_gap_closed": 0.646,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 442.18,
+          "avg_pct_gap_closed": 0.58,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 540.44
+    },
+    {
+      "model": "pre2202",
+      "season_length": 120,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 699.29,
+          "avg_pct_gap_closed": 0.972,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 698.47,
+          "avg_pct_gap_closed": 0.984,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 699.73,
+          "avg_pct_gap_closed": 0.986,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 706.64,
+          "avg_pct_gap_closed": 0.996,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 707.82,
+          "avg_pct_gap_closed": 1,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 708.45,
+          "avg_pct_gap_closed": 0.996,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 678.21,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 673.83,
+          "avg_pct_gap_closed": 0.902,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 671.59,
+          "avg_pct_gap_closed": 0.898,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 670.17,
+          "avg_pct_gap_closed": 0.897,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 654.28,
+          "avg_pct_gap_closed": 0.851,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "pre2202",
+      "season_length": 120,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 626.25,
+          "avg_pct_gap_closed": 0.962,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 641.79,
+          "avg_pct_gap_closed": 0.978,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 637.27,
+          "avg_pct_gap_closed": 0.968,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 632.26,
+          "avg_pct_gap_closed": 0.973,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 634.89,
+          "avg_pct_gap_closed": 0.974,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 642.6,
+          "avg_pct_gap_closed": 0.981,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 648.05,
+          "avg_pct_gap_closed": 0.996,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.19,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 617.3,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 612.14,
+          "avg_pct_gap_closed": 0.899,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 609.71,
+          "avg_pct_gap_closed": 0.897,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 606.65,
+          "avg_pct_gap_closed": 0.892,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 589,
+          "avg_pct_gap_closed": 0.842,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.804,
+          "n": 63
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "pre2202",
+      "season_length": 120,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 513.29,
+          "avg_pct_gap_closed": 0.938,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 539,
+          "avg_pct_gap_closed": 0.973,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 529.63,
+          "avg_pct_gap_closed": 0.931,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 543.23,
+          "avg_pct_gap_closed": 0.97,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 529.5,
+          "avg_pct_gap_closed": 0.955,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 531.16,
+          "avg_pct_gap_closed": 0.964,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 539.33,
+          "avg_pct_gap_closed": 0.994,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 540.75,
+          "avg_pct_gap_closed": 0.999,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.22,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.44,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 510.18,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 506.34,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 504.15,
+          "avg_pct_gap_closed": 0.851,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 500.44,
+          "avg_pct_gap_closed": 0.839,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 480.97,
+          "avg_pct_gap_closed": 0.755,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 471.38,
+          "avg_pct_gap_closed": 0.716,
+          "n": 88
+        }
+      ],
+      "peak_age": 19,
+      "peak_ability_sum": 543.23
+    },
+    {
+      "model": "pre2202",
+      "season_length": 200,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 710.57,
+          "avg_pct_gap_closed": 1,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 703.93,
+          "avg_pct_gap_closed": 1,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 705.19,
+          "avg_pct_gap_closed": 1,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 707.82,
+          "avg_pct_gap_closed": 1,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 707.82,
+          "avg_pct_gap_closed": 1,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 709.41,
+          "avg_pct_gap_closed": 0.999,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 692.93,
+          "avg_pct_gap_closed": 0.955,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 691.69,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 687.31,
+          "avg_pct_gap_closed": 0.946,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 683.62,
+          "avg_pct_gap_closed": 0.937,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 681.9,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 666.45,
+          "avg_pct_gap_closed": 0.89,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 653.62,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        }
+      ],
+      "peak_age": 16,
+      "peak_ability_sum": 710.57
+    },
+    {
+      "model": "pre2202",
+      "season_length": 200,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 641.38,
+          "avg_pct_gap_closed": 1,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 650.36,
+          "avg_pct_gap_closed": 0.999,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 647.43,
+          "avg_pct_gap_closed": 0.998,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 639.15,
+          "avg_pct_gap_closed": 0.998,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 640.79,
+          "avg_pct_gap_closed": 0.993,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 647.73,
+          "avg_pct_gap_closed": 0.995,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 622.57,
+          "avg_pct_gap_closed": 0.921,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 619.97,
+          "avg_pct_gap_closed": 0.919,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 614.81,
+          "avg_pct_gap_closed": 0.908,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 610.76,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 609.03,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 592.35,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.21,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        }
+      ],
+      "peak_age": 17,
+      "peak_ability_sum": 650.36
+    },
+    {
+      "model": "pre2202",
+      "season_length": 200,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 532.71,
+          "avg_pct_gap_closed": 0.997,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 547.09,
+          "avg_pct_gap_closed": 0.998,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 545.33,
+          "avg_pct_gap_closed": 0.995,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 551.25,
+          "avg_pct_gap_closed": 0.997,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 537.61,
+          "avg_pct_gap_closed": 0.99,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 538.19,
+          "avg_pct_gap_closed": 0.988,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 514.01,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 512.75,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 508.91,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 505.74,
+          "avg_pct_gap_closed": 0.858,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 504.69,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 488.88,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 486.05,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        }
+      ],
+      "peak_age": 19,
+      "peak_ability_sum": 551.25
+    },
+    {
+      "model": "current",
+      "season_length": 28,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 355.71,
+          "avg_pct_gap_closed": 0.075,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 400.53,
+          "avg_pct_gap_closed": 0.115,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 399.65,
+          "avg_pct_gap_closed": 0.113,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 419.39,
+          "avg_pct_gap_closed": 0.159,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 428.57,
+          "avg_pct_gap_closed": 0.185,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 436.55,
+          "avg_pct_gap_closed": 0.203,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 538.31,
+          "avg_pct_gap_closed": 0.501,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 582.62,
+          "avg_pct_gap_closed": 0.631,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 614.72,
+          "avg_pct_gap_closed": 0.724,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 639.31,
+          "avg_pct_gap_closed": 0.794,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 650,
+          "avg_pct_gap_closed": 0.826,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 659.48,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 666.59,
+          "avg_pct_gap_closed": 0.873,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 658.72,
+          "avg_pct_gap_closed": 0.852,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 650.48,
+          "avg_pct_gap_closed": 0.827,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 643.62,
+          "avg_pct_gap_closed": 0.807,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 633.97,
+          "avg_pct_gap_closed": 0.78,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 627.1,
+          "avg_pct_gap_closed": 0.759,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 619.66,
+          "avg_pct_gap_closed": 0.738,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 598.83,
+          "avg_pct_gap_closed": 0.676,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 582,
+          "avg_pct_gap_closed": 0.626,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 666.59
+    },
+    {
+      "model": "current",
+      "season_length": 28,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 300.13,
+          "avg_pct_gap_closed": 0.068,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 310.36,
+          "avg_pct_gap_closed": 0.114,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 323.37,
+          "avg_pct_gap_closed": 0.097,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 342.35,
+          "avg_pct_gap_closed": 0.107,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 351.16,
+          "avg_pct_gap_closed": 0.111,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 359.33,
+          "avg_pct_gap_closed": 0.127,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 458.11,
+          "avg_pct_gap_closed": 0.422,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 503.63,
+          "avg_pct_gap_closed": 0.56,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 537.81,
+          "avg_pct_gap_closed": 0.662,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 563.94,
+          "avg_pct_gap_closed": 0.742,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 575.49,
+          "avg_pct_gap_closed": 0.777,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 585.65,
+          "avg_pct_gap_closed": 0.808,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 594.84,
+          "avg_pct_gap_closed": 0.835,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 586.67,
+          "avg_pct_gap_closed": 0.81,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 580.33,
+          "avg_pct_gap_closed": 0.792,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 573.25,
+          "avg_pct_gap_closed": 0.772,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 564.56,
+          "avg_pct_gap_closed": 0.747,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 556.79,
+          "avg_pct_gap_closed": 0.725,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 549.83,
+          "avg_pct_gap_closed": 0.707,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 528.94,
+          "avg_pct_gap_closed": 0.642,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 510.49,
+          "avg_pct_gap_closed": 0.589,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 594.84
+    },
+    {
+      "model": "current",
+      "season_length": 28,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 213.29,
+          "avg_pct_gap_closed": 0.057,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 249.55,
+          "avg_pct_gap_closed": 0.112,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 285.05,
+          "avg_pct_gap_closed": 0.064,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 290.98,
+          "avg_pct_gap_closed": 0.082,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 288.59,
+          "avg_pct_gap_closed": 0.08,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 291.6,
+          "avg_pct_gap_closed": 0.1,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 366.75,
+          "avg_pct_gap_closed": 0.367,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 403.28,
+          "avg_pct_gap_closed": 0.501,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 431.8,
+          "avg_pct_gap_closed": 0.604,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 454.41,
+          "avg_pct_gap_closed": 0.685,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 465.53,
+          "avg_pct_gap_closed": 0.726,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 474.6,
+          "avg_pct_gap_closed": 0.759,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 482.22,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 473.9,
+          "avg_pct_gap_closed": 0.742,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 468.13,
+          "avg_pct_gap_closed": 0.717,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 460.69,
+          "avg_pct_gap_closed": 0.679,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 451.18,
+          "avg_pct_gap_closed": 0.633,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 444.67,
+          "avg_pct_gap_closed": 0.604,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 437.25,
+          "avg_pct_gap_closed": 0.57,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 416.69,
+          "avg_pct_gap_closed": 0.477,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 398.05,
+          "avg_pct_gap_closed": 0.397,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 482.22
+    },
+    {
+      "model": "current",
+      "season_length": 60,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 374,
+          "avg_pct_gap_closed": 0.125,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 423.27,
+          "avg_pct_gap_closed": 0.178,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 423.54,
+          "avg_pct_gap_closed": 0.185,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 448.21,
+          "avg_pct_gap_closed": 0.244,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 463.07,
+          "avg_pct_gap_closed": 0.286,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 474.86,
+          "avg_pct_gap_closed": 0.318,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 623.07,
+          "avg_pct_gap_closed": 0.747,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 663.21,
+          "avg_pct_gap_closed": 0.863,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 684.9,
+          "avg_pct_gap_closed": 0.927,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 696.97,
+          "avg_pct_gap_closed": 0.963,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 700.34,
+          "avg_pct_gap_closed": 0.974,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 705.17,
+          "avg_pct_gap_closed": 0.987,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 707.69,
+          "avg_pct_gap_closed": 0.994,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 693.31,
+          "avg_pct_gap_closed": 0.952,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.9,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 667.72,
+          "avg_pct_gap_closed": 0.877,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 662.45,
+          "avg_pct_gap_closed": 0.865,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 658.1,
+          "avg_pct_gap_closed": 0.854,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 654,
+          "avg_pct_gap_closed": 0.844,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 637.41,
+          "avg_pct_gap_closed": 0.796,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 622,
+          "avg_pct_gap_closed": 0.75,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 707.69
+    },
+    {
+      "model": "current",
+      "season_length": 60,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 319.5,
+          "avg_pct_gap_closed": 0.125,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 337.57,
+          "avg_pct_gap_closed": 0.188,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 347.07,
+          "avg_pct_gap_closed": 0.162,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 367.11,
+          "avg_pct_gap_closed": 0.182,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 377.59,
+          "avg_pct_gap_closed": 0.189,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 388.03,
+          "avg_pct_gap_closed": 0.213,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 543.38,
+          "avg_pct_gap_closed": 0.68,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 589.24,
+          "avg_pct_gap_closed": 0.818,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 615.68,
+          "avg_pct_gap_closed": 0.898,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 630.32,
+          "avg_pct_gap_closed": 0.941,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 635.4,
+          "avg_pct_gap_closed": 0.957,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 638.56,
+          "avg_pct_gap_closed": 0.97,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 642.75,
+          "avg_pct_gap_closed": 0.982,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 631.65,
+          "avg_pct_gap_closed": 0.947,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 617.87,
+          "avg_pct_gap_closed": 0.906,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 599.27,
+          "avg_pct_gap_closed": 0.854,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 595.94,
+          "avg_pct_gap_closed": 0.85,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 589.02,
+          "avg_pct_gap_closed": 0.832,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 565.08,
+          "avg_pct_gap_closed": 0.759,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 553.46,
+          "avg_pct_gap_closed": 0.729,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 642.75
+    },
+    {
+      "model": "current",
+      "season_length": 60,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 232.14,
+          "avg_pct_gap_closed": 0.121,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 274.55,
+          "avg_pct_gap_closed": 0.189,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 300.2,
+          "avg_pct_gap_closed": 0.112,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 310.61,
+          "avg_pct_gap_closed": 0.156,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 309.24,
+          "avg_pct_gap_closed": 0.157,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 311.66,
+          "avg_pct_gap_closed": 0.166,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 436.8,
+          "avg_pct_gap_closed": 0.623,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 477.59,
+          "avg_pct_gap_closed": 0.769,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 502.93,
+          "avg_pct_gap_closed": 0.865,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 516.98,
+          "avg_pct_gap_closed": 0.911,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 522.27,
+          "avg_pct_gap_closed": 0.929,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 528.34,
+          "avg_pct_gap_closed": 0.96,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 531.2,
+          "avg_pct_gap_closed": 0.97,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 519.69,
+          "avg_pct_gap_closed": 0.915,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 508.47,
+          "avg_pct_gap_closed": 0.861,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 497.82,
+          "avg_pct_gap_closed": 0.812,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 490.85,
+          "avg_pct_gap_closed": 0.786,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 485.02,
+          "avg_pct_gap_closed": 0.768,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 476.55,
+          "avg_pct_gap_closed": 0.725,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 457.89,
+          "avg_pct_gap_closed": 0.646,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 442.16,
+          "avg_pct_gap_closed": 0.58,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 531.2
+    },
+    {
+      "model": "current",
+      "season_length": 120,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 388.14,
+          "avg_pct_gap_closed": 0.165,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 439.2,
+          "avg_pct_gap_closed": 0.226,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 438.58,
+          "avg_pct_gap_closed": 0.229,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 467.75,
+          "avg_pct_gap_closed": 0.301,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 485.79,
+          "avg_pct_gap_closed": 0.355,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 500.72,
+          "avg_pct_gap_closed": 0.396,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 680.38,
+          "avg_pct_gap_closed": 0.915,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 701.86,
+          "avg_pct_gap_closed": 0.978,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.17,
+          "avg_pct_gap_closed": 0.998,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 678.21,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 673.83,
+          "avg_pct_gap_closed": 0.902,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 671.59,
+          "avg_pct_gap_closed": 0.898,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 670.17,
+          "avg_pct_gap_closed": 0.897,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 654.28,
+          "avg_pct_gap_closed": 0.851,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "current",
+      "season_length": 120,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 331.5,
+          "avg_pct_gap_closed": 0.155,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 354.43,
+          "avg_pct_gap_closed": 0.23,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 362.67,
+          "avg_pct_gap_closed": 0.206,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 383.26,
+          "avg_pct_gap_closed": 0.226,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 396.7,
+          "avg_pct_gap_closed": 0.25,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 409.6,
+          "avg_pct_gap_closed": 0.279,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 608.78,
+          "avg_pct_gap_closed": 0.877,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 636.4,
+          "avg_pct_gap_closed": 0.962,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 647.51,
+          "avg_pct_gap_closed": 0.995,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 617.3,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 612.14,
+          "avg_pct_gap_closed": 0.899,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 609.71,
+          "avg_pct_gap_closed": 0.897,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 606.7,
+          "avg_pct_gap_closed": 0.892,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 589.03,
+          "avg_pct_gap_closed": 0.842,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.804,
+          "n": 63
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "current",
+      "season_length": 120,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 243.57,
+          "avg_pct_gap_closed": 0.152,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 291.18,
+          "avg_pct_gap_closed": 0.236,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 313.95,
+          "avg_pct_gap_closed": 0.171,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 326.3,
+          "avg_pct_gap_closed": 0.217,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 325.69,
+          "avg_pct_gap_closed": 0.218,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 331.78,
+          "avg_pct_gap_closed": 0.249,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 496.2,
+          "avg_pct_gap_closed": 0.837,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 524.47,
+          "avg_pct_gap_closed": 0.941,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 536.98,
+          "avg_pct_gap_closed": 0.988,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 540.49,
+          "avg_pct_gap_closed": 0.998,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.2,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.44,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 510.18,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 506.34,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 504.14,
+          "avg_pct_gap_closed": 0.851,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 500.25,
+          "avg_pct_gap_closed": 0.838,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 480.99,
+          "avg_pct_gap_closed": 0.755,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 471.44,
+          "avg_pct_gap_closed": 0.716,
+          "n": 88
+        }
+      ],
+      "peak_age": 27,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "current",
+      "season_length": 200,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 391.29,
+          "avg_pct_gap_closed": 0.173,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 443.93,
+          "avg_pct_gap_closed": 0.239,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 443.46,
+          "avg_pct_gap_closed": 0.242,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 474.64,
+          "avg_pct_gap_closed": 0.32,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 495.64,
+          "avg_pct_gap_closed": 0.384,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 511.52,
+          "avg_pct_gap_closed": 0.427,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 703.28,
+          "avg_pct_gap_closed": 0.982,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 692.83,
+          "avg_pct_gap_closed": 0.955,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 691.69,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 687.31,
+          "avg_pct_gap_closed": 0.946,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 683.62,
+          "avg_pct_gap_closed": 0.937,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 681.9,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 666.41,
+          "avg_pct_gap_closed": 0.89,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 653.59,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "current",
+      "season_length": 200,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 336.25,
+          "avg_pct_gap_closed": 0.173,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 361.5,
+          "avg_pct_gap_closed": 0.251,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 368.33,
+          "avg_pct_gap_closed": 0.222,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 390.24,
+          "avg_pct_gap_closed": 0.247,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 404.29,
+          "avg_pct_gap_closed": 0.272,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 419.08,
+          "avg_pct_gap_closed": 0.308,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 637.71,
+          "avg_pct_gap_closed": 0.967,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.17,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 622.4,
+          "avg_pct_gap_closed": 0.921,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 619.97,
+          "avg_pct_gap_closed": 0.919,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 614.81,
+          "avg_pct_gap_closed": 0.908,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 610.76,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 609.03,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 592.35,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.21,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "current",
+      "season_length": 200,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 248.57,
+          "avg_pct_gap_closed": 0.165,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 298.45,
+          "avg_pct_gap_closed": 0.256,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 318.88,
+          "avg_pct_gap_closed": 0.185,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 332.46,
+          "avg_pct_gap_closed": 0.237,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 335.09,
+          "avg_pct_gap_closed": 0.26,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 341.57,
+          "avg_pct_gap_closed": 0.289,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 526.65,
+          "avg_pct_gap_closed": 0.952,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 539.77,
+          "avg_pct_gap_closed": 0.996,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 514.01,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 512.75,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 508.91,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 505.74,
+          "avg_pct_gap_closed": 0.858,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 504.69,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 488.86,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 486.05,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/2",
+      "season_length": 28,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 445.71,
+          "avg_pct_gap_closed": 0.31,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 503.93,
+          "avg_pct_gap_closed": 0.405,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 521.62,
+          "avg_pct_gap_closed": 0.464,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 570.96,
+          "avg_pct_gap_closed": 0.596,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 603.39,
+          "avg_pct_gap_closed": 0.693,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 620.59,
+          "avg_pct_gap_closed": 0.737,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 653.72,
+          "avg_pct_gap_closed": 0.835,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 667.59,
+          "avg_pct_gap_closed": 0.875,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 678.97,
+          "avg_pct_gap_closed": 0.91,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 686.66,
+          "avg_pct_gap_closed": 0.932,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 689.9,
+          "avg_pct_gap_closed": 0.941,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 692.59,
+          "avg_pct_gap_closed": 0.949,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 696.03,
+          "avg_pct_gap_closed": 0.959,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 683.52,
+          "avg_pct_gap_closed": 0.923,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 671.83,
+          "avg_pct_gap_closed": 0.891,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 661.14,
+          "avg_pct_gap_closed": 0.858,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 647.34,
+          "avg_pct_gap_closed": 0.817,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 639.83,
+          "avg_pct_gap_closed": 0.797,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 627.86,
+          "avg_pct_gap_closed": 0.76,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 609.1,
+          "avg_pct_gap_closed": 0.705,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 590.62,
+          "avg_pct_gap_closed": 0.649,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 696.03
+    },
+    {
+      "model": "rate/2",
+      "season_length": 28,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 377.88,
+          "avg_pct_gap_closed": 0.282,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 419,
+          "avg_pct_gap_closed": 0.403,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 435.53,
+          "avg_pct_gap_closed": 0.403,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 462.54,
+          "avg_pct_gap_closed": 0.453,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 482.16,
+          "avg_pct_gap_closed": 0.495,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 502.81,
+          "avg_pct_gap_closed": 0.55,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 552.87,
+          "avg_pct_gap_closed": 0.704,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.771,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 592.87,
+          "avg_pct_gap_closed": 0.826,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 606,
+          "avg_pct_gap_closed": 0.867,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 612.06,
+          "avg_pct_gap_closed": 0.886,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 617.14,
+          "avg_pct_gap_closed": 0.902,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 621.41,
+          "avg_pct_gap_closed": 0.914,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 610.44,
+          "avg_pct_gap_closed": 0.882,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 599.7,
+          "avg_pct_gap_closed": 0.85,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 591.05,
+          "avg_pct_gap_closed": 0.825,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 579,
+          "avg_pct_gap_closed": 0.789,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 569.87,
+          "avg_pct_gap_closed": 0.764,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 560.46,
+          "avg_pct_gap_closed": 0.737,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 538.38,
+          "avg_pct_gap_closed": 0.673,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 518.05,
+          "avg_pct_gap_closed": 0.612,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 621.41
+    },
+    {
+      "model": "rate/2",
+      "season_length": 28,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 279.86,
+          "avg_pct_gap_closed": 0.25,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 341.27,
+          "avg_pct_gap_closed": 0.38,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 356.5,
+          "avg_pct_gap_closed": 0.304,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 380.81,
+          "avg_pct_gap_closed": 0.393,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 386.55,
+          "avg_pct_gap_closed": 0.43,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 396.31,
+          "avg_pct_gap_closed": 0.47,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 439.85,
+          "avg_pct_gap_closed": 0.629,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 460.77,
+          "avg_pct_gap_closed": 0.704,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 477.05,
+          "avg_pct_gap_closed": 0.764,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 490.9,
+          "avg_pct_gap_closed": 0.817,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 496.98,
+          "avg_pct_gap_closed": 0.839,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 501.69,
+          "avg_pct_gap_closed": 0.855,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 506.77,
+          "avg_pct_gap_closed": 0.875,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 495.92,
+          "avg_pct_gap_closed": 0.822,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 485.93,
+          "avg_pct_gap_closed": 0.778,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 476.95,
+          "avg_pct_gap_closed": 0.737,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 466.36,
+          "avg_pct_gap_closed": 0.688,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 457.66,
+          "avg_pct_gap_closed": 0.651,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 449.17,
+          "avg_pct_gap_closed": 0.614,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 426.67,
+          "avg_pct_gap_closed": 0.515,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 406.05,
+          "avg_pct_gap_closed": 0.421,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 506.77
+    },
+    {
+      "model": "rate/2",
+      "season_length": 60,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 539.57,
+          "avg_pct_gap_closed": 0.554,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 593.67,
+          "avg_pct_gap_closed": 0.665,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 609.19,
+          "avg_pct_gap_closed": 0.72,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 654.14,
+          "avg_pct_gap_closed": 0.84,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 677.25,
+          "avg_pct_gap_closed": 0.908,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 685.24,
+          "avg_pct_gap_closed": 0.929,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 701.34,
+          "avg_pct_gap_closed": 0.977,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 706.52,
+          "avg_pct_gap_closed": 0.99,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 708.38,
+          "avg_pct_gap_closed": 0.996,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.21,
+          "avg_pct_gap_closed": 0.998,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.55,
+          "avg_pct_gap_closed": 0.999,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.79,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 667.76,
+          "avg_pct_gap_closed": 0.877,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 662.45,
+          "avg_pct_gap_closed": 0.865,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 658.1,
+          "avg_pct_gap_closed": 0.854,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 654.07,
+          "avg_pct_gap_closed": 0.844,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 637.41,
+          "avg_pct_gap_closed": 0.796,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 622,
+          "avg_pct_gap_closed": 0.75,
+          "n": 29
+        }
+      ],
+      "peak_age": 27,
+      "peak_ability_sum": 709.79
+    },
+    {
+      "model": "rate/2",
+      "season_length": 60,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 467.63,
+          "avg_pct_gap_closed": 0.527,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 519.71,
+          "avg_pct_gap_closed": 0.665,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 524.47,
+          "avg_pct_gap_closed": 0.648,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 545.93,
+          "avg_pct_gap_closed": 0.698,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 561.89,
+          "avg_pct_gap_closed": 0.738,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 579.81,
+          "avg_pct_gap_closed": 0.787,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 620.95,
+          "avg_pct_gap_closed": 0.912,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 633.62,
+          "avg_pct_gap_closed": 0.951,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 641.37,
+          "avg_pct_gap_closed": 0.976,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 645.16,
+          "avg_pct_gap_closed": 0.988,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 646.86,
+          "avg_pct_gap_closed": 0.993,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 648.1,
+          "avg_pct_gap_closed": 0.996,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 648.81,
+          "avg_pct_gap_closed": 0.998,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 633.95,
+          "avg_pct_gap_closed": 0.954,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.32,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 599.32,
+          "avg_pct_gap_closed": 0.854,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 596.29,
+          "avg_pct_gap_closed": 0.851,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 590.24,
+          "avg_pct_gap_closed": 0.836,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 565.38,
+          "avg_pct_gap_closed": 0.76,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 554.48,
+          "avg_pct_gap_closed": 0.732,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 648.81
+    },
+    {
+      "model": "rate/2",
+      "season_length": 60,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 360,
+          "avg_pct_gap_closed": 0.485,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 429.91,
+          "avg_pct_gap_closed": 0.644,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 422.53,
+          "avg_pct_gap_closed": 0.537,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 453.19,
+          "avg_pct_gap_closed": 0.649,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 454.2,
+          "avg_pct_gap_closed": 0.674,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 462.48,
+          "avg_pct_gap_closed": 0.711,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 505.05,
+          "avg_pct_gap_closed": 0.866,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 519.4,
+          "avg_pct_gap_closed": 0.923,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 528,
+          "avg_pct_gap_closed": 0.952,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 534.34,
+          "avg_pct_gap_closed": 0.977,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 536.57,
+          "avg_pct_gap_closed": 0.986,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 537.74,
+          "avg_pct_gap_closed": 0.99,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 539.05,
+          "avg_pct_gap_closed": 0.993,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 524.76,
+          "avg_pct_gap_closed": 0.93,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 510.86,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 498.81,
+          "avg_pct_gap_closed": 0.815,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 492.36,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 487.83,
+          "avg_pct_gap_closed": 0.775,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 476.72,
+          "avg_pct_gap_closed": 0.726,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 457.89,
+          "avg_pct_gap_closed": 0.646,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 442.18,
+          "avg_pct_gap_closed": 0.58,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 539.05
+    },
+    {
+      "model": "rate/2",
+      "season_length": 120,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 642.14,
+          "avg_pct_gap_closed": 0.822,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 666.27,
+          "avg_pct_gap_closed": 0.883,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 672,
+          "avg_pct_gap_closed": 0.906,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 696.29,
+          "avg_pct_gap_closed": 0.965,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 705.36,
+          "avg_pct_gap_closed": 0.993,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 705.31,
+          "avg_pct_gap_closed": 0.987,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.31,
+          "avg_pct_gap_closed": 0.998,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 678.21,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 673.83,
+          "avg_pct_gap_closed": 0.902,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 671.59,
+          "avg_pct_gap_closed": 0.898,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 670.17,
+          "avg_pct_gap_closed": 0.897,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 654.28,
+          "avg_pct_gap_closed": 0.851,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/2",
+      "season_length": 120,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 564.25,
+          "avg_pct_gap_closed": 0.79,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 602.36,
+          "avg_pct_gap_closed": 0.88,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 598.23,
+          "avg_pct_gap_closed": 0.856,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 604.78,
+          "avg_pct_gap_closed": 0.882,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 612.27,
+          "avg_pct_gap_closed": 0.901,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 623.54,
+          "avg_pct_gap_closed": 0.923,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 645.87,
+          "avg_pct_gap_closed": 0.99,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 648.84,
+          "avg_pct_gap_closed": 0.998,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.29,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 617.3,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 612.14,
+          "avg_pct_gap_closed": 0.899,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 609.71,
+          "avg_pct_gap_closed": 0.897,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 606.65,
+          "avg_pct_gap_closed": 0.892,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 589,
+          "avg_pct_gap_closed": 0.842,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.804,
+          "n": 63
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/2",
+      "season_length": 120,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 452.71,
+          "avg_pct_gap_closed": 0.759,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 501.82,
+          "avg_pct_gap_closed": 0.859,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 487.4,
+          "avg_pct_gap_closed": 0.775,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 511.14,
+          "avg_pct_gap_closed": 0.854,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 504.39,
+          "avg_pct_gap_closed": 0.863,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 507.95,
+          "avg_pct_gap_closed": 0.877,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 534.94,
+          "avg_pct_gap_closed": 0.979,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 539.36,
+          "avg_pct_gap_closed": 0.994,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 540.85,
+          "avg_pct_gap_closed": 0.999,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.23,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.44,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 510.18,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 506.34,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 504.14,
+          "avg_pct_gap_closed": 0.851,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 500.4,
+          "avg_pct_gap_closed": 0.839,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 480.98,
+          "avg_pct_gap_closed": 0.755,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 471.41,
+          "avg_pct_gap_closed": 0.716,
+          "n": 88
+        }
+      ],
+      "peak_age": 26,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/2",
+      "season_length": 200,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 691.57,
+          "avg_pct_gap_closed": 0.949,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 693.73,
+          "avg_pct_gap_closed": 0.967,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 694.88,
+          "avg_pct_gap_closed": 0.97,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 705.75,
+          "avg_pct_gap_closed": 0.994,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 707.64,
+          "avg_pct_gap_closed": 0.999,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 707.79,
+          "avg_pct_gap_closed": 0.994,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.83,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 692.79,
+          "avg_pct_gap_closed": 0.955,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 691.69,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 687.31,
+          "avg_pct_gap_closed": 0.946,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 683.62,
+          "avg_pct_gap_closed": 0.937,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 681.9,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 666.41,
+          "avg_pct_gap_closed": 0.89,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 653.59,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/2",
+      "season_length": 200,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 616.13,
+          "avg_pct_gap_closed": 0.929,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 637,
+          "avg_pct_gap_closed": 0.966,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 630.93,
+          "avg_pct_gap_closed": 0.95,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 628.43,
+          "avg_pct_gap_closed": 0.962,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 631.48,
+          "avg_pct_gap_closed": 0.963,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 639.3,
+          "avg_pct_gap_closed": 0.971,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 649.19,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 622.22,
+          "avg_pct_gap_closed": 0.92,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 619.97,
+          "avg_pct_gap_closed": 0.919,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 614.81,
+          "avg_pct_gap_closed": 0.908,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 610.76,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 609.03,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 592.35,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.21,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/2",
+      "season_length": 200,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 501.14,
+          "avg_pct_gap_closed": 0.901,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 534.64,
+          "avg_pct_gap_closed": 0.96,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 523,
+          "avg_pct_gap_closed": 0.911,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 538.56,
+          "avg_pct_gap_closed": 0.955,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 525.7,
+          "avg_pct_gap_closed": 0.941,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 527.8,
+          "avg_pct_gap_closed": 0.953,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 540.7,
+          "avg_pct_gap_closed": 0.999,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 514.01,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 512.75,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 508.91,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 505.74,
+          "avg_pct_gap_closed": 0.858,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 504.69,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 488.86,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 486.05,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/3",
+      "season_length": 28,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 407.57,
+          "avg_pct_gap_closed": 0.21,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 463.87,
+          "avg_pct_gap_closed": 0.292,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 480.27,
+          "avg_pct_gap_closed": 0.346,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 523.54,
+          "avg_pct_gap_closed": 0.458,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 553.89,
+          "avg_pct_gap_closed": 0.547,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 572.9,
+          "avg_pct_gap_closed": 0.599,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 623.48,
+          "avg_pct_gap_closed": 0.747,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 644.86,
+          "avg_pct_gap_closed": 0.809,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 661.76,
+          "avg_pct_gap_closed": 0.859,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 674.21,
+          "avg_pct_gap_closed": 0.896,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 680.07,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 684.24,
+          "avg_pct_gap_closed": 0.925,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 687.79,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 676.17,
+          "avg_pct_gap_closed": 0.901,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 666.1,
+          "avg_pct_gap_closed": 0.872,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 656.31,
+          "avg_pct_gap_closed": 0.845,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 644.79,
+          "avg_pct_gap_closed": 0.81,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 636.1,
+          "avg_pct_gap_closed": 0.787,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 626.48,
+          "avg_pct_gap_closed": 0.756,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.699,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.55,
+          "avg_pct_gap_closed": 0.644,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 687.79
+    },
+    {
+      "model": "rate/3",
+      "season_length": 28,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 345.13,
+          "avg_pct_gap_closed": 0.192,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 377.14,
+          "avg_pct_gap_closed": 0.292,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 395.17,
+          "avg_pct_gap_closed": 0.293,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 421.96,
+          "avg_pct_gap_closed": 0.333,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 441.32,
+          "avg_pct_gap_closed": 0.375,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 460.33,
+          "avg_pct_gap_closed": 0.423,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 525.14,
+          "avg_pct_gap_closed": 0.62,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 554.1,
+          "avg_pct_gap_closed": 0.709,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 576.46,
+          "avg_pct_gap_closed": 0.777,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 593.4,
+          "avg_pct_gap_closed": 0.829,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 601.27,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 606.95,
+          "avg_pct_gap_closed": 0.869,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 613.14,
+          "avg_pct_gap_closed": 0.889,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 603.32,
+          "avg_pct_gap_closed": 0.86,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 594.32,
+          "avg_pct_gap_closed": 0.834,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 585.38,
+          "avg_pct_gap_closed": 0.807,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 574.92,
+          "avg_pct_gap_closed": 0.778,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 566.14,
+          "avg_pct_gap_closed": 0.752,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 557.48,
+          "avg_pct_gap_closed": 0.729,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 535.35,
+          "avg_pct_gap_closed": 0.663,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 515.87,
+          "avg_pct_gap_closed": 0.605,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 613.14
+    },
+    {
+      "model": "rate/3",
+      "season_length": 28,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 252.86,
+          "avg_pct_gap_closed": 0.177,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 304.82,
+          "avg_pct_gap_closed": 0.273,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 330.75,
+          "avg_pct_gap_closed": 0.22,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 349.49,
+          "avg_pct_gap_closed": 0.286,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 353.24,
+          "avg_pct_gap_closed": 0.307,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 362.56,
+          "avg_pct_gap_closed": 0.347,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 416.73,
+          "avg_pct_gap_closed": 0.546,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 442.55,
+          "avg_pct_gap_closed": 0.639,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 463.14,
+          "avg_pct_gap_closed": 0.715,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 479.01,
+          "avg_pct_gap_closed": 0.772,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 487.16,
+          "avg_pct_gap_closed": 0.805,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 493.49,
+          "avg_pct_gap_closed": 0.827,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 498.86,
+          "avg_pct_gap_closed": 0.845,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 489.18,
+          "avg_pct_gap_closed": 0.8,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 480.1,
+          "avg_pct_gap_closed": 0.757,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 471.56,
+          "avg_pct_gap_closed": 0.717,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 461.39,
+          "avg_pct_gap_closed": 0.672,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 453.23,
+          "avg_pct_gap_closed": 0.633,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 445.28,
+          "avg_pct_gap_closed": 0.6,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 423.02,
+          "avg_pct_gap_closed": 0.498,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 403.68,
+          "avg_pct_gap_closed": 0.414,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 498.86
+    },
+    {
+      "model": "rate/3",
+      "season_length": 60,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 485.14,
+          "avg_pct_gap_closed": 0.413,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 546.33,
+          "avg_pct_gap_closed": 0.529,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 563.81,
+          "avg_pct_gap_closed": 0.587,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 614.11,
+          "avg_pct_gap_closed": 0.723,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 643.57,
+          "avg_pct_gap_closed": 0.809,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 657.31,
+          "avg_pct_gap_closed": 0.846,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 689.66,
+          "avg_pct_gap_closed": 0.941,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 700.55,
+          "avg_pct_gap_closed": 0.974,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 705.93,
+          "avg_pct_gap_closed": 0.989,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 708.55,
+          "avg_pct_gap_closed": 0.996,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 708.93,
+          "avg_pct_gap_closed": 0.997,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.69,
+          "avg_pct_gap_closed": 0.999,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.79,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 667.76,
+          "avg_pct_gap_closed": 0.877,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 662.62,
+          "avg_pct_gap_closed": 0.865,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 658.1,
+          "avg_pct_gap_closed": 0.854,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 654.07,
+          "avg_pct_gap_closed": 0.844,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 637.41,
+          "avg_pct_gap_closed": 0.796,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 622,
+          "avg_pct_gap_closed": 0.75,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 709.79
+    },
+    {
+      "model": "rate/3",
+      "season_length": 60,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 417.88,
+          "avg_pct_gap_closed": 0.392,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 466.36,
+          "avg_pct_gap_closed": 0.526,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 477.43,
+          "avg_pct_gap_closed": 0.518,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 503,
+          "avg_pct_gap_closed": 0.57,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 522.34,
+          "avg_pct_gap_closed": 0.617,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 541.71,
+          "avg_pct_gap_closed": 0.667,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 605.1,
+          "avg_pct_gap_closed": 0.862,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 624.73,
+          "avg_pct_gap_closed": 0.923,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 635.44,
+          "avg_pct_gap_closed": 0.956,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 642.46,
+          "avg_pct_gap_closed": 0.979,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 644.75,
+          "avg_pct_gap_closed": 0.987,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 646.6,
+          "avg_pct_gap_closed": 0.992,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 648.25,
+          "avg_pct_gap_closed": 0.997,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 633.75,
+          "avg_pct_gap_closed": 0.953,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.27,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 599.32,
+          "avg_pct_gap_closed": 0.854,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 596.22,
+          "avg_pct_gap_closed": 0.85,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 590.05,
+          "avg_pct_gap_closed": 0.835,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 565.35,
+          "avg_pct_gap_closed": 0.76,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 554.29,
+          "avg_pct_gap_closed": 0.731,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 648.25
+    },
+    {
+      "model": "rate/3",
+      "season_length": 60,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 314.71,
+          "avg_pct_gap_closed": 0.355,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 382,
+          "avg_pct_gap_closed": 0.501,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 387.3,
+          "avg_pct_gap_closed": 0.414,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 415.02,
+          "avg_pct_gap_closed": 0.513,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 418.36,
+          "avg_pct_gap_closed": 0.542,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 428.57,
+          "avg_pct_gap_closed": 0.586,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 489.82,
+          "avg_pct_gap_closed": 0.813,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 509.23,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 522.47,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 529.36,
+          "avg_pct_gap_closed": 0.956,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 533.67,
+          "avg_pct_gap_closed": 0.976,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 536.08,
+          "avg_pct_gap_closed": 0.985,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 537.43,
+          "avg_pct_gap_closed": 0.989,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 523.69,
+          "avg_pct_gap_closed": 0.927,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 510.51,
+          "avg_pct_gap_closed": 0.867,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 498.69,
+          "avg_pct_gap_closed": 0.815,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 492.24,
+          "avg_pct_gap_closed": 0.79,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 487.3,
+          "avg_pct_gap_closed": 0.774,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 476.69,
+          "avg_pct_gap_closed": 0.725,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 457.89,
+          "avg_pct_gap_closed": 0.646,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 442.18,
+          "avg_pct_gap_closed": 0.58,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 537.43
+    },
+    {
+      "model": "rate/3",
+      "season_length": 120,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 589.57,
+          "avg_pct_gap_closed": 0.686,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 630,
+          "avg_pct_gap_closed": 0.773,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 640.12,
+          "avg_pct_gap_closed": 0.811,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 677,
+          "avg_pct_gap_closed": 0.907,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 693.79,
+          "avg_pct_gap_closed": 0.958,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 697.28,
+          "avg_pct_gap_closed": 0.965,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 708.9,
+          "avg_pct_gap_closed": 0.997,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.76,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 678.21,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 673.83,
+          "avg_pct_gap_closed": 0.902,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 671.59,
+          "avg_pct_gap_closed": 0.898,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 670.17,
+          "avg_pct_gap_closed": 0.897,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 654.28,
+          "avg_pct_gap_closed": 0.851,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/3",
+      "season_length": 120,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 511.13,
+          "avg_pct_gap_closed": 0.646,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 560.21,
+          "avg_pct_gap_closed": 0.771,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 560.13,
+          "avg_pct_gap_closed": 0.749,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 574.35,
+          "avg_pct_gap_closed": 0.786,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 586.86,
+          "avg_pct_gap_closed": 0.818,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 602.43,
+          "avg_pct_gap_closed": 0.857,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 642.43,
+          "avg_pct_gap_closed": 0.979,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 647.56,
+          "avg_pct_gap_closed": 0.995,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.19,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 617.3,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 612.14,
+          "avg_pct_gap_closed": 0.899,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 609.71,
+          "avg_pct_gap_closed": 0.897,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 606.67,
+          "avg_pct_gap_closed": 0.892,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 589,
+          "avg_pct_gap_closed": 0.842,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.804,
+          "n": 63
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/3",
+      "season_length": 120,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 400.86,
+          "avg_pct_gap_closed": 0.608,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 464.45,
+          "avg_pct_gap_closed": 0.749,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 451.58,
+          "avg_pct_gap_closed": 0.641,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 480.33,
+          "avg_pct_gap_closed": 0.747,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 478.81,
+          "avg_pct_gap_closed": 0.765,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 484.63,
+          "avg_pct_gap_closed": 0.789,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 529.6,
+          "avg_pct_gap_closed": 0.957,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 537.99,
+          "avg_pct_gap_closed": 0.99,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 540.51,
+          "avg_pct_gap_closed": 0.998,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.2,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.44,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 510.18,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 506.34,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 504.14,
+          "avg_pct_gap_closed": 0.851,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 500.39,
+          "avg_pct_gap_closed": 0.839,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 480.97,
+          "avg_pct_gap_closed": 0.755,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 471.41,
+          "avg_pct_gap_closed": 0.716,
+          "n": 88
+        }
+      ],
+      "peak_age": 26,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/3",
+      "season_length": 200,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 656.29,
+          "avg_pct_gap_closed": 0.857,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 673.93,
+          "avg_pct_gap_closed": 0.905,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 678.31,
+          "avg_pct_gap_closed": 0.922,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 699.25,
+          "avg_pct_gap_closed": 0.975,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 705.96,
+          "avg_pct_gap_closed": 0.995,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 705.83,
+          "avg_pct_gap_closed": 0.989,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 692.79,
+          "avg_pct_gap_closed": 0.955,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 691.69,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 687.31,
+          "avg_pct_gap_closed": 0.946,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 683.62,
+          "avg_pct_gap_closed": 0.937,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 681.9,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 666.41,
+          "avg_pct_gap_closed": 0.89,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 653.59,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/3",
+      "season_length": 200,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 578.88,
+          "avg_pct_gap_closed": 0.827,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 611.79,
+          "avg_pct_gap_closed": 0.903,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 607.8,
+          "avg_pct_gap_closed": 0.883,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 611.3,
+          "avg_pct_gap_closed": 0.904,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 618,
+          "avg_pct_gap_closed": 0.918,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 628.41,
+          "avg_pct_gap_closed": 0.938,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 649.06,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 622.24,
+          "avg_pct_gap_closed": 0.92,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 619.97,
+          "avg_pct_gap_closed": 0.919,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 614.81,
+          "avg_pct_gap_closed": 0.908,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 610.76,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 609.03,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 592.35,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.21,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/3",
+      "season_length": 200,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 464.14,
+          "avg_pct_gap_closed": 0.794,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 512.27,
+          "avg_pct_gap_closed": 0.895,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 496.98,
+          "avg_pct_gap_closed": 0.811,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 519.04,
+          "avg_pct_gap_closed": 0.884,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 510.5,
+          "avg_pct_gap_closed": 0.884,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 513.58,
+          "avg_pct_gap_closed": 0.901,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 539.88,
+          "avg_pct_gap_closed": 0.996,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 541.22,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 514.01,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 512.75,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 508.91,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 505.74,
+          "avg_pct_gap_closed": 0.858,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 504.69,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 488.86,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 486.05,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/4",
+      "season_length": 28,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 388,
+          "avg_pct_gap_closed": 0.161,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 439.93,
+          "avg_pct_gap_closed": 0.223,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 454,
+          "avg_pct_gap_closed": 0.269,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 493,
+          "avg_pct_gap_closed": 0.369,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 519.32,
+          "avg_pct_gap_closed": 0.447,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 538.17,
+          "avg_pct_gap_closed": 0.498,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 601.62,
+          "avg_pct_gap_closed": 0.684,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 628.86,
+          "avg_pct_gap_closed": 0.763,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 650.28,
+          "avg_pct_gap_closed": 0.827,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 665.45,
+          "avg_pct_gap_closed": 0.869,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 672.24,
+          "avg_pct_gap_closed": 0.889,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 677.76,
+          "avg_pct_gap_closed": 0.907,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 682.41,
+          "avg_pct_gap_closed": 0.92,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 671.72,
+          "avg_pct_gap_closed": 0.888,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 661.52,
+          "avg_pct_gap_closed": 0.859,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 653.1,
+          "avg_pct_gap_closed": 0.836,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 642.1,
+          "avg_pct_gap_closed": 0.803,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 633.24,
+          "avg_pct_gap_closed": 0.778,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 625.03,
+          "avg_pct_gap_closed": 0.752,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 604.83,
+          "avg_pct_gap_closed": 0.693,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 586.59,
+          "avg_pct_gap_closed": 0.639,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 682.41
+    },
+    {
+      "model": "rate/4",
+      "season_length": 28,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 327.38,
+          "avg_pct_gap_closed": 0.145,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 351.21,
+          "avg_pct_gap_closed": 0.222,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 371.57,
+          "avg_pct_gap_closed": 0.229,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 397.57,
+          "avg_pct_gap_closed": 0.266,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 414.96,
+          "avg_pct_gap_closed": 0.297,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 432.35,
+          "avg_pct_gap_closed": 0.339,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 506.83,
+          "avg_pct_gap_closed": 0.566,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 540.17,
+          "avg_pct_gap_closed": 0.667,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 565.43,
+          "avg_pct_gap_closed": 0.744,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 585.4,
+          "avg_pct_gap_closed": 0.805,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 594.13,
+          "avg_pct_gap_closed": 0.831,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 601.54,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 608.08,
+          "avg_pct_gap_closed": 0.873,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 598.94,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 590.29,
+          "avg_pct_gap_closed": 0.823,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 582.02,
+          "avg_pct_gap_closed": 0.797,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 572.29,
+          "avg_pct_gap_closed": 0.771,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 563.63,
+          "avg_pct_gap_closed": 0.745,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 555.02,
+          "avg_pct_gap_closed": 0.722,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 533.52,
+          "avg_pct_gap_closed": 0.656,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 514.52,
+          "avg_pct_gap_closed": 0.6,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 608.08
+    },
+    {
+      "model": "rate/4",
+      "season_length": 28,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 236.86,
+          "avg_pct_gap_closed": 0.122,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 282.64,
+          "avg_pct_gap_closed": 0.204,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 313.75,
+          "avg_pct_gap_closed": 0.154,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 330.18,
+          "avg_pct_gap_closed": 0.218,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 334.76,
+          "avg_pct_gap_closed": 0.244,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 341.86,
+          "avg_pct_gap_closed": 0.274,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 402.23,
+          "avg_pct_gap_closed": 0.492,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 431.06,
+          "avg_pct_gap_closed": 0.598,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 454.45,
+          "avg_pct_gap_closed": 0.686,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 472.5,
+          "avg_pct_gap_closed": 0.749,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 480.82,
+          "avg_pct_gap_closed": 0.781,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 488.05,
+          "avg_pct_gap_closed": 0.808,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 494.11,
+          "avg_pct_gap_closed": 0.828,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 485.1,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 476.9,
+          "avg_pct_gap_closed": 0.746,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 468.23,
+          "avg_pct_gap_closed": 0.703,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 459.11,
+          "avg_pct_gap_closed": 0.664,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 450.59,
+          "avg_pct_gap_closed": 0.624,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 443.2,
+          "avg_pct_gap_closed": 0.593,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 421.1,
+          "avg_pct_gap_closed": 0.491,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 401.9,
+          "avg_pct_gap_closed": 0.408,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 494.11
+    },
+    {
+      "model": "rate/4",
+      "season_length": 60,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 451.86,
+          "avg_pct_gap_closed": 0.325,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 512.87,
+          "avg_pct_gap_closed": 0.432,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 531.38,
+          "avg_pct_gap_closed": 0.494,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 581.04,
+          "avg_pct_gap_closed": 0.626,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 611.68,
+          "avg_pct_gap_closed": 0.716,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 629.21,
+          "avg_pct_gap_closed": 0.764,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 680.41,
+          "avg_pct_gap_closed": 0.914,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 693.86,
+          "avg_pct_gap_closed": 0.953,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 702.14,
+          "avg_pct_gap_closed": 0.979,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 707.55,
+          "avg_pct_gap_closed": 0.994,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 708.45,
+          "avg_pct_gap_closed": 0.996,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.03,
+          "avg_pct_gap_closed": 0.998,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.69,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.79,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 667.79,
+          "avg_pct_gap_closed": 0.878,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 662.59,
+          "avg_pct_gap_closed": 0.865,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 658.1,
+          "avg_pct_gap_closed": 0.854,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 654.07,
+          "avg_pct_gap_closed": 0.844,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 637.41,
+          "avg_pct_gap_closed": 0.796,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 622,
+          "avg_pct_gap_closed": 0.75,
+          "n": 29
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 709.69
+    },
+    {
+      "model": "rate/4",
+      "season_length": 60,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 387,
+          "avg_pct_gap_closed": 0.305,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 428.93,
+          "avg_pct_gap_closed": 0.427,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 444.77,
+          "avg_pct_gap_closed": 0.428,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 472.22,
+          "avg_pct_gap_closed": 0.48,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 491.52,
+          "avg_pct_gap_closed": 0.523,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 512.03,
+          "avg_pct_gap_closed": 0.578,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 593.29,
+          "avg_pct_gap_closed": 0.827,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 617.81,
+          "avg_pct_gap_closed": 0.904,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 631.32,
+          "avg_pct_gap_closed": 0.944,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 639.97,
+          "avg_pct_gap_closed": 0.972,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 643.25,
+          "avg_pct_gap_closed": 0.983,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 645.49,
+          "avg_pct_gap_closed": 0.989,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 647.63,
+          "avg_pct_gap_closed": 0.995,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 633.21,
+          "avg_pct_gap_closed": 0.952,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.1,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 607.14,
+          "avg_pct_gap_closed": 0.874,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 599.32,
+          "avg_pct_gap_closed": 0.854,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 596.22,
+          "avg_pct_gap_closed": 0.85,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 589.87,
+          "avg_pct_gap_closed": 0.835,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 565.33,
+          "avg_pct_gap_closed": 0.76,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 554.17,
+          "avg_pct_gap_closed": 0.731,
+          "n": 63
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 647.63
+    },
+    {
+      "model": "rate/4",
+      "season_length": 60,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 287.29,
+          "avg_pct_gap_closed": 0.269,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 350.73,
+          "avg_pct_gap_closed": 0.406,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 362.65,
+          "avg_pct_gap_closed": 0.323,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 389.18,
+          "avg_pct_gap_closed": 0.426,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 393.26,
+          "avg_pct_gap_closed": 0.453,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 403.13,
+          "avg_pct_gap_closed": 0.493,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 478.05,
+          "avg_pct_gap_closed": 0.768,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 502.08,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 517.52,
+          "avg_pct_gap_closed": 0.914,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 526.74,
+          "avg_pct_gap_closed": 0.948,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 530.81,
+          "avg_pct_gap_closed": 0.965,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 534.41,
+          "avg_pct_gap_closed": 0.98,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 536.53,
+          "avg_pct_gap_closed": 0.986,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 523,
+          "avg_pct_gap_closed": 0.925,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 510.11,
+          "avg_pct_gap_closed": 0.866,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 498.53,
+          "avg_pct_gap_closed": 0.814,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 492.08,
+          "avg_pct_gap_closed": 0.79,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 486.77,
+          "avg_pct_gap_closed": 0.773,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 476.66,
+          "avg_pct_gap_closed": 0.725,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 457.89,
+          "avg_pct_gap_closed": 0.646,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 442.17,
+          "avg_pct_gap_closed": 0.58,
+          "n": 88
+        }
+      ],
+      "peak_age": 28,
+      "peak_ability_sum": 536.53
+    },
+    {
+      "model": "rate/4",
+      "season_length": 120,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 547.57,
+          "avg_pct_gap_closed": 0.577,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 598.67,
+          "avg_pct_gap_closed": 0.681,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 611.69,
+          "avg_pct_gap_closed": 0.727,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 655.75,
+          "avg_pct_gap_closed": 0.845,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 677.75,
+          "avg_pct_gap_closed": 0.91,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 686.31,
+          "avg_pct_gap_closed": 0.932,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 707.83,
+          "avg_pct_gap_closed": 0.994,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.55,
+          "avg_pct_gap_closed": 0.999,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.83,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 679.97,
+          "avg_pct_gap_closed": 0.913,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 678.21,
+          "avg_pct_gap_closed": 0.912,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 673.83,
+          "avg_pct_gap_closed": 0.902,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 671.59,
+          "avg_pct_gap_closed": 0.898,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 670.17,
+          "avg_pct_gap_closed": 0.897,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 654.28,
+          "avg_pct_gap_closed": 0.851,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.805,
+          "n": 29
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/4",
+      "season_length": 120,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 471.63,
+          "avg_pct_gap_closed": 0.537,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 522.71,
+          "avg_pct_gap_closed": 0.672,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 527.9,
+          "avg_pct_gap_closed": 0.658,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 547.61,
+          "avg_pct_gap_closed": 0.704,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 563.66,
+          "avg_pct_gap_closed": 0.745,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 581.13,
+          "avg_pct_gap_closed": 0.791,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 638.86,
+          "avg_pct_gap_closed": 0.969,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 646.87,
+          "avg_pct_gap_closed": 0.993,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.1,
+          "avg_pct_gap_closed": 0.999,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 619.44,
+          "avg_pct_gap_closed": 0.911,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 617.3,
+          "avg_pct_gap_closed": 0.91,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 612.14,
+          "avg_pct_gap_closed": 0.899,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 609.71,
+          "avg_pct_gap_closed": 0.897,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 606.65,
+          "avg_pct_gap_closed": 0.892,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 589.03,
+          "avg_pct_gap_closed": 0.842,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 575.14,
+          "avg_pct_gap_closed": 0.804,
+          "n": 63
+        }
+      ],
+      "peak_age": 25,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/4",
+      "season_length": 120,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 365,
+          "avg_pct_gap_closed": 0.503,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 432.45,
+          "avg_pct_gap_closed": 0.651,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 425.9,
+          "avg_pct_gap_closed": 0.551,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 455.61,
+          "avg_pct_gap_closed": 0.659,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 455.81,
+          "avg_pct_gap_closed": 0.679,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 464.05,
+          "avg_pct_gap_closed": 0.717,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 525.31,
+          "avg_pct_gap_closed": 0.944,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 536.5,
+          "avg_pct_gap_closed": 0.986,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 540.2,
+          "avg_pct_gap_closed": 0.997,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.14,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 511.44,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 510.18,
+          "avg_pct_gap_closed": 0.869,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 506.34,
+          "avg_pct_gap_closed": 0.856,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 504.09,
+          "avg_pct_gap_closed": 0.85,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 500.27,
+          "avg_pct_gap_closed": 0.838,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 480.97,
+          "avg_pct_gap_closed": 0.755,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 471.38,
+          "avg_pct_gap_closed": 0.716,
+          "n": 88
+        }
+      ],
+      "peak_age": 26,
+      "peak_ability_sum": 541.24
+    },
+    {
+      "model": "rate/4",
+      "season_length": 200,
+      "potentiale": 6,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 623.29,
+          "avg_pct_gap_closed": 0.775,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 652.47,
+          "avg_pct_gap_closed": 0.839,
+          "n": 15
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 659.73,
+          "avg_pct_gap_closed": 0.868,
+          "n": 26
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 689.57,
+          "avg_pct_gap_closed": 0.945,
+          "n": 28
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 701.14,
+          "avg_pct_gap_closed": 0.981,
+          "n": 28
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 703,
+          "avg_pct_gap_closed": 0.981,
+          "n": 29
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 709.79,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 709.86,
+          "avg_pct_gap_closed": 1,
+          "n": 29
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 694.86,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 692.79,
+          "avg_pct_gap_closed": 0.955,
+          "n": 29
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 691.69,
+          "avg_pct_gap_closed": 0.956,
+          "n": 29
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 687.31,
+          "avg_pct_gap_closed": 0.946,
+          "n": 29
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 683.62,
+          "avg_pct_gap_closed": 0.937,
+          "n": 29
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 681.9,
+          "avg_pct_gap_closed": 0.935,
+          "n": 29
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 666.41,
+          "avg_pct_gap_closed": 0.89,
+          "n": 29
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 653.59,
+          "avg_pct_gap_closed": 0.853,
+          "n": 29
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 709.86
+    },
+    {
+      "model": "rate/4",
+      "season_length": 200,
+      "potentiale": 5,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 545,
+          "avg_pct_gap_closed": 0.741,
+          "n": 8
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 586.64,
+          "avg_pct_gap_closed": 0.837,
+          "n": 14
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 584.3,
+          "avg_pct_gap_closed": 0.817,
+          "n": 30
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 593.28,
+          "avg_pct_gap_closed": 0.847,
+          "n": 46
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 602.39,
+          "avg_pct_gap_closed": 0.866,
+          "n": 56
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 615.98,
+          "avg_pct_gap_closed": 0.898,
+          "n": 63
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 648.22,
+          "avg_pct_gap_closed": 0.997,
+          "n": 63
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 649.41,
+          "avg_pct_gap_closed": 1,
+          "n": 63
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 634.41,
+          "avg_pct_gap_closed": 0.955,
+          "n": 63
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 622.27,
+          "avg_pct_gap_closed": 0.92,
+          "n": 63
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 619.97,
+          "avg_pct_gap_closed": 0.919,
+          "n": 63
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 614.81,
+          "avg_pct_gap_closed": 0.908,
+          "n": 63
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 610.76,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 609.03,
+          "avg_pct_gap_closed": 0.9,
+          "n": 63
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 592.35,
+          "avg_pct_gap_closed": 0.853,
+          "n": 63
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 588.21,
+          "avg_pct_gap_closed": 0.848,
+          "n": 63
+        }
+      ],
+      "peak_age": 23,
+      "peak_ability_sum": 649.41
+    },
+    {
+      "model": "rate/4",
+      "season_length": 200,
+      "potentiale": 4,
+      "by_age": [
+        {
+          "age": 16,
+          "avg_ability_sum": 431,
+          "avg_pct_gap_closed": 0.701,
+          "n": 7
+        },
+        {
+          "age": 17,
+          "avg_ability_sum": 487.82,
+          "avg_pct_gap_closed": 0.817,
+          "n": 11
+        },
+        {
+          "age": 18,
+          "avg_ability_sum": 473.35,
+          "avg_pct_gap_closed": 0.725,
+          "n": 40
+        },
+        {
+          "age": 19,
+          "avg_ability_sum": 500.23,
+          "avg_pct_gap_closed": 0.82,
+          "n": 57
+        },
+        {
+          "age": 20,
+          "avg_ability_sum": 494.65,
+          "avg_pct_gap_closed": 0.822,
+          "n": 74
+        },
+        {
+          "age": 21,
+          "avg_ability_sum": 499.72,
+          "avg_pct_gap_closed": 0.849,
+          "n": 88
+        },
+        {
+          "age": 22,
+          "avg_ability_sum": 539.05,
+          "avg_pct_gap_closed": 0.993,
+          "n": 88
+        },
+        {
+          "age": 23,
+          "avg_ability_sum": 541.14,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 24,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 25,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 26,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 27,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 28,
+          "avg_ability_sum": 541.24,
+          "avg_pct_gap_closed": 1,
+          "n": 88
+        },
+        {
+          "age": 29,
+          "avg_ability_sum": 526.24,
+          "avg_pct_gap_closed": 0.934,
+          "n": 88
+        },
+        {
+          "age": 30,
+          "avg_ability_sum": 514.01,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 31,
+          "avg_ability_sum": 512.75,
+          "avg_pct_gap_closed": 0.881,
+          "n": 88
+        },
+        {
+          "age": 32,
+          "avg_ability_sum": 508.91,
+          "avg_pct_gap_closed": 0.868,
+          "n": 88
+        },
+        {
+          "age": 33,
+          "avg_ability_sum": 505.74,
+          "avg_pct_gap_closed": 0.858,
+          "n": 88
+        },
+        {
+          "age": 34,
+          "avg_ability_sum": 504.69,
+          "avg_pct_gap_closed": 0.857,
+          "n": 88
+        },
+        {
+          "age": 35,
+          "avg_ability_sum": 488.86,
+          "avg_pct_gap_closed": 0.791,
+          "n": 88
+        },
+        {
+          "age": 36,
+          "avg_ability_sum": 486.05,
+          "avg_pct_gap_closed": 0.785,
+          "n": 88
+        }
+      ],
+      "peak_age": 24,
+      "peak_ability_sum": 541.24
+    }
+  ]
+}
