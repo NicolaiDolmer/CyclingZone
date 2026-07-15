@@ -110,6 +110,18 @@ dailyDelta(ability)   = f(seasonBudget, dagens fokus, intensitet, condition, sta
 
 ### 3.2 Sæson-budget-loft (mod variabel sæsonlængde)
 
+> ### ⛔ FORÆLDET — ejer afviste retningen 15/7. Slic IKKE dette afsnit som skrevet.
+>
+> Ejer (15/7, efter [#2437](https://github.com/NicolaiDolmer/CyclingZone/issues/2437)): *"**Der skal som sådan ikke være et loft over hvor meget en rytter kan træne på en sæson, men deres træninger skal bare være så 'lave', at der ikke er brug for et maks.**"*
+>
+> **Hvorfor det haster:** afsnittet her vil *generalisere* sæson-budget-loftet "fra akademi til hele den daglige model". Præcis den mekanik har **dræbt akademi-træningen i prod** (#2437, verificeret 15/7): budgettet er et éngangs-beløb afkoblet fra sæsonlængde, sæson 1 har `end_date = NULL`, og efter ~10 dage var **18% af alle evne-rækker låst resten af sæsonen** (87% af akademi-rytterne har ≥1 låst evne). Sliced som skrevet ville vi have udbredt problemet fra 570 akademi-ryttere til hele populationen.
+>
+> **Konflikt med den anden spec:** [`2026-06-11-kernesystemer-design.md`](2026-06-11-kernesystemer-design.md) §5.1 siger det modsatte — *"L0-motorens sæsonvise vækstbudget **omlægges til den daglige strøm**"* — og dét matcher ejerens retning. De to specs skal forliges før slicing.
+>
+> **Hvad der overlever herfra:** §3.1's gap-drevne rate er stadig rigtig, og pointen om variabel sæsonlængde er reel. Det er **nødbremsen ovenpå**, der skal væk — ikke diagnosen. Åbent design-spørgsmål: er den gap-drevne rate i sig selv lav nok til at et maks er unødvendigt (ejerens krav), eller skal den kalibreres ned? Se også ejerens to øvrige krav: **træningsscore** (`2026-06-11` §5.1) og **kun enkelte evner pr. træning** (§4.1 nedenfor).
+>
+> Afsnittet bevares som historik + begrundelse — det skal omskrives, ikke slettes.
+
 Kodebasen har **ingen fast sæsonlængde** (#2082-fund: S1 kørte 57+ dage; `daysPerSeason: 28` er en budget-divisor, ikke en kalender). En ren dage-baseret rate over-skyder når en sæson kører længe. Bevar #2082 kandidat-3's **sæson-budget-cap**: den samlede udvikling en rytter kan opnå på én sæson mætter ved sæsonens fair andel af gap'et, uanset hvor mange dage der tikker. Allerede delvist til stede (`computeAcademySeasonCeiling`, `SEASON_FRAC_BY_AGE`) — generaliser fra akademi til hele den daglige model.
 
 Konsekvens der skal accepteres bevidst (fra #2082): ved lav sæson-rate bliver dag-til-dag-fremgangen næsten usynlig. Vi afbøder med den **aftagende kurve** (mere synlig fremgang i sæson 1-2, ejer-godkendt) + **progress-bar pr. evne** (findes, `ability_progress`) så "usynlig i dag" stadig føles som "bevæger sig mod næste point".
