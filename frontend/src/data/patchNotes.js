@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.00",
+    "date": "2026-07-15",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy training progress no longer stalls mid-season",
+          "body": "Young riders (16 to 21) in your academy were barely progressing once the season was underway, even with plenty of training days left to go. Academy training now grows steadily across the whole season instead of grinding to a near standstill partway through. This is an interim fix while a longer-term academy development model is designed."
+        },
+        "da": {
+          "title": "Akademi-træning går ikke længere i stå midt i sæsonen",
+          "body": "Unge ryttere (16-21 år) i dit akademi fik næsten ingen fremgang, når sæsonen var kommet i gang, selv med masser af træningsdage tilbage. Akademi-træning giver nu jævn fremgang hele sæsonen igennem i stedet for næsten at gå i stå undervejs. Det er en midlertidig løsning, mens en langsigtet akademi-udviklingsmodel designes."
+        },
+        "refs": [2437, 2202]
+      }
+    ]
+  },
+  {
     "version": "6.99",
     "date": "2026-07-13",
     "label": "Beta",

@@ -287,3 +287,66 @@ test("applyDailyTick: uden staff (default) = bit-identisk med samme tick uden st
   const withNullStaff = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, staff: null, facilityTier: 0, riderLevel: "junior" });
   assert.deepEqual(withNullStaff, withoutParams, "null staff → identisk tick-output");
 });
+
+// ── #2437: academyRateMult (interim-knap, VALGFRI, default 1.0) ─────────────
+
+test("dailyAbilityDelta: academyRateMult udeladt = bit-identisk med eksplicit 1.0", () => {
+  const args = {
+    ability: "sprint", current: 50, cap: 85, age: 17,
+    program: { focus: "sprint", intensity: "normal" },
+    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+  };
+  const omitted = dailyAbilityDelta(args);
+  const explicit1 = dailyAbilityDelta({ ...args, academyRateMult: 1.0 });
+  assert.equal(omitted, explicit1);
+  assert.ok(omitted > 0, "sanity: skal give en ægte positiv delta");
+});
+
+test("dailyAbilityDelta: academyRateMult=1/3 giver præcis en tredjedel af delta", () => {
+  const args = {
+    ability: "sprint", current: 50, cap: 85, age: 17,
+    program: { focus: "sprint", intensity: "normal" },
+    conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+  };
+  const full = dailyAbilityDelta(args);
+  const third = dailyAbilityDelta({ ...args, academyRateMult: 1 / 3 });
+  assert.ok(Math.abs(third - full / 3) < 1e-12, `got ${third}, expected ${full / 3}`);
+});
+
+test("applyDailyTick: academyRateMult udeladt = bit-identisk regression mod samme tick uden parameteren", () => {
+  const base = {
+    riderId: "r-rateMult", dateStr: "2026-07-10", age: 17,
+    abilities: { sprint: 50, climbing: 55, endurance: 60 },
+    caps: { sprint: 85, climbing: 80, endurance: 78 },
+    progress: { sprint: 0.3, climbing: 0.6 },
+    program: { focus: "sprint", intensity: "normal" },
+    conditionMult: 1, bonus: true, potentiale: 5,
+  };
+  const withoutParam = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
+  const withExplicit1 = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, academyRateMult: 1.0 });
+  assert.deepEqual(withExplicit1, withoutParam, "academyRateMult=1.0 → identisk tick-output (nul regression)");
+});
+
+test("applyDailyTick: academyRateMult=1/3 skalerer progress-akkumulering præcist ift. mult=1", () => {
+  // score-feltet er afrundet til 2 decimaler (afrundings-kollisioner ved meget små
+  // deltaer) — sammenlign i stedet det UAFRUNDEDE progress-felt. Gap=5 giver en delta
+  // der garanteret forbliver under +1 hele-tal-terskel for begge kørsler (heller ikke
+  // ved øvre noise-grænse), så progress = 0 + delta eksakt (ingen while-loop-afrunding).
+  // Samme (riderId,dateStr) → samme seeded noise i begge kørsler, uafhængigt af mult.
+  const base = {
+    riderId: "r-rateMult2", dateStr: "2026-07-10", age: 17,
+    abilities: { sprint: 50 },
+    caps: { sprint: 55 },
+    progress: { sprint: 0 },
+    program: { focus: "sprint", intensity: "normal" },
+    conditionMult: 1, bonus: false, potentiale: 4,
+  };
+  const full = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
+  const third = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, academyRateMult: 1 / 3 });
+  assert.equal(Object.keys(full.gains).length, 0, "sanity: gap er for lille til +1 selv uden mult");
+  assert.ok(full.progress.sprint > 0, "sanity: skal give ægte positiv progress");
+  assert.ok(
+    Math.abs(third.progress.sprint - full.progress.sprint / 3) < 1e-9,
+    `got ${third.progress.sprint}, expected ${full.progress.sprint / 3}`,
+  );
+});

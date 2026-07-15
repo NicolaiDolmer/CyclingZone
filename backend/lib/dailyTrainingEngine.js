@@ -12,13 +12,13 @@
 // updated_at-timestamps.
 
 import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
-import { resolveProgram, applyDailyTick, computeAcademySeasonCeiling } from "./dailyTraining.js";
+import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 import { resolveDayIntensity } from "./training.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
 import { buildCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { isAcademyAge, academySeasonFracForAge, ACADEMY } from "./academyFlag.js";
+import { isAcademyAge, ACADEMY } from "./academyFlag.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 
@@ -187,27 +187,21 @@ export async function runTeamTrainingDay({
       caps = buildCaps(abilities, rider.primary_type, rider.potentiale);
     }
 
-    // #2082/#1938 (ejer-godkendt 5/7): akademi-alder får et SÆSON-BUDGET-loft i stedet
-    // for livstids-loftet direkte — væksten mætter ved sæsonens andel af gappet, uanset
-    // hvor mange dage sæsonen varer (sæsonlængde er ikke en fast konstant, jf. #2082).
-    // seasonBudgetBaseline snapshottes ved sæsonens FØRSTE tick (season_budget_season
-    // matcher ikke den aktuelle seasonNumber) og genbruges resten af sæsonen.
+    // #2437 — MIDLERTIDIG INTERIM (ejer-godkendt 15/7), fjernes igen når den rigtige
+    // model (jævn alders-taper, egen session) lander. Rod-årsag (verificeret, IKKE
+    // issue-tekstens diagnose): #2202 lod akademi-alder få et SÆSON-loft
+    // (computeAcademySeasonCeiling/SEASON_FRAC_BY_AGE, #2082/#1938) sendt som `caps`
+    // til applyDailyTick i stedet for livstids-loftet. dailyAbilityDelta's gap
+    // (=cap−current) faldt fra ~17,9 til ~2,0 → dagsraten kollapsede ~9x og aftog
+    // derefter eksponentielt resten af sæsonen. Det var IKKE pulje-udtømning —
+    // sæson-budgettet stod 83% ubrugt i prod, fordi raten MOD budgettet selv aftog
+    // for hurtigt til nogensinde at nå det.
+    // Interim: INTET sæson-loft — tickCaps = livstids-loftet (`caps`) for ALLE
+    // ryttere. I stedet dæmpes akademi-alderens daglige rate direkte via
+    // ACADEMY.INTERIM_RATE_MULT (=1/3, kalibreret i careerCurveSimulation.js mod
+    // ægte prod-population). hardDailyCap (#2082/#1938-sikkerhedsnettet) er uændret.
     const inAcademy = isAcademyAge(age);
-    let seasonBudgetBaseline = null;
-    let seasonBudgetRefreshed = false;
-    if (inAcademy) {
-      const staleBaseline = abRow.season_budget_season !== seasonNumber
-        || !abRow.season_budget_baseline || typeof abRow.season_budget_baseline !== "object";
-      if (staleBaseline) {
-        seasonBudgetBaseline = abilities; // snapshot FØR dagens tick
-        seasonBudgetRefreshed = true;
-      } else {
-        seasonBudgetBaseline = abRow.season_budget_baseline;
-      }
-    }
-    const tickCaps = inAcademy
-      ? computeAcademySeasonCeiling({ seasonStartAbilities: seasonBudgetBaseline, lifetimeCaps: caps, frac: academySeasonFracForAge(age) })
-      : caps;
+    const tickCaps = caps;
 
     // Er rytteren skadet i dag?
     const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
@@ -232,6 +226,9 @@ export async function runTeamTrainingDay({
         bonus,
         potentiale: rider.potentiale,
         hardDailyCap: inAcademy ? ACADEMY.HARD_DAILY_CAP : undefined,
+        // #2437 interim: akademi-alderens rate dæmpes direkte (se blok-kommentaren
+        // ved tickCaps ovenfor); voksne uændret (1.0 = bit-identisk).
+        academyRateMult: inAcademy ? ACADEMY.INTERIM_RATE_MULT : 1.0,
         // Plan B (#1441): facilitets-magnitude + chef-specialisering. riderLevel
         // (youth/junior/senior) styrer chefens niveau-affinitets-match pr. rytter.
         staff: trainingStaff,
@@ -288,10 +285,9 @@ export async function runTeamTrainingDay({
     if (capsWasNull) {
       abilityPatch.ability_caps = caps;
     }
-    if (seasonBudgetRefreshed) {
-      abilityPatch.season_budget_baseline = seasonBudgetBaseline;
-      abilityPatch.season_budget_season = seasonNumber;
-    }
+    // #2437: season_budget_baseline/season_budget_season skrives IKKE længere —
+    // sæson-loftet er fjernet (se blok-kommentaren ved tickCaps ovenfor). Kolonnerne
+    // er nu ubrugte og kan droppes i en opfølgende migration; rørt ikke her.
     if (Object.keys(abilityPatch).length > 0) {
       abilityUpdates.push({ riderId: rider.id, patch: abilityPatch });
     }
