@@ -19,7 +19,6 @@
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPES } from "./riderTypes.js";
-import { isAcademyAge } from "./academyFlag.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -280,18 +279,48 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
 // helpers giver derive-stien (backfillCores) + en backfill-script ÉN delt, ren init
 // der matcher præcis det loft motoren ellers ville lazy-initте.
 
-// Det fulde caps-sæt for EN VILKÅRLIG rytter (init-tid):
-//   • akademi-alder (16-21): afkoblet ungdoms-loft (youthAbilityCap, IKKE baseline-bundet)
-//   • voksen: baseline-abilities + headroom×signatur (buildCaps) — samme som motoren lazy-initer.
-// Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES rytteren har en baseline for).
-//   baselineAbilities : { climbing, sprint, ... } current/afledte evner
-//   rider             : { potentiale, age }  (age = nuværende alder; bruges kun til akademi-gate)
-//   primaryType/secondaryType : ryttertype-nøgler (secondaryType kun brugt for ungdom)
-export function buildCapsForRider(baselineAbilities, { potentiale, age } = {}, primaryType, secondaryType) {
-  if (isAcademyAge(age)) {
-    return buildYouthCaps(potentiale, primaryType, secondaryType);
+// Det fulde caps-sæt for EN VILKÅRLIG rytter — ÉN semantik for alle aldre.
+//
+//   loft = max( absolut_loft(potentiale, anlæg) , nuværende evne )
+//
+// EJER-BESLUTTET 2026-07-15. Før da levede to uforenelige semantikker side om side —
+// afkoblet ungdoms-loft (potentiale = slutniveau) og baseline+headroom (potentiale =
+// forbedring) — og hvilken en rytter fik var et møntkast afgjort af hvilken kodesti
+// der først skrev ability_caps (feltet skrives KUN når NULL). Prod-følgen: en pot-4,5-
+// rytter havde et højere livstidsloft (813) end den bedste pot-6-rytter (737), dvs.
+// potentiale styrede IKKE hvor god en rytter kunne blive.
+//
+// GULVET er det der gør konsolideringen mulig: specs/2026-06-23-ungdoms-rytter-evner-
+// rework-design.md §4.2 afviste netop én fælles formel med begrundelsen "en voksen med
+// høj current ville ellers få et loft under sin current" — gulvet løser præcis det, og
+// ingen spiller får frataget evne han allerede ejer. Denne funktion supersederer
+// derfor §4.2/§8/§10 i den spec (dens §10 kaldte selv to-formel-modellen bevidst gæld
+// der skulle konsolideres senere).
+//
+// ALDERS-UAFHÆNGIG med vilje: en semantik der skiftede ved 21→22 ville flytte rytterens
+// livstidsloft på fødselsdagen — den bombe var kun udetoneret fordi sæson 1 stadig kører.
+//
+// Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES).
+//   abilities : { climbing, sprint, ... } nuværende/afledte evner (gulvet)
+//   rider     : { potentiale }
+//   primaryType/secondaryType : ryttertype-nøgler (anlæggets to retninger)
+export function buildCapsForRider(abilities, { potentiale } = {}, primaryType, secondaryType) {
+  const absolute = buildYouthCaps(potentiale, primaryType, secondaryType);
+  const caps = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    const current = Math.round(Number(abilities?.[ability]) || 0);
+    caps[ability] = clamp(Math.max(absolute[ability] ?? 0, current), 0, 99);
   }
-  return buildCaps(baselineAbilities, primaryType, potentiale);
+  return caps;
+}
+
+// Er to caps-sæt ens over alle synlige evner? Motorerne genberegner loftet hver tick,
+// men skal kun SKRIVE når det faktisk flyttede sig — ellers ville hver rytter få en
+// overflødig UPDATE pr. tick. Et manglende/ikke-objekt loft tæller som forskelligt,
+// så det bliver skrevet første gang.
+export function sameCaps(a, b) {
+  if (!a || typeof a !== "object" || !b || typeof b !== "object") return false;
+  return VISIBLE_ABILITIES.every((ability) => Number(a[ability]) === Number(b[ability]));
 }
 
 // Nul-initialiseret progress-objekt over alle synlige evner: { climbing: 0, ... }.

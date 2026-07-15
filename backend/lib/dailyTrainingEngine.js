@@ -15,7 +15,7 @@ import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js"
 import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 import { resolveDayIntensity } from "./training.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
-import { buildCaps } from "./riderProgression.js";
+import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { isAcademyAge, ACADEMY } from "./academyFlag.js";
@@ -88,7 +88,7 @@ export async function runTeamTrainingDay({
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
     .from("riders")
-    .select("id, primary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy")
+    .select("id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy")
     .eq("team_id", teamId)
     .eq("is_retired", false);
   if (ridersError) throw new Error(`riders load: ${ridersError.message}`);
@@ -180,12 +180,15 @@ export async function runTeamTrainingDay({
       if (abRow[k] != null) abilities[k] = Number(abRow[k]);
     }
 
-    // Caps lazy-init: samme mønster som riderProgressionEngine.developRidersForSeason.
-    let caps = abRow.ability_caps;
-    const capsWasNull = !caps || typeof caps !== "object";
-    if (capsWasNull) {
-      caps = buildCaps(abilities, rider.primary_type, rider.potentiale);
-    }
+    // Livstidsloftet GENBEREGNES hver tick — det er en ren funktion af potentiale,
+    // anlæg og nuværende evne, så en forkert persisteret værdi kan ikke overleve.
+    // Tidligere lazy-initede vi ("skriv kun når ability_caps er NULL") med den
+    // baseline-bundne voksen-formel uanset alder, mens backfill-stien brugte den
+    // afkoblede ungdoms-formel. Hvilken semantik en rytter endte med var derfor et
+    // møntkast afgjort af hvilken kodesti der ramte ham først (#2001-mønsteret), og
+    // feltet blev aldrig genopbygget. Se buildCapsForRider for den samlede model.
+    const caps = buildCapsForRider(abilities, rider, rider.primary_type, rider.secondary_type);
+    const capsChanged = !sameCaps(abRow.ability_caps, caps);
 
     // #2437 — MIDLERTIDIG INTERIM (ejer-godkendt 15/7), fjernes igen når den rigtige
     // model (jævn alders-taper, egen session) lander. Rod-årsag (verificeret, IKKE
@@ -282,7 +285,7 @@ export async function runTeamTrainingDay({
       }
       abilityPatch.ability_progress = tickResult.progress;
     }
-    if (capsWasNull) {
+    if (capsChanged) {
       abilityPatch.ability_caps = caps;
     }
     // #2437: season_budget_baseline/season_budget_season skrives IKKE længere —
