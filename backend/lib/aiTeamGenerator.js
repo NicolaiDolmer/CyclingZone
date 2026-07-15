@@ -38,6 +38,7 @@ import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
 
 export { AI_TEAM_NAME_PREFIX };
 
@@ -90,23 +91,32 @@ async function createAiTeam(supabase, { pool, ordinal, baseSeed, usedNames, allo
   return teamId;
 }
 
+// #2434: hvilke af inflightRaceIds har holdets ryttere entries i? Returnerer de
+// DISTINKTE blokerende race_ids (tom liste = ikke blokeret). teamHasInflightEntries
+// delegerer hertil. aiTeamTrimHealSweep bruger listen til at afgøre om et blokerende
+// løb SELV er stallet (løbs-bevidst stale-detektion) — ikke bare OM holdet er blokeret.
+export async function teamInflightRaceIds(supabase, teamId, inflightRaceIds) {
+  if (!inflightRaceIds.length) return [];
+  const { data: riders, error: rErr } = await supabase.from("riders").select("id").eq("team_id", teamId);
+  if (rErr) throw new Error(`AI-trim (riders for ${teamId}): ${rErr.message}`);
+  const riderIds = (riders || []).map((r) => r.id);
+  if (!riderIds.length) return [];
+  const { data: entries, error: eErr } = await supabase
+    .from("race_entries")
+    .select("race_id")
+    .in("race_id", inflightRaceIds)
+    .in("rider_id", riderIds);
+  if (eErr) throw new Error(`AI-trim (race_entries for ${teamId}): ${eErr.message}`);
+  return [...new Set((entries || []).map((e) => e.race_id))];
+}
+
 // #2269: har holdets ryttere entries i et IGANGVÆRENDE løb (låst felt, samme
 // definition som #2074-guarden: ikke-completed + stages_completed>0)? Et låst hold
 // kan ikke hard-slettes — DB-triggeren trg_block_rider_delete_inflight kaster.
 // Eksporteret (#2187): genbruges af aiTeamTrimHealSweep til at re-tjekke udskudte hold.
+// Delegerer til teamInflightRaceIds (#2434) — én kilde til inflight-blokerings-logikken.
 export async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) {
-  if (!inflightRaceIds.length) return false;
-  const { data: riders, error: rErr } = await supabase.from("riders").select("id").eq("team_id", teamId);
-  if (rErr) throw new Error(`AI-trim (riders for ${teamId}): ${rErr.message}`);
-  const riderIds = (riders || []).map((r) => r.id);
-  if (!riderIds.length) return false;
-  const { data: entries, error: eErr } = await supabase
-    .from("race_entries")
-    .select("rider_id")
-    .in("race_id", inflightRaceIds)
-    .in("rider_id", riderIds);
-  if (eErr) throw new Error(`AI-trim (race_entries for ${teamId}): ${eErr.message}`);
-  return (entries || []).length > 0;
+  return (await teamInflightRaceIds(supabase, teamId, inflightRaceIds)).length > 0;
 }
 
 // #2389 (Sentry CYCLINGZONE-26/2E/2F): har holdet præmie-rækker i et løb hvis
@@ -146,6 +156,49 @@ export async function getInflightRaceIds(supabase) {
     .gt("stages_completed", 0);
   if (infErr) throw new Error(`AI-trim (inflight races): ${infErr.message}`);
   return (inflight || []).map((r) => r.id);
+}
+
+// #2434: hvilke inflight-løb er REELT STALLEDE? Et løb er stallet når dets NÆSTE
+// uafviklede etape (stage_number = stages_completed + 1) skulle være kørt for mere end
+// stageAlarmHours siden, men stages_completed er ikke rykket. Dette er præcis samme
+// signal som stall-watchdogens etape-stall (b) — genbruger dens tærskel, så de to
+// alarmer deler ÉN definition af "en etape hænger".
+//
+// Formål: aiTeamTrimHealSweep skal kun alarmere om et pending AI-hold når det er
+// blokeret af et løb der SELV er gået i stå — ikke når det bare er blokeret af et
+// lovligt kørende multi-dag etapeløb (rod-årsagen til CYCLINGZONE-31's falsk-positive
+// spam: 48t-tærsklen var kortere end etapeløbenes kalender-spredning).
+export async function getStalledInflightRaceIds(
+  supabase,
+  now = new Date(),
+  stageAlarmHours = STALL_WATCHDOG_DEFAULT_THRESHOLDS.stageAlarmHours,
+) {
+  const { data: races, error: rErr } = await supabase
+    .from("races")
+    .select("id, stages_completed")
+    .neq("status", "completed")
+    .gt("stages_completed", 0);
+  if (rErr) throw new Error(`AI-trim (stalled races): ${rErr.message}`);
+  if (!races?.length) return [];
+
+  const cutoff = new Date(now.getTime() - stageAlarmHours * 60 * 60 * 1000).toISOString();
+  const raceIds = races.map((r) => r.id);
+
+  const dueRows = await fetchAllRows(() => supabase
+    .from("race_stage_schedule")
+    .select("race_id, stage_number, scheduled_at")
+    .in("race_id", raceIds)
+    .lte("scheduled_at", cutoff)
+    .order("race_id", { ascending: true }));
+  if (!dueRows.length) return [];
+
+  const nextStageByRace = new Map(races.map((r) => [r.id, (r.stages_completed || 0) + 1]));
+  const stalled = new Set();
+  for (const row of dueRows) {
+    // Kun DEN forfaldne række der ER løbets næste uafviklede etape betyder "stallet".
+    if (row.stage_number === nextStageByRace.get(row.race_id)) stalled.add(row.race_id);
+  }
+  return [...stalled];
 }
 
 // #2187: markér AI-hold der IKKE kunne slettes nu (inflight-blokeret) til udskudt

@@ -635,15 +635,19 @@ async function runAiTeamTrimHealSweepCron() {
     });
   }
   if (result.stale?.length) {
+    // #2434: ÉN aggregeret capture pr. tick med FAST fingerprint (før: én Error pr.
+    // hold pr. tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
+    // stale[] er nu løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke
+    // ren alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
+    const n = result.stale.length;
     console.error(
-      `🚨 AI-trim heal-sweep: ${result.stale.length} AI-hold udskudt >48t uden fremdrift — se Sentry (#2187)`
+      `🚨 AI-trim heal-sweep: ${n} AI-hold reelt fastlåst (blokerende løb stallet el. > backstop) — se Sentry (#2187/#2434)`
     );
-    for (const s of result.stale) {
-      sentryCapture(new Error(`AI-trim persistent stall: hold ${s.teamId} udskudt ${s.ageHours}t`), {
-        tags: { cron: "ai-team-trim-heal", poolId: String(s.poolId ?? "") },
-        extra: s,
-      });
-    }
+    sentryCapture(new Error("AI-trim persistent stall: AI-hold reelt fastlåst"), {
+      tags: { cron: "ai-team-trim-heal" },
+      fingerprint: ["ai-trim-persistent-stall"],
+      extra: { count: n, teams: result.stale },
+    });
   }
 }
 
