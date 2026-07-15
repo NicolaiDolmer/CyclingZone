@@ -4,8 +4,9 @@
 // strategi bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
 // → alreadyRan=true uden videre DB-skriv.
 //
-// Spejler riderProgressionEngine.js: DI-supabase, caps-lazy-init (buildCaps), batched
-// writes (runBatched), ageForSeason-helper genbrugt herfra.
+// Spejler riderProgressionEngine.js: DI-supabase, loft genberegnet pr. tick
+// (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
+// ageForSeason-helper genbrugt herfra.
 //
 // Kaldes af: POST /api/training/run-today (manager, bonus=true) + cron-sweep
 // (assistant, bonus=false). Ingen nondeterminisme udover `now`-default +

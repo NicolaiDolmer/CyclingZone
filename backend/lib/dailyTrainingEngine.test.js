@@ -6,6 +6,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
 import { conditionMultiplier } from "./riderCondition.js";
 import { ACADEMY } from "./academyFlag.js";
+import { buildCapsForRider } from "./riderProgression.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
 // Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
@@ -338,12 +339,18 @@ test("akademirytter med abilities-row trænes (ikke sprunget over) — #1478 bug
 // tickCaps = livstidsloftet for ALLE ryttere; akademi-alder dæmpes i stedet via
 // ACADEMY.INTERIM_RATE_MULT (1/3). Testene nedenfor erstatter de gamle
 // sæson-loft-tests (#2082/#1938), som nu tester adfærd der er fjernet.
-test("akademi-alder (18): tickCaps=livstidsloft (intet sæson-loft) + academyRateMult=1/3 (#2437 interim)", async () => {
+//
+// #2471: livstidsloftet er ikke længere den PERSISTEREDE ability_caps-værdi —
+// motoren genberegner det hver tick via buildCapsForRider. Referencerne herunder
+// beregner derfor loftet samme vej. Seeden beholder bevidst et forkert persisteret
+// loft (alle 90), så testen samtidig beviser at den værdi IKKE længere styrer ticket.
+test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) + academyRateMult=1/3 (#2437 interim + #2471)", async () => {
   const riderAbilities = { ...BASE_ABILITIES, climbing: 40 };
-  const lifetimeCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
+  const staleCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
+  const rider = makeRider({ id: "ar4", is_academy: true, potentiale: 4, birthdate: "2008-01-01" }); // 18 år
   const state = seedState({
-    riders: [makeRider({ id: "ar4", is_academy: true, potentiale: 4, birthdate: "2008-01-01" })], // 18 år
-    abilities: [makeAbilityRow("ar4", { ...riderAbilities, ability_caps: lifetimeCaps })],
+    riders: [rider],
+    abilities: [makeAbilityRow("ar4", { ...riderAbilities, ability_caps: staleCaps })],
     conditions: [makeCondition("ar4")],
     plans: [{ rider_id: "ar4", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
   });
@@ -355,7 +362,9 @@ test("akademi-alder (18): tickCaps=livstidsloft (intet sæson-loft) + academyRat
   });
 
   // Reference: SAMME lavniveau-funktion (applyDailyTick) med de parametre motoren
-  // skal sende — tickCaps=lifetimeCaps (IKKE et sæson-loft), academyRateMult=1/3.
+  // skal sende — tickCaps = det GENBEREGNEDE livstidsloft (IKKE et sæson-loft, og
+  // IKKE den stale persisterede værdi), academyRateMult=1/3.
+  const lifetimeCaps = buildCapsForRider(riderAbilities, rider, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
     riderId: "ar4", dateStr: "2026-06-12", age: 18,
     abilities: riderAbilities, caps: lifetimeCaps, progress: {},
@@ -367,20 +376,22 @@ test("akademi-alder (18): tickCaps=livstidsloft (intet sæson-loft) + academyRat
   });
 
   const rr = result.report.riders[0];
-  assert.equal(rr.score, expected.score, "score bit-identisk med direkte beregning (tickCaps=livstidsloft, rate/3)");
+  assert.equal(rr.score, expected.score, "score bit-identisk med direkte beregning (tickCaps=genberegnet livstidsloft, rate/3)");
   assert.deepEqual(rr.gains, expected.gains, "gains bit-identisk med direkte beregning");
 
   const ab = state.rider_derived_abilities.find((a) => a.rider_id === "ar4");
+  assert.deepEqual(ab.ability_caps, lifetimeCaps, "#2471: det stale persisterede loft (90) er overskrevet med det genberegnede");
   assert.equal(ab.season_budget_baseline, undefined, "intet sæson-loft skrives længere (#2437)");
   assert.equal(ab.season_budget_season, undefined, "intet sæson-loft skrives længere (#2437)");
 });
 
 test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-mult-parameteren (ingen regression)", async () => {
   const riderAbilities = { ...BASE_ABILITIES, climbing: 40 };
-  const lifetimeCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
+  const staleCaps = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 90]));
+  const rider = makeRider({ id: "adult1", potentiale: 4, birthdate: "2001-01-01" }); // 25 år
   const state = seedState({
-    riders: [makeRider({ id: "adult1", potentiale: 4, birthdate: "2001-01-01" })], // 25 år
-    abilities: [makeAbilityRow("adult1", { ...riderAbilities, ability_caps: lifetimeCaps })],
+    riders: [rider],
+    abilities: [makeAbilityRow("adult1", { ...riderAbilities, ability_caps: staleCaps })],
     conditions: [makeCondition("adult1")],
     plans: [{ rider_id: "adult1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
   });
@@ -394,6 +405,8 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
   // Reference UDEN academyRateMult-parameteren overhovedet (default 1.0) — beviser at
   // motoren rent faktisk sender 1.0 for voksne, ikke bare et tal der tilfældigvis
   // regner ud til det samme. riderLevel="junior": riderLevelBand(is_academy=false, 25).
+  // #2471: caps = det genberegnede loft (samme formel for voksne som for ungdom).
+  const lifetimeCaps = buildCapsForRider(riderAbilities, rider, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
     riderId: "adult1", dateStr: "2026-06-12", age: 25,
     abilities: riderAbilities, caps: lifetimeCaps, progress: {},
