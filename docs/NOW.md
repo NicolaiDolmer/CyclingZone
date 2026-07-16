@@ -8,6 +8,8 @@
 
 > **🌊 Dagbølge 16/7 (7 Fable-spor, 08:57-09:55):** 5 PR'er + #2472-verifikation + masterplan **konsolideret 16/7** (ejer-go; analyse + 5 indarbejdede anbefalinger på [#2468](https://github.com/NicolaiDolmer/CyclingZone/issues/2468) — sæsongrænse-pakken er nu NU-kø pkt 2). **#1847 KORRIGERET:** 70% af "13.262 orphans" er by-design (team-rækker); ægte = **4.100 (1,7%), 100% AI-churn, alle display-sikre** — oprydnings-DELETE bevidst droppet (ville skade palmarès), i stedet navne-snapshot + DELETE-guard i #2481.
 
+> **🌐 i18n-fix 16/7 ([#2508](https://github.com/NicolaiDolmer/CyclingZone/issues/2508)):** OnlineBadge viste dansk i EN ("Online nu"/"aldrig") på hold-/managerprofil → keyificeret + `/teams/:id` føjet til leak-smoke (PR klar til merge-listen).
+
 > **🩹 [#2407](https://github.com/NicolaiDolmer/CyclingZone/issues/2407) — kaskade stoppet 15/7; kode-fix klar i #2481.** Ejer-rest: merge #2481 → apply migration → trim 5 overskud (27/25/25 → 24/24/24). Til deploy: markeringen kan gen-opstå ved signup i pulje 9/10/11 → tjek periodisk. Backup: `backup_2407_20260715_pending_removal` (rollback-SQL i [kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/2407#issuecomment-4982310656)).
 
 > **💰 Værdimodel v4 (#2428) — SHADOW LIVE (elite-præmie-retning, ejer 14/7).** Admin→Økonomi→"Rytter-værdi v4". Mega-stjerner v4 35-82M, ukøbelige; 6/7 gates grønne. Audit: [audits/2026-07-13-valuation-v4-shadow-scorecard.md](audits/2026-07-13-valuation-v4-shadow-scorecard.md).

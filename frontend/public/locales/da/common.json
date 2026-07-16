@@ -75,7 +75,9 @@
     "justNow": "Lige nu",
     "minutesAgo": "{m}m siden",
     "hoursAgo": "{h}t siden",
-    "daysAgo": "{d}d siden"
+    "daysAgo": "{d}d siden",
+    "onlineNow": "Online nu",
+    "never": "Aldrig"
   },
   "controls": {
     "watchlistAdd": "Tilføj til ønskeliste",

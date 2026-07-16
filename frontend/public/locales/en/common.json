@@ -75,7 +75,9 @@
     "justNow": "Just now",
     "minutesAgo": "{m}m ago",
     "hoursAgo": "{h}h ago",
-    "daysAgo": "{d}d ago"
+    "daysAgo": "{d}d ago",
+    "onlineNow": "Online now",
+    "never": "Never"
   },
   "controls": {
     "watchlistAdd": "Add to watchlist",

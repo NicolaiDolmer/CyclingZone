@@ -130,6 +130,16 @@ const TRANSLATED_PAGE_SMOKE = [
     da: [/Sæsonplanlægger/i, /Mine løb/i],
     rawKeys: ["planner:page.title", "page.title", "filter.mine"],
   },
+  {
+    // OnlineBadge-leak-guard: badgen (delt af TeamProfilePage + ManagerProfilePage)
+    // havde hardcodet dansk ("Online nu"/"aldrig"/"X min siden") som lækkede i EN,
+    // fordi ingen af siderne var dækket her. Mocken serverer teams uden
+    // manager:user_id-embed → lastSeen null → badgen rammer netop "never"-stien.
+    path: `/teams/${TEST_TEAM.id}`,
+    en: [/Manager: Playwright Manager/i, /Never/],
+    da: [/aldrig/i, /Online nu/],
+    rawKeys: ["team:profile.managerLabel", "profile.managerLabel", "time.never"],
+  },
 ];
 
 async function forceEnglish(page) {
