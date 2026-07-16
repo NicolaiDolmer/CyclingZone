@@ -37,7 +37,7 @@ const FEAT = (p) => ['enhancement', 'claude:todo', 'type:feature', 'cat:user-fea
 const TASK = (p) => ['claude:todo', 'type:task', `priority:${p}`];
 const OWNER = `\n\n**Ejer-direktiv** (@bobby2106, [#feedback-from-dolmer](${CH.dolmer}), 16/7).`;
 
-const ISSUES = [
+const CREATED_ALREADY = 2; const ISSUES_ALL = [
   // ---------- Ejer-direktiver (#feedback-from-dolmer, 16/7) ----------
   {
     title: '[feature] Sæsonplanlægger: skift mellem sæson 1 og sæson 2 — planlæg form/trup mod S2-kalenderen',
@@ -71,7 +71,7 @@ Master-canvas viser kun måneds-ticks på tidsaksen (\`frontend/src/components/p
   },
   {
     title: '[i18n] Discord-webhooks + direkte manager-beskeder skal være på engelsk (er dansk i dag)',
-    labels: BUG('medium'),
+    labels: BUG('med'),
     body: `Ejer (16/7 16:12 UTC): "Alle webhooks ind i discord serveren skal være på engelsk. Lige nu er de på dansk og det er skidt. Beskeder som managers får direkte skal også være på engelsk på discord."${OWNER}
 
 ## Evidens fra sweep 16/7
@@ -107,7 +107,7 @@ Anbefaling: **A** nu (før sæsonskiftet), B vurderes sammen med #955 (board-rew
   // ---------- Spiller-rapporteret (verificeret) ----------
   {
     title: '[feature] Transferliste: filtrér på udbudspris (asking price)',
-    labels: FEAT('medium'),
+    labels: FEAT('med'),
     body: `**@cybersimon** ([#feedback-and-ideas-tråd](${T('1527005576163229828')}), 15/7): "Just like you can search in at a maximum or minimum or both it would be nice to be able to search for asking price at the transfterlist."
 
 ![screenshot](${RAW}/1527005576163229828-1527005576339656765.jpg)
@@ -123,7 +123,7 @@ Min/max-filter på \`asking_price\` i transferlistens filterpanel (genbrug dual-
   },
   {
     title: '[feature] Etape-notifikationer under etapeløb — i dag får man kun besked efter SIDSTE etape',
-    labels: FEAT('medium'),
+    labels: FEAT('med'),
     body: `**@smukkethomsen** ([#dansk-snak](${CH.dansk}), 16/7, pkt 2): "mangler en mail med opdatering af etape resultater i løbet af etapeløb, ligesom man får på endagsløb"
 
 ## Verificeret kode-tilstand (16/7)
@@ -140,7 +140,7 @@ Per-etape in-app-notifikation ("Etape 2 af Tour du Tyrol er kørt — din bedste
   },
   {
     title: '[ux] Ønskelisten: giv besked når en rytter forlader spillet — i dag forsvinder de tavst',
-    labels: FEAT('medium'),
+    labels: FEAT('med'),
     body: `**@smukkethomsen** ([#dansk-snak](${CH.dansk}), 16/7, pkt 4): "Hvor blev Sebastian Olsen [Berg] af? Mit 22 årige talent på ønskelisten er forsvundet, fik han kolde fødder og besluttede sig for en tømrekarriere i stedet?" — og **@knud_r_flink** (16/7): "AV. Hvad blev der af alle de ryttere i akademiet, som jeg kun drømte om … Jeg manglede kun 1.000.000 CZ$"
 
 Konkret anledning: #2456-oprydningen slettede usolgte ungdomsryttere — spillere med dem på ønskelisten opdagede det først ved at rytteren bare var væk. Ejeren måtte forklare det manuelt på Discord.
@@ -156,7 +156,7 @@ Ved rytter-sletning/udgang: in-app-notifikation til alle med rytteren på ønske
   },
   {
     title: '[balance] Massespurt: bunch-tærsklen er for smal i praksis — feltet splittes i 3-6-mands klumper på sekunder',
-    labels: TASK('medium'),
+    labels: TASK('med'),
     body: `**@smukkethomsen** ([#dansk-snak](${CH.dansk}), 16/7, pkt 5): "på spurt etaperne … rapporten siger udbrud blev hentet og det blev en massespurt, men der er sekunders forskel mellem rytterne, fx 3 ryttere samlet, så 5 ryttere, så 6 osv. Det kunne være fedt hvis det meste af feltet kommer ind med samme tid, og så der var tidsbonus for de 3 første evt 5 3 1 sekunder."
 
 ## Verificeret kode-tilstand (16/7) — logikken FINDES, kalibreringen rammer ved siden af
@@ -184,7 +184,7 @@ Løbsnavn → link til \`/races/:id\` (etapeløb: behold expand på rækken, gø
   },
   {
     title: '[feature] Etape-diversitet: teknik-/brostens-etaper og profiler der belønner bredde frem for 1-2 stats',
-    labels: FEAT('medium'),
+    labels: FEAT('med'),
     body: `**@smukkethomsen** ([#dansk-snak](${CH.dansk}), 16/7, pkt 7): "Savner generelt lidt flere forskellige typer etaper og etapeløb, der favoriserer forskellige attributes. Fx etaper hvor teknik stat betyder meget fx brostens etaper, men også bare en alm etape der er teknisk pga afslutningen … Etaper der belønner bredde frem for maksimering af én eller to vigtige stats."
 
 ## Kontekst
@@ -217,7 +217,7 @@ Sæsonskiftet er ~10 løbsdage væk (#2361). Antal oprykkere er en ejer-beslutni
   },
   {
     title: '[feature] Træner-niveaubånd: youth/junior erstattes af én U23-gruppe + forklar båndene i UI/Hjælp',
-    labels: FEAT('medium'),
+    labels: FEAT('med'),
     body: `**@thelamba** ([#dansk-snak](${CH.dansk}), 16/7): "Jeg savner en forklaring på, hvad 'youth' og 'junior' dækker over … kunne ikke finde det i Hjælp" + "Hvad er det egentlig han er dårlig til (youth)?"
 
 ![screenshot](${RAW}/1505478569969582182-1527381514982002990.png)
@@ -261,6 +261,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'czissues-'));
 const gh = (args) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 1 << 26 }).trim();
 const created = {};
 
+const ISSUES = ISSUES_ALL.slice(CREATED_ALREADY);
 console.log(`Opretter ${ISSUES.length} issues...\n`);
 ISSUES.forEach((iss, i) => {
   const f = path.join(tmp, `body-${i}.md`);
