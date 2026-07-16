@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (session 17/7, ejer-aftalt):** (1) Discord-announce — ejer HAR godkendt tekst-udkastet 16/7 og poster selv/godkender endeligt i morgen; SPØRG om den. (2) **Markedsføring** — ejer vil se på det igen (jf. AI_CHANNEL_ROUTING + #1341). (3) Verificér AI-trim 24/24/24 (5 hold markeret 16/7, sweepen sletter) + #2472-normalisering efter næste trænings-tick (351 ryttere gulv-normaliseres). Derefter: [#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) board-generalprøve → #2361 → #2449.
+> **🎯 Next action (session 17/7, ejer-aftalt):** (1) Discord-announce — ejer HAR godkendt tekst-udkastet 16/7 og poster selv/godkender endeligt i morgen; SPØRG om den. (2) **Markedsføring** — ejer vil se på det igen (jf. AI_CHANNEL_ROUTING + #1341). (3) Verificér AI-trim 24/24/24 (5 hold markeret 16/7, sweepen sletter) + #2472-normalisering efter næste trænings-tick (351 ryttere gulv-normaliseres). (4) **#2463 ejer-rest:** klik selv board-kæden igennem som test-a (prepped i ægte nyt-hold-tilstand) ELLER læg `TEST_ACCOUNT_PASSWORD` i `backend/.env` så en agent kan (TESTING.md). Derefter: #2361 → #2449 → [#2512](https://github.com/NicolaiDolmer/CyclingZone/issues/2512) (high: renegotiation-lås brudt af race_days-enhedsbug).
 >
 > **✅ 16/7 GENNEMFØRT (hele dagen):** 18 PR'er merged inkl. #2472 loft+taper (ejer-valg efter scorecard) og patch notes **v7.02 LIVE** · 3 migrationer applied · race v3 S1-S6 komplet live · 16 issues lukket · CI hærdet: 14 required checks (+perf-gate m. skip-stub, +check-verification, +getuser-guard, +silent-mutation-guard; no-op review fjernet) · #2511-rest: perf-gate på main-pushes + i18n-namespace-split.
 
@@ -24,7 +24,9 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) · v3-flip-forudsætninger #2376 · Palmarès-rest (#1997: roster-tidslinje, mulig S3) · #1996 del 2 (claude:blocked) · #2436 (lav) · perf/CI-rest [#2511](https://github.com/NicolaiDolmer/CyclingZone/issues/2511). **Kendt bug:** test-konti wipes (#2245, high). Mobil = 54,9% af app-besøg.
 
-> **🤖 Working agent:** Claude Code (Fable) — aktiv 16/7 aften på [#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) board-generalprøve (ejer-go: autonome opgaver). #2461 Discord-svar-udkast venter stadig ejer-review.
+> **🌙 16/7 aften ([#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) generalprøve):** 🔴 Rod-årsag fundet: auto-accept-uret målte race_days_completed (SUM etaper, alle divisioner — 524 af "60") mod dag-tærskler ⇒ 218 auto-accepts, 0 T-1-varsler nogensinde, 0 manuelle signeringer nogensinde; sæsonskiftet ville tvangs-acceptere alle 1yr-fornyelser på timer. **Fixet + merged:** #2514 (kalenderdags-ur pr. plan, 5 dage + T-3/T-1) · #2513 (Playwright-spec der signerer + wizard-escape ved proposal-fejl) · #2515 patch notes v7.03 (auto-merge). Følgebug udskilt: #2512 (renegotiation-lås permanent aktiv). Fund-detaljer: [issue-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/2463#issuecomment-4994998978).
+>
+> **🤖 Working agent:** Ingen aktiv session. #2461 Discord-svar-udkast venter stadig ejer-review.
 
 ## Standing context (forever-relaunch)
 
