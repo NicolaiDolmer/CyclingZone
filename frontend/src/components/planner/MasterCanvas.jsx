@@ -14,11 +14,13 @@ import { sampleFormCurves } from "../../lib/plannerCurve";
 import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
-import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName } from "./plannerShared";
+import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
-const AXIS = 36, LANE = 88, TOP_PAD = 14, BOT_PAD = 16;
+// #2519: AXIS +12px (fra 36) for at give plads til en dato-label pr. løbshoved
+// (item 1 i spec) uden at flytte månedsticks/NOW-markør's relative placering.
+const AXIS = 48, LANE = 88, TOP_PAD = 14, BOT_PAD = 16;
 
 function TerrainGlyph({ x, y, terrain }) {
   const c = CZ.ink;
@@ -91,18 +93,53 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
     setDrag(null);
   };
 
+  // ── "Planlægger mod"-mål (#2519, issue-krav 2) ──────────────────────────────
+  // Mens et peak-token trækkes: forhåndsvis samme "nærmeste egnede løb"-logik som
+  // dragEnd (uden at committe) — falder tilbage til peakens NUVÆRENDE mål hvis
+  // ingen egnet løb er inden for snap-afstand. Ellers: en valgt rytter-lane med
+  // mindst én peak (ægte eller assistent-forslag) viser sit næste kommende mål,
+  // så manageren kan se hvad han netop klikkede ind på uden at åbne skuffen.
+  let planningTarget = null;
+  if (drag) {
+    const dragRider = (riders || []).find((r) => r.id === drag.riderId);
+    const dragPlan = dragRider?.peaks.find((p) => p.id === drag.planId);
+    if (dragPlan) {
+      const taken = new Set(dragRider.peaks.map((p) => p.targetRaceId));
+      const eligible = visRaces.filter((r) => r.id !== dragPlan.targetRaceId && !taken.has(r.id));
+      let best = null, bestD = Infinity;
+      for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
+      planningTarget = (best && bestD <= span / 24) ? best : (visRaces.find((r) => r.id === dragPlan.targetRaceId) || null);
+    }
+  } else if (selectedRiderId) {
+    const rider = (riders || []).find((r) => r.id === selectedRiderId);
+    const ridersPeaks = (rider?.peaks || [])
+      .map((p) => ({ ...p, ord: dateToOrdinal(p.windowStart) }))
+      .filter((p) => p.ord != null)
+      .sort((a, b) => a.ord - b.ord);
+    const chosen = ridersPeaks.find((p) => (nowOrd == null ? true : p.ord >= nowOrd)) || ridersPeaks[0];
+    if (chosen) planningTarget = visRaces.find((r) => r.id === chosen.targetRaceId) || null;
+  }
+
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${VBW} ${H}`}
-      width="100%"
-      role="img"
-      aria-label={t("page.title")}
-      style={{ display: "block", touchAction: drag ? "none" : "auto" }}
-      onPointerMove={(e) => { if (drag) setDrag((d) => ({ ...d, previewOrd: ordFromClientX(e.clientX) ?? d.previewOrd })); }}
-      onPointerUp={dragEnd}
-      onPointerLeave={() => { if (drag) dragEnd(); }}
-    >
+    <div>
+      {/* Fast indikator-strip: kun synlig mens et peak-token trækkes/vælges (item 2). */}
+      {planningTarget && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-cz-border bg-cz-subtle text-[11px] text-cz-1">
+          <i className="ti ti-target-arrow text-[13px] text-cz-accent-t" aria-hidden="true" />
+          <span>{t("planningTowards.label", { race: planningTarget.name, date: formatRaceDateLabel(planningTarget, months) })}</span>
+        </div>
+      )}
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${VBW} ${H}`}
+        width="100%"
+        role="img"
+        aria-label={t("page.title")}
+        style={{ display: "block", touchAction: drag ? "none" : "auto" }}
+        onPointerMove={(e) => { if (drag) setDrag((d) => ({ ...d, previewOrd: ordFromClientX(e.clientX) ?? d.previewOrd })); }}
+        onPointerUp={dragEnd}
+        onPointerLeave={() => { if (drag) dragEnd(); }}
+      >
       {/* Måneds-ticks (tids-proportional akse) */}
       {ticks.map((tk, i) => (
         <g key={`m${i}`}>
@@ -121,6 +158,14 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           <g key={r.id}>
             <line x1={rx} y1={AXIS} x2={rx} y2={H} stroke={targeted ? CZ.goldDeep : CZ.border} strokeWidth={targeted ? 1.2 : 1} strokeDasharray="1 3" opacity={targeted ? 0.6 : 0.5} />
             {gap && <TerrainGlyph x={rx} y={AXIS - 18} terrain={r.terrain} />}
+            {/* #2519 item 1: kompakt dato-label (enkelt dag eller etapespænd) —
+                altid synlig, diskret sekundær-tekst, så datoer ikke kræver
+                skuffe-åbning for at se hvornår et løb ligger. */}
+            {gap && (
+              <text x={rx} y={AXIS - 5} textAnchor="middle" fontSize="8" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>
+                {formatRaceDateLabel(r, months)}
+              </text>
+            )}
             <rect
               x={rx - 6} y={AXIS} width="12" height={H - AXIS}
               fill={active ? CZ.gold : "transparent"} opacity={active ? 0.12 : 1}
@@ -133,6 +178,14 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           </g>
         );
       })}
+
+      {/* #2519 item 2a: lodret guide-linje der fremhæver mål-løbets kolonne mens
+          et peak-token er valgt (rytter-lane med peak) eller trækkes. Tegnes
+          efter løb-markørerne (over de tynde per-løb streger) men under
+          NOW-markøren, så begge forbliver læsbare hvis de falder sammen. */}
+      {planningTarget && (
+        <line x1={x(planningTarget.ord)} y1={AXIS - 30} x2={x(planningTarget.ord)} y2={H} stroke={CZ.goldDeep} strokeWidth="2" opacity="0.45" />
+      )}
 
       {/* NOW-markør */}
       {nowOrd != null && (
@@ -284,6 +337,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
