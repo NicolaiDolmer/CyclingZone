@@ -40,7 +40,8 @@ import {
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import { getRiderSalary } from "../lib/marketValues.js";
+import { computeBidValueDelta, getRiderSalary } from "../lib/marketValues.js";
+import { riderOverallRating } from "../lib/riderRating";
 import { ageBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
@@ -58,6 +59,23 @@ const BID_FEED_WINDOW_MS = 15 * 60 * 1000;
 // (til visibleStats-filter + join-select), labels via ABILITY_SHORT.
 const STATS = ABILITY_STATS.map(s => s.key);
 const STAT_LABEL_BY_KEY = ABILITY_SHORT;
+
+// #2464: nøgle-evner er synlige som DEFAULT — en køber skal kunne vurdere en
+// rytter uden først at opdage stat-toggle'en (28 kiggede, 10 bød). De 5
+// disciplin-evner (klatring/punch/spurt/flad/enkeltstart) fylder præcis én
+// række på mobil-kortet; manageren kan stadig tilpasse via toggle'en.
+// Storage-key'et er bumpet (-v2): useStatsToggle persisterer valget ved første
+// besøg, så alle eksisterende managere har det gamle tomme default liggende i
+// localStorage — uden key-bump ville ingen af dem se den nye default.
+const AUCTION_DEFAULT_VISIBLE_STATS = ["climbing", "punch", "sprint", "flat", "time_trial"];
+
+// Delta-linjens farve: under vurdering = grøn (muligt godt køb), over = orange
+// (overpris), omkring = neutral. Formuleringen i i18n er et ESTIMAT (#2464).
+const VALUE_DELTA_CLASS = {
+  under: "text-cz-success",
+  over: "text-cz-warning",
+  at: "text-cz-3",
+};
 
 // #1777: aktiv fane lever i URL'en (?tab=) så browser-back fra en rytter-profil
 // lander tilbage på den fane manageren stod på — ikke altid "Min situation".
@@ -155,6 +173,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
   });
 
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #2464: ét-blik-vurdering — OVR (spillets kanoniske 1-99-rating, #2000) og
+  // delta mellem aktuelt bud og estimeret markedsværdi.
+  const ovr = riderOverallRating(r);
+  const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
 
   return (
     <tr className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
@@ -219,6 +241,17 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
         </div>
       </td>
 
+      {/* OVR — spillets samlede 1-99-rating (type-vægtet, #2000/#2464) */}
+      <td className="px-2 py-1.5 text-center">
+        <span
+          className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded"
+          style={statStyle(ovr)}
+          title={t("auctions:table.ovrTitle")}
+        >
+          {ovr || "—"}
+        </span>
+      </td>
+
       {/* Højeste bud */}
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
         <span className={`inline-block px-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
@@ -227,6 +260,16 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
           </span>
           <span className="text-cz-3 text-xs ms-1">CZ$</span>
         </span>
+        {/* #2464: bud vs. estimeret markedsværdi — godt køb/overpris på ét blik.
+            Tooltip bærer selve vurderingen + estimat-forbeholdet. */}
+        {valueDelta && (
+          <p
+            className={`text-[10px] font-mono leading-tight ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
+            title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
+          >
+            {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
+          </p>
+        )}
         {getAuctionLeaderName(auction) && !imWinning && (
           <p className="text-cz-3 text-[10px] truncate max-w-[100px]">
             {getAuctionLeaderName(auction)}
@@ -370,13 +413,16 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
 }
 
 function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
-  const { t } = useTranslation(["auctions", "common"]);
+  const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #2464: ét-blik-vurdering — OVR (1-99, type-vægtet #2000) + bud-vs-vurdering.
+  const ovr = riderOverallRating(r);
+  const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const riderName = r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider");
@@ -409,6 +455,19 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
               {r?.firstname} {r?.lastname}
             </RiderLink>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {/* #2464: OVR + ryttertype — hvad køber jeg, og hvor god er han? */}
+              {ovr > 0 && (
+                <span
+                  className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                  style={statStyle(ovr)}
+                  title={t("auctions:card.ovrTitle")}
+                >
+                  {ovr}
+                </span>
+              )}
+              {r?.primary_type && (
+                <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
+              )}
               {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
               {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
               {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
@@ -437,6 +496,22 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
             <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
+        {/* #2464: estimeret markedsværdi + delta ved siden af prisen — godt køb/
+            overpris skal kunne aflæses på ét blik, formuleret som estimat. */}
+        {valueDelta && (
+          <div className="bg-cz-subtle rounded-lg px-3 py-2">
+            <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.estValue")}</p>
+            <p
+              className="text-cz-2 font-mono text-sm font-medium"
+              title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
+            >
+              {formatNumber(valueDelta.value)} CZ$
+            </p>
+            <p className={`text-[10px] mt-0.5 ${VALUE_DELTA_CLASS[valueDelta.direction]}`}>
+              {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
+            </p>
+          </div>
+        )}
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">
             {r?.contract_length != null ? t("auctions:card.salary") : t("auctions:card.estSalary")}
@@ -660,8 +735,13 @@ export default function AuctionsPage() {
     didDefaultFilterRef.current = true; // kør kun denne auto-default én gang
     if (!mySituation && filter === "my-situation") setFilter("all");
   }, [loading, auctions, myTeamId, filter, tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Stats toggle (persisted i localStorage) — default tomt, manageren vælger selv
-  const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle();
+  // Stats toggle (persisted i localStorage) — #2464: nøgle-evner synlige som
+  // default (se AUCTION_DEFAULT_VISIBLE_STATS); samme opt-out-mønster som
+  // RidersPage (#1006), hvor man klikker stats FRA i stedet for TIL.
+  const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle({
+    storageKey: "cz-auctions-visible-stats-v2",
+    defaultVisible: AUCTION_DEFAULT_VISIBLE_STATS,
+  });
   // Bekræftelses-dialog for bud (auktionsbud, autobud-loft) — { mode, riderName, amount, onConfirm } | null
   const [bidConfirm, setBidConfirm] = useState(null);
   const [bidConfirmBusy, setBidConfirmBusy] = useState(false);
@@ -1119,7 +1199,13 @@ export default function AuctionsPage() {
 
   const riderFilters = useClientRiderFilters(
     auctions.map(a => a.rider).filter(Boolean)
-      .map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }))
+      // _scoutMid (#1162) + _ovr (#2464): dekorationer så klient-side sortering
+      // virker på potentiale- og OVR-kolonnerne via den generiske numeriske gren.
+      .map(r => ({
+        ...r,
+        _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
+        _ovr: riderOverallRating(r),
+      }))
   );
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
@@ -1459,6 +1545,13 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
           className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
+        {/* #2464: OVR-kolonne — sorterbar via den dekorerede _ovr (rytter-niveau). */}
+        <SortTh sortKey="_ovr" sort={activeSort("_ovr") ? "_ovr" : riderFiltersSort}
+          sortDir={activeSortDir("_ovr")} onSort={handleSort}
+          title={t("table.ovrTitle")}
+          className="px-2 py-3 text-center font-medium uppercase tracking-wider">
+          {t("table.ovr")}
+        </SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className="px-3 py-3 text-right font-medium uppercase tracking-wider whitespace-nowrap">

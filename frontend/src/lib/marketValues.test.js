@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
+  computeBidValueDelta,
   formatCz,
   getRiderMarketValue,
   getRiderSalary,
@@ -94,6 +95,65 @@ test("salaryBoundToValueBound — ikke-sat grænse → null (springes over)", ()
   assert.equal(salaryBoundToValueBound(undefined), null);
   assert.equal(salaryBoundToValueBound(null), null);
   assert.equal(salaryBoundToValueBound("abc"), null);
+});
+
+// #2464: bud-vurdering — delta mellem aktuelt bud og estimeret markedsværdi.
+test("computeBidValueDelta — bud under vurdering", () => {
+  assert.deepEqual(
+    computeBidValueDelta(88000, { market_value: 100000 }),
+    { pct: 12, direction: "under", value: 100000 },
+  );
+});
+
+test("computeBidValueDelta — bud over vurdering", () => {
+  assert.deepEqual(
+    computeBidValueDelta(109000, { market_value: 100000 }),
+    { pct: 9, direction: "over", value: 100000 },
+  );
+});
+
+test("computeBidValueDelta — bud == vurdering → at (0%)", () => {
+  assert.deepEqual(
+    computeBidValueDelta(100000, { market_value: 100000 }),
+    { pct: 0, direction: "at", value: 100000 },
+  );
+});
+
+test("computeBidValueDelta — lille afvigelse afrundes til 0% → at", () => {
+  // 100.400 mod 100.000 = 0,4% → afrundet 0 → "at", ikke en misvisende 0%-over.
+  assert.deepEqual(
+    computeBidValueDelta(100400, { market_value: 100000 }),
+    { pct: 0, direction: "at", value: 100000 },
+  );
+});
+
+test("computeBidValueDelta — manglende market_value bruger base_value-fallback", () => {
+  // getRiderMarketValue: base_value + prize_earnings_bonus (#1101).
+  assert.deepEqual(
+    computeBidValueDelta(30000, { base_value: 50000, prize_earnings_bonus: 10000 }),
+    { pct: 50, direction: "under", value: 60000 },
+  );
+});
+
+test("computeBidValueDelta — helt værdiløst objekt falder til 1000-fallback", () => {
+  assert.deepEqual(
+    computeBidValueDelta(2000, {}),
+    { pct: 100, direction: "over", value: 1000 },
+  );
+});
+
+test("computeBidValueDelta — manglende rytter eller ugyldig pris → null", () => {
+  assert.equal(computeBidValueDelta(50000, null), null);
+  assert.equal(computeBidValueDelta(50000, undefined), null);
+  assert.equal(computeBidValueDelta(null, { market_value: 100000 }), null);
+  assert.equal(computeBidValueDelta("abc", { market_value: 100000 }), null);
+});
+
+test("computeBidValueDelta — bud 0 (ingen bud endnu) giver stadig delta", () => {
+  assert.deepEqual(
+    computeBidValueDelta(0, { market_value: 100000 }),
+    { pct: 100, direction: "under", value: 100000 },
+  );
 });
 
 // En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når market_value
