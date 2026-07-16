@@ -93,7 +93,9 @@
     "salary": "Løn",
     "potential": "Potentiale",
     "seller": "Sælger",
-    "bid": "Byd"
+    "bid": "Byd",
+    "ovr": "OVR",
+    "ovrTitle": "Samlet rating (1-99), vægtet efter rytterens type"
   },
   "card": {
     "time": "Tid",
@@ -103,7 +105,9 @@
     "contractExpires": "Udl. efter s.{season}",
     "seller": "Sælger",
     "potential": "Potentiale",
-    "ageYears": "{age} år"
+    "ageYears": "{age} år",
+    "estValue": "Vurdering",
+    "ovrTitle": "Samlet rating (1-99), vægtet efter rytterens type"
   },
   "timer": {
     "completed": "Afsluttet",
@@ -209,5 +213,11 @@
   },
   "warning": {
     "squadCapacity": "OBS: leder nu auktioner svarende til {totalAfter} ryttere (max {maxRiders}). Loftet er en hård grænse, så du kan ikke vinde flere ryttere end din trup kan rumme."
+  },
+  "valueDelta": {
+    "under": "{pct}% under vurdering",
+    "over": "{pct}% over vurdering",
+    "at": "Tæt på vurdering",
+    "title": "Estimeret markedsværdi: {amount} CZ$. Et modelestimat, ikke en garanteret pris."
   }
 }

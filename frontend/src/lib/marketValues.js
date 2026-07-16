@@ -62,6 +62,26 @@ export function formatCz(value) {
   return `${formatNumber(Number(value))} CZ$`;
 }
 
+// #2464: bud-vurdering — delta mellem det aktuelle bud og rytterens estimerede
+// markedsværdi (getRiderMarketValue, inkl. base_value-fallback). UI'et skal
+// formulere det som ESTIMAT, ikke facit — markedsværdien er selv en model-
+// vurdering (#1101). Returnerer { pct, direction, value } hvor direction er
+// "under" (bud under vurdering), "over" (bud over) eller "at" (afrundet 0%).
+// null når rytteren mangler eller prisen ikke er et tal, så kalderen kan
+// udelade delta-linjen helt i stedet for at vise noget misvisende.
+export function computeBidValueDelta(currentPrice, rider) {
+  if (!rider) return null;
+  // Number(null) er 0 — en manglende pris må ikke ligne et 0-bud.
+  if (currentPrice == null) return null;
+  const price = Number(currentPrice);
+  if (!Number.isFinite(price)) return null;
+  const value = getRiderMarketValue(rider);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const pct = Math.round(Math.abs((price - value) / value) * 100);
+  if (pct === 0) return { pct: 0, direction: "at", value };
+  return { pct, direction: price < value ? "under" : "over", value };
+}
+
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
 // Spejl af backend/lib/auctionRules.js — droppet 10%/1000-afrunding 2026-05-07 (#178).
