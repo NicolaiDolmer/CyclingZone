@@ -16,6 +16,65 @@
 // "classics" (klassiker-orienterede boards) kan honorere alle WT-endagsløb.
 
 import { CLASSIC_RACE_CLASSES, isClassicRace, isMonumentRace } from "./boardConstants.js";
+import { getPlanDuration } from "./boardGoals.js";
+
+// #2469 · Fælles kontekst-bygger for bestyrelses-motoren. #2308 fandt at tre
+// live-stier håndbyggede hver sit context-objekt til calculateBoardPerformance/
+// evaluateBoardSeason og drev fra hinanden; #2469 fandt en fjerde (/board/request)
+// der stadig manglede isFinalSeason + goal-context — scoren der afgjorde en
+// forhandling blev beregnet på et andet grundlag end det /board/status viste.
+// Denne bygger lukker bugklassen strukturelt: ALLE stier der fodrer motoren
+// kalder den, så en ny kontekst-parameter tilføjes ét sted.
+//
+// Stier (forward-guardet i boardEvalContext.test.js):
+//   1. /board/status (routes/api.js) — live outlook + satisfaction-prognose
+//   2. /board/request (routes/api.js) — forhandlings-afgørelsen
+//   3. boardWeekendFinalization.js — weekend-satisfaction-tracking
+//   4. economyEngine.processTeamSeasonEnd — autoritativ sæson-slut-evaluering
+//   5. economyEngine.buildSeasonEndPreviewRows — admin-preview (synkron; kan
+//      ikke kalde loadGoalContextForBoard → goalContext={}, kendt begrænsning)
+//
+// IKKE en sti: boardMidSeason.js — den evaluerer bevidst mid-plan-progress med
+// isFinalSeason:false/planDuration:1 (anden semantik end plan-evaluering).
+//
+// seasonsCompleted = arbejds-sæson-indekset: den sæson planen er I, dvs.
+// board.seasons_completed + 1, cappet på planDuration. Cappen matcher
+// /board/status (#2308-kommentaren: ækvivalent med den uncappede sammenligning
+// for isFinalSeason-flaget) og er no-op for weekend/season-end, hvor completed
+// planer altid har seasons_completed < planDuration.
+export function buildBoardEvalContext({
+  board,
+  standing = null,
+  activeLoanCount = 0,
+  currentSponsorIncome = null,
+  recentSnapshots = [],
+  goalContext = {},
+  extra = {},
+} = {}) {
+  if (!board) throw new Error("buildBoardEvalContext requires a board");
+
+  const planDuration = getPlanDuration(board.plan_type);
+  const seasonsCompleted = Math.min(planDuration, (board.seasons_completed || 0) + 1);
+
+  return {
+    planDuration,
+    seasonsCompleted,
+    isFinalSeason: seasonsCompleted >= planDuration,
+    activeLoanCount,
+    planStartSponsorIncome: board.plan_start_sponsor_income,
+    currentSponsorIncome,
+    recentSnapshots,
+    hasSeasonData: Boolean(standing),
+    // #979 · Kumulativ = afsluttede sæsoner (board.cumulative_*, persisteres ved
+    // season-end) + indeværende sæsons in-progress wins (standing.*).
+    cumulativeStats: {
+      stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
+      gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
+    },
+    ...goalContext,
+    ...extra,
+  };
+}
 
 export async function loadGoalContextForBoard({
   supabase,

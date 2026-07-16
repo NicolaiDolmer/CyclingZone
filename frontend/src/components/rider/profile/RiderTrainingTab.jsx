@@ -16,6 +16,7 @@
 // Token-only (ingen rå hex); dark mode via tokens; interaktive kontroller har
 // 44px hit-target + aria-pressed. i18n under profile.training.* i rider.json.
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES,
@@ -82,13 +83,24 @@ function FocusCard({ rider, training, progress, t }) {
   const total = slots?.total ?? null; // null = ubegrænset (TRAINING_CONFIG.unlimitedSlots)
   const used = slots?.used ?? 0;
 
+  // #2465: setPlan/clearPlan returnerer eksplicit {ok, error} — kaldes nu async +
+  // await'et, så en fejl (udløbet session, netværk, backend-afvisning) vises i
+  // stedet for at forsvinde stille (chippen opdaterede tidligere KUN ved success).
+  const [actionError, setActionError] = useState(null);
+
   // Enkelt-valg med toggle: klik på det aktive fokus rydder planen (frigør slottet).
-  const pickFocus = (f) => {
+  const pickFocus = async (f) => {
     if (busy) return;
-    if (focus === f) clearPlan(rider.id);
-    else setPlan(rider.id, f, intensity);
+    setActionError(null);
+    const result = focus === f ? await clearPlan(rider.id) : await setPlan(rider.id, f, intensity);
+    if (result && !result.ok) setActionError(result.error || "failed");
   };
-  const pickIntensity = (i) => { if (!busy && focus) setPlan(rider.id, focus, i); };
+  const pickIntensity = async (i) => {
+    if (busy || !focus) return;
+    setActionError(null);
+    const result = await setPlan(rider.id, focus, i);
+    if (result && !result.ok) setActionError(result.error || "failed");
+  };
 
   const isRest = intensity === "rest";
   const fp = focus && !isRest ? focusProgress(focus, progress) : null;
@@ -157,6 +169,13 @@ function FocusCard({ rider, training, progress, t }) {
           })}
         </div>
       </div>
+
+      {/* #2465: fejl-overflade for pickFocus/pickIntensity — tidligere tavs. */}
+      {actionError && (
+        <div role="alert" className="mb-[11px] px-2.5 py-1.5 rounded-cz border border-cz-danger/30 bg-cz-danger/10 text-[11px] text-cz-danger">
+          {t([`profile.training.actionErrors.${actionError}`, "profile.training.actionErrorGeneric"])}
+        </div>
+      )}
 
       {/* Aktivt fokus. Hvile = ingen vækst (egen gren); ellers progress mod næste +1. */}
       <div className="border-t border-cz-border pt-[11px]">

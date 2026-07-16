@@ -66,12 +66,6 @@ export function statusMeta(status) {
   }
 }
 
-// Ryttertype → i18n-nøgle (planner:type.*). Ukendt → rå værdi som fallback-label.
-export function riderTypeKey(primaryType) {
-  const known = ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
-  return known.includes(primaryType) ? `type.${primaryType}` : null;
-}
-
 // Kort visningsnavn "L. Vermeulen" (fornavn-initial + efternavn).
 export function riderShortName(rider) {
   const fn = rider?.firstname ? `${rider.firstname.slice(0, 1)}.` : "";

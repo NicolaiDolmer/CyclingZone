@@ -314,6 +314,13 @@
     "role": {
       "free_role": "Fri rolle"
     },
+    "roleHelp": {
+      "captain": "Får holdets støtte til et resultat. Beskyttet: bliver aldrig bedt om at ofre sit eget løb.",
+      "sprintCaptain": "Holdet fører ham op til spurten. Beskyttet, ligesom kaptajnen.",
+      "helper": "Arbejder for holdet. Koster egen placering, styrker kaptajnens resultat.",
+      "hunter": "Sendes af sted alene. Lille omkostning, selvstændigt skud på et resultat.",
+      "freeRole": "Ingen fast opgave. Kører efter hvordan etapen udvikler sig."
+    },
     "effort": {
       "protect": "Arbejd",
       "normal": "Normal",
@@ -472,6 +479,23 @@
       "title": "Udgåede",
       "crash": "Styrt",
       "mechanical": "Mekanisk defekt"
+    },
+    "why": {
+      "title": "Det store billede",
+      "gcTakeover": "{rider} overtog den samlede føring fra {previousLeader}.",
+      "finalGc": "Slutstilling: {first}, {second} og {third}.",
+      "helperShift": "{captain} sluttede i top 5, efter at {count} holdkammerater ofrede deres eget resultat for at hjælpe ham.",
+      "favoriteOffDay": "{rider} startede etapen som feltets stærkeste rytter på papiret, men sluttede uden for top 15: {reason, select, jour_sans {han havde en dårlig dag} incident {et styrt eller en mekanisk defekt kostede ham dagen} helper_work {han brugte kræfterne på at arbejde for en holdkammerat} other {ingen klar årsag}}.",
+      "formPeak": "{rider} kom til etapen i strålende form og leverede."
+    },
+    "storyTags": {
+      "tag_jour_sans": { "label": "Dårlig dag", "tooltip": "Havde en dårlig dag: benene var der bare ikke." },
+      "tag_peak_day": { "label": "Peak", "tooltip": "Timede sin form til at toppe på denne etape." },
+      "tag_perfect_peak": { "label": "Perfekt peak", "tooltip": "Vandt på en etape han specifikt havde peaket til." },
+      "tag_helper_sacrifice": { "label": "Offer", "tooltip": "Ofrede sit eget resultat for at arbejde for holdets kaptajn." },
+      "tag_outsider_win": { "label": "Outsider", "tooltip": "Vandt uden at være feltets stærkeste rytter på papiret." },
+      "tag_favorite_collapse": { "label": "Kollaps", "tooltip": "Etapens favorit havde en dårlig dag og mistede chancen." },
+      "tag_crash_ruined": { "label": "Styrt", "tooltip": "Et sandsynligt topresultat blev ødelagt af et styrt eller en mekanisk defekt." }
     },
     "jersey": {
       "leader": "Fører",

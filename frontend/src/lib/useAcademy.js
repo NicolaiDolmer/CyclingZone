@@ -22,7 +22,6 @@ export function useAcademy() {
   const [slots, setSlots]       = useState({ used: 0, max: 8 });
   const [roster, setRoster]     = useState([]);
   const [intake, setIntake]     = useState([]);
-  const [freeAgents, setFreeAgents] = useState([]);
   const [graduations, setGraduations] = useState([]);
   const [seniorCount, setSeniorCount] = useState(0);
   const [seniorMax, setSeniorMax] = useState(30);
@@ -75,7 +74,6 @@ export function useAcademy() {
       setSlots(data.slots ?? { used: 0, max: 8 });
       setRoster(data.roster ?? []);
       setIntake(data.intake ?? []);
-      setFreeAgents(data.freeAgents ?? []);
       setGraduations(data.graduations ?? []);
       setSeniorCount(data.seniorCount ?? 0);
       setSeniorMax(data.seniorMax ?? 30);
@@ -123,26 +121,6 @@ export function useAcademy() {
         return { ok: false, error: data.error || "failed" };
       }
       logEvent("academy_reject", { riderId });
-      await refresh();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: "network" };
-    }
-  }, [refresh]);
-
-  // Direct-sign en fri ungdoms-free-agent til minimumsløn. Returnerer { ok, error? }.
-  const signFreeAgent = useCallback(async (riderId) => {
-    const headers = await authHeaders();
-    if (!headers) return { ok: false, error: "auth" };
-    try {
-      const res = await fetch(`${API}/api/academy/free-agent/sign`, {
-        method: "POST", headers, body: JSON.stringify({ riderId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return { ok: false, error: data.error || "failed" };
-      }
-      logEvent("academy_free_agent_sign", { riderId });
       await refresh();
       return { ok: true };
     } catch {
@@ -210,5 +188,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, freeAgents, graduations, balance, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, promoteRider, demoteRider, refresh };
+  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, refresh };
 }

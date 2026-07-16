@@ -1021,6 +1021,10 @@
     "crashesFaq": {
       "q": "What are crashes and abandons?",
       "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result, but some force the rider to abandon the race: an abandoned rider is out of the remaining stages and all classifications, and is injured for a few days afterwards. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Abandons are listed on the race page."
+    },
+    "whyReportFaq": {
+      "q": "How can I see why a result happened?",
+      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown."
     }
   }
 }

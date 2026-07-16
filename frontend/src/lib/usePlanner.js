@@ -6,6 +6,12 @@
 // SeasonPlannerPage viser en tom-state — samme kill-switch-mønster som
 // useScoutingCentral/useFacilities. Al mutation går gennem CRUD-endpointsene +
 // accept-training; hver muterings-succes refresher board'et.
+//
+// #2455 assistent-forslag: rider.peaks kan indeholde `isSuggestion:true`-poster
+// (RENT beregnet server-side, aldrig en ægte rider_peak_plans-række — se
+// backend/lib/peakSuggestions.js). "Acceptér" en foreslået peak = samme
+// createPeak-kald som en manuel peak (serveren genskaber præcis samme vindue,
+// deterministisk); "nulstil til blank" er et separat sæson-scoped write.
 import { useState, useEffect, useCallback } from "react";
 import { getSession } from "./supabase.js";
 
@@ -82,9 +88,16 @@ export function usePlanner() {
     mutate(`/${planId}`, "DELETE"), [mutate]);
   const acceptTraining = useCallback((planId, week) =>
     mutate(`/${planId}/accept-training`, "POST", { week }), [mutate]);
+  // #2455: acceptér et assistent-forslag = opret det som en ægte peak (samme
+  // endpoint/vindue-snap som en manuel peak — forslaget HAR ingen egen DB-id).
+  const acceptSuggestion = useCallback((riderId, targetRaceId) =>
+    mutate("", "POST", { rider_id: riderId, target_race_id: targetRaceId }), [mutate]);
+  const dismissSuggestions = useCallback((riderId) =>
+    mutate("/dismiss-suggestions", "POST", { rider_id: riderId }), [mutate]);
 
   return {
     enabled, ...board, loading, error, busy,
     refresh, createPeak, retargetPeak, deletePeak, acceptTraining,
+    acceptSuggestion, dismissSuggestions,
   };
 }

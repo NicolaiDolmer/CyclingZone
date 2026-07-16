@@ -93,7 +93,9 @@
     "salary": "Salary",
     "potential": "Potential",
     "seller": "Seller",
-    "bid": "Bid"
+    "bid": "Bid",
+    "ovr": "OVR",
+    "ovrTitle": "Overall rating (1-99), weighted for the rider's type"
   },
   "card": {
     "time": "Time",
@@ -103,7 +105,9 @@
     "contractExpires": "Exp. after s.{season}",
     "seller": "Seller",
     "potential": "Potential",
-    "ageYears": "{age} yrs"
+    "ageYears": "{age} yrs",
+    "estValue": "Est. value",
+    "ovrTitle": "Overall rating (1-99), weighted for the rider's type"
   },
   "timer": {
     "completed": "Completed",
@@ -209,5 +213,11 @@
   },
   "warning": {
     "squadCapacity": "Heads up: you are now leading auctions equivalent to {totalAfter} riders (max {maxRiders}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
+  },
+  "valueDelta": {
+    "under": "{pct}% below est. value",
+    "over": "{pct}% above est. value",
+    "at": "Near est. value",
+    "title": "Estimated market value: {amount} CZ$. A model estimate, not a guaranteed price."
   }
 }

@@ -101,16 +101,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
   // tabellen har rows.
   "rider_development_log",
-  // Talentspejder Fase 3 sweep-dedup (#2244, merged 2026-07-10): scoutSweep.js insert'er
-  // ÉN row pr. (team_id, tick_date) som reservation-mutex FØR den modner et holds
-  // scout_assignments (mirror af training_day_runs). Skrives KUN inde i sweep-vinduet
-  // (shouldSweepNow: Copenhagen-time ≥ 22) OG kun hvis holdet har modne assignments
-  // (matured.length > 0). Featuren merged samme dag, så tabellen er naturligt tom indtil
-  // cron'en rammer vinduet med et modent job. Skriv-path verificeret i
-  // backend/lib/scoutSweep.js (runScoutSweep, reservation-insert).
-  // TODO(2026-07-10): fjern denne entry når tabellen har rows (tjek efter første
-  // sweep-vindue der rammer et modent scout_assignment).
-  "scout_sweep_runs",
   // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
   // graduation-rows (detectGraduates insert) når akademiryttere fylder 22. Tabellen
   // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
@@ -237,10 +227,9 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // 2026-07-10 (#2298): 14 stale entries fjernet — deres events flyder nu i
   // player_events (verificeret mod prod, 30-dages vindue). Historik i issue #2298.
   //
-  // Survey-CTA-banner (#364): survey_banner_clicked fyrer reelt fra SurveyBanner.jsx,
-  // men 0 klik i 30-dages vinduet (dismissed flyder, clicked gør ikke) — behold
-  // indtil et klik er set. Fjern entry når eventet flyder (tjek player_events).
-  "survey_banner_clicked",
+  // survey_banner_clicked fjernet fra whitelisten 16/7 (#2467): SurveyBanner.jsx
+  // slettet + eventet fjernet fra KNOWN_EVENTS, så entry'en var stale (Detector E
+  // tjekker kun events der stadig er i KNOWN_EVENTS).
   // Academy (#1669): academy_graduate fyrer først når en akademirytter når
   // graduation-alderen (samme gating som academy_graduation-tabellen i Detector A).
   // Fjern entry når eventet flyder (tjek player_events).
