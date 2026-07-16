@@ -318,6 +318,7 @@ import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows } from "../lib/myTeamLatestResult.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -330,6 +331,7 @@ const CACHE_TTL = {
   racePoints: 600_000,
   dashboardRecentResults: 60_000,
   dashboardRiderRanking: 60_000,
+  dashboardMyLatestResult: 60_000,
   // Divisions-fysiologi-snit ændrer sig kun ved sæsonskift/træning — 10 min er rigeligt.
   physiologyBenchmark: 600_000,
 };
@@ -7841,6 +7843,114 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
 
     const top = Object.values(agg).sort((x, y) => y.points - x.points).slice(0, 5);
     res.json({ riders: top });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}));
+
+// GET /api/dashboard/my-latest-result — DIT holds seneste finaliserede løb
+// (#2466). Kun 22/88 spillere har nogensinde set et løbsresultat; recent-results
+// ovenfor viser løbets VINDER, aldrig spillerens egne ryttere. Dette endpoint
+// pusher holdets egne placeringer + totaler + et recap-grundlag til dashboardet.
+//
+// Perf (#2444 — dashboardet er i forvejen langsomt): frontend lazy-loader efter
+// first paint; svaret caches 60s PR. HOLD (keyExtras=team.id — payloaden er
+// hold-specifik, aldrig delt), og alle SELECTs er trimmede: udvælgelsen læser kun
+// (race_id, imported_at) med limit, detail-queries rammer ét løb, og recap-
+// rækkerne trimmes til top-10 + udbrud (trimRecapRows) før de sendes. Selve
+// recap-fortællingen bygges CLIENT-side af den eksisterende buildRaceRecap()
+// (frontend/src/lib/raceRecap.js) — ingen dubleret fortælle-logik her.
+router.get("/dashboard/my-latest-result", requireAuth, cached({
+  namespace: "dashboard-my-latest-result",
+  ttlMs: CACHE_TTL.dashboardMyLatestResult,
+  keyExtras: (req) => String(req.team?.id ?? "none"),
+}, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonError) throw seasonError;
+    if (!season) return res.json({ race: null });
+
+    // Afsluttede løb i managerens egen pulje — samme filter som recent-results
+    // (#2288 G): uden det ville "seneste løb" kunne pege ind i en anden division.
+    let racesQuery = supabase
+      .from("races")
+      .select("id, name, race_type, stages")
+      .eq("season_id", season.id)
+      .eq("status", "completed");
+    if (req.team.league_division_id != null) {
+      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+    }
+    const { data: races, error: racesError } = await racesQuery;
+    if (racesError) throw racesError;
+    if (!races?.length) return res.json({ race: null });
+    const raceMetaById = new Map(races.map((r) => [r.id, r]));
+
+    // Udvælgelse: holdets nyeste import-batch. limit(200) er bevidst — selv hvis
+    // batchen for ét stort etapeløb overstiger 200 rækker, er alle de nyeste
+    // rækker fra samme løb, så pickLatestTeamRace vælger stadig korrekt.
+    const { data: participation, error: participationError } = await supabase
+      .from("race_results")
+      .select("race_id, imported_at")
+      .eq("team_id", req.team.id)
+      .in("race_id", races.map((r) => r.id))
+      .order("imported_at", { ascending: false })
+      .limit(200);
+    if (participationError) throw participationError;
+    const raceId = pickLatestTeamRace(participation);
+    if (!raceId || !raceMetaById.has(raceId)) return res.json({ race: null });
+    const raceMeta = raceMetaById.get(raceId);
+    const finalStage = raceMeta.stages ?? 1;
+
+    const [myRowsRes, recapRowsRes, incidentsRes] = await Promise.all([
+      supabase
+        .from("race_results")
+        .select("result_type, stage_number, rank, finish_time, points_earned, prize_money, rider_id, rider_name, rider:rider_id(id, firstname, lastname, nationality_code)")
+        .eq("race_id", raceId)
+        .eq("team_id", req.team.id),
+      // Recap-grundlag: kun sidste etapes rækker (endeligt klassement — motoren
+      // skriver gc/points/mountain/team ved stages; endagsløb = etape 1).
+      // stage_number.is.null-grenen dækker gamle importer uden etape-nummer.
+      supabase
+        .from("race_results")
+        .select("result_type, stage_number, rank, finish_time, in_breakaway, breakaway_caught, team_id, team_name, rider_id, rider_name, rider:rider_id(id, firstname, lastname), team:team_id(id, name)")
+        .eq("race_id", raceId)
+        .in("result_type", ["gc", "stage", "team", "points", "mountain"])
+        .or(`stage_number.eq.${finalStage},stage_number.is.null`),
+      supabase
+        .from("race_incidents")
+        .select("stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(firstname, lastname)")
+        .eq("race_id", raceId),
+    ]);
+    if (myRowsRes.error) throw myRowsRes.error;
+    if (recapRowsRes.error) throw recapRowsRes.error;
+    // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
+    // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
+    const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+
+    const { placements, stage_wins, totals } = summarizeTeamRace({
+      raceMeta,
+      myRows: myRowsRes.data || [],
+    });
+    const lastImport = (participation || []).find((p) => p.race_id === raceId)?.imported_at ?? null;
+
+    res.json({
+      race: {
+        id: raceMeta.id,
+        name: raceMeta.name,
+        race_type: raceMeta.race_type,
+        stages: raceMeta.stages,
+        last_import: lastImport,
+      },
+      placements,
+      stage_wins,
+      totals,
+      recap: {
+        results: trimRecapRows(recapRowsRes.data || []),
+        incidents,
+      },
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

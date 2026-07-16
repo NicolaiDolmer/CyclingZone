@@ -40,6 +40,19 @@
     "viewCalendar": "View calendar →"
   },
   "cards": {
+    "myResult": {
+      "title": "How your team did",
+      "linkFull": "Full result →",
+      "newBadge": "New",
+      "oneDay": "One-day race",
+      "stagesCount": "{count} stages",
+      "moreRiders": "+{count, plural, one {# more rider} other {# more riders}}",
+      "points": "Points",
+      "prize": "Prize money",
+      "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
+      "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",
+      "emptyCta": "Open the race calendar →"
+    },
     "auctions": {
       "title": "Active Auctions",
       "linkAll": "See all →",
@@ -115,6 +128,7 @@
     "modules": {
       "nextActions": "Next move",
       "forecast": "Finance forecast",
+      "myLatestResult": "How your team did",
       "auctions": "Active auctions",
       "transfers": "Transfers & offers",
       "races": "Upcoming races",
