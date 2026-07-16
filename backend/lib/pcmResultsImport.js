@@ -274,6 +274,7 @@ function finalize(resultRows) {
 
 // Byg et detaljeret Discord-embed pr. resultat-type for ét importeret løb.
 // Ren funktion (ingen I/O) → testbar. Bruges af route'en via sendDiscordNotification.
+// #2520: spillervendt Discord-embed på engelsk (server er EN-first).
 export function buildPcmImportEmbed({ race, preview, resultRows }) {
   const naming = (r) => r.rider_name || r.team_name || "?";
   const fields = [];
@@ -284,8 +285,8 @@ export function buildPcmImportEmbed({ race, preview, resultRows }) {
     .sort((a, b) => a.stage_number - b.stage_number);
   if (stageWins.length) {
     fields.push({
-      name: race.race_type === "single" ? "🏁 Vinder" : "🏁 Etapevindere",
-      value: stageWins.map((r) => `Etape ${r.stage_number}: ${naming(r)}`).join("\n").slice(0, 1024),
+      name: race.race_type === "single" ? "🏁 Winner" : "🏁 Stage winners",
+      value: stageWins.map((r) => `Stage ${r.stage_number}: ${naming(r)}`).join("\n").slice(0, 1024),
       inline: false,
     });
   }
@@ -294,29 +295,29 @@ export function buildPcmImportEmbed({ race, preview, resultRows }) {
   const gc = resultRows.filter((r) => r.result_type === "gc").sort((a, b) => a.rank - b.rank).slice(0, 3);
   if (gc.length) {
     fields.push({
-      name: race.race_type === "single" ? "🏆 Resultat" : "🏆 Klassement",
+      name: race.race_type === "single" ? "🏆 Result" : "🏆 Classification",
       value: gc.map((r) => `${r.rank}. ${naming(r)}`).join("\n"),
       inline: true,
     });
   }
 
   // Trøjevindere (final-etape klassifikationer).
-  for (const [type, label] of [["points", "🟢 Point"], ["mountain", "⛰️ Bjerg"], ["young", "🤍 Ungdom"]]) {
+  for (const [type, label] of [["points", "🟢 Points"], ["mountain", "⛰️ Mountains"], ["young", "🤍 Youth"]]) {
     const w = resultRows.find((r) => r.result_type === type && r.rank === 1);
     if (w) fields.push({ name: label, value: naming(w), inline: true });
   }
 
   // Hold-vinder.
   const teamWin = resultRows.find((r) => r.result_type === "team" && r.rank === 1);
-  if (teamWin) fields.push({ name: "👥 Hold", value: naming(teamWin), inline: true });
+  if (teamWin) fields.push({ name: "👥 Team", value: naming(teamWin), inline: true });
 
-  const descParts = [`${preview.rows} resultater importeret`];
+  const descParts = [`${preview.rows} results imported`];
   if (preview.unmatched_scoring > 0) {
-    descParts.push(`⚠️ ${preview.unmatched_scoring} umatchede scorende ryttere`);
+    descParts.push(`⚠️ ${preview.unmatched_scoring} unmatched scoring riders`);
   }
 
   return {
-    title: `📊 Resultater: ${race.name}`,
+    title: `📊 Results: ${race.name}`,
     description: descParts.join(" · "),
     fields,
     color: 0x1e90ff,
