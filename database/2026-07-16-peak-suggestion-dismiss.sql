@@ -16,10 +16,11 @@
 -- Season-scoped (uuid FK, ikke en bool) så et nyt sæson-skifte automatisk
 -- nulstiller nulstillingen (nye sæson = nyt forslag, ingen cron/rollover-job
 -- nødvendig). NULL = ikke nulstillet (default/normal-sti).
--- riders-column-grant-ok: backend-only tilstand — service-role læser/skriver den via
--- /peak-plans-endpoints (backend/routes/api.js); frontend SELECT'er ALDRIG kolonnen.
--- Bevidst skjult for anon/authenticated (least-privilege; andre managers skal ikke
--- kunne se hinandens nulstillings-markører).
+-- Backend-only tilstand — service-role læser/skriver den via /peak-plans-endpoints
+-- (backend/routes/api.js); frontend SELECT'er ALDRIG kolonnen. Bevidst skjult for
+-- anon/authenticated (least-privilege; andre managers skal ikke kunne se hinandens
+-- nulstillings-markører).
+-- riders-column-grant-ok: backend-only, service-role-eneste læser — se blok ovenfor
 ALTER TABLE public.riders
   ADD COLUMN IF NOT EXISTS peak_suggestions_dismissed_season_id uuid
     REFERENCES public.seasons(id) ON DELETE SET NULL;
