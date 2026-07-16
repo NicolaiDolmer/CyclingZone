@@ -164,25 +164,25 @@ test("auto-accept countdown shows waiting and last-chance variants for expired p
     request_status: null,
     request_options: [],
   };
-  let raceDaysLeft = 3;
+  let daysLeft = 3;
 
   await stabilizePage(page);
   await installNetworkMocks(page);
   await installBoardStatusMock(page, () => makeBoardStatus({
     plans: { "5yr": expiredPlan, "3yr": null, "1yr": null },
-    auto_accept: { race_days_left: raceDaysLeft, race_days_completed: 2 },
+    auto_accept: { deadline_days: 5, days_since_open: 2, days_left: daysLeft, pending_plan_type: "5yr" },
   }));
 
   await login(page);
   await page.goto("/board");
 
-  // 3 race-days tilbage → warning-variant.
-  await expect(page.getByText(/Bestyrelsen venter på din forhandling, 3 race-days tilbage/)).toBeVisible();
+  // 3 dage tilbage → warning-variant.
+  await expect(page.getByText(/Bestyrelsen venter på din forhandling, 3 dage tilbage/)).toBeVisible();
 
-  // 1 race-day tilbage → kritisk "sidste chance"-variant.
-  raceDaysLeft = 1;
+  // 1 dag tilbage → kritisk "sidste chance"-variant.
+  daysLeft = 1;
   await page.reload();
-  await expect(page.getByText(/Sidste chance, bestyrelsen tager over om 1 race-day/)).toBeVisible();
+  await expect(page.getByText(/Sidste chance, bestyrelsen tager over om 1 dag/)).toBeVisible();
   await expect(page.getByText(/vælger bestyrelsen selv en plan/)).toBeVisible();
 });
 
