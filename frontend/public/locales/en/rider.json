@@ -101,6 +101,12 @@
       "restNote": "No ability growth on a rest day; fatigue recovers.",
       "emptyFocus": "Pick a focus to assign training.",
       "focusRefTitle": "Each focus trains",
+      "actionErrorGeneric": "Could not save. Try again in a moment.",
+      "actionErrors": {
+        "no_slots": "No training slots left.",
+        "auth": "Your session expired. Sign in again.",
+        "network": "Connection failed. Check your network and try again."
+      },
       "log": {
         "title": "Daily training · last 7 days",
         "empty": "No training days yet.",
@@ -156,7 +162,9 @@
       "contract": "Contract",
       "contractSeason": "Season {season}",
       "aiTag": "AI",
-      "winsOn": "Wins on"
+      "winsOn": "Wins on",
+      "valueTrend": "{value} last {days} days",
+      "valueTrendTitle": "Value change since {date}"
     },
     "banner": {
       "listed": "On the transfer list · price {price}",
@@ -288,7 +296,15 @@
       "valueMarket": "Market value",
       "valueExpected": "Expected value",
       "valueReadAbove": "The model values him above his current market value.",
-      "valueReadBelow": "His market value is at or above what the model expects."
+      "valueReadBelow": "His market value is at or above what the model expects.",
+      "scoutFailed": "Could not send the scout. Try again in a moment.",
+      "scoutErrors": {
+        "max_level": "This rider is already fully scouted.",
+        "capacity": "Your scout is already fully booked. Wait for a job to finish.",
+        "insufficient_funds": "Not enough CZ$ to send a scout.",
+        "auth": "Your session expired. Sign in again.",
+        "network": "Connection failed. Check your network and try again."
+      }
     },
     "interest": {
       "loading": "Loading interest...",

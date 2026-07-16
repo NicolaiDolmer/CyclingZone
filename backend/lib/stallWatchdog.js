@@ -39,6 +39,8 @@
  * (check, løb, dag) så en vedvarende stall ikke spammer hvert 30. min.
  */
 
+import { fetchAllRows } from "./supabasePagination.js";
+
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   finalizeHours: 2,
   stageHours: 2,
@@ -244,6 +246,27 @@ export function evaluateStallFindings({
  * I/O-lag: henter alle rows evaluatoren behøver fra Supabase. Kaster ved query-fejl
  * (ikke tavst `|| []`) så trackedTick surfacer det i Sentry. Scoper til aktiv sæson.
  */
+// Range-pagineret + id-chunked load af race-scopede tabeller. race_results-rækker =
+// løb × etaper × ryttere, så et enkelt flerugers etapeløb alene sprænger PostgREST's
+// 1000-rækkers cap; en rå .in() trunkerer TAVST (samme klasse som #1798/#1839).
+//
+// Netop dét gav watchdogen FALSKE etape-stall-alarmer (#2430): resultKeys blev bygget
+// af de første 1000 af 7.277 rækker, så etaper der HAVDE resultater så tomme ud →
+// "forfalden m. startfelt, ingen resultater". Sorteringen SKAL være total (unik id som
+// sidste nøgle), ellers kan ties flytte rækker mellem sider → gaps.
+async function fetchAllRaceRows(supabase, table, columns, raceIds) {
+  const ID_CHUNK = 300;
+  const rows = [];
+  for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
+    const chunk = raceIds.slice(i, i + ID_CHUNK);
+    const page = await fetchAllRows(() =>
+      supabase.from(table).select(columns).in("race_id", chunk).order("id")
+    );
+    rows.push(...page);
+  }
+  return rows;
+}
+
 export async function fetchWatchdogState({ supabase, now = new Date(), thresholds, autoPrizeEnabled = false }) {
   const t = { ...STALL_WATCHDOG_DEFAULT_THRESHOLDS, ...thresholds };
 
@@ -298,10 +321,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
   const lastResultByRace = {};
   if (anchorIds.length) {
-    const rows = await run(
-      supabase.from("race_results").select("race_id,imported_at").in("race_id", anchorIds),
-      "race_results(anchors)"
-    );
+    const rows = await fetchAllRaceRows(supabase, "race_results", "race_id,imported_at,id", anchorIds);
     for (const row of rows) {
       const cur = lastResultByRace[row.race_id];
       if (!cur || new Date(row.imported_at) > new Date(cur)) lastResultByRace[row.race_id] = row.imported_at;
@@ -325,15 +345,9 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   const resultKeys = new Set();
   const entryRaceIds = new Set();
   if (dueRaceIds.length) {
-    const rr = await run(
-      supabase.from("race_results").select("race_id,stage_number").in("race_id", dueRaceIds),
-      "race_results(due-stages)"
-    );
+    const rr = await fetchAllRaceRows(supabase, "race_results", "race_id,stage_number,id", dueRaceIds);
     for (const row of rr) resultKeys.add(`${row.race_id}:${row.stage_number}`);
-    const ent = await run(
-      supabase.from("race_entries").select("race_id").in("race_id", dueRaceIds),
-      "race_entries(due-stages)"
-    );
+    const ent = await fetchAllRaceRows(supabase, "race_entries", "race_id,id", dueRaceIds);
     for (const row of ent) entryRaceIds.add(row.race_id);
   }
   const dueStages = dueRaw.map((s) => ({

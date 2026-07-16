@@ -284,7 +284,7 @@ export default function FinanceForecastCard({
 
       <p className="text-cz-3 text-xs mt-4 leading-snug">
         {t("forecast.footnote")}{" "}
-        <Link to="/help?section=finance" className="underline hover:text-cz-1">
+        <Link to="/help?faq=forecastCalculation" className="underline hover:text-cz-1">
           {t("forecast.footnoteLink")}
         </Link>
       </p>

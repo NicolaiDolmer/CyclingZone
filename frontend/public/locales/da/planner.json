@@ -60,16 +60,6 @@
       "windowLabel": "Peak-vindue {start} – {end}"
     }
   },
-  "type": {
-    "sprinter": "Spurter",
-    "tt": "Enkeltstartsrytter",
-    "climber": "Klatrer",
-    "puncheur": "Puncheur",
-    "brostensrytter": "Brostensrytter",
-    "baroudeur": "Baroudeur",
-    "rouleur": "Rouleur",
-    "gc": "Klassementsrytter"
-  },
   "terrain": {
     "flat": "Flad",
     "hilly": "Kuperet",

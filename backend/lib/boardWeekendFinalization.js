@@ -48,8 +48,8 @@ import {
 } from "./boardWeekendUpdate.js";
 import { evaluateAndApplyConsequences as evaluateAndApplyConsequencesShared } from "./boardConsequences.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
-import { loadGoalContextForBoard } from "./boardGoalContext.js";
-import { getPlanDuration, U25_ABILITY_KEYS } from "./boardGoals.js";
+import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
+import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { notifyTeamOwner } from "./notificationService.js";
 
@@ -243,9 +243,6 @@ export async function processBoardWeekendFinalization({
 
     for (const board of boards) {
       try {
-        const planDuration = getPlanDuration(board.plan_type);
-        const seasonsCompleted = (board.seasons_completed || 0) + 1;
-
         const goalContext = await loadGoalContextFn({
           supabase,
           teamId: team.id,
@@ -261,21 +258,17 @@ export async function processBoardWeekendFinalization({
           planStartSeasonNumber: board.plan_start_season_number,
         });
 
-        const context = {
-          isFinalSeason: seasonsCompleted >= planDuration,
+        // #2469 · Delt context-bygger (planDuration/seasonsCompleted/isFinalSeason/
+        // cumulativeStats beregnes dér) — samme som /board/status, /board/request
+        // og season-end, så weekend-stien ikke kan drifte fra dem igen.
+        const context = buildBoardEvalContext({
+          board,
+          standing,
           activeLoanCount: loanCountByTeam.get(team.id) || 0,
-          planStartSponsorIncome: board.plan_start_sponsor_income,
           currentSponsorIncome: team.sponsor_income,
-          planDuration,
-          seasonsCompleted,
           recentSnapshots,
-          hasSeasonData: true,
-          cumulativeStats: {
-            stageWins: (board.cumulative_stage_wins || 0) + (standing.stage_wins || 0),
-            gcWins: (board.cumulative_gc_wins || 0) + (standing.gc_wins || 0),
-          },
-          ...goalContext,
-        };
+          goalContext,
+        });
 
         // Anker: sæson-start-satisfaction. Selv-healende ved sæson-skift —
         // første weekend i en ny sæson ser anchor-season-mismatch og re-ankrer

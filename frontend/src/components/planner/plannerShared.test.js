@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderTypeKey, riderShortName } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -35,12 +35,6 @@ test("statusMeta: redundant glyf pr. status (ikke kun farve)", () => {
   assert.equal(statusMeta("at_risk").glyph, "↓");
   assert.equal(statusMeta("pending").glyph, "•");
   assert.equal(statusMeta("unknown").key, "pending");
-});
-
-test("riderTypeKey: kendt type → nøgle, ukendt → null", () => {
-  assert.equal(riderTypeKey("climber"), "type.climber");
-  assert.equal(riderTypeKey("gc"), "type.gc");
-  assert.equal(riderTypeKey("wizard"), null);
 });
 
 test("riderShortName: initial + efternavn", () => {
