@@ -7,7 +7,7 @@
   "trainedTodayAt_assistant": "Trænet i dag kl. {time} (af assistenten)",
   "notTrainedYetToday": "Ikke trænet endnu i dag",
   "tickModelDone": "Dagens træning er allerede kørt. Ændringer i fokus eller intensitet gælder først fra næste træning (i morgen). Form og træthed opdateres kun ved den daglige træning, ikke løbende.",
-  "disabledNote": "Daglig træning starter ved relanch. Træningsprogrammer kan sættes op nu.",
+  "disabledNote": "Daglig træning er sat på pause lige nu. Træningsprogrammer kan stadig sættes op.",
   "form": "Form",
   "fatigue": "Træthed",
   "recoveryNoteTitle": "Får man energi tilbage hver dag?",
