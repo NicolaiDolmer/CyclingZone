@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.08",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting is much faster now",
+          "body": "Scout missions now take 2 days instead of 14, and a targeted rider investigation takes 1 day per level instead of 3. Send your scout out today and the report is ready the day after tomorrow. Your scout's capacity, travel costs and the shortlist rules are unchanged. Missions already underway have been re-dated to the new pace, so pending reports arrive sooner."
+        },
+        "da": {
+          "title": "Scouting er meget hurtigere nu",
+          "body": "Spejder-missioner tager nu 2 dage i stedet for 14, og en målrettet rytter-undersøgelse tager 1 dag pr. niveau i stedet for 3. Send din spejder ud i dag, og rapporten er klar i overmorgen. Spejderens kapacitet, rejseomkostninger og shortlist-reglerne er uændrede. Missioner der allerede er i gang, er omdateret til det nye tempo, så ventende rapporter lander tidligere."
+        },
+        "refs": [2458]
+      }
+    ]
+  },
+  {
     "version": "7.07",
     "date": "2026-07-16",
     "label": "Beta",
