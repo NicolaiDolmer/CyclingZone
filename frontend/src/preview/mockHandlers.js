@@ -18,6 +18,8 @@ import {
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
   SEED_RIDER_PALMARES_RESULTS,
+  SEED_TEAM_SEASON_STANDINGS,
+  SEED_TEAM_HALL_OF_FAME,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
@@ -127,13 +129,31 @@ export function restRows(table, requestUrl = "") {
       }
       return [];
     }
+    // #1997 holdside-slice: team-scopet query (TeamPalmaresTab: team_id=eq.<id>)
+    // får sæson-historik-seedet. KUN TEST_TEAM har seedede standings — andre
+    // hold (fx RIVAL_TEAM) ser den tilsigtede tomme tilstand.
+    case "season_standings": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return id === TEST_TEAM.id ? SEED_TEAM_SEASON_STANDINGS : [];
+      }
+      return [];
+    }
+    case "hall_of_fame": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return id === TEST_TEAM.id ? SEED_TEAM_HALL_OF_FAME : [];
+      }
+      return SEED_TEAM_HALL_OF_FAME;
+    }
     case "auction_proxy_bids":
     case "finance_transactions":
     case "notifications":
     case "player_events":
     case "rider_watchlist":
     case "roadmap_votes":
-    case "season_standings":
       return [];
     case "seasons":
       return [ACTIVE_SEASON];
