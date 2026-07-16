@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.04",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Profiles",
+        "en": {
+          "title": "Manager online status now follows your language",
+          "body": "The online badge next to a manager's name on team and manager profiles always showed Danish text ('Online nu', 'aldrig'), even with English selected. It now shows 'Online now', 'Never' and relative times in your chosen language."
+        },
+        "da": {
+          "title": "Manager-online-status følger nu dit sprog",
+          "body": "Online-badget ved siden af en managers navn på hold- og managerprofiler viste altid dansk tekst, også med engelsk valgt. Det viser nu 'Online now', 'Never' og relative tider på dit valgte sprog."
+        },
+        "refs": [2508]
+      }
+    ]
+  },
+  {
     "version": "7.03",
     "date": "2026-07-16",
     "label": "Beta",
