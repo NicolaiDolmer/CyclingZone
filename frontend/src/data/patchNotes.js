@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.06",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Your season-1 board now reads your results",
+          "body": "In your first season, the board's satisfaction used to stay locked at 50 the whole way through — nothing you did on the road moved it. It now watches your results (standing among the other real teams in your group) and your club's finances race weekend by race weekend, and reacts within a 30-75 range. Your sponsor modifier still stays neutral at 1.0x throughout season 1, and there are no hard consequences yet — the board is only observing."
+        },
+        "da": {
+          "title": "Din bestyrelse i sæson 1 læser nu dine resultater",
+          "body": "I din første sæson stod bestyrelsens tilfredshed før fast på 50 hele vejen igennem — intet du gjorde på ruten flyttede den. Den følger nu dine resultater (placering blandt de andre rigtige hold i din gruppe) og klubbens økonomi løb for løb, og reagerer inden for et interval på 30-75. Din sponsor-modifier holdes stadig neutral på 1,0x hele sæson 1, og der er endnu ingen hårde konsekvenser — bestyrelsen observerer kun."
+        },
+        "refs": [2521]
+      }
+    ]
+  },
+  {
     "version": "7.04",
     "date": "2026-07-16",
     "label": "Beta",

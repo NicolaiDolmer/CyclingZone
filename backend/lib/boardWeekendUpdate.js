@@ -28,7 +28,7 @@
 // weekend-finalization. INTET her skriver til DB.
 
 import { evaluateBoardSeason, satisfactionToModifier } from "./boardEvaluation.js";
-import { clamp, clampSatisfaction } from "./boardUtils.js";
+import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
 
 // Ejer-beslutning 11/6: ±5 point pr. løbsweekend (nedad-bevægelse). Bevaret som
 // downside-grænsen — hårde konsekvenser er checkpoint-gatede og kalibreret mod
@@ -164,6 +164,136 @@ export function getConsequenceCheckpoint({ completedWeekends, totalWeekends } = 
 
 export function isConsequenceCheckpoint(args) {
   return getConsequenceCheckpoint(args) !== null;
+}
+
+// #2521 · Baseline-bestyrelsen lever — sæson 1/baseline-fasen (createBaselineProfile,
+// boardGoals.js) har INGEN forhandlede mål (current_goals=[]), så den delte
+// evaluateBoardSeason-motor ovenfor (som kræver goals for at score en performance-
+// breakdown) kan ikke genbruges direkte til at udlede et target. I stedet
+// observerer bestyrelsen holdets RESULTATER direkte: placerings-percentil blandt
+// IKKE-AI/bank/test/frosne hold i egen pulje (samme diskriminator som resten af
+// boardWeekendFinalization.js) + økonomisk sundhed (positiv saldo, ingen aktive
+// nødlån). Vægte kalibreret mod den ægte trup-population (script/board-baseline-
+// satisfaction-dry-run.js, PR #2521-scorecard: min 37 / median 54 / max 73 over
+// 125 rigtige hold, ingen klumpning på klamp-grænserne).
+//
+// Ejer-valgt løsning A (#2521): satisfaction klampes til [30,75] — bestyrelsen
+// "observerer" i sæson 1 og kan blive glad eller bekymret, men ikke ekstatisk/
+// fyrings-vred. budget_modifier RØRES IKKE (forbliver 1.0, uændret adfærd —
+// processSeasonStart/processTeamSeasonEnd fortsætter med at skippe baseline-boards).
+export const BASELINE_TARGET_CENTER = 50;
+export const BASELINE_PERFORMANCE_SWING = 36; // percentile 0..1 → ±18 om centeret
+export const BASELINE_ECONOMY_BONUS = 5; // positiv saldo vs. negativ saldo
+export const BASELINE_LOAN_PENALTY = 6; // pr. aktivt nødlån
+export const BASELINE_LOAN_PENALTY_CAP = 2; // maks. 2 lån tæller (-12 i alt)
+export const BASELINE_SATISFACTION_MIN = 30;
+export const BASELINE_SATISFACTION_MAX = 75;
+
+export function clampBaselineSatisfaction(value) {
+  return clamp(Math.round(value), BASELINE_SATISFACTION_MIN, BASELINE_SATISFACTION_MAX);
+}
+
+/**
+ * Placerings-percentil blandt IKKE-AI/bank/test/frosne hold i samme pulje
+ * (league_division_id, fallback til division for pre-pulje-data). 1 = bedst
+ * placerede rigtige hold i puljen, 0 = ringest. Falder tilbage til 0.5 (neutral)
+ * når puljen ikke kan bestemmes (<2 rigtige hold eller manglende rank/data) —
+ * matcher "awaiting data"-neutral-adfærden andre steder i board-motoren.
+ */
+export function computeRealPoolPercentile({ teamId, standing, standings = [] } = {}) {
+  const rank = standing?.rank_in_division;
+  if (!teamId || rank == null || !Number.isFinite(Number(rank))) return 0.5;
+
+  const usePool = standing?.league_division_id != null;
+  const pool = (standings || []).filter((row) => {
+    const sameGroup = usePool
+      ? row.league_division_id === standing.league_division_id
+      : row.division === standing.division;
+    if (!sameGroup) return false;
+    const t = row.team || {};
+    // Samme diskriminator som teams-loadet i boardWeekendFinalization.js:
+    // is_ai=false, is_bank=false, is_frozen=false, is_test_account=false.
+    return t.is_ai === false && t.is_bank !== true && t.is_frozen !== true && t.is_test_account !== true;
+  });
+
+  if (pool.length < 2) return 0.5;
+  const sorted = [...pool].sort(
+    (a, b) => toFiniteOr(a.rank_in_division, Infinity) - toFiniteOr(b.rank_in_division, Infinity)
+  );
+  const position = sorted.findIndex((row) => row.team_id === teamId);
+  if (position < 0) return 0.5;
+  return clamp(1 - position / (sorted.length - 1), 0, 1);
+}
+
+/**
+ * Syntetisk default-forventning for baseline-boards (#2521). Erstatter de
+ * manglende forhandlede mål med observerbare signaler: resultat-percentil +
+ * økonomisk sundhed. Ren funktion — ingen DB.
+ */
+export function computeBaselineTargetSatisfaction({
+  teamId,
+  standing,
+  standings = [],
+  balance = 0,
+  activeLoanCount = 0,
+} = {}) {
+  const percentile = computeRealPoolPercentile({ teamId, standing, standings });
+  const performanceComponent = (percentile - 0.5) * BASELINE_PERFORMANCE_SWING;
+  const balanceHealthy = toFiniteOr(balance, 0) >= 0;
+  const economyComponent = balanceHealthy ? BASELINE_ECONOMY_BONUS : -BASELINE_ECONOMY_BONUS;
+  const cappedLoans = Math.min(Math.max(0, Math.round(toFiniteOr(activeLoanCount, 0))), BASELINE_LOAN_PENALTY_CAP);
+  const loanPenalty = cappedLoans * BASELINE_LOAN_PENALTY;
+
+  const rawTarget = BASELINE_TARGET_CENTER + performanceComponent + economyComponent - loanPenalty;
+
+  return {
+    percentile: roundNumber(percentile),
+    performanceComponent: roundNumber(performanceComponent),
+    economyComponent,
+    loanPenalty,
+    rawTarget: roundNumber(rawTarget),
+    targetSatisfaction: clampBaselineSatisfaction(rawTarget),
+  };
+}
+
+/**
+ * Baseline-weekend-opdatering (#2521): bevæger den løbende satisfaction mod
+ * computeBaselineTargetSatisfaction's target med SAMME inerti/clamp-mekanik
+ * som den forhandlede weekend-opdatering (WEEKEND_SATISFACTION_CLAMP/_UP) —
+ * bare klampet til [30,75] i stedet for [0,100]. Returnerer null hvis board
+ * mangler (samme kontrakt som computeWeekendSatisfactionUpdate).
+ */
+export function computeBaselineWeekendUpdate({
+  board,
+  teamId,
+  standing,
+  standings = [],
+  balance = 0,
+  activeLoanCount = 0,
+  clampLimit = WEEKEND_SATISFACTION_CLAMP,
+  clampLimitUp = WEEKEND_SATISFACTION_CLAMP_UP,
+} = {}) {
+  if (!board) return null;
+
+  const current = clampBaselineSatisfaction(toFiniteOr(board.satisfaction, BASELINE_TARGET_CENTER));
+  const downLimit = Math.max(0, toFiniteOr(clampLimit, WEEKEND_SATISFACTION_CLAMP));
+  const upLimit = Math.max(downLimit, toFiniteOr(clampLimitUp, WEEKEND_SATISFACTION_CLAMP_UP));
+
+  const targetInfo = computeBaselineTargetSatisfaction({ teamId, standing, standings, balance, activeLoanCount });
+  const rawStep = targetInfo.targetSatisfaction - current;
+  const appliedStep = clamp(rawStep, -downLimit, upLimit);
+  const newSatisfaction = clampBaselineSatisfaction(current + appliedStep);
+
+  return {
+    previousSatisfaction: current,
+    targetSatisfaction: targetInfo.targetSatisfaction,
+    percentile: targetInfo.percentile,
+    economyComponent: targetInfo.economyComponent,
+    loanPenalty: targetInfo.loanPenalty,
+    rawStep,
+    appliedDelta: newSatisfaction - current,
+    newSatisfaction,
+  };
 }
 
 function toFiniteOr(value, fallback) {

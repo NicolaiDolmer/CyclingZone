@@ -39,10 +39,23 @@
 //
 // Population: SAMME diskriminator som UI/boardMidSeason (match-UI-filter-reglen):
 // rigtige hold = is_ai=false, is_bank=false, is_frozen=false, is_test_account=false.
-// Planer: is_baseline=false + negotiation_status='completed' (samme som sæson-slut).
+// Planer: negotiation_status='completed' — inkl. is_baseline=true fra og med #2521
+// (se nedenfor), is_baseline=false uændret (samme som sæson-slut).
+//
+// #2521 · Baseline-bestyrelsen lever. Sæson 1/baseline-boards (createBaselineProfile,
+// boardGoals.js) sprang tidligere denne opdatering helt over (satisfaction låst på
+// 50). Fra og med #2521 deltager de OGSÅ i weekend-opdateringen, men mod et
+// syntetisk target (computeBaselineWeekendUpdate, boardWeekendUpdate.js) i stedet
+// for forhandlede mål — se funktionens kommentar for vægte/kalibrering. Klampet til
+// [30,75] (ejer-valgt løsning A: bestyrelsen "observerer", bliver hverken ekstatisk
+// eller fyrings-vred). budget_modifier RØRES IKKE for baseline (forbliver 1.0), og
+// de hårde konsekvens-lag (mid-season-checkpointet nedenfor) springes eksplicit
+// over for baseline-boards — season-end-evalueringen (economyEngine.js) fortsætter
+// uændret med at skippe is_baseline=true.
 
 import {
   computeWeekendSatisfactionUpdate,
+  computeBaselineWeekendUpdate,
   resolveReasonCategory,
   CHECKPOINT_KINDS,
 } from "./boardWeekendUpdate.js";
@@ -114,6 +127,7 @@ export async function processBoardWeekendFinalization({
     season_id: season?.id ?? null,
     teams_checked: 0,
     boards_updated: 0,
+    baseline_boards_updated: 0, // #2521
     checkpoint: null,
     consequences_applied: 0,
     events_written: 0,
@@ -138,11 +152,14 @@ export async function processBoardWeekendFinalization({
   const loadGoalContextFn = deps.loadGoalContext ?? loadGoalContextForBoard;
   const notifyTeamOwnerFn = deps.notifyTeamOwner ?? notifyTeamOwner;
   const computeWeekendUpdateFn = deps.computeWeekendUpdate ?? computeWeekendSatisfactionUpdate;
+  const computeBaselineUpdateFn = deps.computeBaselineWeekendUpdate ?? computeBaselineWeekendUpdate;
 
   // 1. Rigtige human-hold (match-UI-filter: ikke-AI/bank/test/frosne).
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, sponsor_income, season_1_identity_basis, team_dna_key, created_at")
+    // #2521 · `balance` er tilføjet til selectet: baseline-boards' økonomi-signal
+    // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
+    .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
@@ -159,7 +176,10 @@ export async function processBoardWeekendFinalization({
     supabase.from("board_profiles").select("*").in("team_id", teamIds),
     supabase
       .from("season_standings")
-      .select("*, team:team_id(is_ai)")
+      // #2521 · is_bank/is_frozen/is_test_account tilføjet: computeRealPoolPercentile
+      // (baseline-target) skal filtrere puljen med SAMME diskriminator som resten af
+      // filen, ikke kun is_ai (ellers tæller bank/test/frosne hold med i percentilen).
+      .select("*, team:team_id(is_ai, is_bank, is_frozen, is_test_account)")
       .eq("season_id", season.id),
     supabase
       .from("riders")
@@ -187,7 +207,8 @@ export async function processBoardWeekendFinalization({
 
   const boardsByTeam = new Map();
   for (const board of boardsRes.data || []) {
-    if (board.is_baseline || board.plan_type === "baseline") continue;
+    // #2521 · Baseline-boards deltager nu også (se header-kommentaren) —
+    // negotiation_status='completed' holder stadig pending 1yr/3yr/5yr-forhandlinger ude.
     if (board.negotiation_status !== "completed") continue;
     if (!boardsByTeam.has(board.team_id)) boardsByTeam.set(board.team_id, []);
     boardsByTeam.get(board.team_id).push(board);
@@ -243,6 +264,63 @@ export async function processBoardWeekendFinalization({
 
     for (const board of boards) {
       try {
+        // #2521 · Baseline-boards (sæson 1, ingen forhandlede mål) tager en
+        // helt separat, letvægts-sti: intet goalContext/evaluateBoardSeason-kald
+        // (kræver goals, som baseline ikke har), ingen budget_modifier-ændring,
+        // og ALDRIG hårde konsekvens-lag — uanset om denne finalization krydser
+        // mid-season-checkpointet. Se computeBaselineWeekendUpdate for vægte.
+        if (board.is_baseline || board.plan_type === "baseline") {
+          const baselineUpdate = computeBaselineUpdateFn({
+            board,
+            teamId: team.id,
+            standing,
+            standings,
+            balance: team.balance,
+            activeLoanCount: loanCountByTeam.get(team.id) || 0,
+          });
+          if (!baselineUpdate) continue;
+
+          const { error: baselineUpdateError } = await supabase
+            .from("board_profiles")
+            .update({
+              satisfaction: baselineUpdate.newSatisfaction,
+              updated_at: now.toISOString(),
+            })
+            .eq("id", board.id);
+          if (baselineUpdateError) throw new Error(baselineUpdateError.message);
+          summary.boards_updated += 1;
+          summary.baseline_boards_updated = (summary.baseline_boards_updated || 0) + 1;
+
+          // #1451-mønster genbrugt til baseline: goals_met/goals_total er NOT
+          // NULL i skemaet → 0/0 (baseline har ingen mål), reason_category null.
+          if (race?.id) {
+            const { error: baselineEventError } = await supabase
+              .from("board_satisfaction_events")
+              .upsert({
+                board_id: board.id,
+                team_id: team.id,
+                season_id: season.id,
+                race_id: race.id,
+                race_name: race.name ?? null,
+                race_days_completed: season.race_days_completed ?? null,
+                satisfaction_before: baselineUpdate.previousSatisfaction,
+                satisfaction_after: baselineUpdate.newSatisfaction,
+                satisfaction_delta: baselineUpdate.appliedDelta,
+                goals_met: 0,
+                goals_total: 0,
+                reason_category: null,
+              }, { onConflict: "board_id,race_id" });
+            if (baselineEventError) {
+              summary.errors += 1;
+              console.error(`  ⚠️  baseline board satisfaction event failed for ${team.name}:`, baselineEventError.message);
+            } else {
+              summary.events_written += 1;
+            }
+          }
+
+          continue;
+        }
+
         const goalContext = await loadGoalContextFn({
           supabase,
           teamId: team.id,

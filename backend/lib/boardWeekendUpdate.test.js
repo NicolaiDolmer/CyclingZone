@@ -8,7 +8,12 @@ import {
   CHECKPOINT_KINDS,
   WEEKEND_SATISFACTION_CLAMP,
   WEEKEND_SATISFACTION_CLAMP_UP,
+  BASELINE_SATISFACTION_MIN,
+  BASELINE_SATISFACTION_MAX,
   computeWeekendSatisfactionUpdate,
+  computeRealPoolPercentile,
+  computeBaselineTargetSatisfaction,
+  computeBaselineWeekendUpdate,
   getConsequenceCheckpoint,
   isConsequenceCheckpoint,
   resolveReasonCategory,
@@ -238,4 +243,187 @@ test("resolveReasonCategory: negativ delta → weakest_category", () => {
 test("resolveReasonCategory: delta 0 eller manglende feedback → null", () => {
   assert.equal(resolveReasonCategory({ evaluation: { feedback: { strongest_category: "results" } }, satisfactionDelta: 0 }), null);
   assert.equal(resolveReasonCategory({ evaluation: null, satisfactionDelta: 3 }), null);
+});
+
+// ─── Baseline-bestyrelsen lever (#2521) ────────────────────────────────────────
+// Sæson 1/baseline-boards har ingen forhandlede mål (current_goals=[]), så
+// evaluateBoardSeason kan ikke bruges. computeBaselineWeekendUpdate udleder i
+// stedet et target af placerings-percentil + økonomi og bruger SAMME clamp-
+// inerti som computeWeekendSatisfactionUpdate, bare klampet til [30,75].
+
+function realTeamStanding({ teamId, rank, leagueDivisionId = 4, division = 1, isAi = false, isBank = false, isFrozen = false, isTest = false }) {
+  return {
+    team_id: teamId,
+    division,
+    league_division_id: leagueDivisionId,
+    rank_in_division: rank,
+    team: { is_ai: isAi, is_bank: isBank, is_frozen: isFrozen, is_test_account: isTest },
+  };
+}
+
+test("computeRealPoolPercentile: bedste placering i puljen → 1, ringeste → 0", () => {
+  const standings = [
+    realTeamStanding({ teamId: "t1", rank: 1 }),
+    realTeamStanding({ teamId: "t2", rank: 2 }),
+    realTeamStanding({ teamId: "t3", rank: 3 }),
+  ];
+  assert.equal(computeRealPoolPercentile({ teamId: "t1", standing: standings[0], standings }), 1);
+  assert.equal(computeRealPoolPercentile({ teamId: "t3", standing: standings[2], standings }), 0);
+  assert.equal(computeRealPoolPercentile({ teamId: "t2", standing: standings[1], standings }), 0.5);
+});
+
+test("computeRealPoolPercentile: AI/bank/frosne/test-hold tælles IKKE med i puljen", () => {
+  const standings = [
+    realTeamStanding({ teamId: "real-1", rank: 1 }),
+    realTeamStanding({ teamId: "ai-1", rank: 2, isAi: true }),
+    realTeamStanding({ teamId: "bank-1", rank: 3, isBank: true }),
+    realTeamStanding({ teamId: "frozen-1", rank: 4, isFrozen: true }),
+    realTeamStanding({ teamId: "test-1", rank: 5, isTest: true }),
+    realTeamStanding({ teamId: "real-2", rank: 6 }),
+  ];
+  // Kun real-1 og real-2 er i den rigtige pulje → real-1 (rank 1, bedst blandt de to) = 1.
+  assert.equal(computeRealPoolPercentile({ teamId: "real-1", standing: standings[0], standings }), 1);
+  assert.equal(computeRealPoolPercentile({ teamId: "real-2", standing: standings[5], standings }), 0);
+});
+
+test("computeRealPoolPercentile: <2 rigtige hold i puljen → neutral 0.5", () => {
+  const standings = [realTeamStanding({ teamId: "solo", rank: 1 })];
+  assert.equal(computeRealPoolPercentile({ teamId: "solo", standing: standings[0], standings }), 0.5);
+});
+
+test("computeRealPoolPercentile: falder tilbage til division uden league_division_id", () => {
+  const standings = [
+    { team_id: "t1", division: 2, league_division_id: null, rank_in_division: 1, team: { is_ai: false } },
+    { team_id: "t2", division: 2, league_division_id: null, rank_in_division: 2, team: { is_ai: false } },
+  ];
+  assert.equal(computeRealPoolPercentile({ teamId: "t1", standing: standings[0], standings }), 1);
+});
+
+test("computeBaselineTargetSatisfaction: neutral percentil + sund økonomi ligger over centeret", () => {
+  const standings = [
+    realTeamStanding({ teamId: "t1", rank: 1 }),
+    realTeamStanding({ teamId: "t2", rank: 2 }), // midterst i en 3-holds pulje → percentil 0.5
+    realTeamStanding({ teamId: "t3", rank: 3 }),
+  ];
+  const result = computeBaselineTargetSatisfaction({
+    teamId: "t2",
+    standing: standings[1],
+    standings,
+    balance: 100000,
+    activeLoanCount: 0,
+  });
+  assert.equal(result.percentile, 0.5);
+  assert.equal(result.economyComponent, 5);
+  assert.equal(result.loanPenalty, 0);
+  assert.equal(result.targetSatisfaction, 55); // 50 + 0 + 5 − 0
+});
+
+test("computeBaselineTargetSatisfaction: bedste placering + sund økonomi trækker target op", () => {
+  const standings = [
+    realTeamStanding({ teamId: "t1", rank: 1 }),
+    realTeamStanding({ teamId: "t2", rank: 2 }),
+  ];
+  const result = computeBaselineTargetSatisfaction({
+    teamId: "t1",
+    standing: standings[0],
+    standings,
+    balance: 50000,
+    activeLoanCount: 0,
+  });
+  assert.equal(result.targetSatisfaction, 73); // 50 + 18 (percentil 1) + 5
+});
+
+test("computeBaselineTargetSatisfaction: ringeste placering + negativ saldo + laan trækker mod gulvet", () => {
+  const standings = [
+    realTeamStanding({ teamId: "t1", rank: 1 }),
+    realTeamStanding({ teamId: "t2", rank: 2 }),
+  ];
+  const result = computeBaselineTargetSatisfaction({
+    teamId: "t2",
+    standing: standings[1],
+    standings,
+    balance: -500,
+    activeLoanCount: 2,
+  });
+  // 50 − 18 (percentil 0) − 5 (negativ saldo) − 12 (2 laan × 6) = 15 → klampet til 30.
+  assert.equal(result.targetSatisfaction, BASELINE_SATISFACTION_MIN);
+});
+
+test("computeBaselineTargetSatisfaction: laan-penalty er cappet ved 2, selv med flere aktive laan", () => {
+  const standings = [realTeamStanding({ teamId: "t1", rank: 1 }), realTeamStanding({ teamId: "t2", rank: 2 })];
+  const twoLoans = computeBaselineTargetSatisfaction({ teamId: "t2", standing: standings[1], standings, balance: 100, activeLoanCount: 2 });
+  const fiveLoans = computeBaselineTargetSatisfaction({ teamId: "t2", standing: standings[1], standings, balance: 100, activeLoanCount: 5 });
+  assert.equal(twoLoans.targetSatisfaction, fiveLoans.targetSatisfaction);
+  assert.equal(twoLoans.loanPenalty, 12);
+});
+
+test("computeBaselineTargetSatisfaction: target ligger altid i [30,75]", () => {
+  const standings = [realTeamStanding({ teamId: "t1", rank: 1 }), realTeamStanding({ teamId: "t2", rank: 2 })];
+  for (const balance of [-999999, 0, 999999]) {
+    for (const loans of [0, 1, 2, 10]) {
+      const result = computeBaselineTargetSatisfaction({ teamId: "t2", standing: standings[1], standings, balance, activeLoanCount: loans });
+      assert.ok(result.targetSatisfaction >= BASELINE_SATISFACTION_MIN);
+      assert.ok(result.targetSatisfaction <= BASELINE_SATISFACTION_MAX);
+    }
+  }
+});
+
+test("computeBaselineWeekendUpdate: bevæger sig mod target med samme inerti-clamp som negotierede boards", () => {
+  const standings = [realTeamStanding({ teamId: "t1", rank: 1 }), realTeamStanding({ teamId: "t2", rank: 2 })];
+  const board = { id: "baseline-1", plan_type: "baseline", is_baseline: true, satisfaction: 50 };
+  const update = computeBaselineWeekendUpdate({
+    board,
+    teamId: "t1",
+    standing: standings[0],
+    standings,
+    balance: 10000,
+    activeLoanCount: 0,
+  });
+  assert.equal(update.previousSatisfaction, 50);
+  assert.equal(update.targetSatisfaction, 73);
+  // rawStep = 23, clamp op-grænse 8 → new = 58.
+  assert.equal(update.appliedDelta, WEEKEND_SATISFACTION_CLAMP_UP);
+  assert.equal(update.newSatisfaction, 58);
+});
+
+test("computeBaselineWeekendUpdate: nedad-bevægelse respekterer den (uændrede) ±5-grænse", () => {
+  const standings = [realTeamStanding({ teamId: "t1", rank: 1 }), realTeamStanding({ teamId: "t2", rank: 2 })];
+  const board = { id: "baseline-2", plan_type: "baseline", is_baseline: true, satisfaction: 60 };
+  const update = computeBaselineWeekendUpdate({
+    board,
+    teamId: "t2",
+    standing: standings[1],
+    standings,
+    balance: -1000,
+    activeLoanCount: 2,
+  });
+  // target = 30 (klampet gulv), current 60 → rawStep -30, ned-grænse 5 → new 55.
+  assert.equal(update.targetSatisfaction, BASELINE_SATISFACTION_MIN);
+  assert.equal(update.appliedDelta, -WEEKEND_SATISFACTION_CLAMP);
+  assert.equal(update.newSatisfaction, 55);
+});
+
+test("computeBaselineWeekendUpdate: satisfaction konvergerer mod target over flere weekender, aldrig forbi", () => {
+  const standings = [realTeamStanding({ teamId: "t1", rank: 1 }), realTeamStanding({ teamId: "t2", rank: 2 })];
+  let satisfaction = 50;
+  const trajectory = [];
+  for (let weekend = 1; weekend <= 5; weekend += 1) {
+    const update = computeBaselineWeekendUpdate({
+      board: { id: "baseline-3", plan_type: "baseline", is_baseline: true, satisfaction },
+      teamId: "t1",
+      standing: standings[0],
+      standings,
+      balance: 1,
+      activeLoanCount: 0,
+    });
+    satisfaction = update.newSatisfaction;
+    trajectory.push(satisfaction);
+  }
+  // target 73, op-grænse 8: 58, 66, 73, 73, 73 (sidste step < 8, konvergeret).
+  assert.deepEqual(trajectory, [58, 66, 73, 73, 73]);
+  assert.ok(trajectory.every((value) => value <= BASELINE_SATISFACTION_MAX));
+});
+
+test("computeBaselineWeekendUpdate: null board giver null (defensivt, samme kontrakt som computeWeekendSatisfactionUpdate)", () => {
+  assert.equal(computeBaselineWeekendUpdate({ board: null }), null);
 });

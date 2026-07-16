@@ -38,7 +38,7 @@
       },
       "season1Baseline": {
         "title": "Din bestyrelse er åben fra dag ét",
-        "text": "Bestyrelsen er låst op fra starten af din første sæson, så du kan vælge dit Klub-DNA og forhandle dine planer med det samme i stedet for at vente en sæson. Din sponsor-modifier holdes på 1.0× indtil du signer din første plan, så sæson-1-sponsoren er neutral mens du sætter op. Bestyrelsen læser også dit hold (national kerne, U25-andel, specialisering og stjerneprofil) og gemmer et permanent identity-snapshot der bruges som fundament for dine 5-årsplan-forslag."
+        "text": "Bestyrelsen er låst op fra starten af din første sæson, så du kan vælge dit Klub-DNA og forhandle dine planer med det samme i stedet for at vente en sæson. Din sponsor-modifier holdes på 1.0× indtil du signer din første plan, så sæson-1-sponsoren er neutral mens du sætter op. I denne baseline-sæson følger bestyrelsen allerede dine løbsresultater og klubbens økonomi weekend for weekend, og dens tilfredshed bevæger sig inden for et interval på 30-75 derefter — der er bare ingen hårde konsekvenser endnu. Bestyrelsen læser også dit hold (national kerne, U25-andel, specialisering og stjerneprofil) og gemmer et permanent identity-snapshot der bruges som fundament for dine 5-årsplan-forslag."
       },
       "season2Onboarding": {
         "title": "Sekventiel onboarding",
@@ -884,7 +884,7 @@
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",
-      "a": "Ja. Bestyrelsen er låst op fra starten af sæson 1, så du kan vælge dit Klub-DNA og forhandle dine 5-, 3- og 1-årsplaner med det samme. Indtil du signer din første plan holdes sponsor-modifier på 1.0×, så sæson-1-sponsoren er neutral mens du sætter op. Bestyrelsen *læser* også dit hold (hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner) og gemmer dette 'identity-snapshot' på dit hold permanent som grundlag for dine 5-årsplan-forslag."
+      "a": "Ja. Bestyrelsen er låst op fra starten af sæson 1, så du kan vælge dit Klub-DNA og forhandle dine 5-, 3- og 1-årsplaner med det samme. Indtil du signer din første plan holdes sponsor-modifier på 1.0×, så sæson-1-sponsoren er neutral mens du sætter op. Selv uden en signeret plan følger bestyrelsens tilfredshed allerede dine løbsresultater (placering blandt de andre rigtige hold i din gruppe) og din økonomi weekend for weekend, og bevæger sig inden for et interval på 30-75 — den udløser bare ikke hårde konsekvenser endnu. Bestyrelsen *læser* også dit hold (hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner) og gemmer dette 'identity-snapshot' på dit hold permanent som grundlag for dine 5-årsplan-forslag."
     },
     "buildOnCoreBadge": {
       "q": "Hvad betyder 'Bygger paa din kerne'-badgen på 5-årsmål?",

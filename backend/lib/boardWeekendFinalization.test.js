@@ -312,10 +312,11 @@ test("AI-/bank-/test-/frosne hold ekskluderes (match-UI-filter)", async () => {
   assert.equal(state.board_profiles.find((b) => b.team_id === "team-frozen").satisfaction, 50);
 });
 
-test("baseline- og pending-planer skippes", async () => {
+test("pending-planer skippes fortsat; baseline-boards deltager nu (#2521)", async () => {
   const state = makeState();
+  state.teams[0].balance = 100_000;
   state.board_profiles.push(
-    { id: "board-baseline", team_id: "team-1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, current_goals: [] },
+    { id: "board-baseline", team_id: "team-1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] },
     { id: "board-pending", team_id: "team-1", plan_type: "3yr", is_baseline: false, negotiation_status: "pending", satisfaction: 50, current_goals: [] },
   );
   const supabase = makeFakeSupabase(state);
@@ -328,9 +329,89 @@ test("baseline- og pending-planer skippes", async () => {
     deps: baseDeps({ computeWeekendUpdate: compute }),
   });
 
-  assert.equal(summary.boards_updated, 1);
-  assert.equal(state.board_profiles.find((b) => b.id === "board-baseline").satisfaction, 50);
+  // team-1's negotiated 1yr-board + dens baseline-søster-row opdateres begge.
+  // Den PENDING 3yr-forhandling ("ikke-signeret endnu") skippes fortsat.
+  assert.equal(summary.boards_updated, 2);
+  assert.equal(summary.baseline_boards_updated, 1);
+  assert.notEqual(state.board_profiles.find((b) => b.id === "board-baseline").satisfaction, 50,
+    "baseline-satisfaction skal bevæge sig — den er ikke længere låst på 50");
+  assert.equal(state.board_profiles.find((b) => b.id === "board-baseline").budget_modifier, 1.0,
+    "budget_modifier ændres ALDRIG for baseline");
   assert.equal(state.board_profiles.find((b) => b.id === "board-pending").satisfaction, 50);
+});
+
+// ─── #2521 · Baseline-bestyrelsen lever ────────────────────────────────────────
+
+test("#2521 · baseline-boards bevæger sig mod percentil+økonomi-target, ALDRIG budget_modifier eller hårde konsekvenser", async () => {
+  const state = makeState(); // team-1: negotiated 1yr-board, uændret sti
+  state.teams.push(
+    { id: "team-base-a", user_id: "u-a", name: "Baseline A", division: 1, sponsor_income: 100, balance: 100_000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+    { id: "team-base-b", user_id: "u-b", name: "Baseline B", division: 1, sponsor_income: 100, balance: 100_000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+  );
+  state.board_profiles.push(
+    { id: "board-base-a", team_id: "team-base-a", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] },
+    { id: "board-base-b", team_id: "team-base-b", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] },
+  );
+  state.season_standings.push(
+    { team_id: "team-base-a", season_id: "season-2", division: 1, league_division_id: 9, rank_in_division: 1, stage_wins: 0, gc_wins: 0, team: { is_ai: false, is_bank: false, is_frozen: false, is_test_account: false } },
+    { team_id: "team-base-b", season_id: "season-2", division: 1, league_division_id: 9, rank_in_division: 2, stage_wins: 0, gc_wins: 0, team: { is_ai: false, is_bank: false, is_frozen: false, is_test_account: false } },
+  );
+  const supabase = makeFakeSupabase(state);
+  const consequenceCalls = [];
+
+  const summary = await processBoardWeekendFinalization({
+    supabase,
+    season: { ...SEASON, race_days_completed: 30 }, // krydser midpoint (60/2=30) fra 24
+    previousRaceDaysCompleted: 24,
+    deps: baseDeps({
+      computeWeekendUpdate: stubComputeUpdate({ newSatisfaction: 45 }),
+      evaluateAndApplyConsequences: async (args) => { consequenceCalls.push(args); return { applied: [{ layer: 2 }] }; },
+    }),
+  });
+
+  assert.equal(summary.checkpoint, CHECKPOINT_KINDS.MID_SEASON);
+  const boardA = state.board_profiles.find((b) => b.id === "board-base-a"); // rank 1 → percentil 1
+  const boardB = state.board_profiles.find((b) => b.id === "board-base-b"); // rank 2 → percentil 0
+  // target A = 50 + 18 (percentil 1) + 5 (sund saldo) = 73 → op-clamp 8 → 58.
+  // target B = 50 − 18 (percentil 0) + 5 (sund saldo) = 37 → ned-clamp 5 → 45.
+  assert.equal(boardA.satisfaction, 58);
+  assert.equal(boardB.satisfaction, 45);
+  assert.equal(boardA.budget_modifier, 1.0, "budget_modifier RØRES ikke af baseline-mekanikken");
+  assert.equal(boardB.budget_modifier, 1.0);
+
+  // Kun team-1's NEGOTIEREDE board må ramme evaluateAndApplyConsequences ved
+  // checkpointet — baseline-boards springes eksplicit over (design-krav #2521 pkt 3).
+  assert.equal(consequenceCalls.length, 1);
+  assert.equal(consequenceCalls[0].board.id, "board-1");
+  assert.ok(!consequenceCalls.some((call) => call.board.is_baseline), "baseline-boards får ALDRIG hårde konsekvens-lag");
+  assert.equal(summary.baseline_boards_updated, 2);
+  assert.equal(summary.boards_updated, 3); // 1 negotieret + 2 baseline
+});
+
+test("#2521 · baseline-boards skriver board_satisfaction_events uden goals (0/0, reason_category null)", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Baseline-hold", balance: 5000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 1, rank_in_division: 1, stage_wins: 0, gc_wins: 0, team: { is_ai: false } }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r9", name: "Baseline-testløb" },
+    deps: { isBoardTestModeActive: async () => false, notifyTeamOwner: async () => ({}) },
+  });
+
+  assert.equal(summary.baseline_boards_updated, 1);
+  assert.equal(state.board_satisfaction_events.length, 1);
+  const ev = state.board_satisfaction_events[0];
+  assert.equal(ev.board_id, "b1");
+  assert.equal(ev.goals_met, 0);
+  assert.equal(ev.goals_total, 0);
+  assert.equal(ev.reason_category, null);
+  assert.equal(state.board_profiles[0].budget_modifier, 1.0);
 });
 
 test("hårde konsekvens-lag kører KUN ved mid-season-krydsning", async () => {
