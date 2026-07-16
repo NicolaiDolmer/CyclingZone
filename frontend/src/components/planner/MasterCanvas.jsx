@@ -29,7 +29,7 @@ function TerrainGlyph({ x, y, terrain }) {
   return <rect x={x - 7} y={y + 1} width="15" height="3" fill={c} opacity="0.8" />;
 }
 
-export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget }) {
+export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
   const { t } = useTranslation(["planner", "riderTypes"]);
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null); // { planId, riderId, previewOrd }
@@ -69,6 +69,9 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
   const H = AXIS + (riders?.length || 0) * LANE + 8;
 
   // ── Drag-håndtering: om-målret et peak til nærmeste egnede løb ──────────────
+  // #2455: et FORSLAG har ingen ægte rider_peak_plans-id — at trække det til et
+  // andet løb kan derfor ikke PATCHe en eksisterende plan; det OPRETTER i stedet
+  // en ægte plan mod løbet manageren droppede den på (= implicit "justér + accept").
   const dragEnd = () => {
     if (!drag) return;
     const rider = riders.find((r) => r.id === drag.riderId);
@@ -80,7 +83,10 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
       const eligible = visRaces.filter((r) => r.id !== plan.targetRaceId && !taken.has(r.id));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
-      if (best && bestD <= span / 24) onRetarget(plan.id, best.id);
+      if (best && bestD <= span / 24) {
+        if (plan.isSuggestion) onCreatePeak(rider.id, best.id);
+        else onRetarget(plan.id, best.id);
+      }
     }
     setDrag(null);
   };
@@ -166,6 +172,10 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
         const used = peaks.length;
         const risky = peaks.some((p) => p.status === "at_risk");
         const chip = statusMeta(risky ? "at_risk" : (peaks.some((p) => p.status === "on_track") ? "on_track" : "pending"));
+        // #2455: mens der findes MINDST ét assistent-forslag i lanen, erstatter
+        // forslags-badgen den normale status-chip — ellers opdager manageren
+        // aldrig at noget her er et forslag, ikke hans eget valg (issue-krav 3).
+        const hasSuggestion = peaks.some((p) => p.isSuggestion);
         const rx0 = VBW - RRAIL + 8;
 
         return (
@@ -215,38 +225,60 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                 <path d={areaPath} fill={CZ.ink} opacity="0.15" />
                 <path d={toPath(curve.potential)} fill="none" stroke={CZ.goldDeep} strokeWidth="1.4" strokeDasharray="4 2.5" opacity="0.9" />
                 <path d={toPath(curve.realized)} fill="none" stroke={CZ.ink} strokeWidth="2" />
-                {/* Peak-brackets (trækbare hvis ulåst) */}
+                {/* Peak-brackets (trækbare hvis ulåst) — #2455: et forslag tegnes
+                    stiplet + med hule (ufyldte) håndtag og et ✦-mærke, så det er
+                    synligt forskelligt fra en peak manageren selv har sat, indtil
+                    han accepterer/justerer den (issue-krav 3). Forslag er ALDRIG
+                    låst (de er ikke bindende endnu). */}
                 {peaks.map((p) => {
                   const isDragging = drag?.planId === p.id;
                   const shiftO = isDragging && drag.previewOrd != null ? drag.previewOrd - (p.startO + p.endO) / 2 : 0;
                   const bx = x(p.startO + shiftO), bw = Math.max(6, x(p.endO + shiftO) - x(p.startO + shiftO));
                   const midY = (top + bot) / 2;
                   return (
-                    <g key={`k${p.id}`} opacity={isDragging ? 0.85 : 1}>
-                      <rect x={bx} y={top - 3} width={bw} height={bot - top + 6} fill="none" stroke={CZ.goldDeep} strokeWidth="1.3" rx="2" />
+                    <g key={`k${p.id}`} opacity={isDragging ? 0.85 : (p.isSuggestion ? 0.8 : 1)}>
+                      <rect x={bx} y={top - 3} width={bw} height={bot - top + 6} fill="none" stroke={CZ.goldDeep} strokeWidth="1.3" rx="2" strokeDasharray={p.isSuggestion ? "3 2" : undefined} />
                       {[bx, bx + bw].map((hx, hi) => (
                         <rect
                           key={hi} x={hx - 3} y={midY - 8} width="7" height="16" rx="1.5"
-                          fill={p.locked ? CZ.t3 : CZ.gold} stroke={CZ.goldDeep} strokeWidth="0.8"
+                          fill={p.locked ? CZ.t3 : (p.isSuggestion ? "none" : CZ.gold)} stroke={CZ.goldDeep} strokeWidth={p.isSuggestion ? "1.3" : "0.8"}
                           style={{ cursor: p.locked ? "not-allowed" : "grab", touchAction: "none" }}
                           onPointerDown={(e) => { if (!p.locked) { e.currentTarget.setPointerCapture?.(e.pointerId); setDrag({ planId: p.id, riderId: rd.id, previewOrd: (p.startO + p.endO) / 2 }); } }}
                         />
                       ))}
                       {p.locked && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="7.5" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{t("status.locked").toUpperCase()}</text>}
+                      {p.isSuggestion && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="8" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }} aria-hidden="true">✦</text>}
                     </g>
                   );
                 })}
               </>
             )}
 
-            {/* Højre skinne: peak-tokens + status-chip */}
-            {[0, 1].map((k) => (
-              <circle key={k} cx={rx0 + k * 15} cy={y0 + 22} r="5" fill={k < used ? CZ.gold : "none"} stroke={k < used ? CZ.goldDeep : CZ.t3} strokeWidth="1.4" />
-            ))}
+            {/* Højre skinne: peak-tokens + status-chip (forslag: stiplet/hult token + assistent-badge, jf. issue-krav 3) */}
+            {[0, 1].map((k) => {
+              const tp = peaks[k];
+              const filled = k < used;
+              return (
+                <circle
+                  key={k} cx={rx0 + k * 15} cy={y0 + 22} r="5"
+                  fill={filled && !tp?.isSuggestion ? CZ.gold : "none"}
+                  stroke={filled ? CZ.goldDeep : CZ.t3} strokeWidth="1.4"
+                  strokeDasharray={tp?.isSuggestion ? "1.5 1.2" : undefined}
+                />
+              );
+            })}
             {peaks.length > 0 && (
               <g>
-                <rect x={rx0} y={y0 + 40} width="118" height="18" rx="9" fill={chip.tone === "good" ? CZ.gold : "none"} stroke={chip.tone === "good" ? "none" : CZ.goldDeep} strokeWidth="1" opacity={chip.tone === "good" ? 0.92 : 1} />
-                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>{chip.glyph} {t(`status.${chip.key}`)}</text>
+                <rect
+                  x={rx0} y={y0 + 40} width="118" height="18" rx="9"
+                  fill={hasSuggestion ? "none" : (chip.tone === "good" ? CZ.gold : "none")}
+                  stroke={hasSuggestion ? CZ.goldDeep : (chip.tone === "good" ? "none" : CZ.goldDeep)}
+                  strokeWidth="1" strokeDasharray={hasSuggestion ? "2 2" : undefined}
+                  opacity={chip.tone === "good" && !hasSuggestion ? 0.92 : 1}
+                />
+                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={hasSuggestion ? CZ.goldDeep : (chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep)} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {hasSuggestion ? `✦ ${t("assistant.badge")}` : `${chip.glyph} ${t(`status.${chip.key}`)}`}
+                </text>
               </g>
             )}
           </g>

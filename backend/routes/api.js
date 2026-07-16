@@ -134,10 +134,11 @@ import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCopenhagenISODate } from "../lib/raceCalendar.js";
-import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON } from "../lib/riderPeakPlans.js";
+import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks } from "../lib/plannerBoard.js";
+import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -2142,6 +2143,51 @@ async function activePeakSeason() {
   return data ?? null;
 }
 
+// ── Assistent-forslag (#2455) ────────────────────────────────────────────────
+// Manuelt tilmeldte løb (race_entries.is_auto_filled=false) = rytterens ægte
+// løbsprogram — auto-fyldte entries opstår kun tæt på løbsdag og er IKKE et
+// manager-program-valg (#1835). Scopet til holdets EGNE ryttere + division,
+// så queryen forbliver lille (ét holds squad × én sæsons løb, ikke en global scan).
+async function loadManualRegisteredRaceIds(riderIds, raceIds) {
+  if (!riderIds.length || !raceIds.length) return new Map();
+  const { data, error } = await supabase
+    .from("race_entries")
+    .select("race_id, rider_id")
+    .eq("is_auto_filled", false)
+    .in("rider_id", riderIds)
+    .in("race_id", raceIds);
+  if (error) throw new Error(`race_entries (peak suggestions): ${error.message}`);
+  const out = new Map();
+  for (const row of data || []) {
+    if (!out.has(row.rider_id)) out.set(row.rider_id, new Set());
+    out.get(row.rider_id).add(row.race_id);
+  }
+  return out;
+}
+
+// "Nulstil til blank" (issue #2455 krav 2/3) persisteres sæson-scoped på
+// riders.peak_suggestions_dismissed_season_id. GRACEFUL DEGRADATION: kolonnen
+// er tilføjet i database/2026-07-16-peak-suggestion-dismiss.sql, som ejeren
+// anvender manuelt post-merge (feedback_migrations_never_auto_apply_via_mcp)
+// — indtil da svarer Postgres 42703 (ukendt kolonne), og vi behandler det som
+// "intet er nulstillet endnu" i stedet for en hård fejl.
+async function loadPeakSuggestionDismissals(riderIds, seasonId) {
+  if (!riderIds.length) return new Set();
+  const { data, error } = await supabase
+    .from("riders")
+    .select("id, peak_suggestions_dismissed_season_id")
+    .in("id", riderIds);
+  if (error) {
+    if (error.code === "42703") return new Set();
+    throw new Error(`riders (peak suggestion dismissals): ${error.message}`);
+  }
+  const out = new Set();
+  for (const row of data || []) {
+    if (row.peak_suggestions_dismissed_season_id === seasonId) out.add(row.id);
+  }
+  return out;
+}
+
 // Launch-gate MED beta/admin-preview (samme mønster som træning/race-endpoints):
 // flag 'on' → alle; flag 'beta' → kun beta-testere/admins (ejeren) — så Planneren
 // kan previewes med ÆGTE data FØR den flippes 'on' for alle; off/fravær → ingen.
@@ -2317,6 +2363,37 @@ router.delete("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, re
   }
 });
 
+// POST /api/peak-plans/dismiss-suggestions — "nulstil til blank" (issue #2455
+// krav 2/3): manageren afviser assistentens forslag for én rytter EKSPLICIT.
+// Persisteres sæson-scoped, så forslaget ikke dukker op igen ved næste besøg
+// i DENNE sæson, men naturligt vender tilbage næste sæson. Ingen ægte
+// rider_peak_plans-rækker rørt her — forslag var aldrig persisteret (se
+// GET .../board + lib/peakSuggestions.js). Graceful degradation: se
+// loadPeakSuggestionDismissals-kommentaren (migration anvendes manuelt).
+router.post("/peak-plans/dismiss-suggestions", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { rider_id: riderId } = req.body ?? {};
+  if (typeof riderId !== "string" || !riderId) return res.status(400).json({ error: "invalid_rider_id" });
+  try {
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
+    const season = await activePeakSeason();
+    if (!season) return res.status(409).json({ error: "No active season" });
+
+    const { data: rider } = await supabase.from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+    if (rider.team_id !== req.team.id) return res.status(403).json({ error: "not_own_rider" });
+
+    const { error: updErr } = await supabase
+      .from("riders").update({ peak_suggestions_dismissed_season_id: season.id }).eq("id", riderId);
+    if (updErr && updErr.code !== "42703") throw new Error(`riders (dismiss suggestions): ${updErr.message}`);
+
+    res.json({ ok: true, id: riderId });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/peak-plans/board — aggregat for Season Planner-cockpittet (spec §3/§5).
 // Ét kald samler ALT master-canvasset + begge skuffer har brug for: holdets ryttere
 // (OVR-input + condition + peaks m. trænings-kvalitets-prognose + status + foreslået
@@ -2336,9 +2413,11 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     const nowOrd = peakNowOrdinal();
 
     // ── Holdets ryttere + evner + condition + peaks ───────────────────────────
+    // birthdate: kun til assistent-forslagets alders-modulering (#2455) —
+    // ALDRIG eksponeret i ridersOut (samme skjul som resten af rytter-fladen).
     const { data: riders, error: ridErr } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, nationality_code, primary_type, secondary_type, is_academy")
+      .select("id, firstname, lastname, nationality_code, primary_type, secondary_type, is_academy, birthdate")
       .eq("team_id", req.team.id)
       .eq("is_retired", false);
     if (ridErr) throw new Error(`riders (planner board): ${ridErr.message}`);
@@ -2492,6 +2571,82 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           rivalPeakCount: rivalCounts.get(e.id) || 0,
         };
       });
+
+    // ── Assistent-forslag (#2455) ──────────────────────────────────────────────
+    // Ejer-ønske 13/7: hver rytter skal have et udfyldt form-program som FORSLAG
+    // fra start. Kun ryttere med under assistentens alders-loft ægte peak-planer
+    // (og som ikke selv har nulstillet til blank denne sæson) får resterende
+    // slots fyldt — RENT beregnet, ALDRIG en rider_peak_plans-række (se
+    // lib/peakSuggestions.js's topkommentar for hvorfor). Forsvinder automatisk
+    // fra næste board-kald den dag manageren opretter en ægte plan for slottet.
+    const suggestRiderIdSet = new Set(ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id));
+    if (suggestRiderIdSet.size) {
+      const suggestRiderIds = [...suggestRiderIdSet];
+      const [dismissedSet, registeredByRider] = await Promise.all([
+        loadPeakSuggestionDismissals(suggestRiderIds, season.id),
+        loadManualRegisteredRaceIds(suggestRiderIds, allRaceIds),
+      ]);
+
+      // race_id → etape-datoer ("YYYY-MM-DD" CET), genbrugt fra den allerede
+      // hentede sæson-schedule (scheduleRows) — intet ekstra DB-kald pr. rytter.
+      const stageDatesByRaceId = new Map();
+      for (const row of scheduleRows) {
+        const ms = Date.parse(row.scheduled_at);
+        if (!Number.isFinite(ms)) continue;
+        if (!stageDatesByRaceId.has(row.race_id)) stageDatesByRaceId.set(row.race_id, []);
+        stageDatesByRaceId.get(row.race_id).push(toCopenhagenISODate(ms));
+      }
+      const riderById = new Map((riders || []).map((r) => [r.id, r]));
+
+      for (const rd of ridersOut) {
+        if (!suggestRiderIdSet.has(rd.id) || dismissedSet.has(rd.id)) continue;
+
+        // Ekskludér løb rytteren allerede har en ÆGTE plan mod (duplicate_target-
+        // parallel) + spacing mod de ægte vinduers centre (reservedOrds).
+        const realTargetIds = new Set(rd.peaks.map((p) => p.targetRaceId).filter(Boolean));
+        const reservedOrds = rd.peaks.map((p) => dateStringToOrdinal(p.windowStart)).filter((o) => o != null);
+        const candidateRaces = racesOut
+          .filter((r) => r.isMine && r.date && !realTargetIds.has(r.id))
+          .map((r) => ({ id: r.id, ord: dateStringToOrdinal(r.date), demandVector: r.demandVector }))
+          .filter((r) => r.ord != null && r.ord >= nowOrd);
+
+        const suggestions = suggestPeaksForRider({
+          rider: { birthdate: riderById.get(rd.id)?.birthdate ?? null },
+          abilities: rd.abilities,
+          candidateRaces,
+          stageDatesByRaceId,
+          registeredRaceIds: registeredByRider.get(rd.id) || new Set(),
+          existingPeakCount: rd.peaks.length,
+          reservedOrds,
+          todayDateString: today,
+          leadupDays: leadup,
+          windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
+        });
+
+        for (const s of suggestions) {
+          const targetRace = raceById.get(s.targetRaceId);
+          const recommendedFocus = recommendFocusForDemand(demandByRace.get(s.targetRaceId));
+          rd.peaks.push({
+            id: `sugg:${rd.id}:${s.targetRaceId}`,
+            riderId: rd.id,
+            seasonId: season.id,
+            targetRaceId: s.targetRaceId,
+            targetRaceName: targetRace ? targetRace.name : null,
+            windowStart: s.windowStart,
+            windowEnd: s.windowEnd,
+            lockedAt: null,
+            locked: false,
+            createdAt: null,
+            trainingQuality: null,
+            status: "pending",
+            recommendedFocus,
+            suggestedTrainingBlock: buildSuggestedTrainingBlock({ recommendedFocus }),
+            isSuggestion: true,
+            suggestionReason: s.reason,
+          });
+        }
+      }
+    }
 
     res.json({
       enabled: true,
