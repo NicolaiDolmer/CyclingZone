@@ -125,6 +125,7 @@ import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTra
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
+import { computeRiderValueTrend, groupSnapshotsByRider } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
@@ -960,6 +961,71 @@ router.get("/riders/:id/development", requireAuth, async (req, res) => {
       .limit(200);
     if (error) throw new Error(error.message);
     res.json((data ?? []).reverse());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/value-trend — #2499: værdi-bevægelse skal kunne SES.
+// On-demand delta (7/14 dage) beregnet fra rider_derived_ability_history via
+// den eksisterende værdimodel (computeRiderValueTrend) — INGEN ny tabel, samme
+// RLS-lukkede kilde som Udvikling-fanen ovenfor. Fog-gate (#2499 accept): kun
+// total-deltaet returneres, ALDRIG modellens komponenter (abilities/output/vægte).
+router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }] = await Promise.all([
+      supabase.from("riders").select("base_value").eq("id", id).maybeSingle(),
+      supabase.from("rider_derived_ability_history")
+        .select("snapshot_date, abilities")
+        .eq("rider_id", id)
+        .order("snapshot_date", { ascending: true }),
+    ]);
+    if (riderErr) throw new Error(riderErr.message);
+    if (histErr) throw new Error(histErr.message);
+    if (!riderRow) return res.status(404).json({ error: "rider not found" });
+    const windows = computeRiderValueTrend({
+      currentBaseValue: riderRow.base_value,
+      snapshotsAsc: history || [],
+      baseline: RIDER_TYPES_BASELINE,
+      model: VALUATION_MODEL,
+    });
+    res.json({ windows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/riders/value-trend — #2499 batch-variant til holdliste/trup-oversigt
+// (kompakt delta-pil pr. rytter i værdi-kolonnen). Body: { ids: string[] }
+// (maks 200 — langt over enhver squad-størrelse). Én .in()-query pr. tabel,
+// grupperet i memory (groupSnapshotsByRider) — ingen N+1 selv for en fuld trup.
+router.post("/riders/value-trend", requireAuth, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? [...new Set(req.body.ids.filter((v) => typeof v === "string" && v))].slice(0, 200)
+      : [];
+    if (ids.length === 0) return res.json({});
+    const [{ data: riders, error: ridersErr }, { data: history, error: histErr }] = await Promise.all([
+      supabase.from("riders").select("id, base_value").in("id", ids),
+      supabase.from("rider_derived_ability_history")
+        .select("rider_id, snapshot_date, abilities")
+        .in("rider_id", ids)
+        .order("snapshot_date", { ascending: true }),
+    ]);
+    if (ridersErr) throw new Error(ridersErr.message);
+    if (histErr) throw new Error(histErr.message);
+    const snapshotsByRider = groupSnapshotsByRider(history || []);
+    const result = {};
+    for (const r of riders || []) {
+      result[r.id] = computeRiderValueTrend({
+        currentBaseValue: r.base_value,
+        snapshotsAsc: snapshotsByRider.get(r.id) || [],
+        baseline: RIDER_TYPES_BASELINE,
+        model: VALUATION_MODEL,
+      });
+    }
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -10309,11 +10375,14 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
       team: context.team,
       riders: context.riders,
       standing: context.standing,
-      board,
       identityBasis: context.team?.season_1_identity_basis ?? null,
       dnaKey: context.team?.team_dna_key ?? null,
       // S-02g · Anvend deferred tradeoff-stramning fra forrige sæsons approved request.
       // Påvirker target+label på min_u25_riders/min_national_riders eller sponsor_growth.
+      // #2469 · `board` blev tidligere sendt med her, men buildBoardProposal har
+      // ingen board-parameter (boardGoals.js) — det var en død prop, der fik
+      // divergensen mod auto-accept til at ligne "board mangler". Kun
+      // tradeoffPayload er kausal.
       tradeoffPayload: board?.tradeoff_payload ?? null,
     });
 
@@ -10374,10 +10443,10 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       team,
       riders,
       standing,
-      board: existingBoard,
       identityBasis: team?.season_1_identity_basis ?? null,
       dnaKey: team?.team_dna_key ?? null,
       // S-02g · Tradeoff fra forrige sæsons approved request anvendes nu på den nye plan.
+      // #2469 · `board: existingBoard` fjernet — død prop (se /board/proposal ovenfor).
       tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
     });
 

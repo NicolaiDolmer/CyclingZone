@@ -34,6 +34,14 @@ export const AUTO_ACCEPT_THRESHOLDS = {
   AUTO_ACCEPT: 5, // race_days_completed >= 5 → bestyrelsen tager over
 };
 
+// #2469 · Kolonnerne autoAcceptPendingPlan viderefører fra en EKSISTERENDE
+// board-række. Enhver kolonne der læses som `existingBoard?.x ?? <default>` i
+// upserten SKAL stå her — mangler den, læses den som undefined og defaulten
+// overskriver spillerens optjente værdi i stedet for at bevare den.
+// Forward-guard: boardAutoAccept.test.js låser dette mod upsert-payloaden.
+export const BOARD_AUTO_ACCEPT_SELECT =
+  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload";
+
 // #2104: race_days_completed er et GLOBALT sæson-ur — et hold oprettet midt i
 // sæsonen ville uden skånefrist stå "over deadline" fra minut ét og få DNA +
 // plan tvangsvalgt af næste cron-tick (ramte Team CSC 2/7: DNA + 5yr-plan
@@ -156,9 +164,18 @@ async function processTeamAutoAccept({
   if (isWithinNewTeamGrace(team.created_at, now)) return result;
 
   // Find første pending plan_type i 5yr→3yr→1yr-orden.
+  //
+  // #2469 · Denne select SKAL bære hvert felt autoAcceptPendingPlan viderefører
+  // fra den eksisterende række. Den hentede kun 5 kolonner, så `existingBoard`
+  // manglede satisfaction/budget_modifier/tradeoff_payload — og fordi upserten
+  // skriver `existingBoard?.satisfaction ?? 50`, blev `undefined ?? 50` til en
+  // NULSTILLING af optjent tilfredshed og sponsor-modifier. /board/sign har
+  // aldrig haft fejlen: den henter board-rækken via loadBoardPlanningContext
+  // (routes/api.js) med .select("*"). Samme upsert-kode, modsat udfald — hele
+  // divergensen lå i denne select. Udvid den, ikke kaldestedet.
   const { data: boards, error: boardsError } = await supabase
     .from("board_profiles")
-    .select("id, plan_type, focus, negotiation_status, is_baseline")
+    .select(BOARD_AUTO_ACCEPT_SELECT)
     .eq("team_id", team.id);
   if (boardsError) throw boardsError;
 
@@ -337,6 +354,13 @@ async function autoAcceptPendingPlan({
     standing: standingRes.data || null,
     identityBasis,
     dnaKey,
+    // S-02g/#2469 · Anvend deferred tradeoff-stramning fra forrige sæsons
+    // approved request — præcis som /board/sign og /board/proposal gør.
+    // Uden den her gav samme plan to udfald: signerede du selv, blev din
+    // tradeoff anvendt; lod du planen udløbe, forsvandt den.
+    // (buildBoardProposal har ingen `board`-parameter — kun tradeoffPayload
+    // er kausal. api.js' `board:`-argument er en død prop, ryddet separat.)
+    tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
   });
 
   const planDuration = getPlanDuration(planType);
@@ -353,6 +377,12 @@ async function autoAcceptPendingPlan({
     focus,
     plan_type: planType,
     current_goals: finalGoals,
+    // #2469 · Bevar optjent tilfredshed + sponsor-modifier. Ved sæson-slut
+    // skriver economyEngine.processTeamSeasonEnd den netop optjente værdi ind
+    // OG sætter negotiation_status='pending' (economyEngine.js) — så når
+    // auto-accept-cron'en overtager planen, ER der en optjent værdi at bevare.
+    // ?? 50 / ?? 1.0 gælder derfor kun den ægte nye-plan-case, hvor
+    // findPendingPlanType returnerede en plan_type uden række (existingBoard=null).
     satisfaction: existingBoard?.satisfaction ?? 50,
     budget_modifier: existingBoard?.budget_modifier ?? 1.0,
     negotiation_status: "completed",
@@ -365,6 +395,13 @@ async function autoAcceptPendingPlan({
     cumulative_gc_wins: 0,
     season_id: activeSeason?.id ?? null,
     is_baseline: false,
+    // S-02g/#2469 · Plan-renewal nulstiller tradeoff (stramningen er netop bagt
+    // ind i finalGoals via buildBoardProposal ovenfor) + MAJOR-pivot cool-down.
+    // Identisk med /board/sign — ellers ville stramningen blive anvendt igen
+    // ved næste renewal og stable oven på sig selv.
+    tradeoff_active_until_season_id: null,
+    tradeoff_payload: null,
+    major_pivot_used_at: null,
     updated_at: new Date().toISOString(),
   };
 

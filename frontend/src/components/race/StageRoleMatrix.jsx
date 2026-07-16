@@ -47,6 +47,16 @@ const ROLE_LABEL_KEY = {
   free_role: "stageTactics.role.free_role",
 };
 
+// #2465: hvad hver rolle FAKTISK gør — retning, ikke kalibrerede tal (raceRoles.js'
+// RACE_V3_TUNING er bevidst ikke eksponeret her). Samme rækkefølge som ROLE_OPTIONS.
+const ROLE_HELP_KEY = {
+  captain: "stageTactics.roleHelp.captain",
+  sprint_captain: "stageTactics.roleHelp.sprintCaptain",
+  helper: "stageTactics.roleHelp.helper",
+  hunter: "stageTactics.roleHelp.hunter",
+  free_role: "stageTactics.roleHelp.freeRole",
+};
+
 async function authHeaders() {
   const { data } = await getSession();
   const token = data?.session?.access_token;
@@ -161,6 +171,15 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
       <div className="px-4 py-3 border-b border-cz-border">
         <h2 className="font-semibold text-cz-1 text-sm">{t("stageTactics.title")}</h2>
         <p className="text-cz-3 text-xs mt-0.5">{t("stageTactics.help")}</p>
+        {/* #2465: kort retningsforklaring pr. rolle — hvad vælger jeg egentlig? */}
+        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {ROLE_OPTIONS.map((r) => (
+            <div key={r} className="flex items-baseline gap-1 text-[10.5px] leading-snug">
+              <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(ROLE_LABEL_KEY[r])}:</dt>
+              <dd className="m-0 text-cz-3">{t(ROLE_HELP_KEY[r])}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       {showJerseyShortcut && (

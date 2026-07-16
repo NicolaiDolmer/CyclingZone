@@ -60,16 +60,6 @@
       "windowLabel": "Peak window {start} – {end}"
     }
   },
-  "type": {
-    "sprinter": "Sprinter",
-    "tt": "Time-trialist",
-    "climber": "Climber",
-    "puncheur": "Puncheur",
-    "brostensrytter": "Classics rider",
-    "baroudeur": "Baroudeur",
-    "rouleur": "Rouleur",
-    "gc": "GC rider"
-  },
   "terrain": {
     "flat": "Flat",
     "hilly": "Hilly",

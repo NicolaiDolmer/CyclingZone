@@ -9,7 +9,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { riderSuitability } from "../../lib/suitability";
 import { riderOverallRating } from "../../lib/riderRating";
-import { formatOrdinalShort, statusMeta, riderTypeKey, riderShortName, dateToOrdinal } from "./plannerShared";
+import { statStyle } from "../../lib/statColor";
+import { Flag } from "../Flag";
+import RiderTypeBadge from "../rider/RiderTypeBadge";
+import { formatOrdinalShort, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
 
 function StageMini({ terrain, summit }) {
   const ink = "var(--text-1)", gold = "rgb(var(--accent-t))";
@@ -94,7 +97,9 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
           const top = contributions.slice(0, 2).map((c) => `${c.ability.replace(/_/g, " ")} ${c.value}`).join(" · ");
           return (
             <div key={rider.id} className="flex items-center gap-2.5">
-              <span className="font-mono text-[9.5px] text-cz-2 w-6">{rider.nationality || "—"}</span>
+              <span className="w-6 shrink-0 flex items-center justify-center">
+                {rider.nationality ? <Flag code={rider.nationality} className="text-[12px]" /> : <span className="font-mono text-[9.5px] text-cz-2">—</span>}
+              </span>
               <span className="text-[12px] text-cz-1 w-28 truncate" title={top}>{riderShortName(rider)}</span>
               <span className="flex-1 h-2 bg-cz-subtle rounded-sm overflow-hidden" title={top}>
                 <span className="block h-full rounded-sm" style={{ width: `${score}%`, background: score > 70 ? "var(--text-1)" : score > 45 ? "var(--text-2)" : "var(--text-3)" }} />
@@ -134,7 +139,6 @@ function AbilityBars({ abilities }) {
 function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, onRemovePeak, onAccept, busy }) {
   const { t } = useTranslation("planner");
   const ovr = riderOverallRating({ ...rider.abilities, primary_type: rider.primaryType });
-  const typeKey = riderTypeKey(rider.primaryType);
   const canAddPeak = (rider.peaks?.length || 0) < maxPerRider;
   const todayOrd = dateToOrdinal(today);
   const targetable = (races || []).filter((r) => r.isMine && r.date
@@ -147,9 +151,17 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
       <div className="flex justify-between items-center border-b border-cz-border pb-2 mb-3">
         <div>
           <div className="font-display text-[20px] leading-none text-cz-1">{riderShortName(rider)}</div>
-          <div className="text-[11px] text-cz-2 mt-0.5">{typeKey ? t(typeKey) : rider.primaryType} · {rider.nationality || "—"}</div>
+          <div className="flex items-center gap-2 mt-1.5">
+            {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
+            {rider.nationality && <Flag code={rider.nationality} className="text-[14px]" />}
+          </div>
         </div>
-        <div className="text-right"><div className="font-mono text-[20px] text-cz-1 leading-none">{ovr}</div><div className="text-[8px] text-cz-3 font-mono">{t("ovr.label")}</div></div>
+        {/* #2447: OVR-badge farvet efter statStyle (samme SSOT som auktioner/rytter-
+            profil) i stedet for plain cz-1-tekst uden nogen farve-signal. */}
+        <div className="text-right flex flex-col items-end gap-1">
+          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded" style={statStyle(ovr)}>{ovr}</span>
+          <div className="text-[8px] text-cz-3 font-mono">{t("ovr.label")}</div>
+        </div>
       </div>
 
       <div className="text-[10.5px] text-cz-3 uppercase tracking-wide mb-1.5">{t("drawer.rider.abilities")}</div>
@@ -171,7 +183,11 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
               </div>
               <div className="text-[10.5px] text-cz-2 mb-2">
                 {t("drawer.rider.windowLabel", { start: formatOrdinalShort(dateToOrdinal(p.windowStart), months), end: formatOrdinalShort(dateToOrdinal(p.windowEnd), months) })}
-                {" · "}<span style={{ color: meta.tone === "warn" ? "var(--text-accent-t, var(--text-2))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span>
+                {/* #2447: "var(--text-accent-t, ...)" var en ikke-eksisterende CSS-var
+                    (rigtig token er kanal-formatet --accent-t, brugt via rgb()) — den
+                    faldt derfor altid tilbage til den neutrale --text-2, så "peak i
+                    fare" aldrig fik sin advarselsfarve i noget tema. */}
+                {" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span>
               </div>
               {focus && <div className="text-[10.5px] text-cz-3 mb-2">{t("drawer.rider.focus", { focus: t(`focus.${focus}`, focus) })}</div>}
               {block && (

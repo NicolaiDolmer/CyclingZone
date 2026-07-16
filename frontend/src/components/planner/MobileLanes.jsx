@@ -3,7 +3,10 @@
 // vandret løb-strip øverst giver adgang til race-fokus. Alt tap-mål ≥24px (a11y).
 import { useTranslation } from "react-i18next";
 import { riderOverallRating } from "../../lib/riderRating";
-import { dateToOrdinal, formatOrdinalShort, statusMeta, riderTypeKey, riderShortName } from "./plannerShared";
+import { statStyle } from "../../lib/statColor";
+import { Flag } from "../Flag";
+import RiderTypeBadge from "../rider/RiderTypeBadge";
+import { dateToOrdinal, formatOrdinalShort, statusMeta, riderShortName } from "./plannerShared";
 
 export default function MobileLanes({ riders, races, filter, today, onSelectRace, onSelectRider }) {
   const { t } = useTranslation("planner");
@@ -35,7 +38,6 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
       <div className="flex flex-col gap-2">
         {(riders || []).map((rd) => {
           const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
-          const typeKey = riderTypeKey(rd.primaryType);
           const used = (rd.peaks || []).length;
           const risky = (rd.peaks || []).some((p) => p.status === "at_risk");
           const chip = used ? statusMeta(risky ? "at_risk" : ((rd.peaks || []).some((p) => p.status === "on_track") ? "on_track" : "pending")) : null;
@@ -45,19 +47,31 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
               className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-cz border border-cz-border bg-cz-card text-left hover:bg-cz-subtle"
               onClick={() => onSelectRider(rd.id)}
             >
-              <span className="font-mono text-[10px] text-cz-2 w-7">{rd.nationality || "—"}</span>
-              <span className="w-9 h-9 rounded-cz bg-cz-1 flex items-center justify-center shrink-0" style={{ background: "var(--text-1)" }}>
-                <span className="font-mono text-[13px] font-medium" style={{ color: "rgb(var(--accent))" }}>{ovr}</span>
+              <span className="w-7 shrink-0 flex items-center justify-center">
+                {rd.nationality ? <Flag code={rd.nationality} className="text-[14px]" /> : <span className="font-mono text-[10px] text-cz-2">—</span>}
+              </span>
+              {/* #2447: OVR-badge farvet efter samme evne-gradient som alle andre
+                  rating-visninger (statStyle, SSOT) — den gamle faste --text-1/accent-
+                  kombination blev til en næsten-hvid bund med gult tal (ulæselig) i
+                  dark mode. */}
+              <span className="w-9 h-9 rounded-cz flex items-center justify-center shrink-0 font-mono text-[13px] font-medium" style={statStyle(ovr)}>
+                {ovr}
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-[13px] text-cz-1 font-medium truncate">{riderShortName(rd)}</span>
-                <span className="block text-[10.5px] text-cz-2">{typeKey ? t(typeKey) : rd.primaryType}</span>
+                {rd.primaryType && (
+                  <span className="block mt-0.5">
+                    <RiderTypeBadge primaryType={rd.primaryType} secondaryType={rd.secondaryType} size="sm" />
+                  </span>
+                )}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
                 {[0, 1].map((k) => <span key={k} className="w-2.5 h-2.5 rounded-full" style={{ background: k < used ? "rgb(var(--accent))" : "transparent", border: `1.4px solid ${k < used ? "rgb(var(--accent-t))" : "var(--text-3)"}` }} />)}
               </span>
+              {/* #2447: on_track/at_risk brugte tidligere samme farve i begge grene
+                  (kopiér-fejl) — "god" status skal ikke råbe lige så meget som "risiko". */}
               {chip && (
-                <span className="text-[9.5px] shrink-0" style={{ color: chip.tone === "warn" ? "rgb(var(--accent-t))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
+                <span className="text-[9.5px] shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
               )}
               <i className="ti ti-chevron-right text-[16px] text-cz-3 shrink-0" aria-hidden="true" />
             </button>
