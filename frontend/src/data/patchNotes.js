@@ -11,30 +11,30 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "topic": "Training",
+        "topic": "Races",
         "en": {
-          "title": "A daily story from training, not just numbers",
-          "body": "Your training check-in now leads with one curated story from your rider's latest training day, a breakthrough, closing in on a milestone, or hitting peak form, instead of a wall of numbers."
+          "title": "Why did your rider finish where he did?",
+          "body": "Race results now come with a why-report explaining what shaped a rider's finish, with story tags like Outsider, Off day, Sacrifice and Crash right on the result page."
         },
         "da": {
-          "title": "En daglig historie fra træningen, ikke kun tal",
-          "body": "Dit trænings-check-in starter nu med én kurateret historie fra rytterens seneste træningsdag, et gennembrud, at nærme sig et mål, eller topform, i stedet for en væg af tal."
+          "title": "Hvorfor endte din rytter, hvor han gjorde?",
+          "body": "Løbsresultater kommer nu med en why-rapport, der forklarer hvad der formede rytterens placering, med story-tags som Outsider, Off day, Sacrifice og Crash direkte på resultatsiden."
         },
-        "refs": [2484]
+        "refs": [2355]
       },
       {
-        "category": "improved",
+        "category": "new",
         "audience": "player",
-        "topic": "Season planner",
+        "topic": "Dashboard",
         "en": {
-          "title": "Season Planner now shows riders the way you know them",
-          "body": "Rider rating, nationality flag and rider type now appear in the Season Planner just like everywhere else in the game, and attribute colors are readable in dark mode."
+          "title": "How your team did: race results on your dashboard",
+          "body": "After each finalized race with your riders, a new dashboard card shows your placements, prize money and a short recap of how the race unfolded, with a link to the full result. No more missing how your tactics played out."
         },
         "da": {
-          "title": "Sæsonplanlæggeren viser nu ryttere som du kender dem",
-          "body": "Rytter-rating, nationalitetsflag og ryttertype vises nu i Sæsonplanlæggeren ligesom resten af spillet, og attribut-farverne er læselige i dark mode."
+          "title": "Sådan gik det for dit hold: løbsresultater på dit dashboard",
+          "body": "Efter hvert afsluttet løb med dine ryttere viser et nyt dashboard-kort dine placeringer, præmiepenge og et kort referat af hvordan løbet udviklede sig, med link til det fulde resultat. Du går ikke længere glip af hvordan din taktik spillede ud."
         },
-        "refs": [2447]
+        "refs": [2466]
       },
       {
         "category": "new",
@@ -53,16 +53,44 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "topic": "Races",
+        "topic": "Training",
         "en": {
-          "title": "Why did your rider finish where he did?",
-          "body": "Race results now come with a why-report explaining what shaped a rider's finish, with story tags like Outsider, Off day, Sacrifice and Crash right on the result page."
+          "title": "A daily story from training, not just numbers",
+          "body": "Your training check-in now leads with one curated story from your rider's latest training day, a breakthrough, closing in on a milestone, or hitting peak form, instead of a wall of numbers."
         },
         "da": {
-          "title": "Hvorfor endte din rytter, hvor han gjorde?",
-          "body": "Løbsresultater kommer nu med en why-rapport, der forklarer hvad der formede rytterens placering, med story-tags som Outsider, Off day, Sacrifice og Crash direkte på resultatsiden."
+          "title": "En daglig historie fra træningen, ikke kun tal",
+          "body": "Dit trænings-check-in starter nu med én kurateret historie fra rytterens seneste træningsdag, et gennembrud, at nærme sig et mål, eller topform, i stedet for en væg af tal."
         },
-        "refs": [2355]
+        "refs": [2484]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "See if develop-and-sell actually pays off",
+          "body": "A new academy accounting view sets your running costs and academy salaries against sale revenue, so you can finally see whether your develop-and-sell strategy is paying off."
+        },
+        "da": {
+          "title": "Se om udvikl-og-sælg rent faktisk betaler sig",
+          "body": "En ny akademi-regnskabsflade stiller dine driftsomkostninger og akademi-løn op mod salgsindtægter, så du endelig kan se om din udvikl-og-sælg-strategi betaler sig."
+        },
+        "refs": [2485]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Youth talent now comes through your own academy",
+          "body": "The free youth agents list is gone: new talent arrives through your season intake and youth auctions. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is now a real decision."
+        },
+        "da": {
+          "title": "Ungdomstalent kommer nu gennem dit eget akademi",
+          "body": "Listen over frie ungdomsryttere er væk: nye talenter kommer via dit sæson-intake og ungdomsauktioner. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er nu en ægte beslutning."
+        },
+        "refs": [2456]
       },
       {
         "category": "new",
@@ -79,18 +107,46 @@ export const PATCHES = [
         "refs": [1997]
       },
       {
-        "category": "new",
+        "category": "improved",
         "audience": "player",
-        "topic": "Academy",
+        "topic": "Auctions",
         "en": {
-          "title": "See if develop-and-sell actually pays off",
-          "body": "A new academy accounting view sets your running costs and academy salaries against sale revenue, so you can finally see whether your develop-and-sell strategy is paying off."
+          "title": "Judge an auction bid at a glance",
+          "body": "Auctions now show how the current bid compares to the rider's estimated market value (below or above valuation), plus the rider's overall rating, type and five key abilities by default. On mobile, the filter panel stays collapsed until you need it. The valuation is a model estimate meant as a reference, not a guaranteed price."
         },
         "da": {
-          "title": "Se om udvikl-og-sælg rent faktisk betaler sig",
-          "body": "En ny akademi-regnskabsflade stiller dine driftsomkostninger og akademi-løn op mod salgsindtægter, så du endelig kan se om din udvikl-og-sælg-strategi betaler sig."
+          "title": "Vurdér et auktionsbud på ét blik",
+          "body": "Auktioner viser nu hvordan det aktuelle bud ligger i forhold til rytterens estimerede markedsværdi (under eller over vurdering), plus rytterens samlede rating, type og fem nøgle-evner som standard. På mobil er filterpanelet foldet sammen, indtil du skal bruge det. Vurderingen er et modelestimat tænkt som reference, ikke en garanteret pris."
         },
-        "refs": [2485]
+        "refs": [2464]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Season Planner now shows riders the way you know them",
+          "body": "Rider rating, nationality flag and rider type now appear in the Season Planner just like everywhere else in the game, and attribute colors are readable in dark mode."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren viser nu ryttere som du kender dem",
+          "body": "Rytter-rating, nationalitetsflag og ryttertype vises nu i Sæsonplanlæggeren ligesom resten af spillet, og attribut-farverne er læselige i dark mode."
+        },
+        "refs": [2447]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board negotiations now judge you consistently",
+          "body": "Requesting new goals from the board could be evaluated with less context than the board status page showed, and auto-accepted proposals dropped trade-off details. All board decisions now use the same complete picture of your season."
+        },
+        "da": {
+          "title": "Bestyrelsesforhandlinger vurderer dig nu ens",
+          "body": "At bede bestyrelsen om nye mål kunne blive vurderet med mindre kontekst end bestyrelses-statussiden viste, og auto-accepterede forslag mistede trade-off-detaljer. Alle bestyrelsesbeslutninger bruger nu det samme fulde billede af din sæson."
+        },
+        "refs": [2469]
       },
       {
         "category": "improved",
@@ -119,69 +175,6 @@ export const PATCHES = [
           "body": "Founder-sidens CTA scroller nu til waitlisten, hjælp-deep-links virker korrekt, watchlist-bekræftelser bruger en toast i stedet for en browser-alert, og et internt survey-banner er fjernet."
         },
         "refs": [2467]
-      }
-    ]
-  },
-  {
-    "version": "7.01",
-    "date": "2026-07-16",
-    "label": "Beta",
-    "changes": [
-      {
-        "category": "improved",
-        "audience": "player",
-        "topic": "Auctions",
-        "en": {
-          "title": "Judge an auction bid at a glance",
-          "body": "Auctions now show how the current bid compares to the rider's estimated market value (below or above valuation), plus the rider's overall rating, type and five key abilities by default. On mobile, the filter panel stays collapsed until you need it. The valuation is a model estimate meant as a reference, not a guaranteed price."
-        },
-        "da": {
-          "title": "Vurdér et auktionsbud på ét blik",
-          "body": "Auktioner viser nu hvordan det aktuelle bud ligger i forhold til rytterens estimerede markedsværdi (under eller over vurdering), plus rytterens samlede rating, type og fem nøgle-evner som standard. På mobil er filterpanelet foldet sammen, indtil du skal bruge det. Vurderingen er et modelestimat tænkt som reference, ikke en garanteret pris."
-        },
-        "refs": [2464]
-      },
-      {
-        "category": "new",
-        "audience": "player",
-        "topic": "Dashboard",
-        "en": {
-          "title": "How your team did: race results on your dashboard",
-          "body": "After each finalized race with your riders, a new dashboard card shows your placements, prize money and a short recap of how the race unfolded, with a link to the full result. No more missing how your tactics played out."
-        },
-        "da": {
-          "title": "Sådan gik det for dit hold: løbsresultater på dit dashboard",
-          "body": "Efter hvert afsluttet løb med dine ryttere viser et nyt dashboard-kort dine placeringer, præmiepenge og et kort referat af hvordan løbet udviklede sig, med link til det fulde resultat. Du går ikke længere glip af hvordan din taktik spillede ud."
-        },
-        "refs": [2466]
-      },
-      {
-        "category": "improved",
-        "audience": "player",
-        "topic": "Academy",
-        "en": {
-          "title": "Youth talent now comes through your own academy",
-          "body": "The free youth agents list is gone: new talent arrives through your season intake and youth auctions. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is now a real decision."
-        },
-        "da": {
-          "title": "Ungdomstalent kommer nu gennem dit eget akademi",
-          "body": "Listen over frie ungdomsryttere er væk: nye talenter kommer via dit sæson-intake og ungdomsauktioner. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er nu en ægte beslutning."
-        },
-        "refs": [2456]
-      },
-      {
-        "category": "fixed",
-        "audience": "player",
-        "topic": "Board",
-        "en": {
-          "title": "Board negotiations now judge you consistently",
-          "body": "Requesting new goals from the board could be evaluated with less context than the board status page showed, and auto-accepted proposals dropped trade-off details. All board decisions now use the same complete picture of your season."
-        },
-        "da": {
-          "title": "Bestyrelsesforhandlinger vurderer dig nu ens",
-          "body": "At bede bestyrelsen om nye mål kunne blive vurderet med mindre kontekst end bestyrelses-statussiden viste, og auto-accepterede forslag mistede trade-off-detaljer. Alle bestyrelsesbeslutninger bruger nu det samme fulde billede af din sæson."
-        },
-        "refs": [2469]
       }
     ]
   },
