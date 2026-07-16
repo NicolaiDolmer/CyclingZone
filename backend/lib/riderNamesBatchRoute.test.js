@@ -24,9 +24,11 @@ test("POST /riders/names findes med requireAuth", () => {
   assert.match(block, /requireAuth/, "batch-navne-route skal bruge requireAuth");
 });
 
-test("POST /riders/names selecter KUN id og name — potentiale forlader aldrig serveren", () => {
+test("POST /riders/names selecter KUN id/firstname/lastname — potentiale forlader aldrig serveren", () => {
+  // #2425: riders.name findes ikke som kolonne — firstname+lastname selectes
+  // og navnet samles server-side, så response-formen ({id, name}) er uændret.
   const block = routeBlock("post", "/riders/names");
-  assert.match(block, /\.select\("id, name"\)/, "batch-navne-route må kun selecte id + name");
+  assert.match(block, /\.select\("id, firstname, lastname"\)/, "batch-navne-route må kun selecte id + firstname + lastname");
   assert.doesNotMatch(block, /potentiale/, "potentiale må ikke optræde i batch-navne-routen");
 });
 

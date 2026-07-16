@@ -867,13 +867,18 @@ router.post("/riders/names", requireAuth, async (req, res) => {
   const validIds = [...new Set(ids.filter((id) => typeof id === "string" && UUID_RE.test(id)))];
   if (validIds.length === 0) return res.json({ riders: [] });
 
+  // #2425: "riders.name" findes ikke — kolonnerne hedder firstname/lastname.
   const { data, error } = await supabase
     .from("riders")
-    .select("id, name")
+    .select("id, firstname, lastname")
     .in("id", validIds);
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json({ riders: data ?? [] });
+  const riders = (data ?? []).map((r) => ({
+    id: r.id,
+    name: [r.firstname, r.lastname].filter(Boolean).join(" ") || null,
+  }));
+  res.json({ riders });
 });
 
 // Security-audit 2026-06-12: ruter der interpolerer URL-params ind i PostgREST
@@ -8753,7 +8758,6 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
       { count: pendingTransfersCount },
       { count: windowPendingTransfersCount },
       { count: pendingSwapsCount },
-      { count: activeLoansCount },
       { data: teams },
       { data: riders },
       { data: nextSeason },
@@ -8773,8 +8777,6 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
         .select("id", { count: "exact", head: true }).eq("status", "window_pending"),
       supabase.from("swap_offers")
         .select("id", { count: "exact", head: true }).eq("status", "pending"),
-      supabase.from("loan_agreements")
-        .select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("teams")
         .select("id, name, division").eq("is_bank", false).eq("is_ai", false).not("user_id", "is", null),
       // #1308: akademiryttere tæller ikke mod senior-cap i squad-violations-check
@@ -8840,7 +8842,6 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
         pending_transfers: pendingTransfersCount || 0,
         window_pending_transfers: windowPendingTransfersCount || 0,
         pending_swaps: pendingSwapsCount || 0,
-        active_loans: activeLoansCount || 0,
         active_season_races: activeSeasonRacesCount,
         upcoming_season_races: upcomingSeasonRacesCount,
       },

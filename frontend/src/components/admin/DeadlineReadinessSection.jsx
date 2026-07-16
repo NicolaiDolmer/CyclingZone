@@ -137,10 +137,6 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
             <p className="text-cz-1 font-medium">{counts.pending_swaps}</p>
           </div>
           <div className="px-3 py-2 bg-cz-card rounded border border-cz-border">
-            <p className="text-cz-3 text-xs">Aktive lejeaftaler</p>
-            <p className="text-cz-1 font-medium">{counts.active_loans}</p>
-          </div>
-          <div className="px-3 py-2 bg-cz-card rounded border border-cz-border">
             <p className="text-cz-3 text-xs">Løb i aktiv sæson{active_season ? ` (${active_season.number})` : ""}</p>
             <p className="text-cz-1 font-medium">{counts.active_season_races}</p>
           </div>

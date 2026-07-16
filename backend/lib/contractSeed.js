@@ -101,8 +101,13 @@ export function computeContractExtension({
   const anchor = Number.isFinite(end) ? Math.max(end, current) : current;
   const newEnd = anchor + 1;
 
+  // #2424 clamp: riders_contract_length_check tillader kun 1..MAX_LENGTH.
+  // En rytter der allerede er på MAX_LENGTH må forlænges (ny løn + ny
+  // udløbssæson) uden at kontraktlængden crasher DB-constraintet — den
+  // clampes i stedet til loftet i stedet for at vokse ubegrænset.
   const len = Number(contract_length);
-  const newLength = (Number.isFinite(len) && len > 0) ? len + 1 : 1;
+  const rawLength = (Number.isFinite(len) && len > 0) ? len + 1 : 1;
+  const newLength = Math.min(rawLength, CONTRACT.MAX_LENGTH);
 
   return {
     salary,

@@ -169,6 +169,21 @@ test("computeContractExtension: udløbet kontrakt forlænges fra currentSeason, 
   assert.equal(next.contract_length, 3);
 });
 
+// #2424: prod-log viste 5× 23514 riders_contract_length_check-violations fra
+// gentagne extend-contract-kald på ryttere allerede på MAX_LENGTH(3).
+// contract_length må ALDRIG overskride constraintets loft, uanset hvor mange
+// gange forlængelsen kaldes.
+test("computeContractExtension: allerede på MAX_LENGTH(3) → clampes, crasher IKKE riders_contract_length_check", () => {
+  const next = computeContractExtension({
+    market_value: 100_000,
+    contract_end_season: 4,
+    contract_length: 3,
+    currentSeason: 4,
+  });
+  assert.equal(next.contract_length, 3); // clamped, ikke 4
+  assert.equal(next.contract_end_season, 5); // end-sæson rykker stadig frem
+});
+
 // ── runContractSeed wrapper-tests ──────────────────────────────────────────────
 // Supabase-mock spejler starterSquadAllocator.test.js: range() returnerer hele
 // listen (fetchAllRows kalder .range() for paginering). update-calls optages.
