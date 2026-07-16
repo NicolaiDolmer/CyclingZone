@@ -658,19 +658,23 @@
         "rows": [
           ["Facilitet", "Hvad den gør", "Status"],
           ["Træningscenter", "Fremskynder dine ryttere daglige evne-vækst", "Aktiv nu"],
-          ["Scouting-netværk", "Skærper hvor meget du kan se om en rytters sande potentiale", "Kommer snart"],
+          ["Scouting-netværk", "Låser op for at ansætte og opgradere din chefscout", "Aktiv nu"],
           ["Medicinsk afdeling", "Fremskynder form- og skade-restitution", "Kommer snart"],
           ["Akademi-udvidelse", "Tilføjer ekstra akademi-intake-slots", "Kommer snart"],
           ["Kommerciel afdeling", "Øger sponsor-indtægt (loftet, en langsigtet investering)", "Kommer snart"]
         ]
       },
-      "onlyTrainingLive": {
-        "title": "Kun Træningscenteret er aktivt lige nu",
-        "text": "Af de 5 spor er det kun Træningscenterets effekt der er koblet ind i spillet i dag. De øvrige 4 viser hvad de vil gøre, så du kan planlægge fremad, men at bygge eller opgradere dem har endnu ingen spil-effekt. Deres \"Kommer snart\"-mærke skifter automatisk til aktiv i det øjeblik deres motor går live, uden at du behøver gøre noget."
+      "liveTracksStatus": {
+        "title": "Kun Træning og Scouting er aktive lige nu",
+        "text": "Af de 5 spor er det kun Træningscenteret og Scouting-netværket der er koblet ind i spillet i dag. De øvrige 3 viser hvad de vil gøre, så du kan planlægge fremad, men at bygge eller opgradere dem har endnu ingen spil-effekt. Deres \"Kommer snart\"-mærke skifter automatisk til aktiv i det øjeblik deres motor går live, uden at du behøver gøre noget."
       },
       "staffSynergy": {
         "title": "Sådan spiller en chef og faciliteten sammen",
         "text": "Facilitetens tier sætter dens grundeffekt. Ansætter du en chef til det spor, afgør chefens samlede rating hvor meget af den grundeffekt du reelt får: en facilitet uden chef kører på omkring halv styrke, og en chefs samlede rating skalerer den op mod fuld styrke, jo tættere ratingen kommer på toppen. Kort sagt: faciliteten er loftet, og chefen er hvor tæt du kommer på det."
+      },
+      "hireChiefScout": {
+        "title": "Ansæt en chefscout",
+        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
       },
       "costs": {
         "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",

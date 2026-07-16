@@ -27,6 +27,8 @@
 > **🌙 16/7 aften ([#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) generalprøve):** 🔴 Rod-årsag fundet: auto-accept-uret målte race_days_completed (SUM etaper, alle divisioner — 524 af "60") mod dag-tærskler ⇒ 218 auto-accepts, 0 T-1-varsler nogensinde, 0 manuelle signeringer nogensinde; sæsonskiftet ville tvangs-acceptere alle 1yr-fornyelser på timer. **Fixet + merged:** #2514 (kalenderdags-ur pr. plan, 5 dage + T-3/T-1) · #2513 (Playwright-spec der signerer + wizard-escape ved proposal-fejl) · #2515 patch notes v7.03 (auto-merge). Følgebug udskilt: #2512 (renegotiation-lås permanent aktiv). Fund-detaljer: [issue-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/2463#issuecomment-4994998978).
 >
 > **🤖 Working agent:** Claude Code (Fable), session 16/7 aften — Discord-sweep 16/7 (#2518-#2529 oprettet) + planner/scout/faciliteter-færdiggørelse (worker-subagenter i worktrees). #2461 Discord-svar-udkast venter stadig ejer-review.
+>
+> **✅ [#2530](https://github.com/NicolaiDolmer/CyclingZone/issues/2530) (worker-subagent, worktree):** Scouting-facilitetssporet flippet live (`EFFECT_LIVE_BY_TRACK.scouting=true`) — Klub-UI viser nu tier-stige/køb/StaffPanel for scouting, ikke kun teaser. Motoren var allerede live (Talentspejder Fase 3 #2244); flippet gør den KØBBAR. Patch notes v7.05 + help.json (en/da) + backend-integrationstest af kæden facilitet-tier→hire→scoutAssignmentService. PR afventer ejer-merge.
 
 ## Standing context (forever-relaunch)
 
