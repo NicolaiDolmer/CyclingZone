@@ -90,10 +90,10 @@ export const KNOWN_EVENTS = Object.freeze([
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
   "feature_hall_of_fame_opened",
-  // Sprint validation — survey-CTA-banner (#364)
-  "survey_banner_shown",
-  "survey_banner_clicked",
-  "survey_banner_dismissed",
+  // survey_banner_shown/clicked/dismissed fjernet (#2467): SurveyBanner.jsx
+  // slettet — admin-preview uden ægte Tally-URL loggede shown ved hver mount og
+  // forurenede player_events (8% af tabellen, 2 admin/test-brugere). Komponenten
+  // ligger i git-historikken; re-tilføj eventerne hvis banneret genindføres.
   // Academy (#1308/#932) — fyrer fra useAcademy.js når managers håndterer
   // akademiryttere. Tilføjet til KNOWN_EVENTS i #1669 (var instrumenteret men
   // canary-blinde). Naturligt 0 indtil academy_enabled flippes ved relaunch.
