@@ -101,7 +101,7 @@ export default function RulesPage() {
             {FAQ_LINKS.map((id) => (
               <li key={id}>
                 <Link
-                  to="/help"
+                  to={`/help?faq=${id}`}
                   className="inline-flex items-start gap-1.5 text-sm text-cz-accent-t hover:underline"
                 >
                   <ExternalLinkIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />

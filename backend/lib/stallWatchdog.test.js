@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   evaluateStallFindings,
   processStallWatchdog,
+  fetchWatchdogState,
   findingKey,
   STALL_WATCHDOG_DEFAULT_THRESHOLDS,
 } from "./stallWatchdog.js";
@@ -434,4 +435,103 @@ test("processStallWatchdog — dedup gælder OGSÅ info-findings (samme dag alar
   assert.equal(second.infoFindings.length, 0, "info-finding dedup'es ligesom alert-findings");
   assert.equal(second.newFindings.length, 0);
   assert.equal(second.alerted, false);
+});
+
+// ── fetchWatchdogState: PostgREST-paginering (#2430) ──────────────────────────
+// Regression: race_results-loadet brugte en rå .in() uden .range(). PostgREST
+// returnerer maks 1000 rækker pr. select og trunkerer TAVST, så etaper hvis
+// resultater lå bag række 1000 så resultat-løse ud → FALSKE etape-stall-alarmer
+// (prod 15-16/7: 7.277 rækker for 5 forfaldne løb → 5 spøgelses-alarmer/3t).
+// Mocken håndhæver cap'en: en select uden .range() giver maks PAGE rækker.
+
+const PAGE = 1000;
+
+// Realistisk load: 8 kørte etaper à ~190 ryttere = 1.520 rækker for ÉT løb. Sorteret
+// på id rummer de første 1000 kun etape 1-5 → etape 6-8 ser resultat-løse ud for en
+// ikke-pagineret læsning, præcis som i prod (7.277 rækker for 5 forfaldne løb).
+function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6, 7, 8], scheduledStages = null, rowsPerStage = 190 } = {}) {
+  const schedule = scheduledStages ?? stageNumbers;
+  const results = [];
+  for (const stage_number of stageNumbers) {
+    for (let i = 0; i < rowsPerStage; i++) {
+      results.push({
+        id: `${String(stage_number).padStart(2, "0")}-${String(i).padStart(5, "0")}`,
+        race_id: raceId,
+        stage_number,
+        imported_at: hoursAgo(1),
+      });
+    }
+  }
+  results.sort((a, b) => (a.id < b.id ? -1 : 1)); // spejler .order("id")
+  const entries = [{ id: "e1", race_id: raceId }];
+
+  const page = (rows, from, to) => rows.slice(from, to + 1);
+
+  const builder = (rows, single = null) => {
+    const api = {
+      select: () => api,
+      eq: () => api,
+      neq: () => api,
+      gt: () => api,
+      lt: () => api,
+      in: () => api,
+      order: () => api,
+      limit: () => api,
+      range: (from, to) => Promise.resolve({ data: page(rows, from, to), error: null }),
+      maybeSingle: () => Promise.resolve({ data: single, error: null }),
+      // Await UDEN .range() → PostgREST's tavse cap.
+      then: (res, rej) => Promise.resolve({ data: rows.slice(0, PAGE), error: null }).then(res, rej),
+    };
+    return api;
+  };
+
+  return {
+    from(table) {
+      if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "races") return builder([{ id: raceId, name: "Giro X", stages: 21, stages_completed: 2 }]);
+      if (table === "race_stage_schedule") {
+        return builder(
+          schedule.map((stage_number) => ({
+            race_id: raceId,
+            stage_number,
+            scheduled_at: hoursAgo(6),
+            races: { name: "Giro X", status: "scheduled", season_id: "s1" },
+          }))
+        );
+      }
+      if (table === "race_results") return builder(results, { imported_at: hoursAgo(1) });
+      if (table === "race_entries") return builder(entries);
+      if (table === "season_standings") return builder([], { updated_at: hoursAgo(1) });
+      if (table === "matview_refresh_heartbeat") return builder([], { refreshed_at: hoursAgo(1) });
+      throw new Error(`unexpected table ${table}`);
+    },
+  };
+}
+
+test("fetchWatchdogState: race_results pagineres — etape bag PostgREST-cap'en ses som havende resultater (#2430)", async () => {
+  const supabase = makeWatchdogSupabase();
+  const state = await fetchWatchdogState({ supabase, now: NOW });
+
+  assert.equal(state.dueStages.length, 8);
+  for (const s of state.dueStages) {
+    assert.equal(s.has_results, true, `etape ${s.stage_number} har resultater i DB og må ikke se tom ud`);
+  }
+
+  // Kernen: uden paginering blev etape 6-8 (rækker >1000) trunkeret væk → falske alarmer.
+  const findings = evaluateStallFindings({ now: NOW, ...state });
+  assert.deepEqual(
+    findings.filter((f) => f.type === "stage"),
+    [],
+    "ingen etape-stall når alle forfaldne etaper faktisk har resultater"
+  );
+});
+
+test("fetchWatchdogState: en etape UDEN resultater giver stadig en ægte stall-alarm (#2430 må ikke maskere hangs)", async () => {
+  // Etape 9 er planlagt og forfalden, men har intet i race_results → skal stadig fyre.
+  const supabase = makeWatchdogSupabase({ scheduledStages: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
+  const state = await fetchWatchdogState({ supabase, now: NOW });
+  const findings = evaluateStallFindings({ now: NOW, ...state });
+  const stageFindings = findings.filter((f) => f.type === "stage");
+  assert.equal(stageFindings.length, 1, "kun den reelt resultat-løse etape alarmerer");
+  assert.equal(stageFindings[0].stageNumber, 9);
 });

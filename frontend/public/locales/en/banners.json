@@ -1,11 +1,4 @@
 {
-  "survey": {
-    "message": "Help shape Cycling Zone. Take our 5 min survey",
-    "cta": "Take the survey",
-    "dismissAriaLabel": "Dismiss banner",
-    "regionAriaLabel": "Survey invitation",
-    "adminPreviewHint": "(Admin preview, only visible to you until flag is flipped)"
-  },
   "nps": {
     "question": "How likely are you to recommend Cycling Zone to a friend?",
     "scaleLow": "Not likely",

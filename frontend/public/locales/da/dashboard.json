@@ -40,6 +40,19 @@
     "viewCalendar": "Se kalender →"
   },
   "cards": {
+    "myResult": {
+      "title": "Sådan gik det for dit hold",
+      "linkFull": "Fuldt resultat →",
+      "newBadge": "Nyt",
+      "oneDay": "Endagsløb",
+      "stagesCount": "{count} etaper",
+      "moreRiders": "+{count, plural, one {# rytter mere} other {# ryttere mere}}",
+      "points": "Point",
+      "prize": "Præmiepenge",
+      "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
+      "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",
+      "emptyCta": "Åbn løbskalenderen →"
+    },
     "auctions": {
       "title": "Aktive Auktioner",
       "linkAll": "Se alle →",
@@ -115,6 +128,7 @@
     "modules": {
       "nextActions": "Næste træk",
       "forecast": "Økonomisk forecast",
+      "myLatestResult": "Sådan gik det for dit hold",
       "auctions": "Aktive auktioner",
       "transfers": "Transfers & tilbud",
       "races": "Kommende løb",
