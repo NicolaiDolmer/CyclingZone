@@ -2157,17 +2157,28 @@ async function activePeakSeason() {
 // så queryen forbliver lille (ét holds squad × én sæsons løb, ikke en global scan).
 async function loadManualRegisteredRaceIds(riderIds, raceIds) {
   if (!riderIds.length || !raceIds.length) return new Map();
-  const { data, error } = await supabase
-    .from("race_entries")
-    .select("race_id, rider_id")
-    .eq("is_auto_filled", false)
-    .in("rider_id", riderIds)
-    .in("race_id", raceIds);
-  if (error) throw new Error(`race_entries (peak suggestions): ${error.message}`);
+  // #2516: én samlet .in("race_id", allRaceIds) med hele sæsonens 423 løb gav en
+  // ~16 KB GET-URL → undici "TypeError: fetch failed" (Sentry CYCLINGZONE-33), og
+  // usePlanner sluger 500 som enabled:false — Planneren så "isn't live yet" ud for
+  // ALLE. Samme ID_CHUNK-mønster som fetchAllStageProfiles, men fejl KASTER stadig
+  // (tavs trunkering ville give forkerte forslag i stedet for en synlig fejl).
+  // Rækker pr. chunk = ét holds MANUELLE entries i chunkens løb — langt under
+  // PostgRESTs 1000-række-side, så range-pagination er ikke nødvendig her.
+  const ID_CHUNK = 200;
   const out = new Map();
-  for (const row of data || []) {
-    if (!out.has(row.rider_id)) out.set(row.rider_id, new Set());
-    out.get(row.rider_id).add(row.race_id);
+  for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
+    const chunk = raceIds.slice(i, i + ID_CHUNK);
+    const { data, error } = await supabase
+      .from("race_entries")
+      .select("race_id, rider_id")
+      .eq("is_auto_filled", false)
+      .in("rider_id", riderIds)
+      .in("race_id", chunk);
+    if (error) throw new Error(`race_entries (peak suggestions): ${error.message}`);
+    for (const row of data || []) {
+      if (!out.has(row.rider_id)) out.set(row.rider_id, new Set());
+      out.get(row.rider_id).add(row.race_id);
+    }
   }
   return out;
 }
@@ -6023,7 +6034,9 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
     supabase.from("training_day_runs").select("team_id", { count: "exact", head: true }).eq("team_id", teamId),
-    supabase.from("race_entries").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),
+    // #2516: race_entries har INGEN id-kolonne (composite key race_id+rider_id+team_id)
+    // — select("id") gav 42703 "column race_entries.id does not exist" (CYCLINGZONE-34).
+    supabase.from("race_entries").select("race_id", { count: "exact", head: true }).eq("team_id", teamId).eq("is_auto_filled", false),
     supabase.from("board_profiles").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("negotiation_status", "completed"),
   ]);
 

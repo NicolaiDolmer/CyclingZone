@@ -152,3 +152,17 @@ test("GET /peak-plans/board respekterer nulstil-til-blank (dismissedSet) + ekskl
   assert.match(block, /dismissedSet\.has\(rd\.id\)/, "dismissede ryttere må ikke få forslag");
   assert.match(block, /realTargetIds/, "forslag må ikke duplikere et allerede-ægte mål-løb");
 });
+
+test("loadManualRegisteredRaceIds chunker race_id-listen — én samlet .in() med hele sæsonen sprængte GET-URL'en (#2516)", () => {
+  const idx = apiSource.indexOf("async function loadManualRegisteredRaceIds");
+  assert.ok(idx !== -1, "loadManualRegisteredRaceIds skal findes");
+  const block = apiSource.slice(idx, idx + 1600);
+  assert.match(block, /ID_CHUNK/, "race_id-listen skal chunkes (423 sæson-løb i én URL gav undici 'fetch failed', CYCLINGZONE-33)");
+  assert.match(block, /raceIds\.slice\(i,\s*i \+ ID_CHUNK\)/, "chunk-loopet skal følge fetchAllStageProfiles-mønstret");
+  assert.match(block, /throw new Error\(`race_entries \(peak suggestions\)/, "fejl skal KASTE, ikke trunkere tavst");
+});
+
+test("race_entries head-counts selecter en reel kolonne — tabellen har ingen id-kolonne (#2516)", () => {
+  const badSelects = [...apiSource.matchAll(/from\("race_entries"\)\s*\.select\("id"/g)];
+  assert.equal(badSelects.length, 0, "race_entries har composite key (race_id, rider_id, team_id) — select(\"id\") giver 42703 (CYCLINGZONE-34)");
+});
