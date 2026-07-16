@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.03",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fix",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board now gives you a real negotiation window",
+          "body": "Board plans waiting for your negotiation could be decided by the board within hours, often without any warning. Every plan now gets a full 5 day window from the moment it opens, with a reminder on day 2 and a final warning on day 4 before the board picks for you. This also applies to brand new teams."
+        },
+        "da": {
+          "title": "Bestyrelsen giver dig nu et reelt forhandlingsvindue",
+          "body": "Bestyrelsesplaner der ventede på din forhandling kunne blive afgjort af bestyrelsen inden for timer, ofte uden varsel. Hver plan får nu et fuldt vindue på 5 dage fra det øjeblik den åbner, med en påmindelse på dag 2 og en sidste advarsel på dag 4, før bestyrelsen vælger for dig. Det gælder også helt nye hold."
+        },
+        "refs": [2463, 2514]
+      },
+      {
+        "category": "fix",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "No more being stuck in the board setup wizard",
+          "body": "If the board's proposal failed to load during first time plan setup, the wizard showed an error with no way out. It now always offers a way back to the overview when something goes wrong, and no longer reopens itself after you close it."
+        },
+        "da": {
+          "title": "Slut med at sidde fast i bestyrelsens opsætnings-wizard",
+          "body": "Hvis bestyrelsens forslag ikke kunne hentes under førstegangsopsætning af planer, viste wizarden en fejl uden nogen vej ud. Den tilbyder nu altid en vej tilbage til oversigten når noget går galt, og genåbner ikke sig selv efter du har lukket den."
+        },
+        "refs": [2463, 2513]
+      }
+    ]
+  },
+  {
     "version": "7.02",
     "date": "2026-07-16",
     "label": "Beta",
