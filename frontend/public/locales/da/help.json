@@ -1029,6 +1029,10 @@
     "crashesFaq": {
       "q": "Hvad er styrt og opgivelser?",
       "a": "Undervejs på en etape kan en rytter styrte eller få en mekanisk defekt. De fleste uheld koster tid i resultatet, men nogle tvinger rytteren til at udgå af løbet: en udgået rytter er ude af de resterende etaper og alle klassementer og er skadet et par dage efter. Uheld er sjældne og rammer hektiske finaler og brostensløb hårdest, mens enkeltstarter er de sikreste. Ryttere med god feltplacering rammes sjældnere. Udgåede vises på løbssiden."
+    },
+    "whyReportFaq": {
+      "q": "Hvordan kan jeg se hvorfor et resultat blev som det blev?",
+      "a": "Løbssiderne forklarer markante udfald i almindeligt sprog, ikke bare tal. Små badges ved en rytters navn markerer fx en hjælper der ofrede sin egen placering for kaptajnen, en favorit der havde en dårlig dag, eller en rytter der timede sin formtop perfekt. En 'Det store billede'-boks på etapesiden tilføjer en sætning ved de store udsving, som et lederskifte i sammenlagtstillingen. De præcise tal bag et resultat forbliver skjulte, kun historien vises."
     }
   }
 }

@@ -5,7 +5,6 @@ import { Link, useNavigate } from "react-router-dom";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
-import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
@@ -16,6 +15,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
+import MyLatestResultCard from "../components/MyLatestResultCard";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -95,7 +95,6 @@ export default function DashboardPage() {
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
-  const [surveyBannerVisible, setSurveyBannerVisible] = useState(false); // #2288 B
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   // #1569: progress-guiden dismisses kun for DENNE session (sessionStorage), ikke
   // permanent — et fejlklik på X ved 0/4 trin må ikke dræbe den eneste onboarding-
@@ -116,8 +115,12 @@ export default function DashboardPage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [recentResults, setRecentResults] = useState([]);
   const [riderRanking, setRiderRanking] = useState([]);
+  // #2466: resultat-push — null = ikke hentet endnu/fejlet (kortet renderer intet),
+  // { race: null } = ingen finaliserede løb (empty state), ellers payload.
+  const [myLatestResult, setMyLatestResult] = useState(null);
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
+  const myLatestResultVisible = isVisible("myLatestResult");
 
   // #2288 D — "Næste træk"-udvidelse: 3 lette signaler beregnet efter nextRaces/
   // board er hentet. squadSelectionMissingRace = det næste udtagelige løb HVIS
@@ -413,33 +416,52 @@ export default function DashboardPage() {
     if (team?.id) logTeamDrafted(riders.length);
   }, [team?.id, riders.length]);
 
-  // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet
+  // #1005: hent de tre push-moduler fra deres aggregat-endpoints — kun når modulet
   // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
-  // er cachede server-side (60s), så toggle on→off→on rammer cachen.
+  // er cachede server-side (60s), så toggle on→off→on rammer cachen. Effekten
+  // kører EFTER first paint (#2444: intet af dette blokerer dashboardets critical
+  // path — kortene fylder ud når svarene lander).
   useEffect(() => {
     let cancelled = false;
     async function loadExtras() {
-      if (!recentResultsVisible && !riderRankingVisible) return;
+      if (!recentResultsVisible && !riderRankingVisible && !myLatestResultVisible) return;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
       const headers = { Authorization: `Bearer ${token}` };
-      if (recentResultsVisible) {
-        try {
-          const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
-          if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
-        } catch { /* best-effort */ }
-      }
-      if (riderRankingVisible) {
-        try {
-          const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
-          if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
-        } catch { /* best-effort */ }
-      }
+      // Parallelt (ikke sekventielt) — hvert kort fylder ud så snart dets eget
+      // svar lander; især resultat-pushet (#2466) skal ikke vente bag to andre
+      // round-trips. Hver gren er fortsat best-effort og fejler stille alene.
+      await Promise.all([
+        recentResultsVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
+            if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
+          } catch { /* best-effort */ }
+        })(),
+        riderRankingVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
+            if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
+          } catch { /* best-effort */ }
+        })(),
+        // #2466: "How your team did" — holdets eget seneste løbsresultat.
+        myLatestResultVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/my-latest-result`, { headers });
+            if (r.ok && !cancelled) {
+              const body = await r.json();
+              // race === undefined (fx mock-fallback {}) normaliseres til null →
+              // kortets empty state i stedet for en død boks.
+              setMyLatestResult({ ...body, race: body.race ?? null });
+            }
+          } catch { /* best-effort — kortet renderer intet ved fejl */ }
+        })(),
+      ]);
     }
     loadExtras();
     return () => { cancelled = true; };
-  }, [recentResultsVisible, riderRankingVisible]);
+  }, [recentResultsVisible, riderRankingVisible, myLatestResultVisible]);
 
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
@@ -516,22 +538,21 @@ export default function DashboardPage() {
   );
 
   // #2288 B — banner-prioritering: indtil onboarding er fuldført skal onboarding-
-  // kortet have hele skærmen for sig selv (ingen SurveyBanner/Discord-nudge, der
-  // konkurrerer om opmærksomhed med de 4 kom-i-gang-trin). Efter onboarding: max
-  // 1 nudge-banner ad gangen — survey vinder over Discord (research-signalet er
-  // tidsbegrænset af ejer/produkt, Discord-nudgen er evergreen og kan vente).
+  // kortet have hele skærmen for sig selv (ingen Discord-nudge, der konkurrerer om
+  // opmærksomhed med de 4 kom-i-gang-trin). SurveyBanner er fjernet (#2467: admin-
+  // preview uden ægte Tally-URL loggede survey_banner_shown ved hver mount og
+  // forurenede player_events — 8% af tabellen fra 2 admin/test-brugere). Komponenten
+  // ligger stadig i git-historikken og kan genindføres når en ægte survey-URL findes.
   const onboardingIncomplete = Boolean(
     onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count
   );
-  const showSurveyBanner = !onboardingIncomplete;
-  const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge && !surveyBannerVisible;
+  const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge;
 
   return (
     // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
     // race-data, countdowns); browser-oversættere muterede dem og udløste
     // NotFoundError-crashes (Sentry-events med url=/dashboard). Se PR #2272.
     <div translate="no" className="max-w-6xl mx-auto">
-      {showSurveyBanner && <SurveyBanner onVisibleChange={setSurveyBannerVisible} />}
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
@@ -615,8 +636,9 @@ export default function DashboardPage() {
         <OnboardingCompletionCard onDismiss={dismissCompletion} />
       )}
 
-      {/* Discord DM nudge — undertrykt under onboarding + når SurveyBanner allerede
-          viser en nudge (#2288 B: max 1 nudge-banner ad gangen). */}
+      {/* Discord DM nudge — undertrykt under onboarding (#2288 B). SurveyBanner er
+          fjernet (#2467), så den var tidligere den anden halvdel af "max 1
+          nudge-banner ad gangen"-reglen. */}
       {showDiscordNudgeBanner && (
         <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
@@ -699,6 +721,11 @@ export default function DashboardPage() {
           MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
           tidligst scheduled-løb, som kunne være allerede-udtaget). */}
       <TeamSelectionCtaCard nextRace={squadSelectionMissingRace} />
+
+      {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
+          Kortet renderer intet før endpoint-svaret er landet (myLatestResult
+          starter som null), empty state når holdet endnu ingen løb har kørt. */}
+      {myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">

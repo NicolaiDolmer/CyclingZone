@@ -56,6 +56,10 @@ export default function SeasonPlannerPage() {
     () => planner.acceptTraining(planId, week),
     t("drawer.rider.accepted", { week: week === "build" ? t("drawer.rider.build") : t("drawer.rider.taper"), name: rider?.lastname || "" }),
   );
+  // #2455: acceptér et assistent-forslag = samme createPeak-kald som en manuel
+  // peak (forslaget har ingen egen DB-id); nulstil er et separat sæson-scoped write.
+  const onAcceptSuggestion = (riderId, raceId) => runMutation(() => planner.acceptSuggestion(riderId, raceId));
+  const onDismissSuggestion = (riderId) => runMutation(() => planner.dismissSuggestions(riderId), t("assistant.resetDone"));
 
   if (loading) return <PageLoader />;
   if (!enabled) {
@@ -66,8 +70,12 @@ export default function SeasonPlannerPage() {
     );
   }
 
-  const totalPeaks = (riders || []).reduce((n, r) => n + (r.peaks?.length || 0), 0);
   const hasRiders = (riders || []).length > 0;
+  // #2455: mens der findes MINDST ét uaccepteret assistent-forslag, erstatter
+  // "assistenten har udkastet..."-banneret det gamle "planlæg din første
+  // peak"-nudge — ellers ser manageren begge (modstridende) beskeder på én gang.
+  const hasSuggestions = (riders || []).some((r) => (r.peaks || []).some((p) => p.isSuggestion));
+  const totalRealPeaks = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => !p.isSuggestion).length, 0);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -95,7 +103,18 @@ export default function SeasonPlannerPage() {
 
       {!hasRiders && <EmptyState title={t("empty.title")} description={t("empty.description")} />}
 
-      {hasRiders && totalPeaks === 0 && (
+      {/* #2455: assistenten har allerede udkastet form-programmerne — banneret
+          gør forslagene OPDAGELIGE (issue-krav 3), i stedet for det gamle
+          tomme-lærred-nudge (som kun vises hvis der reelt intet er, hverken
+          ægte eller foreslået — fx ingen fremtidige egen-divisions-løb endnu). */}
+      {hasRiders && hasSuggestions && (
+        <div className="mb-4 bg-cz-subtle border border-cz-accent-t rounded-cz p-4">
+          <div className="font-display text-[22px] leading-none text-cz-1">✦ {t("assistant.bannerTitle")}</div>
+          <p className="text-[12.5px] text-cz-2 mt-1.5">{t("assistant.bannerBody")}</p>
+        </div>
+      )}
+
+      {hasRiders && !hasSuggestions && totalRealPeaks === 0 && (
         <div className="mb-4 bg-cz-subtle border border-cz-border rounded-cz p-4">
           <div className="font-display text-[22px] leading-none text-cz-1">{t("firstRun.title")}</div>
           <p className="text-[12.5px] text-cz-2 mt-1.5">{t("firstRun.body", { max: maxPerRider })}</p>
@@ -115,6 +134,7 @@ export default function SeasonPlannerPage() {
               onSelectRace={(id) => setSelected({ mode: "race", id })}
               onSelectRider={(id) => setSelected({ mode: "rider", id })}
               onRetarget={onRetarget}
+              onCreatePeak={onCreatePeak}
             />
           </div>
 
@@ -148,6 +168,8 @@ export default function SeasonPlannerPage() {
                 onCreatePeak={onCreatePeak}
                 onRemovePeak={onRemovePeak}
                 onAccept={onAccept}
+                onAcceptSuggestion={onAcceptSuggestion}
+                onDismissSuggestion={onDismissSuggestion}
               />
             </div>
           )}
