@@ -48,5 +48,28 @@
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
     "squadFull": "Senior-truppen er fuld. Frigør en plads for at rykke op, eller sælg eller slip i stedet.",
     "generic": "Noget gik galt. Prøv igen."
+  },
+  "pnl": {
+    "heading": "Akademi-regnskab",
+    "subtitle": "Kun realiserede salg tæller. Ryttere der stadig er i akademiet, viser ingen værdi her, før de sælges.",
+    "loadingNote": "Henter akademi-regnskab...",
+    "cumulativeHeading": "Samlet pengestrøm",
+    "driftPaid": "Betalt drift",
+    "signingFeesPaid": "Betalte signing-gebyrer",
+    "salesProceeds": "Salgssummer",
+    "valueCreation": "Salgspræmie",
+    "netCashFlow": "Netto pengestrøm",
+    "premiumCaption": "Salgspræmie er beløbet hentet ud over rytterens markedsværdi på det tidspunkt, rytteren blev sat til salg.",
+    "currentHeading": "Nuværende trup",
+    "slotsLabel": "Brugte pladser",
+    "payrollLabel": "Nuværende løn (pr. sæson)",
+    "currentCaption": "Et øjebliksbillede af akademiet lige nu, ikke en del af pengestrøms-summerne til venstre.",
+    "salesHeading": "Seneste akademisalg",
+    "emptySales": "Ingen akademi-ryttere solgt endnu.",
+    "colRider": "Rytter",
+    "colDate": "Dato",
+    "colPrice": "Salgspris",
+    "colPremium": "Præmie",
+    "unknownRider": "Tidligere akademirytter"
   }
 }

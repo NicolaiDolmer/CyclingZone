@@ -144,6 +144,7 @@ import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider } from "../lib/academyTransfer.js";
+import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -11089,6 +11090,89 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       roster,
       intake,
       graduations,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/academy/pnl — akademi-regnskabet (#2485, addendum V3): en simpel
+// læse-flade over eksisterende data. INGEN nye økonomi-mekanikker og INGEN
+// projektion af fremtidig værdi (#2100 er ejer-udskudt) — kun realiserede tal.
+//
+// Kilder:
+//   - Kumulativ drift + signing-fees: finance_transactions (type academy_drift/
+//     academy_signing), ægte pengebevægelser, hele holdets historik.
+//   - Nuværende trup-løn: SUM(riders.salary) for is_academy=true — et run-rate-
+//     øjebliksbillede (IKKE kumulativt betalt-til-dato, da løn opkræves som ét
+//     samlet 'salary'-beløb pr. hold pr. sæson og ikke kan splittes akademi/senior
+//     i ledger'en). Vist adskilt fra de kumulative tal for ikke at blande stock/flow.
+//   - Realiserede salg: den ENESTE vej en akademi-udviklet rytter sælges på i dag
+//     er graduerings-flowet (academyGraduation.js "sell"-handlingen) — en
+//     academy_graduation-row med status='sold' der opretter en almindelig
+//     senior-auktion (is_youth=false, seller_team_id=holdet). Matches på
+//     rider_id + seller_team_id. #785-reglen genbruges: en gennemført auktion
+//     uden vinder (og uden garanteret salg) er intet salg.
+//   - "Salgspræmie" (realiseret værdiskabelse) = current_price - starting_price
+//     for hvert realiseret salg, dvs. beløbet budt op over rytterens markedsværdi
+//     PÅ SALGSTIDSPUNKTET (auctions.starting_price = calculateRiderMarketValue
+//     ved oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
+router.get("/academy/pnl", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const teamId = req.team.id;
+
+    // Nuværende akademi-trup: run-rate løn + pladser brugt.
+    const { data: rosterRows, error: rosterErr } = await supabase
+      .from("riders")
+      .select("salary")
+      .eq("team_id", teamId)
+      .eq("is_academy", true);
+    if (rosterErr) throw new Error(rosterErr.message);
+
+    // Kumulative akademi-specifikke pengebevægelser (drift + signing-fees, hele historikken).
+    const { data: financeRows, error: financeErr } = await supabase
+      .from("finance_transactions")
+      .select("type, amount")
+      .eq("team_id", teamId)
+      .in("type", ["academy_drift", "academy_signing"]);
+    if (financeErr) throw new Error(financeErr.message);
+
+    // Realiserede salg: graduerede akademiryttere holdet valgte at sælge (academyGraduation.js).
+    const { data: soldGrads, error: gradErr } = await supabase
+      .from("academy_graduation")
+      .select("rider_id, resolved_at, riders(firstname, lastname)")
+      .eq("team_id", teamId)
+      .eq("status", "sold");
+    if (gradErr) throw new Error(gradErr.message);
+
+    let auctionRows = [];
+    const soldRiderIds = (soldGrads ?? []).map((g) => g.rider_id).filter(Boolean);
+    if (soldRiderIds.length > 0) {
+      const { data, error: aucErr } = await supabase
+        .from("auctions")
+        .select("id, rider_id, current_price, starting_price, current_bidder_id, is_guaranteed_sale, actual_end, status")
+        .eq("seller_team_id", teamId)
+        .eq("is_youth", false)
+        .eq("status", "completed")
+        .in("rider_id", soldRiderIds);
+      if (aucErr) throw new Error(aucErr.message);
+      auctionRows = data ?? [];
+    }
+
+    const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: ACADEMY.SLOTS });
+    const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
+    const gradByRider = new Map((soldGrads ?? []).map((g) => [g.rider_id, g]));
+    const sales = buildAcademySales(auctionRows, gradByRider);
+
+    res.json({
+      enabled: true,
+      ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
     });
   } catch (err) {
     captureException(err);

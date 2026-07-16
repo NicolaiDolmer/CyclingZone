@@ -23,6 +23,7 @@ import {
   SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
+  SEED_ACADEMY_PNL,
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
@@ -239,6 +240,7 @@ export function apiResponse(pathname) {
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+  if (pathname.endsWith("/api/academy/pnl")) return SEED_ACADEMY_PNL;
 
   // #2466 "How your team did" — resultat-push for holdets seneste finaliserede
   // løb. Afledt af seed-løbet race-done-2 (Giro di Preview): Ada Pedersen nr. 2 i

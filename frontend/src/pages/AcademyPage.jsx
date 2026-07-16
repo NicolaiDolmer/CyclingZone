@@ -16,6 +16,7 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
 import { useScouting } from "../lib/useScouting.js";
 import RiderLink from "../components/RiderLink.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
+import AcademyPnl from "../components/AcademyPnl.jsx";
 import { projectSeniorSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
@@ -389,6 +390,9 @@ export default function AcademyPage() {
           </div>
         )}
       </section>
+
+      {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
+      <AcademyPnl />
 
       {/* Promote-bekræftelse (#932 S7) — senior-cap-effekt + projiceret senior-løn. */}
       <AcademyTransferConfirmModal

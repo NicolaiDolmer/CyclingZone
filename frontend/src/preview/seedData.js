@@ -561,6 +561,42 @@ export const SEED_ACADEMY = {
   ],
 };
 
+// GET /api/academy/pnl — akademi-regnskabet (#2485, addendum V3). Konsumeres af
+// mockHandlers.apiResponse("/api/academy/pnl") (return SEED_ACADEMY_PNL). Viser
+// et hold med to realiserede graduate-salg (én med præmie, én solgt til listepris)
+// oveni den løbende drift/signing-historik, så begge kort + salgs-tabellen er
+// synlige i preview uden en live backend.
+export const SEED_ACADEMY_PNL = {
+  enabled: true,
+  current: { slotsUsed: 2, slotsMax: 8, payroll: 22000 },
+  cumulative: {
+    driftPaid: 25000,
+    signingFeesPaid: 18000,
+    salesProceeds: 220000,
+    valueCreation: 35000,
+    salesCount: 2,
+    netCashFlow: 220000 - 25000 - 18000,
+  },
+  sales: [
+    {
+      riderId: "acad-r3-sold",
+      riderName: "Théo Dubois",
+      soldAt: "2026-07-02T15:30:00.000Z",
+      price: 140000,
+      listedValue: 105000,
+      premium: 35000,
+    },
+    {
+      riderId: "acad-r4-sold",
+      riderName: "Mateo Rossi",
+      soldAt: "2026-06-01T09:00:00.000Z",
+      price: 80000,
+      listedValue: 80000,
+      premium: 0,
+    },
+  ],
+};
+
 // Race-kalender-seed (#in-game-race-calendar). Matcher GET /api/races/calendar's
 // response-shape: { season, ownPoolId, entries[], days[], divisions[] }. Datoer ligger
 // i en fast måned (juli 2026) så preview/E2E er deterministisk uafhængigt af "i dag".
