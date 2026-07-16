@@ -113,7 +113,6 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * rollIncidents-kald.
  *
  * @param {object} args
- * @param {number} args.stageNumber
  * @param {boolean} [args.isFinal=false]
  * @param {boolean} [args.isStageRace=false]
  * @param {Array<{rider_id, team_id, rank, stageGap, components}>} args.ranked  fra simulateStage
@@ -126,7 +125,6 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * @returns {Array<{moment_key, params, significance, rider_ids, team_ids}>}
  */
 export function extractStageMoments({
-  stageNumber,
   isFinal = false,
   isStageRace = false,
   ranked = [],
