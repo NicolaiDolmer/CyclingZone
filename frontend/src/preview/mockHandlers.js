@@ -17,6 +17,7 @@ import {
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
+  SEED_RACE_STAGE_MOMENTS,
   SEED_RIDER_PALMARES_RESULTS,
   SEED_TEAM_SEASON_STANDINGS,
   SEED_TEAM_HALL_OF_FAME,
@@ -126,6 +127,16 @@ export function restRows(table, requestUrl = "") {
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACE_INCIDENTS.filter(i => i.race_id === id);
+      }
+      return [];
+    }
+    // S6 (#2355): race_stage_moments (why-rapport + story-tags). Samme scoping/
+    // graceful-degradation-mønster som race_incidents ovenfor.
+    case "race_stage_moments": {
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_RACE_STAGE_MOMENTS.filter(m => m.race_id === id);
       }
       return [];
     }
