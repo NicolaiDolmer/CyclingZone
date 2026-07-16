@@ -11,6 +11,10 @@ const NOW_FILE = "docs/NOW.md";
 // vokser first paint forbi den maskede visual-diff-threshold. frontend-smoke er
 // kun ADVISORY → driften blokerede ikke merge og slap igennem 2×. Denne required
 // guard (kører i frontend-build) kræver at snapshots refreshes i SAMME PR.
+// Siden #2211 er /patch-notes skipSnapshot:true (intet pixel-snapshot at drifte),
+// så kravet er betinget af at ruten faktisk snapshottes i core-smoke.spec.js —
+// genaktiveres snapshottet, re-armeres guarden automatisk.
+const SMOKE_SPEC_FILE = "frontend/tests/e2e/core-smoke.spec.js";
 const SNAPSHOT_PREFIX = "frontend/tests/e2e/core-smoke.spec.js-snapshots/patch-notes-";
 // Escape-hatch til den sjældne nye top-entry der er verificeret sub-threshold:
 // sæt token'en i en commit-besked i PR'en.
@@ -69,6 +73,21 @@ function commitMessages(baseRef) {
   return tryRun("git", ["log", "--format=%B", `${baseRef}..HEAD`]);
 }
 
+// True hvis /patch-notes-ruten pixel-snapshottes i core-smoke.spec.js (dvs. har
+// et entry uden skipSnapshot:true). Mangler filen/entry'et, eller er ruten
+// skipSnapshot, findes der intet snapshot at drifte → refresh-kravet skippes.
+function patchNotesRouteIsSnapshotted(root) {
+  let spec;
+  try {
+    spec = readFile(root, SMOKE_SPEC_FILE);
+  } catch {
+    return false;
+  }
+  const entry = spec.match(/\{[^{}]*path:\s*["']\/patch-notes["'][^{}]*\}/);
+  if (!entry) return false;
+  return !/skipSnapshot:\s*true/.test(entry[0]);
+}
+
 function fail(message) {
   console.error(`patch-notes-check: ${message}`);
   process.exitCode = 1;
@@ -112,7 +131,8 @@ if (versions.length === 0) {
     }
     // En ny top-version flytter /patch-notes' first paint → core-smoke-snapshots
     // SKAL refreshes i samme PR, ellers driver de stille (advisory frontend-smoke).
-    if (addedNewTopVersion && eventName === "pull_request") {
+    // Kun relevant hvis ruten faktisk snapshottes (ikke skipSnapshot, jf. #2211).
+    if (addedNewTopVersion && eventName === "pull_request" && patchNotesRouteIsSnapshotted(root)) {
       const snapshotChanged = changed.some((file) => file.startsWith(SNAPSHOT_PREFIX));
       const optedOut = commitMessages(baseRef).includes(SNAPSHOT_OPT_OUT);
       if (!snapshotChanged && !optedOut) {
