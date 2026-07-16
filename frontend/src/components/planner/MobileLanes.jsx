@@ -38,9 +38,13 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
       <div className="flex flex-col gap-2">
         {(riders || []).map((rd) => {
           const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
-          const used = (rd.peaks || []).length;
-          const risky = (rd.peaks || []).some((p) => p.status === "at_risk");
-          const chip = used ? statusMeta(risky ? "at_risk" : ((rd.peaks || []).some((p) => p.status === "on_track") ? "on_track" : "pending")) : null;
+          const peaks = rd.peaks || [];
+          const used = peaks.length;
+          const risky = peaks.some((p) => p.status === "at_risk");
+          const chip = used ? statusMeta(risky ? "at_risk" : (peaks.some((p) => p.status === "on_track") ? "on_track" : "pending")) : null;
+          // #2455: mobil-first — samme "forslag indtil accepteret"-signal som
+          // desktop master-canvasset, ellers opdages featuren aldrig på mobil.
+          const hasSuggestion = peaks.some((p) => p.isSuggestion);
           return (
             <button
               key={rd.id}
@@ -66,11 +70,27 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
                 )}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
-                {[0, 1].map((k) => <span key={k} className="w-2.5 h-2.5 rounded-full" style={{ background: k < used ? "rgb(var(--accent))" : "transparent", border: `1.4px solid ${k < used ? "rgb(var(--accent-t))" : "var(--text-3)"}` }} />)}
+                {[0, 1].map((k) => {
+                  const tp = peaks[k];
+                  const filled = k < used;
+                  return (
+                    <span
+                      key={k} className="w-2.5 h-2.5 rounded-full"
+                      style={{
+                        background: filled && !tp?.isSuggestion ? "rgb(var(--accent))" : "transparent",
+                        border: `1.4px ${tp?.isSuggestion ? "dashed" : "solid"} ${filled ? "rgb(var(--accent-t))" : "var(--text-3)"}`,
+                      }}
+                    />
+                  );
+                })}
               </span>
               {/* #2447: on_track/at_risk brugte tidligere samme farve i begge grene
-                  (kopiér-fejl) — "god" status skal ikke råbe lige så meget som "risiko". */}
-              {chip && (
+                  (kopiér-fejl) — "god" status skal ikke råbe lige så meget som "risiko".
+                  #2455: et forslag erstatter status-glyffen med ✦ (samme princip som
+                  desktop) indtil manageren har accepteret/ændret mindst én peak. */}
+              {hasSuggestion ? (
+                <span className="text-[9.5px] shrink-0" style={{ color: "rgb(var(--accent-t))" }} title={t("assistant.badge")}>✦</span>
+              ) : chip && (
                 <span className="text-[9.5px] shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
               )}
               <i className="ti ti-chevron-right text-[16px] text-cz-3 shrink-0" aria-hidden="true" />

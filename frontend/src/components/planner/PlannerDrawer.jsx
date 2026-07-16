@@ -39,8 +39,15 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
     .sort((a, b) => b.score - a.score);
   const demands = ranked[0]?.contributions?.slice(0, 3) || [];
 
+  // #2455: skeln mellem en ÆGTE peak og et endnu-uaccepteret assistent-forslag
+  // her, så "Sæt peak" forbliver klikbart (= accept) for et forslag i stedet
+  // for at falde tavst til den statiske "allerede topper her"-tekst.
   const peakingSet = new Set();
-  for (const rd of riders || []) for (const p of rd.peaks || []) if (p.targetRaceId === race.id) peakingSet.add(rd.id);
+  const suggestingSet = new Set();
+  for (const rd of riders || []) for (const p of rd.peaks || []) {
+    if (p.targetRaceId !== race.id) continue;
+    if (p.isSuggestion) suggestingSet.add(rd.id); else peakingSet.add(rd.id);
+  }
 
   return (
     <div>
@@ -93,7 +100,11 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
       <div className="flex flex-col gap-1.5">
         {ranked.map(({ rider, score, contributions }) => {
           const peaking = peakingSet.has(rider.id);
-          const maxed = (rider.peaks?.length || 0) >= maxPerRider;
+          const suggestingHere = suggestingSet.has(rider.id);
+          // #2455: kun ÆGTE peaks tæller mod maks — et uaccepteret forslag må
+          // ikke blokere manageren fra at acceptere (=oprette) det via denne knap.
+          const realPeakCount = (rider.peaks || []).filter((p) => !p.isSuggestion).length;
+          const maxed = realPeakCount >= maxPerRider;
           const top = contributions.slice(0, 2).map((c) => `${c.ability.replace(/_/g, " ")} ${c.value}`).join(" · ");
           return (
             <div key={rider.id} className="flex items-center gap-2.5">
@@ -108,10 +119,13 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
               {peaking ? (
                 <span className="text-[10px] text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
               ) : (
-                <button
-                  className="text-[10.5px] border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40 w-[74px]"
-                  disabled={busy || maxed} onClick={() => onCreatePeak(rider.id, race.id)}
-                >{t("drawer.race.setPeak")}</button>
+                <div className="flex flex-col items-end gap-0.5 w-[74px]">
+                  {suggestingHere && <span className="text-[9px] text-cz-3">✦ {t("drawer.race.suggestedHere")}</span>}
+                  <button
+                    className="text-[10.5px] border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40"
+                    disabled={busy || maxed} onClick={() => onCreatePeak(rider.id, race.id)}
+                  >{t("drawer.race.setPeak")}</button>
+                </div>
               )}
             </div>
           );
@@ -136,10 +150,13 @@ function AbilityBars({ abilities }) {
   );
 }
 
-function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, onRemovePeak, onAccept, busy }) {
+function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
   const { t } = useTranslation("planner");
   const ovr = riderOverallRating({ ...rider.abilities, primary_type: rider.primaryType });
-  const canAddPeak = (rider.peaks?.length || 0) < maxPerRider;
+  // #2455: kun ÆGTE peaks tæller mod maks — uaccepterede forslag fylder ikke
+  // "pick a target race"-dropdownen op (den ville ellers ALDRIG vises for en
+  // rytter assistenten allerede har foreslået to peaks til).
+  const canAddPeak = (rider.peaks || []).filter((p) => !p.isSuggestion).length < maxPerRider;
   const todayOrd = dateToOrdinal(today);
   const targetable = (races || []).filter((r) => r.isMine && r.date
     && (todayOrd == null || (dateToOrdinal(r.date) ?? -Infinity) >= todayOrd)
@@ -173,13 +190,31 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
           const meta = statusMeta(p.status);
           const block = p.suggestedTrainingBlock;
           const focus = block?.recommendedFocus;
+          // #2455: et FORSLAG er hverken låst, redigerbart via accept-training
+          // (ingen ægte plan-id endnu), eller fjernbart med den normale "Remove
+          // peak" — det accepteres (→ opretter en ægte plan, samme knap-mønster
+          // som RaceDrawer's "Sæt peak") eller nulstilles (helt program, ikke
+          // ét peak ad gangen — matcher issue-krav "nulstille til blank").
           return (
-            <div key={p.id} className="border border-cz-border rounded-cz p-3">
-              <div className="flex justify-between items-center mb-1.5">
-                <div className="text-[12.5px] text-cz-1 font-medium">{t("drawer.rider.peakFor", { race: p.targetRaceName || "—" })}</div>
-                <button className="text-[10.5px] text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy || p.locked} onClick={() => onRemovePeak(p.id)}>
-                  <i className="ti ti-x text-[13px]" aria-hidden="true" /> {t("drawer.rider.removePeak")}
-                </button>
+            <div key={p.id} className={`border rounded-cz p-3 ${p.isSuggestion ? "border-dashed border-cz-accent-t" : "border-cz-border"}`}>
+              <div className="flex justify-between items-center mb-1.5 gap-2">
+                <div className="text-[12.5px] text-cz-1 font-medium flex items-center gap-1.5 min-w-0">
+                  <span className="truncate">{t("drawer.rider.peakFor", { race: p.targetRaceName || "—" })}</span>
+                  {p.isSuggestion && (
+                    <span className="shrink-0 text-[9px] font-normal text-cz-accent-t border border-cz-accent-t rounded-full px-1.5 py-0.5">
+                      ✦ {t("assistant.badge")}
+                    </span>
+                  )}
+                </div>
+                {p.isSuggestion ? (
+                  <button className="shrink-0 text-[10.5px] text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy} onClick={() => onDismissSuggestion(rider.id)}>
+                    {t("assistant.reset")}
+                  </button>
+                ) : (
+                  <button className="shrink-0 text-[10.5px] text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy || p.locked} onClick={() => onRemovePeak(p.id)}>
+                    <i className="ti ti-x text-[13px]" aria-hidden="true" /> {t("drawer.rider.removePeak")}
+                  </button>
+                )}
               </div>
               <div className="text-[10.5px] text-cz-2 mb-2">
                 {t("drawer.rider.windowLabel", { start: formatOrdinalShort(dateToOrdinal(p.windowStart), months), end: formatOrdinalShort(dateToOrdinal(p.windowEnd), months) })}
@@ -187,10 +222,19 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                     (rigtig token er kanal-formatet --accent-t, brugt via rgb()) — den
                     faldt derfor altid tilbage til den neutrale --text-2, så "peak i
                     fare" aldrig fik sin advarselsfarve i noget tema. */}
-                {" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span>
+                {!p.isSuggestion && <>{" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span></>}
               </div>
+              {p.isSuggestion && (
+                <div className="text-[10.5px] text-cz-3 mb-2">
+                  {t(p.suggestionReason === "registered" ? "assistant.reasonRegistered" : "assistant.reasonSuitability")}
+                </div>
+              )}
               {focus && <div className="text-[10.5px] text-cz-3 mb-2">{t("drawer.rider.focus", { focus: t(`focus.${focus}`, focus) })}</div>}
-              {block && (
+              {p.isSuggestion ? (
+                <button className="text-[10.5px] border border-cz-accent-t text-cz-accent-t rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAcceptSuggestion(rider.id, p.targetRaceId)}>
+                  <i className="ti ti-check text-[12px]" aria-hidden="true" /> {t("assistant.accept")}
+                </button>
+              ) : block && (
                 <div className="flex gap-2 flex-wrap">
                   <button className="text-[10.5px] border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAccept(p.id, "build", rider)}>
                     <i className="ti ti-arrow-up-right text-[12px]" aria-hidden="true" /> {t("drawer.rider.build")} · {t("drawer.rider.autoPlan")}
@@ -224,7 +268,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
   );
 }
 
-export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, busy }) {
+export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
   const { t } = useTranslation("planner");
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-4 relative">
@@ -232,7 +276,14 @@ export default function PlannerDrawer({ mode, race, rider, riders, races, maxPer
         <i className="ti ti-x text-[18px]" aria-hidden="true" />
       </button>
       {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} />}
-      {mode === "rider" && rider && <RiderDrawer rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today} onCreatePeak={onCreatePeak} onRemovePeak={onRemovePeak} onAccept={onAccept} busy={busy} />}
+      {mode === "rider" && rider && (
+        <RiderDrawer
+          rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today}
+          onCreatePeak={onCreatePeak} onRemovePeak={onRemovePeak} onAccept={onAccept}
+          onAcceptSuggestion={onAcceptSuggestion} onDismissSuggestion={onDismissSuggestion}
+          busy={busy}
+        />
+      )}
     </div>
   );
 }

@@ -12,6 +12,16 @@
     "body": "Alle ryttere kører fladt lige nu. Sigt mod et løb, så bygger planlæggeren en optakt der løfter deres form til den dag der tæller. Hver rytter kan peake mod op til {max} løb pr. sæson, så vælg hvor det gør en forskel.",
     "cta": "Vælg en rytter-lane for at starte, eller åbn et løb for at se hvem der passer til det."
   },
+  "assistant": {
+    "bannerTitle": "Assistenten har udkastet jeres form-programmer",
+    "bannerBody": "Hver rytter herunder har allerede et foreslået peak-program, bygget ud fra løbskalender, type og alder. Acceptér som det er, justér enkelt-peaks, eller nulstil en rytter til blank.",
+    "badge": "Assistentens forslag",
+    "accept": "Acceptér",
+    "reset": "Nulstil til blank",
+    "resetDone": "Forslag ryddet. Vælg et mål-løb når du er klar.",
+    "reasonRegistered": "Matcher et løb du allerede har tilmeldt rytteren.",
+    "reasonSuitability": "Bedste type-match i kalenderen."
+  },
   "filter": { "mine": "Mine løb", "all": "Alle løb" },
   "legend": {
     "potential": "Potentiel top",
@@ -43,7 +53,8 @@
       "hideProfiles": "Skjul etape-profiler",
       "setPeak": "Sæt peak",
       "demands": "Dette løb kræver",
-      "alreadyPeaking": "Topper her"
+      "alreadyPeaking": "Topper her",
+      "suggestedHere": "Assistenten foreslår her"
     },
     "rider": {
       "abilities": "Evner",

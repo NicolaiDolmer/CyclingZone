@@ -105,6 +105,41 @@ function seedPeaks() {
 let peaks = null;
 function ensure() { if (!peaks) peaks = seedPeaks(); }
 
+// #2455: assistent-forslag i preview-mocken (samme klik-igennem-formål som resten
+// af filen, jf. topkommentaren) — RENT beregnede, aldrig i `peaks`-arrayet, spejler
+// backend/lib/peakSuggestions.js's kontrakt (isSuggestion + suggestionReason).
+// De to ryttere uden en ægte seed-peak (rd-novak, rd-bianchi) får hver ét forslag,
+// så ejeren kan klikke accept/justér/nulstil igennem på preview FØR launch-flaget
+// flippes (feedback_owner_must_be_able_to_test_on_preview).
+const SUGGESTION_SEED = [
+  { riderId: "rd-novak", raceId: "r-tour", reason: "suitability" },    // GC-type → bjerg-grand-tour
+  { riderId: "rd-bianchi", raceId: "r-coastal", reason: "suitability" }, // rouleur → fladt sprint-løb
+];
+
+let dismissedRiders = null;
+function ensureDismissed() { if (!dismissedRiders) dismissedRiders = new Set(); }
+
+function suggestionsFor(riderId, realPeaksForRider) {
+  ensureDismissed();
+  if (dismissedRiders.has(riderId) || realPeaksForRider.length > 0) return [];
+  return SUGGESTION_SEED
+    .filter((s) => s.riderId === riderId)
+    .map((s) => {
+      const race = RACE_BY_ID.get(s.raceId);
+      const focus = FOCUS_FOR[race.terrain] || "endurance";
+      return {
+        id: `sugg:${riderId}:${s.raceId}`, riderId, seasonId: "season-preview",
+        targetRaceId: s.raceId, targetRaceName: race.name,
+        windowStart: addDays(race.date, -RADIUS), windowEnd: addDays(race.date, RADIUS),
+        lockedAt: null, locked: false, createdAt: null,
+        trainingQuality: null, status: "pending",
+        recommendedFocus: focus,
+        suggestedTrainingBlock: { recommendedFocus: focus, leadupDays: LEADUP, weekRhythms: { build: BUILD_WEEK, taper: TAPER_WEEK } },
+        isSuggestion: true, suggestionReason: s.reason,
+      };
+    });
+}
+
 function locked(p) { return ord(p.windowStart) - ord(TODAY) <= LOCK_LEAD; }
 function status(p) {
   if (ord(TODAY) < ord(p.windowStart) - LEADUP) return "pending";
@@ -121,7 +156,10 @@ function buildBoard(peakList) {
     maxPerRider: MAX_PER_RIDER,
     today: TODAY,
     leadupDays: LEADUP,
-    riders: RIDERS.map((r) => ({ ...r, peaks: peakList.filter((p) => p.riderId === r.id).map(serialize) })),
+    riders: RIDERS.map((r) => {
+      const real = peakList.filter((p) => p.riderId === r.id).map(serialize);
+      return { ...r, peaks: [...real, ...suggestionsFor(r.id, real)] };
+    }),
     races: RACES,
   };
 }
@@ -145,6 +183,17 @@ export function plannerMockRoute(method, pathname, _search, body) {
 
   if (seg === "board" && method === "GET") return { status: 200, body: board() };
   if (!seg && method === "GET") return { status: 200, body: { enabled: true, season: board().season, maxPerRider: MAX_PER_RIDER, plans: peaks.map(serialize) } };
+
+  // POST /api/peak-plans/dismiss-suggestions — nulstil assistent-forslaget til
+  // blank for én rytter (#2455 krav 2/3). Sæson-scoped i den ægte API'en; her er
+  // ét preview-"besøg" ækvivalent med "denne sæson" (modulets levetid).
+  if (seg === "dismiss-suggestions" && method === "POST") {
+    ensureDismissed();
+    const riderId = body?.rider_id;
+    if (typeof riderId !== "string" || !riderId) return { status: 400, body: { error: "invalid_rider_id" } };
+    dismissedRiders.add(riderId);
+    return { status: 200, body: { ok: true, id: riderId } };
+  }
 
   // POST /api/peak-plans — opret.
   if (!seg && method === "POST") {

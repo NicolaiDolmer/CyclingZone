@@ -119,3 +119,36 @@ test("gate-helperen giver ejer/beta-preview (isViewerBetaTester → isPeakPlanne
   assert.match(block, /isViewerBetaTester/, "gaten skal udlede viewerens beta-status (admin/beta-tester)");
   assert.match(block, /isPeakPlannerEnabled\(supabase,\s*\{\s*isBetaTester/, "gaten skal sende isBetaTester til flag-evalueringen (så 'beta'-stage virker)");
 });
+
+// ── Assistent-forslag (#2455) ────────────────────────────────────────────────
+
+test("POST /peak-plans/dismiss-suggestions er registreret med requireAuth + gate + rate-limit", () => {
+  const block = handlerBlock('router.post("/peak-plans/dismiss-suggestions"');
+  assert.match(block, /requireAuth/, "skal kræve auth");
+  assert.match(block, /isPeakPlannerEnabled|peakPlannerEnabledFor/, "skal tjekke launch-flaget");
+  assert.match(block, /marketWriteLimiter/, "skal rate-limites (samme mønster som øvrige peak-plans-writes)");
+});
+
+test("POST /peak-plans/dismiss-suggestions håndhæver ejerskab (egen rytter)", () => {
+  const block = handlerBlock('router.post("/peak-plans/dismiss-suggestions"');
+  assert.match(block, /not_own_rider/, "skal afvise fremmede ryttere");
+});
+
+test("POST /peak-plans/dismiss-suggestions degraderer gracefully hvis #2455-migrationen ikke er anvendt endnu", () => {
+  const block = handlerBlock('router.post("/peak-plans/dismiss-suggestions"');
+  assert.match(block, /42703/, "skal tåle en manglende peak_suggestions_dismissed_season_id-kolonne (42703) uden 500");
+});
+
+test("GET /peak-plans/board genererer assistent-forslag via peakSuggestions-libben, ALDRIG en rider_peak_plans-insert for dem", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /suggestPeaksForRider/, "board skal beregne forslag via den rene peakSuggestions-lib");
+  assert.match(block, /isSuggestion:\s*true/, "forslag skal være tydeligt markeret i payloaden");
+  assert.doesNotMatch(block, /rider_peak_plans["'`]\)\s*\n?\s*\.insert/, "forslags-generering må ALDRIG skrive til rider_peak_plans");
+});
+
+test("GET /peak-plans/board respekterer nulstil-til-blank (dismissedSet) + ekskluderer allerede-mål-satte løb", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /loadPeakSuggestionDismissals/, "board skal tjekke sæson-scoped nulstilling");
+  assert.match(block, /dismissedSet\.has\(rd\.id\)/, "dismissede ryttere må ikke få forslag");
+  assert.match(block, /realTargetIds/, "forslag må ikke duplikere et allerede-ægte mål-løb");
+});
