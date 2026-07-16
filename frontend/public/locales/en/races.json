@@ -314,6 +314,13 @@
     "role": {
       "free_role": "Free role"
     },
+    "roleHelp": {
+      "captain": "Gets the team's support for a result. Protected: never asked to sacrifice his own race.",
+      "sprintCaptain": "The team leads him out for the sprint. Protected, same as captain.",
+      "helper": "Works for the team. Costs his own placing, strengthens the captain's result.",
+      "hunter": "Sent up the road on his own. Small cost, independent shot at a result.",
+      "freeRole": "No fixed job. Rides based on how the stage unfolds."
+    },
     "effort": {
       "protect": "Work",
       "normal": "Normal",

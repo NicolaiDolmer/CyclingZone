@@ -22,7 +22,7 @@
 // modner over dage (ingen øjeblikkelig niveau-ændring) — mens opgaven er aktiv
 // vises "Spejderen arbejder" i stedet for knappen (pendingFor(riderId)).
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PotentialeStars from "../PotentialeStars";
 import { SearchIcon } from "../ui";
@@ -39,6 +39,10 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   useEffect(() => {
     if (riderId) requestEstimates([riderId]);
   }, [riderId, requestEstimates]);
+
+  // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
+  // fejl skal vises. Hook skal stå FØR de tidlige returns nedenfor (rules-of-hooks).
+  const [scoutError, setScoutError] = useState(null);
 
   const estimate = estimateFor(riderId);
 
@@ -58,11 +62,25 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
   const canScout = remaining > 0 && level < maxLevel && !busy && !pending;
 
-  const handleScout = (e) => {
+  // Kompakt kontekst (kort/tabelrække) → et lille fejl-mærke i stedet for en
+  // fuld banner (samme kontrakt som RiderScoutingTab.jsx).
+  const handleScout = async (e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (canScout) scout(riderId);
+    if (!canScout) return;
+    setScoutError(null);
+    const r = await scout(riderId);
+    if (r && !r.ok) setScoutError(r.error || "failed");
   };
+  const scoutErrorBadge = scoutError && (
+    <span
+      role="alert"
+      title={t([`rider:scouting.scoutErrors.${scoutError}`, "rider:scouting.scoutFailed"])}
+      className="text-[10px] font-bold text-cz-danger"
+    >
+      !
+    </span>
+  );
 
   const pendingBadge = scoutSystemEnabled && pending && (
     <span className="text-[11px] text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
@@ -98,6 +116,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
         </span>
         {pendingBadge}
         {scoutButton}
+        {scoutErrorBadge}
       </span>
     );
   }
@@ -122,6 +141,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
       )}
       {pendingBadge}
       {scoutButton}
+      {scoutErrorBadge}
     </span>
   );
 }

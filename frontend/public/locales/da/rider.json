@@ -101,6 +101,12 @@
       "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
       "emptyFocus": "Vælg et fokus for at tildele træning.",
       "focusRefTitle": "Hvert fokus træner",
+      "actionErrorGeneric": "Kunne ikke gemme. Prøv igen om lidt.",
+      "actionErrors": {
+        "no_slots": "Ingen trænings-slots tilbage.",
+        "auth": "Din session er udløbet. Log ind igen.",
+        "network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen."
+      },
       "log": {
         "title": "Daglig træning · sidste 7 dage",
         "empty": "Ingen træningsdage endnu.",
@@ -288,7 +294,15 @@
       "valueMarket": "Markedsværdi",
       "valueExpected": "Forventet værdi",
       "valueReadAbove": "Modellen vurderer ham højere end hans nuværende markedsværdi.",
-      "valueReadBelow": "Hans markedsværdi er på niveau med eller over modellens forventning."
+      "valueReadBelow": "Hans markedsværdi er på niveau med eller over modellens forventning.",
+      "scoutFailed": "Kunne ikke sende spejderen. Prøv igen om lidt.",
+      "scoutErrors": {
+        "max_level": "Denne rytter er allerede fuldt scoutet.",
+        "capacity": "Din spejder er allerede fuldt booket. Vent til en opgave er færdig.",
+        "insufficient_funds": "Ikke nok CZ$ til at sende en spejder.",
+        "auth": "Din session er udløbet. Log ind igen.",
+        "network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen."
+      }
     },
     "interest": {
       "loading": "Henter interesse...",
