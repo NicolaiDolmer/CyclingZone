@@ -38,7 +38,7 @@
       },
       "season1Baseline": {
         "title": "Your board is open from day one",
-        "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
+        "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. During this baseline season the board already watches your race results and club finances weekend by weekend, and its satisfaction moves within a 30-75 range accordingly, even though there are no hard consequences yet. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
       },
       "season2Onboarding": {
         "title": "Sequential board onboarding",
@@ -888,7 +888,7 @@
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",
-      "a": "Yes. The board is unlocked from the start of season 1, so you can pick your Club DNA and negotiate your 5-year, 3-year and 1-year plans right away. Until you sign your first plan the sponsor modifier stays at 1.0×, so the season-1 sponsor is neutral while you set up. The board also *reads* your team (which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are) and saves this 'identity snapshot' on your team permanently as the basis for your 5-year plan suggestions."
+      "a": "Yes. The board is unlocked from the start of season 1, so you can pick your Club DNA and negotiate your 5-year, 3-year and 1-year plans right away. Until you sign your first plan the sponsor modifier stays at 1.0×, so the season-1 sponsor is neutral while you set up. Even without a signed plan, the board's satisfaction already tracks your race results (standing among the other real teams in your group) and your finances weekend by weekend, moving within a 30-75 range. It just doesn't trigger hard consequences yet. The board also *reads* your team (which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are) and saves this 'identity snapshot' on your team permanently as the basis for your 5-year plan suggestions."
     },
     "buildOnCoreBadge": {
       "q": "What does the 'Builds on your core' badge mean on 5-year targets?",
