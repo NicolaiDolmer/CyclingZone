@@ -10212,11 +10212,14 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
       team: context.team,
       riders: context.riders,
       standing: context.standing,
-      board,
       identityBasis: context.team?.season_1_identity_basis ?? null,
       dnaKey: context.team?.team_dna_key ?? null,
       // S-02g · Anvend deferred tradeoff-stramning fra forrige sæsons approved request.
       // Påvirker target+label på min_u25_riders/min_national_riders eller sponsor_growth.
+      // #2469 · `board` blev tidligere sendt med her, men buildBoardProposal har
+      // ingen board-parameter (boardGoals.js) — det var en død prop, der fik
+      // divergensen mod auto-accept til at ligne "board mangler". Kun
+      // tradeoffPayload er kausal.
       tradeoffPayload: board?.tradeoff_payload ?? null,
     });
 
@@ -10277,10 +10280,10 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       team,
       riders,
       standing,
-      board: existingBoard,
       identityBasis: team?.season_1_identity_basis ?? null,
       dnaKey: team?.team_dna_key ?? null,
       // S-02g · Tradeoff fra forrige sæsons approved request anvendes nu på den nye plan.
+      // #2469 · `board: existingBoard` fjernet — død prop (se /board/proposal ovenfor).
       tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
     });
 
