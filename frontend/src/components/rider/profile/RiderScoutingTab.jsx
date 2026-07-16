@@ -73,6 +73,9 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const { t: tTypes } = useTranslation("riderTypes");
   const [report, setReport] = useState(null);   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
+  // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
+  // fejl (fuld kapacitet, ikke nok CZ$, netværk) skal vises, ikke forsvinde stille.
+  const [scoutError, setScoutError] = useState(null);
 
   const riderId = rider?.id;
   const {
@@ -115,11 +118,16 @@ export default function RiderScoutingTab({ rider, scouting }) {
 
   const handleScout = async () => {
     if (!canScout) return;
+    setScoutError(null);
     const r = await scout(riderId);
-    // Job-model: niveauet ændrer sig først når opgaven modner (dagens sweep) —
-    // genindlæs IKKE rapporten her (intet nyt at vise endnu). Legacy-model:
-    // slot-brug ændrer niveauet med det samme → genindlæs.
-    if (r?.ok && !scoutSystemEnabled) load();
+    if (r?.ok) {
+      // Job-model: niveauet ændrer sig først når opgaven modner (dagens sweep) —
+      // genindlæs IKKE rapporten her (intet nyt at vise endnu). Legacy-model:
+      // slot-brug ændrer niveauet med det samme → genindlæs.
+      if (!scoutSystemEnabled) load();
+    } else {
+      setScoutError(r?.error || "failed");
+    }
   };
 
   // #2244: job-model-knappen viser opgavens pris fra jobConfig i GET /scouting/me
@@ -185,6 +193,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
           {t("profile.scouting.notScoutedBody")}
         </p>
         {scoutButton("scouting.scout")}
+        {scoutError && (
+          <p role="alert" className="mt-2 text-[11px] text-cz-danger">
+            {t([`profile.scouting.scoutErrors.${scoutError}`, "profile.scouting.scoutFailed"])}
+          </p>
+        )}
       </SectionCard>
     );
   }
@@ -244,6 +257,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
           <div className="mt-3.5 pt-3 border-t border-cz-border flex items-center gap-3 flex-wrap">
             <p className="text-cz-3 text-[12px] m-0">{t("profile.scouting.rescoutHint")}</p>
             {scoutButton("scouting.rescout")}
+            {scoutError && (
+              <p role="alert" className="text-[11px] text-cz-danger w-full m-0">
+                {t([`profile.scouting.scoutErrors.${scoutError}`, "profile.scouting.scoutFailed"])}
+              </p>
+            )}
           </div>
         )}
       </SectionCard>

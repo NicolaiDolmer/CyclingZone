@@ -282,3 +282,27 @@ jobs:
 
       - name: Run swallowed-catch guard
         run: node scripts/lint-swallowed-catches.mjs
+
+  silent-mutation-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod NYE tavse fejl fra de 6 feedback-kontrakt-hooks (#2465).
+    # useTraining/useAcademy/useFacilities/usePlanner/useScouting/useScoutingCentral
+    # returnerer alle eksplicit {ok,error} — et kald der hverken await'es, return'es
+    # eller .then()-kædes lader en fejl (session/netværk/backend-afvisning) forsvinde
+    # tavst i UI'et. Ratchet pr. fil, samme mønster som swallowed-catch-guard.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test silent-mutation guard
+        run: node --test scripts/lint-silent-mutations.test.mjs
+
+      - name: Run silent-mutation guard
+        run: node scripts/lint-silent-mutations.mjs

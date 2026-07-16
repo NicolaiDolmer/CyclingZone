@@ -38,6 +38,8 @@
     "test:lint-riders-column-grant": "node --test scripts/lint-riders-column-grant.test.mjs",
     "lint:catches": "node scripts/lint-swallowed-catches.mjs",
     "test:lint-catches": "node --test scripts/lint-swallowed-catches.test.mjs",
+    "lint:silent-mutations": "node scripts/lint-silent-mutations.mjs",
+    "test:lint-silent-mutations": "node --test scripts/lint-silent-mutations.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",

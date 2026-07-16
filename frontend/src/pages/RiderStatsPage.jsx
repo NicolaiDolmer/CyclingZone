@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
+import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
@@ -692,6 +693,7 @@ export default function RiderStatsPage() {
   const [history, setHistory]               = useState(null);
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
   const [projection, setProjection]         = useState(null); // #2100 fuzzy loft-projektion
+  const [valueTrend, setValueTrend]         = useState(null); // #2499: { windows: {"7":...,"14":...} } | null
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -711,6 +713,7 @@ export default function RiderStatsPage() {
   // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
   const developmentFetchIdRef = useRef(null);
   const projectionFetchIdRef = useRef(null); // #2100 samme stale-guard for projektionen
+  const valueTrendFetchIdRef = useRef(null); // #2499 samme stale-guard for værdi-deltaet
   // #2000 sidste faner: samme stale-guards for historik + interesse + de
   // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
   // rider/seasonRows) — review-fund: uden guards kan hurtig prev/next i
@@ -922,6 +925,24 @@ export default function RiderStatsPage() {
     }
   }
 
+  async function loadValueTrend() {
+    // #2499: værdi-bevægelse skal kunne SES — on-demand delta (7/14 dage) ved
+    // siden af market_value i hero'en. Non-critical (samme mønster som de
+    // andre sekundære profil-fetches): en fejl skjuler bare deltaet, brækker
+    // aldrig resten af profilen. Samme stale-guard som Udvikling-fanens data.
+    const fetchId = id;
+    valueTrendFetchIdRef.current = fetchId;
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
+      const data = res.ok ? await res.json() : null;
+      if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
+      setValueTrend(data);
+    } catch {
+      if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null);
+    }
+  }
+
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -1076,7 +1097,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1321,6 +1342,10 @@ export default function RiderStatsPage() {
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
+  // #2499: værdi-bevægelse skal kunne SES — vælg det bedste tilgængelige vindue
+  // (foretræk 14 dage) fra det separat hentede value-trend-svaret. null = intet
+  // vist (ny/utrænet rytter eller fetch fejlede) — RiderValueTrendBadge skjuler sig selv.
+  const riderValueTrendWindow = pickBestValueTrendWindow(valueTrend?.windows);
   // #2006: Overall 1-99-rating. Evnerne ligger på rider.abilities (rå rad fra
   // rider_derived_abilities) — riderOverallRating læser rider.climbing osv., så
   // vi fladter abilities ind sammen med den lagrede primary_type (ejer-direktiv:
@@ -1420,6 +1445,7 @@ export default function RiderStatsPage() {
           divisionLabel={divisionLabel}
           valueAmount={riderValueAmount}
           valueLabel={riderValueLabel}
+          valueTrendWindow={riderValueTrendWindow}
           salaryText={salaryText}
           winsOnText={winsOnText}
           isAiTeam={isAiRider}

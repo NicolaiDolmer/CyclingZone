@@ -1776,13 +1776,25 @@ test("finalizeAuctionById inherits an existing contract unchanged on a won aucti
 // En youth-auktion (is_youth=true) har INGEN sælger (seller_team_id=NULL) og
 // rytteren er fri (team_id=NULL). Vinderen placeres i sit akademi (is_academy=true,
 // 8-plads-cap), betaler sit bud som academy_signing (sink, ingen seller-payout).
-// Ingen bud → rytteren forbliver fri ungdom.
+// #2456 "usolgt = væk": ender auktionen uden optagelse (ingen bud / akademi fuldt /
+// ingen råd), slettes rytteren — guarded mod racende bud (atomisk claim) og mod
+// race_results-orphans (#1847).
 
-function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyCount = 0 }) {
+function makeYouthFinalizeSupabase({
+  auction,
+  buyerBalance = 1_000_000,
+  academyCount = 0,
+  // #2456-testknobs:
+  claimRaced = false,      // simulér at et bud lander mellem read og atomisk claim → claim rammer 0 rækker
+  riderRaceResults = [],   // race_results-rækker for rytteren (#1847-guard)
+  riderNowOwned = false,   // rytteren har imens fået et hold → conditional DELETE rammer 0 rækker
+}) {
   const riderUpdates = [];
   const auctionUpdates = [];
   const financeInserts = [];
   const notifications = [];
+  const riderDeleteAttempts = [];
+  const riderDeletions = [];
 
   const buyer = { id: auction.current_bidder_id, name: "Buyer FC", balance: buyerBalance };
 
@@ -1823,8 +1835,51 @@ function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyC
             assert.equal(cols, "*, rider:rider_id(*)");
             return { eq: () => ({ maybeSingle: () => Promise.resolve({ data: auction, error: null }) }) };
           },
+          // Skal understøtte BÅDE closeAuction (.update().eq() awaited direkte) og
+          // #2456-claimen (.update().eq().in().is().select() → rækker). Builder'en
+          // er derfor thenable OG chainbar, som den ægte supabase-builder.
           update(payload) {
-            return { eq: () => { auctionUpdates.push(payload); return Promise.resolve({ error: null }); } };
+            const api = {
+              eq() { return api; },
+              in() { return api; },
+              is() { return api; },
+              select() {
+                auctionUpdates.push({ ...payload, _conditionalClaim: true });
+                return Promise.resolve({ data: claimRaced ? [] : [{ id: auction.id }], error: null });
+              },
+              then(resolve, reject) {
+                auctionUpdates.push(payload);
+                return Promise.resolve({ error: null }).then(resolve, reject);
+              },
+            };
+            return api;
+          },
+        };
+      }
+      if (table === "race_results") {
+        return {
+          select: () => ({
+            eq: () => ({ limit: () => Promise.resolve({ data: riderRaceResults, error: null }) }),
+          }),
+        };
+      }
+      if (table === "riders") {
+        return {
+          delete() {
+            const api = {
+              eq() { return api; },
+              is() { return api; },
+              select() {
+                riderDeleteAttempts.push(auction.rider.id);
+                if (riderNowOwned) {
+                  // Conditional DELETE (team_id IS NULL ...) rammer 0 rækker.
+                  return Promise.resolve({ data: [], error: null });
+                }
+                riderDeletions.push(auction.rider.id);
+                return Promise.resolve({ data: [{ id: auction.rider.id }], error: null });
+              },
+            };
+            return api;
           },
         };
       }
@@ -1850,6 +1905,8 @@ function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyC
     _auctionUpdates: auctionUpdates,
     _financeInserts: financeInserts,
     _notifications: notifications,
+    _riderDeleteAttempts: riderDeleteAttempts,
+    _riderDeletions: riderDeletions,
   };
   return supabase;
 }
@@ -1933,6 +1990,9 @@ test("youth-auktion MED bud men akademi fyldt (8): annulleres, ingen placering, 
   assert.equal(supabase._riderUpdates.length, 0, "ingen placering når fyldt");
   assert.equal(supabase._financeInserts.length, 0, "ingen debit når fyldt");
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
+  // #2456: rytteren blev ikke optaget → han slettes (ingen fri-liste at falde på).
+  assert.equal(result.rider_deleted, true);
+  assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "usolgt rytter slettet");
 });
 
 test("youth-auktion MED bud men utilstrækkelig balance: annulleres, ingen placering, ingen debit", async () => {
@@ -1956,9 +2016,12 @@ test("youth-auktion MED bud men utilstrækkelig balance: annulleres, ingen place
   assert.equal(supabase._riderUpdates.length, 0);
   assert.equal(supabase._financeInserts.length, 0);
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
+  // #2456: rytteren blev ikke optaget → han slettes.
+  assert.equal(result.rider_deleted, true);
+  assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "usolgt rytter slettet");
 });
 
-test("youth-auktion UDEN bud: rytter forbliver fri ungdom, auktion completed, ingen debit", async () => {
+test("youth-auktion UDEN bud (#2456): auktionen claimes atomisk (completed) og rytteren SLETTES, ingen debit", async () => {
   const auction = {
     id: "youth-auc-4",
     status: "active",
@@ -1976,9 +2039,95 @@ test("youth-auktion UDEN bud: rytter forbliver fri ungdom, auktion completed, in
   });
 
   assert.equal(result.code, "youth_no_bids");
-  assert.equal(supabase._riderUpdates.length, 0, "rytter er allerede fri — ingen ejerskabsændring");
+  assert.equal(result.rider_deleted, true, "usolgt = væk: rytteren slettes");
+  assert.equal(supabase._riderUpdates.length, 0, "ingen ejerskabsændring");
   assert.equal(supabase._financeInserts.length, 0, "ingen debit uden bud");
-  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+  // Lukningen skete via den ATOMISKE conditional claim (status-check + ingen
+  // byder i selve UPDATE'en), ikke en ubetinget closeAuction.
+  const claim = supabase._auctionUpdates.find((u) => u._conditionalClaim);
+  assert.ok(claim, "auktionen lukket via conditional claim");
+  assert.equal(claim.status, "completed");
+  assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "rytteren slettet");
+});
+
+test("youth-auktion UDEN bud men RACENDE bud (#2456 TOCTOU): claim rammer 0 rækker → rytteren røres IKKE, buddet vinder", async () => {
+  // Et bud landede mellem finalizerens read (current_bidder_id=null) og den
+  // atomiske claim. Claimen rammer 0 rækker → ingen sletning, auktionen står
+  // stadig active med byderen, og næste finalize-pass gennemfører den med
+  // vinderen. Buddet vinder altid over sletningen.
+  const auction = {
+    id: "youth-auc-5",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: null, // finalizerens (forældede) read
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, claimRaced: true });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "youth_bid_raced");
+  assert.equal(supabase._riderDeleteAttempts.length, 0, "INGEN delete forsøgt når claimen tabte");
+  assert.equal(supabase._riderDeletions.length, 0, "rytteren består — buddet vandt");
+  assert.equal(supabase._financeInserts.length, 0, "ingen debit i dette pass");
+});
+
+test("youth-auktion UDEN bud men rytteren har race_results (#1847-guard): beholdes, ingen sletning", async () => {
+  const auction = {
+    id: "youth-auc-6",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: null,
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({
+    auction,
+    riderRaceResults: [{ id: "result-1" }],
+  });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "youth_no_bids");
+  assert.equal(result.rider_deleted, false, "rytter med resultater beholdes (ingen nye orphans)");
+  assert.equal(supabase._riderDeleteAttempts.length, 0, "DELETE aldrig forsøgt når resultater findes");
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"), "auktionen lukkes stadig");
+});
+
+test("youth-auktion UDEN bud men rytteren fik imens et hold (#2456 guard 3): conditional DELETE rammer 0 rækker", async () => {
+  // Parallel sti (fx cron-retry af en anden auktion) nåede at optage rytteren
+  // efter claimen. DELETE'ens egne betingelser (team_id IS NULL, is_academy=false)
+  // rammer 0 rækker → rytteren bevares.
+  const auction = {
+    id: "youth-auc-7",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: null,
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, riderNowOwned: true });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "youth_no_bids");
+  assert.equal(result.rider_deleted, false, "ejet rytter må aldrig slettes");
+  assert.equal(supabase._riderDeleteAttempts.length, 1, "DELETE forsøgt (betinget)");
+  assert.equal(supabase._riderDeletions.length, 0, "0 rækker ramt — rytteren bevaret");
 });
 
 // ── #1995: rytter i AKTIVT fleretape-løb → auktions-vinderen får pending_team_id ──

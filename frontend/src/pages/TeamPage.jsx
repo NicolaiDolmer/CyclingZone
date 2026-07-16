@@ -12,6 +12,8 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
+import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
+import RiderValueTrendBadge from "../components/rider/RiderValueTrendBadge.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
@@ -333,7 +335,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider }) {
+function SquadTab({ riders, scouting, onSelectRider, valueTrends }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -515,8 +517,17 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                         {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen. */}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono text-sm font-bold">
-                      {formatNumber(getRiderMarketValue(r))}
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="text-cz-accent-t font-mono text-sm font-bold">
+                        {formatNumber(getRiderMarketValue(r))}
+                      </div>
+                      {/* #2499: kompakt delta-pil under værdien — inline-notation
+                          for at undgå en ekstra kolonne i en allerede tæt tabel. */}
+                      <RiderValueTrendBadge
+                        window={pickBestValueTrendWindow(valueTrends[r.id]?.windows)}
+                        size="xs"
+                        className="justify-end mt-0.5"
+                      />
                     </td>
                     <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
                     <td className="px-3 py-2.5">
@@ -580,8 +591,30 @@ export function TeamPage() {
   const [demoteConfirm, setDemoteConfirm] = useState(null);
   const [demoteBusy, setDemoteBusy] = useState(false);
   const [demoteError, setDemoteError] = useState(null);
+  // #2499: værdi-delta pr. rytter (kompakt pil i værdi-kolonnen) — { [riderId]: { windows } }.
+  const [valueTrends, setValueTrends] = useState({});
 
   useEffect(() => { loadAll(); loadDdStatus(); }, []);
+  // #2499: batch-hentning af værdi-deltaer NÅR truppen er kendt (ét POST-kald,
+  // ingen N+1). Non-critical: fejl efterlader bare valueTrends tom → ingen pile
+  // vist, resten af siden upåvirket. Genkører når truppens sammensætning ændrer sig.
+  const riderIdsKey = riders.map(r => r.id).join(",");
+  useEffect(() => { loadValueTrends(); }, [riderIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadValueTrends() {
+    if (riders.length === 0) { setValueTrends({}); return; }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/value-trend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ ids: riders.map(r => r.id) }),
+      });
+      setValueTrends(res.ok ? await res.json() : {});
+    } catch {
+      setValueTrends({});
+    }
+  }
 
   // Åbn demote-bekræftelsen: tæl fremtidige løb rytteren ville blive fjernet fra
   // (scheduled + stages_completed=0), så dialogen kan vise konsekvensen FØR confirm.
@@ -740,7 +773,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} valueTrends={valueTrends} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />
