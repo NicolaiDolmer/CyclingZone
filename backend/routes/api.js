@@ -207,6 +207,7 @@ import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
+  buildBoardEvalContext,
   buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
@@ -9722,8 +9723,6 @@ router.get("/board/status", requireAuth, async (req, res) => {
         boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
       );
 
-      const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
-
       // S-02d · Hent cumulative kontekst-felter for de 7 nye mål-typer.
       // Best-effort — hvis loaderen fejler, returneres outlook uden de nye
       // metrics (graceful degradation, eksisterende mål påvirkes ikke).
@@ -9747,41 +9746,26 @@ router.get("/board/status", requireAuth, async (req, res) => {
         }
       }
 
-      // #979 · Cumulative wins = afsluttede sæsoner (board.cumulative_*) + indeværende
-      // sæsons in-progress wins (currentStanding.*). board.cumulative_* persisteres FØRST
-      // ved season-end (economyEngine.processTeamSeasonEnd), så uden currentStanding ville
-      // 3yr/5yr-delmålene vise 0 midt i sæsonen. Beregnes én gang og genbruges til både
-      // outlook-evaluering og det returnerede cumulative_stats-display, så de ikke kan drifte
-      // fra hinanden (præcis den inkonsistens der var root cause for #979).
-      const cumulativeStageWins = (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0);
-      const cumulativeGcWins = (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0);
-
       // #2310 punkt 2 · genbrugt SOM variabel så både outlook OG den read-only
       // satisfaction-prognose (computeWeekendSatisfactionUpdate) deler nøjagtig
       // samme evalueringskontekst — ingen risiko for at de to drifter fra hinanden.
-      const weekendEvalContext = {
+      // #2469 · bygget af den delte buildBoardEvalContext (planDuration/
+      // seasonsCompleted/isFinalSeason/cumulativeStats beregnes dér — #2308's
+      // isFinalSeason-regel inklusive), så stien ikke kan drifte fra
+      // /board/request, weekend og season-end igen.
+      const weekendEvalContext = buildBoardEvalContext({
+        board,
+        standing: currentStanding,
         activeLoanCount,
-        planStartSponsorIncome: board.plan_start_sponsor_income,
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        planDuration,
-        seasonsCompleted: workingSeasonIndex,
-        // #2308 · Weekend/season-end sætter isFinalSeason (seasonsCompleted+1 >=
-        // planDuration); uden den her scorer no_outstanding_debt 1.0 i stedet for
-        // 1.05 og final-only mål pro-rates forkert i live-outlook-displayet.
-        // workingSeasonIndex er allerede min(planDuration, seasonsCompleted+1),
-        // så >= planDuration er ækvivalent med den uncappede sammenligning.
-        isFinalSeason: workingSeasonIndex >= planDuration,
-        hasSeasonData: Boolean(currentStanding),
-        isExpired,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
-        cumulativeStats: {
-          stageWins: cumulativeStageWins,
-          gcWins: cumulativeGcWins,
+        goalContext,
+        extra: {
+          isExpired,
+          // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
+          assignedMembers: teamBoardMembers,
         },
-        ...goalContext,
-        // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
-        assignedMembers: teamBoardMembers,
-      };
+      });
 
       const outlook = buildBoardOutlook({
         board,
@@ -9848,9 +9832,13 @@ router.get("/board/status", requireAuth, async (req, res) => {
         seasons_remaining: seasonsRemaining,
         seasons_completed: seasonsCompleted,
         plan_progress_pct: planProgressPct,
+        // #979 · Display og outlook-evaluering deler SAMME kumulative tal
+        // (afsluttede sæsoner + indeværende) — nu direkte fra eval-konteksten,
+        // så de strukturelt ikke kan drifte fra hinanden. #2469: beregningen
+        // selv bor i buildBoardEvalContext.
         cumulative_stats: {
-          stage_wins: cumulativeStageWins,
-          gc_wins: cumulativeGcWins,
+          stage_wins: weekendEvalContext.cumulativeStats.stageWins,
+          gc_wins: weekendEvalContext.cumulativeStats.gcWins,
         },
         snapshots: boardSnapshots,
         satisfaction_events: boardEvents,
@@ -10407,12 +10395,38 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
     }
     if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });
 
-    const planDuration = getPlanDuration(board.plan_type);
-    const workingSeasonIndex = Math.min(planDuration, (board.seasons_completed || 0) + 1);
     const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
 
     if (requestUsedThisSeason) {
       return res.status(409).json({ error: "Board request already used this season" });
+    }
+
+    // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
+    // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
+    // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
+    // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
+    // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
+    // andet grundlag end det /board/status netop viste spilleren: relative_rank
+    // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
+    // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
+    // Best-effort som i /board/status: fejler loaderen, degraderer vi til
+    // evaluering uden de kumulative metrics frem for at vælte requesten.
+    let goalContext = {};
+    try {
+      goalContext = await loadGoalContextForBoard({
+        supabase,
+        teamId,
+        boardId: board.id,
+        currentSeasonId: activeSeason.id,
+        division: standing?.division ?? null,
+        // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+        // er pulje-allokeret (ellers tier-bredt fallback).
+        leagueDivisionId: standing?.league_division_id ?? null,
+        // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+        planStartSeasonNumber: board.plan_start_season_number,
+      });
+    } catch (e) {
+      console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
     }
 
     const requestResult = resolveBoardRequest({
@@ -10423,27 +10437,24 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
         riders,
       },
       standing,
-      context: {
+      context: buildBoardEvalContext({
+        board,
+        standing,
         activeLoanCount: loansRes.count || 0,
         currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        hasSeasonData: Boolean(standing),
-        isExpired: board.negotiation_status === "pending",
-        planDuration,
-        planStartSponsorIncome: board.plan_start_sponsor_income,
         recentSnapshots: snapshotsRes.data || [],
-        requestUsedThisSeason,
-        seasonsCompleted: workingSeasonIndex,
-        cumulativeStats: {
-          stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
-          gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
+        goalContext,
+        extra: {
+          isExpired: board.negotiation_status === "pending",
+          requestUsedThisSeason,
+          // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
+          raceDaysLeft: activeSeason
+            ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+            : null,
+          satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
+          activeSeasonId: activeSeason?.id ?? null,
         },
-        // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
-        raceDaysLeft: activeSeason
-          ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
-          : null,
-        satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
-        activeSeasonId: activeSeason?.id ?? null,
-      },
+      }),
     });
 
     let updatedBoard = board;
