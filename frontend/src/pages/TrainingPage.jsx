@@ -12,7 +12,7 @@ import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, isValidIntensity } from "../lib/training.js";
+import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
@@ -330,15 +330,31 @@ export default function TrainingPage() {
     const isExpanded = expandedRiderId === rider.id;
     const savingRiderPlan = savingRiderWeekPlanId === rider.id;
 
-    // #1895 PR 1+2: ren visning — dagens EFFEKTIVE intensitet ift. rytme-lagene.
-    // Kun relevant når rytteren har en plan (uden plan er der intet sæson-tal at
-    // afvige fra). Sandheden bor i motoren; dette er blot en frontend-hint.
-    const effectiveTodayIntensity = plan?.intensity
-      ? resolveDayIntensityDisplay({ weekday: todayWeekday, riderOverrideDays, teamWeekDays: weekPlan, planIntensity: plan.intensity })
+    // #2438 — "én sandhed pr. rytter": rytterens EGEN eksplicitte focus+intensity
+    // (training_plans) overtrumfer holdets ugerytme; rytmen er kun default for
+    // ryttere uden egen override. Samme lagdeling som motoren (training.js
+    // resolveDayIntensity). Kun relevant til visning når holdet HAR en ugerytme —
+    // uden rytme er der intet konkurrerende signal at forklare.
+    const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
+    const teamRhythmActive = weekPlan != null;
+    const effectiveTodayIntensity = teamRhythmActive
+      ? resolveDayIntensityDisplay({
+          weekday: todayWeekday,
+          riderOverrideDays,
+          teamWeekDays: weekPlan,
+          planIntensity: plan?.intensity ?? "normal",
+          hasExplicitPlan,
+        })
       : null;
-    const intensityDiffersToday = effectiveTodayIntensity != null && effectiveTodayIntensity !== plan.intensity;
-    const riderOverrideToday = riderOverrideDays?.[todayWeekday]?.intensity;
-    const todayHintKey = isValidIntensity(riderOverrideToday) ? "weekRhythmTodayHintOwn" : "weekRhythmTodayHint";
+    const todayIntensitySource = teamRhythmActive
+      ? resolveDayIntensitySource({ weekday: todayWeekday, riderOverrideDays, teamWeekDays: weekPlan, hasExplicitPlan })
+      : null;
+    const todayHintKey = {
+      individualPlan: "weekRhythmTodayHintOwn",
+      ownSetting: "weekRhythmTodayHintPlan",
+      teamRhythm: "weekRhythmTodayHint",
+      default: "weekRhythmTodayHint",
+    }[todayIntensitySource];
 
     return (
       <Fragment key={rider.id}>
@@ -477,7 +493,11 @@ export default function TrainingPage() {
           ) : (
             <span className="text-cz-3 text-xs">—</span>
           )}
-          {intensityDiffersToday && (
+          {/* #2438 — "én sandhed pr. rytter": vis altid dagens EFFEKTIVE intensitet +
+              kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
+              Uden dette forsvandt hele forklaringen for ryttere uden eget fokus, som
+              stille fulgte holdrytmen uden nogen synlig grund. */}
+          {teamRhythmActive && (
             <div className="mt-0.5 text-[10px] text-cz-3">
               {t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
             </div>

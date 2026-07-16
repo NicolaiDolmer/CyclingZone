@@ -258,19 +258,32 @@ export function isValidWeekPlanDays(days, cfg = TRAINING_CONFIG) {
 // visning, samme regel) for at markere rækker hvor rytmen afviger fra sæson-
 // intensiteten. Prioritet (højeste vinder):
 //   1) riderOverrideDays[weekday].intensity — rytterens EGEN pr-dag-override
-//      (PR 2 — riderOverrideDays er altid null i denne PR, men signaturen har
-//      parameteren nu så PR 2 kun skal ændre kaldestedet, ikke funktionen)
-//   2) teamWeekDays[weekday].intensity — holdets ugerytme, hvis sat
-//   3) planIntensity — rytterens sæson-intensitet (training_plans, nuværende
-//      adfærd; kalderen har allerede resolvet default-fallback hertil)
-//   4) "normal" — sidste sikkerhedsnet hvis planIntensity selv mangler
-//   weekday         : én af WEEKDAY_KEYS ("mon".."sun")
-//   riderOverrideDays : rytterens days-objekt (rider_id sat) eller null (PR 2)
+//      (den separate "individuel ugeplan"-flade)
+//   2) planIntensity, HVIS hasExplicitPlan — rytterens egen individuelle
+//      trænings-indstilling (training_plans, sat af spilleren pr. rytter).
+//      #2438 — ejerens præcedens: en individuel rytter-indstilling overtrumfer
+//      den ugentlige rutine; rutinen er kun default for ryttere UDEN override.
+//      Før denne fix vandt holdrytmen ubetinget over rytterens egen intensitet
+//      (fx "rest"), selv når rytteren havde en eksplicit plan — det var kilden
+//      til #2438 ("hele mit hold trænede hard selvom jeg satte dem til rest").
+//   3) teamWeekDays[weekday].intensity — holdets ugerytme, som DEFAULT for
+//      ryttere uden egen eksplicit plan
+//   4) planIntensity — sidste fallback (typisk DEFAULT_PROGRAM="normal" når
+//      rytteren slet ingen plan har; kalderen har allerede resolvet dette)
+//   5) "normal" — sidste sikkerhedsnet hvis planIntensity selv mangler
+//   weekday           : én af WEEKDAY_KEYS ("mon".."sun")
+//   riderOverrideDays : rytterens days-objekt (rider_id sat) eller null
 //   teamWeekDays      : holdets days-objekt (rider_id IS NULL) eller null
 //   planIntensity     : allerede-resolvet sæson-/default-intensitet
-export function resolveDayIntensity({ weekday, riderOverrideDays, teamWeekDays, planIntensity }) {
+//   hasExplicitPlan   : true hvis rytteren selv har sat focus+intensity
+//                       (training_plans-row eksisterer med begge felter sat)
+export function resolveDayIntensity({
+  weekday, riderOverrideDays, teamWeekDays, planIntensity, hasExplicitPlan = false,
+}) {
   const riderOverride = riderOverrideDays?.[weekday]?.intensity;
   if (isValidIntensity(riderOverride)) return riderOverride;
+
+  if (hasExplicitPlan && isValidIntensity(planIntensity)) return planIntensity;
 
   const teamDay = teamWeekDays?.[weekday]?.intensity;
   if (isValidIntensity(teamDay)) return teamDay;

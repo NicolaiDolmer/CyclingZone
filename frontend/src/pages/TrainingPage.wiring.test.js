@@ -70,13 +70,15 @@ test("#1895 ugerytme-panel har 7 ugedags-selects + gem/nulstil wired mod useTrai
   assert.match(src, /clearWeekPlan\(\)/, "nulstil skal kalde useTraining's clearWeekPlan");
 });
 
-test("#1895 roster-rækker markerer dage hvor ugerytmen afviger fra sæson-intensiteten (ren visning)", () => {
+test("#1895/#2438 roster-rækker viser altid dagens effektive intensitet + kilde, når holdet har en ugerytme (ren visning)", () => {
   assert.match(src, /resolveDayIntensityDisplay/, "skal genbruge den delte lagdelings-funktion (samme regel som motoren)");
-  assert.match(src, /intensityDiffersToday/);
-  // #1895 PR 2: hint-nøglen er dynamisk (todayHintKey) så den kan skelne holdrytme
-  // fra rytterens egen override — begge varianter skal stadig eksistere i i18n-kaldet.
+  assert.match(src, /resolveDayIntensitySource/, "#2438: skal genbruge kilde-funktionen (individualPlan/ownSetting/teamRhythm)");
+  assert.match(src, /teamRhythmActive/, "hint vises altid når holdet HAR en ugerytme (ikke kun ved 'differs')");
+  // #2438: hint-nøglen er dynamisk (todayHintKey) og skelner nu mellem individuel
+  // ugeplan, rytterens egen eksplicitte plan (der overtrumfer rytmen) og holdrytmen.
   assert.match(src, /t\(todayHintKey,/);
   assert.match(src, /weekRhythmTodayHint"/);
+  assert.match(src, /weekRhythmTodayHintPlan"/, "#2438: ny variant for rytterens egen indstilling, der overtrumfer holdrytmen");
 });
 
 // ── #1895 PR 2: individuel ugeplan pr. rytter (rider_id-override) ─────────────
