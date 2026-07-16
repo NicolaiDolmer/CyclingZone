@@ -36,11 +36,14 @@ kanoniske `fetchAllRows` fra `supabasePagination.js`, med **total sortering** (`
 
 ## Læring
 
-1. **Bug-klassen var allerede kendt og dokumenteret** — `supabasePagination.js`' egen header
-   nævner PCM-matcheren (tabte 88% af ryttere) og updateStandings (38% underberegning);
-   `api.js` har tre `fetchAll*`-helpers med samme advarsel (#1798/#1839). Watchdogen blev
-   bare skrevet uden dem. **En helper forhindrer ikke bug-klassen — kun brugen af den gør.**
-   Værd at overveje: en lint-regel/grep-gate mod `.in(` uden `.range(`/`fetchAllRows`.
+1. **Guarden fandtes — den så bare den anden halvdel af bug-klassen.** CI har allerede
+   `postgrest-cap-guard` (`scripts/lint-postgrest-in-cap.mjs`, indført efter #1798/#1839/#1841),
+   og den var **grøn** på denne PR. Den flager `.in(ids.slice(0, N))` — trunkering af
+   **input**-listen. Watchdogens bug var trunkering af **output**: en bar `.in()` uden
+   `.range()`. Samme rod-årsag (PostgREST's 1000-rækkers cap), to former; guarden dækkede én.
+   **En grøn guard er ikke det samme som dækning — kend dens præcise form.**
+   Opfølgning: udvid guarden med en tabel-allowlist for `.in()` uden `.range()` (et blankt
+   forbud ville støje, da mange `.in()`-kald er legitimt små).
 2. **Ironien er pointen:** overvågningskoden selv havde den bug-klasse, den var bygget for at
    fange. Watchdogs skal holdes til samme standard som det, de overvåger — en falsk-alarmerende
    watchdog er værre end ingen, fordi den lærer folk at ignorere alarmer.
