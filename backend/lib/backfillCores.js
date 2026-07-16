@@ -14,9 +14,8 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "./supabasePagination.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities, CALIBRATION, VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { buildYouthCaps, buildCapsForRider, buildProgressInit } from "./riderProgression.js";
-import { isAcademyAge } from "./academyFlag.js";
+import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
 import { computeRiderTypes, RIDER_TYPE_KEYS, ABILITY_KEYS } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
@@ -123,22 +122,6 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
   return { riders: rows.length, written };
 }
 
-// Rytter-alder fra birthdate (asOfYear − fødselsår). Ugyldig/manglende birthdate → null.
-// Samme model som abilityDerivation.ageFrom + computeYouthCapsForRider (kun året tæller
-// til akademi-gaten, så et ISO-stamp giver intet behov for måned/dag-præcision).
-export function ageOf(rider, _stamp, asOfYear = CALIBRATION.asOfYear) {
-  const birthYear = rider?.birthdate ? new Date(rider.birthdate).getFullYear() : null;
-  if (!Number.isFinite(birthYear)) return null;
-  return asOfYear - birthYear;
-}
-
-// Ungdoms-caps for akademi-alder-ryttere (16-21). Voksne → null (behold lazy baseline+headroom).
-export function computeYouthCapsForRider(rider, primaryType, secondaryType, asOfYear = CALIBRATION.asOfYear) {
-  const age = ageOf(rider, null, asOfYear);
-  if (!isAcademyAge(age)) return null;
-  return buildYouthCaps(rider.potentiale, primaryType, secondaryType);
-}
-
 // ── Scoped derive-pipeline for NYE ryttere (#1478) ────────────────────────────
 // Kører hele afled-kæden (physiology → abilities → primary/secondary_type →
 // base_value) for et eksplicit sæt rider-id'er. Bruges ved runtime-intake
@@ -205,13 +188,16 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // akademi-alder. Tidligere satte denne sti KUN ungdoms-caps (#1791); voksne fik NULL
   // og ventede på et sæson-progression- eller daglig-trænings-tick — frie agenter / aldrig-
   // tickede hold endte derfor permanent NULL og kunne ikke vise progress-bar/caps på den
-  // nye rytter-side. buildCapsForRider giver akademi-alder afkoblet ungdoms-loft og voksne
-  // det baseline+headroom-loft motoren ellers lazy-initerede (ÉN delt kilde). progress
-  // nul-initialiseres (ægte nul akkumuleret træning, ikke en placeholder).
+  // nye rytter-side. buildCapsForRider er nu ÉN semantik for alle aldre (absolut loft +
+  // gulv, ejer 15/7).
   //
-  // BEVAR akkumuleret state ved re-derive: denne sti kan køre på en EKSISTERENDE rytter
-  // (heal-sweep #1673). Hvis rytteren allerede har caps/progress (motoren/træning satte
-  // dem), må vi IKKE nulstille dem. Vi læser de eksisterende felter og fylder kun NULL.
+  // caps GENBEREGNES altid: loftet er en ren funktion af potentiale + anlæg + nuværende
+  // evne, ikke akkumuleret state — så en stale eller forkert-semantik-værdi må ikke
+  // overleve en re-derive. Det var netop "bevar hvis den findes"-mønstret der lod to
+  // uforenelige loft-semantikker fryse ned i data.
+  //
+  // progress BEVARES derimod: det ER akkumuleret træning (heal-sweep #1673 må ikke
+  // nulstille en rytters optjente fremgang). Vi læser eksisterende og fylder kun NULL.
   const existingById = new Map();
   {
     const existing = await fetchAllRows(() =>
@@ -229,14 +215,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
     const prev = existingById.get(a.rider_id) || {};
     const baseline = {};
     for (const k of VISIBLE_ABILITIES) if (a[k] != null) baseline[k] = Number(a[k]);
-    const caps = (prev.ability_caps && typeof prev.ability_caps === "object")
-      ? prev.ability_caps
-      : buildCapsForRider(
-          baseline,
-          { potentiale: rider.potentiale, age: ageOf(rider, stamp) },
-          t.primary_type,
-          t.secondary_type,
-        );
+    const caps = buildCapsForRider(baseline, { potentiale: rider.potentiale }, t.primary_type, t.secondary_type);
     const progress = (prev.ability_progress && typeof prev.ability_progress === "object")
       ? prev.ability_progress
       : progressInit;

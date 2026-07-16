@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds, computeYouthCapsForRider } from "./backfillCores.js";
+import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds } from "./backfillCores.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { ABILITY_KEYS } from "./riderTypes.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // Én fleksibel in-memory mock der dækker alle tre kerners læse/skrive-flader:
 //   reads:  from(t).select(...).eq?(...).order(...).range(from,to)  (fetchAllRows-kontrakt)
@@ -160,20 +161,25 @@ test("deriveForRiderIds (apply) skriver ability_caps + ability_progress for ALLE
   }
 });
 
-test("deriveForRiderIds (apply) BEVARER eksisterende caps + progress ved re-derive (#2001 no-regress)", async () => {
-  // Heal-sweep kan re-derive en EKSISTERENDE rytter. Hvis han allerede har akkumuleret
-  // progress/caps (motoren/træning satte dem), må re-derive IKKE nulstille dem.
-  const existingCaps = { climbing: 95, sprint: 30 };
+test("deriveForRiderIds (apply) bevarer progress men GENBEREGNER caps ved re-derive", async () => {
+  // Heal-sweep kan re-derive en EKSISTERENDE rytter.
+  //   progress = akkumuleret træning → må ALDRIG nulstilles (#2001 no-regress).
+  //   caps     = afledt af potentiale + anlæg + current → skal genberegnes, ellers
+  //              overlever en forkert/stale semantik for evigt. Netop "bevar hvis den
+  //              findes" lod to uforenelige loft-semantikker fryse ned i prod (15/7).
+  const staleCaps = { climbing: 95, sprint: 30 };
   const existingProgress = { climbing: 0.42 };
   const supabase = makeMockSupabase({
     riders: [makeRider("r1")],
-    rider_derived_abilities: [{ rider_id: "r1", ability_caps: existingCaps, ability_progress: existingProgress }],
+    rider_derived_abilities: [{ rider_id: "r1", ability_caps: staleCaps, ability_progress: existingProgress }],
   });
   await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
   const abUpsert = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities");
   const row = abUpsert.rows[0];
-  assert.deepEqual(row.ability_caps, existingCaps, "eksisterende caps bevares (ikke nulstillet)");
-  assert.deepEqual(row.ability_progress, existingProgress, "eksisterende progress bevares (ikke nulstillet)");
+  assert.deepEqual(row.ability_progress, existingProgress, "akkumuleret progress bevares");
+  assert.notDeepEqual(row.ability_caps, staleCaps, "stale caps overlever ikke en re-derive");
+  assert.equal(Object.keys(row.ability_caps).length, VISIBLE_ABILITIES.length,
+    "genberegnet loft dækker alle 15 synlige evner");
 });
 
 test("deriveForRiderIds (dryRun) skriver intet men rapporterer beregningerne", async () => {
@@ -218,11 +224,6 @@ test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", as
   assert.equal(res.valued, 1, "sund derive fuldfører uden at kaste");
 });
 
-// ─── computeYouthCapsForRider (#1791): afkoblede lofter for akademi-alder ───────
-
-test("computeYouthCapsForRider: akademi-alder rytter får afkoblede caps; voksen får null", () => {
-  const youth = computeYouthCapsForRider({ birthdate: "2010-06-15", potentiale: 6 }, "climber", "tt", 2026);
-  assert.ok(youth && youth.climbing >= youth.sprint, "ung climber: climbing-cap ≥ sprint-cap");
-  const adult = computeYouthCapsForRider({ birthdate: "1996-06-15", potentiale: 6 }, "climber", "tt", 2026);
-  assert.equal(adult, null, "voksen (30) får ikke ungdoms-caps");
-});
+// computeYouthCapsForRider er fjernet (ejer 15/7): loftet er ikke længere alders-gatet,
+// så en separat "kun for akademi-alder"-helper gav to semantikker at vælge imellem.
+// buildCapsForRider dækker nu alle aldre — dens kontrakt testes i riderProgression.test.js.
