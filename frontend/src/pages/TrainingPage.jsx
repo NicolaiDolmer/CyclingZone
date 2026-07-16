@@ -98,6 +98,22 @@ export default function TrainingPage() {
   const [ridersLoading, setRidersLoading] = useState(true);
   const [runError, setRunError] = useState(null);
 
+  // #2465: roster-radens Fokus-select/clear-knap/intensitet-knapper kaldte tidligere
+  // setPlan/clearPlan uden await og uden at læse {ok,error} — en fejl (session,
+  // netværk, backend-afvisning) var visuelt usynlig. Fælles wrapper + pr.-rytter
+  // fejl-state (kun én celle relevant ad gangen pr. bruger-handling).
+  const [planActionError, setPlanActionError] = useState(null); // { riderId, error } | null
+  async function handlePlanChange(riderId, focus, intensity) {
+    setPlanActionError(null);
+    const result = await setPlan(riderId, focus, intensity);
+    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+  }
+  async function handleClearPlan(riderId) {
+    setPlanActionError(null);
+    const result = await clearPlan(riderId);
+    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+  }
+
   // Gruppering + multi-select + bulk-apply (#1480).
   const [groupByType, setGroupByType] = useState(false);
   const rosterSort = useSortState({ descFirstKeys: ROSTER_DESC_FIRST });
@@ -378,7 +394,7 @@ export default function TrainingPage() {
             onChange={(e) => {
               const newFocus = e.target.value;
               if (!newFocus) return;
-              setPlan(rider.id, newFocus, plan?.intensity ?? "normal");
+              handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
             }}
             className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
           >
@@ -396,7 +412,7 @@ export default function TrainingPage() {
           {plan?.focus && (
             <button
               type="button"
-              onClick={() => clearPlan(rider.id)}
+              onClick={() => handleClearPlan(rider.id)}
               disabled={busy}
               className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
               title={tRider("training.remove")}
@@ -425,6 +441,12 @@ export default function TrainingPage() {
               {t(currentTrainability === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited")}
             </span>
           )}
+          {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}
+          {planActionError?.riderId === rider.id && (
+            <div role="alert" className="mt-0.5 text-[10px] text-cz-danger">
+              {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
+            </div>
+          )}
         </td>
 
         {/* Intensitet */}
@@ -440,7 +462,7 @@ export default function TrainingPage() {
                   key={k}
                   type="button"
                   disabled={busy}
-                  onClick={() => setPlan(rider.id, plan.focus, k)}
+                  onClick={() => handlePlanChange(rider.id, plan.focus, k)}
                   aria-pressed={plan.intensity === k}
                   className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
                     plan.intensity === k
