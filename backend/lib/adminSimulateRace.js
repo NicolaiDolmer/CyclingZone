@@ -223,9 +223,9 @@ export async function runAdminSimulateStage({
   });
 }
 
-// S4 (#1176): kind → kort dansk årsags-tekst til DNF-linjen.
+// S4 (#1176): kind → short EN reason text til DNF-linjen.
 function incidentKindLabel(kind) {
-  return kind === "crash" ? "styrt" : "mekanisk defekt";
+  return kind === "crash" ? "crash" : "mechanical";
 }
 
 export function buildRaceSimEmbed({ race, resultRows, incidents = [] }) {
@@ -240,15 +240,17 @@ export function buildRaceSimEmbed({ race, resultRows, incidents = [] }) {
   // linjen udelades helt, ingen "DNF: (ingen)"-støj).
   const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
   const dnfLine = abandons.length
-    ? `**DNF:** ${abandons.map((inc) => `${inc.rider_name ?? "Ukendt rytter"} (${incidentKindLabel(inc.kind)})`).join(", ")}`
+    ? `**DNF:** ${abandons.map((inc) => `${inc.rider_name ?? "Unknown rider"} (${incidentKindLabel(inc.kind)})`).join(", ")}`
     : null;
 
+  // #2520: spillervendt resultat-webhook på engelsk; "(race-motor V2)"-parentesen
+  // var intern jargon og er droppet (ejeren bekræftede den ikke skal med i EN-teksten).
   return {
-    title: `🏁 ${race.name} afviklet (race-motor V2)`,
+    title: `🏁 ${race.name} finished`,
     description: [
-      gcWinner ? `**Vinder:** ${gcWinner.rider_name ?? "Ukendt rytter"}` : null,
+      gcWinner ? `**Winner:** ${gcWinner.rider_name ?? "Unknown rider"}` : null,
       stageWinners.length > 1
-        ? `**Etapevindere:** ${stageWinners.map((r) => `${r.stage_number}. ${r.rider_name ?? "Ukendt rytter"}`).join(" · ")}`
+        ? `**Stage winners:** ${stageWinners.map((r) => `${r.stage_number}. ${r.rider_name ?? "Unknown rider"}`).join(" · ")}`
         : null,
       dnfLine,
     ]

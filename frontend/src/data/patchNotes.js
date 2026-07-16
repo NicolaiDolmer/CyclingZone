@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.06",
+    "version": "7.07",
     "date": "2026-07-16",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,48 @@ export const PATCHES = [
           "body": "I din første sæson stod bestyrelsens tilfredshed før fast på 50 hele vejen igennem — intet du gjorde på ruten flyttede den. Den følger nu dine resultater (placering blandt de andre rigtige hold i din gruppe) og klubbens økonomi løb for løb, og reagerer inden for et interval på 30-75. Din sponsor-modifier holdes stadig neutral på 1,0x hele sæson 1, og der er endnu ingen hårde konsekvenser — bestyrelsen observerer kun."
         },
         "refs": [2521]
+      }
+    ]
+  },
+  {
+    "version": "7.06",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Facilities",
+        "en": {
+          "title": "Scouting Network is now open",
+          "body": "You can now build and upgrade the Scouting Network on the Club page, just like the Training Center. Each tier unlocks hiring a higher-tier chief scout: a better scout narrows his rider estimates further, and once his overall rating reaches about 80 he can run two scouting assignments at once instead of one."
+        },
+        "da": {
+          "title": "Scouting-netværket er nu åbent",
+          "body": "Du kan nu bygge og opgradere Scouting-netværket på Klub-siden, ligesom Træningscenteret. Hvert tier låser op for at ansætte en højere-tier chefscout: en bedre spejder indsnævrer sine rytter-estimater yderligere, og når hans samlede rating når omkring 80, kan han køre to spejder-opgaver ad gangen i stedet for én."
+        },
+        "refs": [2530]
+      }
+    ]
+  },
+  {
+    "version": "7.05",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Discord feeds now speak English",
+          "body": "Auction, transfer, race result and board webhooks in the Discord server were posted in Danish. All player-facing Discord messages — channel feeds and direct messages to managers — are now in English."
+        },
+        "da": {
+          "title": "Discord-feeds taler nu engelsk",
+          "body": "Auktions-, transfer-, løbsresultat- og bestyrelses-webhooks i Discord-serveren blev postet på dansk. Alle spillervendte Discord-beskeder — kanal-feeds og direkte beskeder til managers — er nu på engelsk."
+        },
+        "refs": [2520]
       }
     ]
   },

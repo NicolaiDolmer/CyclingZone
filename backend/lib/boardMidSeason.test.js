@@ -451,7 +451,7 @@ test("processMidSeasonReviewCron sends banner naar satisfaction <50 ved midpoint
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].type, "board_critical");
   assert.match(notifications[0].title, new RegExp(MID_SEASON_TITLE_PREFIX));
-  assert.match(notifications[0].title, /sæson 5/);
+  assert.match(notifications[0].title, /season 5/);
 });
 
 test("processMidSeasonReviewCron skipper foer midpoint", async () => {
@@ -512,7 +512,7 @@ test("processMidSeasonReviewCron er idempotent — eksisterende notif skipper", 
     id: "notif-pre",
     user_id: "user-1",
     type: "board_critical",
-    title: `${MID_SEASON_TITLE_PREFIX} (sæson 5)`,
+    title: `${MID_SEASON_TITLE_PREFIX} (season 5)`,
     message: "(eksisterende)",
     related_id: "board-1",
   });

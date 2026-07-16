@@ -144,8 +144,15 @@ export const COMMERCIAL_MIN_PAYBACK_SEASONS = 4;
 // (effectiveBonus) + chef-specialisering er wired ind i dailyTrainingEngine
 // (loadTrainingStaffContext → dailyAbilityDelta). Øvrige spor aktiveres i takt
 // med deres motorer (medical=form/skade, scouting=scouting-fane, commercial=Fase 4).
+// #2530 (17/7): scouting = true. Motoren var allerede live (Talentspejder Fase 3
+// #2244, scoutAssignmentService.js/scoutEngine.js) — den var blot ikke KØBBAR fra
+// Klub-UI'et. Facilitetens FACILITY_BASE_EFFECT.scouting-tal er stadig ren display-
+// kalibrering (ingen effectiveBonus-hook), men den REELLE gameplay-effekt er ægte:
+// facilitets-tieret bounder hvilken hire-tier chefscout du kan ansætte
+// (facilityEngine.validateHire), og chefens overall driver scoutEngine's kapacitet
+// (1/2 opgaver) + præcisions-gulv direkte via scoutAssignmentService.loadScout().
 // Kommerciel er BEVIDST et rent sink (ejer-valg Q2 5/7, payback ∞) — flip den ALDRIG
 // live uden Fase-4-merchandise-motoren + ny harness-kørsel.
 export const EFFECT_LIVE_BY_TRACK = Object.freeze({
-  training: true, scouting: false, medical: false, academy: false, commercial: false,
+  training: true, scouting: true, medical: false, academy: false, commercial: false,
 });

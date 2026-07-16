@@ -142,6 +142,8 @@ export default function SeasonPlannerPage() {
           <div className="md:hidden">
             <MobileLanes
               riders={riders} races={races} filter={filter} today={today}
+              selectedRaceId={selected?.mode === "race" ? selected.id : null}
+              selectedRiderId={selected?.mode === "rider" ? selected.id : null}
               onSelectRace={(id) => setSelected({ mode: "race", id })}
               onSelectRider={(id) => setSelected({ mode: "rider", id })}
             />

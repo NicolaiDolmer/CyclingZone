@@ -227,8 +227,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatFacilities", kind: "text" },
       { id: "tracks", kind: "rows" },
-      { id: "onlyTrainingLive", kind: "text" },
+      { id: "liveTracksStatus", kind: "text" },
       { id: "staffSynergy", kind: "text" },
+      { id: "hireChiefScout", kind: "text" },
       { id: "costs", kind: "text" },
     ],
   },

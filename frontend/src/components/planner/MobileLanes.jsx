@@ -6,9 +6,9 @@ import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
-import { dateToOrdinal, formatOrdinalShort, statusMeta, riderShortName } from "./plannerShared";
+import { dateToOrdinal, formatRaceDateLabel, statusMeta, riderShortName } from "./plannerShared";
 
-export default function MobileLanes({ riders, races, filter, today, onSelectRace, onSelectRider }) {
+export default function MobileLanes({ riders, races, filter, today, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider }) {
   const { t } = useTranslation("planner");
   const months = t("months", { returnObjects: true });
   const nowOrd = dateToOrdinal(today);
@@ -20,19 +20,39 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
     .sort((a, b) => a.ord - b.ord)
     .slice(0, 30);
 
+  // #2519 item 4: samme "planlægger mod"-tydelighed som desktop — mobil har
+  // ingen drag, så kilden er udelukkende den valgte rytter-lane (skuffen åben).
+  const selectedRider = selectedRiderId ? (riders || []).find((r) => r.id === selectedRiderId) : null;
+  const ridersPeaks = (selectedRider?.peaks || [])
+    .map((p) => ({ ...p, ord: dateToOrdinal(p.windowStart) }))
+    .filter((p) => p.ord != null)
+    .sort((a, b) => a.ord - b.ord);
+  const chosenPeak = ridersPeaks.find((p) => (nowOrd == null ? true : p.ord >= nowOrd)) || ridersPeaks[0];
+  const planningTarget = chosenPeak ? (races || []).find((r) => r.id === chosenPeak.targetRaceId) : null;
+
   return (
     <div className="flex flex-col gap-3">
+      {planningTarget && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-cz border border-cz-accent-t bg-cz-subtle text-[11px] text-cz-1">
+          <i className="ti ti-target-arrow text-[13px] text-cz-accent-t" aria-hidden="true" />
+          <span>{t("planningTowards.label", { race: planningTarget.name, date: formatRaceDateLabel(planningTarget, months) })}</span>
+        </div>
+      )}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
-        {visRaces.map((r) => (
-          <button
-            key={r.id}
-            className="shrink-0 min-h-[44px] px-3 py-1.5 rounded-cz border border-cz-border bg-cz-card text-left hover:bg-cz-subtle"
-            onClick={() => onSelectRace(r.id)}
-          >
-            <div className="text-[11px] text-cz-1 font-medium whitespace-nowrap">{r.name}</div>
-            <div className="text-[9.5px] text-cz-2">{formatOrdinalShort(r.ord, months)} · {t(`terrain.${r.terrain}`)}</div>
-          </button>
-        ))}
+        {visRaces.map((r) => {
+          const isTarget = r.id === planningTarget?.id;
+          const isSelected = r.id === selectedRaceId;
+          return (
+            <button
+              key={r.id}
+              className={`shrink-0 min-h-[44px] px-3 py-1.5 rounded-cz border text-left hover:bg-cz-subtle ${isTarget || isSelected ? "border-cz-accent-t bg-cz-subtle" : "border-cz-border bg-cz-card"}`}
+              onClick={() => onSelectRace(r.id)}
+            >
+              <div className="text-[11px] text-cz-1 font-medium whitespace-nowrap">{r.name}</div>
+              <div className="text-[9.5px] text-cz-2">{formatRaceDateLabel(r, months)} · {t(`terrain.${r.terrain}`)}</div>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -45,10 +65,11 @@ export default function MobileLanes({ riders, races, filter, today, onSelectRace
           // #2455: mobil-first — samme "forslag indtil accepteret"-signal som
           // desktop master-canvasset, ellers opdages featuren aldrig på mobil.
           const hasSuggestion = peaks.some((p) => p.isSuggestion);
+          const laneSelected = rd.id === selectedRiderId;
           return (
             <button
               key={rd.id}
-              className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-cz border border-cz-border bg-cz-card text-left hover:bg-cz-subtle"
+              className={`min-h-[44px] flex items-center gap-3 p-2.5 rounded-cz border text-left hover:bg-cz-subtle ${laneSelected ? "border-cz-accent-t bg-cz-subtle" : "border-cz-border bg-cz-card"}`}
               onClick={() => onSelectRider(rd.id)}
             >
               <span className="w-7 shrink-0 flex items-center justify-center">
