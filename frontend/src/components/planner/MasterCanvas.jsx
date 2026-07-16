@@ -11,7 +11,10 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { riderOverallRating } from "../../lib/riderRating";
 import { sampleFormCurves } from "../../lib/plannerCurve";
-import { CZ, dateToOrdinal, monthTicks, statusMeta, riderTypeKey, riderShortName } from "./plannerShared";
+import { statColor, statTextColor } from "../../lib/statColor";
+import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
+import { Flag } from "../Flag";
+import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
@@ -27,7 +30,7 @@ function TerrainGlyph({ x, y, terrain }) {
 }
 
 export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget }) {
-  const { t } = useTranslation("planner");
+  const { t } = useTranslation(["planner", "riderTypes"]);
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null); // { planId, riderId, previewOrd }
   const months = t("months", { returnObjects: true });
@@ -145,8 +148,12 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           endO: dateToOrdinal(p.windowEnd),
         })).filter((p) => p.startO != null && p.endO != null);
         const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
-        const typeKey = riderTypeKey(rd.primaryType);
-        const typeLabel = typeKey ? t(typeKey) : (rd.primaryType || "");
+        // #2447: ryttertype-label kommer nu fra samme riderTypes-i18n-namespace som
+        // RiderTypeBadge (kanonisk kilde) i stedet for plannerens egen (dengang
+        // afvigende) type.*-tekster — se backwards-check i PR-beskrivelsen.
+        const typeLabel = rd.primaryType && RIDER_TYPE_KEYS.includes(rd.primaryType)
+          ? t(`types.${rd.primaryType}`, { ns: "riderTypes" })
+          : (rd.primaryType || "");
         const laneSelected = rd.id === selectedRiderId;
 
         // Kurve-samples.
@@ -166,8 +173,17 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
             {idx > 0 && <line x1="0" y1={y0} x2={VBW} y2={y0} stroke={CZ.border} strokeWidth="1" />}
             {/* Venstre skinne */}
             <rect x="0" y={y0} width={RAIL} height={LANE} fill={laneSelected ? CZ.subtle : CZ.card} />
-            <rect x="8" y={y0 + 15} width="34" height="16" rx="2" fill="none" stroke={CZ.border} strokeWidth="1" />
-            <text x="25" y={y0 + 26} textAnchor="middle" fontSize="10" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{rd.nationality || "—"}</text>
+            {/* #2447: nationalitet som flag-ikon (Flag-komponenten, kanonisk overalt
+                ellers i appen) i stedet for en rå landekode-boks — indlejret via
+                foreignObject, da flag-icons-CSS'ens baggrundsbillede-tilgang ikke
+                kan udtrykkes som ren SVG. */}
+            {rd.nationality && (
+              <foreignObject x="8" y={y0 + 14} width="26" height="18">
+                <div xmlns="http://www.w3.org/1999/xhtml" style={{ display: "flex", alignItems: "center", height: "100%" }}>
+                  <Flag code={rd.nationality} className="text-[15px]" />
+                </div>
+              </foreignObject>
+            )}
             <text
               x="50" y={y0 + 24} fontSize="13.5" fill={CZ.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, cursor: "pointer" }}
               tabIndex={0} role="button" aria-label={riderShortName(rd)}
@@ -176,8 +192,12 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
             >{riderShortName(rd)}</text>
             <text x="50" y={y0 + 39} fontSize="10.5" fill={CZ.t2} style={{ fontFamily: "'DM Sans', sans-serif" }}>{typeLabel}</text>
             {rd.isAcademy && <text x="50" y={y0 + 52} fontSize="8.5" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>◆ {t("academy").toUpperCase()}</text>}
-            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={CZ.ink} />
-            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={CZ.gold} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
+            {/* #2447: OVR-badge farvet efter samme evne-gradient (statColor/statTextColor,
+                SSOT for ALLE rating-visninger) i stedet for en fast ink/gold-kombination
+                der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på
+                hvid bund). */}
+            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr)} />
+            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr)} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
             <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="7.5" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
 
             {/* Baseline */}
