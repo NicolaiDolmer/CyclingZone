@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import {
@@ -361,9 +361,23 @@ function buildFaq(t, vars) {
 
 export default function HelpPage() {
   const { t, i18n } = useTranslation("help");
-  const [activeSection, setActiveSection] = useState("start");
+  const [searchParams] = useSearchParams();
+  // Deep-link support (#2467): ?faq=<id> opens the FAQ tab with that question
+  // expanded; ?section=<key> opens a specific section. Unknown/missing values
+  // fall back to the previous defaults so this never throws on a bad link.
+  const faqParam = searchParams.get("faq");
+  const sectionParam = searchParams.get("section");
+  const [activeSection, setActiveSection] = useState(() => {
+    if (faqParam) return "faq";
+    if (sectionParam && SECTION_DEFS.some((s) => s.key === sectionParam)) return sectionParam;
+    return "start";
+  });
   const [search, setSearch] = useState("");
-  const [faqOpen, setFaqOpen] = useState(null);
+  const [faqOpen, setFaqOpen] = useState(() => {
+    if (!faqParam) return null;
+    const idx = FAQ_KEYS.indexOf(faqParam);
+    return idx !== -1 ? idx : null;
+  });
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.

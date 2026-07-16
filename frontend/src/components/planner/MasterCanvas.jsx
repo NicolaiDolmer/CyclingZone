@@ -11,7 +11,10 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { riderOverallRating } from "../../lib/riderRating";
 import { sampleFormCurves } from "../../lib/plannerCurve";
-import { CZ, dateToOrdinal, monthTicks, statusMeta, riderTypeKey, riderShortName } from "./plannerShared";
+import { statColor, statTextColor } from "../../lib/statColor";
+import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
+import { Flag } from "../Flag";
+import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
@@ -26,8 +29,8 @@ function TerrainGlyph({ x, y, terrain }) {
   return <rect x={x - 7} y={y + 1} width="15" height="3" fill={c} opacity="0.8" />;
 }
 
-export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget }) {
-  const { t } = useTranslation("planner");
+export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
+  const { t } = useTranslation(["planner", "riderTypes"]);
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null); // { planId, riderId, previewOrd }
   const months = t("months", { returnObjects: true });
@@ -66,6 +69,9 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
   const H = AXIS + (riders?.length || 0) * LANE + 8;
 
   // ── Drag-håndtering: om-målret et peak til nærmeste egnede løb ──────────────
+  // #2455: et FORSLAG har ingen ægte rider_peak_plans-id — at trække det til et
+  // andet løb kan derfor ikke PATCHe en eksisterende plan; det OPRETTER i stedet
+  // en ægte plan mod løbet manageren droppede den på (= implicit "justér + accept").
   const dragEnd = () => {
     if (!drag) return;
     const rider = riders.find((r) => r.id === drag.riderId);
@@ -77,7 +83,10 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
       const eligible = visRaces.filter((r) => r.id !== plan.targetRaceId && !taken.has(r.id));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
-      if (best && bestD <= span / 24) onRetarget(plan.id, best.id);
+      if (best && bestD <= span / 24) {
+        if (plan.isSuggestion) onCreatePeak(rider.id, best.id);
+        else onRetarget(plan.id, best.id);
+      }
     }
     setDrag(null);
   };
@@ -145,8 +154,12 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           endO: dateToOrdinal(p.windowEnd),
         })).filter((p) => p.startO != null && p.endO != null);
         const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
-        const typeKey = riderTypeKey(rd.primaryType);
-        const typeLabel = typeKey ? t(typeKey) : (rd.primaryType || "");
+        // #2447: ryttertype-label kommer nu fra samme riderTypes-i18n-namespace som
+        // RiderTypeBadge (kanonisk kilde) i stedet for plannerens egen (dengang
+        // afvigende) type.*-tekster — se backwards-check i PR-beskrivelsen.
+        const typeLabel = rd.primaryType && RIDER_TYPE_KEYS.includes(rd.primaryType)
+          ? t(`types.${rd.primaryType}`, { ns: "riderTypes" })
+          : (rd.primaryType || "");
         const laneSelected = rd.id === selectedRiderId;
 
         // Kurve-samples.
@@ -159,6 +172,10 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
         const used = peaks.length;
         const risky = peaks.some((p) => p.status === "at_risk");
         const chip = statusMeta(risky ? "at_risk" : (peaks.some((p) => p.status === "on_track") ? "on_track" : "pending"));
+        // #2455: mens der findes MINDST ét assistent-forslag i lanen, erstatter
+        // forslags-badgen den normale status-chip — ellers opdager manageren
+        // aldrig at noget her er et forslag, ikke hans eget valg (issue-krav 3).
+        const hasSuggestion = peaks.some((p) => p.isSuggestion);
         const rx0 = VBW - RRAIL + 8;
 
         return (
@@ -166,8 +183,17 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
             {idx > 0 && <line x1="0" y1={y0} x2={VBW} y2={y0} stroke={CZ.border} strokeWidth="1" />}
             {/* Venstre skinne */}
             <rect x="0" y={y0} width={RAIL} height={LANE} fill={laneSelected ? CZ.subtle : CZ.card} />
-            <rect x="8" y={y0 + 15} width="34" height="16" rx="2" fill="none" stroke={CZ.border} strokeWidth="1" />
-            <text x="25" y={y0 + 26} textAnchor="middle" fontSize="10" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{rd.nationality || "—"}</text>
+            {/* #2447: nationalitet som flag-ikon (Flag-komponenten, kanonisk overalt
+                ellers i appen) i stedet for en rå landekode-boks — indlejret via
+                foreignObject, da flag-icons-CSS'ens baggrundsbillede-tilgang ikke
+                kan udtrykkes som ren SVG. */}
+            {rd.nationality && (
+              <foreignObject x="8" y={y0 + 14} width="26" height="18">
+                <div xmlns="http://www.w3.org/1999/xhtml" style={{ display: "flex", alignItems: "center", height: "100%" }}>
+                  <Flag code={rd.nationality} className="text-[15px]" />
+                </div>
+              </foreignObject>
+            )}
             <text
               x="50" y={y0 + 24} fontSize="13.5" fill={CZ.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, cursor: "pointer" }}
               tabIndex={0} role="button" aria-label={riderShortName(rd)}
@@ -176,8 +202,12 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
             >{riderShortName(rd)}</text>
             <text x="50" y={y0 + 39} fontSize="10.5" fill={CZ.t2} style={{ fontFamily: "'DM Sans', sans-serif" }}>{typeLabel}</text>
             {rd.isAcademy && <text x="50" y={y0 + 52} fontSize="8.5" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>◆ {t("academy").toUpperCase()}</text>}
-            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={CZ.ink} />
-            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={CZ.gold} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
+            {/* #2447: OVR-badge farvet efter samme evne-gradient (statColor/statTextColor,
+                SSOT for ALLE rating-visninger) i stedet for en fast ink/gold-kombination
+                der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på
+                hvid bund). */}
+            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr)} />
+            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr)} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
             <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="7.5" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
 
             {/* Baseline */}
@@ -195,38 +225,60 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                 <path d={areaPath} fill={CZ.ink} opacity="0.15" />
                 <path d={toPath(curve.potential)} fill="none" stroke={CZ.goldDeep} strokeWidth="1.4" strokeDasharray="4 2.5" opacity="0.9" />
                 <path d={toPath(curve.realized)} fill="none" stroke={CZ.ink} strokeWidth="2" />
-                {/* Peak-brackets (trækbare hvis ulåst) */}
+                {/* Peak-brackets (trækbare hvis ulåst) — #2455: et forslag tegnes
+                    stiplet + med hule (ufyldte) håndtag og et ✦-mærke, så det er
+                    synligt forskelligt fra en peak manageren selv har sat, indtil
+                    han accepterer/justerer den (issue-krav 3). Forslag er ALDRIG
+                    låst (de er ikke bindende endnu). */}
                 {peaks.map((p) => {
                   const isDragging = drag?.planId === p.id;
                   const shiftO = isDragging && drag.previewOrd != null ? drag.previewOrd - (p.startO + p.endO) / 2 : 0;
                   const bx = x(p.startO + shiftO), bw = Math.max(6, x(p.endO + shiftO) - x(p.startO + shiftO));
                   const midY = (top + bot) / 2;
                   return (
-                    <g key={`k${p.id}`} opacity={isDragging ? 0.85 : 1}>
-                      <rect x={bx} y={top - 3} width={bw} height={bot - top + 6} fill="none" stroke={CZ.goldDeep} strokeWidth="1.3" rx="2" />
+                    <g key={`k${p.id}`} opacity={isDragging ? 0.85 : (p.isSuggestion ? 0.8 : 1)}>
+                      <rect x={bx} y={top - 3} width={bw} height={bot - top + 6} fill="none" stroke={CZ.goldDeep} strokeWidth="1.3" rx="2" strokeDasharray={p.isSuggestion ? "3 2" : undefined} />
                       {[bx, bx + bw].map((hx, hi) => (
                         <rect
                           key={hi} x={hx - 3} y={midY - 8} width="7" height="16" rx="1.5"
-                          fill={p.locked ? CZ.t3 : CZ.gold} stroke={CZ.goldDeep} strokeWidth="0.8"
+                          fill={p.locked ? CZ.t3 : (p.isSuggestion ? "none" : CZ.gold)} stroke={CZ.goldDeep} strokeWidth={p.isSuggestion ? "1.3" : "0.8"}
                           style={{ cursor: p.locked ? "not-allowed" : "grab", touchAction: "none" }}
                           onPointerDown={(e) => { if (!p.locked) { e.currentTarget.setPointerCapture?.(e.pointerId); setDrag({ planId: p.id, riderId: rd.id, previewOrd: (p.startO + p.endO) / 2 }); } }}
                         />
                       ))}
                       {p.locked && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="7.5" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{t("status.locked").toUpperCase()}</text>}
+                      {p.isSuggestion && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="8" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }} aria-hidden="true">✦</text>}
                     </g>
                   );
                 })}
               </>
             )}
 
-            {/* Højre skinne: peak-tokens + status-chip */}
-            {[0, 1].map((k) => (
-              <circle key={k} cx={rx0 + k * 15} cy={y0 + 22} r="5" fill={k < used ? CZ.gold : "none"} stroke={k < used ? CZ.goldDeep : CZ.t3} strokeWidth="1.4" />
-            ))}
+            {/* Højre skinne: peak-tokens + status-chip (forslag: stiplet/hult token + assistent-badge, jf. issue-krav 3) */}
+            {[0, 1].map((k) => {
+              const tp = peaks[k];
+              const filled = k < used;
+              return (
+                <circle
+                  key={k} cx={rx0 + k * 15} cy={y0 + 22} r="5"
+                  fill={filled && !tp?.isSuggestion ? CZ.gold : "none"}
+                  stroke={filled ? CZ.goldDeep : CZ.t3} strokeWidth="1.4"
+                  strokeDasharray={tp?.isSuggestion ? "1.5 1.2" : undefined}
+                />
+              );
+            })}
             {peaks.length > 0 && (
               <g>
-                <rect x={rx0} y={y0 + 40} width="118" height="18" rx="9" fill={chip.tone === "good" ? CZ.gold : "none"} stroke={chip.tone === "good" ? "none" : CZ.goldDeep} strokeWidth="1" opacity={chip.tone === "good" ? 0.92 : 1} />
-                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>{chip.glyph} {t(`status.${chip.key}`)}</text>
+                <rect
+                  x={rx0} y={y0 + 40} width="118" height="18" rx="9"
+                  fill={hasSuggestion ? "none" : (chip.tone === "good" ? CZ.gold : "none")}
+                  stroke={hasSuggestion ? CZ.goldDeep : (chip.tone === "good" ? "none" : CZ.goldDeep)}
+                  strokeWidth="1" strokeDasharray={hasSuggestion ? "2 2" : undefined}
+                  opacity={chip.tone === "good" && !hasSuggestion ? 0.92 : 1}
+                />
+                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={hasSuggestion ? CZ.goldDeep : (chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep)} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {hasSuggestion ? `✦ ${t("assistant.badge")}` : `${chip.glyph} ${t(`status.${chip.key}`)}`}
+                </text>
               </g>
             )}
           </g>

@@ -12,6 +12,16 @@
     "body": "Every rider is riding flat right now. Target a race and the planner builds a lead-up that lifts their form for the day that matters. Each rider can peak for up to {max} races a season, so choose where it counts.",
     "cta": "Pick a rider lane to start, or open a race to see who fits it."
   },
+  "assistant": {
+    "bannerTitle": "The assistant has drafted your form programs",
+    "bannerBody": "Every rider below already has a suggested peak plan, built from their race calendar, type, and age. Accept it as-is, tweak individual peaks, or reset a rider to blank.",
+    "badge": "Assistant suggestion",
+    "accept": "Accept",
+    "reset": "Reset to blank",
+    "resetDone": "Suggestion cleared. Pick a target race whenever you're ready.",
+    "reasonRegistered": "Matches a race you've already entered them for.",
+    "reasonSuitability": "Best type match on your calendar."
+  },
   "filter": { "mine": "My races", "all": "All races" },
   "legend": {
     "potential": "Potential top",
@@ -43,7 +53,8 @@
       "hideProfiles": "Hide stage profiles",
       "setPeak": "Set peak",
       "demands": "This race demands",
-      "alreadyPeaking": "Peaking here"
+      "alreadyPeaking": "Peaking here",
+      "suggestedHere": "Assistant suggests here"
     },
     "rider": {
       "abilities": "Abilities",
@@ -59,16 +70,6 @@
       "removePeak": "Remove peak",
       "windowLabel": "Peak window {start} – {end}"
     }
-  },
-  "type": {
-    "sprinter": "Sprinter",
-    "tt": "Time-trialist",
-    "climber": "Climber",
-    "puncheur": "Puncheur",
-    "brostensrytter": "Classics rider",
-    "baroudeur": "Baroudeur",
-    "rouleur": "Rouleur",
-    "gc": "GC rider"
   },
   "terrain": {
     "flat": "Flat",

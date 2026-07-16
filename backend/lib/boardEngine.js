@@ -39,7 +39,9 @@ export {
 } from "./boardGoals.js";
 
 // S-02d · Cumulative + plan-start-baseline kontekst-loader for de 7 nye mål-typer
+// #2469 · buildBoardEvalContext = fælles kontekst-bygger for alle motor-stier
 export {
+  buildBoardEvalContext,
   loadGoalContextForBoard,
 } from "./boardGoalContext.js";
 

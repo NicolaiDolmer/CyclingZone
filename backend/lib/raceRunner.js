@@ -1003,6 +1003,10 @@ async function persistStageMoments({ supabase, race, moments, stageNumbers }) {
     const { error } = await supabase.from("race_stage_moments").insert(rows);
     if (error) throw error;
   } catch (err) {
+    // best-effort: why-rapporten er additiv pynt oven på resultatet — migrationen
+    // (2026-07-16-race-v3-s6-why-moments.sql) applies manuelt EFTER merge, så
+    // tabellen kan mangle i vinduet. Et fejlet moment-persist må ALDRIG vælte
+    // selve løbs-finaliseringen; fladen degraderer til ingen momenter.
     console.warn(`  ⚠️  race_stage_moments persist failed for race ${race.id} (table may not be migrated yet — why-rapport degraderer til ingen momenter): ${err.message}`);
   }
 }

@@ -1,10 +1,10 @@
 /**
  * #1558 — Atomær akademi-optagelse: concurrency-property-tests.
  *
- * Disse tests verificerer at de tre akademi-write-stier
- * (finalizeYouthAuctionRecord, signAcademyCandidate, signFreeAgentYouth) nu går
- * gennem den atomære RPC `finalize_academy_acquisition` og at racen + dobbelt-
- * debitten er lukket.
+ * Disse tests verificerer at akademi-write-stierne
+ * (finalizeYouthAuctionRecord, signAcademyCandidate) går gennem den atomære RPC
+ * `finalize_academy_acquisition` og at racen + dobbelt-debitten er lukket.
+ * (#2456: signFreeAgentYouth-stien er fjernet sammen med fri-agent-butikken.)
  *
  * Selve TOCTOU-beskyttelsen leveres af pg_advisory_xact_lock(team_id) i Postgres-
  * RPC'en (database/2026-06-20-academy-acquisition-rpc.sql) og kan kun verificeres
@@ -26,7 +26,6 @@ process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
 const { finalizeAuctionById } = await import("./auctionFinalization.js");
 const { signAcademyCandidate } = await import("./academyIntake.js");
-const { signFreeAgentYouth } = await import("./youthMarket.js");
 
 const DUPLICATE_VIOLATION_CODE = "23505";
 
@@ -184,6 +183,31 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
       if (table === "transfer_listings") {
         return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
       }
+      // #2456: taberne (academy_full) sletter nu deres usolgte rytter — mocken
+      // spejler #1847-guarden (ingen resultater) + den betingede DELETE mod
+      // verden-state (kun holdløse ikke-akademi-ryttere rammes).
+      if (table === "race_results") {
+        return { select: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) };
+      }
+      if (table === "riders") {
+        return {
+          delete() {
+            const filters = {};
+            const api = {
+              eq(col, val) { filters[col] = val; return api; },
+              is(col, val) { filters[col] = val; return api; },
+              select() {
+                const r = state.riders[filters.id];
+                const deletable = r && r.team_id == null && r.is_academy !== true;
+                if (!deletable) return Promise.resolve({ data: [], error: null });
+                delete state.riders[filters.id];
+                return Promise.resolve({ data: [{ id: filters.id }], error: null });
+              },
+            };
+            return api;
+          },
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -210,6 +234,17 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
   // Cap aldrig overskredet.
   const finalCount = Object.values(state.riders).filter((r) => r.team_id === teamId && r.is_academy).length + state.academyBaseline;
   assert.equal(finalCount, 8, "akademi-cap præcis fyldt (7 + 1), aldrig over 8");
+
+  // #2456 "usolgt = væk": den ENE optagne rytter består; de N-1 tabere er slettet
+  // (ikke efterladt som holdløse spøgelsesryttere), og en optaget rytter blev
+  // aldrig ramt af en sletning.
+  assert.equal(Object.keys(state.riders).length, 1, "kun den optagne rytter tilbage i verden");
+  const survivor = Object.values(state.riders)[0];
+  assert.equal(survivor.team_id, teamId, "overleveren er den optagne akademirytter");
+  assert.equal(survivor.is_academy, true);
+  for (const r of results) {
+    if (r.code === "academy_full") assert.equal(r.rider_deleted, true, "taber-rytter slettet");
+  }
 });
 
 // ─── KRYDS: finalize-vs-signAcademyCandidate, samme team + samme rytter ────────
@@ -310,78 +345,4 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
     return false;
   });
   assert.equal(successfulPlacements.length, 1, "præcis én sti må rapportere en gennemført optagelse");
-});
-
-// ─── KRYDS: signFreeAgentYouth (gratis) + betalende finalize, samme rytter ─────
-
-test("KRYDS: signFreeAgentYouth (p_price=0) vs. finalize på samme rytter — kun ÉN optagelse, ÉN (eller nul) debit, cap ≤ 8", async () => {
-  const teamId = "team-B";
-  const riderId = "fa-rider";
-  const rider = { id: riderId, team_id: null, is_academy: false, pcm_id: null, birthdate: "2008-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0, firstname: "Fri", lastname: "Agent" };
-
-  const { supabase, state } = makeAcademyWorld({ teamId, balance: 1_000_000, riders: { [riderId]: { ...rider } }, academyStart: 0 });
-  const baseRpc = supabase.rpc.bind(supabase);
-
-  const auction = {
-    id: "auc-fa",
-    status: "active",
-    is_youth: true,
-    seller_team_id: null,
-    current_bidder_id: teamId,
-    current_price: 25000,
-    rider: { ...rider },
-  };
-  const finalizeClient = {
-    rpc: baseRpc,
-    from(table) {
-      if (table === "auctions") return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: auction, error: null }) }) }), update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
-      if (table === "seasons") return { select: () => ({ eq: () => ({ order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "season-1", number: 1 }, error: null }) }) }) }) }) };
-      if (table === "teams") return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: teamId, name: "T", balance: state.balance }, error: null }) }) }) };
-      if (table === "transfer_listings") return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
-      throw new Error(`finalize: unexpected table ${table}`);
-    },
-  };
-
-  const faClient = {
-    rpc: baseRpc,
-    from(table) {
-      if (table === "riders") return { select() { const api = { eq() { return api; }, maybeSingle() { return Promise.resolve({ data: { ...rider }, error: null }); } }; return api; } };
-      if (table === "academy_intake") { const api = { select() { return api; }, eq() { return api; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } }; return api; }
-      if (table === "auctions") { const api = { select() { return api; }, eq() { return api; }, in() { return api; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } }; return api; }
-      throw new Error(`fa: unexpected table ${table}`);
-    },
-  };
-
-  const [finalizeRes, faRes] = await Promise.allSettled([
-    finalizeAuctionById({ supabase: finalizeClient, auctionId: "auc-fa", notifyTeamOwner: async () => {}, now: new Date("2026-06-20T12:00:00Z") }),
-    signFreeAgentYouth(faClient, { teamId, riderId, seasonNumber: 1, now: new Date("2026-06-20T12:00:00Z") }),
-  ]);
-
-  // Højst ÉN debit (free-agent debiterer ikke; finalize debiterer kun hvis den
-  // vandt rytteren). Aldrig to.
-  assert.ok(state.financeRows.length <= 1, `højst ÉN debit — fik ${state.financeRows.length}`);
-
-  // Rytteren optaget præcis én gang.
-  const finalCount = Object.values(state.riders).filter((r) => r.team_id === teamId && r.is_academy).length;
-  assert.equal(finalCount, 1, "rytteren optaget præcis én gang");
-  assert.ok(finalCount <= 8, "cap aldrig overskredet");
-
-  // Hvis finalize tabte (rytteren allerede optaget gratis af free-agent-stien),
-  // må den IKKE have debiteret.
-  const finalizeWon = finalizeRes.status === "fulfilled" && finalizeRes.value?.code === "youth_completed";
-  if (!finalizeWon) {
-    assert.equal(state.financeRows.length, 0, "finalize tabte → ingen debit (lukker omvendt tab)");
-  }
-
-  // Ingen af de to stier må fejle med en uventet exception (begge skal enten
-  // lykkes eller tabe rent — 'already_assigned'/'not_free_agent', ikke en crash).
-  for (const res of [finalizeRes, faRes]) {
-    if (res.status === "rejected") {
-      assert.match(
-        String(res.reason?.message ?? res.reason),
-        /not_free_agent|already_assigned/,
-        `uventet exception fra parallel sti: ${res.reason?.message ?? res.reason}`,
-      );
-    }
-  }
 });

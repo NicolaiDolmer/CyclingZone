@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { predictBaseValueV4, careerTrajectory, hazard, applyElitePremium } from "./riderCareerNpv.js";
+import { predictBaseValueV4, careerTrajectory, hazard, applyElitePremium, currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -247,4 +247,58 @@ test("predictBaseValueV4: elite-præmie løfter høj-overall-rytter men ikke lav
   const weakBase = predictBaseValueV4(rider, weakAb, fixtureModel());
   const weakBoosted = predictBaseValueV4(rider, weakAb, fixtureModel({ elite_premium: ep }));
   assert.equal(weakBoosted, weakBase);
+});
+
+// ── currentProductionValue (løn-base, #2428 løn-decoupling) ─────────────────────
+
+test("currentProductionValue: er sæson-0-leddet — mindre end den fulde NPV (base_value)", () => {
+  const rider = { id: "r", primary_type: "climber", potentiale: 4, age: 24 };
+  const abilities = makeAbilities({ climbing: 60, tempo: 60, punch: 60, endurance: 60 });
+  const model = fixtureModel();
+  const cpv = currentProductionValue(rider, abilities, model);
+  const base = predictBaseValueV4(rider, abilities, model);
+  assert.ok(cpv > 0 && base > 0);
+  assert.ok(cpv < base, `sæson-0 (${cpv}) skal være mindre end hele karrieren (${base})`);
+});
+
+test("currentProductionValue: talent har lavere løn/værdi-forhold end etableret rytter (decoupling)", () => {
+  const model = fixtureModel();
+  const ab = makeAbilities({ climbing: 60, tempo: 60, punch: 60, endurance: 60 });
+  const young = { id: "y", primary_type: "climber", potentiale: 5, age: 20 };
+  const established = { id: "e", primary_type: "climber", potentiale: 3, age: 31 };
+  const ratioYoung = currentProductionValue(young, ab, model) / predictBaseValueV4(young, ab, model);
+  const ratioOld = currentProductionValue(established, ab, model) / predictBaseValueV4(established, ab, model);
+  assert.ok(ratioYoung < ratioOld,
+    `talent-forhold (${ratioYoung.toFixed(3)}) skal være lavere end etableret (${ratioOld.toFixed(3)})`);
+});
+
+test("currentProductionValue: elite-præmie påvirker IKKE løn-basen (men påvirker værdien)", () => {
+  const ep = { overall_threshold: 45, k: 0.1 };
+  const rider = { id: "elite", primary_type: "climber", potentiale: 3, age: 26 };
+  const eliteAb = makeAbilities(Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 90])));
+  const cpvNoEp = currentProductionValue(rider, eliteAb, fixtureModel());
+  const cpvEp = currentProductionValue(rider, eliteAb, fixtureModel({ elite_premium: ep }));
+  assert.equal(cpvEp, cpvNoEp, "løn-base må ikke få elite-præmie");
+  const baseNoEp = predictBaseValueV4(rider, eliteAb, fixtureModel());
+  const baseEp = predictBaseValueV4(rider, eliteAb, fixtureModel({ elite_premium: ep }));
+  assert.ok(baseEp > baseNoEp, "værdien SKAL få elite-præmie");
+});
+
+test("currentProductionValue: monoton i overall (stærk > svag)", () => {
+  const model = fixtureModel();
+  const weak = currentProductionValue(
+    { primary_type: "rouleur", potentiale: 3, age: 26 }, makeAbilities({ flat: 40, endurance: 40 }), model);
+  const strong = currentProductionValue(
+    { primary_type: "rouleur", potentiale: 3, age: 26 }, makeAbilities({ flat: 80, endurance: 80 }), model);
+  assert.ok(strong > weak, `stærk (${strong}) > svag (${weak})`);
+});
+
+test("currentProductionValue: deterministisk + null-guards", () => {
+  const rider = { primary_type: "gc", potentiale: 3, age: 25 };
+  const abilities = makeAbilities();
+  const model = fixtureModel();
+  assert.equal(currentProductionValue(rider, abilities, model), currentProductionValue(rider, abilities, model));
+  assert.equal(currentProductionValue(rider, abilities, null), null);
+  assert.equal(currentProductionValue(rider, {}, model), null);
+  assert.equal(currentProductionValue(rider, abilities, { fit: {} }), null);
 });

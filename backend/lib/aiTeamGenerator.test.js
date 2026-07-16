@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, deleteAiTeamById, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
@@ -604,6 +604,107 @@ test("#2389 removeAiTeams: præmier i et UDBETALT løb blokerer ikke trim", asyn
 
   assert.equal(summary.removed, 1);
   assert.ok(!supabase.state.teams.some((t) => t.id === aiIds[0]), "udbetalt løb → laveste id trimmes som normalt");
+});
+
+// ── #2407 Fejl 1 · removeAiTeams må kun markere det FAKTISKE underskud
+// (count - toRemove.length) pending_removal_at — ikke hvert blokeret hold loopet
+// passerer. Prod 12-15/7: næsten alle AI-hold var præmie-/inflight-blokeret, så
+// HELE puljen blev markeret (65 hold i pulje 9/10/11, kun 5 reelt overskud) →
+// heal-sweepen ville have tømt puljerne mod 4/4/4. ────────────────────────────────
+
+test("#2407 Fejl 1: alle kandidater blokeret + underskud 1 → PRÆCIS 1 markeres, ikke hele puljen", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager(); // delta = -1
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
+  supabase.state.race_results = aiIds.map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 0, "ingen trim når alle er blokeret");
+  const marked = supabase.state.teams.filter((t) => aiIds.includes(t.id) && t.pending_removal_at);
+  assert.equal(marked.length, 1,
+    `overskuddet er 1 → præcis 1 hold må markeres (fik ${marked.length} — hele-puljen-markering er #2407-kaskaden)`);
+  // Deterministisk: den først-passerede blokerede kandidat (lavest id) markeres.
+  assert.equal(marked[0].id, [...aiIds].sort()[0], "lavest id markeres først (samme orden som trim-udvælgelsen)");
+});
+
+test("#2407 Fejl 1: underskud 1 med delvis blokering → kun 1 blokeret markeres, resten forbliver umarkeret", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager();
+  // Endnu en manager ind → delta = -2 (to hold skal væk).
+  supabase.state.teams.push({
+    id: "third-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    division: 3, league_division_id: poolId,
+  });
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  // Alle undtagen det SIDSTE hold i id-orden er præmie-blokeret → 1 kan trimmes nu,
+  // underskuddet er 2-1 = 1 → præcis 1 blokeret hold må markeres.
+  const freeId = [...aiIds].sort().at(-1);
+  supabase.state.races = [{ id: "race-unpaid", status: "completed", stages_completed: 5, prize_paid_at: null }];
+  supabase.state.race_results = aiIds
+    .filter((id) => id !== freeId)
+    .map((id) => ({ race_id: "race-unpaid", team_id: id, prize_money: 100 }));
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1, "det ublokerede hold trimmes nu");
+  assert.ok(!supabase.state.teams.some((t) => t.id === freeId), "det ublokerede hold er slettet");
+  const marked = supabase.state.teams.filter((t) => t.is_ai && t.pending_removal_at);
+  assert.equal(marked.length, 1,
+    `underskud efter trim er 1 → præcis 1 markeres (fik ${marked.length})`);
+  assert.equal(marked[0].id, [...aiIds].sort()[0], "lavest id blandt de blokerede markeres");
+});
+
+// ── #1847 · AI-hold-churn må ikke efterlade visningsdøde race_results: rider_id/
+// team_id er ON DELETE SET NULL (historik skal overleve churn), så rækker der
+// mangler navne-snapshottet skal backfilles FØR rytterne/holdet slettes. Prod-
+// evidens 16/7: 4.100 rytter-rækker med rider_id=NULL, alle fra slettede AI-hold —
+// display-sikre alene fordi insert-stierne populerede navnene. ────────────────────
+
+test("#1847 removeAiTeams: manglende rider_name/team_name backfilles før sletning", async () => {
+  const { supabase, poolId } = await seedOverfullPoolWithNewManager(); // delta = -1, ingen blokering
+  const aiIds = aiTeamIdsInPool(supabase.state, poolId);
+  const doomedId = [...aiIds].sort()[0]; // lavest id trimmes
+  const rider = supabase.state.riders.find((r) => r.team_id === doomedId);
+  rider.firstname = "Test";
+  rider.lastname = "Rytter";
+  const doomedTeam = supabase.state.teams.find((t) => t.id === doomedId);
+  doomedTeam.name = "AI Doomed CC";
+  supabase.state.races = [{ id: "race-old", status: "completed", stages_completed: 1, prize_paid_at: "2026-07-01T00:00:00Z" }];
+  supabase.state.race_results = [
+    // Mangler BEGGE navne-snapshots (legacy-række) → skal backfilles.
+    { id: "rr-1", race_id: "race-old", rider_id: rider.id, team_id: doomedId, prize_money: 0, rider_name: null, team_name: null },
+    // Har allerede navne → må IKKE overskrives (IS NULL-guard).
+    { id: "rr-2", race_id: "race-old", rider_id: rider.id, team_id: doomedId, prize_money: 0, rider_name: "Oprindeligt Navn", team_name: "Oprindeligt Hold" },
+  ];
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1);
+  assert.ok(!supabase.state.teams.some((t) => t.id === doomedId), "holdet er slettet");
+  const rr1 = supabase.state.race_results.find((r) => r.id === "rr-1");
+  assert.equal(rr1.rider_name, "Test Rytter", "manglende rider_name snapshottet før sletning");
+  assert.equal(rr1.team_name, "AI Doomed CC", "manglende team_name snapshottet før sletning");
+  const rr2 = supabase.state.race_results.find((r) => r.id === "rr-2");
+  assert.equal(rr2.rider_name, "Oprindeligt Navn", "eksisterende snapshot røres ikke");
+  assert.equal(rr2.team_name, "Oprindeligt Hold", "eksisterende snapshot røres ikke");
+});
+
+test("#1847 deleteAiTeamById (heal-sweep-stien): samme navne-snapshot før sletning", async () => {
+  const supabase = makeSupabase({
+    teams: [{ id: "ai-solo", name: "AI Solo CC", is_ai: true, league_division_id: 1 }],
+    riders: [{ id: "rid-1", team_id: "ai-solo", firstname: "Solo", lastname: "Kører" }],
+    race_results: [
+      { id: "rr-solo", race_id: "race-x", rider_id: "rid-1", team_id: "ai-solo", rider_name: null, team_name: null },
+    ],
+  });
+
+  await deleteAiTeamById(supabase, "ai-solo");
+
+  assert.ok(!supabase.state.teams.some((t) => t.id === "ai-solo"), "holdet er slettet");
+  assert.ok(!supabase.state.riders.some((r) => r.team_id === "ai-solo"), "rytterne er slettet");
+  const rr = supabase.state.race_results.find((r) => r.id === "rr-solo");
+  assert.equal(rr.rider_name, "Solo Kører", "rider_name snapshottet før sletning");
+  assert.equal(rr.team_name, "AI Solo CC", "team_name snapshottet før sletning");
 });
 
 // ── 2026-06-30 · defaultAllocateSquadForTeam: 24-trup, divisions-kvalitet via

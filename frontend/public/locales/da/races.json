@@ -314,6 +314,13 @@
     "role": {
       "free_role": "Fri rolle"
     },
+    "roleHelp": {
+      "captain": "Får holdets støtte til et resultat. Beskyttet: bliver aldrig bedt om at ofre sit eget løb.",
+      "sprintCaptain": "Holdet fører ham op til spurten. Beskyttet, ligesom kaptajnen.",
+      "helper": "Arbejder for holdet. Koster egen placering, styrker kaptajnens resultat.",
+      "hunter": "Sendes af sted alene. Lille omkostning, selvstændigt skud på et resultat.",
+      "freeRole": "Ingen fast opgave. Kører efter hvordan etapen udvikler sig."
+    },
     "effort": {
       "protect": "Arbejd",
       "normal": "Normal",
