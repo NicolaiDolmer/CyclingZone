@@ -156,7 +156,9 @@
       "contract": "Kontrakt",
       "contractSeason": "Sæson {season}",
       "aiTag": "AI",
-      "winsOn": "Vinder på"
+      "winsOn": "Vinder på",
+      "valueTrend": "{value} seneste {days} dage",
+      "valueTrendTitle": "Værdiændring siden {date}"
     },
     "banner": {
       "listed": "På transferlisten · pris {price}",
