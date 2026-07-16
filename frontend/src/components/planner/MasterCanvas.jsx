@@ -158,23 +158,44 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           <g key={r.id}>
             <line x1={rx} y1={AXIS} x2={rx} y2={H} stroke={targeted ? CZ.goldDeep : CZ.border} strokeWidth={targeted ? 1.2 : 1} strokeDasharray="1 3" opacity={targeted ? 0.6 : 0.5} />
             {gap && <TerrainGlyph x={rx} y={AXIS - 18} terrain={r.terrain} />}
-            {/* #2519 item 1: kompakt dato-label (enkelt dag eller etapespænd) —
-                altid synlig, diskret sekundær-tekst, så datoer ikke kræver
-                skuffe-åbning for at se hvornår et løb ligger. */}
-            {gap && (
-              <text x={rx} y={AXIS - 5} textAnchor="middle" fontSize="8" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>
-                {formatRaceDateLabel(r, months)}
-              </text>
-            )}
+            {/* #2519 item 1 (rev. 2): kalenderen er så tæt (~4px/dag på 618px
+                sæsons-spænd) at "label hvor der er plads" (gap) næsten aldrig
+                fires. Datoen skal derfor være garanteret på de løb manageren
+                faktisk kigger på: valgt løb + løb med peaks får ALTID en
+                dato-chip (med baggrund så den kan læses oven på naboer);
+                gap-labels beholdes for de spredte regioner. Resten dækkes af
+                hover-tooltip på hit-området nedenfor. */}
+            {(gap || active || targeted) && (() => {
+              const label = formatRaceDateLabel(r, months);
+              const w = label.length * 4.8 + 8;
+              const emphasized = active || targeted;
+              return (
+                <g pointerEvents="none">
+                  {emphasized && (
+                    <rect x={rx - w / 2} y={AXIS - 14} width={w} height="12" rx="2"
+                      fill={CZ.card} stroke={active ? CZ.goldDeep : CZ.border} strokeWidth="0.8" opacity="0.95" />
+                  )}
+                  <text x={rx} y={AXIS - 5} textAnchor="middle" fontSize={emphasized ? 9 : 8}
+                    fill={active ? CZ.goldDeep : emphasized ? CZ.t2 : CZ.t3}
+                    fontWeight={active ? 600 : 400}
+                    style={{ fontFamily: "Inter Tight, monospace" }}>
+                    {label}
+                  </text>
+                </g>
+              );
+            })()}
             <rect
               x={rx - 6} y={AXIS} width="12" height={H - AXIS}
               fill={active ? CZ.gold : "transparent"} opacity={active ? 0.12 : 1}
               tabIndex={0} role="button"
-              aria-label={`${r.name} — ${t(`terrain.${r.terrain}`)}`}
+              aria-label={`${r.name} · ${formatRaceDateLabel(r, months)} · ${t(`terrain.${r.terrain}`)}`}
               style={{ cursor: "pointer" }}
               onClick={() => onSelectRace(r.id)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRace(r.id); } }}
-            />
+            >
+              {/* Hover-tooltip: navn + dato for ALLE løb, også hvor statisk label ikke kan være */}
+              <title>{`${r.name} · ${formatRaceDateLabel(r, months)}`}</title>
+            </rect>
           </g>
         );
       })}
