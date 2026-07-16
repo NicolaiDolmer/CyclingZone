@@ -122,6 +122,7 @@
     "seasonGcWins": "GC-sejre",
     "tabSquad": "Trup ({count})",
     "tabResults": "Resultater",
+    "tabPalmares": "Palmarès",
     "tabTransfers": "Transferhistorik",
     "squadTitle": "Trup ({count} ryttere)",
     "viewCurrent": "Nuværende trup ({count})",
@@ -133,7 +134,30 @@
     "thBadges": "Status",
     "thAge": "Alder",
     "thType": "Type",
-    "thValue": "Værdi"
+    "thValue": "Værdi",
+    "palmares": {
+      "totalsTitle": "Karrieretotaler",
+      "totals": {
+        "seasons": "Sæsoner",
+        "wins": "Sejre",
+        "bestResult": "Bedste resultat",
+        "honours": "Æresliste",
+        "bestResultValue": "Division {division} · #{rank}"
+      },
+      "seasonHistoryTitle": "Sæson for sæson",
+      "thSeason": "Sæson",
+      "thDivision": "Division",
+      "thRank": "Placering",
+      "thPoints": "Point",
+      "thWins": "Sejre",
+      "movementPromoted": "Forfremmet",
+      "movementRelegated": "Nedrykket",
+      "honoursTitle": "Æresliste",
+      "honoursEmpty": "Ingen æresliste-poster for holdet endnu.",
+      "emptyTitle": "Ingen palmarès endnu",
+      "emptyBody": "Hver spillet sæson skriver en ny linje her.",
+      "loadError": "Palmarès kunne ikke hentes lige nu."
+    }
   },
   "results": {
     "title": "Løbsresultater",

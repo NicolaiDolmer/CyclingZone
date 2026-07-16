@@ -28,7 +28,7 @@ const TWO_DECIMAL_KEYS = new Set(["modifier"]);
 // separator ville være forkert).
 const RAW_KEYS = new Set([
   "rank", "division", "season", "count", "ratio", "rate", "satisfaction",
-  "goalsMet", "goalsTotal", "percent", "raceDaysLeft", "penaltyPoints",
+  "goalsMet", "goalsTotal", "percent", "daysLeft", "penaltyPoints",
   "feeRate", "interestRate", "pct", "delta", "id", "layer",
   "seasonsCompleted", "planDuration",
   // #2174 · sæson-numre i leje-forslag (fx 3, 5) må ikke få tusind-separator.

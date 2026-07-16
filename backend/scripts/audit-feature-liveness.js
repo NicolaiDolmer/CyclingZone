@@ -113,13 +113,8 @@ const WHITELIST_EMPTY_TABLES = new Set([
   "subscriptions",
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
   // første rækker — featuren er levende, Detector A overvåger den normalt igen.)
-  // Race v3 S5 peak-planer (#2224, PR #2419 merged 13/7): CRUD-API'et skriver
-  // rider_peak_plans, men er LAUNCH-GATED bag peak_planner_enabled (default OFF)
-  // + har ingen frontend-kalder endnu (Planner-cockpit er næste slice). Bevidst
-  // tom indtil ejer flipper flaget + Planner-UI'et lander. Skriv-path verificeret
-  // mod prod (RLS ejer-scope + insert i rulle-tilbage-tx). Fjern denne entry når
-  // tabellen har rows (efter peak_planner_enabled='on' + første oprettede plan).
-  "rider_peak_plans",
+  // (rider_peak_plans (#2224) fjernet 16/7: tabellen fik sine første 4 rows via
+  // peak_planner_enabled='beta' — featuren er levende, Detector A overvåger normalt.)
 ]);
 
 // PERMANENTE tom-tabel-suppressioner (fjernes ALDRIG ved rows — tom = sund
@@ -139,6 +134,11 @@ const PERMANENT_EMPTY_TABLES = new Set([
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
+  // #2455 planner-assistent (PR #2506): HAR en frontend-kalder — usePlanner.js:96
+  // kalder mutate("/dismiss-suggestions", "POST") hvor helperen prefikser
+  // /peak-plans, så den statiske path-scan kan ikke matche det fulde endpoint.
+  // Falsk positiv fra indirektion, ikke et orphan.
+  "POST /peak-plans/dismiss-suggestions",
   // Cron / scheduled jobs (kaldes fra backend/cron.js eller eksterne hooks)
   // sync-dyn-cyclist, import-results-sheets og sync-uci fjernet 2026-06-12
   // (#1180 pkt 3-5 / #1179 / #1207) — ruterne eksisterer ikke længere.
@@ -227,10 +227,9 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // 2026-07-10 (#2298): 14 stale entries fjernet — deres events flyder nu i
   // player_events (verificeret mod prod, 30-dages vindue). Historik i issue #2298.
   //
-  // Survey-CTA-banner (#364): survey_banner_clicked fyrer reelt fra SurveyBanner.jsx,
-  // men 0 klik i 30-dages vinduet (dismissed flyder, clicked gør ikke) — behold
-  // indtil et klik er set. Fjern entry når eventet flyder (tjek player_events).
-  "survey_banner_clicked",
+  // survey_banner_clicked fjernet fra whitelisten 16/7 (#2467): SurveyBanner.jsx
+  // slettet + eventet fjernet fra KNOWN_EVENTS, så entry'en var stale (Detector E
+  // tjekker kun events der stadig er i KNOWN_EVENTS).
   // Academy (#1669): academy_graduate fyrer først når en akademirytter når
   // graduation-alderen (samme gating som academy_graduation-tabellen i Detector A).
   // Fjern entry når eventet flyder (tjek player_events).

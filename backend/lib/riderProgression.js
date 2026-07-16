@@ -19,7 +19,6 @@
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPES } from "./riderTypes.js";
-import { isAcademyAge } from "./academyFlag.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -124,6 +123,63 @@ export function headroomForPotential(potentiale, cfg = PROGRESSION_CONFIG) {
 
 export function peakAgeForType(primaryType, cfg = PROGRESSION_CONFIG) {
   return cfg.peakAgeByType?.[primaryType] ?? cfg.peakAge;
+}
+
+// ── Alders-taper på det ABSOLUTTE loft (ejer-valg B, 2026-07-16, #2472) ──────
+// buildYouthCaps/youthAbilityCap er BEVIDST alders-uafhængige (samme potentiale-
+// ankrede mål for en 22-årig og en 34-årig — se buildCapsForRider). Det er præcis
+// hvorfor #2472's konsolidering ophævede aldringen for 556 veteraner (29-36):
+// dailyAbilityDelta har INGEN aldersgate (kun stepAbility gater, og kun 1×/sæson),
+// så et højere, alders-uafhængigt loft genåbnede væksten for post-peak-ryttere og
+// den overhalede sæson-declinen.
+//
+// Denne taper løser det ved at aftrappe det ABSOLUTTE loftets bidrag efter
+// peakAge — IKKE gulvet (max(absolut, current)), som forbliver urørt: ingen
+// spiller mister evne han ejer, taperen begrænser kun fremtidig VÆKST. Når det
+// tapered absolutte loft falder til/under current, vinder gulvet og
+// gap = max(0, cap − current) = 0 → ingen daglig vækst tilbage, og sæsonens
+// decline (stepAbility) dominerer igen alene.
+//
+// Allerede skrevet som den rigtige plan i academyFlag.js's #2437-interim-
+// kommentar: "jævn alders-taper, egen session". Denne funktion ER den session.
+export const CAP_TAPER_CONFIG = Object.freeze({
+  // Andel af det absolutte loft der er "tilbage" N år efter peakAge. Lineær
+  // interpolation mellem ankrene (år ift. peakAge → retain-andel); fladt på
+  // sidste ankers retain derefter. retain=0 ved 12 år forbi peak (dvs. alder 40
+  // ved unified peakAge=28) — loftet bidrager intet, gulvet definerer cap alene.
+  retainByYearsPastPeak: Object.freeze([
+    { years: 0, retain: 1.0 },
+    { years: 5, retain: 0.6 },
+    { years: 9, retain: 0.3 },
+    { years: 12, retain: 0.0 },
+  ]),
+});
+
+// Lineær interpolation af retain-andelen på years-ankrene (0..sidste, clamp udenfor).
+function interpolateRetain(yearsPast, anchors) {
+  if (yearsPast <= anchors[0].years) return anchors[0].retain;
+  for (let i = 1; i < anchors.length; i++) {
+    const prev = anchors[i - 1];
+    const cur = anchors[i];
+    if (yearsPast <= cur.years) {
+      const t = (yearsPast - prev.years) / (cur.years - prev.years);
+      return prev.retain + (cur.retain - prev.retain) * t;
+    }
+  }
+  return anchors[anchors.length - 1].retain;
+}
+
+// Aftrap ÉT absolut loft-tal efter alder. age ≤ peakAge ⇒ uændret (retain=1.0).
+// Rent tal ind/ud — ingen clamp her (clamp 0-99 sker i buildCapsForRider EFTER
+// gulvet er anvendt, så en tapered værdi aldrig kan clampe forkert alene).
+// age null/undefined ⇒ uændret (sikker default for callers der ikke sender alder,
+// jf. samme "valgfri, bagudkompatibel" kontrakt som academyRateMult/staff m.fl.).
+export function taperedAbsoluteCap(absoluteCap, age, peakAge = PROGRESSION_CONFIG.peakAge, cfg = CAP_TAPER_CONFIG) {
+  const cap = Number(absoluteCap) || 0;
+  const a = Number(age);
+  if (!Number.isFinite(a) || a <= peakAge) return cap;
+  const retain = interpolateRetain(a - peakAge, cfg.retainByYearsPastPeak);
+  return cap * retain;
 }
 
 function lookup(table, value, key, field) {
@@ -280,18 +336,56 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
 // helpers giver derive-stien (backfillCores) + en backfill-script ÉN delt, ren init
 // der matcher præcis det loft motoren ellers ville lazy-initте.
 
-// Det fulde caps-sæt for EN VILKÅRLIG rytter (init-tid):
-//   • akademi-alder (16-21): afkoblet ungdoms-loft (youthAbilityCap, IKKE baseline-bundet)
-//   • voksen: baseline-abilities + headroom×signatur (buildCaps) — samme som motoren lazy-initer.
-// Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES rytteren har en baseline for).
-//   baselineAbilities : { climbing, sprint, ... } current/afledte evner
-//   rider             : { potentiale, age }  (age = nuværende alder; bruges kun til akademi-gate)
-//   primaryType/secondaryType : ryttertype-nøgler (secondaryType kun brugt for ungdom)
-export function buildCapsForRider(baselineAbilities, { potentiale, age } = {}, primaryType, secondaryType) {
-  if (isAcademyAge(age)) {
-    return buildYouthCaps(potentiale, primaryType, secondaryType);
+// Det fulde caps-sæt for EN VILKÅRLIG rytter — ÉN semantik for alle aldre.
+//
+//   loft = max( absolut_loft(potentiale, anlæg) , nuværende evne )
+//
+// EJER-BESLUTTET 2026-07-15. Før da levede to uforenelige semantikker side om side —
+// afkoblet ungdoms-loft (potentiale = slutniveau) og baseline+headroom (potentiale =
+// forbedring) — og hvilken en rytter fik var et møntkast afgjort af hvilken kodesti
+// der først skrev ability_caps (feltet skrives KUN når NULL). Prod-følgen: en pot-4,5-
+// rytter havde et højere livstidsloft (813) end den bedste pot-6-rytter (737), dvs.
+// potentiale styrede IKKE hvor god en rytter kunne blive.
+//
+// GULVET er det der gør konsolideringen mulig: specs/2026-06-23-ungdoms-rytter-evner-
+// rework-design.md §4.2 afviste netop én fælles formel med begrundelsen "en voksen med
+// høj current ville ellers få et loft under sin current" — gulvet løser præcis det, og
+// ingen spiller får frataget evne han allerede ejer. Denne funktion supersederer
+// derfor §4.2/§8/§10 i den spec (dens §10 kaldte selv to-formel-modellen bevidst gæld
+// der skulle konsolideres senere).
+//
+// ALDERS-UAFHÆNGIG med vilje: en semantik der skiftede ved 21→22 ville flytte rytterens
+// livstidsloft på fødselsdagen — den bombe var kun udetoneret fordi sæson 1 stadig kører.
+//
+// Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES).
+//   abilities : { climbing, sprint, ... } nuværende/afledte evner (gulvet)
+//   rider     : { potentiale, age } — age er VALGFRI (se taperedAbsoluteCap):
+//               udeladt/null ⇒ intet taper, bagudkompatibelt med callers uden alder.
+//   primaryType/secondaryType : ryttertype-nøgler (anlæggets to retninger)
+//
+// #2472 (16/7, ejer-valg B): det absolutte loft aftrappes efter peakAge via
+// taperedAbsoluteCap — se den funktion for hvorfor (blocker-fund: uden taper
+// ophæver #2472's konsolidering aldringen for post-peak-ryttere). Gulvet
+// (max(tapered, current)) er URØRT — ingen spiller mister evne han ejer.
+export function buildCapsForRider(abilities, { potentiale, age } = {}, primaryType, secondaryType) {
+  const absolute = buildYouthCaps(potentiale, primaryType, secondaryType);
+  const peakAge = peakAgeForType(primaryType);
+  const caps = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    const current = Math.round(Number(abilities?.[ability]) || 0);
+    const tapered = taperedAbsoluteCap(absolute[ability] ?? 0, age, peakAge);
+    caps[ability] = clamp(Math.max(tapered, current), 0, 99);
   }
-  return buildCaps(baselineAbilities, primaryType, potentiale);
+  return caps;
+}
+
+// Er to caps-sæt ens over alle synlige evner? Motorerne genberegner loftet hver tick,
+// men skal kun SKRIVE når det faktisk flyttede sig — ellers ville hver rytter få en
+// overflødig UPDATE pr. tick. Et manglende/ikke-objekt loft tæller som forskelligt,
+// så det bliver skrevet første gang.
+export function sameCaps(a, b) {
+  if (!a || typeof a !== "object" || !b || typeof b !== "object") return false;
+  return VISIBLE_ABILITIES.every((ability) => Number(a[ability]) === Number(b[ability]));
 }
 
 // Nul-initialiseret progress-objekt over alle synlige evner: { climbing: 0, ... }.

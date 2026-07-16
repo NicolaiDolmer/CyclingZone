@@ -29,6 +29,10 @@ export default function StrategyPage() {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  // #2465: preview/save/regenerate used to swallow every error silently (bare
+  // catch, only set state on res.ok) — a failed save just stopped the spinner
+  // with no explanation. Same shape/pattern as RaceHubBoard.jsx's mutate() error surface.
+  const [error, setError] = useState(null); // { code } | null
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -61,25 +65,40 @@ export default function StrategyPage() {
 
   const runPreview = async () => {
     const headers = await authHeaders(); if (!headers) return;
-    setBusy(true);
+    setBusy(true); setError(null);
     try {
       const res = await fetch(`${API}/api/races/strategy/preview`, { method: "POST", headers, body: JSON.stringify(payload()) });
-      if (res.ok) setPreview((await res.json()).diff || {});
-    } catch { /* ignore */ } finally { setBusy(false); }
+      if (res.ok) {
+        setPreview((await res.json()).diff || {});
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError({ code: body.error || "generic" });
+      }
+    } catch { setError({ code: "generic" }); } finally { setBusy(false); }
   };
   const save = async () => {
     const headers = await authHeaders(); if (!headers) return;
-    setBusy(true); setSaved(false);
+    setBusy(true); setSaved(false); setError(null);
     try {
       const res = await fetch(`${API}/api/races/strategy`, { method: "PUT", headers, body: JSON.stringify(payload()) });
-      if (res.ok) setSaved(true);
-    } catch { /* ignore */ } finally { setBusy(false); }
+      if (res.ok) {
+        setSaved(true);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setError({ code: body.error || "generic" });
+      }
+    } catch { setError({ code: "generic" }); } finally { setBusy(false); }
   };
   const regenerate = async () => {
     const headers = await authHeaders(); if (!headers) return;
-    setBusy(true);
-    try { await fetch(`${API}/api/races/distribution/regenerate?mode=missing`, { method: "POST", headers }); }
-    catch { /* ignore */ } finally { setBusy(false); }
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch(`${API}/api/races/distribution/regenerate?mode=missing`, { method: "POST", headers });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError({ code: body.error || "generic" });
+      }
+    } catch { setError({ code: "generic" }); } finally { setBusy(false); }
   };
 
   const update = (patch) => { setDraft({ ...draft, ...patch }); dirty(); };
@@ -91,6 +110,13 @@ export default function StrategyPage() {
         <Link to="/races" className="text-xs text-cz-accent-t hover:underline">{t("strategy.back")}</Link>
       </div>
       <p className="text-sm text-cz-3 mb-5">{t("strategy.subtitle")}</p>
+
+      {error && (
+        <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-cz border border-cz-danger/30 bg-cz-danger/10 px-3 py-2">
+          <span className="text-xs text-cz-danger">{t([`selection.errors.${error.code}`, "selection.errors.generic"])}</span>
+          <button type="button" onClick={() => setError(null)} aria-label={t("racehub.dismiss")} className="text-cz-danger/70 hover:text-cz-danger text-sm leading-none">×</button>
+        </div>
+      )}
 
       <AChainEditor roster={data.roster} value={draft.aChain} onChange={(aChain) => update({ aChain })} />
       <RoleRulesEditor roster={data.roster} value={draft.roleRules} onChange={(roleRules) => update({ roleRules })} />

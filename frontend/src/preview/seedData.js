@@ -240,6 +240,21 @@ export const SEED_RACE_INCIDENTS = [
   { id: "inc-d2-2", race_id: "race-done-2", stage_number: 2, rider_id: RIDERS[1].id, kind: "mechanical", outcome: "time_loss", time_loss_seconds: 134, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen" } },
 ];
 
+// S6 (#2355): race_stage_moments preview-seed for race-done-2 — dækker BÅDE
+// "beats" (gc_takeover + final_gc → WhyPanel på etape-fanen og "samlet") OG
+// story-tags (tag_outsider_win/tag_jour_sans på Ada → badges i resultat-
+// tabellen; tag_crash_ruined på den fiktive rider-99 der allerede har en
+// incident-seed ovenfor — han optræder ikke i nogen resultat-række, så tagget
+// forbliver usynligt i UI'et, samme graceful-degradation som DnfSection).
+export const SEED_RACE_STAGE_MOMENTS = [
+  { id: "mom-d2-s1-1", race_id: "race-done-2", stage_number: 1, moment_key: "team_day", params: { teamId: TEST_TEAM.id, count: 2 }, significance: 45, rider_ids: [], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
+  { id: "mom-d2-s2-4", race_id: "race-done-2", stage_number: 2, moment_key: "tag_jour_sans", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+];
+
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
 // RiderStatsPage.fetchAllRiderSeasonRows). Egen shape (race:-embed, IKKE rider:-embed
 // som SEED_RACE_RESULTS ovenfor bruges til RaceDetailPage) — ingen delt lookup mod
@@ -273,6 +288,26 @@ export const SEED_RIDER_PALMARES_RESULTS = [
     rank: 3, prize_money: 800, points_earned: 18, result_type: "gc", stage_number: 1, team_name: RIVAL_TEAM.name,
     race: { id: "race-palmares-podium", name: "Coppa Preview", race_type: "single", race_class: "Class2", stages: 1, status: "completed", scheduled_for: "2026-05-10T14:00:00.000Z", season: { number: ACTIVE_SEASON.season_number }, pool: { terrain_archetype: "hilly_classic" } },
   },
+];
+
+// #1997 holdside-slice: season_standings + hall_of_fame seed til Palmarès-fanens
+// preview-screenshots (TeamProfilePage). 3 sæsoner — S1 (division 3), S2
+// forfremmet til division 2, S3 (aktiv, uændret division) — så UI'en viser et
+// konkret forfremmelses-eksempel. hall_of_fame er tom i ægte prod pr. 16/7
+// (fyldes først ved sæson-transition, jf. audit-feature-liveness.js); én seed-
+// post her så æresliste-blokken ikke KUN vises i sin tomme tilstand i preview.
+// Rækkefølge: aktiv sæson FØRST — mocken implementerer ikke ægte .order(), så
+// TeamProfilePage's "Sæsonresultater"-boks (.limit(1).single()) tager index[0].
+// TeamPalmaresTab sorterer selv via buildSeasonHistory, så rækkefølgen her er
+// ligegyldig for Palmarès-fanen.
+export const SEED_TEAM_SEASON_STANDINGS = [
+  { id: "standing-e2e-3", team_id: TEST_TEAM.id, division: 2, rank_in_division: 3, total_points: 4200, races_completed: 10, stage_wins: 2, gc_wins: 0, season: { number: 3, status: "active" }, pool: { label: "2A" } },
+  { id: "standing-e2e-2", team_id: TEST_TEAM.id, division: 2, rank_in_division: 1, total_points: 11250, races_completed: 24, stage_wins: 7, gc_wins: 3, season: { number: 2, status: "completed" }, pool: { label: "2A" } },
+  { id: "standing-e2e-1", team_id: TEST_TEAM.id, division: 3, rank_in_division: 2, total_points: 8400, races_completed: 22, stage_wins: 4, gc_wins: 1, season: { number: 1, status: "completed" }, pool: { label: "3B" } },
+];
+
+export const SEED_TEAM_HALL_OF_FAME = [
+  { id: "hof-e2e-1", team_id: TEST_TEAM.id, category: "most_points_season", value: 11250, season_number: 2 },
 ];
 
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
@@ -461,7 +496,7 @@ export const SEED_STRATEGY = {
 
 // GET /api/academy/me — eneste kilde for academy-payloaden. Konsumeres af
 // mockHandlers.apiResponse("/api/academy/me") (return SEED_ACADEMY) → academy-
-// specs afhænger af præcis denne form (3 intakes, 2 free agents).
+// specs afhænger af præcis denne form (3 intakes, 2 roster-ryttere).
 export const SEED_ACADEMY = {
   enabled: true,
   slots: { used: 2, max: 8 },
@@ -559,22 +594,40 @@ export const SEED_ACADEMY = {
       potentialEstimate: { lo: 3.0, hi: 3.0, exact: true, scoutLevel: 3 },
     },
   ],
-  freeAgents: [
+};
+
+// GET /api/academy/pnl — akademi-regnskabet (#2485, addendum V3). Konsumeres af
+// mockHandlers.apiResponse("/api/academy/pnl") (return SEED_ACADEMY_PNL). Viser
+// et hold med to realiserede graduate-salg (én med præmie, én solgt til listepris)
+// oveni den løbende drift/signing-historik, så begge kort + salgs-tabellen er
+// synlige i preview uden en live backend.
+export const SEED_ACADEMY_PNL = {
+  enabled: true,
+  current: { slotsUsed: 2, slotsMax: 8, payroll: 22000 },
+  cumulative: {
+    driftPaid: 25000,
+    signingFeesPaid: 18000,
+    salesProceeds: 220000,
+    valueCreation: 35000,
+    salesCount: 2,
+    netCashFlow: 220000 - 25000 - 18000,
+  },
+  sales: [
     {
-      id: "fa-1",
-      firstname: "Noah",
-      lastname: "Berg",
-      nationality_code: "no",
-      birthdate: "2007-04-12",
-      market_value: 95000,
+      riderId: "acad-r3-sold",
+      riderName: "Théo Dubois",
+      soldAt: "2026-07-02T15:30:00.000Z",
+      price: 140000,
+      listedValue: 105000,
+      premium: 35000,
     },
     {
-      id: "fa-2",
-      firstname: "Lukas",
-      lastname: "Meyer",
-      nationality_code: "de",
-      birthdate: "2009-11-03",
-      market_value: 72000,
+      riderId: "acad-r4-sold",
+      riderName: "Mateo Rossi",
+      soldAt: "2026-06-01T09:00:00.000Z",
+      price: 80000,
+      listedValue: 80000,
+      premium: 0,
     },
   ],
 };

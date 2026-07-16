@@ -2,6 +2,14 @@
 
 > Status: design godkendt af ejer 2026-06-23 (brainstorm-session). Næste skridt: implementerings-plan via writing-plans.
 > Relaterer: akademi-epic [#932], progression-epic [#1136], progression-L0 [#1137], værdimodel [#1364], start-trup-balance [#1487] (UDE af scope, se §8).
+>
+> ⚠️ **§4.2 / §8 / §10 er FORÆLDET pr. 2026-07-15 ([#2471](https://github.com/NicolaiDolmer/CyclingZone/issues/2471)).** Resten af specen står ved magt.
+>
+> To-formel-modellen (§4.2: afkoblet ungdoms-loft for `is_academy`, `baseline + headroom` for alle andre) driftede i prod inden for tre uger: tildelingen var ikke kohorte-styret men et **møntkast** afgjort af hvilken kodesti der først skrev `ability_caps`. 261 af 570 ryttere i akademi-alder endte med den forkerte semantik, og en pot-4,5-rytter fik et højere livstidsloft (813) end den bedste pot-6-rytter (737).
+>
+> Ejeren valgte 15/7 den **konsolidering §10 selv udskød** ("to loft-formler … bevidst teknisk gæld … konsolideres når B tages"): ét loft for alle aldre, `cap = max(absolut_loft(potentiale, anlæg), nuværende evne)`. **Gulvet er svaret på §4.2's egen indvending mod at konsolidere** ("en voksen med høj current ville ellers få et loft under sin current") — ingen spiller får frataget evne han allerede ejer.
+>
+> Konkret forældet: §4.2's sætning om at `baseline + headroom` "forbliver uændret for alle andre ryttere"; §8's punkt "Voksne rytteres loft-model (uændret)"; §10's accept af to formler som bevidst gæld. Se `buildCapsForRider` i `backend/lib/riderProgression.js` for den samlede model og `.claude/learnings/2026-07-15-two-cap-semantics-assigned-by-coin-flip.md` for hvorfor kommentar-dokumentation ikke holdt gælden på plads.
 
 ## 1. Problem (audit-fund 2026-06-23)
 

@@ -122,6 +122,7 @@
     "seasonGcWins": "GC wins",
     "tabSquad": "Squad ({count})",
     "tabResults": "Results",
+    "tabPalmares": "Palmarès",
     "tabTransfers": "Transfer history",
     "squadTitle": "Squad ({count} riders)",
     "viewCurrent": "Current squad ({count})",
@@ -133,7 +134,30 @@
     "thBadges": "Status",
     "thAge": "Age",
     "thType": "Type",
-    "thValue": "Value"
+    "thValue": "Value",
+    "palmares": {
+      "totalsTitle": "Career totals",
+      "totals": {
+        "seasons": "Seasons",
+        "wins": "Wins",
+        "bestResult": "Best result",
+        "honours": "Hall of Fame",
+        "bestResultValue": "Division {division} · #{rank}"
+      },
+      "seasonHistoryTitle": "Season by season",
+      "thSeason": "Season",
+      "thDivision": "Division",
+      "thRank": "Rank",
+      "thPoints": "Points",
+      "thWins": "Wins",
+      "movementPromoted": "Promoted",
+      "movementRelegated": "Relegated",
+      "honoursTitle": "Hall of Fame",
+      "honoursEmpty": "No Hall of Fame entries yet for this team.",
+      "emptyTitle": "No palmarès yet",
+      "emptyBody": "Every season played writes a new line here.",
+      "loadError": "Palmarès could not be loaded right now."
+    }
   },
   "results": {
     "title": "Race results",

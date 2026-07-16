@@ -626,6 +626,23 @@ async function runAiTeamTrimHealSweepCron() {
   if (result.healed) {
     console.log(`🧹 AI-trim heal-sweep: ${result.healed} udskudt(e) AI-hold trimmet (løb kørt færdigt siden sidst)`);
   }
+  if (result.guard?.length) {
+    // #2407: invariant-guarden greb ind — enten blev forældede markører ryddet
+    // (pulje på/under target: en sletning ville have brudt 24-holds-invarianten,
+    // #2377) eller en kandidat manglede pulje-kontekst (fail-closed). Begge dele
+    // betyder at NOGET upstream har over-markeret (#2407 Fejl 1-regression) eller
+    // at puljens tilstand har ændret sig — skal ses, ikke ties. Fast fingerprint:
+    // ét Sentry-issue, ikke ét pr. hold pr. tick (CYCLINGZONE-31-lektien).
+    console.warn(
+      `🛡️ AI-trim heal-sweep: invariant-guard greb ind — ${result.cleared} forældet(e) markering(er) ryddet, ` +
+      `${result.guard.length} guard-event(s) i alt (#2407)`
+    );
+    sentryCapture(new Error("AI-trim invariant-guard: sletning stoppet ved pulje-target (#2407)"), {
+      tags: { cron: "ai-team-trim-heal" },
+      fingerprint: ["ai-trim-invariant-guard"],
+      extra: { cleared: result.cleared, guard: result.guard },
+    });
+  }
   if (result.failed) {
     console.error(`❌ AI-trim heal-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
     // #2389 A2: akutte per-hold-fejl (den stale-gren nedenfor dækker kun >48t).

@@ -8,6 +8,7 @@ import {
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
   youthAbilityCap, buildYouthCaps,
   buildCapsForRider, buildProgressInit,
+  taperedAbsoluteCap, CAP_TAPER_CONFIG,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -332,31 +333,135 @@ test("buildProgressInit: nul-fyldt over alle 15 synlige evner", () => {
   for (const k of VISIBLE_ABILITIES) assert.equal(p[k], 0, `${k} skal initialiseres til 0`);
 });
 
-test("buildCapsForRider (voksen): identisk med buildCaps fra baseline (samme som motorens lazy-init)", () => {
-  const abilities = { climbing: 60, sprint: 40, flat: 50, time_trial: 55, tempo: 45,
-    acceleration: 42, punch: 48, endurance: 52, recovery: 50, durability: 47,
-    descending: 44, cobblestone: 41, positioning: 46, aggression: 43, tactics: 49 };
-  const viaHelper = buildCapsForRider(abilities, { potentiale: 5, age: 28 }, "climber", "tt");
-  const viaBuildCaps = buildCaps(abilities, "climber", 5);
-  assert.deepEqual(viaHelper, viaBuildCaps, "voksen-stien skal matche buildCaps eksakt");
-  for (const k of VISIBLE_ABILITIES) assert.ok(viaHelper[k] >= 0 && viaHelper[k] <= 99);
+// ── Samlet loft-semantik: absolut loft + gulv (ejer-besluttet 2026-07-15) ────
+// Indtil 15/7 fandtes TO uforenelige loft-semantikker side om side, og hvilken en
+// rytter fik afgjordes af hvilken kodesti der først skrev ability_caps (feltet
+// skrives kun når NULL). Prod-følgen: en pot-4,5-rytter havde et højere livstids-
+// loft (813) end den bedste pot-6-rytter (737) — potentiale styrede ikke hvor god
+// en rytter kunne blive. Nu ét loft for ALLE: potentiale + anlæg bestemmer niveauet,
+// med et gulv ved nuværende evne så ingen spiller får frataget evne han ejer.
+// Supersederer §4.2/§8/§10 i specs/2026-06-23-ungdoms-rytter-evner-rework-design.md.
+
+const allAbilities = (v) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, v]));
+
+test("buildCapsForRider: loftet er alders-uafhængigt FØR peak (21→22 må ikke flytte loftet)", () => {
+  // #2472 (16/7): loftet er kun alders-uafhængigt TIL OG MED peakAge (28) —
+  // se taper-testene nedenfor for adfærden EFTER peak (den nye, tilsigtede ændring).
+  const ab = allAbilities(20);
+  const young = buildCapsForRider(ab, { potentiale: 5, age: 18 }, "climber", "tt");
+  const adult = buildCapsForRider(ab, { potentiale: 5, age: 28 }, "climber", "tt");
+  assert.deepEqual(adult, young, "alder må ikke ændre loftet før/på peakAge");
 });
 
-test("buildCapsForRider (akademi-alder): afkoblede ungdoms-caps (buildYouthCaps), ikke baseline-bundet", () => {
-  const lowBaseline = { climbing: 10, sprint: 5, flat: 8, time_trial: 7, tempo: 6,
-    acceleration: 5, punch: 6, endurance: 9, recovery: 7, durability: 6,
-    descending: 5, cobblestone: 4, positioning: 6, aggression: 5, tactics: 7 };
-  // 18-årig (akademi-alder ved asOfYear via age-param) climber med højt potentiale.
-  const caps = buildCapsForRider(lowBaseline, { potentiale: 6, age: 18 }, "climber", "tt");
-  const expected = buildYouthCaps(6, "climber", "tt");
-  assert.deepEqual(caps, expected, "akademi-alder skal bruge buildYouthCaps");
-  // Afkoblet: loftet er IKKE bundet til den lave baseline (skal ligge langt over 10).
-  assert.ok(caps.climbing > lowBaseline.climbing + 20,
-    `ungdoms-loft ${caps.climbing} skal ligge langt over baseline ${lowBaseline.climbing}`);
+test("buildCapsForRider: loftet er aldrig under nuværende evne (gulvet)", () => {
+  // Voksen med høj current og lavt potentiale: det absolutte loft (pot 1 → 35)
+  // ligger langt under current 85 → gulvet skal vinde, ellers fratages spilleren evne.
+  const caps = buildCapsForRider(allAbilities(85), { potentiale: 1, age: 29 }, "climber", "tt");
+  for (const k of VISIBLE_ABILITIES) {
+    assert.ok(caps[k] >= 85, `${k}: loft ${caps[k]} må ikke ligge under current 85`);
+  }
+});
+
+test("buildCapsForRider: højere potentiale giver aldrig lavere loft", () => {
+  const ab = allAbilities(10);
+  let prev = -1;
+  for (const p of [1, 2, 3, 4, 4.5, 5, 5.5, 6]) {
+    const caps = buildCapsForRider(ab, { potentiale: p, age: 18 }, "climber", "tt");
+    assert.ok(caps.climbing >= prev, `pot ${p}: loft ${caps.climbing} < forrige ${prev}`);
+    prev = caps.climbing;
+  }
+});
+
+test("buildCapsForRider: pot 6 slår pot 4,5 (prod-anomalien 813 > 737)", () => {
+  const ab = allAbilities(10);
+  const p45 = buildCapsForRider(ab, { potentiale: 4.5, age: 19 }, "climber", "tt");
+  const p6 = buildCapsForRider(ab, { potentiale: 6, age: 19 }, "climber", "tt");
+  assert.ok(p6.climbing > p45.climbing, `pot6 ${p6.climbing} skal slå pot4,5 ${p45.climbing}`);
+});
+
+test("buildCapsForRider: afkoblet fra start-evnen — lav baseline + højt pot når verdensklasse", () => {
+  const caps = buildCapsForRider(allAbilities(10), { potentiale: 6, age: 16 }, "climber", "tt");
+  assert.deepEqual(caps, buildYouthCaps(6, "climber", "tt"), "gulvet binder ikke ved lav current");
+  assert.ok(caps.climbing > 80, `pot-6-talent skal kunne nå verdensklasse (${caps.climbing})`);
+});
+
+test("buildCapsForRider: dækker alle 15 synlige evner, clamped 0-99", () => {
+  const caps = buildCapsForRider(allAbilities(30), { potentiale: 3, age: 25 }, "sprinter", "puncheur");
+  assert.equal(Object.keys(caps).length, VISIBLE_ABILITIES.length);
+  for (const k of VISIBLE_ABILITIES) assert.ok(caps[k] >= 0 && caps[k] <= 99, `${k}=${caps[k]}`);
 });
 
 test("buildCapsForRider: cap ≥ baseline for voksen signatur-evne (current kan vokse mod loft)", () => {
-  const abilities = { climbing: 60, sprint: 30 };
-  const caps = buildCapsForRider(abilities, { potentiale: 5, age: 30 }, "climber");
+  const caps = buildCapsForRider({ climbing: 60, sprint: 30 }, { potentiale: 5, age: 30 }, "climber");
   assert.ok(caps.climbing >= 60, `signatur-cap ${caps.climbing} skal ≥ baseline 60`);
+});
+
+// ── Alders-taper på det absolutte loft (ejer-valg B, 16/7, #2472) ───────────
+// Blocker-fund: uden taper er buildYouthCaps alders-uafhængigt, så en post-peak
+// rytters gap (=cap−current) genåbnes og daglig træning overhaler sæson-declinen
+// (dailyAbilityDelta har ingen aldersgate). Taperen aftrapper det ABSOLUTTE loft
+// efter peakAge; gulvet (max(tapered, current)) er urørt — ingen konfiskation.
+
+test("taperedAbsoluteCap: kant 28 (= peakAge) — uændret, retain 1.0", () => {
+  assert.equal(taperedAbsoluteCap(80, 28, 28), 80);
+});
+
+test("taperedAbsoluteCap: kant 29 (1 år forbi peak) — delvist aftrappet, strengt under 28-værdien", () => {
+  const at28 = taperedAbsoluteCap(80, 28, 28);
+  const at29 = taperedAbsoluteCap(80, 29, 28);
+  assert.ok(at29 < at28, `29 (${at29}) skal være under 28 (${at28})`);
+  assert.ok(at29 > 0, "skal ikke være nul allerede efter 1 år");
+});
+
+test("taperedAbsoluteCap: kant 36 (sidste veteran-år) — meningsfuldt aftrappet, hverken fuldt eller nul", () => {
+  const at36 = taperedAbsoluteCap(80, 36, 28);
+  assert.ok(at36 > 0 && at36 < 80, `36 år skal være delvist aftrappet, fik ${at36}`);
+  assert.ok(at36 < taperedAbsoluteCap(80, 33, 28), "36 skal ligge under 33 (længere forbi peak = mere aftrappet)");
+});
+
+test("taperedAbsoluteCap: kant 40+ — fuldt aftrappet (retain 0, CAP_TAPER_CONFIG's sidste anker), fladt derefter", () => {
+  const lastAnchor = CAP_TAPER_CONFIG.retainByYearsPastPeak.at(-1);
+  assert.equal(lastAnchor.retain, 0, "sidste anker skal være retain=0 (forudsætning for denne test)");
+  assert.equal(taperedAbsoluteCap(80, 28 + lastAnchor.years, 28), 0, `alder ${28 + lastAnchor.years} (sidste anker) skal være fuldt aftrappet`);
+  assert.equal(taperedAbsoluteCap(80, 50, 28), 0, "fladt på 0 langt forbi sidste anker — falder ikke i negativ");
+});
+
+test("taperedAbsoluteCap: monotont faldende med alderen forbi peak", () => {
+  let prev = taperedAbsoluteCap(80, 28, 28);
+  for (let age = 29; age <= 45; age++) {
+    const cur = taperedAbsoluteCap(80, age, 28);
+    assert.ok(cur <= prev, `alder ${age}: ${cur} skal være ≤ forrige ${prev}`);
+    prev = cur;
+  }
+});
+
+test("taperedAbsoluteCap: age null/undefined ⇒ uændret (sikker default, bagudkompatibel)", () => {
+  assert.equal(taperedAbsoluteCap(80, null, 28), 80);
+  assert.equal(taperedAbsoluteCap(80, undefined, 28), 80);
+});
+
+test("buildCapsForRider: age udeladt ⇒ intet taper (identisk med gammel adfærd)", () => {
+  const ab = allAbilities(20);
+  const withoutAge = buildCapsForRider(ab, { potentiale: 5 }, "climber", "tt");
+  const atPeak = buildCapsForRider(ab, { potentiale: 5, age: 28 }, "climber", "tt");
+  assert.deepEqual(withoutAge, atPeak, "manglende alder skal svare til age ≤ peakAge (intet taper)");
+});
+
+test("buildCapsForRider: post-peak taper lukker gappet — cap falder mod current med alderen", () => {
+  // Lavt current, højt potentiale: absolut loft ligger langt over current, så
+  // gulvet ikke binder ved 29 — men skal binde senere når taperen har spist gappet.
+  const ab = { climbing: 40 };
+  const at29 = buildCapsForRider(ab, { potentiale: 6, age: 29 }, "climber", "tt");
+  const at36 = buildCapsForRider(ab, { potentiale: 6, age: 36 }, "climber", "tt");
+  assert.ok(at36.climbing <= at29.climbing, `36 (${at36.climbing}) skal ≤ 29 (${at29.climbing})`);
+  assert.ok(at36.climbing >= 40, "gulvet: loftet må aldrig gå under current (40)");
+});
+
+test("buildCapsForRider: gulvet vinder altid — taper konfiskerer ALDRIG evne rytteren allerede ejer", () => {
+  for (const age of [28, 29, 33, 36, 40, 45]) {
+    const caps = buildCapsForRider(allAbilities(70), { potentiale: 2, age }, "climber", "tt");
+    for (const k of VISIBLE_ABILITIES) {
+      assert.ok(caps[k] >= 70, `alder ${age}, ${k}: loft ${caps[k]} må ikke ligge under current 70`);
+    }
+  }
 });

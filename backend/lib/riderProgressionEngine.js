@@ -17,7 +17,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { developRiderSeason, buildCaps } from "./riderProgression.js";
+import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
@@ -122,7 +122,7 @@ export async function developRidersForSeason({
   const [riders, abilityRows] = await Promise.all([
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, primary_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
+      .select("id, primary_type, secondary_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname")
       .eq("is_retired", false)
       .order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
@@ -154,13 +154,14 @@ export async function developRidersForSeason({
     const abilities = {};
     for (const k of VISIBLE_ABILITIES) if (abRow[k] != null) abilities[k] = Number(abRow[k]);
 
-    // Lazy-init af loftet fra baseline (første gang rytteren udvikles).
-    let caps = abRow.ability_caps;
-    const capsWasNull = !caps || typeof caps !== "object";
-    if (capsWasNull) {
-      caps = buildCaps(abilities, r.primary_type, r.potentiale);
-      summary.caps_initialised++;
-    }
+    // Livstidsloftet genberegnes hver sæson (ikke lazy-initeret) — ren funktion af
+    // potentiale + anlæg + nuværende evne, så en forkert persisteret værdi ikke kan
+    // overleve. Se buildCapsForRider for hvorfor lazy-init var selve fejlen.
+    // age medsendes (#2472, 16/7) så buildCapsForRider kan aftrappe det absolutte
+    // loft efter peakAge — uden den ville post-peak-ryttere ikke aldres (blocker-fund).
+    const caps = buildCapsForRider(abilities, { ...r, age }, r.primary_type, r.secondary_type);
+    const capsChanged = !sameCaps(abRow.ability_caps, caps);
+    if (capsChanged) summary.caps_initialised++;
 
     // Anti-double-dip (#1305): menneskelige holds ryttere i vækstfasen spring over;
     // AI/bank/frozen/test-hold + team_id=null kører fuld L0 som hidtil.
@@ -187,7 +188,7 @@ export async function developRidersForSeason({
     const newBaseValue = predictBaseValue({ primary_type: r.primary_type }, next, model);
 
     const abilityPatch = { ...next };
-    if (capsWasNull) abilityPatch.ability_caps = caps;
+    if (capsChanged) abilityPatch.ability_caps = caps;
     abilityUpdates.push({ id: r.id, patch: abilityPatch });
 
     const riderPatch = { is_u25: age < 25 };

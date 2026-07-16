@@ -103,6 +103,10 @@
         "title": "Bidding on auctions",
         "text": "Go to Auctions and find an auction you want to bid on. Enter your bid and click 'Bid'. You can see whether you're winning (Winning) or whether you've bid but been outbid (You bid). The minimum bid is 1 CZ$ above the current price (or matching the asking price if no one has bid yet)."
       },
+      "valuation": {
+        "title": "The valuation next to a bid",
+        "text": "Each auction shows the rider's estimated market value, and the percentage tells you how far the current bid sits below or above it. The valuation is the game's model estimate meant as a reference to help you judge a bid, not a guaranteed fair price."
+      },
       "autoBidCap": {
         "title": "Auto-bid cap",
         "text": "Auto-bid cap lets you set your private maximum. If you're not already leading, the auto-bid places the minimum bid for you straight away so you take the lead. After that it bids for you automatically each time someone outbids you, raising your bid 1 CZ$ at a time and never above your cap. You stay in front until another manager goes higher than your cap, and only then are you outbid. Your cap is private, so other managers never see it. If your balance can no longer cover your cap, the auto-bid stops until you free up funds."
@@ -344,6 +348,10 @@
       "racesAndResults": {
         "title": "Races and results",
         "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself."
+      },
+      "latestTeamResult": {
+        "title": "Where do I see how my team did?",
+        "text": "After a race with your riders is finalized, your dashboard shows a 'How your team did' card with your placements, prize money and a short recap of the race. Follow the link on the card to the full result with every stage and classification."
       },
       "stageProfile": {
         "title": "Terrain on a result",
@@ -623,8 +631,8 @@
         "text": "Academy riders are young and start with low, raw stats, not finished pros. Their potential sets both how high their abilities can ultimately reach and how fast they improve: a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique. They also get an extra youth boost while young that fades toward their mid-twenties. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day toward their potential."
       },
       "youthAuctions": {
-        "title": "Youth auctions and free agents",
-        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. The winning club takes the prospect into its Academy, paying the winning bid and using one of its 8 places. A prospect nobody bids on becomes a free youth agent: you can sign them straight into your Academy at minimum salary from the Free youth agents list on the Academy page. No real money is ever involved, only in-game points."
+        "title": "Youth auctions",
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. The winning club takes the prospect into its Academy, paying the winning bid and using one of its 8 places. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",
@@ -1021,6 +1029,10 @@
     "crashesFaq": {
       "q": "What are crashes and abandons?",
       "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result, but some force the rider to abandon the race: an abandoned rider is out of the remaining stages and all classifications, and is injured for a few days afterwards. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Abandons are listed on the race page."
+    },
+    "whyReportFaq": {
+      "q": "How can I see why a result happened?",
+      "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown."
     }
   }
 }

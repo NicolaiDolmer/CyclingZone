@@ -103,6 +103,10 @@
         "title": "Byde på auktioner",
         "text": "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (Vinder) eller om du har budt men er overbudt (Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu)."
       },
+      "valuation": {
+        "title": "Vurderingen ved et bud",
+        "text": "Hver auktion viser rytterens estimerede markedsværdi, og procenten fortæller hvor langt det aktuelle bud ligger under eller over den. Vurderingen er spillets modelestimat, tænkt som en reference der hjælper dig med at vurdere et bud, ikke en garanteret fair pris."
+      },
       "autoBidCap": {
         "title": "Autobud loft",
         "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører, placerer autobud minimumsbuddet for dig med det samme, så du tager føringen. Derefter byder det automatisk for dig hver gang nogen overbyder dig, og hæver dit bud 1 CZ$ ad gangen, aldrig over dit loft. Du bliver ved med at føre, indtil en anden manager går højere end dit loft, og først dér er du overbudt. Dit loft er privat, så andre managers ser det aldrig. Hvis din balance ikke længere kan dække dit loft, stopper autobuddet, indtil du frigør midler."
@@ -344,6 +348,10 @@
       "racesAndResults": {
         "title": "Løb og resultater",
         "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter."
+      },
+      "latestTeamResult": {
+        "title": "Hvor ser jeg hvordan det gik mit hold?",
+        "text": "Når et løb med dine ryttere er afsluttet, viser dit dashboard et 'Sådan gik det for dit hold'-kort med dine placeringer, præmiepenge og et kort referat af løbet. Følg linket på kortet til det fulde resultat med alle etaper og klassementer."
       },
       "stageProfile": {
         "title": "Terræn på et resultat",
@@ -623,8 +631,8 @@
         "text": "Akademiryttere er unge og starter med lave, rå stats, ikke færdige proffer. Deres potentiale bestemmer både hvor højt deres evner i sidste ende kan nå, og hvor hurtigt de forbedrer sig: et større talent udvikler sig hurtigere og topper højere, mens et mindre talent vokser til en solid hjælperytter. De får desuden et ekstra ungdomsboost mens de er unge, som aftager hen mod midten af tyverne. De samme regler for Daglig træning gælder: sæt et fokus og en intensitet for hver rytter, og fremskridt akkumuleres dag for dag mod deres potentiale."
       },
       "youthAuctions": {
-        "title": "Ungdomsauktioner og frie agenter",
-        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Det vindende hold optager prospektet i sit Akademi, betaler det vindende bud og bruger en af sine 8 pladser. Et prospekt ingen byder på bliver en fri ungdomsrytter: du kan signere dem direkte ind i dit Akademi til minimumsløn fra listen over Frie ungdomsryttere på Akademi-siden. Der er aldrig rigtige penge involveret, kun in-game-point."
+        "title": "Ungdomsauktioner",
+        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Det vindende hold optager prospektet i sit Akademi, betaler det vindende bud og bruger en af sine 8 pladser. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
@@ -1021,6 +1029,10 @@
     "crashesFaq": {
       "q": "Hvad er styrt og opgivelser?",
       "a": "Undervejs på en etape kan en rytter styrte eller få en mekanisk defekt. De fleste uheld koster tid i resultatet, men nogle tvinger rytteren til at udgå af løbet: en udgået rytter er ude af de resterende etaper og alle klassementer og er skadet et par dage efter. Uheld er sjældne og rammer hektiske finaler og brostensløb hårdest, mens enkeltstarter er de sikreste. Ryttere med god feltplacering rammes sjældnere. Udgåede vises på løbssiden."
+    },
+    "whyReportFaq": {
+      "q": "Hvordan kan jeg se hvorfor et resultat blev som det blev?",
+      "a": "Løbssiderne forklarer markante udfald i almindeligt sprog, ikke bare tal. Små badges ved en rytters navn markerer fx en hjælper der ofrede sin egen placering for kaptajnen, en favorit der havde en dårlig dag, eller en rytter der timede sin formtop perfekt. En 'Det store billede'-boks på etapesiden tilføjer en sætning ved de store udsving, som et lederskifte i sammenlagtstillingen. De præcise tal bag et resultat forbliver skjulte, kun historien vises."
     }
   }
 }

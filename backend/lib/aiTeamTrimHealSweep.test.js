@@ -3,34 +3,59 @@ import assert from "node:assert/strict";
 
 import { runAiTeamTrimHealSweep, STALE_BACKSTOP_HOURS } from "./aiTeamTrimHealSweep.js";
 
-// Mock af teams-tabellen for sweep-queryen:
-//   select("id, name, league_division_id, pending_removal_at")
-//     .eq("is_ai", true).not("pending_removal_at", "is", null).order().range()
-function teamsMock(rows) {
-  return {
-    from(table) {
-      assert.equal(table, "teams", "sweep'en queryer kun teams");
-      const eqFilters = [];
-      let notNullCol = null;
-      const b = {
-        select() { return b; },
-        eq(col, val) { eqFilters.push([col, val]); return b; },
-        not(col, op, val) {
-          if (op === "is" && val === null) notNullCol = col;
-          return b;
-        },
-        order() { return b; },
-        range(from) {
-          let out = [...rows];
-          for (const [col, val] of eqFilters) out = out.filter((r) => r[col] === val);
-          if (notNullCol) out = out.filter((r) => r[notNullCol] != null);
-          const data = from === 0 ? out : [];
-          return Promise.resolve({ data, error: null });
-        },
-      };
-      return b;
-    },
-  };
+// Multi-tabel in-memory mock (#2407): sweep'en læser nu BÅDE teams (kandidater +
+// pulje-felter til trim-budgettet) OG league_divisions (tier), og rydder forældede
+// markører via update. Modellerer kun det sweep'en rører.
+function dbMock(state) {
+  function from(table) {
+    const rows = () => state[table] || [];
+    const filters = [];
+    const matches = (row) => filters.every((f) => {
+      if (f.t === "eq") return row[f.c] === f.v;
+      if (f.t === "in") return f.v.includes(row[f.c]);
+      if (f.t === "is") return f.v === null ? row[f.c] == null : row[f.c] === f.v;
+      if (f.t === "not-is-null") return row[f.c] != null;
+      return true;
+    });
+    const b = {
+      select() { return b; },
+      eq(c, v) { filters.push({ t: "eq", c, v }); return b; },
+      in(c, v) { filters.push({ t: "in", c, v }); return b; },
+      is(c, v) { filters.push({ t: "is", c, v }); return b; },
+      not(c, op, v) { if (op === "is" && v === null) filters.push({ t: "not-is-null", c }); return b; },
+      order() { return b; },
+      range(from) {
+        const data = from === 0 ? rows().filter(matches) : [];
+        return Promise.resolve({ data, error: null });
+      },
+      update(payload) {
+        const u = {
+          eq(c, v) { filters.push({ t: "eq", c, v }); return u; },
+          is(c, v) { filters.push({ t: "is", c, v }); return u; },
+          then(res, rej) {
+            for (const row of rows()) if (matches(row)) Object.assign(row, payload);
+            return Promise.resolve({ data: null, error: null }).then(res, rej);
+          },
+        };
+        return u;
+      },
+      then(res, rej) {
+        return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej);
+      },
+    };
+    return b;
+  }
+  return { from, state };
+}
+
+// Bagudkompatibel helper for de eksisterende tests: kandidat-rækkerne ER pulje-
+// felterne, og puljerne får tier 4 uden ægte managere → targetAi = 0 → alt AI er
+// overskud → trim-budgettet blokerer aldrig (matcher præ-#2407-semantikken hvor
+// testene alene handlede om blokerings-/stale-logik).
+function teamsMock(rows, pools) {
+  const poolIds = [...new Set(rows.map((r) => r.league_division_id))];
+  const league_divisions = pools ?? poolIds.map((id) => ({ id, tier: 4 }));
+  return dbMock({ teams: rows.map((r) => ({ ...r })), league_divisions });
 }
 
 const hoursAgo = (now, h) => new Date(now.getTime() - h * 60 * 60 * 1000).toISOString();
@@ -200,4 +225,152 @@ test("#2187 sweep: ingen kandidater → no-op", async () => {
 
 test("#2434 sweep: STALE_BACKSTOP_HOURS er 120 (godt over det længste etapeløbs kalender-spredning)", () => {
   assert.equal(STALE_BACKSTOP_HOURS, 120);
+});
+
+// ── #2407 Fejl 2 · sweep'en må ALDRIG bringe en pulje under target. Prod 12-15/7:
+// removeAiTeams over-markerede hele puljen (65 hold, kun 5 reelt overskud), og
+// sweep'en slettede hvert markeret hold så snart det blev ublokeret — uden
+// størrelses-check ville pulje 9/10/11 være tømt mod 4/4/4. Fixet: pr.-pulje
+// trim-budget (aiCount - targetAi); budget 0 → forældet markør RYDDES i stedet
+// for at slette (kaskade-bremse + selv-heling af over-markering). ────────────────
+
+// Pulje på præcis target: tier 4, 1 ægte manager + 23 AI → targetAi = 23 → budget 0.
+function poolAtTarget(nMarked, now) {
+  const teams = [
+    { id: "mgr-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: "pool-9" },
+  ];
+  for (let i = 0; i < 23; i++) {
+    teams.push({
+      id: `ai-${String(i).padStart(2, "0")}`,
+      name: `AI ${i}`,
+      is_ai: true,
+      league_division_id: "pool-9",
+      pending_removal_at: i < nMarked ? hoursAgo(now, 10 - i) : null,
+    });
+  }
+  return teams;
+}
+
+test("#2407 Fejl 2: pulje på target → intet slettes, forældede markører ryddes (kaskade-bremsen)", async () => {
+  const now = new Date("2026-07-16T12:00:00Z");
+  const supabase = dbMock({
+    teams: poolAtTarget(5, now),
+    league_divisions: [{ id: "pool-9", tier: 4 }],
+  });
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase,
+    now,
+    teamBlockingRaceIds: async () => [], // ALT er ublokeret — præcis kaskade-scenariet
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async (_sb, id) => { removed.push(id); },
+    getInflightIds: async () => [],
+  });
+
+  assert.deepEqual(removed, [], "puljen er på target → INGEN sletning uanset markeringer");
+  assert.equal(res.healed, 0);
+  assert.equal(res.cleared, 5, "alle 5 forældede markører ryddes (selv-heling af over-markering)");
+  const stillMarked = supabase.state.teams.filter((t) => t.pending_removal_at != null);
+  assert.deepEqual(stillMarked, [], "pending_removal_at er nulstillet i DB");
+  assert.ok(res.guard.every((g) => g.reason === "pool_at_or_below_target"), "guard-events forklarer rydningen");
+});
+
+test("#2407 Fejl 2: kun det reelle overskud slettes — budgettet stopper sweep'en ved target", async () => {
+  const now = new Date("2026-07-16T12:00:00Z");
+  // Prod-pulje 9-scenariet: 1 manager + 26 AI = 27 hold, targetAi 23 → overskud 3.
+  const teams = [
+    { id: "mgr-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: "pool-9" },
+  ];
+  for (let i = 0; i < 26; i++) {
+    teams.push({
+      id: `ai-${String(i).padStart(2, "0")}`,
+      name: `AI ${i}`,
+      is_ai: true,
+      league_division_id: "pool-9",
+      // 5 markerede; ældst først (i=0 er ældst) så sletnings-ordenen er deterministisk.
+      pending_removal_at: i < 5 ? hoursAgo(now, 10 - i) : null,
+    });
+  }
+  const supabase = dbMock({ teams, league_divisions: [{ id: "pool-9", tier: 4 }] });
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase,
+    now,
+    teamBlockingRaceIds: async () => [],
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    // Spejl deleteAiTeamById: sletningen fjerner holdet (og dermed markøren) fra DB.
+    removeTeam: async (_sb, id) => {
+      removed.push(id);
+      supabase.state.teams = supabase.state.teams.filter((t) => t.id !== id);
+    },
+    getInflightIds: async () => [],
+  });
+
+  assert.equal(res.healed, 3, "præcis overskuddet (3) slettes — ikke alle 5 markerede");
+  assert.deepEqual(removed, ["ai-00", "ai-01", "ai-02"], "ældste markeringer først");
+  assert.equal(res.cleared, 2, "de 2 resterende markører ryddes (puljen er nu på target)");
+  const stillMarked = supabase.state.teams.filter((t) => t.pending_removal_at != null);
+  assert.deepEqual(stillMarked, [], "ingen markører tilbage");
+});
+
+test("#2407 Fejl 2: blokeret hold bruger IKKE budget — markøren består til næste sweep", async () => {
+  const now = new Date("2026-07-16T12:00:00Z");
+  // Overskud 1: 1 manager + 24 AI = 25 hold, targetAi 23 → budget 1.
+  const teams = [
+    { id: "mgr-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: "pool-9" },
+  ];
+  for (let i = 0; i < 24; i++) {
+    teams.push({
+      id: `ai-${String(i).padStart(2, "0")}`,
+      name: `AI ${i}`,
+      is_ai: true,
+      league_division_id: "pool-9",
+      pending_removal_at: i < 2 ? hoursAgo(now, 10 - i) : null, // ai-00 (ældst) + ai-01
+    });
+  }
+  const supabase = dbMock({ teams, league_divisions: [{ id: "pool-9", tier: 4 }] });
+  const removed = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase,
+    now,
+    teamBlockingRaceIds: async (_sb, id) => (id === "ai-00" ? ["race-running"] : []),
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async (_sb, id) => { removed.push(id); },
+    getInflightIds: async () => ["race-running"],
+  });
+
+  assert.deepEqual(removed, ["ai-01"], "det ublokerede hold slettes inden for budgettet");
+  assert.equal(res.healed, 1);
+  assert.equal(res.cleared, 0, "det blokerede holds markør ryddes IKKE (puljen er stadig over target)");
+  const blockedTeam = supabase.state.teams.find((t) => t.id === "ai-00");
+  assert.ok(blockedTeam.pending_removal_at, "blokeret hold beholder markøren til næste sweep");
+});
+
+test("#2407 Fejl 2: ukendt pulje → fail-closed (ingen sletning, markør bevares, guard-event)", async () => {
+  const now = new Date("2026-07-16T12:00:00Z");
+  const supabase = dbMock({
+    teams: [
+      { id: "ai-lost", name: "AI Lost", is_ai: true, league_division_id: "pool-deleted", pending_removal_at: hoursAgo(now, 5) },
+    ],
+    league_divisions: [], // puljen findes ikke længere
+  });
+  const res = await runAiTeamTrimHealSweep({
+    supabase,
+    now,
+    teamBlockingRaceIds: async () => [],
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => [],
+  });
+
+  assert.equal(res.healed, 0, "uden pulje-kontekst slettes INTET (fail-closed)");
+  assert.equal(res.cleared, 0, "markøren ryddes heller ikke (vi ved ikke om den er forældet)");
+  assert.equal(res.guard.length, 1);
+  assert.equal(res.guard[0].reason, "pool_unknown");
+  const team = supabase.state.teams.find((t) => t.id === "ai-lost");
+  assert.ok(team.pending_removal_at, "markøren består");
 });

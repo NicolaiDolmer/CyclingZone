@@ -120,7 +120,13 @@ Harness `backend/scripts/salaryDecouplingScorecard.js` (mønster fra `valuationV
 ægte population. Gates:
 
 1. **G1 lønbyrde-kontinuitet (hård):** Σ løn pr. division efter ny formel inden for ±X% af nuværende frosne
-   lønbyrder (D1 ~1,15M / D2 ~650k / D3 ~310k; fresh roster ~316k/hold). Dette er kalibreringens definition.
+   lønbyrder. Dette er kalibreringens definition.
+   **RETTELSE (14/7, shadow-kørsel):** de tidligere antagne tal (D1 ~1,15M / D2 ~650k / D3 ~310k) kom fra en
+   forældet template (`economyContractSimulation.js`), IKKE live-data. De faktiske lønbyrder (1589 owned-ryttere):
+   **D1 0,08M · D2 0,18M · D3 2,20M · D4 0,30M** (~2,76M total, 80% i div 3 fordi managere kommer ind i div 3).
+   Median-rytterens `base_value` ~7.000 → median-løn ~470 CZ$. En enkelt global sats fik div 1/2 til at falde
+   ~40% (G1 rød), så ejer valgte (14/7) **per-division sats** (`rate_d = Σløn_d/Σcpv_d`) — bevarer hver divisions
+   lønbyrde ved konstruktion. Endelige tal: [audits/2026-07-14-salary-decoupling-scorecard.md](../../audits/2026-07-14-salary-decoupling-scorecard.md).
 2. **G2 talent-fix (hård):** repræsentative unge talenter → løn < sponsor (240k), OG løn/værdi-forhold falder
    markant vs. den nuværende market_value-kobling. Det oprindelige 373k-tilfælde skal lande langt under.
 3. **G3 etableret-stabilitet (rapport):** peak-producenters løn ≈ uændret vs. i dag (basis-skiftet må ikke

@@ -187,3 +187,17 @@ export function careerTrajectory(rider, abilities, model) {
   const result = simulateCareer(rider, abilities, model);
   return result ? result.trajectory : [];
 }
+
+// Løn-base (#2428 løn-decoupling): kun SÆSON-0-produktionsleddet, skaleret, UDEN
+// elite-præmie. Adskiller løn ("ugeløn for nuværende levering") fra base_value
+// ("køb/salg-pris = hele karriere-NPV'en + elite-præmie"). Genbruger careerTrajectory
+// så formlen ikke duplikeres — trajectory[0].prod = exp(a + b·O_0 + c·O_0² + offset)
+// ved rytterens NUVÆRENDE evner (ingen diskontering, survival=1, ingen fremskrivning).
+// Samme kald-form + null-kontrakt som predictBaseValueV4. Ren funktion.
+export function currentProductionValue(rider, abilities, model) {
+  const traj = careerTrajectory(rider, abilities, model);
+  if (!traj.length) return null;
+  const scale = Number.isFinite(Number(model?.scale)) ? Number(model.scale) : 1;
+  const v = Math.round(scale * traj[0].prod);
+  return Number.isFinite(v) && v > 0 ? Math.max(1, v) : null;
+}

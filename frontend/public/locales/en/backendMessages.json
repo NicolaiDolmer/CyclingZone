@@ -128,7 +128,7 @@
     },
     "boardT3Reminder": {
       "title": "The board is waiting for your {planLabel}",
-      "message": "You have {raceDaysLeft} race days left to negotiate your {planLabel}. If you don't act, the board will decide."
+      "message": "You have {daysLeft} days left to negotiate your {planLabel}. If you don't act, the board will decide."
     },
     "academySigned": {
       "title": "Academy signing complete",
@@ -148,8 +148,8 @@
     },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",
-      "messageSingle": "The board takes over in {raceDaysLeft} race day. Open the Board page and negotiate your {planLabel} now.",
-      "messageMulti": "The board takes over in {raceDaysLeft} race days. Open the Board page and negotiate your {planLabel} now."
+      "messageSingle": "The board takes over in {daysLeft} day. Open the Board page and negotiate your {planLabel} now.",
+      "messageMulti": "The board takes over in {daysLeft} days. Open the Board page and negotiate your {planLabel} now."
     },
     "boardAutoAccepted": {
       "title": "The board chose {planLabel} for you",

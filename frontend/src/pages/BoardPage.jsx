@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
@@ -1489,8 +1489,9 @@ function BoardFeedSection({ items = [] }) {
 }
 
 // S-02b · Auto-accept countdown-banner.
-// Q-bekræftelse C (2026-05-05): T-3 (race_days=2) info, T-1 (=4) Skal-handles,
-// auto-accept (>=5). UI viser kun hvis der findes en pending plan + race-days igang.
+// #2463 · Kalenderdage siden PLANEN blev åbnet til forhandling (ikke det
+// globale race_days_completed-ur): T-3 (dag 2) info, T-1 (dag 4) Skal-handles,
+// auto-accept (dag 5+). UI viser kun hvis der findes en pending plan.
 function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanType, plans }) {
   const { t } = useTranslation("board");
   if (isBaselinePhase || !autoAccept) return null;
@@ -1499,12 +1500,11 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
     || PLAN_SEQUENCE.some((pt) => plans[pt]?.is_expired);
   if (!hasPendingPlan) return null;
 
-  const raceDaysLeft = Number(autoAccept.race_days_left ?? 0);
-  const raceDaysCompleted = Number(autoAccept.race_days_completed ?? 0);
-  if (raceDaysCompleted <= 0 || raceDaysLeft <= 0) return null;
+  const daysLeft = Number(autoAccept.days_left ?? 0);
+  if (!autoAccept.pending_plan_type || daysLeft <= 0) return null;
 
-  const isCritical = raceDaysLeft <= 1;
-  const isWarning = raceDaysLeft <= 3;
+  const isCritical = daysLeft <= 1;
+  const isWarning = daysLeft <= 3;
 
   const containerClass = isCritical
     ? "bg-cz-danger-bg0/8 border-cz-danger/40"
@@ -1523,8 +1523,8 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
-              ? t("autoAccept.lastChance", { count: raceDaysLeft })
-              : t("autoAccept.waiting",     { count: raceDaysLeft })}
+              ? t("autoAccept.lastChance", { count: daysLeft })
+              : t("autoAccept.waiting",     { count: daysLeft })}
           </p>
           <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("autoAccept.footer")}</p>
         </div>
@@ -2182,6 +2182,12 @@ export default function BoardPage() {
   const [sponsorState, setSponsorState] = useState(null); // { negotiable, upcomingSeasonNumber, offers, pendingVariant } | null
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  // #2463 · loadAll() kører ved HVER realtime-refetch (ikke kun mount). Uden denne
+  // guard genåbner auto-open-blokken nedenfor setup-wizarden ved hver refetch, selv
+  // efter spilleren har lukket den via fejl-udgangen (previewError → wizardClosable) —
+  // en luk-knap alene løser ikke fælden, da næste refetch bare slår wizarden op igen.
+  // Ét auto-open-forsøg pr. side-mount; page-reload nulstiller (nyt mount) med vilje.
+  const autoOpenedSetupWizardRef = useRef(false);
 
   useEffect(() => { loadAll(); }, []);
   // #2307 · andre sider (Dashboard) refetcher live når et løb finaliseres eller
@@ -2287,12 +2293,14 @@ export default function BoardPage() {
     // DNA-kravet, og setup-modalen har ingen luk-knap → deadlock oven på det
     // DNA-valg-kort wizarden skygger for. DNA først; wizarden åbner via refetch.
     const hasAnyPlan = Object.values(newPlans).some(p => p !== null);
-    if (shouldAutoOpenSetupWizard({
+    // #2463 · kun ÉT auto-open-forsøg pr. mount (se ref-kommentar ved deklarationen).
+    if (!autoOpenedSetupWizardRef.current && shouldAutoOpenSetupWizard({
       isBaselinePhase: data.is_baseline_phase,
       setupNextPlanType: data.setup_next_plan_type,
       hasAnyPlan,
       teamDna: data.team_dna,
     })) {
+      autoOpenedSetupWizardRef.current = true;
       const existingFocus = newPlans[data.setup_next_plan_type]?.board?.focus || "balanced";
       setWizardPlanType(data.setup_next_plan_type);
       setWizardIsSetup(true);
@@ -2640,7 +2648,11 @@ export default function BoardPage() {
   // #2104: mangler klub-DNA er wizarden ALTID lukbar — "Start forhandling" er låst
   // af DNA-kravet, så en ulukkelig modal ville være en deadlock (defensiv guard;
   // auto-open-gaten i loadAll åbner normalt slet ikke wizarden uden DNA).
-  const wizardClosable = (!wizardIsSetup || !teamDna) && !(renewalQueue.length > 1 && renewalQueueIdx > 0);
+  // #2463: en previewError (fx proposal-fetch der fejler vedvarende) skal ALTID
+  // give en udgang — startNegotiation sætter kun previewError, uden dette ville
+  // spilleren stå fanget i setup-wizarden med en fejlbesked og ingen knap ud.
+  const wizardClosable = (!wizardIsSetup || !teamDna || Boolean(previewError))
+    && !(renewalQueue.length > 1 && renewalQueueIdx > 0);
   const wizardDialogRef = useModalA11y(wizardClosable ? closeWizard : null, Boolean(wizardPlanType));
 
   if (loading) return (

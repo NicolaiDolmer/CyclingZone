@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.01",
+    "version": "7.04",
     "date": "2026-07-16",
     "label": "Beta",
     "changes": [
@@ -19,7 +19,218 @@ export const PATCHES = [
         "da": {
           "title": "Manager-online-status følger nu dit sprog",
           "body": "Online-badget ved siden af en managers navn på hold- og managerprofiler viste altid dansk tekst, også med engelsk valgt. Det viser nu 'Online now', 'Never' og relative tider på dit valgte sprog."
-        }
+        },
+        "refs": [2508]
+      }
+    ]
+  },
+  {
+    "version": "7.03",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board now gives you a real negotiation window",
+          "body": "Board plans waiting for your negotiation could be decided by the board within hours, often without any warning. Every plan now gets a full 5 day window from the moment it opens, with a reminder on day 2 and a final warning on day 4 before the board picks for you. This also applies to brand new teams."
+        },
+        "da": {
+          "title": "Bestyrelsen giver dig nu et reelt forhandlingsvindue",
+          "body": "Bestyrelsesplaner der ventede på din forhandling kunne blive afgjort af bestyrelsen inden for timer, ofte uden varsel. Hver plan får nu et fuldt vindue på 5 dage fra det øjeblik den åbner, med en påmindelse på dag 2 og en sidste advarsel på dag 4, før bestyrelsen vælger for dig. Det gælder også helt nye hold."
+        },
+        "refs": [2463, 2514]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "No more being stuck in the board setup wizard",
+          "body": "If the board's proposal failed to load during first time plan setup, the wizard showed an error with no way out. It now always offers a way back to the overview when something goes wrong, and no longer reopens itself after you close it."
+        },
+        "da": {
+          "title": "Slut med at sidde fast i bestyrelsens opsætnings-wizard",
+          "body": "Hvis bestyrelsens forslag ikke kunne hentes under førstegangsopsætning af planer, viste wizarden en fejl uden nogen vej ud. Den tilbyder nu altid en vej tilbage til oversigten når noget går galt, og genåbner ikke sig selv efter du har lukket den."
+        },
+        "refs": [2463, 2513]
+      }
+    ]
+  },
+  {
+    "version": "7.02",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Why did your rider finish where he did?",
+          "body": "Race results now come with a why-report explaining what shaped a rider's finish, with story tags like Outsider, Off day, Sacrifice and Crash right on the result page."
+        },
+        "da": {
+          "title": "Hvorfor endte din rytter, hvor han gjorde?",
+          "body": "Løbsresultater kommer nu med en why-rapport, der forklarer hvad der formede rytterens placering, med story-tags som Outsider, Off day, Sacrifice og Crash direkte på resultatsiden."
+        },
+        "refs": [2355]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "How your team did: race results on your dashboard",
+          "body": "After each finalized race with your riders, a new dashboard card shows your placements, prize money and a short recap of how the race unfolded, with a link to the full result. No more missing how your tactics played out."
+        },
+        "da": {
+          "title": "Sådan gik det for dit hold: løbsresultater på dit dashboard",
+          "body": "Efter hvert afsluttet løb med dine ryttere viser et nyt dashboard-kort dine placeringer, præmiepenge og et kort referat af hvordan løbet udviklede sig, med link til det fulde resultat. Du går ikke længere glip af hvordan din taktik spillede ud."
+        },
+        "refs": [2466]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "See where a rider's value is heading",
+          "body": "Rider market value now shows its movement (the change over the last 7 and 14 days) on the rider profile and in your squad overview, so you can spot who is rising or falling before you buy or sell."
+        },
+        "da": {
+          "title": "Se hvor en rytters værdi er på vej hen",
+          "body": "Rytterens markedsværdi viser nu bevægelsen (ændringen de seneste 7 og 14 dage) på rytterprofilen og i din trup-oversigt, så du kan se hvem der stiger eller falder, før du køber eller sælger."
+        },
+        "refs": [2499]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A daily story from training, not just numbers",
+          "body": "Your training check-in now leads with one curated story from your rider's latest training day, a breakthrough, closing in on a milestone, or hitting peak form, instead of a wall of numbers."
+        },
+        "da": {
+          "title": "En daglig historie fra træningen, ikke kun tal",
+          "body": "Dit trænings-check-in starter nu med én kurateret historie fra rytterens seneste træningsdag, et gennembrud, at nærme sig et mål, eller topform, i stedet for en væg af tal."
+        },
+        "refs": [2484]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "See if develop-and-sell actually pays off",
+          "body": "A new academy accounting view sets your running costs and academy salaries against sale revenue, so you can finally see whether your develop-and-sell strategy is paying off."
+        },
+        "da": {
+          "title": "Se om udvikl-og-sælg rent faktisk betaler sig",
+          "body": "En ny akademi-regnskabsflade stiller dine driftsomkostninger og akademi-løn op mod salgsindtægter, så du endelig kan se om din udvikl-og-sælg-strategi betaler sig."
+        },
+        "refs": [2485]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Youth talent now comes through your own academy",
+          "body": "The free youth agents list is gone: new talent arrives through your season intake and youth auctions. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is now a real decision."
+        },
+        "da": {
+          "title": "Ungdomstalent kommer nu gennem dit eget akademi",
+          "body": "Listen over frie ungdomsryttere er væk: nye talenter kommer via dit sæson-intake og ungdomsauktioner. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er nu en ægte beslutning."
+        },
+        "refs": [2456]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "Your team's history, season by season",
+          "body": "The team page now has a Palmarès tab: season-by-season history covering division, placement, points and wins, plus promotion and relegation, alongside a full honours list."
+        },
+        "da": {
+          "title": "Dit holds historie, sæson for sæson",
+          "body": "Holdsiden har nu en palmarès-fane: sæson-for-sæson-historik med division, placering, point og sejre, plus op- og nedrykning, sammen med en fuld æresliste."
+        },
+        "refs": [1997]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Judge an auction bid at a glance",
+          "body": "Auctions now show how the current bid compares to the rider's estimated market value (below or above valuation), plus the rider's overall rating, type and five key abilities by default. On mobile, the filter panel stays collapsed until you need it. The valuation is a model estimate meant as a reference, not a guaranteed price."
+        },
+        "da": {
+          "title": "Vurdér et auktionsbud på ét blik",
+          "body": "Auktioner viser nu hvordan det aktuelle bud ligger i forhold til rytterens estimerede markedsværdi (under eller over vurdering), plus rytterens samlede rating, type og fem nøgle-evner som standard. På mobil er filterpanelet foldet sammen, indtil du skal bruge det. Vurderingen er et modelestimat tænkt som reference, ikke en garanteret pris."
+        },
+        "refs": [2464]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Season Planner now shows riders the way you know them",
+          "body": "Rider rating, nationality flag and rider type now appear in the Season Planner just like everywhere else in the game, and attribute colors are readable in dark mode."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren viser nu ryttere som du kender dem",
+          "body": "Rytter-rating, nationalitetsflag og ryttertype vises nu i Sæsonplanlæggeren ligesom resten af spillet, og attribut-farverne er læselige i dark mode."
+        },
+        "refs": [2447]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board negotiations now judge you consistently",
+          "body": "Requesting new goals from the board could be evaluated with less context than the board status page showed, and auto-accepted proposals dropped trade-off details. All board decisions now use the same complete picture of your season."
+        },
+        "da": {
+          "title": "Bestyrelsesforhandlinger vurderer dig nu ens",
+          "body": "At bede bestyrelsen om nye mål kunne blive vurderet med mindre kontekst end bestyrelses-statussiden viste, og auto-accepterede forslag mistede trade-off-detaljer. Alle bestyrelsesbeslutninger bruger nu det samme fulde billede af din sæson."
+        },
+        "refs": [2469]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UX",
+        "en": {
+          "title": "Actions tell you when something goes wrong",
+          "body": "Training, scouting and saving your strategy no longer fail silently, you now get an error message when something goes wrong. Stage roles also got short explanations."
+        },
+        "da": {
+          "title": "Handlinger fortæller dig, når noget går galt",
+          "body": "Træning, scouting og gem af strategi fejler ikke længere i stilhed, du får nu en fejlbesked, når noget går galt. Etape-roller har også fået korte forklaringer."
+        },
+        "refs": [2465]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Small fixes across the app",
+          "body": "The founder page's CTA now scrolls to the waitlist, help deep-links work correctly, watchlist confirmations use a toast instead of a browser alert, and an internal survey banner has been removed."
+        },
+        "da": {
+          "title": "Småfixes på tværs af appen",
+          "body": "Founder-sidens CTA scroller nu til waitlisten, hjælp-deep-links virker korrekt, watchlist-bekræftelser bruger en toast i stedet for en browser-alert, og et internt survey-banner er fjernet."
+        },
+        "refs": [2467]
       }
     ]
   },

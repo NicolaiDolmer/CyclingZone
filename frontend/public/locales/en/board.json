@@ -363,9 +363,9 @@
     "needsAction": "Needs action"
   },
   "autoAccept": {
-    "lastChance": "Last chance, the board takes over in {count, plural, one {1 race day} other {# race days}}",
-    "waiting": "The board is waiting on your negotiation, {count, plural, one {1 race day} other {# race days}} left",
-    "footer": "If you have not chosen focus and negotiated targets by race day 5, the board picks a plan based on your team identity from season 1."
+    "lastChance": "Last chance, the board takes over in {count, plural, one {1 day} other {# days}}",
+    "waiting": "The board is waiting on your negotiation, {count, plural, one {1 day} other {# days}} left",
+    "footer": "If you have not chosen focus and negotiated targets within 5 days of the plan opening, the board picks a plan based on your team identity from season 1."
   },
   "plan": {
     "autoConfigured": "Configured automatically at next season start",
