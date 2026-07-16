@@ -6,8 +6,12 @@ import { useState, useCallback } from "react";
 // holdes UDENFOR customize (allerede conditional/dismissible).
 // #1536: "Næste træk" (nextActions) + forecast gjort valgfrie efter Discord-feedback.
 export const DASHBOARD_MODULES = [
-  { id: "nextActions",   defaultVisible: true },
-  { id: "forecast",      defaultVisible: true },
+  { id: "nextActions",    defaultVisible: true },
+  { id: "forecast",       defaultVisible: true },
+  // #2466: "How your team did" — resultat-push for holdets seneste løb. Nyt
+  // modul defaulter til synligt for ALLE (også eksisterende localStorage-layouts,
+  // jf. merge-mod-defaults i loadLayout).
+  { id: "myLatestResult", defaultVisible: true },
   { id: "auctions",      defaultVisible: true },
   { id: "transfers",     defaultVisible: true },
   { id: "races",         defaultVisible: true },

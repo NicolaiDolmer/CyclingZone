@@ -16,6 +16,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
+import MyLatestResultCard from "../components/MyLatestResultCard";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -116,8 +117,12 @@ export default function DashboardPage() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [recentResults, setRecentResults] = useState([]);
   const [riderRanking, setRiderRanking] = useState([]);
+  // #2466: resultat-push — null = ikke hentet endnu/fejlet (kortet renderer intet),
+  // { race: null } = ingen finaliserede løb (empty state), ellers payload.
+  const [myLatestResult, setMyLatestResult] = useState(null);
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
+  const myLatestResultVisible = isVisible("myLatestResult");
 
   // #2288 D — "Næste træk"-udvidelse: 3 lette signaler beregnet efter nextRaces/
   // board er hentet. squadSelectionMissingRace = det næste udtagelige løb HVIS
@@ -413,33 +418,52 @@ export default function DashboardPage() {
     if (team?.id) logTeamDrafted(riders.length);
   }, [team?.id, riders.length]);
 
-  // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet
+  // #1005: hent de tre push-moduler fra deres aggregat-endpoints — kun når modulet
   // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
-  // er cachede server-side (60s), så toggle on→off→on rammer cachen.
+  // er cachede server-side (60s), så toggle on→off→on rammer cachen. Effekten
+  // kører EFTER first paint (#2444: intet af dette blokerer dashboardets critical
+  // path — kortene fylder ud når svarene lander).
   useEffect(() => {
     let cancelled = false;
     async function loadExtras() {
-      if (!recentResultsVisible && !riderRankingVisible) return;
+      if (!recentResultsVisible && !riderRankingVisible && !myLatestResultVisible) return;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
       const headers = { Authorization: `Bearer ${token}` };
-      if (recentResultsVisible) {
-        try {
-          const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
-          if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
-        } catch { /* best-effort */ }
-      }
-      if (riderRankingVisible) {
-        try {
-          const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
-          if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
-        } catch { /* best-effort */ }
-      }
+      // Parallelt (ikke sekventielt) — hvert kort fylder ud så snart dets eget
+      // svar lander; især resultat-pushet (#2466) skal ikke vente bag to andre
+      // round-trips. Hver gren er fortsat best-effort og fejler stille alene.
+      await Promise.all([
+        recentResultsVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
+            if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
+          } catch { /* best-effort */ }
+        })(),
+        riderRankingVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
+            if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
+          } catch { /* best-effort */ }
+        })(),
+        // #2466: "How your team did" — holdets eget seneste løbsresultat.
+        myLatestResultVisible && (async () => {
+          try {
+            const r = await fetch(`${API}/api/dashboard/my-latest-result`, { headers });
+            if (r.ok && !cancelled) {
+              const body = await r.json();
+              // race === undefined (fx mock-fallback {}) normaliseres til null →
+              // kortets empty state i stedet for en død boks.
+              setMyLatestResult({ ...body, race: body.race ?? null });
+            }
+          } catch { /* best-effort — kortet renderer intet ved fejl */ }
+        })(),
+      ]);
     }
     loadExtras();
     return () => { cancelled = true; };
-  }, [recentResultsVisible, riderRankingVisible]);
+  }, [recentResultsVisible, riderRankingVisible, myLatestResultVisible]);
 
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
@@ -699,6 +723,11 @@ export default function DashboardPage() {
           MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
           tidligst scheduled-løb, som kunne være allerede-udtaget). */}
       <TeamSelectionCtaCard nextRace={squadSelectionMissingRace} />
+
+      {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
+          Kortet renderer intet før endpoint-svaret er landet (myLatestResult
+          starter som null), empty state når holdet endnu ingen løb har kørt. */}
+      {myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">
