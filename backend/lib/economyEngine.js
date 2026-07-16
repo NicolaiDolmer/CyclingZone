@@ -18,6 +18,7 @@ import {
 } from "./loanEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
+  buildBoardEvalContext,
   computeU25StatSum,
   createInitialBoardProfile,
   evaluateBoardSeason,
@@ -1186,8 +1187,6 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
     let goalsTotal = null;
 
     if (board && standing) {
-      const planDuration = getPlanDuration(board.plan_type);
-      const seasonsCompleted = (board.seasons_completed || 0) + 1;
       // #1187: projicér fra sæson-start-ankeret når weekend-opdateringer har
       // flyttet den løbende værdi (samme regel som processTeamSeasonEnd).
       const previewAnchorValid =
@@ -1198,24 +1197,22 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       const previewAnchor = previewAnchorValid
         ? Number(board.season_start_satisfaction)
         : currentSatisfaction;
+      // #2469 · Delt context-bygger. Kendt begrænsning: previewen er synkron og
+      // tager ingen supabase-klient, så den kan ikke kalde loadGoalContextForBoard
+      // → goalContext mangler (divisionManagerCount/divisionTeamCount m.fl.).
+      // Previewens projektion er derfor en smule mildere end den autoritative
+      // season-end-evaluering (relative_rank → awaiting_data, intet results-gulv).
       const projected = evaluateBoardSeason({
         board: { ...board, satisfaction: previewAnchor },
         standing,
         team: { ...team, riders },
-        context: {
-          isFinalSeason: seasonsCompleted >= planDuration,
+        context: buildBoardEvalContext({
+          board,
+          standing,
           activeLoanCount: teamLoans.length,
-          planStartSponsorIncome: board.plan_start_sponsor_income,
           currentSponsorIncome: team.sponsor_income,
-          planDuration,
-          seasonsCompleted,
           recentSnapshots: [],
-          hasSeasonData: true,
-          cumulativeStats: {
-            stageWins: (board.cumulative_stage_wins || 0) + (standing.stage_wins || 0),
-            gcWins: (board.cumulative_gc_wins || 0) + (standing.gc_wins || 0),
-          },
-        },
+        }),
       });
 
       projectedSatisfaction = projected.newSatisfaction;
@@ -1342,21 +1339,19 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       planStartSeasonNumber: board.plan_start_season_number,
     });
 
-    const context = {
-      isFinalSeason: planIsComplete,
+    // #2469 · Delt context-bygger — samme som /board/status, /board/request og
+    // weekend-stien, så season-end ikke kan drifte fra de live-viste tal igen.
+    // Byggerens isFinalSeason ≡ planIsComplete og cumulativeStats ≡
+    // newCumulative*-locals ovenfor (samme formler; locals beholdes til
+    // persistering af snapshots + cumulative_*).
+    const context = buildBoardEvalContext({
+      board,
+      standing: teamStanding,
       activeLoanCount: activeLoanCount || 0,
-      planStartSponsorIncome: board.plan_start_sponsor_income,
       currentSponsorIncome: freshTeamData?.sponsor_income ?? team.sponsor_income,
-      planDuration,
-      seasonsCompleted,
       recentSnapshots: recentSnapshots || [],
-      hasSeasonData: true,
-      cumulativeStats: {
-        stageWins: newCumulativeStageWins,
-        gcWins: newCumulativeGcWins,
-      },
-      ...goalContext,
-    };
+      goalContext,
+    });
 
     const {
       goals,
