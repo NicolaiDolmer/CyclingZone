@@ -18,6 +18,7 @@ import TeamLink from "../../TeamLink";
 import { statColor, statTextColor } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
+import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import { AlertTriangleIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
@@ -99,6 +100,7 @@ export default function RiderProfileHero({
   divisionLabel,                  // fx "DIV 2" (null hvis ukendt)
   valueAmount,                    // "4.366" (uden CZ$-suffix)
   valueLabel,                     // fuld label til title
+  valueTrendWindow = null,        // #2499: { delta, pct, actualDaysAgo, snapshotDate } | null
   salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
   winsOnText,                     // "Flade massespurter" (1-2 terræn, kommasepareret)
   isAiTeam = false,
@@ -238,13 +240,17 @@ export default function RiderProfileHero({
             <div className="pt-4 border-t border-cz-border/60">
               <p className="text-cz-3 text-[10px] uppercase tracking-[0.14em] font-semibold">{t("profile.hero.valueEyebrow")}</p>
               <div className="flex items-end justify-between gap-3 mt-0.5">
-                <p
-                  className="font-mono font-bold tabular-nums text-cz-1 text-2xl sm:text-[28px] leading-none truncate"
-                  title={valueLabel}
-                  data-testid="rider-value-amount"
-                >
-                  {valueAmount}
-                </p>
+                <div className="min-w-0">
+                  <p
+                    className="font-mono font-bold tabular-nums text-cz-1 text-2xl sm:text-[28px] leading-none truncate"
+                    title={valueLabel}
+                    data-testid="rider-value-amount"
+                  >
+                    {valueAmount}
+                  </p>
+                  {/* #2499: delta siden sidst — kun total-tallet (fog-gate), ingen model-komponenter. */}
+                  <RiderValueTrendBadge window={valueTrendWindow} className="mt-1" />
+                </div>
                 <div className="text-end flex-shrink-0">
                   <p className="text-cz-3 text-[11px]">
                     {t("profile.hero.salary")}{" "}

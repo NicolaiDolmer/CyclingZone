@@ -18,11 +18,14 @@ import {
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
   SEED_RIDER_PALMARES_RESULTS,
+  SEED_TEAM_SEASON_STANDINGS,
+  SEED_TEAM_HALL_OF_FAME,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
+  SEED_ACADEMY_PNL,
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
@@ -126,13 +129,31 @@ export function restRows(table, requestUrl = "") {
       }
       return [];
     }
+    // #1997 holdside-slice: team-scopet query (TeamPalmaresTab: team_id=eq.<id>)
+    // får sæson-historik-seedet. KUN TEST_TEAM har seedede standings — andre
+    // hold (fx RIVAL_TEAM) ser den tilsigtede tomme tilstand.
+    case "season_standings": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return id === TEST_TEAM.id ? SEED_TEAM_SEASON_STANDINGS : [];
+      }
+      return [];
+    }
+    case "hall_of_fame": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return id === TEST_TEAM.id ? SEED_TEAM_HALL_OF_FAME : [];
+      }
+      return SEED_TEAM_HALL_OF_FAME;
+    }
     case "auction_proxy_bids":
     case "finance_transactions":
     case "notifications":
     case "player_events":
     case "rider_watchlist":
     case "roadmap_votes":
-    case "season_standings":
       return [];
     case "seasons":
       return [ACTIVE_SEASON];
@@ -239,6 +260,30 @@ export function apiResponse(pathname) {
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+  if (pathname.endsWith("/api/academy/pnl")) return SEED_ACADEMY_PNL;
+
+  // #2466 "How your team did" — resultat-push for holdets seneste finaliserede
+  // løb. Afledt af seed-løbet race-done-2 (Giro di Preview): Ada Pedersen nr. 2 i
+  // GC + etapesejr på etape 1. recap-rækkerne er seedets stage-2-rækker 1:1, så
+  // buildRaceRecap fortæller det samme i preview som i prod (soloWin + teamWon +
+  // abandon/notableCrash fra SEED_RACE_INCIDENTS).
+  if (pathname.endsWith("/api/dashboard/my-latest-result")) {
+    const finalRows = SEED_RACE_RESULTS.filter(
+      (r) => r.race_id === "race-done-2" && r.stage_number === 2
+    );
+    return {
+      race: { id: "race-done-2", name: "Giro di Preview", race_type: "stage_race", stages: 2, last_import: "2026-06-30T15:00:00.000Z" },
+      placements: [
+        { rider_id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", rider_name: "Ada Pedersen", nationality_code: "dk", rank: 2, finish_time: "+0:22", points_earned: 40 },
+      ],
+      stage_wins: 1,
+      totals: { points: 80, prize_money: 194000 },
+      recap: {
+        results: finalRows,
+        incidents: SEED_RACE_INCIDENTS.filter((i) => i.race_id === "race-done-2"),
+      },
+    };
+  }
 
   // S5 Season Planner: statisk board til read-only smoke (mutationer i preview går
   // gennem den stateful plannerMock, ikke her).

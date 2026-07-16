@@ -18,10 +18,13 @@ import SortTh from "../components/rider/RiderSortTh";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
+import TeamPalmaresTab from "../components/TeamPalmaresTab";
 import { PageLoader } from "../components/ui";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
-const TABS = ["squad", "results", "transfers"];
+// #1997 holdside-slice: "palmares" tilføjet efter "results" (spejler rytterprofilens
+// fane-rækkefølge — Resultater → Palmarès).
+const TABS = ["squad", "results", "palmares", "transfers"];
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
@@ -212,6 +215,7 @@ export default function TeamProfilePage() {
         {[
           { key: "squad", label: t("profile.tabSquad", { count: currentRiders.length }) },
           { key: "results", label: t("profile.tabResults") },
+          { key: "palmares", label: t("profile.tabPalmares") },
           { key: "transfers", label: t("profile.tabTransfers") },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -224,6 +228,11 @@ export default function TeamProfilePage() {
 
       {activeTab === "results" && (
         <TeamResultsTab teamId={id} isOwnTeam={isMyTeam} />
+      )}
+
+      {/* #1997 holdside-slice — sæson-for-sæson-historik, karrieretotaler + æresliste. */}
+      {activeTab === "palmares" && (
+        <TeamPalmaresTab teamId={id} />
       )}
 
       {activeTab === "transfers" && (

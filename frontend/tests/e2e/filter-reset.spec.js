@@ -22,6 +22,12 @@ test("#960 filter reset: always visible, disabled until a filter is set, shows a
   await expect(reset).toBeVisible();
   await expect(reset).toBeDisabled();
 
+  // #2464: på mobil er panel-indholdet kollapset bag en disclosure — åbn den
+  // før der interageres med felterne. Reset-knappen selv bor i header-rækken
+  // og er synlig uanset (dækket af assertions ovenfor).
+  const panelToggle = page.getByTestId("filter-panel-toggle");
+  if (await panelToggle.isVisible()) await panelToggle.click();
+
   // Setting one filter enables it and surfaces the count "(1)".
   await page.getByTestId("filter-name").fill("Ada");
   await expect(reset).toBeEnabled();

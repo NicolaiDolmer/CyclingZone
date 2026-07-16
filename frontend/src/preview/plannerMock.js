@@ -63,12 +63,17 @@ const RACES = [
 ];
 const RACE_BY_ID = new Map(RACES.map((r) => [r.id, r]));
 
+// #2447: nationalitet som rigtig 2-bogstavs ISO-kode (lowercase) — matcher
+// riders.nationality_code i produktion (samme format Flag-komponenten kræver).
+// Var tidligere 3-bogstavs pseudo-koder ("BEL"/"NOR"/...) der aldrig ville have
+// matchet Flag'ens /^[a-z]{2}$/-regex, og derfor ville have vist INGEN flag i
+// preview/E2E-skærmbilleder efter denne PR's Flag-genbrug.
 const RIDERS = [
-  { id: "rd-verm", firstname: "Lars", lastname: "Vermeulen", nationality: "BEL", primaryType: "climber", isAcademy: true, form: 54, fatigue: 22, injuredUntil: null, abilities: ability({ climbing: 74, tempo: 62, endurance: 60, recovery: 56, punch: 52 }) },
-  { id: "rd-krist", firstname: "Henrik", lastname: "Kristiansen", nationality: "NOR", primaryType: "sprinter", isAcademy: false, form: 60, fatigue: 30, injuredUntil: null, abilities: ability({ sprint: 76, acceleration: 70, flat: 58, positioning: 56, climbing: 30 }) },
-  { id: "rd-soren", firstname: "Mikkel", lastname: "Sørensen", nationality: "DEN", primaryType: "puncheur", isAcademy: false, form: 50, fatigue: 26, injuredUntil: null, abilities: ability({ punch: 66, tempo: 60, climbing: 50, endurance: 54 }) },
-  { id: "rd-novak", firstname: "Tomaz", lastname: "Novak", nationality: "SLO", primaryType: "gc", isAcademy: true, form: 57, fatigue: 24, injuredUntil: null, abilities: ability({ climbing: 72, time_trial: 66, tempo: 62, recovery: 58, endurance: 58 }) },
-  { id: "rd-bianchi", firstname: "Giulio", lastname: "Bianchi", nationality: "ITA", primaryType: "rouleur", isAcademy: false, form: 48, fatigue: 20, injuredUntil: null, abilities: ability({ flat: 62, endurance: 60, tempo: 54 }) },
+  { id: "rd-verm", firstname: "Lars", lastname: "Vermeulen", nationality: "be", primaryType: "climber", secondaryType: "puncheur", isAcademy: true, form: 54, fatigue: 22, injuredUntil: null, abilities: ability({ climbing: 74, tempo: 62, endurance: 60, recovery: 56, punch: 52 }) },
+  { id: "rd-krist", firstname: "Henrik", lastname: "Kristiansen", nationality: "no", primaryType: "sprinter", secondaryType: null, isAcademy: false, form: 60, fatigue: 30, injuredUntil: null, abilities: ability({ sprint: 76, acceleration: 70, flat: 58, positioning: 56, climbing: 30 }) },
+  { id: "rd-soren", firstname: "Mikkel", lastname: "Sørensen", nationality: "dk", primaryType: "puncheur", secondaryType: "climber", isAcademy: false, form: 50, fatigue: 26, injuredUntil: null, abilities: ability({ punch: 66, tempo: 60, climbing: 50, endurance: 54 }) },
+  { id: "rd-novak", firstname: "Tomaz", lastname: "Novak", nationality: "si", primaryType: "gc", secondaryType: "tt", isAcademy: true, form: 57, fatigue: 24, injuredUntil: null, abilities: ability({ climbing: 72, time_trial: 66, tempo: 62, recovery: 58, endurance: 58 }) },
+  { id: "rd-bianchi", firstname: "Giulio", lastname: "Bianchi", nationality: "it", primaryType: "rouleur", secondaryType: null, isAcademy: false, form: 48, fatigue: 20, injuredUntil: null, abilities: ability({ flat: 62, endurance: 60, tempo: 54 }) },
 ];
 
 let counter = 0;

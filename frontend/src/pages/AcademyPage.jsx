@@ -15,9 +15,9 @@ import PotentialeStars from "../components/PotentialeStars.jsx";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
 import { useScouting } from "../lib/useScouting.js";
 import RiderLink from "../components/RiderLink.jsx";
-import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
-import { getRiderMarketValue, projectSeniorSalary } from "../lib/marketValues.js";
+import AcademyPnl from "../components/AcademyPnl.jsx";
+import { projectSeniorSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
 
@@ -35,15 +35,11 @@ function daysUntil(deadline) {
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
   const scouting = useScouting();
-  const { enabled, slots, seniorCount, seniorMax, roster, intake, freeAgents, graduations, balance, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, promoteRider } = useAcademy();
+  const { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, loading, signCandidate, rejectCandidate, resolveGraduate, promoteRider } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
   const [actionErrors, setActionErrors] = useState({}); // { [riderId]: string | null }
-
-  // Bekræftelses-modal for free-agent-køb (#1744): koster penge, så kræv eksplicit
-  // bekræftelse med pris + saldo-effekt. { riderId, riderName, price } | null.
-  const [signConfirm, setSignConfirm] = useState(null);
 
   // #932 S7: promote-bekræftelse (akademi → senior). Konsekvens-bevidst: viser
   // senior-cap-effekt + projiceret senior-løn. { riderId, riderName, newSalary } | null.
@@ -87,42 +83,6 @@ export default function AcademyPage() {
         ? t("error.squadFull")
         : t("error.generic");
       setActionErrors(prev => ({ ...prev, [riderId]: msg }));
-    }
-    setActionState(prev => ({ ...prev, [riderId]: null }));
-  }
-
-  // Åbn bekræftelses-modal — selve købet sker først i confirmSignFreeAgent (#1744).
-  function handleSignFreeAgent(rider) {
-    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
-    setSignConfirm({
-      riderId: rider.id,
-      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
-      // Optagelsen koster den viste markedsværdi (backend trækker calculateRiderMarketValue,
-      // = market_value; spejlet client-side via getRiderMarketValue). Refs #1713.
-      price: getRiderMarketValue(rider),
-    });
-  }
-
-  async function confirmSignFreeAgent() {
-    if (!signConfirm) return;
-    const riderId = signConfirm.riderId;
-    setActionState(prev => ({ ...prev, [riderId]: "signing" }));
-    setActionErrors(prev => ({ ...prev, [riderId]: null }));
-    const result = await signFreeAgent(riderId);
-    if (result.ok) {
-      setSignConfirm(null);
-    } else {
-      const msg = result.error === "academy_full"
-        ? t("error.academyFull")
-        : result.error === "insufficient_balance"
-          ? t("error.insufficientBalance")
-          : result.error === "not_academy_age"
-            ? t("error.notAcademyAge")
-            : result.error === "not_free_agent"
-              ? t("error.notFreeAgent")
-              : t("error.generic");
-      setActionErrors(prev => ({ ...prev, [riderId]: msg }));
-      setSignConfirm(null);
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
@@ -431,82 +391,8 @@ export default function AcademyPage() {
         )}
       </section>
 
-      {/* FREE-AGENT-sektion (#1308 Fase B) — usolgte ungdomsryttere fra ungdomsauktioner. */}
-      <section>
-        <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("freeAgentsHeading")}</h2>
-
-        {freeAgents.length === 0 ? (
-          <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-8 text-center">
-            <p className="text-cz-3 text-sm">{t("emptyFreeAgents")}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {freeAgents.map((rider) => {
-              const age = getRiderAge(rider.birthdate);
-              const busy = actionState[rider.id] != null;
-              const err = actionErrors[rider.id];
-              return (
-                <div key={rider.id} className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-sm leading-snug">
-                        <RiderLink id={rider.id} className="text-cz-1 hover:text-cz-accent-t transition-colors">
-                          {rider.firstname} {rider.lastname}
-                        </RiderLink>
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {rider.nationality_code && (
-                          <Flag code={rider.nationality_code} className="text-sm" />
-                        )}
-                        {age != null && (
-                          <span className="text-xs text-cz-3">{t("ageLabel", { age })}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="flex-shrink-0 text-xs font-mono text-cz-2">
-                      {formatSalary(rider.market_value)} CZ$
-                    </span>
-                  </div>
-
-                  {/* Potentiale — scout-gated for ikke-egne ryttere (#1162/#1543). */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-cz-3">{t("potential")}</span>
-                    <ScoutablePotentiale rider={rider} scouting={scouting} showScout />
-                  </div>
-
-                  {err && <p className="text-xs text-cz-danger">{err}</p>}
-
-                  <button
-                    type="button"
-                    onClick={() => handleSignFreeAgent(rider)}
-                    disabled={busy || isFull}
-                    title={isFull ? t("fullTooltip") : undefined}
-                    className="mt-auto px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                  >
-                    {actionState[rider.id] === "signing"
-                      ? t("loading")
-                      : t("signFreeAgentBtnPriced", { price: formatNumber(getRiderMarketValue(rider)) })}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Bekræftelses-modal for free-agent-køb (#1744) — pris + saldo-effekt. */}
-      <AcademySignConfirmModal
-        show={!!signConfirm}
-        riderName={signConfirm?.riderName}
-        price={signConfirm?.price}
-        balance={balance}
-        busy={signConfirm ? actionState[signConfirm.riderId] === "signing" : false}
-        onCancel={() => {
-          if (signConfirm && actionState[signConfirm.riderId] === "signing") return;
-          setSignConfirm(null);
-        }}
-        onConfirm={confirmSignFreeAgent}
-      />
+      {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
+      <AcademyPnl />
 
       {/* Promote-bekræftelse (#932 S7) — senior-cap-effekt + projiceret senior-løn. */}
       <AcademyTransferConfirmModal

@@ -16,6 +16,7 @@ import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, in
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
+import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 
@@ -96,6 +97,22 @@ export default function TrainingPage() {
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
   const [runError, setRunError] = useState(null);
+
+  // #2465: roster-radens Fokus-select/clear-knap/intensitet-knapper kaldte tidligere
+  // setPlan/clearPlan uden await og uden at læse {ok,error} — en fejl (session,
+  // netværk, backend-afvisning) var visuelt usynlig. Fælles wrapper + pr.-rytter
+  // fejl-state (kun én celle relevant ad gangen pr. bruger-handling).
+  const [planActionError, setPlanActionError] = useState(null); // { riderId, error } | null
+  async function handlePlanChange(riderId, focus, intensity) {
+    setPlanActionError(null);
+    const result = await setPlan(riderId, focus, intensity);
+    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+  }
+  async function handleClearPlan(riderId) {
+    setPlanActionError(null);
+    const result = await clearPlan(riderId);
+    if (result && !result.ok) setPlanActionError({ riderId, error: result.error || "failed" });
+  }
 
   // Gruppering + multi-select + bulk-apply (#1480).
   const [groupByType, setGroupByType] = useState(false);
@@ -238,6 +255,16 @@ export default function TrainingPage() {
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
   const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
 
+  // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
+  // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
+  // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
+  // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  const latestRun = todayRun ?? history.runs[0] ?? null;
+  const latestIsToday = !!todayRun;
+  const pastRuns = latestIsToday
+    ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
+    : history.runs.slice(1);
+
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
   // colSpan på gruppe-header-rækker.
@@ -367,7 +394,7 @@ export default function TrainingPage() {
             onChange={(e) => {
               const newFocus = e.target.value;
               if (!newFocus) return;
-              setPlan(rider.id, newFocus, plan?.intensity ?? "normal");
+              handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
             }}
             className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
           >
@@ -385,7 +412,7 @@ export default function TrainingPage() {
           {plan?.focus && (
             <button
               type="button"
-              onClick={() => clearPlan(rider.id)}
+              onClick={() => handleClearPlan(rider.id)}
               disabled={busy}
               className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
               title={tRider("training.remove")}
@@ -414,6 +441,12 @@ export default function TrainingPage() {
               {t(currentTrainability === "blocked" ? "trainabilityChipBlocked" : "trainabilityChipLimited")}
             </span>
           )}
+          {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}
+          {planActionError?.riderId === rider.id && (
+            <div role="alert" className="mt-0.5 text-[10px] text-cz-danger">
+              {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
+            </div>
+          )}
         </td>
 
         {/* Intensitet */}
@@ -429,7 +462,7 @@ export default function TrainingPage() {
                   key={k}
                   type="button"
                   disabled={busy}
-                  onClick={() => setPlan(rider.id, plan.focus, k)}
+                  onClick={() => handlePlanChange(rider.id, plan.focus, k)}
                   aria-pressed={plan.intensity === k}
                   className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
                     plan.intensity === k
@@ -608,6 +641,18 @@ export default function TrainingPage() {
 
       {runError && (
         <p className="text-cz-danger text-sm">{runError}</p>
+      )}
+
+      {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
+          seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
+          ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
+      {!isLoading && (
+        <TrainingMoment
+          latestRun={latestRun}
+          isToday={latestIsToday}
+          progressByRider={progress}
+          pastRuns={pastRuns}
+        />
       )}
 
       {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer

@@ -200,6 +200,11 @@ export default function RiderFilters({
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
   const [statsOpen, setStatsOpen] = useState(false);
+  // #2464: på mobil fyldte panelet ~40% af skærmen før første rytter — kollapset
+  // som default bag en disclosure (samme mønster som evne-sliderne, statsOpen).
+  // Desktop (sm+) er uændret: altid udfoldet. Aktive filter-chips renderes uden
+  // for panelet og forbliver synlige selv når panelet er kollapset.
+  const [panelOpen, setPanelOpen] = useState(false);
   const countryLocale = i18n.language;
   const sortedNationalities = useMemo(
     () => [...nationalities].sort((a, b) => getCountryName(a, countryLocale).localeCompare(getCountryName(b, countryLocale), countryLocale)),
@@ -226,8 +231,25 @@ export default function RiderFilters({
     <>
       {/* ── Filter panel ── */}
       <Card className="p-4 mb-3">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("panel.label")}</p>
+        <div className="flex items-center justify-between gap-3 sm:mb-3">
+          <p className="hidden sm:block text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("panel.label")}</p>
+          {/* #2464: mobil-disclosure — erstatter den statiske label under sm. */}
+          <button
+            type="button"
+            data-testid="filter-panel-toggle"
+            onClick={() => setPanelOpen(o => !o)}
+            aria-expanded={panelOpen}
+            className="sm:hidden flex items-center gap-2 min-h-[44px] text-cz-2 text-xs uppercase tracking-wider font-semibold"
+          >
+            <ChevronRightIcon size={12} aria-hidden="true"
+              className={`transition-transform duration-150 ${panelOpen ? "rotate-90" : ""}`} />
+            {t("panel.label")}
+            {activeFilterCount > 0 && (
+              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full normal-case tracking-normal">
+                {t("stats.active", { count: activeFilterCount })}
+              </span>
+            )}
+          </button>
           {/* #960: altid synlig så brugeren lærer den findes; deaktiveret/grå
               indtil mindst ét filter er sat, og viser så tælleren. */}
           <button
@@ -245,6 +267,8 @@ export default function RiderFilters({
           </button>
         </div>
 
+        {/* #2464: kollapsbart indhold — skjult på mobil indtil disclosure åbnes. */}
+        <div className={`${panelOpen ? "block" : "hidden"} sm:block mt-3 sm:mt-0`}>
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
           <div>
@@ -409,6 +433,7 @@ export default function RiderFilters({
               ))}
             </div>
           )}
+        </div>
         </div>
       </Card>
 

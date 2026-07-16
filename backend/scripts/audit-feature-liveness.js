@@ -227,10 +227,9 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // 2026-07-10 (#2298): 14 stale entries fjernet — deres events flyder nu i
   // player_events (verificeret mod prod, 30-dages vindue). Historik i issue #2298.
   //
-  // Survey-CTA-banner (#364): survey_banner_clicked fyrer reelt fra SurveyBanner.jsx,
-  // men 0 klik i 30-dages vinduet (dismissed flyder, clicked gør ikke) — behold
-  // indtil et klik er set. Fjern entry når eventet flyder (tjek player_events).
-  "survey_banner_clicked",
+  // survey_banner_clicked fjernet fra whitelisten 16/7 (#2467): SurveyBanner.jsx
+  // slettet + eventet fjernet fra KNOWN_EVENTS, så entry'en var stale (Detector E
+  // tjekker kun events der stadig er i KNOWN_EVENTS).
   // Academy (#1669): academy_graduate fyrer først når en akademirytter når
   // graduation-alderen (samme gating som academy_graduation-tabellen i Detector A).
   // Fjern entry når eventet flyder (tjek player_events).
