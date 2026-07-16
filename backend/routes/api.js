@@ -149,7 +149,6 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
-import { signFreeAgentYouth } from "../lib/youthMarket.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -207,6 +206,7 @@ import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
+  buildBoardEvalContext,
   buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
@@ -318,6 +318,7 @@ import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows } from "../lib/myTeamLatestResult.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -330,6 +331,7 @@ const CACHE_TTL = {
   racePoints: 600_000,
   dashboardRecentResults: 60_000,
   dashboardRiderRanking: 60_000,
+  dashboardMyLatestResult: 60_000,
   // Divisions-fysiologi-snit ændrer sig kun ved sæsonskift/træning — 10 min er rigeligt.
   physiologyBenchmark: 600_000,
 };
@@ -7846,6 +7848,114 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
   }
 }));
 
+// GET /api/dashboard/my-latest-result — DIT holds seneste finaliserede løb
+// (#2466). Kun 22/88 spillere har nogensinde set et løbsresultat; recent-results
+// ovenfor viser løbets VINDER, aldrig spillerens egne ryttere. Dette endpoint
+// pusher holdets egne placeringer + totaler + et recap-grundlag til dashboardet.
+//
+// Perf (#2444 — dashboardet er i forvejen langsomt): frontend lazy-loader efter
+// first paint; svaret caches 60s PR. HOLD (keyExtras=team.id — payloaden er
+// hold-specifik, aldrig delt), og alle SELECTs er trimmede: udvælgelsen læser kun
+// (race_id, imported_at) med limit, detail-queries rammer ét løb, og recap-
+// rækkerne trimmes til top-10 + udbrud (trimRecapRows) før de sendes. Selve
+// recap-fortællingen bygges CLIENT-side af den eksisterende buildRaceRecap()
+// (frontend/src/lib/raceRecap.js) — ingen dubleret fortælle-logik her.
+router.get("/dashboard/my-latest-result", requireAuth, cached({
+  namespace: "dashboard-my-latest-result",
+  ttlMs: CACHE_TTL.dashboardMyLatestResult,
+  keyExtras: (req) => String(req.team?.id ?? "none"),
+}, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonError) throw seasonError;
+    if (!season) return res.json({ race: null });
+
+    // Afsluttede løb i managerens egen pulje — samme filter som recent-results
+    // (#2288 G): uden det ville "seneste løb" kunne pege ind i en anden division.
+    let racesQuery = supabase
+      .from("races")
+      .select("id, name, race_type, stages")
+      .eq("season_id", season.id)
+      .eq("status", "completed");
+    if (req.team.league_division_id != null) {
+      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
+    }
+    const { data: races, error: racesError } = await racesQuery;
+    if (racesError) throw racesError;
+    if (!races?.length) return res.json({ race: null });
+    const raceMetaById = new Map(races.map((r) => [r.id, r]));
+
+    // Udvælgelse: holdets nyeste import-batch. limit(200) er bevidst — selv hvis
+    // batchen for ét stort etapeløb overstiger 200 rækker, er alle de nyeste
+    // rækker fra samme løb, så pickLatestTeamRace vælger stadig korrekt.
+    const { data: participation, error: participationError } = await supabase
+      .from("race_results")
+      .select("race_id, imported_at")
+      .eq("team_id", req.team.id)
+      .in("race_id", races.map((r) => r.id))
+      .order("imported_at", { ascending: false })
+      .limit(200);
+    if (participationError) throw participationError;
+    const raceId = pickLatestTeamRace(participation);
+    if (!raceId || !raceMetaById.has(raceId)) return res.json({ race: null });
+    const raceMeta = raceMetaById.get(raceId);
+    const finalStage = raceMeta.stages ?? 1;
+
+    const [myRowsRes, recapRowsRes, incidentsRes] = await Promise.all([
+      supabase
+        .from("race_results")
+        .select("result_type, stage_number, rank, finish_time, points_earned, prize_money, rider_id, rider_name, rider:rider_id(id, firstname, lastname, nationality_code)")
+        .eq("race_id", raceId)
+        .eq("team_id", req.team.id),
+      // Recap-grundlag: kun sidste etapes rækker (endeligt klassement — motoren
+      // skriver gc/points/mountain/team ved stages; endagsløb = etape 1).
+      // stage_number.is.null-grenen dækker gamle importer uden etape-nummer.
+      supabase
+        .from("race_results")
+        .select("result_type, stage_number, rank, finish_time, in_breakaway, breakaway_caught, team_id, team_name, rider_id, rider_name, rider:rider_id(id, firstname, lastname), team:team_id(id, name)")
+        .eq("race_id", raceId)
+        .in("result_type", ["gc", "stage", "team", "points", "mountain"])
+        .or(`stage_number.eq.${finalStage},stage_number.is.null`),
+      supabase
+        .from("race_incidents")
+        .select("stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(firstname, lastname)")
+        .eq("race_id", raceId),
+    ]);
+    if (myRowsRes.error) throw myRowsRes.error;
+    if (recapRowsRes.error) throw recapRowsRes.error;
+    // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
+    // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
+    const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+
+    const { placements, stage_wins, totals } = summarizeTeamRace({
+      raceMeta,
+      myRows: myRowsRes.data || [],
+    });
+    const lastImport = (participation || []).find((p) => p.race_id === raceId)?.imported_at ?? null;
+
+    res.json({
+      race: {
+        id: raceMeta.id,
+        name: raceMeta.name,
+        race_type: raceMeta.race_type,
+        stages: raceMeta.stages,
+        last_import: lastImport,
+      },
+      placements,
+      stage_wins,
+      totals,
+      recap: {
+        results: trimRecapRows(recapRowsRes.data || []),
+        incidents,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}));
+
 // GET /api/cache-stats — operational hit/miss counters per namespace
 // Admin-only; used during baseline measurement and incident triage.
 router.get("/admin/cache-stats", requireAdmin, async (req, res) => {
@@ -9722,8 +9832,6 @@ router.get("/board/status", requireAuth, async (req, res) => {
         boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
       );
 
-      const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
-
       // S-02d · Hent cumulative kontekst-felter for de 7 nye mål-typer.
       // Best-effort — hvis loaderen fejler, returneres outlook uden de nye
       // metrics (graceful degradation, eksisterende mål påvirkes ikke).
@@ -9747,41 +9855,26 @@ router.get("/board/status", requireAuth, async (req, res) => {
         }
       }
 
-      // #979 · Cumulative wins = afsluttede sæsoner (board.cumulative_*) + indeværende
-      // sæsons in-progress wins (currentStanding.*). board.cumulative_* persisteres FØRST
-      // ved season-end (economyEngine.processTeamSeasonEnd), så uden currentStanding ville
-      // 3yr/5yr-delmålene vise 0 midt i sæsonen. Beregnes én gang og genbruges til både
-      // outlook-evaluering og det returnerede cumulative_stats-display, så de ikke kan drifte
-      // fra hinanden (præcis den inkonsistens der var root cause for #979).
-      const cumulativeStageWins = (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0);
-      const cumulativeGcWins = (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0);
-
       // #2310 punkt 2 · genbrugt SOM variabel så både outlook OG den read-only
       // satisfaction-prognose (computeWeekendSatisfactionUpdate) deler nøjagtig
       // samme evalueringskontekst — ingen risiko for at de to drifter fra hinanden.
-      const weekendEvalContext = {
+      // #2469 · bygget af den delte buildBoardEvalContext (planDuration/
+      // seasonsCompleted/isFinalSeason/cumulativeStats beregnes dér — #2308's
+      // isFinalSeason-regel inklusive), så stien ikke kan drifte fra
+      // /board/request, weekend og season-end igen.
+      const weekendEvalContext = buildBoardEvalContext({
+        board,
+        standing: currentStanding,
         activeLoanCount,
-        planStartSponsorIncome: board.plan_start_sponsor_income,
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        planDuration,
-        seasonsCompleted: workingSeasonIndex,
-        // #2308 · Weekend/season-end sætter isFinalSeason (seasonsCompleted+1 >=
-        // planDuration); uden den her scorer no_outstanding_debt 1.0 i stedet for
-        // 1.05 og final-only mål pro-rates forkert i live-outlook-displayet.
-        // workingSeasonIndex er allerede min(planDuration, seasonsCompleted+1),
-        // så >= planDuration er ækvivalent med den uncappede sammenligning.
-        isFinalSeason: workingSeasonIndex >= planDuration,
-        hasSeasonData: Boolean(currentStanding),
-        isExpired,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
-        cumulativeStats: {
-          stageWins: cumulativeStageWins,
-          gcWins: cumulativeGcWins,
+        goalContext,
+        extra: {
+          isExpired,
+          // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
+          assignedMembers: teamBoardMembers,
         },
-        ...goalContext,
-        // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
-        assignedMembers: teamBoardMembers,
-      };
+      });
 
       const outlook = buildBoardOutlook({
         board,
@@ -9848,9 +9941,13 @@ router.get("/board/status", requireAuth, async (req, res) => {
         seasons_remaining: seasonsRemaining,
         seasons_completed: seasonsCompleted,
         plan_progress_pct: planProgressPct,
+        // #979 · Display og outlook-evaluering deler SAMME kumulative tal
+        // (afsluttede sæsoner + indeværende) — nu direkte fra eval-konteksten,
+        // så de strukturelt ikke kan drifte fra hinanden. #2469: beregningen
+        // selv bor i buildBoardEvalContext.
         cumulative_stats: {
-          stage_wins: cumulativeStageWins,
-          gc_wins: cumulativeGcWins,
+          stage_wins: weekendEvalContext.cumulativeStats.stageWins,
+          gc_wins: weekendEvalContext.cumulativeStats.gcWins,
         },
         snapshots: boardSnapshots,
         satisfaction_events: boardEvents,
@@ -10410,12 +10507,38 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
     }
     if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });
 
-    const planDuration = getPlanDuration(board.plan_type);
-    const workingSeasonIndex = Math.min(planDuration, (board.seasons_completed || 0) + 1);
     const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
 
     if (requestUsedThisSeason) {
       return res.status(409).json({ error: "Board request already used this season" });
+    }
+
+    // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
+    // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
+    // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
+    // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
+    // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
+    // andet grundlag end det /board/status netop viste spilleren: relative_rank
+    // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
+    // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
+    // Best-effort som i /board/status: fejler loaderen, degraderer vi til
+    // evaluering uden de kumulative metrics frem for at vælte requesten.
+    let goalContext = {};
+    try {
+      goalContext = await loadGoalContextForBoard({
+        supabase,
+        teamId,
+        boardId: board.id,
+        currentSeasonId: activeSeason.id,
+        division: standing?.division ?? null,
+        // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+        // er pulje-allokeret (ellers tier-bredt fallback).
+        leagueDivisionId: standing?.league_division_id ?? null,
+        // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+        planStartSeasonNumber: board.plan_start_season_number,
+      });
+    } catch (e) {
+      console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
     }
 
     const requestResult = resolveBoardRequest({
@@ -10426,27 +10549,24 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
         riders,
       },
       standing,
-      context: {
+      context: buildBoardEvalContext({
+        board,
+        standing,
         activeLoanCount: loansRes.count || 0,
         currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        hasSeasonData: Boolean(standing),
-        isExpired: board.negotiation_status === "pending",
-        planDuration,
-        planStartSponsorIncome: board.plan_start_sponsor_income,
         recentSnapshots: snapshotsRes.data || [],
-        requestUsedThisSeason,
-        seasonsCompleted: workingSeasonIndex,
-        cumulativeStats: {
-          stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
-          gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
+        goalContext,
+        extra: {
+          isExpired: board.negotiation_status === "pending",
+          requestUsedThisSeason,
+          // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
+          raceDaysLeft: activeSeason
+            ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+            : null,
+          satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
+          activeSeasonId: activeSeason?.id ?? null,
         },
-        // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
-        raceDaysLeft: activeSeason
-          ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
-          : null,
-        satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
-        activeSeasonId: activeSeason?.id ?? null,
-      },
+      }),
     });
 
     let updatedBoard = board;
@@ -10874,53 +10994,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       return safe;
     });
 
-    // Frie ungdoms-free-agents (#1308 Fase B): usolgte fra ungdomsauktioner — team_id
-    // NULL, ikke akademi, i akademi-alder (16-21). Display-safe (INGEN potentiale, da
-    // klubben ikke ejer/scouter dem endnu). Birthdate-range bounder forespørgslen;
-    // præcis alders-filtrering sker i JS. Capped (discovery-liste).
-    //
-    // VIGTIGT: ekskludér ryttere der er 'offered' i ET intake-kuld eller ligger på en
-    // AKTIV ungdomsauktion — de har samme team_id=NULL/is_academy=false/alder, men er
-    // IKKE frie: at signe dem direkte ville stjæle et andet holds intake-kandidat eller
-    // bypasse en kørende auktion (signFreeAgentYouth afviser dem også backend-side).
-    const minBirth = `${currentYear - ACADEMY.MAX_AGE}-01-01`;
-    const maxBirth = `${currentYear - ACADEMY.MIN_AGE}-12-31`;
-    const [offeredRes, youthAucRes, faRes] = await Promise.all([
-      supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
-      supabase.from("auctions").select("rider_id").eq("is_youth", true).in("status", ["active", "extended"]),
-      supabase
-        .from("riders")
-        .select("id, firstname, lastname, nationality_code, birthdate, market_value")
-        .is("team_id", null)
-        .eq("is_academy", false)
-        // Pensionerede ryttere må aldrig stå i den frie ungdoms-pulje (#1742).
-        // Samme synligheds-filter som /api/riders (is_retired=false): retirement
-        // (legacy-swap #1103 eller alders-retirement #1137) sætter is_retired=true
-        // men efterlader team_id=NULL/is_academy=false, så uden dette filter slap
-        // pensionerede ryttere igennem free-agent-grundkriterierne.
-        .eq("is_retired", false)
-        // KUN fiktive ryttere (pcm_id IS NULL). Ægte PCM-ryttere (pcm_id NOT NULL)
-        // der tilfældigvis er frie agenter i akademi-alder må ikke kunne hentes
-        // gratis (#1478 bug #1). pcm_id=null er fiktiv-vs-ægte-markøren.
-        .is("pcm_id", null)
-        .gte("birthdate", minBirth)
-        .lte("birthdate", maxBirth)
-        .order("market_value", { ascending: false })
-        .limit(300),
-    ]);
-    if (faRes.error) throw new Error(faRes.error.message);
-    const excludedIds = new Set([
-      ...((offeredRes.data ?? []).map((r) => r.rider_id)),
-      ...((youthAucRes.data ?? []).map((r) => r.rider_id)),
-    ]);
-    const freeAgents = (faRes.data ?? [])
-      .filter((r) => {
-        if (!r.birthdate) return false;
-        const age = currentYear - new Date(r.birthdate).getFullYear();
-        return age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
-      })
-      .filter((r) => !excludedIds.has(r.id))
-      .slice(0, 30);
+    // #2456: fri-agent-butikken ("frie ungdoms-free-agents") er fjernet — talenter
+    // kommer via eget intake eller ungdomsauktionen; usolgte slettes ved finalisering.
 
     // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
     // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
@@ -10947,7 +11022,6 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       seniorMax,
       roster,
       intake,
-      freeAgents,
       graduations,
     });
   } catch (err) {
@@ -11050,45 +11124,6 @@ router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res)
   } catch (err) {
     const msg = err?.message ?? "";
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
-    captureException(err);
-    res.status(500).json({ error: msg });
-  }
-});
-
-// POST /api/academy/free-agent/sign — direct-sign en fri ungdoms-free-agent til
-// minimumsløn ind i holdets akademi (#1308 Fase B). Body: { riderId }
-router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
-
-    const { riderId } = req.body || {};
-    if (!riderId) return res.status(400).json({ error: "riderId required" });
-
-    const { data: season } = await supabase
-      .from("seasons")
-      .select("number")
-      .eq("status", "active")
-      .maybeSingle();
-    const seasonNumber = season?.number ?? 1;
-
-    const result = await signFreeAgentYouth(supabase, {
-      teamId: req.team.id,
-      riderId,
-      seasonNumber,
-    });
-
-    res.json(result);
-  } catch (err) {
-    const msg = err?.message ?? "";
-    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
-    if (msg === "not_free_agent") return res.status(409).json({ error: "not_free_agent" });
-    if (msg === "not_academy_age") return res.status(409).json({ error: "not_academy_age" });
-    // insufficient_balance er en forventet bruger-tilstand ("ikke råd"), ikke en
-    // fejl — map til 409 og spring captureException over så Sentry ikke larmer (#1735).
-    if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
     captureException(err);
     res.status(500).json({ error: msg });
   }

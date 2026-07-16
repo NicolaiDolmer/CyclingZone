@@ -16,7 +16,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber } from "../lib/intl";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { StarIcon, ExchangeIcon, CheckIcon, PageLoader } from "../components/ui";
+import { StarIcon, ExchangeIcon, CheckIcon, PageLoader, ToastViewport } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -28,6 +28,8 @@ import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSel
 // #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
 const PAGE_SIZE = 50;
+// Matches ToastViewport's default auto-dismiss duration (#2467).
+const TOAST_DURATION_MS = 4000;
 
 export default function WatchlistPage() {
   const navigate = useNavigate();
@@ -42,6 +44,11 @@ export default function WatchlistPage() {
   const [compareIds, setCompareIds] = useState([]);
   const [actionError, setActionError] = useState("");
   const [auctionRiderIds, setAuctionRiderIds] = useState(() => new Set());
+  const [toasts, setToasts] = useState([]);
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(item => item.id !== id));
+  }
 
   function toggleCompare(riderId) {
     setCompareIds(prev => {
@@ -121,13 +128,30 @@ export default function WatchlistPage() {
       if (warning) {
         const fine = warning.finePerRider * warning.exceedBy;
         const points = warning.penaltyPointsPerRider * warning.exceedBy;
-        alert(t("auctionStarted", {
+        const message = t("auctionStarted", {
           total: warning.totalAfter,
           max: warning.maxRiders,
           exceed: warning.exceedBy,
           fine: formatNumber(fine),
           points,
-        }));
+        });
+        // #2467: native alert() replaced with the shared Toast component (same
+        // pattern as ToastViewport elsewhere in the codebase). The translated
+        // message uses "\n\n" to separate a short headline from the detail.
+        // alert() used to block until dismissed, so the navigate() below only ran
+        // once the manager had actually read the message — delay the navigate by
+        // the toast's visible duration so a non-blocking toast doesn't get
+        // whisked away by the route change before it can be read.
+        const [toastTitle, ...toastRest] = message.split("\n\n");
+        const toastId = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        setToasts(prev => [...prev, {
+          id: toastId,
+          tone: "warning",
+          title: toastTitle,
+          description: toastRest.join("\n\n"),
+        }]);
+        setTimeout(() => navigate("/auctions"), TOAST_DURATION_MS);
+        return;
       }
       navigate("/auctions");
     } else {
@@ -379,6 +403,7 @@ export default function WatchlistPage() {
       )}
 
       <CompareBar ids={compareIds} onClear={() => setCompareIds([])} />
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} duration={TOAST_DURATION_MS} />
     </div>
   );
 }

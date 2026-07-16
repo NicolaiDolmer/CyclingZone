@@ -6,16 +6,12 @@
   "graduationHeading": "Graduating riders",
   "intakeHeading": "Intake candidates",
   "rosterHeading": "Academy roster",
-  "freeAgentsHeading": "Free youth agents",
   "emptyIntake": "No intake candidates right now. Check back after the next scouting cycle.",
   "emptyRoster": "No riders signed to the academy yet.",
-  "emptyFreeAgents": "No free youth agents available right now.",
   "seriousBadge": "Serious prospect",
   "potential": "Potential",
   "ageLabel": "{age} y/o",
   "signBtn": "Sign",
-  "signFreeAgentBtn": "Sign to academy",
-  "signFreeAgentBtnPriced": "Sign for {price} CZ$",
   "rejectBtn": "Reject",
   "promoteBtn": "Promote",
   "sellBtn": "Sell",
@@ -31,15 +27,6 @@
   "colContract": "Contract",
   "colAction": "Action",
   "promoteSeniorFullTooltip": "Your senior squad is full. Free a senior place first.",
-  "signModal": {
-    "title": "Confirm signing",
-    "question": "Sign this rider to your academy for cash:",
-    "priceLabel": "Signing cost",
-    "balanceLabel": "Current balance",
-    "afterLabel": "Balance after",
-    "cannotAfford": "You do not have enough money to sign this rider.",
-    "confirm": "Sign"
-  },
   "transferModal": {
     "promoteTitle": "Promote to senior squad",
     "promoteQuestion": "Promote this academy rider to your senior squad:",
@@ -58,10 +45,7 @@
   },
   "error": {
     "academyFull": "Academy is full (8/8). Cannot sign another rider.",
-    "insufficientBalance": "Not enough money to sign this rider.",
     "notOffered": "This rider has not been offered a place.",
-    "notFreeAgent": "This rider is no longer a free agent.",
-    "notAcademyAge": "This rider is outside the academy age range (16-21).",
     "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
     "generic": "Something went wrong. Please try again."
   }
