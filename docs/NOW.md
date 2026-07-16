@@ -22,7 +22,7 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) · v3-flip-forudsætninger #2376 · Palmarès-småvalg (#1997) · #1996 del 2 (claude:blocked) · #2436 (lav). **Kendt bug:** test-konti wipes (#2245, high). UI/UX-audit-rest efter bølgen: [#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) board-generalprøve (klar når #2482/#2473 er merged) · [#2465](https://github.com/NicolaiDolmer/CyclingZone/issues/2465) feedback-kontrakt · [#2467](https://github.com/NicolaiDolmer/CyclingZone/issues/2467) småfund; audit: [audits/2026-07-15-ui-ux-audit.md](audits/2026-07-15-ui-ux-audit.md). Mobil = 54,9% af app-besøg.
 
-> **🤖 Working agent:** Ingen aktiv session. Dagbølge 16/7 lukket (denne fil + [artifact](audits/night-wave-2026-07-16.md)); done-flips sker pr. ejer-merge jf. runbook 5b.
+> **🤖 Working agent:** Fable-dagbølge #2 (16/7 ~10:15-15:00, ejer væk) — spor: #2447→#2455 planlægger-rettelser · #1176 styrt · #2484 · #2485 · #2467 · #2465 · #1997-design · #2459-verify · #2486. Ingen auto-merge; alt som PR'er.
 
 ## Standing context (forever-relaunch)
 
