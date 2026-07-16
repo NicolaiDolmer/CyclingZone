@@ -228,7 +228,7 @@ test("startTargetAssignment: happy path (level 0→1) inserts + debits travel co
   assert.equal(result.assignment.targetLevel, 1);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.target.costPerLevel);
   assert.equal(result.assignment.startedOn, "2026-07-10");
-  assert.equal(result.assignment.readyOn, "2026-07-13"); // +3 dage
+  assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (daysPerLevel × 1 step)
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.target.costPerLevel);
   assert.equal(supabase.state.finance_transactions.length, 1);
   const tx = supabase.state.finance_transactions[0];
@@ -251,7 +251,7 @@ test("startTargetAssignment: existing scout_actions level advances fromLevel/toL
   assert.equal(result.ok, true);
   assert.equal(result.assignment.targetLevel, 3);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.target.costPerLevel); // 1 step
-  assert.equal(result.assignment.readyOn, "2026-07-13");
+  assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (1 niveau-step)
 });
 
 test("startTargetAssignment: already at maxLevel (3) → max_level, no insert/debit", async () => {
@@ -314,7 +314,7 @@ test("startMission: happy path inserts flat-cost mission + debits", async () => 
   const result = await startMission({ teamId: "team-1", criteria, seasonId: "season-1" }, supabase, NOW);
   assert.equal(result.ok, true);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.mission.cost);
-  assert.equal(result.assignment.readyOn, "2026-07-24"); // +14 dage
+  assert.equal(result.assignment.readyOn, "2026-07-12"); // +2 dage (mission.days)
   assert.deepEqual(supabase.state.assignments[0].mission_criteria, criteria);
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.mission.cost);
 });

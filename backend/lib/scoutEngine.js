@@ -5,8 +5,8 @@
 //
 // Ejer-låste defaults (docs/superpowers/plans/2026-07-10-talentspejder-fase-3.md):
 //   default-spejder overall 40 · kapacitet 1 (2 ved overall≥80)
-//   target: 3 dage/niveau-step, 1.000/niveau-step
-//   mission: 14 dage, 6.000 flat
+//   target: 1 dag/niveau-step, 1.000/niveau-step
+//   mission: 2 dage, 6.000 flat
 //   (rekalibreret 10/7 fra 15.000/60.000 efter scoutTravelScorecard-FAIL:
 //    85-177% af sæsonindkomst ved aktiv kadence, mål [2%,15%] —
 //    se docs/audits/2026-07-10-talentspejder-gates.md)
@@ -19,9 +19,14 @@ export const DEFAULT_SCOUT = Object.freeze({
   isDefault: true,
 });
 
+// #2458 (ejer-go 16/7): tempoet sat kraftigt ned — 14-dages missioner døde i
+// glemsel (0 af 35 aktive nåede at modne før sæsongrænsen), og "svar i
+// overmorgen"-loopet passer spillets 1-2 logins/dag-rytme. Inflation styres
+// ikke af varigheden men af kapacitet (1-2 samtidige), rejseomkostninger og
+// potentiale-sløret shortlist — de er alle uændrede.
 export const SCOUT_JOB_CONFIG = Object.freeze({
-  target: Object.freeze({ daysPerLevel: 3, costPerLevel: 1000 }),
-  mission: Object.freeze({ days: 14, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
+  target: Object.freeze({ daysPerLevel: 1, costPerLevel: 1000 }),
+  mission: Object.freeze({ days: 2, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
 });
 
 const CAPACITY_HIGH_THRESHOLD = 80;
@@ -78,7 +83,7 @@ export function travelCostFor(kind, { fromLevel = 0, toLevel } = {}) {
 }
 
 // Klar-dato for en opgave. target: daysPerLevel × antal niveau-steps efter
-// startdato; mission: fast varighed (14 dage).
+// startdato; mission: fast varighed (SCOUT_JOB_CONFIG.mission.days).
 export function readyDateFor(kind, startedOn, { fromLevel = 0, toLevel } = {}) {
   const start = startedOn instanceof Date ? startedOn : new Date(startedOn);
   if (Number.isNaN(start.getTime())) throw new Error("readyDateFor: ugyldig startedOn");
