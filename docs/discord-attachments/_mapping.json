@@ -424,7 +424,7 @@
       "messageContent": "På ranglisten bliver man vist, som om at man har vundet en samlet sejr, hvis man vinder et endagsløb\nDet er en fejl. Man skal stå som om, at man har vundet en klassiker. Hvis man vinder en samlet sejr, så må man noteres som samlet sejr.",
       "author": "bobby2106",
       "timestamp": "2026-05-30T13:10:29.585000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1510268058420383824": [
@@ -435,7 +435,7 @@
       "messageContent": "Der er en fejl her i dashboardet, hvor den ikke opdatere fremskridt i sæsonen",
       "author": "bobby2106",
       "timestamp": "2026-05-30T13:06:05.895000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1510266246116151436": [
@@ -446,7 +446,7 @@
       "messageContent": "",
       "author": ".sredna",
       "timestamp": "2026-05-30T12:58:54.278000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1510263255757754660": [
@@ -457,7 +457,7 @@
       "messageContent": "Knapperne her.\nTrykker man på Manager-ejede kommer der stadig \"Fri agent\" ryttere op",
       "author": "soren1207",
       "timestamp": "2026-05-30T12:48:34.863000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1507078529282605106": [
@@ -468,7 +468,7 @@
       "messageContent": "",
       "author": ".sredna",
       "timestamp": "2026-05-21T17:52:02.326000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1510242164226134236": [
@@ -479,7 +479,7 @@
       "messageContent": "Man kan kun se sig selv i Hall of Fame\n\nhttps://cycling-zone.vercel.app/hall-of-fame",
       "author": "jeppek",
       "timestamp": "2026-05-30T11:23:12.063000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1507075204008906822": [
@@ -490,7 +490,7 @@
       "messageContent": "Ikke muligt at lave flashauktion på egne ryttere via knappen til højre på egen holdside.\n\nhttps://cycling-zone.vercel.app/team",
       "author": "jeppek",
       "timestamp": "2026-05-21T17:38:50.037000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1507072644862972057": [
@@ -501,7 +501,7 @@
       "messageContent": "Når man sætter en rytter på garanteret salg (måske også auktion) uden det er flash ved deadline day, følger den reglerne for almindelig auktion.\n\nhttps://cycling-zone.vercel.app/auctions",
       "author": "jeppek",
       "timestamp": "2026-05-21T17:28:39.628000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1506780095275204608": [
@@ -512,7 +512,7 @@
       "messageContent": "Tænker, at billedet fra PB forklarer min forvirring 😄",
       "author": ".sredna",
       "timestamp": "2026-05-20T22:06:10.423000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1506222527591088198": [
@@ -523,7 +523,7 @@
       "messageContent": "Synes det ser ud til, at han burde være solgt til ikke nogen, men han er stadig på holdet?",
       "author": ".sredna",
       "timestamp": "2026-05-19T09:10:36.029000+00:00",
-      "cached": false
+      "cached": true
     },
     {
       "filename": "1506222527591088198-1506222533517508719.png",
@@ -532,7 +532,7 @@
       "messageContent": "Synes det ser ud til, at han burde være solgt til ikke nogen, men han er stadig på holdet?",
       "author": ".sredna",
       "timestamp": "2026-05-19T09:10:36.029000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1506046994051891210": [
@@ -543,7 +543,7 @@
       "messageContent": "Ham her er blevet solgt til AI, men står fortsat som om han er til salg på markedet 🙂",
       "author": ".sredna",
       "timestamp": "2026-05-18T21:33:05.060000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1505613603217084487": [
@@ -554,6 +554,28 @@
       "messageContent": "man kan ikke rulle ned og se hvad der står i drop-down menuen når man trykker på sproget",
       "author": "cybersimon",
       "timestamp": "2026-05-17T16:50:57.102000+00:00",
+      "cached": true
+    }
+  ],
+  "1527005576163229828": [
+    {
+      "filename": "1527005576163229828-1527005576339656765.jpg",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1527005576163229828-1527005576339656765.jpg",
+      "messageId": "1527005576163229828",
+      "messageContent": "Just like you can search in at a maximum or minimum or both it would be nice to be able to search for asking price at the transfterlist.",
+      "author": "cybersimon",
+      "timestamp": "2026-07-15T17:34:59.749000+00:00",
+      "cached": false
+    }
+  ],
+  "1505478569969582182": [
+    {
+      "filename": "1505478569969582182-1527381514982002990.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1505478569969582182-1527381514982002990.png",
+      "messageId": "1527381515355554003",
+      "messageContent": "Det var i hvert fald lidt af et sats da jeg hyrede ham her... og så sad jeg lidt der... \"Hvad er det egentlig han er dårlig til (youth)?\" 😄",
+      "author": "thelamba",
+      "timestamp": "2026-07-16T18:28:50.637000+00:00",
       "cached": false
     }
   ]

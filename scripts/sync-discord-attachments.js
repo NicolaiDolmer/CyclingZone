@@ -70,6 +70,9 @@ const THREADS = [
   '1506222527591088198', // .sredna Forvirrende historik (uafsluttet auktion)
   '1506046994051891210', // .sredna Rytter solgt til AI står stadig til salg
   '1505613603217084487', // cybersimon Sprog-dropdown kan ikke scrolles
+  // Batch 2026-07-16 (sweep 16/7 — ny server)
+  '1527005576163229828', // cybersimon Asking price search in transferlist (forum-tråd)
+  '1505478569969582182', // #dansk-snak (kanal) — smukkethomsen/knud/thelamba screenshots 16/7
 ];
 
 function getJSON(url, headers) {
