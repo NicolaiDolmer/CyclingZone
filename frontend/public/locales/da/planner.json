@@ -23,6 +23,7 @@
     "reasonSuitability": "Bedste type-match i kalenderen."
   },
   "filter": { "mine": "Mine løb", "all": "Alle løb" },
+  "planningTowards": { "label": "Planlægger mod: {race} · {date}" },
   "legend": {
     "potential": "Potentiel top",
     "realized": "Realiseret (trænet)",

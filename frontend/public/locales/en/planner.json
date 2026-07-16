@@ -23,6 +23,7 @@
     "reasonSuitability": "Best type match on your calendar."
   },
   "filter": { "mine": "My races", "all": "All races" },
+  "planningTowards": { "label": "Planning towards: {race} · {date}" },
   "legend": {
     "potential": "Potential top",
     "realized": "Realized (trained)",

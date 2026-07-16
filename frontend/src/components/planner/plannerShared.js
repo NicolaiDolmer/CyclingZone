@@ -57,6 +57,28 @@ export function formatOrdinalShort(ord, monthsLabels) {
   return `${p.day} ${monthsLabels?.[p.monthIndex] ?? ""}`.trim();
 }
 
+// Kompakt dato-label for et løb: enkelt dag "12 Aug", eller datospænd for et
+// etapeløb "12-15 Aug" (samme måned) / "29 Jul - 2 Aug" (måned-skift). #2519.
+// Beregnet ren frontend-side fra `date` (kalenderdag for gameDayStart) +
+// gameDayEnd-gameDayStart — game-day-indeks mapper 1:1 til kalenderdage i denne
+// sæson-motor (dayDateMap i backend/lib/raceCalendar.js), så spændet er præcist
+// selv når etaper har en hviledag imellem. Boardet leverer ikke et separat
+// etape-slutdato-felt i dag, og dette er frontend-only arbejde (rør ikke API'et).
+export function formatRaceDateLabel(race, monthsLabels) {
+  const startOrd = dateToOrdinal(race?.date);
+  if (startOrd == null) return "";
+  const rawSpan = (race?.gameDayEnd ?? race?.gameDayStart ?? 0) - (race?.gameDayStart ?? 0);
+  const spanDays = Number.isFinite(rawSpan) && rawSpan > 0 ? rawSpan : 0;
+  if (spanDays === 0) return formatOrdinalShort(startOrd, monthsLabels);
+  const endOrd = startOrd + spanDays;
+  const p1 = ordinalToParts(Math.round(startOrd));
+  const p2 = ordinalToParts(Math.round(endOrd));
+  const m1 = monthsLabels?.[p1.monthIndex] ?? "";
+  if (p1.monthIndex === p2.monthIndex && p1.year === p2.year) return `${p1.day}-${p2.day} ${m1}`.trim();
+  const m2 = monthsLabels?.[p2.monthIndex] ?? "";
+  return `${p1.day} ${m1} - ${p2.day} ${m2}`.trim();
+}
+
 // Trænings-status-chip: farve + redundant ikon-glyf (ikke kun farve — a11y §5.4).
 export function statusMeta(status) {
   switch (status) {
