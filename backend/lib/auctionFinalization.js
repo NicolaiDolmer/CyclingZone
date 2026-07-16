@@ -130,10 +130,58 @@ function getEffectiveAuctionBidderId(auction, sellerOwned) {
   return null;
 }
 
+// #2456 "usolgt = væk": en ungdomsauktion der ender UDEN at rytteren bliver
+// optaget (ingen bud, eller vinderen kunne ikke optage: akademi fuldt / ingen
+// råd) sletter rytteren — han forlader sporten. Fri-agent-listen i akademiet er
+// fjernet, så der er ingen tilstand at falde tilbage på; en holdløs ungdomsrytter
+// ville være en usynlig spøgelsesrytter (#2257).
+//
+// Guards (TOCTOU + #1847):
+//   1. Kaldes KUN efter at auktionen er lukket (atomisk claim i no-bid-stien /
+//      closeAuction i cancel-stierne) — et nyt bud kan ikke lande på en lukket
+//      auktion (bid-ruten kræver status active/extended).
+//   2. #1847: har rytteren race_results, beholdes han — sletning ville sætte
+//      race_results.rider_id = NULL (ON DELETE SET NULL) og skabe nye orphans.
+//      En usolgt ungdomsrytter har normalt 0 resultater, men vi verificerer i
+//      stedet for at antage.
+//   3. Selve DELETE er conditional, scoped til rider-id (ejer-låst guard i
+//      #2456): slet KUN hvis rytteren stadig er holdløs (team_id IS NULL,
+//      pending_team_id IS NULL) og uden for et akademi. Er han imens optaget ad
+//      en parallel sti, rammer den 0 rækker og rytteren bevares.
+//
+// Bemærk: riders-FK'en fra auctions er ON DELETE CASCADE, så den lukkede
+// auktionsrække (og dens bud) følger med rytteren ud.
+async function deleteUnsoldYouthRider({ supabase, rider }) {
+  const { data: resultRows, error: resErr } = await supabase
+    .from("race_results")
+    .select("id")
+    .eq("rider_id", rider.id)
+    .limit(1);
+  ensureNoError(resErr);
+  if ((resultRows ?? []).length > 0) {
+    console.warn(
+      `  ⚠️  Usolgt ungdomsrytter ${rider.id} har race_results — beholdes (#1847-guard, ingen nye orphans)`
+    );
+    return false;
+  }
+
+  const { data: deleted, error: delErr } = await supabase
+    .from("riders")
+    .delete()
+    .eq("id", rider.id)
+    .is("team_id", null)
+    .is("pending_team_id", null)
+    .eq("is_academy", false)
+    .select("id");
+  ensureNoError(delErr);
+  return (deleted ?? []).length > 0;
+}
+
 // #1308 Fase B: finalisér en ungdomsauktion. Ingen sælger (seller_team_id=NULL),
 // rytteren er fri (team_id=NULL). Vinder → placeres i akademiet (is_academy=true)
 // med 8-plads-cap og ungdomskontrakt; betaler sit bud som academy_signing (sink —
-// der er ingen sælger at betale ud til). Ingen bud → rytteren forbliver fri ungdom.
+// der er ingen sælger at betale ud til). Ingen bud → rytteren slettes (#2456,
+// "usolgt = væk" — se deleteUnsoldYouthRider ovenfor).
 // Akademiryttere bypasser senior-30-cap'en og transfervindue-pending (de tæller
 // ikke mod senior-truppen), så ingen squad-violation-/pending-logik her.
 async function finalizeYouthAuctionRecord({
@@ -149,11 +197,29 @@ async function finalizeYouthAuctionRecord({
   const rider = auction.rider;
   const bidderId = auction.current_bidder_id || null;
 
-  // Ingen bud → rytteren forbliver fri ungdom (allerede team_id=NULL,
-  // is_academy=false). Ingen ejerskabsændring nødvendig; bare luk auktionen.
+  // Ingen bud → rytteren slettes (#2456 "usolgt = væk").
+  //
+  // TOCTOU-guard: claim auktionen ATOMISK med en conditional UPDATE der kun
+  // rammer hvis status stadig er finalizable OG der stadig ikke er nogen byder.
+  // Et bud der racer med finaliseringen (dets insert passerede
+  // reject_late_auction_bid-triggeren lige før udløb, men current_bidder_id-
+  // skrivningen lander efter vores read) gør claimen til 0 rækker → rytteren
+  // røres IKKE, og næste finalize-pass gennemfører auktionen med vinderen.
+  // Buddet vinder altid over sletningen.
   if (!bidderId) {
-    await closeAuction({ supabase, auction, status: "completed", actualEnd, sellerOwned: false });
-    return { ok: true, code: "youth_no_bids", auction_id: auction.id };
+    const { data: claimed, error: claimErr } = await supabase
+      .from("auctions")
+      .update({ status: "completed", actual_end: actualEnd, seller_team_id: null })
+      .eq("id", auction.id)
+      .in("status", FINALIZABLE_STATUSES)
+      .is("current_bidder_id", null)
+      .select("id");
+    ensureNoError(claimErr);
+    if ((claimed ?? []).length === 0) {
+      return { ok: true, code: "youth_bid_raced", auction_id: auction.id };
+    }
+    const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
+    return { ok: true, code: "youth_no_bids", auction_id: auction.id, rider_deleted: riderDeleted };
   }
 
   const price = auction.current_price;
@@ -208,8 +274,9 @@ async function finalizeYouthAuctionRecord({
     throw acqErr;
   }
 
-  // Akademi fuldt (cap nået inde i låsen) → annullér; rytteren forbliver fri
-  // ungdom og kan stadig signes direkte via signFreeAgentYouth.
+  // Akademi fuldt (cap nået inde i låsen) → annullér. Rytteren blev ikke optaget
+  // → han slettes (#2456; fri-agent-listen findes ikke længere, og en holdløs
+  // ungdomsrytter ville være en usynlig spøgelsesrytter).
   if (acq?.code === "academy_full") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
     await notifyTeamOwner(
@@ -220,10 +287,12 @@ async function finalizeYouthAuctionRecord({
       auction.id,
       { riderId: rider.id }
     );
-    return { ok: true, code: "academy_full", auction_id: auction.id };
+    const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
+    return { ok: true, code: "academy_full", auction_id: auction.id, rider_deleted: riderDeleted };
   }
 
-  // Utilstrækkelig balance (verificeret inde i låsen) → annullér.
+  // Utilstrækkelig balance (verificeret inde i låsen) → annullér; rytteren blev
+  // ikke optaget → han slettes (#2456, samme begrundelse som academy_full).
   if (acq?.code === "insufficient_balance") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
     await notifyTeamOwner(
@@ -234,7 +303,8 @@ async function finalizeYouthAuctionRecord({
       auction.id,
       { riderId: rider.id }
     );
-    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id };
+    const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
+    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id, rider_deleted: riderDeleted };
   }
 
   // Rytteren var allerede optaget (vundet af en parallel sti) → annullér uden

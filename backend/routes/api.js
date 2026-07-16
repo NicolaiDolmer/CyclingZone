@@ -149,7 +149,6 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
-import { signFreeAgentYouth } from "../lib/youthMarket.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -10871,53 +10870,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       return safe;
     });
 
-    // Frie ungdoms-free-agents (#1308 Fase B): usolgte fra ungdomsauktioner — team_id
-    // NULL, ikke akademi, i akademi-alder (16-21). Display-safe (INGEN potentiale, da
-    // klubben ikke ejer/scouter dem endnu). Birthdate-range bounder forespørgslen;
-    // præcis alders-filtrering sker i JS. Capped (discovery-liste).
-    //
-    // VIGTIGT: ekskludér ryttere der er 'offered' i ET intake-kuld eller ligger på en
-    // AKTIV ungdomsauktion — de har samme team_id=NULL/is_academy=false/alder, men er
-    // IKKE frie: at signe dem direkte ville stjæle et andet holds intake-kandidat eller
-    // bypasse en kørende auktion (signFreeAgentYouth afviser dem også backend-side).
-    const minBirth = `${currentYear - ACADEMY.MAX_AGE}-01-01`;
-    const maxBirth = `${currentYear - ACADEMY.MIN_AGE}-12-31`;
-    const [offeredRes, youthAucRes, faRes] = await Promise.all([
-      supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
-      supabase.from("auctions").select("rider_id").eq("is_youth", true).in("status", ["active", "extended"]),
-      supabase
-        .from("riders")
-        .select("id, firstname, lastname, nationality_code, birthdate, market_value")
-        .is("team_id", null)
-        .eq("is_academy", false)
-        // Pensionerede ryttere må aldrig stå i den frie ungdoms-pulje (#1742).
-        // Samme synligheds-filter som /api/riders (is_retired=false): retirement
-        // (legacy-swap #1103 eller alders-retirement #1137) sætter is_retired=true
-        // men efterlader team_id=NULL/is_academy=false, så uden dette filter slap
-        // pensionerede ryttere igennem free-agent-grundkriterierne.
-        .eq("is_retired", false)
-        // KUN fiktive ryttere (pcm_id IS NULL). Ægte PCM-ryttere (pcm_id NOT NULL)
-        // der tilfældigvis er frie agenter i akademi-alder må ikke kunne hentes
-        // gratis (#1478 bug #1). pcm_id=null er fiktiv-vs-ægte-markøren.
-        .is("pcm_id", null)
-        .gte("birthdate", minBirth)
-        .lte("birthdate", maxBirth)
-        .order("market_value", { ascending: false })
-        .limit(300),
-    ]);
-    if (faRes.error) throw new Error(faRes.error.message);
-    const excludedIds = new Set([
-      ...((offeredRes.data ?? []).map((r) => r.rider_id)),
-      ...((youthAucRes.data ?? []).map((r) => r.rider_id)),
-    ]);
-    const freeAgents = (faRes.data ?? [])
-      .filter((r) => {
-        if (!r.birthdate) return false;
-        const age = currentYear - new Date(r.birthdate).getFullYear();
-        return age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
-      })
-      .filter((r) => !excludedIds.has(r.id))
-      .slice(0, 30);
+    // #2456: fri-agent-butikken ("frie ungdoms-free-agents") er fjernet — talenter
+    // kommer via eget intake eller ungdomsauktionen; usolgte slettes ved finalisering.
 
     // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
     // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
@@ -10944,7 +10898,6 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       seniorMax,
       roster,
       intake,
-      freeAgents,
       graduations,
     });
   } catch (err) {
@@ -11047,45 +11000,6 @@ router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res)
   } catch (err) {
     const msg = err?.message ?? "";
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
-    captureException(err);
-    res.status(500).json({ error: msg });
-  }
-});
-
-// POST /api/academy/free-agent/sign — direct-sign en fri ungdoms-free-agent til
-// minimumsløn ind i holdets akademi (#1308 Fase B). Body: { riderId }
-router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
-
-    const { riderId } = req.body || {};
-    if (!riderId) return res.status(400).json({ error: "riderId required" });
-
-    const { data: season } = await supabase
-      .from("seasons")
-      .select("number")
-      .eq("status", "active")
-      .maybeSingle();
-    const seasonNumber = season?.number ?? 1;
-
-    const result = await signFreeAgentYouth(supabase, {
-      teamId: req.team.id,
-      riderId,
-      seasonNumber,
-    });
-
-    res.json(result);
-  } catch (err) {
-    const msg = err?.message ?? "";
-    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
-    if (msg === "not_free_agent") return res.status(409).json({ error: "not_free_agent" });
-    if (msg === "not_academy_age") return res.status(409).json({ error: "not_academy_age" });
-    // insufficient_balance er en forventet bruger-tilstand ("ikke råd"), ikke en
-    // fejl — map til 409 og spring captureException over så Sentry ikke larmer (#1735).
-    if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
     captureException(err);
     res.status(500).json({ error: msg });
   }

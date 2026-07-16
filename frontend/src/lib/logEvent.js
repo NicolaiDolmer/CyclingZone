@@ -99,7 +99,6 @@ export const KNOWN_EVENTS = Object.freeze([
   // canary-blinde). Naturligt 0 indtil academy_enabled flippes ved relaunch.
   "academy_sign",
   "academy_reject",
-  "academy_free_agent_sign",
   "academy_graduate",
   // Training (#1305) — fyrer fra useTraining.js ved bulk-fokus + daglig træning.
   // Tilføjet til KNOWN_EVENTS i #1669 (var instrumenteret men canary-blinde).
