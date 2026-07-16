@@ -363,9 +363,9 @@
     "needsAction": "Skal handles"
   },
   "autoAccept": {
-    "lastChance": "Sidste chance, bestyrelsen tager over om {count, plural, one {1 race-day} other {# race-days}}",
-    "waiting": "Bestyrelsen venter på din forhandling, {count, plural, one {1 race-day} other {# race-days}} tilbage",
-    "footer": "Hvis du ikke har valgt fokus og forhandlet mål når race-day 5 starter, vælger bestyrelsen selv en plan baseret på dit holds identitet fra sæson 1."
+    "lastChance": "Sidste chance, bestyrelsen tager over om {count, plural, one {1 dag} other {# dage}}",
+    "waiting": "Bestyrelsen venter på din forhandling, {count, plural, one {1 dag} other {# dage}} tilbage",
+    "footer": "Hvis du ikke har valgt fokus og forhandlet mål inden for 5 dage efter planen åbnede, vælger bestyrelsen selv en plan baseret på dit holds identitet fra sæson 1."
   },
   "plan": {
     "autoConfigured": "Konfigureres automatisk ved næste sæsonstart",

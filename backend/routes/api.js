@@ -250,6 +250,13 @@ import { computeWeekendSatisfactionUpdate } from "../lib/boardWeekendUpdate.js";
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "../lib/boardTransparency.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
 import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "../lib/boardTestModeService.js";
+// #2463 · Genbrug samme kalenderdags-anker-logik som auto-accept-cronen, så
+// GET /board/status' auto_accept-payload aldrig kan afvige fra cronens ur.
+import {
+  AUTO_ACCEPT_THRESHOLDS,
+  findPendingPlanType,
+  resolveNegotiationOpenedAt,
+} from "../lib/boardAutoAccept.js";
 import {
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
@@ -9939,7 +9946,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes] = await Promise.all([
       supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
-      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations, team_dna_key, team_dna_chosen_at").eq("id", teamId).single(),
+      // #2463 · created_at er anker-fallbacken resolveNegotiationOpenedAt bruger
+      // for helt nye hold uden board-historik endnu.
+      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations, team_dna_key, team_dna_chosen_at, created_at").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
@@ -10024,6 +10033,20 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const setupNextPlanType = isBaselinePhase
       ? null
       : (PLAN_SEQUENCE.find(pt => !realPlanBoards.find(b => b.plan_type === pt)) || null);
+
+    // #2463 · Samme kalenderdags-anker som auto-accept-cronen (boardAutoAccept.js) —
+    // genbruger findPendingPlanType/resolveNegotiationOpenedAt, så UI-countdownen
+    // aldrig kan afvige fra det ur cronen faktisk auto-accepterer efter.
+    const autoAcceptPendingPlanType = isBaselinePhase ? null : findPendingPlanType(realPlanBoards);
+    const autoAcceptPendingBoard = autoAcceptPendingPlanType
+      ? realPlanBoards.find(b => b.plan_type === autoAcceptPendingPlanType) || null
+      : null;
+    const negotiationOpenedAt = autoAcceptPendingPlanType
+      ? resolveNegotiationOpenedAt({ team: teamRes.data, pendingBoard: autoAcceptPendingBoard, realBoards: realPlanBoards })
+      : null;
+    const daysSinceNegotiationOpen = negotiationOpenedAt
+      ? (Date.now() - negotiationOpenedAt.getTime()) / (24 * 60 * 60 * 1000)
+      : null;
 
     // Build per-plan data — kun for rigtige plan-typer (1yr/3yr/5yr), ikke baseline.
     const plans = {};
@@ -10279,10 +10302,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
         race_days_completed: activeSeason.race_days_completed ?? 0,
         race_days_total: activeSeason.race_days_total ?? null,
       } : null,
+      // #2463 · Dage-baseret (kalenderdage siden PLANEN blev åbnet til
+      // forhandling), ikke race_days_completed (globalt sæson-ur på tværs af
+      // divisioner — se boardAutoAccept.js for hele historikken).
       auto_accept: {
-        threshold_race_days: 5,
-        race_days_completed: activeSeason?.race_days_completed ?? 0,
-        race_days_left: Math.max(0, 5 - (activeSeason?.race_days_completed ?? 0)),
+        deadline_days: AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT,
+        days_since_open: daysSinceNegotiationOpen != null ? Math.floor(daysSinceNegotiationOpen) : null,
+        days_left: daysSinceNegotiationOpen != null
+          ? Math.max(0, Math.ceil(AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - daysSinceNegotiationOpen))
+          : null,
+        pending_plan_type: autoAcceptPendingPlanType,
       },
       request_support: {
         supported: boardRequestsSupported,

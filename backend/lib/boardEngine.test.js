@@ -1257,9 +1257,9 @@ test("startSequentialNegotiation skips identity_basis-write when team already ha
   assert.deepEqual(state.teams[0].season_1_identity_basis, existingBasis);
 });
 
-test("processBoardAutoAcceptCron sends T-3 reminder at race_days_completed=2", async () => {
+test("processBoardAutoAcceptCron sends T-3 reminder at daysSinceOpen=2 (#2463)", async () => {
   const notifications = [];
-  const state = makeAutoAcceptState({ raceDaysCompleted: 2 });
+  const state = makeAutoAcceptState({ daysSinceOpen: 2 });
   const supabase = makeFakeSupabase(state);
 
   const summary = await processBoardAutoAcceptCron({
@@ -1268,7 +1268,7 @@ test("processBoardAutoAcceptCron sends T-3 reminder at race_days_completed=2", a
       notifications.push({ ...args });
       return { delivered: true, deduped: false };
     },
-    now: new Date("2026-05-05T10:00:00Z"),
+    now: AUTO_ACCEPT_TEST_NOW,
   });
 
   assert.equal(summary.teams_checked, 1);
@@ -1281,9 +1281,9 @@ test("processBoardAutoAcceptCron sends T-3 reminder at race_days_completed=2", a
   assert.equal(notifications[0].metadata?.titleParams?.planLabelKey, "planLabel.5yr");
 });
 
-test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_completed=4", async () => {
+test("processBoardAutoAcceptCron sends T-1 critical reminder at daysSinceOpen=4 (#2463)", async () => {
   const notifications = [];
-  const state = makeAutoAcceptState({ raceDaysCompleted: 4 });
+  const state = makeAutoAcceptState({ daysSinceOpen: 4 });
   const supabase = makeFakeSupabase(state);
 
   const summary = await processBoardAutoAcceptCron({
@@ -1292,6 +1292,7 @@ test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_comple
       notifications.push({ ...args });
       return { delivered: true, deduped: false };
     },
+    now: AUTO_ACCEPT_TEST_NOW,
   });
 
   assert.equal(summary.reminders_sent, 1);
@@ -1302,10 +1303,10 @@ test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_comple
   assert.equal(notifications[0].metadata?.titleCode, "notif.boardT1Reminder.title");
 });
 
-test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=5 using identity-derived focus", async () => {
+test("processBoardAutoAcceptCron auto-signs default plan at daysSinceOpen=5 using identity-derived focus (#2463)", async () => {
   const notifications = [];
   const state = makeAutoAcceptState({
-    raceDaysCompleted: 5,
+    daysSinceOpen: 5,
     identityBasis: {
       youth_level: "high",
       youth_share_pct: 60,
@@ -1324,6 +1325,7 @@ test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=
       notifications.push({ ...args });
       return { delivered: true, deduped: false };
     },
+    now: AUTO_ACCEPT_TEST_NOW,
   });
 
   assert.equal(summary.auto_accepted, 1);
@@ -1338,8 +1340,8 @@ test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
 });
 
-test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med teamId+seasonId+raceDaysCompleted (Refs #614 P2-A)", async () => {
-  const state = makeAutoAcceptState({ raceDaysCompleted: 2 });
+test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med teamId+seasonId (Refs #614 P2-A)", async () => {
+  const state = makeAutoAcceptState({ daysSinceOpen: 2 });
   const supabase = makeFakeSupabase(state);
 
   const captureCalls = [];
@@ -1350,7 +1352,7 @@ test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med te
       supabase,
       notifyUser: async () => { throw new Error("simulated notify failure"); },
       captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
-      now: new Date("2026-05-05T10:00:00Z"),
+      now: AUTO_ACCEPT_TEST_NOW,
     });
     assert.equal(summary.errors, 1);
   } finally {
@@ -1361,16 +1363,16 @@ test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med te
   assert.equal(captureCalls[0].ctx.tags.cron, "board-auto-accept");
   assert.equal(captureCalls[0].ctx.extra.teamId, "team-1");
   assert.equal(captureCalls[0].ctx.extra.seasonId, "season-2");
-  assert.equal(captureCalls[0].ctx.extra.raceDaysCompleted, 2);
 });
 
 test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", async () => {
-  const state = makeAutoAcceptState({ raceDaysCompleted: 5, windowState: "locked" });
+  const state = makeAutoAcceptState({ daysSinceOpen: 5, windowState: "locked" });
   const supabase = makeFakeSupabase(state);
 
   const summary = await processBoardAutoAcceptCron({
     supabase,
     notifyUser: async () => ({ delivered: true, deduped: false }),
+    now: AUTO_ACCEPT_TEST_NOW,
   });
 
   assert.equal(summary.teams_checked, 0);
@@ -1379,7 +1381,7 @@ test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", 
 
 test("processBoardAutoAcceptCron rolls back team_dna_key when board regeneration fails (#878 atomicity)", async () => {
   const state = makeAutoAcceptState({
-    raceDaysCompleted: 5,
+    daysSinceOpen: 5,
     identityBasis: {
       youth_level: "high",
       youth_share_pct: 60,
@@ -1400,6 +1402,7 @@ test("processBoardAutoAcceptCron rolls back team_dna_key when board regeneration
     const summary = await processBoardAutoAcceptCron({
       supabase,
       notifyUser: async () => ({ delivered: true, deduped: false }),
+      now: AUTO_ACCEPT_TEST_NOW,
     });
     assert.equal(summary.errors, 1, "regenererings-fejl skal tælles som per-team error");
     assert.equal(summary.auto_accepted, 0, "auto-accept må ikke rapporteres når regenerering fejler");
@@ -1414,11 +1417,20 @@ test("processBoardAutoAcceptCron rolls back team_dna_key when board regeneration
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 0);
 });
 
+// #2463 · daysSinceOpen erstatter det tidligere race_days_completed-parameter —
+// auto-accept-cronen måler nu kalenderdage siden holdets (her: helt nye holds)
+// board-forhandling blev åbnet, ikke det globale sæson-race-day-ur. Ankeret er
+// team.created_at (ingen board_profiles-række endnu → resolveNegotiationOpenedAt
+// falder tilbage til team.created_at, jf. boardAutoAccept.js).
+const AUTO_ACCEPT_TEST_NOW = new Date("2026-05-05T10:00:00Z");
+
 function makeAutoAcceptState({
-  raceDaysCompleted = 0,
+  daysSinceOpen = 0,
+  now = AUTO_ACCEPT_TEST_NOW,
   windowState = "pending_5yr",
   identityBasis = null,
 } = {}) {
+  const createdAt = new Date(now.getTime() - daysSinceOpen * 24 * 60 * 60 * 1000).toISOString();
   return {
     teams: [{
       id: "team-1",
@@ -1433,13 +1445,17 @@ function makeAutoAcceptState({
       name: "Test Hold",
       season_1_identity_basis: identityBasis,
       team_dna_key: null,
+      created_at: createdAt,
     }],
     riders: [],
     seasons: [{
       id: "season-2",
       number: 2,
       status: "active",
-      race_days_completed: raceDaysCompleted,
+      // #2463 · race_days_completed er ikke længere hvad auto-accept-cronen
+      // måler mod — værdien her er bevidst urealistisk høj (som i prod, 524/60)
+      // for at bevise at cronen IKKE længere reagerer på den.
+      race_days_completed: 524,
       race_days_total: 60,
     }],
     board_profiles: [],

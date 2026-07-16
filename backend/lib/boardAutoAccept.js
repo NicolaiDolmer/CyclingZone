@@ -1,9 +1,20 @@
 // S-02b · Auto-accept-cron + tier-styrede reminders.
 // Master roadmap: docs/slices/02-board-redesign-MASTER.md (S-02b leverer-listen)
 // Q-bekræftelser 2026-05-05: B=b (default-focus afledes fra identity_basis),
-//                            C   (T-3 ved race_days_completed=2 → board_update,
-//                                 T-1 ved =4 → board_critical,
-//                                 auto-accept ved >=5)
+//                            C   (T-3/T-1/auto-accept-tærskler — se #2463 for
+//                                 den aktuelle enhed de måles i).
+//
+// #2463 · Tærsklerne var oprindeligt kalibreret mod seasons.race_days_completed
+// (Q-C 2026-05-05) under antagelsen ~1 race-day pr. kalenderdag ⇒ et ~5-dages
+// forhandlingsvindue. Men race_days_completed er SUM(stages) over ALLE
+// completede løb i sæsonen på tværs af divisioner (seasonRaceDays.js) — vokser
+// ~20+/dag. Prod-evidens 16/7: race_days_completed=524 (race_days_total=60!),
+// 218 auto-accepts (bulk 54 stk. dagen efter sæsonstart), kun 25 T-3-reminders
+// (ét kort vindue), 0 T-1-reminders NOGENSINDE. Fixet: kalenderdags-ur PR PLAN
+// via resolveNegotiationOpenedAt() — anker = hvornår netop DENNE plan blev
+// åbnet til forhandling, ikke et globalt sæson-race-day-ur. Samme underliggende
+// enheds-bug rammer getBoardRenegotiationLock (boardRequests.js) + boardMidSeason
+// midpoint + seasonRaceDays.js selv — fixes i separat issue, ikke her.
 //
 // Daglig cron-job — idempotent via notification-dedup (24h vindue) + status-check
 // (skipper teams der allerede har en signed plan for nuværende plan_type).
@@ -26,12 +37,15 @@ import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
-// Tærskler — Q-bekræftelse C (2026-05-05).
-// race_days_completed er counter på seasons-tabellen (schema.sql:100).
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Tærskler — kalenderdage siden planen blev åbnet til forhandling (#2463).
+// Navnesemantikken (T_MINUS_3/T_MINUS_1/AUTO_ACCEPT) er bevaret fra
+// Q-bekræftelse C 2026-05-05 — kun enheden ændrede sig (race-days → dage).
 export const AUTO_ACCEPT_THRESHOLDS = {
-  T_MINUS_3: 2,   // 3 race-days FØR auto-accept (5 - 3 = 2)
-  T_MINUS_1: 4,   // 1 race-day FØR auto-accept (5 - 1 = 4)
-  AUTO_ACCEPT: 5, // race_days_completed >= 5 → bestyrelsen tager over
+  T_MINUS_3: 2,   // dage siden åbning → info-reminder (board_update)
+  T_MINUS_1: 4,   // dage siden åbning → kritisk reminder (board_critical)
+  AUTO_ACCEPT: 5, // dage siden åbning → bestyrelsen tager over
 };
 
 // #2469 · Kolonnerne autoAcceptPendingPlan viderefører fra en EKSISTERENDE
@@ -39,28 +53,63 @@ export const AUTO_ACCEPT_THRESHOLDS = {
 // upserten SKAL stå her — mangler den, læses den som undefined og defaulten
 // overskriver spillerens optjente værdi i stedet for at bevare den.
 // Forward-guard: boardAutoAccept.test.js låser dette mod upsert-payloaden.
+// #2463 · created_at/updated_at tilføjet — de bærer anker-datoen som
+// resolveNegotiationOpenedAt() læser (updated_at = hvornår DENNE rækkes
+// forhandling blev åbnet; created_at = fallback når raden mangler helt).
 export const BOARD_AUTO_ACCEPT_SELECT =
-  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload";
+  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload, created_at, updated_at";
 
-// #2104: race_days_completed er et GLOBALT sæson-ur — et hold oprettet midt i
-// sæsonen ville uden skånefrist stå "over deadline" fra minut ét og få DNA +
-// plan tvangsvalgt af næste cron-tick (ramte Team CSC 2/7: DNA + 5yr-plan
-// auto-valgt 29 min efter signup, 3yr-planen 9 min senere — uden at én eneste
-// T-3/T-1-reminder var afsendt). Etaper afvikles ~1 pr. kalenderdag, så
-// NEW_TEAM_GRACE_DAYS kalenderdage ≈ samme forhandlingsvindue (5 race-days)
-// som hold der var med fra sæsonstart.
-export const NEW_TEAM_GRACE_DAYS = 5;
+/**
+ * #2463 · Find hvornår en pending plan blev "åbnet til forhandling" — ankeret
+ * kalenderdags-uret måler fra. Kalenderdags-uret er PR PLAN, ikke pr. sæson.
+ *
+ * 1. Pending-board-rækken findes → dens updated_at. Verificeret stabil:
+ *    boardWeekendFinalization.js skipper ikke-completed boards (rører aldrig
+ *    en pending rækkes updated_at), sæson-slut-flippet (economyEngine.js) og
+ *    POST /board/renew (routes/api.js) sætter begge updated_at eksplicit ved
+ *    åbning, og formations-boardet får updated_at=NOW() ved insert (schema.sql
+ *    board_profiles.updated_at DEFAULT NOW()).
+ * 2. Plan-rækken MANGLER (sekventiel onboarding — fx 5yr signeret, 3yr-rækken
+ *    findes endnu ikke) → max(created_at) over holdets completede
+ *    ikke-baseline board-rækker, dvs. da forrige plan blev signeret eller
+ *    auto-accepteret. created_at røres aldrig af senere updates.
+ * 3. Fallback: team.created_at (helt nyt hold, ingen board-historik endnu).
+ * 4. Alt ugyldigt/manglende → null. Kaldestedet skipper holdet uden exception.
+ *
+ * @param {object} args
+ * @param {object} [args.team]
+ * @param {object|null} [args.pendingBoard]
+ * @param {object[]} [args.realBoards] — alle ikke-baseline board-rækker for holdet
+ * @returns {Date|null}
+ */
+export function resolveNegotiationOpenedAt({ team, pendingBoard, realBoards }) {
+  if (pendingBoard?.updated_at) {
+    const fromBoard = new Date(pendingBoard.updated_at);
+    if (!Number.isNaN(fromBoard.getTime())) return fromBoard;
+  }
 
-export function isWithinNewTeamGrace(createdAt, now = new Date()) {
-  if (!createdAt) return false;
-  const createdMs = new Date(createdAt).getTime();
-  if (Number.isNaN(createdMs)) return false;
-  return now.getTime() - createdMs < NEW_TEAM_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  if (!pendingBoard) {
+    const completedCreatedMs = (realBoards || [])
+      .filter((b) => b.negotiation_status === "completed" && b.created_at)
+      .map((b) => new Date(b.created_at).getTime())
+      .filter((ms) => !Number.isNaN(ms));
+    if (completedCreatedMs.length > 0) {
+      return new Date(Math.max(...completedCreatedMs));
+    }
+  }
+
+  if (team?.created_at) {
+    const fromTeam = new Date(team.created_at);
+    if (!Number.isNaN(fromTeam.getTime())) return fromTeam;
+  }
+
+  return null;
 }
 
 /**
  * Cron-entry: tjek alle human teams for pending board-planer og send
- * reminders / auto-accept baseret på race_days_completed.
+ * reminders / auto-accept baseret på kalenderdage siden planen blev åbnet
+ * til forhandling (#2463 — se resolveNegotiationOpenedAt).
  *
  * @param {object} args
  * @param {object} args.supabase             — Supabase client
@@ -107,11 +156,6 @@ export async function processBoardAutoAcceptCron({
   if (seasonError) throw seasonError;
   if (!activeSeason) return summary;
 
-  const raceDaysCompleted = Number(activeSeason.race_days_completed ?? 0);
-  if (raceDaysCompleted < AUTO_ACCEPT_THRESHOLDS.T_MINUS_3) {
-    return summary;
-  }
-
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
     .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at")
@@ -128,7 +172,6 @@ export async function processBoardAutoAcceptCron({
         supabase,
         team,
         activeSeason,
-        raceDaysCompleted,
         notifyUser,
         now,
       });
@@ -140,7 +183,7 @@ export async function processBoardAutoAcceptCron({
       if (captureExceptionFn) {
         captureExceptionFn(error, {
           tags: { cron: "board-auto-accept" },
-          extra: { teamId: team.id, seasonId: activeSeason?.id, raceDaysCompleted },
+          extra: { teamId: team.id, seasonId: activeSeason?.id },
         });
       }
     }
@@ -153,15 +196,10 @@ async function processTeamAutoAccept({
   supabase,
   team,
   activeSeason,
-  raceDaysCompleted,
   notifyUser,
   now,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
-
-  // #2104: nyoprettede hold får deres eget forhandlingsvindue — hverken
-  // reminders eller auto-accept før skånefristen er udløbet.
-  if (isWithinNewTeamGrace(team.created_at, now)) return result;
 
   // Find første pending plan_type i 5yr→3yr→1yr-orden.
   //
@@ -185,7 +223,13 @@ async function processTeamAutoAccept({
 
   const pendingBoard = realBoards.find((b) => b.plan_type === pendingPlanType) || null;
 
-  if (raceDaysCompleted >= AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT) {
+  // #2463 · Kalenderdags-ur pr. plan i stedet for det globale race_days_completed-ur.
+  const openedAt = resolveNegotiationOpenedAt({ team, pendingBoard, realBoards });
+  if (!openedAt) return result; // Alt ugyldigt/manglende → skip holdet, ingen exception.
+
+  const daysSinceOpen = (now.getTime() - openedAt.getTime()) / DAY_MS;
+
+  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT) {
     const accepted = await autoAcceptPendingPlan({
       supabase,
       team,
@@ -199,31 +243,27 @@ async function processTeamAutoAccept({
     return result;
   }
 
-  if (raceDaysCompleted >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_1) {
+  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_1) {
     const sent = await sendT1CriticalReminder({
-      supabase,
       team,
-      activeSeason,
       planType: pendingPlanType,
       pendingBoard,
       notifyUser,
       now,
-      raceDaysCompleted,
+      daysSinceOpen,
     });
     result.reminder_sent = sent;
     return result;
   }
 
-  if (raceDaysCompleted >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_3) {
+  if (daysSinceOpen >= AUTO_ACCEPT_THRESHOLDS.T_MINUS_3) {
     const sent = await sendT3InfoReminder({
-      supabase,
       team,
-      activeSeason,
       planType: pendingPlanType,
       pendingBoard,
       notifyUser,
       now,
-      raceDaysCompleted,
+      daysSinceOpen,
     });
     result.reminder_sent = sent;
   }
@@ -231,11 +271,13 @@ async function processTeamAutoAccept({
   return result;
 }
 
-function findPendingPlanType(realBoards) {
-  // Sequential onboarding-orden 5yr→3yr→1yr (ONBOARDING_PLAN_SEQUENCE).
-  // Returnér første plan_type der enten mangler eller har status='pending'.
+// Sequential onboarding-orden 5yr→3yr→1yr (ONBOARDING_PLAN_SEQUENCE).
+// Returnér første plan_type der enten mangler eller har status='pending'.
+// Eksporteret så GET /board/status (routes/api.js) kan genbruge samme logik
+// til auto_accept.pending_plan_type i stedet for at duplikere den.
+export function findPendingPlanType(realBoards) {
   for (const planType of ONBOARDING_PLAN_SEQUENCE) {
-    const board = realBoards.find((b) => b.plan_type === planType);
+    const board = (realBoards || []).find((b) => b.plan_type === planType);
     if (!board) return planType;
     if (board.negotiation_status === "pending") return planType;
   }
@@ -243,24 +285,24 @@ function findPendingPlanType(realBoards) {
 }
 
 async function sendT3InfoReminder({
-  team, activeSeason: _activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
+  team, planType, pendingBoard, notifyUser, now, daysSinceOpen,
 }) {
   if (!team.user_id) return false;
 
   const planLabelEn = formatPlanLabelEn(planType);
   const planLabelKey = planLabelI18nKey(planType);
-  const raceDaysLeft = AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - raceDaysCompleted;
+  const daysLeft = Math.max(1, Math.ceil(AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - daysSinceOpen));
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_update",
     title: `The board is waiting for your ${planLabelEn}`,
-    message: `You have ${raceDaysLeft} race days left to negotiate your ${planLabelEn}. If you don't act, the board will decide.`,
+    message: `You have ${daysLeft} days left to negotiate your ${planLabelEn}. If you don't act, the board will decide.`,
     relatedId: pendingBoard?.id ?? null,
     metadata: {
       titleCode: "notif.boardT3Reminder.title",
       titleParams: { planLabelKey },
       messageCode: "notif.boardT3Reminder.message",
-      messageParams: { raceDaysLeft, planLabelKey },
+      messageParams: { daysLeft, planLabelKey },
     },
     now,
   });
@@ -268,25 +310,25 @@ async function sendT3InfoReminder({
 }
 
 async function sendT1CriticalReminder({
-  team, activeSeason: _activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
+  team, planType, pendingBoard, notifyUser, now, daysSinceOpen,
 }) {
   if (!team.user_id) return false;
 
   const planLabelEn = formatPlanLabelEn(planType);
   const planLabelKey = planLabelI18nKey(planType);
-  const raceDaysLeft = Math.max(1, AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - raceDaysCompleted);
-  const isSingle = raceDaysLeft === 1;
+  const daysLeft = Math.max(1, Math.ceil(AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - daysSinceOpen));
+  const isSingle = daysLeft === 1;
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_critical",
     title: `Last chance: ${planLabelEn}`,
-    message: `The board takes over in ${raceDaysLeft} race day${isSingle ? "" : "s"}. Open the Board page and negotiate your ${planLabelEn} now.`,
+    message: `The board takes over in ${daysLeft} day${isSingle ? "" : "s"}. Open the Board page and negotiate your ${planLabelEn} now.`,
     relatedId: pendingBoard?.id ?? null,
     metadata: {
       titleCode: "notif.boardT1Reminder.title",
       titleParams: { planLabelKey },
       messageCode: isSingle ? "notif.boardT1Reminder.messageSingle" : "notif.boardT1Reminder.messageMulti",
-      messageParams: { raceDaysLeft, planLabelKey },
+      messageParams: { daysLeft, planLabelKey },
     },
     now,
   });

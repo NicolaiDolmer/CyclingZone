@@ -1489,8 +1489,9 @@ function BoardFeedSection({ items = [] }) {
 }
 
 // S-02b · Auto-accept countdown-banner.
-// Q-bekræftelse C (2026-05-05): T-3 (race_days=2) info, T-1 (=4) Skal-handles,
-// auto-accept (>=5). UI viser kun hvis der findes en pending plan + race-days igang.
+// #2463 · Kalenderdage siden PLANEN blev åbnet til forhandling (ikke det
+// globale race_days_completed-ur): T-3 (dag 2) info, T-1 (dag 4) Skal-handles,
+// auto-accept (dag 5+). UI viser kun hvis der findes en pending plan.
 function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanType, plans }) {
   const { t } = useTranslation("board");
   if (isBaselinePhase || !autoAccept) return null;
@@ -1499,12 +1500,11 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
     || PLAN_SEQUENCE.some((pt) => plans[pt]?.is_expired);
   if (!hasPendingPlan) return null;
 
-  const raceDaysLeft = Number(autoAccept.race_days_left ?? 0);
-  const raceDaysCompleted = Number(autoAccept.race_days_completed ?? 0);
-  if (raceDaysCompleted <= 0 || raceDaysLeft <= 0) return null;
+  const daysLeft = Number(autoAccept.days_left ?? 0);
+  if (!autoAccept.pending_plan_type || daysLeft <= 0) return null;
 
-  const isCritical = raceDaysLeft <= 1;
-  const isWarning = raceDaysLeft <= 3;
+  const isCritical = daysLeft <= 1;
+  const isWarning = daysLeft <= 3;
 
   const containerClass = isCritical
     ? "bg-cz-danger-bg0/8 border-cz-danger/40"
@@ -1523,8 +1523,8 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
-              ? t("autoAccept.lastChance", { count: raceDaysLeft })
-              : t("autoAccept.waiting",     { count: raceDaysLeft })}
+              ? t("autoAccept.lastChance", { count: daysLeft })
+              : t("autoAccept.waiting",     { count: daysLeft })}
           </p>
           <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("autoAccept.footer")}</p>
         </div>
