@@ -74,6 +74,16 @@ const PAGE_SIZE = 1000;
 // uq_race_entries_captain/_sprint_captain/_hunter (database/2026-06-12-race-entries-roles.sql):
 // maks ÉN af hver af disse roller pr. (race_id, team_id) — på tværs af manuelle OG auto-rækker.
 const SPECIAL_ROLES = new Set(["captain", "sprint_captain", "hunter"]);
+
+// #2436 (Sentry CYCLINGZONE-32): manageren kan gemme sin udtagelse (replace_race_selection,
+// raceSelection.js) i VINDUET mellem vores manual-scan (trin 6 nedenfor) og selve skrivningen
+// af denne enhed — manualSpecialByRaceTeam er da forældet, guarden i skrivelaget ser ingen
+// manuel special-rolle, og vores auto-insert/rolle-opdatering kolliderer med
+// uq_race_entries_captain/_sprint_captain/_hunter (Postgres 23505). Matcher KUN disse tre
+// constraint-navne — ingen generel 23505-slugning.
+function isUqRaceEntriesViolation(err) {
+  return !!err && /uq_race_entries_(captain|sprint_captain|hunter)/.test(String(err.message || ""));
+}
 async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
@@ -122,6 +132,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
   if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0 };
   const raceIds = races.map((r) => r.id);
+  const raceById = new Map(races.map((r) => [r.id, r])); // #2436: retry rebygger sizeRule pr. race_class
   // Frys (#1825): et igangværende etapeløb (stages_completed>0) må ALDRIG regenereres —
   // dets trup er låst midt i afviklingen. Vi springer det over for ALLE hold og låser
   // dets ryttere, så et overlappende ikke-startet løb ikke dobbeltbooker dem.
@@ -384,6 +395,146 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     }
   }
 
+  // Anvend diff'et (vacate → insert → delete → promote) for ÉN (race,team)-enhed mod
+  // det givne desired/existing-rollekort. Ekstraheret (#2436) så retry'en efter en
+  // uq_race_entries_*-kollision kan kalde PRÆCIS samme skrivelogik igen med et frisk
+  // billede, uden kodeduplikering.
+  async function applyUnitDiff({ raceId, teamId, desired, existing }) {
+    const toInsert = [...desired]
+      .filter(([riderId]) => !existing.has(riderId))
+      .map(([riderId, role]) => ({
+        race_id: raceId, rider_id: riderId, team_id: teamId, race_role: role, is_auto_filled: true,
+      }));
+    const toDelete = [...existing.keys()].filter((riderId) => !desired.has(riderId));
+    const toDeleteSet = new Set(toDelete);
+
+    // Vacate FØR insert (CYCLINGZONE-2D): en eksisterende auto-række der HOLDER en
+    // special-rolle men mister den (rolle-skift ELLER stale) sættes til helper først,
+    // så uq-slottet er frit når den nye holder indsættes/promoveres. Insert af en ny
+    // captain FØR demote af den gamle var præcis prod-kollisionen (31 enheder, Team
+    // UKYO). Vacate er en UPDATE (ikke destruktiv) → aldrig-tommere-garantien holder.
+    const toVacate = [...existing]
+      .filter(([riderId, role]) =>
+        SPECIAL_ROLES.has(role) && (toDeleteSet.has(riderId) || desired.get(riderId) !== role))
+      .map(([riderId]) => riderId);
+    const vacatedSet = new Set(toVacate);
+    // Promotions: blivende rækker hvis ønskede rolle afviger fra deres EFFEKTIVE rolle
+    // (efter vacate = helper for de vacatede). En vacated rytter hvis mål ER helper,
+    // behøver ingen anden update — vacaten var hans rolle-ændring.
+    const promotions = [...desired].filter(([riderId, role]) => {
+      if (!existing.has(riderId)) return false;
+      const effective = vacatedSet.has(riderId) ? "helper" : existing.get(riderId);
+      return effective !== role;
+    });
+
+    let unitInserted = 0;
+    let unitRemoved = 0;
+    let unitRoleUpdated = 0;
+
+    if (toVacate.length) {
+      const { error: vacErr } = await supabase
+        .from("race_entries").update({ race_role: "helper" })
+        .eq("race_id", raceId).eq("team_id", teamId).eq("is_auto_filled", true)
+        .in("rider_id", toVacate);
+      if (vacErr) throw new Error(`race_entries role vacate: ${vacErr.message}`);
+      // Net-rolle-ændringer for blivende ryttere hvis endelige rolle ER helper
+      // (promotions dækker resten; stale rækker tælles som removed, ikke role_updated).
+      unitRoleUpdated += toVacate.filter(
+        (riderId) => !toDeleteSet.has(riderId) && desired.get(riderId) === "helper"
+      ).length;
+    }
+
+    // Insert før delete (aldrig-tommere-garantien): fejler noget herefter, står løbet
+    // aldrig med færre entries end før enheden startede. ignoreDuplicates: en
+    // residual (race,rytter)-række under et andet hold (ghost) springes stille over
+    // i stedet for at vælte kørslen — næste tick samler den op, når det andet holds
+    // stale-delete har fjernet den.
+    if (toInsert.length) {
+      const { error: insErr } = await supabase
+        .from("race_entries")
+        .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
+      if (insErr) throw new Error(`race_entries upsert: ${insErr.message}`);
+      unitInserted += toInsert.length;
+    }
+    if (toDelete.length) {
+      const { error: delErr } = await supabase
+        .from("race_entries").delete()
+        .eq("race_id", raceId).eq("team_id", teamId).eq("is_auto_filled", true)
+        .in("rider_id", toDelete);
+      if (delErr) throw new Error(`race_entries delete: ${delErr.message}`);
+      unitRemoved += toDelete.length;
+    }
+    if (promotions.length) {
+      // Grupperet pr. mål-rolle → maks få updates pr. enhed. Kører SIDST: alle gamle
+      // special-holdere er vacatet og stale rækker slettet, så slottene er frie.
+      const byRole = new Map();
+      for (const [riderId, role] of promotions) {
+        if (!byRole.has(role)) byRole.set(role, []);
+        byRole.get(role).push(riderId);
+      }
+      for (const [role, riderIds] of byRole) {
+        const { error: updErr } = await supabase
+          .from("race_entries").update({ race_role: role })
+          .eq("race_id", raceId).eq("team_id", teamId).eq("is_auto_filled", true)
+          .in("rider_id", riderIds);
+        if (updErr) throw new Error(`race_entries role update: ${updErr.message}`);
+        unitRoleUpdated += riderIds.length;
+      }
+    }
+    return { inserted: unitInserted, removed: unitRemoved, roleUpdated: unitRoleUpdated };
+  }
+
+  // #2436 (CYCLINGZONE-32): genlæs ENHEDENS manuelle + eksisterende auto-rækker friskt
+  // fra DB (den oprindelige manual-scan i trin 6 var team/sæson-bred og kan være
+  // forældet af en manager-gem der landede undervejs) og kør enheden om — samme kerne
+  // (assignTeamAcrossRaces) som originalkørslen, PRÆCIS ÉN gang. Kaldes KUN når skriv-
+  // forsøget ovenfor rammer uq_race_entries_captain/_sprint_captain/_hunter.
+  async function regenerateUnitAfterConcurrentManualSave({ raceId, teamId }) {
+    const race = raceById.get(raceId);
+    const window = windowByRace.get(raceId);
+    const { data: freshManualRows, error: fmErr } = await supabase
+      .from("race_entries").select("rider_id, race_role")
+      .eq("race_id", raceId).eq("team_id", teamId).eq("is_auto_filled", false);
+    if (fmErr) throw new Error(`race_entries (manual re-scan): ${fmErr.message}`);
+    const manualRiders = (freshManualRows || []).map((e) => e.rider_id);
+    const manualSpecial = new Set(
+      (freshManualRows || []).filter((e) => SPECIAL_ROLES.has(e.race_role)).map((e) => e.race_role)
+    );
+    const sizeRule = selectionSizeForRace(race);
+
+    const { data: freshExistingRows, error: feErr } = await supabase
+      .from("race_entries").select("rider_id, race_role")
+      .eq("race_id", raceId).eq("team_id", teamId).eq("is_auto_filled", true);
+    if (feErr) throw new Error(`race_entries (auto re-scan): ${feErr.message}`);
+    const existing = new Map((freshExistingRows || []).map((e) => [e.rider_id, e.race_role]));
+
+    // Manageren fyldte truppen HELT undervejs (mirror hovedløbets fullManual-gren):
+    // ingen auto-picks tilbage — eksisterende auto-rækker efterlades urørt (samme
+    // adfærd som når fullManual opdages i step 9, hvor enheden aldrig når `staged`).
+    if (manualRiders.length >= sizeRule.max) return { inserted: 0, removed: 0, roleUpdated: 0 };
+
+    const adjSizeRule = { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length };
+    const lockedWindows = manualRiders.length ? [{ window, riderIds: manualRiders }] : [];
+    const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
+    const assignment = assignTeamAcrossRaces({
+      riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
+      strategy: strategyByTeam.get(teamId) ?? null,
+    });
+    let picks = assignment[raceId] || [];
+    // Top-up (delvis manuel trup): den manuelle trup ejer special-rollerne → auto-picks
+    // neutraliseres til helper (mirror topUpKeys-logikken i step 9).
+    if (manualRiders.length) picks = picks.map((p) => ({ ...p, race_role: "helper" }));
+
+    const desired = new Map();
+    for (const p of picks) if (!desired.has(p.rider_id)) desired.set(p.rider_id, p.race_role);
+    if (manualSpecial.size) {
+      for (const [riderId, role] of desired) {
+        if (SPECIAL_ROLES.has(role) && manualSpecial.has(role)) desired.set(riderId, "helper");
+      }
+    }
+    return applyUnitDiff({ raceId, teamId, desired, existing });
+  }
+
   for (const { race_id, team_id, picks } of staged) {
     // Intra-batch-dedup på rider_id (defense-in-depth, #2375): skulle en rytter trods
     // stabil paginering optræde to gange i picks, må batchen ALDRIG indeholde dubletten.
@@ -402,100 +553,44 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       continue;
     }
 
+    const unitKey = `${race_id}|${team_id}`;
+    const existing = existingByUnit.get(unitKey) || new Map();
+
+    // Rolle-bevidst supplement (#2375 hotfix 2, CYCLINGZONE-2D): har MANAGEREN allerede
+    // sat en special-rolle blandt sine (bevarede, manuelle) entries, må ingen auto-række
+    // få samme rolle — uq_race_entries_* er pr. (race, hold) på tværs af manuel/auto.
+    // Manager-valget vinder ALTID; den nye rytter bliver helper i stedet. Manuelle
+    // rækkers roller røres aldrig (alle updates herunder filtrerer is_auto_filled=true).
+    const manualSpecial = manualSpecialByRaceTeam.get(unitKey) || new Set();
+    if (manualSpecial.size) {
+      for (const [riderId, role] of desired) {
+        if (SPECIAL_ROLES.has(role) && manualSpecial.has(role)) desired.set(riderId, "helper");
+      }
+    }
+
     try {
-      const unitKey = `${race_id}|${team_id}`;
-      const existing = existingByUnit.get(unitKey) || new Map();
-
-      // Rolle-bevidst supplement (#2375 hotfix 2, CYCLINGZONE-2D): har MANAGEREN allerede
-      // sat en special-rolle blandt sine (bevarede, manuelle) entries, må ingen auto-række
-      // få samme rolle — uq_race_entries_* er pr. (race, hold) på tværs af manuel/auto.
-      // Manager-valget vinder ALTID; den nye rytter bliver helper i stedet. Manuelle
-      // rækkers roller røres aldrig (alle updates herunder filtrerer is_auto_filled=true).
-      const manualSpecial = manualSpecialByRaceTeam.get(unitKey) || new Set();
-      if (manualSpecial.size) {
-        for (const [riderId, role] of desired) {
-          if (SPECIAL_ROLES.has(role) && manualSpecial.has(role)) desired.set(riderId, "helper");
-        }
-      }
-
-      const toInsert = [...desired]
-        .filter(([riderId]) => !existing.has(riderId))
-        .map(([riderId, role]) => ({
-          race_id, rider_id: riderId, team_id, race_role: role, is_auto_filled: true,
-        }));
-      const toDelete = [...existing.keys()].filter((riderId) => !desired.has(riderId));
-      const toDeleteSet = new Set(toDelete);
-
-      // Vacate FØR insert (CYCLINGZONE-2D): en eksisterende auto-række der HOLDER en
-      // special-rolle men mister den (rolle-skift ELLER stale) sættes til helper først,
-      // så uq-slottet er frit når den nye holder indsættes/promoveres. Insert af en ny
-      // captain FØR demote af den gamle var præcis prod-kollisionen (31 enheder, Team
-      // UKYO). Vacate er en UPDATE (ikke destruktiv) → aldrig-tommere-garantien holder.
-      const toVacate = [...existing]
-        .filter(([riderId, role]) =>
-          SPECIAL_ROLES.has(role) && (toDeleteSet.has(riderId) || desired.get(riderId) !== role))
-        .map(([riderId]) => riderId);
-      const vacatedSet = new Set(toVacate);
-      // Promotions: blivende rækker hvis ønskede rolle afviger fra deres EFFEKTIVE rolle
-      // (efter vacate = helper for de vacatede). En vacated rytter hvis mål ER helper,
-      // behøver ingen anden update — vacaten var hans rolle-ændring.
-      const promotions = [...desired].filter(([riderId, role]) => {
-        if (!existing.has(riderId)) return false;
-        const effective = vacatedSet.has(riderId) ? "helper" : existing.get(riderId);
-        return effective !== role;
-      });
-
-      if (toVacate.length) {
-        const { error: vacErr } = await supabase
-          .from("race_entries").update({ race_role: "helper" })
-          .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true)
-          .in("rider_id", toVacate);
-        if (vacErr) throw new Error(`race_entries role vacate: ${vacErr.message}`);
-        // Net-rolle-ændringer for blivende ryttere hvis endelige rolle ER helper
-        // (promotions dækker resten; stale rækker tælles som removed, ikke role_updated).
-        roleUpdated += toVacate.filter(
-          (riderId) => !toDeleteSet.has(riderId) && desired.get(riderId) === "helper"
-        ).length;
-      }
-
-      // Insert før delete (aldrig-tommere-garantien): fejler noget herefter, står løbet
-      // aldrig med færre entries end før enheden startede. ignoreDuplicates: en
-      // residual (race,rytter)-række under et andet hold (ghost) springes stille over
-      // i stedet for at vælte kørslen — næste tick samler den op, når det andet holds
-      // stale-delete har fjernet den.
-      if (toInsert.length) {
-        const { error: insErr } = await supabase
-          .from("race_entries")
-          .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
-        if (insErr) throw new Error(`race_entries upsert: ${insErr.message}`);
-        inserted += toInsert.length;
-      }
-      if (toDelete.length) {
-        const { error: delErr } = await supabase
-          .from("race_entries").delete()
-          .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true)
-          .in("rider_id", toDelete);
-        if (delErr) throw new Error(`race_entries delete: ${delErr.message}`);
-        removed += toDelete.length;
-      }
-      if (promotions.length) {
-        // Grupperet pr. mål-rolle → maks få updates pr. enhed. Kører SIDST: alle gamle
-        // special-holdere er vacatet og stale rækker slettet, så slottene er frie.
-        const byRole = new Map();
-        for (const [riderId, role] of promotions) {
-          if (!byRole.has(role)) byRole.set(role, []);
-          byRole.get(role).push(riderId);
-        }
-        for (const [role, riderIds] of byRole) {
-          const { error: updErr } = await supabase
-            .from("race_entries").update({ race_role: role })
-            .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true)
-            .in("rider_id", riderIds);
-          if (updErr) throw new Error(`race_entries role update: ${updErr.message}`);
-          roleUpdated += riderIds.length;
-        }
-      }
+      const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
+      inserted += result.inserted;
+      removed += result.removed;
+      roleUpdated += result.roleUpdated;
     } catch (err) {
+      // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
+      // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
+      // kør enheden om PRÆCIS ÉN gang. Lykkes retry'en (var en samtidig manager-gem):
+      // ingen capture. Fejler den igen: en ægte bug — signalet skal bevares.
+      if (isUqRaceEntriesViolation(err)) {
+        try {
+          const retryResult = await regenerateUnitAfterConcurrentManualSave({ raceId: race_id, teamId: team_id });
+          inserted += retryResult.inserted;
+          removed += retryResult.removed;
+          roleUpdated += retryResult.roleUpdated;
+          continue;
+        } catch (retryErr) {
+          failedUnits += 1;
+          if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
+          continue;
+        }
+      }
       failedUnits += 1;
       if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
     }
