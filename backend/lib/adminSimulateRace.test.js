@@ -295,8 +295,8 @@ test("buildRaceSimEmbed: incidents med abandons → DNF-linje med navn + årsag"
   const embed = buildRaceSimEmbed({ race, resultRows, incidents });
 
   assert.ok(embed.description.includes("DNF"), `beskrivelse skal indeholde en DNF-linje — fik: ${embed.description}`);
-  assert.ok(embed.description.includes("Jens Berg (styrt)"), `forventet "Jens Berg (styrt)" — fik: ${embed.description}`);
-  assert.ok(embed.description.includes("Ole Holm (mekanisk defekt)"), `forventet "Ole Holm (mekanisk defekt)" — fik: ${embed.description}`);
+  assert.ok(embed.description.includes("Jens Berg (crash)"), `forventet "Jens Berg (crash)" — fik: ${embed.description}`);
+  assert.ok(embed.description.includes("Ole Holm (mechanical)"), `forventet "Ole Holm (mechanical)" — fik: ${embed.description}`);
   assert.ok(!embed.description.includes("Ada Time"), "time_loss (ikke abandon) må ikke optræde i DNF-linjen");
 });
 

@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.05",
+    "version": "7.06",
     "date": "2026-07-16",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Du kan nu bygge og opgradere Scouting-netværket på Klub-siden, ligesom Træningscenteret. Hvert tier låser op for at ansætte en højere-tier chefscout: en bedre spejder indsnævrer sine rytter-estimater yderligere, og når hans samlede rating når omkring 80, kan han køre to spejder-opgaver ad gangen i stedet for én."
         },
         "refs": [2530]
+      }
+    ]
+  },
+  {
+    "version": "7.05",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Discord feeds now speak English",
+          "body": "Auction, transfer, race result and board webhooks in the Discord server were posted in Danish. All player-facing Discord messages — channel feeds and direct messages to managers — are now in English."
+        },
+        "da": {
+          "title": "Discord-feeds taler nu engelsk",
+          "body": "Auktions-, transfer-, løbsresultat- og bestyrelses-webhooks i Discord-serveren blev postet på dansk. Alle spillervendte Discord-beskeder — kanal-feeds og direkte beskeder til managers — er nu på engelsk."
+        },
+        "refs": [2520]
       }
     ]
   },

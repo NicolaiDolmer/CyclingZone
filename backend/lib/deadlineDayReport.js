@@ -104,22 +104,23 @@ export function computeFinalWhistleReport({
   };
 }
 
+// #2520: spillervendt Discord-embed på engelsk (server er EN-first).
 export function formatFinalWhistleEmbed({ report, seasonNumber, closedAt }) {
-  const fmtCz = n => `${Math.round((n || 0) / 1000).toLocaleString("da-DK")}K CZ$`;
+  const fmtCz = n => `${Math.round((n || 0) / 1000).toLocaleString("en-US")}K CZ$`;
   const dealsLabel = report.totalAuctions != null && report.totalTransfers != null
-    ? `${report.totalDeals} (${report.totalAuctions} auktioner · ${report.totalTransfers} transfers)`
+    ? `${report.totalDeals} (${report.totalAuctions} auctions · ${report.totalTransfers} transfers)`
     : String(report.totalDeals);
   const fields = [
-    { name: "Handler i alt", value: dealsLabel, inline: true },
-    { name: "Volumen", value: fmtCz(report.totalSpent), inline: true },
-    { name: "Panikhandler", value: String(report.panicCount), inline: true },
+    { name: "Total deals", value: dealsLabel, inline: true },
+    { name: "Volume", value: fmtCz(report.totalSpent), inline: true },
+    { name: "Panic deals", value: String(report.panicCount), inline: true },
   ];
 
   if (report.biggestAuction) {
     const a = report.biggestAuction;
-    const sellerLabel = a.sellerName && a.sellerName !== "–" ? a.sellerName : "fri pulje";
+    const sellerLabel = a.sellerName && a.sellerName !== "–" ? a.sellerName : "free pool";
     fields.push({
-      name: "🏆 Største auktion",
+      name: "🏆 Biggest auction",
       value: `${a.riderName} (${sellerLabel} → ${a.buyerName ?? "–"}, ${fmtCz(a.amount)})`,
       inline: false,
     });
@@ -127,21 +128,21 @@ export function formatFinalWhistleEmbed({ report, seasonNumber, closedAt }) {
   if (report.biggestTransfer) {
     const t = report.biggestTransfer;
     fields.push({
-      name: "💸 Største transfer",
+      name: "💸 Biggest transfer",
       value: `${t.riderName} (${t.sellerName ?? "–"} → ${t.buyerName ?? "–"}, ${fmtCz(t.amount)})`,
       inline: false,
     });
   }
   if (report.mostActiveManager) {
     fields.push({
-      name: "🔥 Mest aktive manager",
-      value: `${report.mostActiveManager.teamName} med ${report.mostActiveManager.bidCount} bud`,
+      name: "🔥 Most active manager",
+      value: `${report.mostActiveManager.teamName} with ${report.mostActiveManager.bidCount} bids`,
       inline: false,
     });
   }
   if (report.panicSamples.length) {
     fields.push({
-      name: "🚨 Panikhandler",
+      name: "🚨 Panic deals",
       value: report.panicSamples
         .map(d => `${d.riderName} (${d.sellerName} → ${d.buyerName ?? "–"}, ${fmtCz(d.amount)})`)
         .join("\n"),
@@ -149,13 +150,13 @@ export function formatFinalWhistleEmbed({ report, seasonNumber, closedAt }) {
     });
   }
 
-  const seasonLabel = seasonNumber ? `Sæson ${seasonNumber}` : "Sæson";
+  const seasonLabel = seasonNumber ? `Season ${seasonNumber}` : "Season";
   return {
     embeds: [{
-      title: `🏁 Final Whistle — ${seasonLabel}`,
+      title: `🏁 Final Whistle · ${seasonLabel}`,
       description: report.totalDeals
-        ? "Transfervinduet er lukket. Her er opsummeringen af Deadline Day:"
-        : "Transfervinduet er lukket. Ingen handler blev gennemført.",
+        ? "The transfer window has closed. Here's the Deadline Day summary:"
+        : "The transfer window has closed. No deals were completed.",
       color: 0xff6b35,
       fields,
       footer: { text: "Cycling Zone — Deadline Day" },
