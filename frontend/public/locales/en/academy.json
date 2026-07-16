@@ -64,5 +64,28 @@
     "notAcademyAge": "This rider is outside the academy age range (16-21).",
     "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
     "generic": "Something went wrong. Please try again."
+  },
+  "pnl": {
+    "heading": "Academy accounts",
+    "subtitle": "Only realized sales count. Riders still in your academy show no value here until sold.",
+    "loadingNote": "Loading academy accounts...",
+    "cumulativeHeading": "All-time cash flow",
+    "driftPaid": "Drift paid",
+    "signingFeesPaid": "Signing fees paid",
+    "salesProceeds": "Sale proceeds",
+    "valueCreation": "Sale premium",
+    "netCashFlow": "Net cash flow",
+    "premiumCaption": "Sale premium is the amount received above each rider's market value at the moment they were listed for sale.",
+    "currentHeading": "Current squad",
+    "slotsLabel": "Places used",
+    "payrollLabel": "Current payroll (per season)",
+    "currentCaption": "A snapshot of today's academy, not part of the cash flow totals on the left.",
+    "salesHeading": "Recent academy sales",
+    "emptySales": "No academy graduates sold yet.",
+    "colRider": "Rider",
+    "colDate": "Date",
+    "colPrice": "Sale price",
+    "colPremium": "Premium",
+    "unknownRider": "Former academy rider"
   }
 }

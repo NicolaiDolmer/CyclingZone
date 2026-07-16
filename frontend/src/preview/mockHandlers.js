@@ -23,6 +23,7 @@ import {
   SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
+  SEED_ACADEMY_PNL,
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
@@ -239,6 +240,7 @@ export function apiResponse(pathname) {
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+  if (pathname.endsWith("/api/academy/pnl")) return SEED_ACADEMY_PNL;
 
   // S5 Season Planner: statisk board til read-only smoke (mutationer i preview går
   // gennem den stateful plannerMock, ikke her).

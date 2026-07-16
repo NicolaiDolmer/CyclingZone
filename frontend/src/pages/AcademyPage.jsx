@@ -17,6 +17,7 @@ import { useScouting } from "../lib/useScouting.js";
 import RiderLink from "../components/RiderLink.jsx";
 import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
+import AcademyPnl from "../components/AcademyPnl.jsx";
 import { getRiderMarketValue, projectSeniorSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
@@ -493,6 +494,9 @@ export default function AcademyPage() {
           </div>
         )}
       </section>
+
+      {/* Akademi-regnskabet (#2485, addendum V3) — ren læse-flade, ingen handlinger. */}
+      <AcademyPnl />
 
       {/* Bekræftelses-modal for free-agent-køb (#1744) — pris + saldo-effekt. */}
       <AcademySignConfirmModal
