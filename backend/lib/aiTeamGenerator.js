@@ -47,7 +47,9 @@ const INSERT_BATCH = 500;
 // "Ægte manager" = samme diskriminator som ranglisten/kapacitets-logikken
 // (feedback_match_ui_filter_for_capacity_logic): ikke-AI, ikke-bank, ikke-frossen,
 // ikke-test. service_role/bulk bypasser RLS, så vi gentager filteret eksplicit.
-function isRealManager(team) {
+// Eksporteret (#2407): aiTeamTrimHealSweep genbruger diskriminatoren til pr.-pulje
+// trim-budgettet — én kilde til "hvem tæller som ægte manager".
+export function isRealManager(team) {
   return team.is_ai === false
     && !team.is_bank
     && !team.is_frozen
@@ -61,7 +63,9 @@ function isAiTeam(team) {
 // Politik: hvor mange AI skal en pulje have, givet antal ægte managere i den?
 //   tier 1/2: altid op til target.
 //   tier 3/4: kun hvis >=1 manager — og da op til target (managere medregnes i feltet).
-function targetAiCountForPool(tier, realManagerCount) {
+// Eksporteret (#2407): aiTeamTrimHealSweep genbruger politikken som hard-gate
+// (sweep'en må aldrig slette en pulje under target).
+export function targetAiCountForPool(tier, realManagerCount) {
   const alwaysFill = tier === MIN_DIVISION || tier === MIN_DIVISION + 1; // tier 1 og 2
   if (alwaysFill) return Math.max(0, POOL_TARGET_SIZE - realManagerCount);
   // tier 3/4: kun puljer med mindst én ægte manager.
@@ -217,10 +221,86 @@ async function markPendingRemoval(supabase, teamIds) {
   if (error) throw new Error(`AI-trim (pending_removal_at mark): ${error.message}`);
 }
 
+// #1847: navne-snapshot FØR rytter/hold-sletning. race_results.rider_id/team_id er
+// ON DELETE SET NULL (bevidst: løbshistorik skal overleve AI-churn), og visningen
+// hviler derefter alene på de denormaliserede rider_name/team_name-kolonner.
+// Insert-stierne (raceRunner/raceResultsEngine) populerer navnene i dag, så dette
+// er normalt en no-op (prod 16/7: 0 rækker manglede snapshot) — men skulle en
+// (legacy/fremtidig) række mangle det, ville sletningen gøre den permanent
+// visningsdød. Backfill de manglende navne mens FK'erne stadig peger på levende
+// rækker. DB-triggerne (database/2026-07-16-race-results-orphan-guard.sql) er det
+// blivende forsvar for ALLE delete-stier; denne JS-spejling dækker AI-trim-stierne
+// uafhængigt af om migrationen er applied. Koster 2 selects pr. sletning i
+// normal-tilfældet (0 at-risk rækker).
+export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
+  if (!teamIds.length) return { riderNames: 0, teamNames: 0 };
+
+  const { data: riders, error: rErr } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname")
+    .in("team_id", teamIds);
+  if (rErr) throw new Error(`navne-snapshot (riders for trim): ${rErr.message}`);
+  const nameByRider = new Map(
+    (riders || []).map((r) => [r.id, [r.firstname, r.lastname].filter(Boolean).join(" ") || null]),
+  );
+
+  let riderNames = 0;
+  const riderIds = [...nameByRider.keys()];
+  if (riderIds.length) {
+    const atRisk = await fetchAllRows(() => supabase
+      .from("race_results")
+      .select("id, rider_id")
+      .in("rider_id", riderIds)
+      .is("rider_name", null)
+      .order("id", { ascending: true }));
+    for (const riderId of new Set(atRisk.map((row) => row.rider_id))) {
+      const name = nameByRider.get(riderId);
+      if (!name) continue;
+      const { error } = await supabase
+        .from("race_results")
+        .update({ rider_name: name })
+        .eq("rider_id", riderId)
+        .is("rider_name", null);
+      if (error) throw new Error(`navne-snapshot (rider_name ${riderId}): ${error.message}`);
+      riderNames += 1;
+    }
+  }
+
+  const { data: teams, error: tErr } = await supabase
+    .from("teams")
+    .select("id, name")
+    .in("id", teamIds);
+  if (tErr) throw new Error(`navne-snapshot (teams for trim): ${tErr.message}`);
+  const nameByTeam = new Map((teams || []).map((t) => [t.id, t.name || null]));
+
+  let teamNames = 0;
+  const teamAtRisk = await fetchAllRows(() => supabase
+    .from("race_results")
+    .select("id, team_id")
+    .in("team_id", teamIds)
+    .is("team_name", null)
+    .order("id", { ascending: true }));
+  for (const teamId of new Set(teamAtRisk.map((row) => row.team_id))) {
+    const name = nameByTeam.get(teamId);
+    if (!name) continue;
+    const { error } = await supabase
+      .from("race_results")
+      .update({ team_name: name })
+      .eq("team_id", teamId)
+      .is("team_name", null);
+    if (error) throw new Error(`navne-snapshot (team_name ${teamId}): ${error.message}`);
+    teamNames += 1;
+  }
+
+  return { riderNames, teamNames };
+}
+
 // #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
 // (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
 // præcise hold-id den skal forsøge igen.
 export async function deleteAiTeamById(supabase, teamId) {
+  // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
+  await snapshotRaceResultNamesForTeams(supabase, [teamId]);
   const { error: rErr } = await supabase.from("riders").delete().eq("team_id", teamId);
   if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
   const { error: tErr } = await supabase.from("teams").delete().eq("id", teamId);
@@ -255,19 +335,30 @@ async function removeAiTeams(supabase, aiTeams, count) {
     toRemove.push(team);
   }
   if (toRemove.length < count) {
+    // #2407 Fejl 1: markér KUN det faktiske underskud (count - toRemove.length), ikke
+    // hvert blokeret hold loopet passerede. Da næsten alle AI-hold typisk er præmie-/
+    // inflight-blokeret (#2389), betød "markér alle passerede" at HELE puljen fik
+    // pending_removal_at (prod 12-15/7: 65 hold markeret i pulje 9/10/11, kun 5 reelt
+    // overskud) — og heal-sweepen ville derefter tælle puljen ned mod 4. De første
+    // `deficit` blokerede i id-orden vælges (samme deterministiske orden som selve
+    // trim-udvælgelsen).
+    const deficit = count - toRemove.length;
+    const deferredIds = blockedIds.slice(0, deficit);
     console.warn(
-      `  ⏳ AI-trim deferred: ${count - toRemove.length} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
+      `  ⏳ AI-trim deferred: ${deficit} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
       `eller uudbetalte præmier (#2389) og kan ikke trimmes nu — markeret pending_removal_at (#2187), ` +
       `en heal-sweep fuldfører når løbet er kørt færdigt og udbetalt.`
     );
-    if (blockedIds.length) {
-      await markPendingRemoval(supabase, blockedIds);
+    if (deferredIds.length) {
+      await markPendingRemoval(supabase, deferredIds);
     }
   }
   if (!toRemove.length) return 0;
   const ids = toRemove.map((t) => t.id);
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
     const batch = ids.slice(i, i + INSERT_BATCH);
+    // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
+    await snapshotRaceResultNamesForTeams(supabase, batch);
     const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
     if (rErr) throw new Error(`AI-rider delete: ${rErr.message}`);
     const { error: tErr } = await supabase.from("teams").delete().in("id", batch);

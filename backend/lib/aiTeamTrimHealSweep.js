@@ -1,4 +1,14 @@
-// #2187/#2377/#2434 — self-heal-sweep for udskudte AI-hold-trims.
+// #2187/#2377/#2407/#2434 — self-heal-sweep for udskudte AI-hold-trims.
+//
+// INVARIANT-GUARD (#2407 Fejl 2): sweep'en sletter ALDRIG et hold hvis puljen
+// derved ville komme under sin target-størrelse (24-holds-invarianten, #2377).
+// Pr.-pulje trim-budget (aiCount - targetAi, samme politik som generatoren)
+// beregnes ved sweep-start og tælles ned pr. sletning. Budget 0 → forældede
+// markører RYDDES i stedet for at slette (selv-heling af over-markering — prod
+// 12-15/7: 65 hold markeret i pulje 9/10/11, kun 5 reelt overskud; uden gate
+// ville puljerne være tømt mod 4/4/4 da blokeringerne løftedes). Rydninger
+// rapporteres som guard-events → cron alarmerer (over-markering er en upstream-
+// bug, jf. #2407 Fejl 1).
 //
 // teamProfileEngine trimmer AI-fyld ved hvert nyt signup (reconcileAiTeamsForPool),
 // men kan IKKE slette et AI-hold hvis dets ryttere sidder i et igangværende
@@ -38,6 +48,8 @@ import {
   getInflightRaceIds,
   getStalledInflightRaceIds,
   deleteAiTeamById,
+  targetAiCountForPool,
+  isRealManager,
 } from "./aiTeamGenerator.js";
 
 // #2434: defense-in-depth-backstop. Den PRIMÆRE stale-detektion er løbs-bevidst
@@ -47,6 +59,53 @@ import {
 // udløser den — netop dét (en 48t-tærskel kortere end den spredning) var rod-årsagen
 // til CYCLINGZONE-31's falsk-positive spam.
 export const STALE_BACKSTOP_HOURS = 120;
+
+// #2407 Fejl 2 — pr.-pulje trim-budget: hvor mange AI-hold ER reelt overskud lige nu?
+// Budget = aiCount - targetAi (samme politik som generatoren/reconcile — én kilde).
+// Sweep'en må ALDRIG slette flere end budgettet: markøren pending_removal_at er et
+// øjebliksbillede ("dette hold BURDE trimmes DA"), men puljens tilstand kan have
+// ændret sig siden (andre hold slettet, manager forladt puljen, over-markering som
+// prod 12-15/7 hvor 65 hold var markeret men kun 5 var overskud). Uden re-check
+// tæller sweep'en puljen ned mod 4 i takt med at blokeringer løftes.
+// Returnerer Map poolId → budget; puljer der ikke findes i league_divisions
+// udelades (fail-closed hos kalderen: ingen sletning, markør bevares).
+async function defaultGetPoolTrimBudgets(supabase, poolIds) {
+  if (!poolIds.length) return new Map();
+  const { data: pools, error: poolErr } = await supabase
+    .from("league_divisions")
+    .select("id, tier")
+    .in("id", poolIds);
+  if (poolErr) throw new Error(`AI-trim sweep (league_divisions): ${poolErr.message}`);
+  const tierByPool = new Map((pools || []).map((p) => [p.id, p.tier]));
+
+  const teams = await fetchAllRows(() =>
+    supabase
+      .from("teams")
+      .select("id, is_ai, is_bank, is_frozen, is_test_account, league_division_id")
+      .in("league_division_id", poolIds)
+      .order("id", { ascending: true }));
+
+  const budgets = new Map();
+  for (const [poolId, tier] of tierByPool) {
+    const inPool = teams.filter((t) => t.league_division_id === poolId);
+    const realManagers = inPool.filter(isRealManager).length;
+    const aiCount = inPool.filter((t) => t.is_ai === true).length;
+    const targetAi = targetAiCountForPool(tier, realManagers);
+    budgets.set(poolId, Math.max(0, aiCount - targetAi));
+  }
+  return budgets;
+}
+
+// #2407: ryd en forældet markør (puljen er på/under target → holdet er IKKE længere
+// overskud). Dette er selv-helingen af over-markering: uden den ville markøren ligge
+// klar til at slette holdet den dag blokeringen løftes.
+async function defaultClearPendingRemoval(supabase, teamId) {
+  const { error } = await supabase
+    .from("teams")
+    .update({ pending_removal_at: null })
+    .eq("id", teamId);
+  if (error) throw new Error(`AI-trim sweep (clear pending ${teamId}): ${error.message}`);
+}
 
 export async function runAiTeamTrimHealSweep({
   supabase,
@@ -61,6 +120,10 @@ export async function runAiTeamTrimHealSweep({
   // løbet gav P0002 + FK-fejl i standings-recalc). Auto-prize sweeper hvert 5. minut.
   hasUnpaidPrizes = teamHasUnpaidPrizeResults,
   removeTeam = deleteAiTeamById,
+  // #2407: pr.-pulje trim-budget (hard-gate mod at slette under target) + rydning
+  // af forældede markører. Injicerbare for test.
+  getPoolTrimBudgets = defaultGetPoolTrimBudgets,
+  clearPendingRemoval = defaultClearPendingRemoval,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -77,20 +140,45 @@ export async function runAiTeamTrimHealSweep({
       .order("pending_removal_at"));
 
   if (!candidates.length) {
-    return { candidates: 0, healed: 0, failed: 0, stale: [], errors: [] };
+    return { candidates: 0, healed: 0, failed: 0, cleared: 0, guard: [], stale: [], errors: [] };
   }
 
   const inflightRaceIds = await getInflightIds(supabase);
   const stalledRaceIds = new Set(await getStalledIds(supabase, now));
   const backstopMs = backstopHours * 60 * 60 * 1000;
 
+  // #2407 Fejl 2: hard-gate — hvor mange sletninger tåler hver pulje FØR den rammer
+  // target? Beregnes én gang pr. sweep og tælles ned pr. faktisk sletning.
+  const poolIds = [...new Set(candidates.map((t) => t.league_division_id).filter((id) => id != null))];
+  const budgets = await getPoolTrimBudgets(supabase, poolIds);
+
   let healed = 0;
   let failed = 0;
+  let cleared = 0;
+  const guard = [];
   const stale = [];
   const errors = [];
 
   for (const team of candidates) {
     try {
+      // #2407 Fejl 2: puljens tilstand afgør om markøren stadig er gyldig.
+      const budget = budgets.get(team.league_division_id);
+      if (budget == null) {
+        // Fail-closed: uden pulje-kontekst (pulje slettet / league_division_id null)
+        // hverken sletter eller rydder vi — markøren bevares og rapporteres.
+        guard.push({ teamId: team.id, name: team.name, poolId: team.league_division_id, reason: "pool_unknown" });
+        continue;
+      }
+      if (budget <= 0) {
+        // Puljen er på/under target → holdet er IKKE længere overskud. En sletning
+        // her ville underskride 24-holds-invarianten (#2377) — ryd markøren i stedet
+        // (selv-heling af over-markering; det ejeren gjorde manuelt 15/7).
+        await clearPendingRemoval(supabase, team.id);
+        cleared += 1;
+        guard.push({ teamId: team.id, name: team.name, poolId: team.league_division_id, reason: "pool_at_or_below_target" });
+        continue;
+      }
+
       const blockingInflight = await teamBlockingRaceIds(supabase, team.id, inflightRaceIds);
       // Præmie-blokering er en SELVSTÆNDIG grund (#2389); tjek den kun hvis holdet ikke
       // allerede er inflight-blokeret (spar den dyrere præmie-query — mirror originalens `||`).
@@ -102,6 +190,9 @@ export async function runAiTeamTrimHealSweep({
       if (!blocked) {
         await removeTeam(supabase, team.id);
         healed += 1;
+        // #2407 Fejl 2: én sletning brugt af puljens budget. Blokerede hold bruger
+        // IKKE budget (de slettes ikke) — deres markør består til næste sweep.
+        budgets.set(team.league_division_id, budget - 1);
         continue;
       }
 
@@ -133,5 +224,5 @@ export async function runAiTeamTrimHealSweep({
     }
   }
 
-  return { candidates: candidates.length, healed, failed, stale, errors };
+  return { candidates: candidates.length, healed, failed, cleared, guard, stale, errors };
 }
