@@ -16,6 +16,7 @@ import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, in
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
+import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 
@@ -237,6 +238,16 @@ export default function TrainingPage() {
 
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
   const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
+
+  // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
+  // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
+  // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
+  // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  const latestRun = todayRun ?? history.runs[0] ?? null;
+  const latestIsToday = !!todayRun;
+  const pastRuns = latestIsToday
+    ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
+    : history.runs.slice(1);
 
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
@@ -608,6 +619,18 @@ export default function TrainingPage() {
 
       {runError && (
         <p className="text-cz-danger text-sm">{runError}</p>
+      )}
+
+      {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
+          seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
+          ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
+      {!isLoading && (
+        <TrainingMoment
+          latestRun={latestRun}
+          isToday={latestIsToday}
+          progressByRider={progress}
+          pastRuns={pastRuns}
+        />
       )}
 
       {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
