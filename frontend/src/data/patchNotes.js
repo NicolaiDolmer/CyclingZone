@@ -4,6 +4,69 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.01",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Judge an auction bid at a glance",
+          "body": "Auctions now show how the current bid compares to the rider's estimated market value (below or above valuation), plus the rider's overall rating, type and five key abilities by default. On mobile, the filter panel stays collapsed until you need it. The valuation is a model estimate meant as a reference, not a guaranteed price."
+        },
+        "da": {
+          "title": "Vurdér et auktionsbud på ét blik",
+          "body": "Auktioner viser nu hvordan det aktuelle bud ligger i forhold til rytterens estimerede markedsværdi (under eller over vurdering), plus rytterens samlede rating, type og fem nøgle-evner som standard. På mobil er filterpanelet foldet sammen, indtil du skal bruge det. Vurderingen er et modelestimat tænkt som reference, ikke en garanteret pris."
+        },
+        "refs": [2464]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "How your team did: race results on your dashboard",
+          "body": "After each finalized race with your riders, a new dashboard card shows your placements, prize money and a short recap of how the race unfolded, with a link to the full result. No more missing how your tactics played out."
+        },
+        "da": {
+          "title": "Sådan gik det for dit hold: løbsresultater på dit dashboard",
+          "body": "Efter hvert afsluttet løb med dine ryttere viser et nyt dashboard-kort dine placeringer, præmiepenge og et kort referat af hvordan løbet udviklede sig, med link til det fulde resultat. Du går ikke længere glip af hvordan din taktik spillede ud."
+        },
+        "refs": [2466]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Youth talent now comes through your own academy",
+          "body": "The free youth agents list is gone: new talent arrives through your season intake and youth auctions. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is now a real decision."
+        },
+        "da": {
+          "title": "Ungdomstalent kommer nu gennem dit eget akademi",
+          "body": "Listen over frie ungdomsryttere er væk: nye talenter kommer via dit sæson-intake og ungdomsauktioner. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er nu en ægte beslutning."
+        },
+        "refs": [2456]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board negotiations now judge you consistently",
+          "body": "Requesting new goals from the board could be evaluated with less context than the board status page showed, and auto-accepted proposals dropped trade-off details. All board decisions now use the same complete picture of your season."
+        },
+        "da": {
+          "title": "Bestyrelsesforhandlinger vurderer dig nu ens",
+          "body": "At bede bestyrelsen om nye mål kunne blive vurderet med mindre kontekst end bestyrelses-statussiden viste, og auto-accepterede forslag mistede trade-off-detaljer. Alle bestyrelsesbeslutninger bruger nu det samme fulde billede af din sæson."
+        },
+        "refs": [2469]
+      }
+    ]
+  },
+  {
     "version": "7.00",
     "date": "2026-07-15",
     "label": "Beta",
