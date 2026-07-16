@@ -24,7 +24,7 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) · v3-flip-forudsætninger #2376 · Palmarès-rest (#1997: roster-tidslinje, mulig S3) · #1996 del 2 (claude:blocked) · #2436 (lav) · perf/CI-rest [#2511](https://github.com/NicolaiDolmer/CyclingZone/issues/2511). **Kendt bug:** test-konti wipes (#2245, high). Mobil = 54,9% af app-besøg.
 
-> **🤖 Working agent:** Ingen aktiv session. 16/7 fuldt lukket (dagbølge #2 + merge-salve, [artifact](audits/night-wave-2026-07-16-day2.md)). #2461 Discord-svar-udkast venter stadig ejer-review.
+> **🤖 Working agent:** Claude Code (Fable) — aktiv 16/7 aften på [#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) board-generalprøve (ejer-go: autonome opgaver). #2461 Discord-svar-udkast venter stadig ejer-review.
 
 ## Standing context (forever-relaunch)
 
