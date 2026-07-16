@@ -188,7 +188,9 @@ export async function runTeamTrainingDay({
     // afkoblede ungdoms-formel. Hvilken semantik en rytter endte med var derfor et
     // møntkast afgjort af hvilken kodesti der ramte ham først (#2001-mønsteret), og
     // feltet blev aldrig genopbygget. Se buildCapsForRider for den samlede model.
-    const caps = buildCapsForRider(abilities, rider, rider.primary_type, rider.secondary_type);
+    // age medsendes (#2472, 16/7) så buildCapsForRider kan aftrappe det absolutte
+    // loft efter peakAge — uden den ville post-peak-ryttere ikke aldres (blocker-fund).
+    const caps = buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type);
     const capsChanged = !sameCaps(abRow.ability_caps, caps);
 
     // #2437 — MIDLERTIDIG INTERIM (ejer-godkendt 15/7), fjernes igen når den rigtige

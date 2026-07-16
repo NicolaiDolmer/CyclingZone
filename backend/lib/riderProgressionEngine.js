@@ -157,7 +157,9 @@ export async function developRidersForSeason({
     // Livstidsloftet genberegnes hver sæson (ikke lazy-initeret) — ren funktion af
     // potentiale + anlæg + nuværende evne, så en forkert persisteret værdi ikke kan
     // overleve. Se buildCapsForRider for hvorfor lazy-init var selve fejlen.
-    const caps = buildCapsForRider(abilities, r, r.primary_type, r.secondary_type);
+    // age medsendes (#2472, 16/7) så buildCapsForRider kan aftrappe det absolutte
+    // loft efter peakAge — uden den ville post-peak-ryttere ikke aldres (blocker-fund).
+    const caps = buildCapsForRider(abilities, { ...r, age }, r.primary_type, r.secondary_type);
     const capsChanged = !sameCaps(abRow.ability_caps, caps);
     if (capsChanged) summary.caps_initialised++;
 

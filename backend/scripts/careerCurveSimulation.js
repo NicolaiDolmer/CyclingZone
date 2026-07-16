@@ -52,7 +52,10 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { applyDailyTick, computeAcademySeasonCeiling, resolveProgram } from "../lib/dailyTraining.js";
-import { developRiderSeason, buildCapsForRider, buildYouthCaps, youthRoleFactor } from "../lib/riderProgression.js";
+import {
+  developRiderSeason, buildCapsForRider, buildYouthCaps, youthRoleFactor,
+  taperedAbsoluteCap, peakAgeForType,
+} from "../lib/riderProgression.js";
 import { nextFatigue, nextForm, conditionMultiplier } from "../lib/riderCondition.js";
 import { academySeasonFracForAge, isAcademyAge, ACADEMY } from "../lib/academyFlag.js";
 
@@ -100,14 +103,17 @@ const MODEL_LABELS = {
 const CAP_SOURCE_LABELS = {
   db: "db — persisteret ability_caps (dagens prod: møntkast-semantikken)",
   modelA: "modelA — genberegnet hver tick: max(absolut_loft(pot, anlæg), current) (#2472)",
+  modelATaper: "modelA+taper — modelA, men det absolutte loft aftrappes efter peakAge (28) (ejer-valg B, 16/7)",
 };
 
 // Scenarier = (model, capSource). IKKE et fuldt kryds-produkt: de 5 #2437-modeller
 // køres kun med db (de reproducerer før-billedet og er ejer-afgjort), mens den
-// SHIPPEDE model (rate/3) også køres med modelA — det er den rebasede tilstand.
+// SHIPPEDE model (rate/3) også køres med modelA (den rebasede tilstand FØR taper)
+// og modelATaper (den KOMBINEREDE tilstand — ejer-valg B, 16/7, denne gate).
 const SCENARIOS = [
   ...MODELS.map((model) => ({ model, capSource: "db" })),
   { model: "rate/3", capSource: "modelA" },
+  { model: "rate/3", capSource: "modelATaper" },
 ];
 const scenarioKey = (model, capSource) => `${model}+${capSource}`;
 
@@ -268,24 +274,35 @@ function analyseFreeze(population) {
   const out = {};
   for (const [key, g] of Object.entries(groups)) {
     let rowsTotal = 0;
-    const frozen = { db: 0, modelA: 0, both: 0, onlyModelA: 0, onlyDb: 0 };
+    const frozen = { db: 0, modelA: 0, modelATaper: 0, both: 0, onlyModelA: 0, onlyDb: 0 };
     const byRole = {}; // rolle → { modelA, db }
     const ridersFullyFrozenA = [];
     const riderFrozenCountsA = [];
+    const riderFrozenCountsAT = [];
+    let ridersFullyFrozenAT = 0;
     let headroomLostA = 0; // samlet evne-point der forsvinder ved at fryse (mod absolut)
 
     for (const r of g.riders) {
       const absolute = buildYouthCaps(r.potentiale, r.primaryType, r.secondaryType);
+      // #2472 (16/7): modelATaper — samme absolutte loft, men aftrappet efter
+      // peakAge (taperedAbsoluteCap, ÆGTE funktion, ingen kopi af formlen). Bruges
+      // KUN til frys-tællingen her; ikke en fjerde kolonne i det offentlige skema
+      // for at holde outputtet læsbart — se veteran-tabellen for den fulde 3-vejs.
+      const peakAge = peakAgeForType(r.primaryType);
       let frozenThisRiderA = 0;
+      let frozenThisRiderAT = 0;
       for (const ability of VISIBLE_ABILITIES) {
         const current = Math.round(Number(r.abilities[ability]) || 0);
         const dbCap = Number(r.lifetimeCaps?.[ability] ?? 0);
         const absCap = Number(absolute[ability] ?? 0);
+        const absCapTapered = taperedAbsoluteCap(absCap, r.startAge, peakAge);
         const fDb = current >= dbCap;
         const fA = current >= absCap;
+        const fAT = current >= absCapTapered;
         rowsTotal++;
         if (fDb) frozen.db++;
         if (fA) { frozen.modelA++; frozenThisRiderA++; }
+        if (fAT) { frozen.modelATaper++; frozenThisRiderAT++; }
         if (fDb && fA) frozen.both++;
         if (fA && !fDb) { frozen.onlyModelA++; headroomLostA += Math.max(0, dbCap - current); }
         if (fDb && !fA) frozen.onlyDb++;
@@ -298,6 +315,7 @@ function analyseFreeze(population) {
         }
       }
       riderFrozenCountsA.push(frozenThisRiderA);
+      riderFrozenCountsAT.push(frozenThisRiderAT);
       if (frozenThisRiderA === VISIBLE_ABILITIES.length) {
         ridersFullyFrozenA.push({
           id: r.id, age: r.startAge, potentiale: r.potentiale,
@@ -305,6 +323,7 @@ function analyseFreeze(population) {
           ability_sum: Math.round(abilitySum(r.abilities)),
         });
       }
+      if (frozenThisRiderAT === VISIBLE_ABILITIES.length) ridersFullyFrozenAT++;
     }
 
     const n = g.riders.length;
@@ -315,14 +334,18 @@ function analyseFreeze(population) {
       ability_rows_total: rowsTotal,
       frozen_rows_db: frozen.db,
       frozen_rows_model_a: frozen.modelA,
+      frozen_rows_model_a_taper: frozen.modelATaper,
       pct_frozen_db: rowsTotal ? +(100 * frozen.db / rowsTotal).toFixed(1) : 0,
       pct_frozen_model_a: rowsTotal ? +(100 * frozen.modelA / rowsTotal).toFixed(1) : 0,
+      pct_frozen_model_a_taper: rowsTotal ? +(100 * frozen.modelATaper / rowsTotal).toFixed(1) : 0,
       frozen_both: frozen.both,
       frozen_only_model_a: frozen.onlyModelA,   // NYE frys som model A indfører
       frozen_only_db: frozen.onlyDb,            // frys model A LØSNER op
       headroom_lost_only_model_a: Math.round(headroomLostA),
       avg_frozen_abilities_per_rider_model_a: +mean(riderFrozenCountsA).toFixed(2),
+      avg_frozen_abilities_per_rider_model_a_taper: +mean(riderFrozenCountsAT).toFixed(2),
       riders_fully_frozen_model_a: ridersFullyFrozenA.length,
+      riders_fully_frozen_model_a_taper: ridersFullyFrozenAT,
       riders_fully_frozen_examples: ridersFullyFrozenA.slice(0, 10),
       frozen_by_role_model_a: byRole,
     };
@@ -347,11 +370,21 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
   const program = resolveProgram(null, rider.primaryType); // smartDefaultFocus, intensity "normal"
 
   // #2471: loftet er enten statisk (db) eller en ren funktion af current (modelA).
-  // For modelA genberegnes det HVER tick — samme kontrakt som dailyTrainingEngine.js
-  // efter rebasen. Den ægte buildCapsForRider kaldes (ingen kopi af formlen her).
-  const capsFor = (ab) => (capSource === "modelA"
-    ? buildCapsForRider(ab, { potentiale: rider.potentiale }, rider.primaryType, rider.secondaryType)
-    : rider.lifetimeCaps);
+  // For modelA/modelATaper genberegnes det HVER tick — samme kontrakt som
+  // dailyTrainingEngine.js efter rebasen. Den ægte buildCapsForRider kaldes (ingen
+  // kopi af formlen her). #2472 (16/7): modelATaper sender ÉN ting ekstra — alderen —
+  // så buildCapsForRider aftrapper det absolutte loft efter peakAge (ejer-valg B).
+  // modelA (uden taper) sender bevidst INGEN alder — det ER blocker-fundet, bevaret
+  // urørt som sammenligningsgrundlag.
+  const capsFor = (ab, ageArg) => {
+    if (capSource === "modelATaper") {
+      return buildCapsForRider(ab, { potentiale: rider.potentiale, age: ageArg }, rider.primaryType, rider.secondaryType);
+    }
+    if (capSource === "modelA") {
+      return buildCapsForRider(ab, { potentiale: rider.potentiale }, rider.primaryType, rider.secondaryType);
+    }
+    return rider.lifetimeCaps;
+  };
 
   let abilities = deepCopyAbilities(rider.abilities);
   let progress = { ...(rider.startProgress ?? {}) }; // #2471: prod-seedet, ikke {}
@@ -360,7 +393,7 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
   let seasonIndex = 0;
 
   const initialAbilitySum = abilitySum(abilities);
-  const initialGap = clampedGapSum(capsFor(abilities), abilities);
+  const initialGap = clampedGapSum(capsFor(abilities, age), abilities);
   const byAge = []; // { age, abilitySum, gapNow }
   let age21AbilitySum = null;
   let preAdultAbilitySum = null; // sum ved ADULT_MIN_AGE-1, til voksen-delta-målingen
@@ -371,8 +404,8 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
     const hardDailyCap = hardDailyCapForModel(modelKey, inAcademy);
     const academyRateMult = academyRateMultForModel(modelKey, inAcademy);
     // Sæson-loftet (kun "current"-modellen) snapshottes ved sæsonstart mod det
-    // loft der gælder dér — for modelA er det sæsonstartens genberegnede loft.
-    const seasonLifetimeCaps = capsFor(seasonStartAbilities);
+    // loft der gælder dér — for modelA/modelATaper er det sæsonstartens genberegnede loft.
+    const seasonLifetimeCaps = capsFor(seasonStartAbilities, age);
     const seasonTickCaps = tickCapsForModel(modelKey, {
       inAcademy, seasonStartAbilities, lifetimeCaps: seasonLifetimeCaps, age,
     });
@@ -384,10 +417,11 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
       const bonus = (d * 7 + seasonIndex) % 10 < 6; // uændret deterministisk mønster
       const dateStr = `s${seasonIndex}d${d}`;
 
-      // modelA: loftet følger current inden for sæsonen (motoren genberegner hver tick).
-      // "current"-modellen beholder sit sæson-snapshot — dét ER dens semantik.
-      const tickCaps = (capSource === "modelA" && modelKey !== "current")
-        ? capsFor(abilities)
+      // modelA/modelATaper: loftet følger current inden for sæsonen (motoren
+      // genberegner hver tick). "current"-modellen beholder sit sæson-snapshot —
+      // dét ER dens semantik.
+      const tickCaps = ((capSource === "modelA" || capSource === "modelATaper") && modelKey !== "current")
+        ? capsFor(abilities, age)
         : seasonTickCaps;
 
       const tickResult = applyDailyTick({
@@ -403,12 +437,12 @@ function simulateRider(rider, modelKey, daysPerSeasonActual, capSource = "db") {
 
     const riderObj = { id: riderId, primary_type: rider.primaryType, potentiale: rider.potentiale, age };
     const { next, retirement } = developRiderSeason(
-      riderObj, abilities, capsFor(abilities), seasonIndex + 1, undefined, null, { skipGrowth: true },
+      riderObj, abilities, capsFor(abilities, age), seasonIndex + 1, undefined, null, { skipGrowth: true },
     );
     abilities = next;
 
     const sum = abilitySum(abilities);
-    byAge.push({ age, abilitySum: sum, gapNow: clampedGapSum(capsFor(abilities), abilities) });
+    byAge.push({ age, abilitySum: sum, gapNow: clampedGapSum(capsFor(abilities, age), abilities) });
     if (age === ACADEMY.MAX_AGE) age21AbilitySum = sum;
     if (age === ADULT_MIN_AGE - 1) preAdultAbilitySum = sum;
 
@@ -635,7 +669,7 @@ async function main() {
   // tre datapunkter (20, 21, 22) — dvs. startAge ≤ 20. Samme ryttere i tæller og nævner.
   console.log("═".repeat(96));
   console.log("#2471 — 22-ÅRS-SPRINGET (sæsonlængde 28, LÅST kohorte: startAge ≤ 20)\n");
-  console.log(`${padE("Scenarie", 18)}${padE("Kohorte", 16)}${padS("n", 5)}${padS("Δ20→21", 10)}${padS("Δ21→22", 10)}${padS("Δ22→23", 10)}${padS("spring-faktor", 16)}`);
+  console.log(`${padE("Scenarie", 20)}${padE("Kohorte", 16)}${padS("n", 5)}${padS("Δ20→21", 10)}${padS("Δ21→22", 10)}${padS("Δ22→23", 10)}${padS("spring-faktor", 16)}`);
   const jumpRows = [];
   for (const { model: modelKey, capSource } of SCENARIOS) {
     if (modelKey !== "current" && modelKey !== "rate/3") continue; // før-#2470, efter-#2470, og modelA
@@ -660,7 +694,7 @@ async function main() {
         delta_20_21: +d2021.toFixed(1), delta_21_22: +d2122.toFixed(1), delta_22_23: +d2223.toFixed(1),
         jump_factor: factor != null ? +factor.toFixed(1) : null,
       });
-      console.log(`${padE(scenarioKey(modelKey, capSource), 18)}${padE(COHORT_LABELS[pot], 16)}${padS(per.length, 5)}${padS(fmt1(d2021), 10)}${padS(fmt1(d2122), 10)}${padS(fmt1(d2223), 10)}${padS(factor != null ? `${fmt1(factor)}×` : "-", 16)}`);
+      console.log(`${padE(scenarioKey(modelKey, capSource), 20)}${padE(COHORT_LABELS[pot], 16)}${padS(per.length, 5)}${padS(fmt1(d2021), 10)}${padS(fmt1(d2122), 10)}${padS(fmt1(d2223), 10)}${padS(factor != null ? `${fmt1(factor)}×` : "-", 16)}`);
     }
   }
   console.log("");
@@ -677,25 +711,34 @@ async function main() {
   if (adultPopulation.length === 0) {
     console.log("(ingen voksne i populationen — intet at måle)\n");
   } else {
-    const headroomSum = { db: 0, modelA: 0 };
+    // #2472 (16/7): modelATaper indgår som EMPIRISK BEVIS for at taperen er en
+    // no-op for 22-28-populationen (age ≤ peakAge=28 ⇒ retain=1.0, se
+    // taperedAbsoluteCap) — ikke bare en teoretisk påstand.
+    const headroomSum = { db: 0, modelA: 0, modelATaper: 0 };
     for (const r of adultPopulation) {
       headroomSum.db += clampedGapSum(r.lifetimeCaps, r.abilities);
       headroomSum.modelA += clampedGapSum(
         buildCapsForRider(r.abilities, { potentiale: r.potentiale }, r.primaryType, r.secondaryType),
         r.abilities,
       );
+      headroomSum.modelATaper += clampedGapSum(
+        buildCapsForRider(r.abilities, { potentiale: r.potentiale, age: r.startAge }, r.primaryType, r.secondaryType),
+        r.abilities,
+      );
     }
     const avgHeadroom = {
       db: headroomSum.db / adultPopulation.length,
       modelA: headroomSum.modelA / adultPopulation.length,
+      modelATaper: headroomSum.modelATaper / adultPopulation.length,
     };
     console.log(`Hovedrum ved start (evne-point/rytter, sum over 15 evner) — krydstjek mod PR-scorecardets 83 → 250:`);
-    console.log(`  db (i dag): ${fmt1(avgHeadroom.db)}   |   modelA (#2472): ${fmt1(avgHeadroom.modelA)}   |   faktor: ${fmt1(avgHeadroom.modelA / (avgHeadroom.db || 1))}×\n`);
+    console.log(`  db (i dag): ${fmt1(avgHeadroom.db)}   |   modelA (#2472): ${fmt1(avgHeadroom.modelA)}   |   faktor: ${fmt1(avgHeadroom.modelA / (avgHeadroom.db || 1))}×`);
+    console.log(`  modelA+taper: ${fmt1(avgHeadroom.modelATaper)} (${avgHeadroom.modelATaper === avgHeadroom.modelA ? "IDENTISK med modelA — taper er en no-op ved age ≤ peakAge, som tilsigtet" : "AFVIGER fra modelA — uventet, taper burde være no-op her"})\n`);
 
     // Realiseret vækst: simulér 22-28-årige med rate/3 (voksne rammes ikke af rate-mult,
     // så modellen er reelt kun loft-kilden) over den frosne 28-dages sæsonlængde.
     const adultSim = {};
-    for (const capSource of ["db", "modelA"]) {
+    for (const capSource of ["db", "modelA", "modelATaper"]) {
       const results = adultPopulation.map((r) => simulateRider(r, "rate/3", 28, capSource));
       // Gevinst pr. dag pr. rytter i de FØRSTE 28 dage (én sæson) fra deres nuværende alder.
       const firstSeasonGain = results.map((r) => (r.byAge[0]?.abilitySum ?? 0) - r.initialAbilitySum);
@@ -708,18 +751,21 @@ async function main() {
         avg_headroom_start: +avgHeadroom[capSource].toFixed(1),
       };
     }
-    console.log(`${padE("Loft-kilde", 12)}${padS("hovedrum/rytter", 18)}${padS("gevinst/sæson(28d)", 20)}${padS("pt/dag/rytter", 16)}${padS("peak ability-sum", 18)}`);
-    for (const capSource of ["db", "modelA"]) {
+    console.log(`${padE("Loft-kilde", 14)}${padS("hovedrum/rytter", 18)}${padS("gevinst/sæson(28d)", 20)}${padS("pt/dag/rytter", 16)}${padS("peak ability-sum", 18)}`);
+    for (const capSource of ["db", "modelA", "modelATaper"]) {
       const a = adultSim[capSource];
-      console.log(`${padE(capSource, 12)}${padS(fmt1(a.avg_headroom_start), 18)}${padS(fmt1(a.avg_first_season_gain), 20)}${padS(a.avg_pts_per_day.toFixed(3), 16)}${padS(fmt1(a.avg_peak_ability_sum), 18)}`);
+      console.log(`${padE(capSource, 14)}${padS(fmt1(a.avg_headroom_start), 18)}${padS(fmt1(a.avg_first_season_gain), 20)}${padS(a.avg_pts_per_day.toFixed(3), 16)}${padS(fmt1(a.avg_peak_ability_sum), 18)}`);
     }
     const rateFactor = adultSim.db.avg_pts_per_day > 0
       ? adultSim.modelA.avg_pts_per_day / adultSim.db.avg_pts_per_day : null;
-    console.log(`\n→ Realiseret voksen-dagsrate ændres med faktor: ${rateFactor != null ? `${fmt1(rateFactor)}×` : "n/a"} (hovedrums-faktoren var ${fmt1(avgHeadroom.modelA / (avgHeadroom.db || 1))}×)\n`);
+    const taperMatchesModelA = adultSim.modelATaper.avg_pts_per_day === adultSim.modelA.avg_pts_per_day;
+    console.log(`\n→ Realiseret voksen-dagsrate ændres med faktor: ${rateFactor != null ? `${fmt1(rateFactor)}×` : "n/a"} (hovedrums-faktoren var ${fmt1(avgHeadroom.modelA / (avgHeadroom.db || 1))}×)`);
+    console.log(`→ Taper vs. modelA for 22-28: ${taperMatchesModelA ? "BIT-IDENTISK (bevist no-op)" : "AFVIGER (uventet)"}\n`);
     adultOut.n = adultPopulation.length;
     adultOut.by_cap_source = adultSim;
     adultOut.realised_rate_factor = rateFactor != null ? +rateFactor.toFixed(2) : null;
     adultOut.headroom_factor = +(avgHeadroom.modelA / (avgHeadroom.db || 1)).toFixed(2);
+    adultOut.taper_is_noop_for_22_28 = taperMatchesModelA;
   }
 
   // ══ #2471 — VETERANER (29-36): ophæver model A aldringen? ═════════════════════
@@ -733,14 +779,22 @@ async function main() {
   if (veteranPopulation.length === 0) {
     console.log("(ingen veteraner i populationen — intet at måle)\n");
   } else {
-    console.log(`${padE("Loft-kilde", 12)}${padS("hovedrum", 11)}${padS("start-sum", 11)}${padS(`slut-sum (${VETERAN_SEASONS} sæs)`, 18)}${padS("netto", 10)}${padS("% forbedret", 13)}`);
-    for (const capSource of ["db", "modelA"]) {
+    console.log(`${padE("Loft-kilde", 14)}${padS("hovedrum", 11)}${padS("start-sum", 11)}${padS(`slut-sum (${VETERAN_SEASONS} sæs)`, 18)}${padS("netto", 10)}${padS("% forbedret", 13)}`);
+    for (const capSource of ["db", "modelA", "modelATaper"]) {
       let startSum = 0, endSum = 0, headroom = 0, improved = 0;
       for (const r of veteranPopulation) {
-        const capsFor = (a) => (capSource === "modelA"
-          ? buildCapsForRider(a, { potentiale: r.potentiale }, r.primaryType, r.secondaryType)
-          : r.lifetimeCaps);
-        headroom += clampedGapSum(capsFor(r.abilities), r.abilities);
+        // #2472 (16/7): modelATaper sender alderen med til buildCapsForRider — samme
+        // ægte funktion som modelA, bare med taperen tændt via ageArg.
+        const capsFor = (a, ageArg) => {
+          if (capSource === "modelATaper") {
+            return buildCapsForRider(a, { potentiale: r.potentiale, age: ageArg }, r.primaryType, r.secondaryType);
+          }
+          if (capSource === "modelA") {
+            return buildCapsForRider(a, { potentiale: r.potentiale }, r.primaryType, r.secondaryType);
+          }
+          return r.lifetimeCaps;
+        };
+        headroom += clampedGapSum(capsFor(r.abilities, r.startAge), r.abilities);
         const s0 = abilitySum(r.abilities);
         // Samme tick-kontrakt som motoren: voksne får hverken hardDailyCap eller rate-mult.
         let abilities = deepCopyAbilities(r.abilities);
@@ -752,7 +806,7 @@ async function main() {
             const isRest = d % 7 === 0;
             const prog = isRest ? { focus: program.focus, intensity: "rest" } : program;
             const t = applyDailyTick({
-              riderId: `vet:${r.id}`, dateStr: `s${s}d${d}`, age, abilities, caps: capsFor(abilities),
+              riderId: `vet:${r.id}`, dateStr: `s${s}d${d}`, age, abilities, caps: capsFor(abilities, age),
               progress, program: prog, conditionMult: conditionMultiplier({ form, fatigue }),
               bonus: (d * 7 + s) % 10 < 6, potentiale: r.potentiale,
               hardDailyCap: undefined, academyRateMult: 1.0,
@@ -763,7 +817,7 @@ async function main() {
           }
           const { next, retirement } = developRiderSeason(
             { id: r.id, primary_type: r.primaryType, potentiale: r.potentiale, age },
-            abilities, capsFor(abilities), s + 1, undefined, null, { skipGrowth: true },
+            abilities, capsFor(abilities, age), s + 1, undefined, null, { skipGrowth: true },
           );
           abilities = next;
           if (retirement.retire) break;
@@ -782,22 +836,26 @@ async function main() {
         pct_improved: +(100 * improved / n).toFixed(1),
       };
       veteranOut[capSource] = rec;
-      console.log(`${padE(capSource, 12)}${padS(fmt1(rec.avg_headroom), 11)}${padS(fmt1(rec.avg_start_sum), 11)}${padS(fmt1(rec.avg_end_sum), 18)}${padS(rec.avg_net > 0 ? `+${fmt1(rec.avg_net)}` : fmt1(rec.avg_net), 10)}${padS(`${rec.pct_improved}%`, 13)}`);
+      console.log(`${padE(capSource, 14)}${padS(fmt1(rec.avg_headroom), 11)}${padS(fmt1(rec.avg_start_sum), 11)}${padS(fmt1(rec.avg_end_sum), 18)}${padS(rec.avg_net > 0 ? `+${fmt1(rec.avg_net)}` : fmt1(rec.avg_net), 10)}${padS(`${rec.pct_improved}%`, 13)}`);
     }
     console.log(`\n→ Aldring: i dag falder veteranerne ${fmt1(Math.abs(veteranOut.db.avg_net))} evne-point over ${VETERAN_SEASONS} sæsoner (${veteranOut.db.pct_improved}% forbedres).`);
-    console.log(`  Under model A: ${veteranOut.modelA.avg_net > 0 ? "+" : ""}${fmt1(veteranOut.modelA.avg_net)} point (${veteranOut.modelA.pct_improved}% forbedres) — vækst vs. decline tipper.\n`);
+    console.log(`  Under model A (uden taper): ${veteranOut.modelA.avg_net > 0 ? "+" : ""}${fmt1(veteranOut.modelA.avg_net)} point (${veteranOut.modelA.pct_improved}% forbedres) — vækst vs. decline tipper (blocker-fund).`);
+    console.log(`  Under model A + alders-taper: ${veteranOut.modelATaper.avg_net > 0 ? "+" : ""}${fmt1(veteranOut.modelATaper.avg_net)} point (${veteranOut.modelATaper.pct_improved}% forbedres).\n`);
   }
 
   // ══ #2471 — SPØRGSMÅL 3: frosne evne-rækker ═══════════════════════════════════
   console.log("═".repeat(96));
   console.log("#2471 — FROSNE EVNE-RÆKKER (gap = 0 → evnen kan aldrig stige igen)\n");
   const freeze = analyseFreeze([...population, ...adultPopulation, ...veteranPopulation]);
-  console.log(`${padE("Gruppe", 10)}${padS("ryttere", 9)}${padS("evne-rækker", 13)}${padS("frosne db", 12)}${padS("frosne A", 12)}${padS("kun A (nye)", 13)}${padS("kun db (løst)", 14)}`);
+  console.log(`${padE("Gruppe", 10)}${padS("ryttere", 9)}${padS("evne-rækker", 13)}${padS("frosne db", 12)}${padS("frosne A", 12)}${padS("frosne A+taper", 15)}${padS("kun A (nye)", 13)}${padS("kun db (løst)", 14)}`);
   for (const key of ["all", "age_16_21", "age_22_28", "age_29_36"]) {
     const f = freeze[key];
-    console.log(`${padE(f.label, 10)}${padS(f.riders, 9)}${padS(f.ability_rows_total, 13)}${padS(`${f.frozen_rows_db} (${f.pct_frozen_db}%)`, 12)}${padS(`${f.frozen_rows_model_a} (${f.pct_frozen_model_a}%)`, 12)}${padS(f.frozen_only_model_a, 13)}${padS(f.frozen_only_db, 14)}`);
+    console.log(`${padE(f.label, 10)}${padS(f.riders, 9)}${padS(f.ability_rows_total, 13)}${padS(`${f.frozen_rows_db} (${f.pct_frozen_db}%)`, 12)}${padS(`${f.frozen_rows_model_a} (${f.pct_frozen_model_a}%)`, 12)}${padS(`${f.frozen_rows_model_a_taper} (${f.pct_frozen_model_a_taper}%)`, 15)}${padS(f.frozen_only_model_a, 13)}${padS(f.frozen_only_db, 14)}`);
   }
-  console.log(`\nFrosne rækker under model A fordelt på anlægs-rolle (16-36) — årsagen er det`);
+  console.log(`\n#2472 (16/7): "frosne A+taper" er den TILSIGTEDE mekanik — taperen lukker gappet ved`);
+  console.log(`design for post-peak-ryttere (29-36-gruppen stiger markant), så aldringen igen dominerer.`);
+  console.log(`Frosne A+taper er derfor IKKE en ny fejl som "kun A (nye)" — den er selve bremsen.\n`);
+  console.log(`Frosne rækker under model A fordelt på anlægs-rolle (16-36) — årsagen er det`);
   console.log(`ABSOLUTTE lofts kalibrering (loft(pot) × rolle-faktor), IKKE gulvet (algebraisk no-op):`);
   for (const [role, v] of Object.entries(freeze.all.frozen_by_role_model_a)) {
     console.log(`  ${padE(role, 12)} ${padS(v.modelA, 6)} rækker  (heraf ${v.db} allerede frosne i dag → ${v.modelA - v.db} nye)`);
@@ -806,19 +864,24 @@ async function main() {
   for (const r of freeze.all.riders_fully_frozen_examples.slice(0, 5)) {
     console.log(`  • ${r.id} — ${r.age} år, pot ${r.potentiale}, ${r.primary_type}/${r.secondary_type ?? "-"}, ability-sum ${r.ability_sum}`);
   }
+  console.log(`Ryttere HELT frosne under model A + alders-taper: ${freeze.all.riders_fully_frozen_model_a_taper}`);
   console.log(`\nGnsn. frosne evner pr. rytter under model A: ${freeze.all.avg_frozen_abilities_per_rider_model_a} af ${VISIBLE_ABILITIES.length}`);
+  console.log(`Gnsn. frosne evner pr. rytter under model A + taper: ${freeze.all.avg_frozen_abilities_per_rider_model_a_taper} af ${VISIBLE_ABILITIES.length}`);
   console.log(`Hovedrum der forsvinder ved de NYE frys (kun-A-rækker): ${freeze.all.headroom_lost_only_model_a} evne-point\n`);
 
   // ── JSON-output ──────────────────────────────────────────────────────────────
-  // NY fil: #2437's før-billede (2026-07-15-academy-career-curves.json) bevares URØRT,
-  // fordi det er ejerens sammenlignings-reference. Denne fil er efter-billedet.
+  // NY fil: #2437's før-billede (2026-07-15-academy-career-curves.json) OG #2471's
+  // efter-billede FØR taper (2026-07-15-cap-consolidation-curves.json) bevares URØRT
+  // — de er ejerens sammenlignings-reference. Denne fil er den KOMBINEREDE tilstand
+  // (model A + alders-taper, ejer-valg B 16/7).
   const outDir = join(__dirname, "../../docs/audits");
   mkdirSync(outDir, { recursive: true });
-  const outPath = join(outDir, "2026-07-15-cap-consolidation-curves.json");
+  const outPath = join(outDir, "2026-07-16-cap-taper-curves.json");
   const jsonOut = {
-    generated_for: "#2471 (PR #2472 rebaset på #2470-interim)",
+    generated_for: "#2471/#2472 — alders-taper på det absolutte loft (ejer-valg B, 16/7)",
     generated_at: new Date().toISOString(),
     before_picture: "docs/audits/2026-07-15-academy-career-curves.json (#2437, samme harness, cap_source=db)",
+    prior_gate: "docs/audits/2026-07-15-cap-consolidation-curves.json (#2471, model A UDEN taper — afslørede veteran-blockeren)",
     note: "dailyAbilityDelta dividerer INTERNT altid med den frosne DAILY_TRAINING_CONFIG.daysPerSeason=28 — sæsonlængde-sweepet varierer ANTAL TICKS pr. simuleret sæson, ikke selve konstanten. Det er en pointe i modellen, ikke en fejl.",
     cap_sources: CAP_SOURCE_LABELS,
     season_lengths: SEASON_LENGTHS,
