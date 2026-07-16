@@ -162,7 +162,9 @@
       "contract": "Contract",
       "contractSeason": "Season {season}",
       "aiTag": "AI",
-      "winsOn": "Wins on"
+      "winsOn": "Wins on",
+      "valueTrend": "{value} last {days} days",
+      "valueTrendTitle": "Value change since {date}"
     },
     "banner": {
       "listed": "On the transfer list · price {price}",
