@@ -87,44 +87,46 @@ Ambitionsbaren er de to bedste udviklings-simulationer i genren. Hvad vi tager, 
 Erstat den alders-dominerede rate med en model hvor **gap-til-loft er den primære driver** og alder kun modulerer:
 
 ```
-newBudgetRate(rider) = potentialRate(pot) × ageModulation(age) × phase(age)
-seasonBudget(ability) = gap(ability) × newBudgetRate     // fair sæson-andel
-dailyDelta(ability)   = f(seasonBudget, dagens fokus, intensitet, condition, stab, facilitet, stokastik)
+rate(rider)         = potentialRate(pot) × ageModulation(age) × phase(age)
+dailyDelta(ability) = gap(ability) × rate × dagligKonstant
+                      × f(dagens fokus/træningsscore, intensitet, condition, stab, facilitet, stokastik)
 ```
+
+(Omskrevet 16/7 fra sæson-budget-form til ren daglig strøm, jf. §3.2 — ingen sæson-akkumulator; `dagligKonstant` kalibreres mod 50 %/5-7-sæsoners-ankeret.)
 
 Ændringer mod nuværende `PROGRESSION_CONFIG` / `dailyTraining`:
 
 - **`potentialRate(pot)`** (erstatter dobbelt-nedtrapningen som primær term): potentiale styrer både loft (uændret, #1791) og rejse-tempo. Kalibreres så et stort talent kumulativt lukker **~50% af sin rejse på 5-7 sæsoner** (ejer-mål fra #2082; matematisk `1-(1-f)^6 ≈ 0.5 → f ≈ 0.11` som ankerpunkt, aftagende variant ejer-godkendt).
 - **`ageModulation(age)`** bliver **mild og flad**, ikke straffende: fx `1.15 (16-18) → 1.05 (19-21) → 1.0 (22-27) → aftager efter peak`. En 19-20-årig får ~samme rate pr. gap-enhed som en 22-årig — forskellen i deres udvikling kommer fra **deres gap**, ikke deres alder. Dette er hele fixet for #2262.
-- **Selv-aftagende kurve gratis:** fordi `seasonBudget ∝ gap`, aftager væksten naturligt når rytteren nærmer sit loft. Vi behøver ikke den stejle `0.35→0.10` alders-kurve for at få en aftagende bane. Fjern den som *primær* driver; behold en svag rest som alders-modulator.
-- **Sæson-budget-loft bevares** (§3.2) som anti-eksplosions-struktur.
+- **Selv-aftagende kurve gratis:** fordi `dailyDelta ∝ gap`, aftager væksten naturligt når rytteren nærmer sit loft. Vi behøver ikke den stejle `0.35→0.10` alders-kurve for at få en aftagende bane. Fjern den som *primær* driver; behold en svag rest som alders-modulator.
+- **Ingen sæson-loft** (omskrevet 16/7, jf. §3.2): anti-eksplosion leveres af den gap-drevne rates egen aftagning + lav daglig konstant, ikke af et budget-maks.
 
 **Hvorfor dette løser begge klager på én gang:**
 
 | Rytter | Gap | Alder | Nuværende model | Ny model |
 |---|---|---|---|---|
-| 16-årig pot-6, frisk | Stort | 16 | Eksploderer (#2082) | Hurtig, men capped af budget-loft ✅ |
+| 16-årig pot-6, frisk | Stort | 16 | Eksploderer (#2082) | Hurtig, men lav daglig konstant + aftagende gap holder den i ejer-ankeret ✅ |
 | 19-årig pot-5, stort uindfriet | Stort | 19 | "Dødfødt" (#2262) | **Hurtig — gap dominerer** ✅ |
 | 20-årig pot-5, næsten ved loft | Lille | 20 | Langsom | Langsom — **korrekt, han er færdig** ✅ |
 | 27-årig peak | Lille | 27 | Langsom | Langsom ✅ |
 
-### 3.2 Sæson-budget-loft (mod variabel sæsonlængde)
+### 3.2 Daglig-strøm-model — intet sæson-loft (omskrevet 16/7, forliget med kernesystemer §5.1)
 
-> ### ⛔ FORÆLDET — ejer afviste retningen 15/7. Slic IKKE dette afsnit som skrevet.
->
-> Ejer (15/7, efter [#2437](https://github.com/NicolaiDolmer/CyclingZone/issues/2437)): *"**Der skal som sådan ikke være et loft over hvor meget en rytter kan træne på en sæson, men deres træninger skal bare være så 'lave', at der ikke er brug for et maks.**"*
->
-> **Hvorfor det haster:** afsnittet her vil *generalisere* sæson-budget-loftet "fra akademi til hele den daglige model". Præcis den mekanik har **dræbt akademi-træningen i prod** (#2437, verificeret 15/7): budgettet er et éngangs-beløb afkoblet fra sæsonlængde, sæson 1 har `end_date = NULL`, og efter ~10 dage var **18% af alle evne-rækker låst resten af sæsonen** (87% af akademi-rytterne har ≥1 låst evne). Sliced som skrevet ville vi have udbredt problemet fra 570 akademi-ryttere til hele populationen.
->
-> **Konflikt med den anden spec:** [`2026-06-11-kernesystemer-design.md`](2026-06-11-kernesystemer-design.md) §5.1 siger det modsatte — *"L0-motorens sæsonvise vækstbudget **omlægges til den daglige strøm**"* — og dét matcher ejerens retning. De to specs skal forliges før slicing.
->
-> **Hvad der overlever herfra:** §3.1's gap-drevne rate er stadig rigtig, og pointen om variabel sæsonlængde er reel. Det er **nødbremsen ovenpå**, der skal væk — ikke diagnosen. Åbent design-spørgsmål: er den gap-drevne rate i sig selv lav nok til at et maks er unødvendigt (ejerens krav), eller skal den kalibreres ned? Se også ejerens to øvrige krav: **træningsscore** (`2026-06-11` §5.1) og **kun enkelte evner pr. træning** (§4.1 nedenfor).
->
-> Afsnittet bevares som historik + begrundelse — det skal omskrives, ikke slettes.
+**Ejer-beslutning (15/7, efter [#2437](https://github.com/NicolaiDolmer/CyclingZone/issues/2437)):** *"Der skal som sådan ikke være et loft over hvor meget en rytter kan træne på en sæson, men deres træninger skal bare være så 'lave', at der ikke er brug for et maks."* Dette afsnit omsætter den beslutning; den oprindelige sæson-budget-loft-tekst er bevaret som historik nederst.
 
-Kodebasen har **ingen fast sæsonlængde** (#2082-fund: S1 kørte 57+ dage; `daysPerSeason: 28` er en budget-divisor, ikke en kalender). En ren dage-baseret rate over-skyder når en sæson kører længe. Bevar #2082 kandidat-3's **sæson-budget-cap**: den samlede udvikling en rytter kan opnå på én sæson mætter ved sæsonens fair andel af gap'et, uanset hvor mange dage der tikker. Allerede delvist til stede (`computeAcademySeasonCeiling`, `SEASON_FRAC_BY_AGE`) — generaliser fra akademi til hele den daglige model.
+**Modellen (erstatter sæson-budgettet):**
 
-Konsekvens der skal accepteres bevidst (fra #2082): ved lav sæson-rate bliver dag-til-dag-fremgangen næsten usynlig. Vi afbøder med den **aftagende kurve** (mere synlig fremgang i sæson 1-2, ejer-godkendt) + **progress-bar pr. evne** (findes, `ability_progress`) så "usynlig i dag" stadig føles som "bevæger sig mod næste point".
+- **Al udvikling flyder gennem den daglige strøm.** Hver træningsdag giver en rytter en **træningsscore** (jf. [`2026-06-11-kernesystemer-design.md`](2026-06-11-kernesystemer-design.md) §5.1 og §6: program fordeler scoren på evne-barer; fuld bar → +1). Der findes **ingen sæson-akkumulator, intet budget og ingen låsning** — en evne-række kan aldrig gå i "brugt op"-tilstand.
+- **Dagsraten er selv-dæmpende:** `dagligVækst ∝ gap × potentialRate(pot) × ageModulation(age) × træningsscore`. Fordi gap'et indgår multiplikativt, aftager væksten eksponentielt når rytteren nærmer sig loftet — kurven flader af *af sig selv*, uden nødbremse. Loftet selv håndhæves som hidtil pr. evne (#1791) og er urørt af denne omlægning.
+- **Variabel sæsonlængde håndteres af aftagningen, ikke af et maks.** #2082-fundet står stadig: der er ingen fast sæsonlængde (S1 kørte 57+ dage), så enhver mekanik med "sæsonens andel" som éngangs-beløb knækker (præcis dét dræbte akademi-træningen i prod: 18 % af alle evne-rækker låst efter ~10 dage, 87 % af akademi-ryttere med ≥1 låst evne, #2437). I daglig-strøm-modellen koster en lang sæson kun de *aftagende* haler: dag 40-57 flytter markant mindre end dag 1-17, fordi gap'et allerede er skrumpet. Overskuddet er begrænset og glat — ikke lineært eksploderende.
+
+**Svar på det åbne design-spørgsmål** (er gap-drevet rate i sig selv lav nok uden maks?): **Ja, strukturelt — mod kalibrerings-ansvar.** Selv-dæmpningen gør et in-game-maks overflødigt *forudsat* den daglige konstant kalibreres mod ejer-ankeret "~50 % af rejsen på 5-7 sæsoner" (§3.1, `f ≈ 0,11`/sæson som ankerpunkt). Sikkerhedsnettet flyttes fra runtime-mekanik til proces: **(a)** Fase 1's scorecard-gate SKAL sim-køre cross-sæsonlængde (28 og 57+ dage, jf. §8 Fase 1) og verificere at kumulativ vækst holder ejer-ankeret også i lange sæsoner; **(b)** drift-vagten ([#2414](https://github.com/NicolaiDolmer/CyclingZone/issues/2414)) overvåger populationens faktiske vækst-tempo i prod. Konstanten kan altså sættes *lavt nok* — det var éngangs-budgettet, ikke raten, der var problemet.
+
+**Konsekvens der accepteres bevidst** (uændret fra #2082): ved lav dagsrate er dag-til-dag-fremgang næsten usynlig. Afbødes af den aftagende kurve (mere synlig fremgang i sæson 1-2, ejer-godkendt) + **progress-bar pr. evne** (findes, `ability_progress`) så "usynlig i dag" stadig føles som "bevæger sig mod næste point".
+
+**Implementerings-konsekvenser (Fase 1, §8):** `computeAcademySeasonCeiling` + `SEASON_FRAC_BY_AGE` og interim-fixet `rate/3` (#2437) **fjernes** — de må ikke overleve som de facto-løsning (addendum 16/7, Fase 1-krav). Akademiet beholder sin *multiplikator*-rolle (facilitet-niveau ganger på dagsraten, kernesystemer §6.3) men ingen egen budget-mekanik.
+
+> **Historik (oprindelig §3.2, ejer-afvist 15/7):** afsnittet foreslog at bevare #2082 kandidat-3's sæson-budget-cap ("samlet udvikling pr. sæson mætter ved sæsonens fair andel af gap'et") og generalisere `computeAcademySeasonCeiling`/`SEASON_FRAC_BY_AGE` fra akademiet til hele den daglige model. Diagnosen (variabel sæsonlængde over-skyder rene dage-rater) var rigtig; medicinen (éngangs-budget afkoblet fra sæsonlængde, sæson 1 med `end_date = NULL`) var netop dét der låste akademi-træningen i prod (#2437). Bevaret her som begrundelse for hvorfor daglig-strøm-modellen ikke må genindføre nogen akkumulator.
 
 ### 3.3 Potentiale-usikkerhed — integrér talentspejderen, opfind intet facit
 
@@ -152,9 +154,9 @@ Mål (#1922): specialisering skal koste bredde; intensitet skal veje permanent g
 
 Erstat `offFocusMult: 0.97` med en reel prioriterings-omkostning:
 
-- Dagens **fokus** får sæson-budgettet; **off-focus-evner får ~0 daglig vækst** (ikke negativt — ingen straf-atrofi i v1, jf. doktrinens "ingen random career destruction"). Du kan ikke udvikle alt samtidig — du **vælger**.
-- **Balanceret program** (bredt fokus) spreder budgettet tyndt → langsom på alt. **Specialiseret program** koncentrerer → hurtig på lidt, intet på resten. Begge er valide builds.
-- Dette er adskilt fra type-loftet (§3.3): en bjergrytter *kan* fokusere sprint, men gap-til-sprint-loft er lille → lidt vækst. Fokus = *hvad får budget*; type-loft = *hvor højt kan det nå*. To distinkte, begge legible.
+- Dagens **fokus** får dagens træningsscore (§3.2 daglig strøm); **off-focus-evner får ~0 daglig vækst** (ikke negativt — ingen straf-atrofi i v1, jf. doktrinens "ingen random career destruction"). Du kan ikke udvikle alt samtidig — du **vælger**.
+- **Balanceret program** (bredt fokus) spreder dagens score tyndt → langsom på alt. **Specialiseret program** koncentrerer → hurtig på lidt, intet på resten. Begge er valide builds.
+- Dette er adskilt fra type-loftet (§3.3): en bjergrytter *kan* fokusere sprint, men gap-til-sprint-loft er lille → lidt vækst. Fokus = *hvad får dagens score*; type-loft = *hvor højt kan det nå*. To distinkte, begge legible.
 
 Trade-off skabt: en specialist bliver skarpere men smallere; en all-rounder bredere men uden top. Det er build-diversitet → scorecard B1/B2.
 
@@ -303,9 +305,9 @@ Doktrinen kræver at hvert system angiver hvilken adfærd der skal ændre + hvil
 Hver fase = egen PR, egen sim + scorecard hvor markeret. Ingen fase un-gater sig selv uden ejer-go på scorecardet. Rækkefølgen respekterer at #2262/#1974 brænder nu, mens buen (§5) er dybere.
 
 ### Fase 1 — Afstand-drevet vækst (løser #2262, forener #2082) 🔴 brænder
-- **Filer (ren matematik):** `riderProgression.js` (`PROGRESSION_CONFIG`, `stepAbility`), `dailyTraining.js` (`dailyAbilityDelta`, sæson-budget-loft-generalisering), `academyFlag.js` (rate-kurver).
-- **Ændring:** gap primær driver; `potentialRate(pot)` + mild `ageModulation`; bevar sæson-budget-cap.
-- **Gate:** Scorecard A (alle metrikker) mod syntetisk + prod-klon-population, cross-seed + cross-sæsonlængde. **Ejer-review før merge.**
+- **Filer (ren matematik):** `riderProgression.js` (`PROGRESSION_CONFIG`, `stepAbility`), `dailyTraining.js` (`dailyAbilityDelta`, daglig-strøm-omlægning), `academyFlag.js` (rate-kurver; `computeAcademySeasonCeiling`/`SEASON_FRAC_BY_AGE` + interim `rate/3` fjernes, §3.2).
+- **Ændring:** gap primær driver; `potentialRate(pot)` + mild `ageModulation`; **intet sæson-cap** — lav daglig konstant kalibreret mod 50 %/5-7-sæsoners-ankeret (§3.2).
+- **Gate:** Scorecard A (alle metrikker) mod syntetisk + prod-klon-population, cross-seed + cross-sæsonlængde (28 OG 57+ dage — verificér at kumulativ vækst holder ankeret uden maks). **Ejer-review før merge.**
 - **Ingen prod-mutation.** Hvis eksisterende ryttere skal re-kalibreres: `.sql`-udkast + klon-verify, ejer kører.
 
 ### Fase 2 — Fokus som ægte budget + intensitets-trade-off (løser #1922) 🔴 brænder
@@ -339,8 +341,8 @@ Hver fase = egen PR, egen sim + scorecard hvor markeret. Ingen fase un-gater sig
 ## 9. De 3 mest usikre antagelser + evidens-krav
 
 ### 9.1 At gap-drevet rate + mild alders-modulation ikke gen-introducerer #2082's for-hurtige ungdom
-**Hvorfor usikker:** vi fjerner den stejle alders-straf der (utilsigtet) også bremsede 16-årige. Hvis budget-loftet + pot-raten ikke bærer anti-eksplosionen alene, eksploderer 16-årige igen.
-**Evidens-krav:** Scorecard A3 skal holde på tværs af **fuld kohorte (alder 16/19/22 × pot 2-6) OG sæsonlængde-sweep (28/60/90/120)**. Hvis 16-årige over-skyder → juster **budget-loftet**, ikke alders-straffen (ellers er vi tilbage ved #2262). Gate: ejer-godkendt scorecard før Fase 1-merge.
+**Hvorfor usikker:** vi fjerner den stejle alders-straf der (utilsigtet) også bremsede 16-årige — og sæson-loftet er ejer-afvist (§3.2). Hvis den gap-drevne aftagning + lav daglig konstant ikke bærer anti-eksplosionen alene, eksploderer 16-årige igen.
+**Evidens-krav:** Scorecard A3 skal holde på tværs af **fuld kohorte (alder 16/19/22 × pot 2-6) OG sæsonlængde-sweep (28/60/90/120)**. Hvis 16-årige over-skyder → sænk **den daglige konstant** (evt. pot-raten), ALDRIG et genindført sæson-maks og ikke alders-straffen (ellers er vi tilbage ved hhv. #2437 og #2262). Gate: ejer-godkendt scorecard før Fase 1-merge.
 
 ### 9.2 At opskalering af form/fatigue-race-vægt skaber trade-off uden at gøre resultater støjende
 **Hvorfor usikker:** spillere hader hvis en veludviklet rytter taber på usynlig form. For lav vægt → intensitet er ligegyldig (hard dominerer, ingen trade-off). For høj → resultater føles vilkårlige og evne devalueres.
