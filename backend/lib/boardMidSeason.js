@@ -158,7 +158,7 @@ async function processTeamMidSeason({
   if (!board) return { banner_sent: false };
 
   // Idempotency-check: er der allerede sendt en mid-season-banner for denne sæson?
-  const title = `${MID_SEASON_TITLE_PREFIX} (sæson ${activeSeason.number})`;
+  const title = `${MID_SEASON_TITLE_PREFIX} (season ${activeSeason.number})`;
   const { data: existingNotifs, error: notifError } = await supabase
     .from("notifications")
     .select("id")
@@ -278,10 +278,12 @@ function countBehindGoals({ goals, standing, team, divisionManagerCount }) {
   }).length;
 }
 
+// #2520: board_critical-beskeden mirror'es til Discord DM (notifyBoardUpdateDM
+// via cron.js' notifyUserWithBoardDM) → spillervendt, skal være på engelsk.
 function buildMidSeasonMessage({ reason, satisfaction }) {
   const intro = reason === "low_satisfaction"
-    ? `Bestyrelsen er bekymret. Tilfredsheden er nede paa ${Math.round(satisfaction)}.`
-    : "Bestyrelsen er bekymret. Mindst halvdelen af planens maal ligger bag tidsplanen.";
-  const actions = "Du kan stadig dreje planen via en board-request — eller anmode om budget-laan paa Oekonomi-siden hvis presset er finansielt. Bestyrelsen forventer at se aktion inden saesonens slutning.";
+    ? `The board is concerned. Satisfaction is down to ${Math.round(satisfaction)}.`
+    : "The board is concerned. At least half of the plan's goals are behind schedule.";
+  const actions = "You can still adjust the plan via a board request — or request a budget loan on the Economy page if the pressure is financial. The board expects to see action before the season ends.";
   return `${intro} ${actions}`;
 }

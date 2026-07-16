@@ -490,11 +490,11 @@ test("buildPcmImportEmbed laver felter pr. resultat-type", () => {
   const embed = buildPcmImportEmbed({ race, preview, resultRows });
   assert.match(embed.title, /Test Tour/);
   const names = embed.fields.map((f) => f.name);
-  assert.ok(names.some((n) => n.includes("Etapevindere")));
-  assert.ok(names.some((n) => n.includes("Klassement")));
-  assert.ok(names.some((n) => n.includes("Point")));
-  assert.ok(names.some((n) => n.includes("Bjerg")));
-  assert.ok(names.some((n) => n.includes("Hold")));
+  assert.ok(names.some((n) => n.includes("Stage winners")));
+  assert.ok(names.some((n) => n.includes("Classification")));
+  assert.ok(names.some((n) => n.includes("Points")));
+  assert.ok(names.some((n) => n.includes("Mountains")));
+  assert.ok(names.some((n) => n.includes("Team")));
 });
 
 test("buildPcmImportEmbed advarer ved umatchede scorende ryttere", () => {
@@ -503,5 +503,5 @@ test("buildPcmImportEmbed advarer ved umatchede scorende ryttere", () => {
     preview: { rows: 10, unmatched_scoring: 2 },
     resultRows: [{ result_type: "gc", rank: 1, rider_name: "W" }],
   });
-  assert.match(embed.description, /2 umatchede/);
+  assert.match(embed.description, /2 unmatched/);
 });

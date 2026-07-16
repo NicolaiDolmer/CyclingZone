@@ -139,18 +139,18 @@ test("formatFinalWhistleEmbed produces a valid Discord payload med separate auct
     closedAt: "2026-05-10T20:00:00Z",
   });
   assert.equal(payload.embeds.length, 1);
-  assert.match(payload.embeds[0].title, /Sæson 7/);
+  assert.match(payload.embeds[0].title, /Season 7/);
   const fields = payload.embeds[0].fields;
   const fieldNames = fields.map(f => f.name);
-  const handler = fields.find(f => f.name === "Handler i alt");
-  assert.match(handler.value, /5 \(4 auktioner · 1 transfers\)/);
-  assert.ok(fieldNames.some(n => n.includes("Største auktion")));
-  assert.ok(fieldNames.some(n => n.includes("Største transfer")));
-  assert.ok(fieldNames.some(n => n.includes("Mest aktive manager")));
-  assert.ok(fieldNames.some(n => n.includes("Panikhandler")));
+  const handler = fields.find(f => f.name === "Total deals");
+  assert.match(handler.value, /5 \(4 auctions · 1 transfers\)/);
+  assert.ok(fieldNames.some(n => n.includes("Biggest auction")));
+  assert.ok(fieldNames.some(n => n.includes("Biggest transfer")));
+  assert.ok(fieldNames.some(n => n.includes("Most active manager")));
+  assert.ok(fieldNames.some(n => n.includes("Panic deals")));
 });
 
-test("formatFinalWhistleEmbed: ai-pool auktion vises som 'fri pulje' (ingen seller-navn)", () => {
+test("formatFinalWhistleEmbed: ai-pool auktion vises som 'free pool' (ingen seller-navn)", () => {
   const payload = formatFinalWhistleEmbed({
     report: {
       totalDeals: 1,
@@ -166,11 +166,11 @@ test("formatFinalWhistleEmbed: ai-pool auktion vises som 'fri pulje' (ingen sell
     seasonNumber: 0,
     closedAt: "2026-05-21T21:00:00Z",
   });
-  const auctionField = payload.embeds[0].fields.find(f => f.name.includes("Største auktion"));
-  assert.match(auctionField.value, /fri pulje/);
+  const auctionField = payload.embeds[0].fields.find(f => f.name.includes("Biggest auction"));
+  assert.match(auctionField.value, /free pool/);
   assert.match(auctionField.value, /Pool Hero/);
   // Transfer-felt findes ikke når der ikke er nogen transfer
-  assert.equal(payload.embeds[0].fields.find(f => f.name.includes("Største transfer")), undefined);
+  assert.equal(payload.embeds[0].fields.find(f => f.name.includes("Biggest transfer")), undefined);
 });
 
 // ── processDeadlineDayCron — orchestration tests ─────────────────────────────

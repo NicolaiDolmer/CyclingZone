@@ -40,20 +40,21 @@ const COLORS = {
   board_critical:       0xe74c3c, // red
 };
 
+// #2520: spillervendte Discord-labels på engelsk (server er EN-first).
 const TYPE_LABELS = {
-  auction_new:        "🔨 Ny Auktion",
-  auction_outbid:     "⚠️ Overbudt!",
-  auction_won:        "🏆 Auktion Vundet",
-  transfer_offer:     "↔️ Transfertilbud",
-  transfer_accepted:  "✅ Transfer Accepteret",
-  transfer_rejected:  "❌ Transfer Afvist",
-  transfer_completed: "✅ Transfer Gennemført",
-  swap_completed:     "🔄 Byttehandel Gennemført",
-  season_started:     "🚀 Sæson Startet",
-  season_ended:       "🏁 Sæson Afsluttet",
-  watchlist_rider_auction: "👀 Ønskeliste-rytter på auktion",
-  board_update:       "📋 Bestyrelsesopdatering",
-  board_critical:     "⚠️ Bestyrelsen er utilfreds",
+  auction_new:        "🔨 New Auction",
+  auction_outbid:     "⚠️ Outbid!",
+  auction_won:        "🏆 Auction Won",
+  transfer_offer:     "↔️ Transfer Offer",
+  transfer_accepted:  "✅ Transfer Accepted",
+  transfer_rejected:  "❌ Transfer Rejected",
+  transfer_completed: "✅ Transfer Completed",
+  swap_completed:     "🔄 Swap Completed",
+  season_started:     "🚀 Season Started",
+  season_ended:       "🏁 Season Ended",
+  watchlist_rider_auction: "👀 Watchlisted Rider on Auction",
+  board_update:       "📋 Board Update",
+  board_critical:     "⚠️ The Board Is Unhappy",
 };
 
 /**
@@ -395,10 +396,11 @@ export async function sendTestDM(discordId) {
   } catch (err) {
     throw new Error(`Kunne ikke åbne DM-kanal — del server med botten og slå "Allow DMs from server members" til (${err.message})`, { cause: err });
   }
+  // #2520: DM-teksten er spillervendt (går til managerens Discord-inbox) → EN.
   await postDm(channelId, botToken, {
     embeds: [{
-      title: "✅ Discord DM virker",
-      description: "Du modtager nu DMs fra Cycling Zone ved auktioner, transfers og bestyrelsesopdateringer.",
+      title: "✅ Discord DM works",
+      description: "You'll now receive DMs from Cycling Zone for auctions, transfers, and board updates.",
       color: 0x2ecc71,
       footer: { text: "Cycling Zone" },
       timestamp: new Date().toISOString(),
@@ -430,11 +432,11 @@ export async function notifyNewAuction({ riderName, riderValue, sellerName, star
   const payload = buildEmbed(
     "auction_new",
     riderName,
-    `**${sellerName}** har sat **${riderName}** på auktion!`,
+    `**${sellerName}** put **${riderName}** up for auction!`,
     [
-      { name: "Værdi", value: `${riderValue?.toLocaleString("da-DK")} CZ$` },
-      { name: "Startbud", value: `${startPrice?.toLocaleString("da-DK")} CZ$` },
-      { name: "Slutter", value: new Date(endsAt).toLocaleString("da-DK") },
+      { name: "Value", value: `${riderValue?.toLocaleString("en-US")} CZ$` },
+      { name: "Starting bid", value: `${startPrice?.toLocaleString("en-US")} CZ$` },
+      { name: "Ends", value: new Date(endsAt).toLocaleString("en-US") },
     ]
   );
   await sendWebhook(url, payload);
@@ -443,14 +445,14 @@ export async function notifyNewAuction({ riderName, riderValue, sellerName, star
 // Person-rettede notifications — DM-only (må ikke broadcastes til kanal)
 export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAuto = false, exhausted = false }) {
   const fields = [
-    { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
-    { name: isAuto ? "Autobud fra" : "Budt af", value: bidderName },
+    { name: "New bid", value: `${newBid?.toLocaleString("en-US")} CZ$` },
+    { name: isAuto ? "Auto-bid from" : "Bid by", value: bidderName },
   ];
   const description = exhausted
-    ? `Dit autobud på **${riderName}** nåede sit max-loft og er overbudt.`
+    ? `Your auto-bid on **${riderName}** hit its max cap and was outbid.`
     : isAuto
-      ? `Du er blevet overbudt på **${riderName}** af et autobud!`
-      : `Du er blevet overbudt på **${riderName}**!`;
+      ? `You've been outbid on **${riderName}** by an auto-bid!`
+      : `You've been outbid on **${riderName}**!`;
   await notifyDiscordDM({
     teamId,
     type: "auction_outbid",
@@ -461,19 +463,19 @@ export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAu
 }
 
 export async function notifyAuctionWon({ riderName, finalPrice, teamId }) {
-  const fields = [{ name: "Slutpris", value: `${finalPrice?.toLocaleString("da-DK")} CZ$` }];
+  const fields = [{ name: "Final price", value: `${finalPrice?.toLocaleString("en-US")} CZ$` }];
   await notifyDiscordDM({
     teamId,
     type: "auction_won",
     title: riderName,
-    description: `Du har vundet auktionen på **${riderName}**! 🎉`,
+    description: `You've won the auction for **${riderName}**! 🎉`,
     fields,
   });
 }
 
 export async function notifyTransferOffer({ riderName, offerAmount, buyerName, teamId }) {
-  const fields = [{ name: "Tilbud", value: `${offerAmount?.toLocaleString("da-DK")} CZ$` }];
-  const description = `**${buyerName}** har sendt et tilbud på **${riderName}**`;
+  const fields = [{ name: "Offer", value: `${offerAmount?.toLocaleString("en-US")} CZ$` }];
+  const description = `**${buyerName}** has sent an offer for **${riderName}**`;
   await notifyDiscordDM({
     teamId,
     type: "transfer_offer",
@@ -486,12 +488,12 @@ export async function notifyTransferOffer({ riderName, offerAmount, buyerName, t
 export async function notifyTransferResponse({ riderName, accepted, teamId, counterAmount }) {
   const type = accepted ? "transfer_accepted" : "transfer_rejected";
   const fields = [];
-  if (counterAmount) fields.push({ name: "Modbud", value: `${counterAmount?.toLocaleString("da-DK")} CZ$` });
+  if (counterAmount) fields.push({ name: "Counter-offer", value: `${counterAmount?.toLocaleString("en-US")} CZ$` });
   const description = accepted
-    ? `Dit tilbud på **${riderName}** blev accepteret!`
+    ? `Your offer on **${riderName}** was accepted!`
     : counterAmount
-      ? `Dit tilbud på **${riderName}** fik et modbud`
-      : `Dit tilbud på **${riderName}** blev afvist`;
+      ? `Your offer on **${riderName}** got a counter-offer`
+      : `Your offer on **${riderName}** was rejected`;
   await notifyDiscordDM({ teamId, type, title: riderName, description, fields });
 }
 
@@ -500,12 +502,12 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
 // `watchlist_rider_auction`-toggle i profilindstillingerne.
 export async function notifyWatchlistRiderAuction({ userId, riderName, endsAt }) {
   const fields = [];
-  if (endsAt) fields.push({ name: "Slutter", value: new Date(endsAt).toLocaleString("da-DK") });
+  if (endsAt) fields.push({ name: "Ends", value: new Date(endsAt).toLocaleString("en-US") });
   await notifyDiscordDM({
     userId,
     type: "watchlist_rider_auction",
     title: riderName,
-    description: `En rytter på din ønskeliste er sat på auktion: **${riderName}**`,
+    description: `A rider on your watchlist is up for auction: **${riderName}**`,
     fields,
   });
 }
@@ -522,8 +524,8 @@ export async function notifyTransferCompleted({ riderName, sellerName, buyerName
   const payload = buildEmbed(
     "transfer_completed",
     riderName,
-    `**${riderName}** er skiftet fra **${sellerName}** til **${buyerName}**`,
-    [{ name: "Pris", value: `${price?.toLocaleString("da-DK")} CZ$` }]
+    `**${riderName}** has moved from **${sellerName}** to **${buyerName}**`,
+    [{ name: "Price", value: `${price?.toLocaleString("en-US")} CZ$` }]
   );
   await sendWebhook(url, payload);
 }
@@ -532,11 +534,11 @@ export async function notifySwapCompleted({ offeredName, requestedName, proposin
   const url = await getWebhookByType("transfer_history");
   if (!url) return;
   const fields = [];
-  if (cash) fields.push({ name: "Kontantjustering", value: `${cash?.toLocaleString("da-DK")} CZ$` });
+  if (cash) fields.push({ name: "Cash adjustment", value: `${cash?.toLocaleString("en-US")} CZ$` });
   const payload = buildEmbed(
     "swap_completed",
     `${offeredName} ↔ ${requestedName}`,
-    `**${proposingName}** og **${receivingName}** har gennemført en byttehandel`,
+    `**${proposingName}** and **${receivingName}** have completed a swap`,
     fields
   );
   await sendWebhook(url, payload);
@@ -546,8 +548,8 @@ export async function sendTestEmbed(webhookUrl) {
   const payload = buildEmbed(
     "season_started",
     "Test webhook",
-    "Cycling Zone webhook virker korrekt!",
-    [{ name: "Tidspunkt", value: new Date().toLocaleString("da-DK") }]
+    "Cycling Zone webhook is working correctly!",
+    [{ name: "Time", value: new Date().toLocaleString("en-US") }]
   );
   try {
     const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
@@ -571,10 +573,10 @@ export async function notifySeasonEvent({ type, seasonNumber, webhookUrl }) {
   if (!url) return;
   const payload = buildEmbed(
     type,
-    `Sæson ${seasonNumber}`,
+    `Season ${seasonNumber}`,
     type === "season_started"
-      ? `Sæson ${seasonNumber} er nu startet! Held og lykke til alle managers. 🚴`
-      : `Sæson ${seasonNumber} er afsluttet! Resultater og op/nedrykning er behandlet.`
+      ? `Season ${seasonNumber} has now started! Good luck to all managers. 🚴`
+      : `Season ${seasonNumber} has ended! Results and promotion/relegation have been processed.`
   );
   await sendWebhook(url, payload);
 }
