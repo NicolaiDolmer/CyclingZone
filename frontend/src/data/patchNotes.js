@@ -4,6 +4,125 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.02",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "A daily story from training, not just numbers",
+          "body": "Your training check-in now leads with one curated story from your rider's latest training day, a breakthrough, closing in on a milestone, or hitting peak form, instead of a wall of numbers."
+        },
+        "da": {
+          "title": "En daglig historie fra træningen, ikke kun tal",
+          "body": "Dit trænings-check-in starter nu med én kurateret historie fra rytterens seneste træningsdag, et gennembrud, at nærme sig et mål, eller topform, i stedet for en væg af tal."
+        },
+        "refs": [2484]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Season Planner now shows riders the way you know them",
+          "body": "Rider rating, nationality flag and rider type now appear in the Season Planner just like everywhere else in the game, and attribute colors are readable in dark mode."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren viser nu ryttere som du kender dem",
+          "body": "Rytter-rating, nationalitetsflag og ryttertype vises nu i Sæsonplanlæggeren ligesom resten af spillet, og attribut-farverne er læselige i dark mode."
+        },
+        "refs": [2447]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "See where a rider's value is heading",
+          "body": "Rider market value now shows its movement (the change over the last 7 and 14 days) on the rider profile and in your squad overview, so you can spot who is rising or falling before you buy or sell."
+        },
+        "da": {
+          "title": "Se hvor en rytters værdi er på vej hen",
+          "body": "Rytterens markedsværdi viser nu bevægelsen (ændringen de seneste 7 og 14 dage) på rytterprofilen og i din trup-oversigt, så du kan se hvem der stiger eller falder, før du køber eller sælger."
+        },
+        "refs": [2499]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Why did your rider finish where he did?",
+          "body": "Race results now come with a why-report explaining what shaped a rider's finish, with story tags like Outsider, Off day, Sacrifice and Crash right on the result page."
+        },
+        "da": {
+          "title": "Hvorfor endte din rytter, hvor han gjorde?",
+          "body": "Løbsresultater kommer nu med en why-rapport, der forklarer hvad der formede rytterens placering, med story-tags som Outsider, Off day, Sacrifice og Crash direkte på resultatsiden."
+        },
+        "refs": [2355]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "Your team's history, season by season",
+          "body": "The team page now has a Palmarès tab: season-by-season history covering division, placement, points and wins, plus promotion and relegation, alongside a full honours list."
+        },
+        "da": {
+          "title": "Dit holds historie, sæson for sæson",
+          "body": "Holdsiden har nu en palmarès-fane: sæson-for-sæson-historik med division, placering, point og sejre, plus op- og nedrykning, sammen med en fuld æresliste."
+        },
+        "refs": [1997]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "See if develop-and-sell actually pays off",
+          "body": "A new academy accounting view sets your running costs and academy salaries against sale revenue, so you can finally see whether your develop-and-sell strategy is paying off."
+        },
+        "da": {
+          "title": "Se om udvikl-og-sælg rent faktisk betaler sig",
+          "body": "En ny akademi-regnskabsflade stiller dine driftsomkostninger og akademi-løn op mod salgsindtægter, så du endelig kan se om din udvikl-og-sælg-strategi betaler sig."
+        },
+        "refs": [2485]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UX",
+        "en": {
+          "title": "Actions tell you when something goes wrong",
+          "body": "Training, scouting and saving your strategy no longer fail silently, you now get an error message when something goes wrong. Stage roles also got short explanations."
+        },
+        "da": {
+          "title": "Handlinger fortæller dig, når noget går galt",
+          "body": "Træning, scouting og gem af strategi fejler ikke længere i stilhed, du får nu en fejlbesked, når noget går galt. Etape-roller har også fået korte forklaringer."
+        },
+        "refs": [2465]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Small fixes across the app",
+          "body": "The founder page's CTA now scrolls to the waitlist, help deep-links work correctly, watchlist confirmations use a toast instead of a browser alert, and an internal survey banner has been removed."
+        },
+        "da": {
+          "title": "Småfixes på tværs af appen",
+          "body": "Founder-sidens CTA scroller nu til waitlisten, hjælp-deep-links virker korrekt, watchlist-bekræftelser bruger en toast i stedet for en browser-alert, og et internt survey-banner er fjernet."
+        },
+        "refs": [2467]
+      }
+    ]
+  },
+  {
     "version": "7.01",
     "date": "2026-07-16",
     "label": "Beta",
