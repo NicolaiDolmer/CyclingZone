@@ -115,6 +115,8 @@ Datamodel (tier-felt, årgangs-tag, tier-flyt) i Fase 4; U23-hold + U23-kalender
 
 Ændrer IKKE MASTERPLANs rækkefølge — fylder punkt 11 og 13 ud og skyder små sidestrøms-slices ind nu. Kun Fase 0 kører før v3-sporet er færdigt, og kun som sidestrøm (session-disciplinen består). Hver fase = egne PR'er + sim/scorecard-gates; ingen fase un-gater sig selv.
 
+**Issues oprettet 16/7:** Fase 0: #2484 (H3) · #2485 (V3) · #2486 (spec-forlig) — Fase 2: #2487 (M2) · #2488 (M3) — Fase 3: #2489 (M4) — Fase 2-4: #2490 (H1) — Fase 4: #2491 (H2) — Fase 4-6: **epic #2492 (S1, tre-tier; superseder #958)** — Fase 5: #2493 (V1) · #2494 (V2) · #2495 (V4). M1 (Fase 1) er dækket af #1922/#2262/#1974.
+
 | Fase | Hvornår | Indhold | Gates |
 |---|---|---|---|
 | **0 · Quick wins** (sidestrøm) | uge 30-31 | §3.2-omskrivning i 11/7-specen (docs) · #2456-kodeoprydning (fri-agent-butik væk, usolgt=slet — koden er stadig urørt) · V3 akademi-regnskab · H3 udviklings-moment (+#2446) · #2472 rebases + sim-genkøres → ejer merger | Læse-flader + docs; fog-gate på tekst; #2472: careerCurveSimulation på kombineret tilstand |
