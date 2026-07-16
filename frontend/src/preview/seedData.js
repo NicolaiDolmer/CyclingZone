@@ -461,7 +461,7 @@ export const SEED_STRATEGY = {
 
 // GET /api/academy/me — eneste kilde for academy-payloaden. Konsumeres af
 // mockHandlers.apiResponse("/api/academy/me") (return SEED_ACADEMY) → academy-
-// specs afhænger af præcis denne form (3 intakes, 2 free agents).
+// specs afhænger af præcis denne form (3 intakes, 2 roster-ryttere).
 export const SEED_ACADEMY = {
   enabled: true,
   slots: { used: 2, max: 8 },
@@ -557,24 +557,6 @@ export const SEED_ACADEMY = {
         team_id: null,
       },
       potentialEstimate: { lo: 3.0, hi: 3.0, exact: true, scoutLevel: 3 },
-    },
-  ],
-  freeAgents: [
-    {
-      id: "fa-1",
-      firstname: "Noah",
-      lastname: "Berg",
-      nationality_code: "no",
-      birthdate: "2007-04-12",
-      market_value: 95000,
-    },
-    {
-      id: "fa-2",
-      firstname: "Lukas",
-      lastname: "Meyer",
-      nationality_code: "de",
-      birthdate: "2009-11-03",
-      market_value: 72000,
     },
   ],
 };
