@@ -25,7 +25,10 @@
   "roi": {
     "training": "Dine ryttere træner {value} hurtigere hver dag",
     "trainingBuild": "Byg den for at begynde at træne dine ryttere hurtigere",
-    "trainingNext": "Næste: Niveau {tier} → dine ryttere vil træne {value} hurtigere hver dag"
+    "trainingNext": "Næste: Niveau {tier} → dine ryttere vil træne {value} hurtigere hver dag",
+    "scouting": "Låser op for at ansætte en chefscout: skarpere rytter-vurderinger, og to spejder-opgaver ad gangen ved topniveauet",
+    "scoutingBuild": "Byg den for at låse op for at ansætte en chefscout",
+    "scoutingNext": "Næste: Niveau {tier} låser op for en højere-tier chefscout"
   },
   "nextTier": {
     "generic": "Næste: Niveau {tier} → {value}"

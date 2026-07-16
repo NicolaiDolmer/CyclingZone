@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.06",
+    "date": "2026-07-16",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Facilities",
+        "en": {
+          "title": "Scouting Network is now open",
+          "body": "You can now build and upgrade the Scouting Network on the Club page, just like the Training Center. Each tier unlocks hiring a higher-tier chief scout: a better scout narrows his rider estimates further, and once his overall rating reaches about 80 he can run two scouting assignments at once instead of one."
+        },
+        "da": {
+          "title": "Scouting-netværket er nu åbent",
+          "body": "Du kan nu bygge og opgradere Scouting-netværket på Klub-siden, ligesom Træningscenteret. Hvert tier låser op for at ansætte en højere-tier chefscout: en bedre spejder indsnævrer sine rytter-estimater yderligere, og når hans samlede rating når omkring 80, kan han køre to spejder-opgaver ad gangen i stedet for én."
+        },
+        "refs": [2530]
+      }
+    ]
+  },
+  {
     "version": "7.05",
     "date": "2026-07-16",
     "label": "Beta",

@@ -169,15 +169,16 @@ test("GET facilities: nextTierBonus = effectiveBonus ved tier+1 (samme staff), n
   assert.equal(scouting.nextTierBonus, effectiveBonus("scouting", 1, null));
 });
 
-test("GET facilities: effectLive — KUN training er live (Plan B #1441)", async () => {
+test("GET facilities: effectLive — training + scouting er live, medical/academy/commercial er coming-soon (#1441 Plan B, #2530)", async () => {
   // Tomt facilitets-sæt: alle spor tier 0.
   const supabase = createSupabaseMock();
   const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
   assert.equal(status, 200);
 
+  const LIVE_TRACKS = new Set(["training", "scouting"]);
   for (const f of body.facilities) {
     assert.equal(f.tier, 0);
-    assert.equal(f.effectLive, f.track === "training", `${f.track} effectLive: kun training er wired (Plan B)`);
+    assert.equal(f.effectLive, LIVE_TRACKS.has(f.track), `${f.track} effectLive: kun training+scouting er wired`);
   }
 });
 

@@ -658,19 +658,23 @@
         "rows": [
           ["Facility", "What it does", "Status"],
           ["Training Center", "Speeds up your riders' daily ability growth", "Active now"],
-          ["Scouting Network", "Sharpens how much you can see about a rider's true potential", "Coming soon"],
+          ["Scouting Network", "Unlocks hiring and upgrading your chief scout", "Active now"],
           ["Medical Department", "Speeds up form and injury recovery", "Coming soon"],
           ["Academy Expansion", "Adds extra Academy intake slots", "Coming soon"],
           ["Commercial Department", "Boosts sponsor income (capped, a long-term investment)", "Coming soon"]
         ]
       },
-      "onlyTrainingLive": {
-        "title": "Only the Training Center is active right now",
-        "text": "Of the 5 tracks, only the Training Center's effect is wired into the game today. The other 4 show what they will do so you can plan ahead, but building or upgrading them has no in-game effect yet. Their Coming soon tag will change automatically to Active the moment their engine goes live, no action needed from you."
+      "liveTracksStatus": {
+        "title": "Only Training and Scouting are active right now",
+        "text": "Of the 5 tracks, only the Training Center and Scouting Network are wired into the game today. The other 3 show what they will do so you can plan ahead, but building or upgrading them has no in-game effect yet. Their Coming soon tag will change automatically to Active the moment their engine goes live, no action needed from you."
       },
       "staffSynergy": {
         "title": "How a chief and the facility work together",
         "text": "A facility's tier sets its base effect. Hiring a chief for that track then decides how much of that base effect you actually get: a facility with no chief runs at roughly half strength, and a chief's overall rating scales it up toward full strength as the rating approaches the top. In short, the facility is the ceiling and the chief is how close you get to it."
+      },
+      "hireChiefScout": {
+        "title": "Hiring a chief scout",
+        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
       },
       "costs": {
         "title": "Costs: one-time build price + recurring upkeep",

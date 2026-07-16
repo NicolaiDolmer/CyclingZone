@@ -15,6 +15,10 @@ const BASE_EFFECT = {
   commercial: { 0: 0, 1: 0.0006, 2: 0.0013, 3: 0.0027, 4: 0.0057, 5: 0.012 },
 };
 const TRACKS = ["training", "scouting", "medical", "academy", "commercial"];
+// Plan B (#1441) + #2530: 1:1-spejling af backend/lib/facilityConstants.js'
+// EFFECT_LIVE_BY_TRACK (co-SSOT, parity-testet i clubMock.parity.test.js) så
+// ejerens preview ALDRIG viser en anden facilitets-status end prod.
+const EFFECT_LIVE_BY_TRACK = { training: true, scouting: true, medical: false, academy: false, commercial: false };
 const NAME_POOL = ["Marc Vandenbroucke", "Henrik Sørensen", "Luca Bertolini", "Íñigo Sarasola", "Tomas Nyholm", "Ruben De Waele"];
 
 // #2220 A4b: preview-repræsentative evner. Overall-bånd pr. tier (spejler backendens
@@ -82,8 +86,11 @@ function facilitiesPayload() {
       staff: f.staff ? { id: `staff-${track}`, name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier], overall: OVERALL_BY_TIER[f.staff.tier] } : null,
       effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
       nextTierBonus,
-      // Plan B (#1441): training-effekten er wired i trænings-motoren → live.
-      effectLive: track === "training",
+      // Plan B (#1441) + #2530: training + scouting er wired i deres respektive
+      // motorer → live. Spejler backend/lib/facilityConstants.js EFFECT_LIVE_BY_TRACK
+      // (co-SSOT, dækket af clubMock.parity.test.js) så ejerens preview ALDRIG
+      // viser en anden facilitets-status end prod.
+      effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
   });
   // #2220 A4b: sæson-omkostnings-resume (upkeep + payroll vs. saldo).
@@ -150,4 +157,4 @@ export function clubMockRoute(method, pathname, search, body) {
   return null; // ikke en club-route
 }
 
-export const __constants = { PRICE, UPKEEP, SALARY, BASE_EFFECT };
+export const __constants = { PRICE, UPKEEP, SALARY, BASE_EFFECT, EFFECT_LIVE_BY_TRACK };
