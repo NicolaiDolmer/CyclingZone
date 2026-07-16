@@ -473,6 +473,23 @@
       "crash": "Crash",
       "mechanical": "Mechanical"
     },
+    "why": {
+      "title": "The bigger picture",
+      "gcTakeover": "{rider} took over the overall lead from {previousLeader}.",
+      "finalGc": "Final general classification: {first}, {second} and {third}.",
+      "helperShift": "{captain} finished inside the top 5 after {count} teammates gave up their own results to support him.",
+      "favoriteOffDay": "{rider} entered the stage as the strongest rider on paper but finished outside the top 15: {reason, select, jour_sans {he had an off day} incident {a crash or mechanical cost him the day} helper_work {he spent himself working for a teammate} other {no clear reason emerged}}.",
+      "formPeak": "{rider} arrived in excellent form and delivered on it."
+    },
+    "storyTags": {
+      "tag_jour_sans": { "label": "Off day", "tooltip": "Had a bad day: his legs just weren't there." },
+      "tag_peak_day": { "label": "Peak", "tooltip": "Timed his form to peak for this stage." },
+      "tag_perfect_peak": { "label": "Perfect peak", "tooltip": "Won on a stage he specifically peaked for." },
+      "tag_helper_sacrifice": { "label": "Sacrifice", "tooltip": "Gave up his own result to work for the team captain." },
+      "tag_outsider_win": { "label": "Outsider", "tooltip": "Won without being the strongest rider on paper." },
+      "tag_favorite_collapse": { "label": "Collapse", "tooltip": "The stage favourite had an off day and lost his shot." },
+      "tag_crash_ruined": { "label": "Crash", "tooltip": "A likely top result was wrecked by a crash or mechanical." }
+    },
     "jersey": {
       "leader": "Leader",
       "points_day": "Points",

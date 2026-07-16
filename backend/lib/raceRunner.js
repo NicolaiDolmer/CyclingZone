@@ -62,6 +62,9 @@ import {
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
+// S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
+// (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
+import { extractStageMoments } from "./raceNarrative.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
@@ -167,10 +170,14 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  *     (kald-stedets ansvar at udelade den når v3=false — flag-off skal forblive
  *     bit-identisk). undefined/tom Map = ingen overrides, ren fallback til
  *     entrant.race_role/'normal', bit-identisk med før S3.
- * @returns {{ resultRows, runs, finalFatigue, incidents }}
+ * @returns {{ resultRows, runs, finalFatigue, incidents, moments }}
  *   incidents: S4 (#1176) — flad liste af ALLE uheld på tværs af løbets etaper
  *   ({stage_number, rider_id, kind, outcome, time_loss_seconds, injury_days, u}).
  *   ALTID [] når v3=false (dormant, samme mønster som riderScores).
+ *   moments: S6 (#2355) — flad liste af ALLE why-rapport-momenter/story-tags på
+ *   tværs af løbets etaper ({stage_number, moment_key, params, significance,
+ *   rider_ids, team_ids}), extractStageMoments (raceNarrative.js). ALTID [] når
+ *   v3=false (samme dormant-mønster).
  */
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
@@ -195,6 +202,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const stageNumbersSoFar = new Set();
   const abandonedSet = new Set();
   const allIncidents = [];
+  // S6 (#2355): why-rapport-momenter pr. etape — kun akkumuleret når v3=true
+  // (extractStageMoments kaldes nedenfor med samme v3-gate som riderScores).
+  // previousGcLeaderId spores på tværs af loop-iterationer til gc_takeover.
+  const allMoments = [];
+  let previousGcLeaderId = null;
   // #1993: holdnavn-snapshot pr. team_id (fra de berigede entrants). Bruges til hold-
   // rækker (pushTeam), der ikke har en enkelt entrant at læse navnet fra.
   const teamNameByTeam = new Map();
@@ -341,6 +353,24 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const leaderTime = gc.length ? gc[0].time : 0;
     const gcFinish = (entry) => formatGap(entry.time - leaderTime);
 
+    // S6 (#2355): why-rapport-momenter — ren afledning af ranked[].components,
+    // samme mønster som incidents ovenfor. KUN v3 (Tier1-momenterne kræver
+    // komponenterne, som kun findes når v3=true — Tier0-dele holdes bag samme
+    // gate for at holde v1-stien 100% urørt/uændret adfærd).
+    if (v3) {
+      const roleByRider = new Map(stageEntrants.map((e) => [e.rider_id, e.race_role]));
+      const formByRider = new Map(stageEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
+      const stageMoments = extractStageMoments({
+        stageNumber, isFinal, isStageRace,
+        ranked, roleByRider, formByRider, breakawayStatus,
+        incidentsForStage: incidents,
+        gc: isStageRace ? gc : null,
+        previousGcLeaderId,
+      });
+      for (const m of stageMoments) allMoments.push({ stage_number: stageNumber, ...m });
+      if (isStageRace) previousGcLeaderId = gc[0]?.rider_id ?? previousGcLeaderId;
+    }
+
     if (!isStageRace) {
       // ENDAGSLØB: gc(all) + team. Ingen 'stage' (= dobbelttælling, jf. PCM).
       // gc-finish-order = denne ene etapes finish-order → udbruds-etiketten gælder direkte.
@@ -387,7 +417,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     entrants.map((e) => [e.rider_id, fatigueSeqById.get(e.rider_id)[lastIdx]])
   );
 
-  return { resultRows, runs, finalFatigue, incidents: allIncidents };
+  return { resultRows, runs, finalFatigue, incidents: allIncidents, moments: allMoments };
 }
 
 // ── I/O: indlæsning ───────────────────────────────────────────────────────────
@@ -944,6 +974,39 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
   if (injErr) throw new Error(`rider_condition (incident injury): ${injErr.message}`);
 }
 
+// S6 (#2355): persistér race_stage_moments (idempotent delete-then-insert pr.
+// (race_id, stageNumbers i DENNE kørsel) — spejler persistIncidents' mønster.
+// KUN kaldt når v3=true OG moments ikke er tom (kald-stedets ansvar, samme som
+// persistIncidents).
+//
+// GRACEFUL DEGRADATION (bevidst forskel fra persistIncidents' hårde throw):
+// v3-scoring er ALLEREDE ON i prod (raceEngineFlag.js's note), så denne
+// funktion begynder at kalde ind PRÆCIS når PR'en merges — FØR ejeren har nået
+// at anvende migrationen manuelt (samme rækkefølge-problem S4 undgik ved at
+// migrationen blev anvendt FØR v3 blev flippet). En fejl her må derfor ALDRIG
+// vælte etape-afviklingen — log og fortsæt, samme "ærlig degradering"-regel
+// som frontend-læsestien (RaceDetailPage's incidents-fetch).
+async function persistStageMoments({ supabase, race, moments, stageNumbers }) {
+  if (!moments?.length) return;
+  try {
+    const rows = moments.map((m) => ({
+      race_id: race.id,
+      stage_number: m.stage_number,
+      moment_key: m.moment_key,
+      params: m.params ?? {},
+      significance: m.significance ?? 0,
+      rider_ids: m.rider_ids ?? [],
+      team_ids: m.team_ids ?? [],
+    }));
+    await supabase.from("race_stage_moments").delete().eq("race_id", race.id)
+      .in("stage_number", [...new Set(stageNumbers)]);
+    const { error } = await supabase.from("race_stage_moments").insert(rows);
+    if (error) throw error;
+  } catch (err) {
+    console.warn(`  ⚠️  race_stage_moments persist failed for race ${race.id} (table may not be migrated yet — why-rapport degraderer til ingen momenter): ${err.message}`);
+  }
+}
+
 // S4 (#1176): race_incidents bærer kun rider_id (samme mønster som
 // race_results/persistIncidents ovenfor) — ét let riders-opslag før
 // notifyDiscord, så buildRaceSimEmbed's DNF-linje kan vise navne uden selv at
@@ -1018,7 +1081,7 @@ export async function simulateRace({
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
-  const { resultRows, runs, incidents } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
+  const { resultRows, runs, incidents, moments } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -1057,6 +1120,10 @@ export async function simulateRace({
   // så dette no-op'er uden DB-kald — persistIncidents selv guard'er på tom liste).
   if (v3 && incidents.length) {
     await persistIncidents({ supabase, race, incidents, stageNumbers: stages.map((s) => s.stage_number || 1) });
+  }
+  // S6 (#2355): why-rapport-momenter — samme v3+ikke-tom-gate som incidents.
+  if (v3 && moments.length) {
+    await persistStageMoments({ supabase, race, moments, stageNumbers: stages.map((s) => s.stage_number || 1) });
   }
   await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
 
@@ -1189,12 +1256,14 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  * @param {Map} [stageRoleOverrides]  S3 (#2034) — se buildRaceResults' jsdoc. KUN
  *   anvendt når v3=true; her nok med DENNE etapes overrides (ingen fatigue-
  *   akkumulering sker i denne funktion, i modsætning til buildRaceResults).
- * @returns {{ resultRows, runs, incidents }}  alle rækker bærer stage_number = dagens
+ * @returns {{ resultRows, runs, incidents, moments }}  alle rækker bærer stage_number = dagens
  *   etape, så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
  *   incidents: S4 (#1176) — dagens rollIncidents-output, stemplet med stage_number.
  *   ALTID [] når v3=false. Abandon-eksklusion af DENNE etapes felt (rytteren styrtede
  *   på en TIDLIGERE etape) er kald-stedets ansvar (simulateStageByIndex filtrerer
  *   `entrants` FØR denne funktion kaldes — se loadAbandonedRiderIds).
+ *   moments: S6 (#2355) — dagens extractStageMoments-output, stemplet med
+ *   stage_number. ALTID [] når v3=false.
  */
 export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides }) {
   if (!race?.id) throw new Error("race.id required");
@@ -1296,6 +1365,29 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const gc = rankByCumTimeAsc(classified, acc.cumTime, acc.posSum);
   const leaderTime = gc.length ? gc[0].time : 0;
   const gcFinish = (entry) => formatGap(entry.time - leaderTime);
+
+  // S6 (#2355): why-rapport-momenter. previousGcLeaderId = GC-lederen FØR
+  // denne etape, udledt af PRIOR-rækkerne alene (samme akkumulerings-funktion
+  // som `acc` ovenfor, blot uden dagens rækker) — stageIndex 0 (priorStageRows=[])
+  // giver naturligt previousGcLeaderId=null (ingen tidligere leder at skifte fra,
+  // gc_takeover udebliver korrekt på etape 1, spejler buildRaceResults' loop-variant).
+  let previousGcLeaderId = null;
+  if (priorStageRows.length) {
+    const priorAcc = accumulateStageRows({ stageRows: priorStageRows, profileTypeByStage });
+    const priorClassified = filterCompletedEntrants(entrants, priorAcc.stagesByRider, priorAcc.stageNumbers);
+    const priorGc = rankByCumTimeAsc(priorClassified, priorAcc.cumTime, priorAcc.posSum);
+    previousGcLeaderId = priorGc[0]?.rider_id ?? null;
+  }
+  const roleByRider = new Map(simEntrants.map((e) => [e.rider_id, e.race_role]));
+  const formByRider = new Map(simEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
+  const stageMoments = v3 ? extractStageMoments({
+    stageNumber, isFinal, isStageRace: true,
+    ranked, roleByRider, formByRider, breakawayStatus,
+    incidentsForStage: stampedIncidents,
+    gc, previousGcLeaderId,
+  }) : [];
+  const moments = stageMoments.map((m) => ({ stage_number: stageNumber, ...m }));
+
   const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), acc.cumTime, acc.posSum);
   const pointsCls = rankByCompDesc(classified, acc.pointsComp);
   const komCls = rankByCompDesc(classified, acc.komComp);
@@ -1317,7 +1409,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     for (const t of teamClassification(classified, acc.cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
   }
 
-  return { resultRows, runs, incidents: stampedIncidents };
+  return { resultRows, runs, incidents: stampedIncidents, moments };
 }
 
 /**
@@ -1416,6 +1508,7 @@ export async function simulateStageByIndex({
   let resultRows = [];
   let runs = [];
   let incidents = [];
+  let moments = [];
   let applied = { rowsImported: 0 };
 
   if (!finalizationPending) {
@@ -1495,16 +1588,17 @@ export async function simulateStageByIndex({
       const priorStageRows = stageIndex > 0
         ? await loadPriorStageRows({ supabase, raceId: race.id, beforeStageNumber: stageNumber })
         : [];
-      ({ resultRows, runs, incidents } = buildStageRowsAccumulated({
+      ({ resultRows, runs, incidents, moments } = buildStageRowsAccumulated({
         race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3, stageRoleOverrides,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente.
-      const { resultRows: allRows, runs: allRuns, incidents: allIncidents } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
+      const { resultRows: allRows, runs: allRuns, incidents: allIncidents, moments: allMoments } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
       incidents = (allIncidents || []).filter((inc) => inc.stage_number === stageNumber);
+      moments = (allMoments || []).filter((m) => m.stage_number === stageNumber);
     }
 
     if (dryRun) {
@@ -1568,6 +1662,10 @@ export async function simulateStageByIndex({
     // røres ikke (samme idempotens-mønster som persistRuns/apply_stage_result).
     if (v3 && incidents.length) {
       await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber] });
+    }
+    // S6 (#2355): samme scoping-mønster (denne etape alene).
+    if (v3 && moments.length) {
+      await persistStageMoments({ supabase, race, moments, stageNumbers: [stageNumber] });
     }
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald

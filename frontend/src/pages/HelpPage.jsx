@@ -274,6 +274,7 @@ const FAQ_KEYS = [
   "riderSalaryView",
   "riderDevelopment",
   "howToWinRace",
+  "whyReportFaq",
   "riderAbilities",
   "trainingFocusFaq",
   "seasonPlanner",

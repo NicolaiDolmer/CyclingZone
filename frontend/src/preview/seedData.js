@@ -240,6 +240,21 @@ export const SEED_RACE_INCIDENTS = [
   { id: "inc-d2-2", race_id: "race-done-2", stage_number: 2, rider_id: RIDERS[1].id, kind: "mechanical", outcome: "time_loss", time_loss_seconds: 134, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen" } },
 ];
 
+// S6 (#2355): race_stage_moments preview-seed for race-done-2 — dækker BÅDE
+// "beats" (gc_takeover + final_gc → WhyPanel på etape-fanen og "samlet") OG
+// story-tags (tag_outsider_win/tag_jour_sans på Ada → badges i resultat-
+// tabellen; tag_crash_ruined på den fiktive rider-99 der allerede har en
+// incident-seed ovenfor — han optræder ikke i nogen resultat-række, så tagget
+// forbliver usynligt i UI'et, samme graceful-degradation som DnfSection).
+export const SEED_RACE_STAGE_MOMENTS = [
+  { id: "mom-d2-s1-1", race_id: "race-done-2", stage_number: 1, moment_key: "team_day", params: { teamId: TEST_TEAM.id, count: 2 }, significance: 45, rider_ids: [], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
+  { id: "mom-d2-s2-4", race_id: "race-done-2", stage_number: 2, moment_key: "tag_jour_sans", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+];
+
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,
 // RiderStatsPage.fetchAllRiderSeasonRows). Egen shape (race:-embed, IKKE rider:-embed
 // som SEED_RACE_RESULTS ovenfor bruges til RaceDetailPage) — ingen delt lookup mod

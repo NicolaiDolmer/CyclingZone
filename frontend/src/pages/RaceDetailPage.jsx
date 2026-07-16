@@ -21,6 +21,7 @@ import { buildLiveStandings } from "../lib/raceLiveStandings.js";
 import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
+import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -133,6 +134,7 @@ export default function RaceDetailPage() {
   const [stageProfiles, setStageProfiles] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [moments, setMoments] = useState([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -217,11 +219,24 @@ export default function RaceDetailPage() {
       .select("id, stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(id, firstname, lastname)")
       .eq("race_id", raceId);
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }] = await Promise.all([
-      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise,
+    // S6 (#2355): race_stage_moments (why-rapport + story-tags). Samme degradér-
+    // ærligt-mønster som incidents ovenfor — tabellen committes som .sql men
+    // anvendes først af ejeren POST-merge, og v3-scoring var allerede ON i prod
+    // FØR denne migration, så en fejl her er FORVENTET indtil ejeren har anvendt
+    // den. Må ALDRIG vælte race-siden.
+    const momentsPromise = supabase
+      .from("race_stage_moments")
+      .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
+      .eq("race_id", raceId);
+
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise,
     ]);
     if (incidentsError) {
       console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
+    }
+    if (momentsError) {
+      console.warn("race_stage_moments fetch failed (table may not be migrated yet):", momentsError.message);
     }
 
     setMyTeamId(myTeamId);
@@ -230,6 +245,7 @@ export default function RaceDetailPage() {
     setStageProfiles(profiles ?? []);
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
+    setMoments(momentRows ?? []);
     setLoading(false);
   }, [raceId]);
 
@@ -332,6 +348,20 @@ export default function RaceDetailPage() {
       if (id != null && name && !byId.has(String(id))) byId.set(String(id), { id, name });
     }
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [results]);
+
+  // S6 (#2355): why-rapport-momenter refererer kun til rider_id/team_id (samme
+  // let-payload-mønster som race_incidents) — navnene slås op klient-side af
+  // de rytter/hold-embeds vi allerede har hentet med resultaterne. Manglende
+  // opslag → riderId/teamId vises råt (degraderer læseligt, aldrig et kast).
+  const riderNameById = useMemo(() => {
+    const out = new Map();
+    for (const r of results) {
+      if (r.rider_id && r.rider && !out.has(r.rider_id)) {
+        out.set(r.rider_id, `${r.rider.firstname ?? ""} ${r.rider.lastname ?? ""}`.trim());
+      }
+    }
+    return out;
   }, [results]);
 
   function filterRowsByTeam(rows) {
@@ -510,15 +540,17 @@ export default function RaceDetailPage() {
           {activeTab === "samlet" && (
             <div className="space-y-5">
               <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+              <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
               <DnfSection incidents={incidents} scopeType="overall" t={t} />
               {liveStandings
-                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />
-                : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />}
+                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />
+                : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />}
             </div>
           )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
             <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
-              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents} t={t} />
+              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
+              moments={moments} riderNameById={riderNameById} t={t} />
           ))}
         </>
       )}
@@ -528,12 +560,15 @@ export default function RaceDetailPage() {
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
           <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+          <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="overall" t={t} />
           {teamFilterBar}
           <ResultTable
             title={t("detail.tableResult")}
             rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
             highlightTeamId={resolvedTeamFilter}
+            moments={moments}
+            stageNumber={1}
           />
           {finalByType.team?.length > 0 && (
             <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} />
@@ -610,7 +645,84 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
   );
 }
 
-function OverallTab({ finalByType, filterRows, myTeamId }) {
+// S6 (#2355): why-rapport — de Tier1 komponent-afledte beats v1-referatet
+// ALDRIG kunne vise (helper-ofring, favorit-nedtur, formtop, GC-lederskifte).
+// mode="full" (etape-fane): alle 5 beat-nøgler for DENNE etape. mode="finalOnly"
+// ("samlet"-fanen på et etapeløb): kun final_gc — de øvrige beats er etape-
+// specifikke og ville virke løsrevet uden etape-kontekst på oversigten.
+// Dormant (renderer intet) hvis moments=[] (tabel ikke migreret/tom) — samme
+// ærlig-degraderings-regel som RaceRecap/DnfSection.
+function WhyPanel({ moments, stageNumber, mode = "full", riderNameById, t }) {
+  const beats = useMemo(() => {
+    if (mode === "finalOnly") return (moments || []).filter((m) => m.moment_key === "final_gc");
+    return whyBeatsForStage(moments, stageNumber);
+  }, [moments, stageNumber, mode]);
+
+  const rendered = useMemo(() => {
+    const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
+    return beats.map((m) => {
+      const p = m.params || {};
+      switch (m.moment_key) {
+        case "gc_takeover":
+          return { key: `${m.moment_key}-${m.stage_number}`, text: t("detail.why.gcTakeover", { rider: riderName(p.riderId), previousLeader: riderName(p.previousLeaderId) }) };
+        case "final_gc": {
+          const [first, second, third] = p.riderIds || [];
+          return { key: `${m.moment_key}-${m.stage_number}`, text: t("detail.why.finalGc", { first: riderName(first), second: riderName(second), third: riderName(third) }) };
+        }
+        case "helper_shift":
+          return { key: `${m.moment_key}-${m.stage_number}`, text: t("detail.why.helperShift", { captain: riderName(p.captainId), count: p.helperIds?.length ?? 0 }) };
+        case "favorite_off_day":
+          return { key: `${m.moment_key}-${m.stage_number}`, text: t("detail.why.favoriteOffDay", { rider: riderName(p.riderId), reason: p.reason }) };
+        case "form_peak":
+          return { key: `${m.moment_key}-${m.stage_number}`, text: t("detail.why.formPeak", { rider: riderName(p.riderId) }) };
+        default:
+          return null;
+      }
+    }).filter(Boolean);
+  }, [beats, riderNameById, t]);
+
+  if (!rendered.length) return null;
+
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
+        <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("detail.why.title")}</p>
+      </div>
+      <ul className="space-y-1.5">
+        {rendered.map((r) => (
+          <li key={r.key} className="text-cz-1 text-sm leading-relaxed">{r.text}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// S6 (#2355): story-tag-badges — kompakte per-rytter-mærker ("offer", "peak",
+// "outsider" ...) med den fulde forklaring i title-tooltippet (samme mønster
+// som BreakawayMarker). stageNumber=null aggregerer på tværs af HELE løbet
+// (bruges på "samlet"-fanen). Maks 2 badges pr. række — flere ville støje mere
+// end de forklarer.
+const MAX_STORY_TAGS_PER_ROW = 2;
+function StoryTagBadges({ moments, riderId, stageNumber, t }) {
+  const tags = storyTagsForRider(moments, riderId, stageNumber).slice(0, MAX_STORY_TAGS_PER_ROW);
+  if (!tags.length) return null;
+  return (
+    <span className="inline-flex items-center gap-1 ms-1.5 align-middle">
+      {tags.map((tag) => (
+        <span
+          key={tag.moment_key}
+          title={t(`detail.storyTags.${tag.moment_key}.tooltip`)}
+          className="inline-flex items-center rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-cz-3"
+        >
+          {t(`detail.storyTags.${tag.moment_key}.label`)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
@@ -623,7 +735,7 @@ function OverallTab({ finalByType, filterRows, myTeamId }) {
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(finalByType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
       })}
     </div>
   );
@@ -632,7 +744,7 @@ function OverallTab({ finalByType, filterRows, myTeamId }) {
 // #2081: løbende klassementer for et igangværende etapeløb — samme tabeller som
 // det endelige klassement, med eksplicit "stillingen efter etape N"-ramme så
 // ingen forveksler den med slutresultatet.
-function LiveOverallTab({ byType, stage, filterRows, myTeamId }) {
+function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
   const { t } = useTranslation("races");
   return (
     <div className="space-y-5">
@@ -643,13 +755,13 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId }) {
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(byType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
       })}
     </div>
   );
 }
 
-function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, t }) {
+function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, t }) {
   const [classTab, setClassTab] = useState("stage");
 
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
@@ -668,6 +780,7 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, t 
     <div className="space-y-5">
       <StageProfileCard profile={profile} />
       <RaceRecap results={results} scopeType="stage" stageNumber={stage} incidents={incidents} />
+      <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
       <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
       {jerseys.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-4">
@@ -705,7 +818,7 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, t 
         ))}
       </div>
 
-      <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} />
+      <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
     </div>
   );
 }
@@ -764,7 +877,7 @@ function StageProfileSilhouette({ profileType }) {
 // #1485 Holdklassement-række: holdet ER entiteten (ingen rytter, ingen flag/breakaway).
 // highlightWinner = true på holdklassementet → rank 1 får accent + "Winner"-markør,
 // så man kan SE hvem der vandt holdkonkurrencen i stedet for at grave i en tabel.
-function ResultEntityCell({ row, highlightWinner, t }) {
+function ResultEntityCell({ row, highlightWinner, t, moments, stageNumber }) {
   const entity = resultEntity(row);
   const isWinner = highlightWinner && row.rank === 1;
   if (entity.kind === "team") {
@@ -790,12 +903,13 @@ function ResultEntityCell({ row, highlightWinner, t }) {
         {entity.nationality && (<Flag code={entity.nationality} className="me-1" />)}
         {entity.name || "—"}
         <BreakawayMarker result={row} t={t} />
+        {entity.linkId && <StoryTagBadges moments={moments} riderId={entity.linkId} stageNumber={stageNumber} t={t} />}
       </span>
     </RiderLink>
   );
 }
 
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10 }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10, moments = [], stageNumber = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
@@ -831,7 +945,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
               <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}>
                 <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                 <td className="px-2 py-2">
-                  <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} />
+                  <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} moments={moments} stageNumber={stageNumber} />
                 </td>
                 {showTeamCol && (
                   <td className="px-2 py-2 text-cz-3 text-xs">
