@@ -1,11 +1,4 @@
 {
-  "survey": {
-    "message": "Hjælp os forme Cycling Zone. Tag 5 min undersøgelse",
-    "cta": "Tag undersøgelsen",
-    "dismissAriaLabel": "Luk banner",
-    "regionAriaLabel": "Undersøgelses-invitation",
-    "adminPreviewHint": "(Admin-preview, kun synligt for dig indtil flag flippes)"
-  },
   "nps": {
     "question": "Hvor sandsynligt er det, at du vil anbefale Cycling Zone til en ven?",
     "scaleLow": "Slet ikke",
