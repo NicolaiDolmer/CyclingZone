@@ -1,0 +1,29 @@
+name: Lighthouse CI (skip-stub)
+
+# perf-gate blev required i branch protection 16/7 (#2511, ejer-delegeret) —
+# men lighthouse-ci.yml er path-filtreret til frontend-ændringer. En required
+# check der aldrig rapporterer blokerer merge for evigt, så backend-/docs-only
+# PR'er hang (først ramt: PR #2472). Dette er GitHubs dokumenterede løsning:
+# et søster-workflow med INVERSE paths-ignore og samme job-navn, der rapporterer
+# grønt når bundle-budgettet beviseligt er upåvirket. Præcis ét af de to
+# workflows trigger pr. PR. Hold paths-ignore-listen identisk med
+# lighthouse-ci.yml's paths-liste.
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'frontend/**'
+      - 'scripts/check-bundle-budget.mjs'
+      - 'lighthouserc.json'
+      - '.github/workflows/lighthouse-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bundle unaffected
+        run: echo "Ingen frontend-/budget-filer ændret — bundle-budgettet er per definition upåvirket. Rapporterer grønt så den required perf-gate ikke blokerer backend-/docs-PR'er."
