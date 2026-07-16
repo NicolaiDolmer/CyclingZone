@@ -252,15 +252,19 @@ export function evaluateStallFindings({
 //
 // Netop dét gav watchdogen FALSKE etape-stall-alarmer (#2430): resultKeys blev bygget
 // af de første 1000 af 7.277 rækker, så etaper der HAVDE resultater så tomme ud →
-// "forfalden m. startfelt, ingen resultater". Sorteringen SKAL være total (unik id som
-// sidste nøgle), ellers kan ties flytte rækker mellem sider → gaps.
-async function fetchAllRaceRows(supabase, table, columns, raceIds) {
+// "forfalden m. startfelt, ingen resultater". Sorteringen SKAL være total (unik nøgle
+// sidst: id — eller PK-kolonnerne via orderCols for tabeller uden id-kolonne, #2536),
+// ellers kan ties flytte rækker mellem sider → gaps.
+async function fetchAllRaceRows(supabase, table, columns, raceIds, orderCols = ["id"]) {
   const ID_CHUNK = 300;
   const rows = [];
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
     const page = await fetchAllRows(() =>
-      supabase.from(table).select(columns).in("race_id", chunk).order("id")
+      orderCols.reduce(
+        (q, col) => q.order(col),
+        supabase.from(table).select(columns).in("race_id", chunk)
+      )
     );
     rows.push(...page);
   }
@@ -347,7 +351,9 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   if (dueRaceIds.length) {
     const rr = await fetchAllRaceRows(supabase, "race_results", "race_id,stage_number,id", dueRaceIds);
     for (const row of rr) resultKeys.add(`${row.race_id}:${row.stage_number}`);
-    const ent = await fetchAllRaceRows(supabase, "race_entries", "race_id,id", dueRaceIds);
+    // race_entries har composite PK (race_id, rider_id) og INGEN id-kolonne (#2536,
+    // samme fantom-kolonne-klasse som #2516) — total orden via PK-kolonnerne.
+    const ent = await fetchAllRaceRows(supabase, "race_entries", "race_id,rider_id", dueRaceIds, ["race_id", "rider_id"]);
     for (const row of ent) entryRaceIds.add(row.race_id);
   }
   const dueStages = dueRaw.map((s) => ({

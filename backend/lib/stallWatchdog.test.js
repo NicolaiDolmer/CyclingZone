@@ -535,3 +535,22 @@ test("fetchWatchdogState: en etape UDEN resultater giver stadig en ægte stall-a
   assert.equal(stageFindings.length, 1, "kun den reelt resultat-løse etape alarmerer");
   assert.equal(stageFindings[0].stageNumber, 9);
 });
+
+// ── (#2536) fantom-kolonne-guard ──────────────────────────────────────────────
+// race_entries har composite PK (race_id, rider_id) og INGEN id-kolonne — at
+// selecte eller .order()'e på "id" giver 42703 og vælter hele watchdog-kørslen
+// (Sentry CYCLINGZONE-34, andet call-site end #2516). Mock-supabasen validerer
+// ikke kolonnenavne, så guarden er en source-scan (samme mønster som #2517).
+test("stallWatchdog: race_entries må ikke referere fantom-kolonnen id (#2536)", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("./stallWatchdog.js", import.meta.url), "utf8");
+  assert.ok(
+    !/["']race_entries["']\s*,\s*["'][^"']*\bid\b[^"']*["']/.test(src),
+    "race_entries-kald må ikke selecte en bar id-kolonne (kolonnen findes ikke — brug PK-kolonnerne race_id,rider_id)"
+  );
+  assert.match(
+    src,
+    /["']race_entries["']\s*,\s*["']race_id,rider_id["']\s*,\s*\w+\s*,\s*\[\s*["']race_id["']\s*,\s*["']rider_id["']\s*\]/,
+    "race_entries-kaldet skal bruge PK-kolonnerne som select + total orden (orderCols)"
+  );
+});
