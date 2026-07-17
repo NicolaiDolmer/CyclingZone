@@ -36,9 +36,13 @@ export default function TeamProfilePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation("team");
+  const { t: tGR } = useTranslation("globalRank");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
+  // #2453: Global Rank-placering vist i hold-headeren. null = ikke hentet/skjult
+  // (fx inaktiv manager — global_rank_mv-rækken har global_rank=null da).
+  const [globalRank, setGlobalRank] = useState(null);
   const [managerStatus, setManagerStatus] = useState({ isOnline: false, lastSeen: null });
   // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for vis/skjul-toggles.
   const [squadView, setSquadView] = useState("current");
@@ -68,7 +72,7 @@ export default function TeamProfilePage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     if (myTeam) setMyTeamId(myTeam.id);
 
-    const [teamRes, ridersRes, pendingRes, standingRes] = await Promise.all([
+    const [teamRes, ridersRes, pendingRes, standingRes, globalRankRes] = await Promise.all([
       supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
       supabase.from("riders")
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
@@ -88,8 +92,11 @@ export default function TeamProfilePage() {
         // sæson tallene gælder (igangværende vs afsluttet) i stedet for at ligne nutid.
         .select("*, season:season_id(number, status)").eq("team_id", id)
         .order("updated_at", { ascending: false }).limit(1).single(),
+      // #2453: Global Rank-placering (null hvis inaktiv/ikke rankeret — skjules i UI).
+      supabase.from("global_rank_mv").select("global_rank, global_points").eq("team_id", id).maybeSingle(),
     ]);
 
+    setGlobalRank(globalRankRes?.data?.global_rank != null ? globalRankRes.data : null);
     setTeam(teamRes.data);
     const lastSeen = teamRes.data?.manager?.last_seen || null;
     const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
@@ -155,7 +162,16 @@ export default function TeamProfilePage() {
                 <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
               </p>
             )}
-            <p className="text-cz-2 text-sm">{t("profile.division", { n: team.division })}</p>
+            <p className="text-cz-2 text-sm flex items-center gap-2 flex-wrap">
+              <span>{t("profile.division", { n: team.division })}</span>
+              {/* #2453: Global Rank-placering — skjult for inaktive managere (globalRank=null). */}
+              {globalRank && (
+                <button onClick={() => navigate("/global-rank")}
+                  className="text-xs font-mono font-bold text-cz-accent-t hover:underline">
+                  {tGR("title")} #{globalRank.global_rank}
+                </button>
+              )}
+            </p>
           </div>
 
         </div>

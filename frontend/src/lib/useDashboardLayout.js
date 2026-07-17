@@ -19,6 +19,8 @@ export const DASHBOARD_MODULES = [
   { id: "board",         defaultVisible: true },
   { id: "recentResults", defaultVisible: true },
   { id: "riderRanking",  defaultVisible: true },
+  // #2453: Global Rank-widget ("#N ▲x · point" → linker til /global-rank).
+  { id: "globalRank",    defaultVisible: true },
 ];
 
 const STORAGE_KEY = "cz-dashboard-layout";

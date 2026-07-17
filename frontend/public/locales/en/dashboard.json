@@ -135,7 +135,8 @@
       "divStandings": "Division standings",
       "board": "Board status",
       "recentResults": "Recent results",
-      "riderRanking": "Rider ranking"
+      "riderRanking": "Rider ranking",
+      "globalRank": "Global Rank"
     }
   },
   "board": {
