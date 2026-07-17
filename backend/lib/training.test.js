@@ -7,7 +7,7 @@ import {
   isValidFocus, isValidIntensity,
   partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS,
   focusTrainability, smartDefaultFocus,
-  WEEKDAY_KEYS, isValidWeekPlanDays, resolveDayIntensity,
+  WEEKDAY_KEYS, isValidWeekPlanDays, resolveDayIntensity, cappedVisibleAbilities,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -450,4 +450,30 @@ test("resolveDayIntensity: #2438 — individuel ugeplan-override vinder selv ove
     hasExplicitPlan: true,
   });
   assert.equal(result, "easy");
+});
+
+// ── #2578: cappedVisibleAbilities — loft-markering uden at afsløre tal ─────────
+test("cappedVisibleAbilities: evne på/over loftet markeres; under loftet gør ikke", () => {
+  const [a, b] = VISIBLE_ABILITIES;
+  const row = { [a]: 70, [b]: 69, ability_caps: { [a]: 70, [b]: 70 } };
+  assert.deepEqual(cappedVisibleAbilities(row), [a]);
+});
+
+test("cappedVisibleAbilities: manglende/ugyldigt cap markeres IKKE (konservativt)", () => {
+  const [a, b] = VISIBLE_ABILITIES;
+  assert.deepEqual(cappedVisibleAbilities({ [a]: 70, ability_caps: null }), []);
+  assert.deepEqual(cappedVisibleAbilities({ [a]: 70, [b]: 80, ability_caps: { [a]: "x" } }), []);
+  assert.deepEqual(cappedVisibleAbilities(null), []);
+});
+
+test("cappedVisibleAbilities: current >= 99 er ALTID på loftet (dailyTraining klipper ved min(99, cap))", () => {
+  const [a] = VISIBLE_ABILITIES;
+  assert.deepEqual(cappedVisibleAbilities({ [a]: 99, ability_caps: null }), [a]);
+  // cap over 99 ændrer intet — 99 er den hårde grænse.
+  assert.deepEqual(cappedVisibleAbilities({ [a]: 99, ability_caps: { [a]: 120 } }), [a]);
+});
+
+test("cappedVisibleAbilities: kun VISIBLE_ABILITIES vurderes — fremmede nøgler ignoreres", () => {
+  const row = { not_an_ability: 50, ability_caps: { not_an_ability: 50 } };
+  assert.deepEqual(cappedVisibleAbilities(row), []);
 });

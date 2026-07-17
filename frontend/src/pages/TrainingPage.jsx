@@ -14,7 +14,7 @@ import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, isFocusFullyCapped, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
@@ -72,11 +72,23 @@ export default function TrainingPage() {
 
   const training = useTraining();
   const {
-    enabled, todayRun, condition, progress, trainability, smartDefaultFocus, loading,
+    enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
     weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan,
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
   } = training;
+
+  // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
+  // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
+  // et gennembrud (ellers fejllæses wrappen som "ingen fremgang").
+  const todayGainsByRider = useMemo(() => {
+    const out = {};
+    for (const row of todayRun?.report?.riders ?? []) {
+      const total = todayGainTotal(row);
+      if (total > 0) out[row.rider_id] = total;
+    }
+    return out;
+  }, [todayRun]);
 
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
   const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
@@ -507,14 +519,33 @@ export default function TrainingPage() {
           )}
         </td>
 
-        {/* Progress mod næste +1 (anticipation) */}
+        {/* Progress mod næste +1 (anticipation). #2578: ryttere hvis fokus-evner
+            ALLE står på livstidsloftet får en "færdigudviklet"-markering i stedet
+            for en død bar, og dagens vundne point vises som "+N i dag" så en
+            netop-wrappet bar ikke læses som nul fremgang. */}
         <td className="px-4 py-3">
-          <FocusProgress
-            info={focusProgress(plan?.focus, progress[rider.id])}
-            emptyLabel={t("noFocus")}
-            tRider={tRider}
-            toGoLabel={(o) => t("toGo", o)}
-          />
+          {isFocusFullyCapped(plan?.focus, capped[rider.id]) ? (
+            <span
+              className="inline-block text-[10px] px-1.5 py-0.5 rounded-full border bg-cz-subtle text-cz-2 border-cz-border"
+              title={t("focusCappedTitle")}
+            >
+              {t("focusCapped")}
+            </span>
+          ) : (
+            <FocusProgress
+              info={focusProgress(plan?.focus, progress[rider.id])}
+              emptyLabel={t("noFocus")}
+              tRider={tRider}
+              toGoLabel={(o) => t("toGo", o)}
+            />
+          )}
+          {todayGainsByRider[rider.id] > 0 && (
+            <div className="mt-0.5">
+              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-cz-success-bg text-cz-success border border-cz-success/30">
+                {t("gainedToday", { count: todayGainsByRider[rider.id] })}
+              </span>
+            </div>
+          )}
         </td>
 
         {/* Form */}

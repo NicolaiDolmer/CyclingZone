@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
+  isFocusFullyCapped, todayGainTotal,
   PEAK_FORM_THRESHOLD, NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
 
@@ -98,4 +99,27 @@ test("riderHistoryFromRuns: robust mod tomt/uvelformet input", () => {
   assert.deepEqual(riderHistoryFromRuns([], "r1"), []);
   assert.deepEqual(riderHistoryFromRuns([{ tick_date: "x", report: null }], "r1"), []);
   assert.deepEqual(riderHistoryFromRuns([{ tick_date: "x", report: { riders: [{ rider_id: "r1" }] } }], null), []);
+});
+
+// ── #2578: isFocusFullyCapped + todayGainTotal ────────────────────────────────
+
+test("isFocusFullyCapped: true kun når ALLE fokussets evner er på loftet", () => {
+  // threshold = time_trial/tempo.
+  assert.equal(isFocusFullyCapped("threshold", ["time_trial", "tempo"]), true);
+  assert.equal(isFocusFullyCapped("threshold", ["time_trial", "tempo", "sprint"]), true);
+  assert.equal(isFocusFullyCapped("threshold", ["time_trial"]), false, "delvist cappet → bar stadig meningsfuld");
+});
+
+test("isFocusFullyCapped: false uden fokus, ukendt fokus eller uden capped-data", () => {
+  assert.equal(isFocusFullyCapped(null, ["tempo"]), false);
+  assert.equal(isFocusFullyCapped("ikke-et-fokus", ["tempo"]), false);
+  assert.equal(isFocusFullyCapped("threshold", null), false);
+  assert.equal(isFocusFullyCapped("threshold", []), false);
+});
+
+test("todayGainTotal: summerer dagens hele point; tomt/negativt/korrupt → 0", () => {
+  assert.equal(todayGainTotal({ gains: { tempo: 2, sprint: 1 } }), 3);
+  assert.equal(todayGainTotal({ gains: {} }), 0);
+  assert.equal(todayGainTotal({ gains: { tempo: -1, sprint: "x" } }), 0);
+  assert.equal(todayGainTotal(null), 0);
 });

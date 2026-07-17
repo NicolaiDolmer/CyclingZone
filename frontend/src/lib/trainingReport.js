@@ -36,6 +36,34 @@ export function focusProgress(focus, progressForRider) {
   return { ability: best.ability, pct: Math.round(clamped * 100) };
 }
 
+// #2578: er ALLE fokussets evner på livstidsloftet? Så er der intet at vinde i
+// netop dette fokus, og progress-cellen skal vise "færdigudviklet" i stedet for
+// en død/stillestående bar. cappedForRider er backend-leverede ability-NØGLER
+// (aldrig tal — caps er server-hidden, #1162). Delvist cappet fokus (mindst én
+// evne med headroom) → false: baren er stadig meningsfuld.
+export function isFocusFullyCapped(focus, cappedForRider) {
+  if (!focus) return false;
+  const abilities = TRAINING_FOCUS_ABILITIES[focus];
+  if (!abilities?.length) return false;
+  if (!Array.isArray(cappedForRider) || !cappedForRider.length) return false;
+  const set = new Set(cappedForRider);
+  return abilities.every((a) => set.has(a));
+}
+
+// #2578: samlet antal hele point vundet i dagens kørsel for én rapport-række.
+// Bruges til "+N i dag"-chippen på roster-rækken, så en progress-bar der netop
+// har wrappet efter et gennembrud ikke fejllæses som "ingen fremgang".
+export function todayGainTotal(reportRow) {
+  const gains = reportRow?.gains;
+  if (!gains) return 0;
+  let total = 0;
+  for (const n of Object.values(gains)) {
+    const v = Number(n);
+    if (Number.isFinite(v) && v > 0) total += v;
+  }
+  return total;
+}
+
 // Et gennembrud = mindst én evne der steg (+1 eller mere) i dagens kørsel.
 export function isBreakthrough(reportRow) {
   const gains = reportRow?.gains;

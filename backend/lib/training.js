@@ -12,6 +12,7 @@
 // riderProgression for reproducerbar risiko).
 
 import { seededUnit, signatureFactor, PROGRESSION_CONFIG } from "./riderProgression.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
 export const TRAINING_CONFIG = Object.freeze({
@@ -291,6 +292,27 @@ export function resolveDayIntensity({
   if (isValidIntensity(planIntensity)) return planIntensity;
 
   return "normal";
+}
+
+// #2578: hvilke SYNLIGE evner står på deres livstidsloft, ud fra den persisterede
+// rider_derived_abilities-row (ability_caps skrives af motorerne, frisk pr. seneste
+// tick efter #2471/#2472). Returnerer KUN ability-nøgler — aldrig tal: caps og
+// potentiale er server-hidden (#1162), og markeringen må kun afsløre AT loftet er
+// nået, ikke hvor det ligger. Manglende/ukendt cap ⇒ ikke markeret (konservativt:
+// hellere en progress-bar for meget end en falsk "færdigudviklet"); current ≥ 99
+// er dog ALTID på loftet (dailyTraining.js klipper ved min(99, cap)).
+export function cappedVisibleAbilities(abilityRow) {
+  if (!abilityRow || typeof abilityRow !== "object") return [];
+  const caps = abilityRow.ability_caps;
+  const out = [];
+  for (const ability of VISIBLE_ABILITIES) {
+    const current = Number(abilityRow[ability]);
+    if (!Number.isFinite(current)) continue;
+    if (current >= 99) { out.push(ability); continue; }
+    const cap = Number(caps?.[ability]);
+    if (Number.isFinite(cap) && current >= Math.min(99, cap)) out.push(ability);
+  }
+  return out;
 }
 
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {
