@@ -514,8 +514,24 @@ export async function notifyWatchlistRiderAuction({ userId, riderName, endsAt })
 
 // Bestyrelses-reaktion, DM til hold-ejeren. type = board_update | board_critical
 // — begge styret af `board_update`-toggle. Ny DM-strøm.
-export async function notifyBoardUpdateDM({ teamId, type = "board_update", title, description, fields = [] }) {
-  await notifyDiscordDM({ teamId, type, title, description, fields });
+//
+// #2569: board-cronsene har userId i hånden (ikke teamId), præcis som
+// notifyWatchlistRiderAuction. Signaturen tog KUN teamId, så cron.js'
+// `notifyBoardUpdateDM({ userId })` blev droppet tavst → teamId=undefined og
+// userId=null nåede resolveDmRecipient, som intet havde at slå op på. Resultat:
+// hver eneste bestyrelses-DM siden #2157 (4/7) endte i [discord-dm:no-recipient]
+// uden Sentry-capture. Begge nøgler føres nu igennem — resolveDmRecipient
+// foretrækker userId og falder tilbage til teamId-opslaget.
+export async function notifyBoardUpdateDM({
+  teamId = null,
+  userId = null,
+  type = "board_update",
+  title,
+  description,
+  fields = [],
+  notifyFn = notifyDiscordDM,
+}) {
+  await notifyFn({ teamId, userId, type, title, description, fields });
 }
 
 export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {
