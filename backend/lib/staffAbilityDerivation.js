@@ -9,7 +9,7 @@
 //
 // En staff-profil = { role, tier, overall, dimensions, levels, roleSkills }:
 //   - training-rollen: fulde coaching-DIMENSIONER (physical/mental/technical) + niveau-affiniteter
-//     (youth/junior/senior). roleSkills tom.
+//     (u23/senior — #2529: youth+junior kollapset til ét u23-bånd). roleSkills tom.
 //   - øvrige roller: rolle-relevante roleSkills-akser (+ niveau-affiniteter hvor relevant).
 //     dimensions tom (kun training coacher rytter-evne-dimensioner).
 import { TIER_OVERALL_BAND, LEVEL_BANDS } from "./staffAbilityConstants.js";

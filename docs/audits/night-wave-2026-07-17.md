@@ -23,9 +23,17 @@
 | #2438 individuel træning overtrumfes af rutine | ✅ PR | [#2549](https://github.com/NicolaiDolmer/CyclingZone/pull/2549) (inkl. help.json en+da) |
 | #2512 race_days_completed-enheden (524 af 60) | 🟡 DELVIST — agent frøs midt i arbejdet | Uncommitted arbejde i `C:\Dev\CyclingZone\.claude\worktrees\wf_223dc94d-42d-1` (branch `fix/2512-race-days-unit`): seasonRaceDays.js + tests + backfill-SQL påbegyndt. **Recovery: fortsæt agent i SAMME worktree** (runbook §Recovery) — respawn IKKE frisk. |
 
-### Chunk B + C — ALDRIG LAUNCHED (se Afvigelser)
+### Chunk B + C — aldrig launched i NAT (se Afvigelser) — indhentet som DAGBØLGE 17/7 08:10-10:30
 
-#2449, #2518, #2444, #2414, #2440, #2535, #2462, #2522, #2451, #2523, #2524, #2526, #2508, #2450, #2453, #2529, #2411 — alle urørte, står stadig `claude:todo`. Reserven (#2479/#2415/#2430) urørt.
+**Morgen-merge-løkke (ejer-go 07:50):** #2545/#2547/#2548/#2549 merged + done-flip på #2436/#2438/#2446/#2424/#2425; prod smoke-verificeret (backend 200/401, frontend 200, Vercel deploy completed). `verify`-check-fejlen på main = falsk alarm (backend-only merge → Vercel Ignored Build Step → job-timeout); chip spawnet til fix. #2512 recovered i samme worktree → PR [#2550](https://github.com/NicolaiDolmer/CyclingZone/pull/2550) (backfill-SQL, ejer merger).
+
+**Chunk B (6/6, launched 08:20):** #2535→[#2551](https://github.com/NicolaiDolmer/CyclingZone/pull/2551) · #2462→[#2552](https://github.com/NicolaiDolmer/CyclingZone/pull/2552) · #2440→[#2553](https://github.com/NicolaiDolmer/CyclingZone/pull/2553) · #2444→[#2554](https://github.com/NicolaiDolmer/CyclingZone/pull/2554) (perf-fixes dashboard+liga; matview i stedet for fuld-fetch i Resultater) · #2414→[#2555](https://github.com/NicolaiDolmer/CyclingZone/pull/2555) (drift-vagt; **backtest fandt LIVE drift → issue [#2557](https://github.com/NicolaiDolmer/CyclingZone/issues/2557)**) · #2449+#2518→[#2556](https://github.com/NicolaiDolmer/CyclingZone/pull/2556) (S2-kalendergenerator + admin-knap + planner-sæsonvælger; S2 findes ikke i prod endnu — ejer opretter og genererer post-merge).
+
+**Chunk C (9/9, launched 09:05):** #2526→[#2558](https://github.com/NicolaiDolmer/CyclingZone/pull/2558) · #2523→[#2560](https://github.com/NicolaiDolmer/CyclingZone/pull/2560) (per-etape-notifikationer; +notifications-type-SQL) · #2411→[#2561](https://github.com/NicolaiDolmer/CyclingZone/pull/2561) (TTT pauset) · #2524→[#2562](https://github.com/NicolaiDolmer/CyclingZone/pull/2562) (watchlist-besked; +SQL) · #2453→[#2563](https://github.com/NicolaiDolmer/CyclingZone/pull/2563) (global rank, matview; **point-model = anbefaling, ejer godkender i PR-body**; +SQL) · #2522+#2451→[#2564](https://github.com/NicolaiDolmer/CyclingZone/pull/2564) (asking-price-filter + bulk-priser) · #2529→[#2565](https://github.com/NicolaiDolmer/CyclingZone/pull/2565) (U23-bånd; +SQL) · #2450→[#2566](https://github.com/NicolaiDolmer/CyclingZone/pull/2566) (personale-oversigt) · #2508 = allerede shippet i PR #2509 → issue lukket.
+
+**Merge-rækkefølge-forslag (chunk B+C):** backend-only først (#2553, #2561, #2551), så #2554 (perf), #2560/#2562 (notifikationer, SQL additiv), #2552 (admin), #2558 (links), #2565 (U23, SQL), #2564/#2566 (UX-tunge — klik-test på preview), #2563 (global rank — godkend point-model), #2556 bredest til sidst. PR'er med `database/*.sql`: #2555, #2560, #2562, #2563, #2565 → ejer applier SQL manuelt post-merge (additive constraints/tabeller/matview — rækkefølge ligegyldig indbyrdes).
+
+Reserven (#2479/#2415/#2430) bevidst ikke trukket — dagbølgen sluttede med fuld kø leveret.
 
 ## Udkast til morgen-merge-rækkefølge (backend/lav-konflikt først, migration sidst)
 

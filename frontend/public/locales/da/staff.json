@@ -5,10 +5,13 @@
   "roles": { "training": "Sportsdirektør", "scouting": "Chefscout", "medical": "Holdlæge", "academy": "Akademichef", "commercial": "Kommerciel direktør" },
   "hero": { "tier": "Tier {tier}", "salary": "{amount} CZ$/sæson", "ratingEyebrow": "Rating /99", "specHeadline": "Bedst til {axis}" },
   "tabs": { "overview": "Overblik", "effect": "Effekt", "history": "Historik" },
-  "columns": { "dimensions": "Coaching", "levels": "Niveau-fokus", "roleSkills": "Rolle-evner" },
+  "columns": {
+    "dimensions": "Coaching", "levels": "Trænings-gruppe-fokus", "roleSkills": "Rolle-evner",
+    "levelsTooltip": "U23 dækker akademi-ryttere og unge profs op til 25 år; Senior dækker ryttere fra 26 år og op. Chefens trænings-gruppe-fokus viser hvilken aldersgruppe han træner bedst, oveni hans coaching-dimensioner."
+  },
   "axes": {
     "physical": "fysisk træning", "mental": "mental træning", "technical": "teknisk træning",
-    "youth": "ungdom", "junior": "junior", "senior": "senior",
+    "u23": "U23", "senior": "senior",
     "evaluation": "talentvurdering", "reach": "netværk",
     "recovery": "restitution", "injuryPrevention": "skadesforebyggelse",
     "intake": "intake-kvalitet", "growth": "vækstfart",
@@ -16,5 +19,10 @@
   },
   "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Træningscentret er aktivt i spillet i dag; de øvrige kommer snart og viser hvad de vil gøre, når de går live." },
   "history": { "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander." },
-  "switcher": { "count": "{index} / {total}" }
+  "switcher": { "count": "{index} / {total}" },
+  "public": {
+    "team": "Ansat hos {team}",
+    "viewTeam": "Se hold",
+    "limitedNote": "Dette er en anden managers staff, så kun rating og top-specialisering er synlig. Den fulde evne-oversigt vises kun for ejer-holdet."
+  }
 }

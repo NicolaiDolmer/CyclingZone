@@ -142,9 +142,18 @@
       "title": "Race result is in",
       "message": "{race} has been run. View the result."
     },
+    "stageResult": {
+      "title": "Stage result is in",
+      "message": "Stage {stage} of {race} is done. Your best: {rider}, position {position}.",
+      "messageNoResult": "Stage {stage} of {race} is done."
+    },
     "contractExpiring": {
       "title": "Contract expiring",
       "message": "{rider}'s contract expires at the end of season {season}."
+    },
+    "watchlistDeparted": {
+      "title": "Rider has left the game",
+      "message": "{rider} has left the game and was removed from your watchlist."
     },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",

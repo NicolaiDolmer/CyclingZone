@@ -81,6 +81,7 @@ const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const SeasonPlannerPage = lazy(() => import("./pages/SeasonPlannerPage"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
+const StaffOverviewPage = lazy(() => import("./pages/StaffOverviewPage"));
 
 function LoadingScreen() {
   return (
@@ -225,6 +226,7 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="riders" element={<RidersPage />} />
             <Route path="riders/:id" element={<RiderStatsPage />} />
+            <Route path="staff" element={<StaffOverviewPage />} />
             <Route path="staff/:id" element={<StaffProfilePage />} />
             <Route path="auctions" element={<AuctionsPage />} />
             <Route path="auctions/history" element={<AuctionHistoryPage />} />

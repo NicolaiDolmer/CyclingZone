@@ -241,7 +241,7 @@ export async function runTeamTrainingDay({
         // ved tickCaps ovenfor); voksne uændret (1.0 = bit-identisk).
         academyRateMult: inAcademy ? ACADEMY.INTERIM_RATE_MULT : 1.0,
         // Plan B (#1441): facilitets-magnitude + chef-specialisering. riderLevel
-        // (youth/junior/senior) styrer chefens niveau-affinitets-match pr. rytter.
+        // (u23/senior — #2529) styrer chefens niveau-affinitets-match pr. rytter.
         staff: trainingStaff,
         facilityTier: trainingFacilityTier,
         riderLevel: riderLevelBand({ is_academy: rider.is_academy, age }),

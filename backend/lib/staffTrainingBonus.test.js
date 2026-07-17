@@ -11,31 +11,38 @@ import { staffTrainingBonus, facilityTrainingMultiplier, STAFF_TRAINING_BONUS_CO
 import { effectiveBonus } from "./facilityEngine.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
-// Fixture: en ren fysisk-ungdoms-coach. physical 99 (stærk) / mental 33 (svag);
-// youth 74 / senior 37. → specializationMatch: physical-youth ≈ 1.32 (fordel),
-// mental-youth ≈ 0.987 (≤ baseline → ingen bonus), physical-senior ≈ 1.21 (< youth).
-const PHYS_YOUTH_COACH = deriveStaffAbilities({ role: "training", tier: 5, name: "Karel Novotny" });
+// Fixture: en ren fysisk-ungdoms-coach. physical 95 (stærk) / mental 20 (svag);
+// u23 95 / senior 20 (#2529: LEVEL_BANDS = u23/senior, youth+junior kollapset).
+// Håndbygget (IKKE deriveStaffAbilities): specializationMatch kræver kun
+// { overall, dimensions, levels }, og et fast fixture holder testen uafhængig
+// af PRNG-hash-tilfældighed (se dailyTraining.test.js for samme begrundelse).
+const PHYS_YOUTH_COACH = {
+  overall: 70,
+  dimensions: { physical: 95, mental: 20, technical: 50 },
+  levels: { u23: 95, senior: 20 },
+  roleSkills: {},
+};
 
 // ── Nul regression: ingen staff / ingen facilitet → præcis 1.0 ────────────────
 
 test("staffTrainingBonus: staff==null → 1.0 (nul regression)", () => {
   assert.equal(
-    staffTrainingBonus({ facilityTier: 5, staff: null, ability: "climbing", riderLevel: "youth" }),
+    staffTrainingBonus({ facilityTier: 5, staff: null, ability: "climbing", riderLevel: "u23" }),
     1.0
   );
   assert.equal(
-    staffTrainingBonus({ facilityTier: 5, staff: undefined, ability: "climbing", riderLevel: "youth" }),
+    staffTrainingBonus({ facilityTier: 5, staff: undefined, ability: "climbing", riderLevel: "u23" }),
     1.0
   );
 });
 
 test("staffTrainingBonus: ingen trænings-facilitet (tier null/0) → 1.0", () => {
   assert.equal(
-    staffTrainingBonus({ facilityTier: 0, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" }),
+    staffTrainingBonus({ facilityTier: 0, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" }),
     1.0
   );
   assert.equal(
-    staffTrainingBonus({ facilityTier: null, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" }),
+    staffTrainingBonus({ facilityTier: null, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" }),
     1.0
   );
 });
@@ -44,19 +51,19 @@ test("staffTrainingBonus: ingen trænings-facilitet (tier null/0) → 1.0", () =
 
 test("staffTrainingBonus: fysisk-ungdoms-coach løfter ung rytters FYSISKE evne (>1.0)", () => {
   // climbing er en physical-evne (dimensionOf("climbing")==="physical").
-  const bonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" });
+  const bonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" });
   assert.ok(bonus > 1.0, `forventede >1.0, fik ${bonus}`);
 });
 
 test("staffTrainingBonus: dimension-miss — samme coach = 1.0 for ung rytters MENTALE evne", () => {
   // aggression er en mental-evne; coachens mental-akse (33) er under baseline →
   // ingen specialiserings-fordel → bonus præcis 1.0 (træning straffer aldrig).
-  const bonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "aggression", riderLevel: "youth" });
+  const bonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "aggression", riderLevel: "u23" });
   assert.equal(bonus, 1.0);
 });
 
 test("staffTrainingBonus: niveau-miss — senior-rytters fysiske evne løftes MINDRE end en ungdoms", () => {
-  const youthBonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" });
+  const youthBonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" });
   const seniorBonus = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "senior" });
   assert.ok(seniorBonus < youthBonus, `senior (${seniorBonus}) skal løftes mindre end youth (${youthBonus})`);
   assert.ok(seniorBonus >= 1.0, "bonus aldrig under 1.0");
@@ -66,9 +73,9 @@ test("staffTrainingBonus: niveau-miss — senior-rytters fysiske evne løftes MI
 
 test("staffTrainingBonus: altid ≥ 1.0 (træning kan aldrig give negativ effekt)", () => {
   const combos = [
-    { ability: "climbing", riderLevel: "youth" },
+    { ability: "climbing", riderLevel: "u23" },
     { ability: "aggression", riderLevel: "senior" },
-    { ability: "descending", riderLevel: "junior" },
+    { ability: "descending", riderLevel: "u23" },
     { ability: "tactics", riderLevel: "senior" },
   ];
   for (const staff of [PHYS_YOUTH_COACH, deriveStaffAbilities({ role: "training", tier: 1, name: "Elena Sarti" })]) {
@@ -80,7 +87,7 @@ test("staffTrainingBonus: altid ≥ 1.0 (træning kan aldrig give negativ effekt
 });
 
 test("staffTrainingBonus: højere facilitets-tier → større (eller lige) løft ved samme fordel", () => {
-  const args = { staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" };
+  const args = { staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" };
   const t1 = staffTrainingBonus({ ...args, facilityTier: 1 });
   const t5 = staffTrainingBonus({ ...args, facilityTier: 5 });
   assert.ok(t5 > t1, `t5 (${t5}) skal løfte mere end t1 (${t1})`);

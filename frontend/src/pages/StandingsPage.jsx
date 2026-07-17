@@ -111,23 +111,52 @@ export default function StandingsPage() {
   }
 
   async function loadAllInner() {
-    const { data: { user } } = await supabase.auth.getUser();
-    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
-    if (!user) { return; }
-    const { data: mine } = await supabase.from("teams").select("id, name, division").eq("user_id", user.id).single();
-    setMyTeamId(mine?.id);
-    if (mine?.division) setDivTab(mine.division);
-
-    const { data: activeSeason } = await supabase.from("seasons").select("*").eq("status", "active").single();
-    setSeason(activeSeason);
-
-    const [teamsRes, standingsRes, racesRes, poolsRes] = await Promise.all([
+    // #2444 · teams- og pools-queryen afhænger hverken af user eller activeSeason
+    // (statisk reference-/holddata) — de kørte tidligere sidst i en 4-forespørgsels-
+    // Promise.all, EFTER to sekventielle awaits (user → mine → season). Startet
+    // her, samtidig med user/mine/season, sparer de fulde round-trips for begge.
+    const teamsPromise = supabase.from("teams")
       // last_seen joinet ind (#1609) til online-prik — samme som TeamsPage.jsx:41.
       // #1688: league_division_id med, så holdet kan placeres i sin pulje-sub-fane.
       // #1718: AI-hold MED — divisioner der (næsten) kun er AI fremstod tomme da
       // is_ai-filteret holdt dem ude. is_ai joines ind så de kan markeres diskret.
       // Test- og frosne konti holdes stadig ude (de er ikke ægte konkurrenter).
-      supabase.from("teams").select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
+      .select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name");
+    // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
+    // læse-policy findes (league-divisions-pyramid-migrationen).
+    const poolsPromise = supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) { return; }
+
+    // #2444 · "mine" (mit hold) og activeSeason er uafhængige af hinanden — kørte
+    // tidligere som to sekventielle awaits efter hinanden.
+    const [{ data: mine }, { data: activeSeason }] = await Promise.all([
+      supabase.from("teams").select("id, name, division").eq("user_id", user.id).single(),
+      supabase.from("seasons").select("*").eq("status", "active").single(),
+    ]);
+    setMyTeamId(mine?.id);
+    if (mine?.division) setDivTab(mine.division);
+    setSeason(activeSeason);
+
+    // #2444 · begge matview-reads afhænger kun af activeSeason.id (kendt nu) —
+    // ikke af teamsRes/standingsRes/racesRes nedenfor. Startet HER (i stedet for
+    // efter hovedbolkens Promise.all resolver) sparer endnu en fuld round-trip;
+    // await'es sammen med `merged` længere nede.
+    const extDataPromise = activeSeason
+      ? fetchAllRows(() => supabase.from("team_standings_ext_mv").select("*")
+          .eq("season_id", activeSeason.id)
+          .order("team_id", { ascending: true }))
+      : Promise.resolve([]);
+    const progDataPromise = activeSeason
+      ? fetchAllRows(() => supabase.from("team_race_points_mv").select("team_id, race_id, race_points")
+          .eq("season_id", activeSeason.id)
+          .order("team_id", { ascending: true }).order("race_id", { ascending: true }))
+      : Promise.resolve([]);
+
+    const [teamsRes, standingsRes, racesRes, poolsRes] = await Promise.all([
+      teamsPromise,
       activeSeason
         ? supabase.from("season_standings")
             // #1688: league_division_id med (GRANT på plads i league-divisions-pyramid-
@@ -140,9 +169,7 @@ export default function StandingsPage() {
         .select("id, name, edition_year, pool_race:pool_race_id(date_text)")
         .eq("season_id", activeSeason?.id || "")
         .order("name"),
-      // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
-      // læse-policy findes (league-divisions-pyramid-migrationen).
-      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+      poolsPromise,
     ]);
     setPools(poolsRes.data || []);
 
@@ -179,14 +206,8 @@ export default function StandingsPage() {
       // >1000 rækker (hold × løb), og PostgREST capper stille ved db-max-rows
       // (1000) → progressions-grafen mistede punkter for de sidste hold (#2206,
       // samme rod-årsag som rytterranglisten). Stabil .order() kræves af helper'en.
-      const [extData, progData] = await Promise.all([
-        fetchAllRows(() => supabase.from("team_standings_ext_mv").select("*")
-          .eq("season_id", activeSeason.id)
-          .order("team_id", { ascending: true })),
-        fetchAllRows(() => supabase.from("team_race_points_mv").select("team_id, race_id, race_points")
-          .eq("season_id", activeSeason.id)
-          .order("team_id", { ascending: true }).order("race_id", { ascending: true })),
-      ]);
+      // Queries allerede startet ovenfor (parallelt med hovedbolkens Promise.all).
+      const [extData, progData] = await Promise.all([extDataPromise, progDataPromise]);
 
       // Skalar-kolonner. comp/podier keyes frit (UI slår op pr. team_id); præmie
       // begrænses til merged-hold (matcher den gamle prize[team_id]!==undefined-guard).

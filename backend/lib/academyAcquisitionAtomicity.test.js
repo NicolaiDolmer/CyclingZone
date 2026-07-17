@@ -208,6 +208,15 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
           },
         };
       }
+      if (table === "rider_watchlist") {
+        // #2524: deleteUnsoldYouthRider kalder notifyAndClearWatchlistForRiders
+        // efter en bekræftet sletning — ingen af disse fixtures har ønskeliste-
+        // rækker for de tabende youth-ryttere, så et tomt svar er nok.
+        return {
+          select: () => ({ in: () => Promise.resolve({ data: [], error: null }) }),
+          delete: () => ({ in: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };

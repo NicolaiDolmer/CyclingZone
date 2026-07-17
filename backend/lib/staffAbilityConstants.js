@@ -8,7 +8,12 @@
 export const STAFF_ROLES = Object.freeze(["training", "scouting", "medical", "academy", "commercial"]);
 
 // Niveau-affiniteter — en trænings-chef kan specialisere sig i en alders-fase.
-export const LEVEL_BANDS = Object.freeze(["youth", "junior", "senior"]);
+// #2529 (ejer-beslutning Discord 16/7): "youth" + "junior" kollapset til ÉT "u23"-bånd
+// (spillere kunne ikke finde forklaringen, og koden matchede ikke ejerens egen
+// beskrivelse). Kaldes "coaching group"/"trænings-gruppe" i UI-tekster — IKKE
+// "tier" — for ikke at kollidere med #2492's tre-tier KLUBSTRUKTUR
+// (Senior/U23/Junior), som er noget andet (klub-niveau, ikke trænings-affinitet).
+export const LEVEL_BANDS = Object.freeze(["u23", "senior"]);
 
 // Dimension → hvilke af de 15 VISIBLE_ABILITIES den dækker. Præcis partition (drift-guard).
 // physical(10): fysiologi-drevne disciplin-evner. mental(2): aggression/tactics.
@@ -37,11 +42,34 @@ export const TIER_OVERALL_BAND = Object.freeze({
   5: { lo: 72, hi: 90 },
 });
 
-// Alders-bånd → niveau (grunding: is_academy 16–21 = youth; 22–25 = junior; 26+ = senior).
-export function riderLevelBand({ is_academy, age } = {}) {
-  if (is_academy && age <= 21) return "youth";
-  if (age >= 26) return "senior";
-  return "junior";
+// Alders-bånd → niveau (#2529: youth+junior kollapset til u23 — ≤25 = u23, 26+ = senior).
+// `is_academy` beholdes i signaturen for bagud-kompatibilitet med eksisterende
+// kald-steder (fx dailyTrainingEngine.js), men påvirker ikke længere resultatet:
+// bånd-kollapset gør skellet mellem akademi/ikke-akademi irrelevant for coaching-gruppen.
+export function riderLevelBand({ age } = {}) {
+  return age >= 26 ? "senior" : "u23";
+}
+
+// Graceful læsning af PERSISTEREDE staff-evne-niveauer fra FØR #2529-migrationen
+// (staff_derived_abilities.levels med gamle "youth"/"junior"-nøgler). Migrationen
+// (database/2026-07-17-staff-u23-band.sql) committes men applies ALDRIG automatisk
+// (ejer-apply, jf. AGENTS.md) — i vinduet mellem merge og apply kan DB-rækker stadig
+// have det gamle format. Denne funktion tåler BEGGE tilstande: allerede migreret
+// (kun u23/senior) → uændret pass-through; gammelt format (youth/junior/senior) →
+// u23 = MAX(youth, junior) (se migrationens PR-body for begrundelse).
+export function normalizeLevelBands(levels) {
+  if (!levels || typeof levels !== "object") return levels ?? {};
+  if (!("youth" in levels) && !("junior" in levels)) return levels;
+  const youth = Number.isFinite(levels.youth) ? levels.youth : undefined;
+  const junior = Number.isFinite(levels.junior) ? levels.junior : undefined;
+  const u23 = youth != null && junior != null
+    ? Math.max(youth, junior)
+    : (youth ?? junior);
+  const out = { ...levels };
+  delete out.youth;
+  delete out.junior;
+  if (u23 != null) out.u23 = u23;
+  return out;
 }
 
 // Dimensionen for en given ability (eller undefined hvis ukendt/skjult).
