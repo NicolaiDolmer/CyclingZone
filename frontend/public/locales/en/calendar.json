@@ -7,6 +7,14 @@
     "title": "No active season",
     "desc": "The race calendar appears here once a season is scheduled."
   },
+  "seasonMenu": {
+    "label": "Season",
+    "option": "S{number}"
+  },
+  "notGenerated": {
+    "title": "Season {number}'s calendar isn't ready yet",
+    "desc": "The race program for this season hasn't been generated yet. Check back closer to the season start."
+  },
   "empty": {
     "title": "No races this month",
     "desc": "Use the month arrows to find scheduled races."

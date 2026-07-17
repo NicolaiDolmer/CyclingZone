@@ -7,7 +7,9 @@ name: Deploy verify
 #    cancellede hinanden via concurrency-gruppen (falsk "cancelled" i verify-deploy.ps1).
 #  - workflow_dispatch — eksplicit trigger fra auto-merge.yml/dependabot-auto-merge.yml,
 #    fordi GITHUB_TOKEN-merges ikke fyrer push/pull_request events (anti-loop-safeguard).
-# Effekt: Venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌
+# Effekt: Venter på de deployments committet faktisk udløser (Vercel kun ved
+# frontend/-ændringer, Railway kun ved backend/-ændringer — spejler Vercels
+# Ignored Build Step i frontend/vercel.json), smoke-tester prod, kommenterer ✅/❌
 # på den merged PR. Brugeren kan trygt være offline efter mobile-merge.
 
 on:
@@ -61,11 +63,41 @@ jobs:
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           echo "Verifying sha=$SHA, PR=#${NUMBER:-(direct push)}"
 
+      - name: Determine required deployments (path-based)
+        id: required
+        # Backend-only commits: Vercel canceller bevidst via Ignored Build Step
+        # (frontend/vercel.json ignoreCommand skipper når HEAD^..HEAD ikke rører
+        # frontend/) — så en Vercel-deployment kommer ALDRIG, og at vente på den
+        # gav falske ❌-kommentarer (fx a7c63d41 / PR #2545, 2026-07-17).
+        # Spejl ignoreCommand-logikken: kræv kun Vercel når frontend/ er ændret,
+        # og kun Railway når backend/ er ændret. Kan fil-listen ikke hentes →
+        # kræv begge (konservativ fallback).
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          FILES=$(gh api "repos/${{ github.repository }}/commits/$SHA" --paginate --jq '.files[].filename' 2>/dev/null || true)
+          if [[ -z "$FILES" ]]; then
+            echo "::warning::Kunne ikke hente ændrede filer for $SHA — kræver både Vercel og Railway (fallback)"
+            NEED_VERCEL=true
+            NEED_RAILWAY=true
+          else
+            NEED_VERCEL=false
+            NEED_RAILWAY=false
+            grep -q '^frontend/' <<<"$FILES" && NEED_VERCEL=true
+            grep -q '^backend/' <<<"$FILES" && NEED_RAILWAY=true
+          fi
+          echo "Changed files touch: frontend=$NEED_VERCEL backend=$NEED_RAILWAY"
+          echo "need_vercel=$NEED_VERCEL" >> "$GITHUB_OUTPUT"
+          echo "need_railway=$NEED_RAILWAY" >> "$GITHUB_OUTPUT"
+
       - name: Wait for Vercel + Railway deployments
         id: deployments
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ steps.pr.outputs.sha }}
+          NEED_VERCEL: ${{ steps.required.outputs.need_vercel }}
+          NEED_RAILWAY: ${{ steps.required.outputs.need_railway }}
         run: |
           DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
@@ -81,17 +113,32 @@ jobs:
               if [[ "$CREATOR" == railway* && "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
             done
 
-            if $VERCEL_OK && $RAILWAY_OK; then
-              echo "Both deployments succeeded"
-              echo "vercel=success" >> "$GITHUB_OUTPUT"
-              echo "railway=success" >> "$GITHUB_OUTPUT"
+            VERCEL_SATISFIED=$VERCEL_OK
+            RAILWAY_SATISFIED=$RAILWAY_OK
+            [[ "$NEED_VERCEL" == "false" ]] && VERCEL_SATISFIED=true
+            [[ "$NEED_RAILWAY" == "false" ]] && RAILWAY_SATISFIED=true
+
+            if $VERCEL_SATISFIED && $RAILWAY_SATISFIED; then
+              if [[ "$NEED_VERCEL" == "false" && "$VERCEL_OK" == "false" ]]; then
+                echo "Vercel ikke påkrævet (ingen frontend/-ændringer — Ignored Build Step skipper builden)"
+                echo "vercel=skipped (no frontend changes)" >> "$GITHUB_OUTPUT"
+              else
+                echo "vercel=success" >> "$GITHUB_OUTPUT"
+              fi
+              if [[ "$NEED_RAILWAY" == "false" && "$RAILWAY_OK" == "false" ]]; then
+                echo "Railway ikke påkrævet (ingen backend/-ændringer)"
+                echo "railway=skipped (no backend changes)" >> "$GITHUB_OUTPUT"
+              else
+                echo "railway=success" >> "$GITHUB_OUTPUT"
+              fi
+              echo "All required deployments succeeded"
               exit 0
             fi
 
             sleep 15
           done
 
-          echo "Timeout waiting for deployments"
+          echo "Timeout waiting for deployments (required: vercel=$NEED_VERCEL railway=$NEED_RAILWAY)"
           echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
           echo "railway=$RAILWAY_OK" >> "$GITHUB_OUTPUT"
           exit 1
@@ -130,6 +177,9 @@ jobs:
         # Opt-in via secrets. Hvis SENTRY_AUTH_TOKEN ikke er konfigureret i GitHub Actions
         # endnu, springes step (uden at fejle deploy-verify). Tilfoej alle 3 secrets for
         # at aktivere guarden mod stille source-map upload-fejl.
+        # Kun relevant når Vercel faktisk byggede — backend-only commits har ingen
+        # ny frontend-release, så et 404 dér er forventet, ikke en upload-fejl.
+        if: steps.required.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -176,11 +226,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.number }}
           SHA: ${{ steps.pr.outputs.sha }}
+          VERCEL: ${{ steps.deployments.outputs.vercel }}
+          RAILWAY: ${{ steps.deployments.outputs.railway }}
         run: |
           BODY="<!-- deploy-verify:$SHA -->
           ✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
-          - Vercel deploy: success
-          - Railway deploy: success
+          - Vercel deploy: ${VERCEL:-success}
+          - Railway deploy: ${RAILWAY:-success}
           - Backend \`/health\` = 200
           - Backend \`/api/auctions\` (no auth) = 401 (auth gates virker)
           - Frontend root = 200

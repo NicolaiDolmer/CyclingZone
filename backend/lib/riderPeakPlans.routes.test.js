@@ -166,3 +166,39 @@ test("race_entries head-counts selecter en reel kolonne — tabellen har ingen i
   const badSelects = [...apiSource.matchAll(/from\("race_entries"\)\s*\.select\("id"/g)];
   assert.equal(badSelects.length, 0, "race_entries har composite key (race_id, rider_id, team_id) — select(\"id\") giver 42703 (CYCLINGZONE-34)");
 });
+
+// ── #2518: Season Planner sæson-vælger (S1/S2) ──────────────────────────────
+// Planner-fladerne skal kunne opløse EN ANDEN sæson end den aktive (fx S2 før
+// den starter) via ?season_number=/body.season_number — resolvePlannerSeason
+// bevarer bagudkompatibiliteten (default = activePeakSeason, uændret).
+
+test("resolvePlannerSeason falder tilbage til activePeakSeason når intet nummer er angivet", () => {
+  const idx = apiSource.indexOf("async function resolvePlannerSeason");
+  assert.ok(idx !== -1, "resolvePlannerSeason skal findes");
+  const block = apiSource.slice(idx, idx + 700);
+  assert.match(block, /activePeakSeason\(\)/, "uden season_number skal aktiv sæson stadig bruges (bagudkompatibelt)");
+  assert.match(block, /\.eq\("number",\s*n\)/, "med et gyldigt nummer skal sæsonen slås op via sit spiller-vendte nummer");
+});
+
+const SEASON_SELECTABLE_ROUTES = [
+  { name: "GET /peak-plans", marker: 'router.get("/peak-plans"' },
+  { name: "POST /peak-plans", marker: 'router.post("/peak-plans"' },
+  { name: "GET /peak-plans/board", marker: 'router.get("/peak-plans/board"' },
+  { name: "POST /peak-plans/dismiss-suggestions", marker: 'router.post("/peak-plans/dismiss-suggestions"' },
+];
+
+for (const { name, marker } of SEASON_SELECTABLE_ROUTES) {
+  test(`${name} opløser sæson via resolvePlannerSeason (sæson-vælger #2518)`, () => {
+    const block = handlerBlock(marker);
+    assert.match(block, /resolvePlannerSeason\(/, `${name} skal bruge resolvePlannerSeason i stedet for et hardkodet activePeakSeason()-kald`);
+  });
+}
+
+test("GET /peak-plans/board + GET /races/calendar eksponerer availableSeasons til UI'ets sæson-vælger", () => {
+  const boardBlock = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(boardBlock, /availableSeasons/, "board skal returnere listen af oprettede sæsoner");
+  const calIdx = apiSource.indexOf('router.get("/races/calendar"');
+  assert.ok(calIdx !== -1, "GET /races/calendar skal findes");
+  const calBlock = apiSource.slice(calIdx, calIdx + 3500);
+  assert.match(calBlock, /availableSeasons/, "kalenderen skal returnere listen af oprettede sæsoner");
+});

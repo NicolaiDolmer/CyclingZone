@@ -45,6 +45,7 @@ import {
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
+import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 
 let processSeasonStartImpl;
@@ -563,6 +564,10 @@ export async function transitionToNextSeason({
     });
   } catch (err) {
     log.push({ phase: "global_rank_decay", error: err.message });
+    captureException(err, {
+      tags: { phase: "global_rank_decay" },
+      extra: { fromSeasonId, note: "kræver manuel undersøgelse — RPC ikke blind-retry-sikker (dobbelt halvering)" },
+    });
   }
 
   log.push({
