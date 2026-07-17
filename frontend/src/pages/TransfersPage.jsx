@@ -14,6 +14,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortRows } from "../lib/useTableSort.js";
+import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
 import { Card, EmptyState, ExchangeIcon, InboxIcon, PageLoader } from "../components/ui";
@@ -781,7 +782,10 @@ function MarketOfferForm({ listing, onOffer }) {
 }
 
 // Én listing = én rytterrække (+ optionel action-expander-række under).
-function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice }) {
+function MarketRow({
+  listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice,
+  selected, onToggleSelect,
+}) {
   const { t } = useTranslation("transfers");
   const rider = listing.rider;
   const isOwn = listing.seller?.id === myTeamId;
@@ -789,12 +793,29 @@ function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOf
 
   return (
     <>
-      <tr className={`border-b border-cz-border transition-colors ${expanded ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}>
+      <tr className={`border-b border-cz-border transition-colors ${expanded || selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}>
         <td className="px-2 py-2.5 w-12 hidden sm:table-cell">
           <NationCell code={rider?.nationality_code} />
         </td>
         <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-          <RiderNameCell id={rider?.id} firstname={rider?.firstname} lastname={rider?.lastname} />
+          <div className="flex items-center gap-2">
+            {/* #2451: markering til bulk-prisredigering — kun egne listinger kan
+                bulk-redigeres, så checkboxen findes kun for dem. Ligger i selve
+                den sticky navne-celle (ikke en ny kolonne) så den forbliver synlig
+                på mobil uden at forstyrre den eksisterende sticky-antagelse (én
+                synlig venstre-kolonne). */}
+            {isOwn && (
+              <input
+                type="checkbox"
+                data-testid={`bulk-select-${listing.id}`}
+                aria-label={t("marketRow.selectAria", { riderName })}
+                checked={!!selected}
+                onChange={() => onToggleSelect(listing.id)}
+                className="min-w-[18px] min-h-[18px] w-[18px] h-[18px] cursor-pointer accent-cz-accent"
+              />
+            )}
+            <RiderNameCell id={rider?.id} firstname={rider?.firstname} lastname={rider?.lastname} />
+          </div>
         </td>
         <td className="px-3 py-2.5 hidden sm:table-cell">
           <TeamCell team={listing.seller} freeLabel="—" />
@@ -858,6 +879,109 @@ function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOf
   );
 }
 
+// ── Bulk-prisredigering (#2451) ──────────────────────────────────────────────
+// Football Manager-inspireret liste-redigering: markér flere EGNE listinger
+// (checkboxes i tabellen) og anvend én pris-justering på dem alle i ét klik —
+// i stedet for redigér-pris-dialogen pr. rytter (OwnListingActions). Den
+// relative justering ("+10% på alle markerede") er dét der gør bulk hurtigere
+// end at redigere sekventielt (ejer-direktiv, #2451). Kun synlig når mindst én
+// egen listing er markeret — resten af tiden er tabellen uændret.
+const BULK_MODES = ["percent", "amount", "set"];
+const BULK_PREVIEW_VISIBLE = 5;
+
+function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
+  const { t } = useTranslation("transfers");
+  const [mode, setMode] = useState("percent");
+  const [rawValue, setRawValue] = useState("");
+
+  const value = parseFloat(rawValue);
+  const hasValue = rawValue !== "" && Number.isFinite(value);
+  const preview = hasValue
+    ? previewBulkPriceAdjust(selectedListings, { mode, value })
+    : [];
+  const changedCount = preview.filter(p => p.changed).length;
+
+  // Rytternavn pr. listing-id til preview-rækkerne (selectedListings bærer
+  // rider-objektet, previewBulkPriceAdjust kender kun id/from/to).
+  const riderNameById = new Map(
+    selectedListings.map(l => [l.id, l.rider ? `${l.rider.firstname} ${l.rider.lastname}` : "—"]),
+  );
+
+  return (
+    <div data-testid="bulk-price-editor" className="bg-cz-card border border-cz-accent/30 rounded-cz p-4 mb-3 flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <span className="text-cz-1 text-sm font-semibold">
+          {t("bulkPrice.selected", { count: selectedListings.length })}
+        </span>
+        <button onClick={onClear} disabled={busy}
+          className="min-h-[44px] px-3 py-1.5 self-start sm:self-auto text-cz-3 text-xs hover:text-cz-1 transition-colors disabled:opacity-50">
+          {t("bulkPrice.clear")}
+        </button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-1 flex-wrap">
+          {BULK_MODES.map(m => (
+            <button key={m} onClick={() => setMode(m)} disabled={busy}
+              className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border disabled:opacity-50
+                ${mode === m
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-subtle border-cz-border"}`}>
+              {t(`bulkPrice.mode.${m}`)}
+            </button>
+          ))}
+        </div>
+        <input
+          type="number"
+          inputMode="decimal"
+          data-testid="bulk-price-value"
+          value={rawValue}
+          onChange={e => setRawValue(e.target.value)}
+          placeholder={t(`bulkPrice.valuePlaceholder.${mode}`)}
+          aria-label={t("bulkPrice.valueLabel")}
+          className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
+            text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
+        />
+      </div>
+
+      {/* Preview: rytter + nuværende pris → ny pris, så justeringen aldrig er en
+          overraskelse efter "Anvend". */}
+      <div className="bg-cz-subtle rounded-lg p-3">
+        <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-2">{t("bulkPrice.previewTitle")}</p>
+        {preview.length === 0 ? (
+          <p className="text-cz-3 text-xs">{t("bulkPrice.previewEmpty")}</p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {preview.slice(0, BULK_PREVIEW_VISIBLE).map(p => (
+              <li key={p.id} className="flex items-center justify-between text-xs gap-2">
+                <span className="text-cz-2 truncate">{riderNameById.get(p.id)}</span>
+                <span className="font-mono whitespace-nowrap">
+                  <span className="text-cz-3">{formatNumber(p.from)}</span>
+                  <span className="text-cz-3 mx-1">→</span>
+                  <span className={p.changed ? "text-cz-accent-t font-bold" : "text-cz-3"}>{formatNumber(p.to)}</span>
+                  <span className="text-cz-3"> CZ$</span>
+                </span>
+              </li>
+            ))}
+            {preview.length > BULK_PREVIEW_VISIBLE && (
+              <li className="text-cz-3 text-[10px]">{t("bulkPrice.previewMore", { count: preview.length - BULK_PREVIEW_VISIBLE })}</li>
+            )}
+          </ul>
+        )}
+      </div>
+
+      <button
+        data-testid="bulk-price-apply"
+        onClick={() => onApply({ mode, value })}
+        disabled={busy || !hasValue || changedCount === 0}
+        className="min-h-[44px] w-full sm:w-auto sm:self-end px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
+          hover:brightness-110 disabled:opacity-50 transition-all">
+        {busy ? t("bulkPrice.applying") : t("bulkPrice.apply", { count: changedCount })}
+      </button>
+    </div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
   const { t } = useTranslation("transfers");
@@ -906,23 +1030,23 @@ export default function TransfersPage() {
     setExpandedListingId(prev => (prev === id ? null : id));
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // #2451: bulk-prisredigering — markering af FLERE egne listinger til én samlet
+  // pris-justering ("+10% på alle markerede"), i stedet for redigér-pris-dialogen
+  // pr. rytter (OwnListingActions). Selection lever på id — filtreres/sorteres
+  // listen om, forbliver markeringen intakt (kun rensning ved eksplicit "ryd").
+  const [selectedListingIds, setSelectedListingIds] = useState(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
-  // #1569: én-skuds default-til-'market' når alle handels-faner er tomme.
-  // Gates på: data loadet, intet eksplicit ?tab= i URL'en, og alle handels-
-  // arrays tomme. Ref'en sikrer at vi kun gør det én gang.
-  useEffect(() => {
-    if (loading || didDefaultTabRef.current || tabParam) return;
-    const allTradeTabsEmpty =
-      receivedOffers.length === 0 &&
-      sentOffers.length === 0 &&
-      archivedReceivedOffers.length === 0 &&
-      archivedSentOffers.length === 0 &&
-      receivedSwaps.length === 0 &&
-      sentSwaps.length === 0;
-    didDefaultTabRef.current = true;
-    if (allTradeTabsEmpty) setTab("market");
-  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
+  function toggleListingSelection(id) {
+    setSelectedListingIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function clearListingSelection() {
+    setSelectedListingIds(new Set());
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -961,6 +1085,24 @@ export default function TransfersPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // #1569: én-skuds default-til-'market' når alle handels-faner er tomme.
+  // Gates på: data loadet, intet eksplicit ?tab= i URL'en, og alle handels-
+  // arrays tomme. Ref'en sikrer at vi kun gør det én gang.
+  useEffect(() => {
+    if (loading || didDefaultTabRef.current || tabParam) return;
+    const allTradeTabsEmpty =
+      receivedOffers.length === 0 &&
+      sentOffers.length === 0 &&
+      archivedReceivedOffers.length === 0 &&
+      archivedSentOffers.length === 0 &&
+      receivedSwaps.length === 0 &&
+      sentSwaps.length === 0;
+    didDefaultTabRef.current = true;
+    if (allTradeTabsEmpty) setTab("market");
+  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function getHeaders() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1149,13 +1291,74 @@ export default function TransfersPage() {
 
   const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean));
   const filteredIds = new Set(riderFilters.filtered.map(r => r.id));
+  // #2522: min/max_asking_price filtrerer på listing.asking_price — IKKE et
+  // rytter-felt, så useClientRiderFilters (som kun kender rytter-objektet) kan
+  // ikke anvende det. Samme mønster som AuctionsPage.passesAuctionPriceFilter:
+  // filtreres her på selve listingen, uden om rytter-filter-hooket.
+  function passesAskingPriceFilter(listing) {
+    const price = listing.asking_price ?? 0;
+    const minP = parseInt(riderFilters.filters.min_asking_price);
+    const maxP = parseInt(riderFilters.filters.max_asking_price);
+    if (!isNaN(minP) && price < minP) return false;
+    if (!isNaN(maxP) && price > maxP) return false;
+    return true;
+  }
   // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres af den
   // kanoniske markedstabel-sort-state (#2329, se MARKET_SORT_ACCESSORS ovenfor).
   const filteredListings = sortRows(
-    listings.filter(l => !l.rider || filteredIds.has(l.rider.id)),
+    listings.filter(l => (!l.rider || filteredIds.has(l.rider.id)) && passesAskingPriceFilter(l)),
     MARKET_SORT_ACCESSORS[marketSort] ?? null,
     marketSortDir,
   );
+
+  // #2451: bulk-kandidater = egne listinger blandt de FILTREREDE/synlige rækker
+  // (samme filter/synlighed som tabellen), så "Markér alle viste" aldrig vælger
+  // noget der ikke ses i den aktuelle filtrering.
+  const myVisibleListings = filteredListings.filter(l => l.seller?.id === myTeamId);
+  const selectedListings = filteredListings.filter(l => selectedListingIds.has(l.id));
+
+  function selectAllVisibleMine() {
+    setSelectedListingIds(new Set(myVisibleListings.map(l => l.id)));
+  }
+
+  // #2451: ét PATCH-kald for hele batchen (bulk-price-endpointet), i stedet for
+  // ét kald pr. rytter — undgår at ramme marketWriteLimiter (30/min) ved store
+  // markeringer og giver ét samlet svar (updated/failed) til toasten.
+  async function handleBulkApply(adjustment) {
+    const preview = previewBulkPriceAdjust(selectedListings, adjustment).filter(p => p.changed);
+    if (preview.length === 0) {
+      showMsg(t("bulkPrice.toastNoChange"), "error");
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      const res = await fetch(`${API}/api/transfers/bulk-price`, {
+        method: "PATCH",
+        headers: await getHeaders(),
+        body: JSON.stringify({ updates: preview.map(p => ({ id: p.id, asking_price: p.to })) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const updatedCount = data.updated?.length || 0;
+        const failedCount = data.failed?.length || 0;
+        if (failedCount > 0 && updatedCount > 0) {
+          showMsg(t("bulkPrice.toastPartial", { updated: updatedCount, failed: failedCount }), "error");
+        } else if (failedCount > 0 && updatedCount === 0) {
+          showMsg(t("bulkPrice.toastFailed"), "error");
+        } else {
+          showMsg(t("bulkPrice.toastSuccess", { count: updatedCount }));
+        }
+        clearListingSelection();
+        loadAll();
+      } else {
+        showMsg(resolveApiError(data, t, t("bulkPrice.toastFailed")), "error");
+      }
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   // #1675: market-fanen viser en bred evne-tabel (15 kolonner) — den bruger fuld
   // content-bredde (Layout giver /transfers max-w-full). De kort-baserede faner
@@ -1349,6 +1552,7 @@ export default function TransfersPage() {
                   onChange={riderFilters.onChange}
                   onReset={riderFilters.onReset}
                   showTeamFilter={false}
+                  showAskingPriceFilter={true}
                   nationalities={riderFilters.nationalities}
                 />
               </div>
@@ -1384,6 +1588,24 @@ export default function TransfersPage() {
                   ))}
                 </select>
               </div>
+              {/* #2451: bulk-prisredigering — "Markér alle" er kun synlig når manageren
+                  faktisk har egne listinger blandt de viste, og selve editoren kun når
+                  noget er markeret. Ellers uændret tabel. */}
+              {selectedListingIds.size === 0 && myVisibleListings.length > 0 && (
+                <button onClick={selectAllVisibleMine}
+                  className="min-h-[44px] mb-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                    text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border">
+                  {t("bulkPrice.selectAllVisible", { count: myVisibleListings.length })}
+                </button>
+              )}
+              {selectedListingIds.size > 0 && (
+                <BulkPriceEditor
+                  selectedListings={selectedListings}
+                  onApply={handleBulkApply}
+                  onClear={clearListingSelection}
+                  busy={bulkBusy}
+                />
+              )}
               {filteredListings.length === 0 ? (
                 <EmptyState
                   icon={<ExchangeIcon size={28} aria-hidden="true" />}
@@ -1450,6 +1672,8 @@ export default function TransfersPage() {
                             onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
                             onRemove={handleRemoveListing}
                             onUpdatePrice={handleUpdateListingPrice}
+                            selected={selectedListingIds.has(l.id)}
+                            onToggleSelect={toggleListingSelection}
                           />
                         ))}
                       </tbody>

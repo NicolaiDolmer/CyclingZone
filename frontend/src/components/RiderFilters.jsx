@@ -59,6 +59,10 @@ export const DEFAULT_FILTERS = {
   max_age: "",
   min_auction_price: "",
   max_auction_price: "",
+  // #2522: transfer-markedets asking_price (seller-satte pris) — adskilt fra
+  // min/max_auction_price (auktionens NUVÆRENDE bud), som er en anden pris-akse.
+  min_asking_price: "",
+  max_asking_price: "",
   u25: false,
   u23: false,
   free_agent: false,
@@ -74,7 +78,8 @@ export const DEFAULT_FILTERS = {
 const BASIC_FILTER_KEYS = [
   "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
   "min_age", "max_age",
-  "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "show_ai", "team_id",
+  "min_auction_price", "max_auction_price", "min_asking_price", "max_asking_price",
+  "u25", "u23", "free_agent", "show_ai", "team_id",
 ];
 
 function isStatActive(filters, key) {
@@ -195,7 +200,7 @@ function DualStatSlider({ statKey, label, filters, onChange, t }) {
 export default function RiderFilters({
   filters, onChange, onReset,
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
-  showAuctionPriceFilter = false, showAiToggle = false,
+  showAuctionPriceFilter = false, showAskingPriceFilter = false, showAiToggle = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -367,6 +372,24 @@ export default function RiderFilters({
             </div>
           )}
 
+          {/* Salgspris (transfer-marked-only, #2522) — asking_price sat af sælger,
+              adskilt fra auktionens nuværende-bud-filter ovenfor. */}
+          {showAskingPriceFilter && (
+            <div>
+              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.askingPriceRange")}</label>
+              <div className="flex gap-1">
+                <input type="number" data-testid="filter-asking-price-min" value={filters.min_asking_price} onChange={e => onChange("min_asking_price", e.target.value)}
+                  placeholder={t("fields.min")}
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
+                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+                <input type="number" data-testid="filter-asking-price-max" value={filters.max_asking_price} onChange={e => onChange("max_asking_price", e.target.value)}
+                  placeholder={t("fields.max")}
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
+                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+              </div>
+            </div>
+          )}
+
           {/* Potentiale-filter fjernet (#1162): potentialet er skjult information —
               man kan ikke filtrere på en værdi man ikke har scoutet, og et
               server-filter på den rå kolonne var en oracle-lækage. */}
@@ -457,6 +480,8 @@ export default function RiderFilters({
           {filters.max_age && <Chip t={t} label={t("chips.age.max", { value: filters.max_age })} onRemove={() => onChange("max_age", "")} />}
           {filters.min_auction_price && <Chip t={t} label={t("chips.bid.min", { amount: formatNumber(parseInt(filters.min_auction_price)) })} onRemove={() => onChange("min_auction_price", "")} />}
           {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parseInt(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
+          {showAskingPriceFilter && filters.min_asking_price && <Chip t={t} label={t("chips.askingPrice.min", { amount: formatNumber(parseInt(filters.min_asking_price)) })} onRemove={() => onChange("min_asking_price", "")} />}
+          {showAskingPriceFilter && filters.max_asking_price && <Chip t={t} label={t("chips.askingPrice.max", { amount: formatNumber(parseInt(filters.max_asking_price)) })} onRemove={() => onChange("max_asking_price", "")} />}
           {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}
           {filters.u23 && <Chip t={t} label={t("toggles.u23")} onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip t={t} label={t("toggles.freeAgent")} onRemove={() => onChange("free_agent", false)} />}
