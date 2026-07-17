@@ -1,34 +1,50 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { sumCompletedRaceDays, recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { countDistinctRaceDays, recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 
-test("sumCompletedRaceDays: ét race day pr. etape, kun completede løb tæller", () => {
+test("countDistinctRaceDays: tæller distinkte game_day_start blandt completede løb", () => {
   const races = [
-    { status: "completed", stages: 1 },   // endagsløb → 1
-    { status: "completed", stages: 21 },  // grand tour → 21
-    { status: "upcoming", stages: 7 },    // ikke kørt → 0
-    { status: "completed", stages: 5 },   // etapeløb → 5
+    { status: "completed", game_day_start: 0 },
+    { status: "completed", game_day_start: 3 },   // grand tour, samme start-dag som ingen andre
+    { status: "upcoming", game_day_start: 10 },   // ikke kørt → tæller ikke
+    { status: "completed", game_day_start: 3 },    // parallel division, SAMME kalenderdag → tæller ikke ekstra
   ];
-  assert.equal(sumCompletedRaceDays(races), 27);
+  assert.equal(countDistinctRaceDays(races, { completedOnly: true }), 2);
 });
 
-test("sumCompletedRaceDays: stages null/0/undefined tæller som 1 (matcher DEFAULT 1)", () => {
+test("countDistinctRaceDays: uden completedOnly tæller ALLE løb (planlagt kalender)", () => {
   const races = [
-    { status: "completed", stages: null },
-    { status: "completed", stages: 0 },
+    { status: "completed", game_day_start: 0 },
+    { status: "upcoming", game_day_start: 10 },
+    { status: "active", game_day_start: 20 },
+  ];
+  assert.equal(countDistinctRaceDays(races), 3);
+});
+
+test("countDistinctRaceDays: løb uden game_day_start (null/undefined) tæller ikke", () => {
+  const races = [
+    { status: "completed", game_day_start: null },
+    { status: "completed", game_day_start: undefined },
     { status: "completed" },
   ];
-  assert.equal(sumCompletedRaceDays(races), 3);
+  assert.equal(countDistinctRaceDays(races, { completedOnly: true }), 0);
 });
 
-test("sumCompletedRaceDays: tom liste → 0", () => {
-  assert.equal(sumCompletedRaceDays([]), 0);
-  assert.equal(sumCompletedRaceDays(), 0);
+test("countDistinctRaceDays: tom liste → 0", () => {
+  assert.equal(countDistinctRaceDays([]), 0);
+  assert.equal(countDistinctRaceDays(), 0);
 });
 
-test("sumCompletedRaceDays: ingen completede løb → 0", () => {
-  assert.equal(sumCompletedRaceDays([{ status: "upcoming", stages: 21 }]), 0);
+test("countDistinctRaceDays: ingen completede løb → 0", () => {
+  assert.equal(countDistinctRaceDays([{ status: "upcoming", game_day_start: 5 }], { completedOnly: true }), 0);
+});
+
+test("countDistinctRaceDays: mange divisioner der afvikler løb parallelt SAMME dag tæller som ÉN dag (#2512-regression)", () => {
+  // 4 divisioner afvikler hver et endagsløb på game_day_start=7 → tidligere (SUM(stages))
+  // ville dette have talt som 4 race-days; korrekt enhed er 1 kalenderdag.
+  const races = Array.from({ length: 4 }, () => ({ status: "completed", game_day_start: 7 }));
+  assert.equal(countDistinctRaceDays(races, { completedOnly: true }), 1);
 });
 
 function makeSupabase({ races, capturedUpdate }) {
@@ -64,31 +80,52 @@ function makeSupabase({ races, capturedUpdate }) {
   };
 }
 
-test("recomputeSeasonRaceDays: skriver summen af completede etaper til den rigtige sæson", async () => {
+test("recomputeSeasonRaceDays: skriver BÅDE race_days_completed og race_days_total (distinkte kalenderdage)", async () => {
   const captured = {};
   const supabase = makeSupabase({
     races: [
-      { status: "completed", stages: 6 },
-      { status: "completed", stages: 1 },
-      { status: "active", stages: 21 },
+      { status: "completed", game_day_start: 0 },
+      { status: "completed", game_day_start: 1 },
+      { status: "active", game_day_start: 2 },     // ikke completed, men tæller med i total
+      { status: "upcoming", game_day_start: 27 },   // fremtidig kalenderdag, tæller med i total
     ],
     capturedUpdate: captured,
   });
 
   const result = await recomputeSeasonRaceDays({ supabase, seasonId: "season-1" });
 
-  assert.equal(result, 7);
-  assert.deepEqual(captured.payload, { race_days_completed: 7 });
+  assert.equal(result, 2);
+  assert.deepEqual(captured.payload, { race_days_completed: 2, race_days_total: 4 });
   assert.equal(captured.updatedSeasonId, "season-1");
   assert.equal(captured.racesQueriedFor, "season-1");
 });
 
+test("recomputeSeasonRaceDays: parallelle divisioner på samme dag inflaterer IKKE completed (#2512)", async () => {
+  const captured = {};
+  // 20 løb, men kun 3 distinkte kalenderdage completed — tidligere SUM(stages)-bug
+  // ville have talt op mod 20+ for én kalenderdag med mange divisioner.
+  const races = [
+    ...Array.from({ length: 8 }, () => ({ status: "completed", game_day_start: 0 })),
+    ...Array.from({ length: 8 }, () => ({ status: "completed", game_day_start: 1 })),
+    ...Array.from({ length: 4 }, () => ({ status: "completed", game_day_start: 2 })),
+  ];
+  const supabase = makeSupabase({ races, capturedUpdate: captured });
+
+  const result = await recomputeSeasonRaceDays({ supabase, seasonId: "season-1" });
+
+  assert.equal(result, 3);
+  assert.deepEqual(captured.payload, { race_days_completed: 3, race_days_total: 3 });
+});
+
 test("recomputeSeasonRaceDays: idempotent — samme input giver samme værdi", async () => {
-  const races = [{ status: "completed", stages: 3 }, { status: "completed", stages: 4 }];
+  const races = [
+    { status: "completed", game_day_start: 0 },
+    { status: "completed", game_day_start: 1 },
+  ];
   const a = await recomputeSeasonRaceDays({ supabase: makeSupabase({ races, capturedUpdate: {} }), seasonId: "s" });
   const b = await recomputeSeasonRaceDays({ supabase: makeSupabase({ races, capturedUpdate: {} }), seasonId: "s" });
-  assert.equal(a, 7);
-  assert.equal(b, 7);
+  assert.equal(a, 2);
+  assert.equal(b, 2);
 });
 
 test("recomputeSeasonRaceDays: kræver supabase + seasonId", async () => {
