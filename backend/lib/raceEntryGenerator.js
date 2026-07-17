@@ -574,6 +574,8 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       removed += result.removed;
       roleUpdated += result.roleUpdated;
     } catch (err) {
+      // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
+      // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
       // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
       // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
       // kør enheden om PRÆCIS ÉN gang. Lykkes retry'en (var en samtidig manager-gem):
@@ -586,6 +588,8 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
           roleUpdated += retryResult.roleUpdated;
           continue;
         } catch (retryErr) {
+          // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
+          // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
           failedUnits += 1;
           if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
           continue;
