@@ -14,9 +14,9 @@ test("τ=1.0 er identitet — SAMME Map-instans returneres (zero-cost no-op)", (
   const m = mapOf([["a", 0.5], ["b", 0.7]]);
   assert.equal(compressTopTerrain(m, 1.0), m, "τ=1 skal returnere input-mappen urørt");
   assert.equal(compressTopTerrain(m, 1.5), m, "τ>1 behandles som identitet (aldrig ekspansion)");
-  // EJER-BESLUTNING 12/7 (option 2, jf. S2-audit "Beslutning"): τ=0.5 er den
-  // aktive default — gab-kompressionen ER S2's leverance af favWin-båndet.
-  assert.equal(RACE_V3_TUNING.TOP_COMPRESSION_TAU, 0.5, "default-tuning SKAL være 0.5 (ejer-beslutning 12/7, option 2)");
+  // RE-KALIBRERING 17/7 (#2557, variant C, ejer-go): τ=0.40 er den aktive
+  // default — se docs/audits/2026-07-17-race-v3-recalibration-scorecard.md.
+  assert.equal(RACE_V3_TUNING.TOP_COMPRESSION_TAU, 0.40, "default-tuning SKAL være 0.40 (ejer-beslutning 17/7, variant C, #2557)");
 });
 
 test("kun scores OVER felt-p90 komprimeres; s ≤ p90 er urørt", () => {
@@ -71,7 +71,7 @@ function abil(v) {
   return a;
 }
 
-test("simulateStage v3 (default τ=0.5): terrain-komponenten matcher compressTopTerrain af det rå terrain; v1 urørt", () => {
+test("simulateStage v3 (default τ=0.40): terrain-komponenten matcher compressTopTerrain af det rå terrain; v1 urørt", () => {
   const entrants = Array.from({ length: 30 }, (_, i) => ({ rider_id: `r${i}`, abilities: abil(40 + i) }));
   const stage = { profile_type: "mountain", demand_vector: { climbing: 0.7, endurance: 0.3, randomness: 0 } };
   const off = simulateStage({ entrants, stageProfile: stage, seed: 11, v3: false });
@@ -91,6 +91,6 @@ test("simulateStage v3 (default τ=0.5): terrain-komponenten matcher compressTop
   // Toppen ER komprimeret (testen er ikke triviel): mindst én rytter afviger fra rå.
   assert.ok(
     entrants.some((e) => expected.get(e.rider_id) !== rawById.get(e.rider_id)),
-    "med τ=0.5 skal feltets top faktisk komprimeres"
+    "med τ=0.40 skal feltets top faktisk komprimeres"
   );
 });

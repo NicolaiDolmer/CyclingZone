@@ -83,9 +83,15 @@ export const RACE_V3_TUNING = Object.freeze({
   // Dagsform: per (rytter, etape-seed) seeded normal-komponent — NAVNGIVET
   // varians (optræder i why-rapporten som "stærk/tung dag"), IKKE en skrue på
   // NOISE_SD_SCALE (gate-kalibreret, røres ikke). Spec-interval 0.012-0.018;
-  // start-kandidat 0.015; endelig værdi via S2-grid-sweep
+  // start-kandidat 0.015; S2-grid-sweep-værdi
   // (docs/audits/2026-07-12-race-v3-s2-calibration.md).
-  DAYFORM_SD: envNum("RACE_V3_DAYFORM_SD", 0.015),
+  // RE-KALIBRERING 17/7 (#2557, variant C, ejer-go): population-drift siden
+  // S2 (favoriteWinRate 43-44 % mod 17/7-populationen, uden for 25-40 %-bånd)
+  // — 0.015→0.018 sammen med TOP_COMPRESSION_TAU 0.5→0.40 bringer favWin i
+  // bånd (38,1-38,9 % på 3 seeds) med mindst mulig kollateralskade på ITT
+  // sammenlignet med τ-only-varianten B. Fuldt scorecard:
+  // docs/audits/2026-07-17-race-v3-recalibration-scorecard.md.
+  DAYFORM_SD: envNum("RACE_V3_DAYFORM_SD", 0.018),
 
   // Jour sans (kollapsdagen): Bernoulli pr. (rytter, etape). BASE-raten er
   // grid-knappen (spec-interval 2-5%); form-koblingen skalerer den lineært
@@ -120,7 +126,9 @@ export const RACE_V3_TUNING = Object.freeze({
   // Probe-grids (A: ren varians når ALDRIG båndet) + option-sammenligning +
   // endelige 3-seeds-tal: docs/audits/2026-07-12-race-v3-s2-calibration.md
   // ("Eksplorative prober" + "Beslutning (ejer 12/7)").
-  TOP_COMPRESSION_TAU: envNum("RACE_V3_TOP_COMPRESSION_TAU", 0.5),
+  // RE-KALIBRERING 17/7 (#2557, variant C, ejer-go): 0.5→0.40 — se
+  // DAYFORM_SD-kommentar ovenfor for begrundelse + scorecard-link.
+  TOP_COMPRESSION_TAU: envNum("RACE_V3_TOP_COMPRESSION_TAU", 0.40),
 
   // ── S5 (#2224): form-peaks som spillerens våben (spec §10 + addendum §2) ─────
   // peak = spillervalgt formtop i et 5-dages vindue om et mål-løb. Lægges på
