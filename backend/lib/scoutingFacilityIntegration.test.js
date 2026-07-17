@@ -16,7 +16,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 
 const { purchaseFacilityUpgrade, hireStaff } = await import("./facilityService.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
-const { getScoutState } = await import("./scoutAssignmentService.js");
+const { getScoutState, startMission } = await import("./scoutAssignmentService.js");
 const { scoutCapacity, minHalfWidthByScoutRating } = await import("./scoutEngine.js");
 
 const ENABLED = { facilitiesEnabled: true };
@@ -156,6 +156,13 @@ function createChainSupabase({ team }) {
             };
             return chain;
           },
+          // #2580: startMission/startTargetAssignment kalder .insert(...).select("id").single() —
+          // nødvendig for regressionstesten der starter en mission FØR facilitetskøb/hire.
+          insert(payload) {
+            const row = { id: `assign-${state.assignments.length + 1}`, status: "active", ...clone(payload) };
+            state.assignments.push(row);
+            return { select() { return { single: () => Promise.resolve({ data: { id: row.id }, error: null }) }; } };
+          },
         };
       }
 
@@ -252,4 +259,69 @@ test("#2530: uden hyret spejder (kun facilitets-tier købt) falder getScoutState
   assert.equal(scoutState.scout.isDefault, true);
   assert.equal(scoutState.scout.overall, 40);
   assert.equal(scoutState.capacity, 1);
+});
+
+// #2580: Discord-regression ("6000 CZ$ i sinken") — en mission startet FØR
+// facilitetskøb/hire skal overleve UÆNDRET (samme id, status='active', travel_cost
+// intakt) gennem hele køb+hire-kæden, og capacity skal afspejle den FAKTISKE
+// hyrede spejders overall (kapacitet 2 kræver overall≥80 — spec beslutning 2 i
+// scoutEngine.js — IKKE blot en købt facilitets-tier). Låser den empirisk
+// verificerede (prod-DB, 17/7) adfærd: intet kode-sti sletter/annullerer
+// scout_assignments ved facilitetskøb eller hire.
+test("#2580: mission startet FØR facilitetsopgradering + hire overlever uændret, og kapacitet følger hyret spejders overall (ikke facilitets-tier)", async () => {
+  const supabase = createChainSupabase({ team: { id: "team-4", balance: 1_000_000 } });
+
+  // 1) Start en mission MENS holdet stadig kun har DEFAULT_SCOUT (kapacitet 1).
+  const missionResult = await startMission(
+    { teamId: "team-4", criteria: { scope: "u23" }, seasonId: "season-1" },
+    supabase
+  );
+  assert.equal(missionResult.ok, true);
+  const originalAssignmentId = missionResult.assignment.id;
+  assert.equal(supabase.state.assignments.length, 1);
+
+  // 2) Byg faciliteten til tier 1 (regression-repro: "jeg byggede niveau 1").
+  const upgrade = await purchaseFacilityUpgrade(
+    { teamId: "team-4", track: "scouting", seasonId: "season-1", seasonNumber: 1 },
+    supabase,
+    ENABLED
+  );
+  assert.equal(upgrade.ok, true);
+  assert.equal(supabase.state.facilities[0].tier, 1);
+
+  // 3) Ansæt en tier-1-kandidat (bounded af den købte tier — validateHire).
+  const candidates = generateStaffCandidates({ teamId: "team-4", seasonNumber: 1, role: "scouting", facilityTier: 1 });
+  assert.ok(candidates.every((c) => c.tier === 1), "tier-1-facilitet skal kun tilbyde tier-1-kandidater");
+  const hireResult = await hireStaff(
+    { teamId: "team-4", role: "scouting", candidateName: candidates[0].name, seasonId: "season-1", seasonNumber: 1 },
+    supabase,
+    ENABLED
+  );
+  assert.equal(hireResult.ok, true);
+
+  // 4) Missionen fra FØR opgraderingen skal stadig være der, uændret.
+  assert.equal(supabase.state.assignments.length, 1, "opgradering/hire må ALDRIG slette/tilføje scout_assignments-rækker");
+  const survivingAssignment = supabase.state.assignments[0];
+  assert.equal(survivingAssignment.id, originalAssignmentId);
+  assert.equal(survivingAssignment.status, "active", "missionen må ikke blive annulleret af facilitetskøb/hire");
+  assert.equal(survivingAssignment.travel_cost, 6000, "den betalte indsats skal være intakt, ingen skjult refusion/nulstilling");
+
+  const scoutState = await getScoutState("team-4", supabase);
+  assert.equal(scoutState.active.length, 1);
+  assert.equal(scoutState.active[0].id, originalAssignmentId);
+
+  // 5) Tier-1-hire har overall << 80 (TIER_OVERALL_BAND[1] = 28..44) → kapacitet
+  //    forbliver 1. Dette er IKKE en bug: facilitets-tier alene giver aldrig
+  //    kapacitet 2, kun en hyret spejders overall≥80 gør (kræver reelt tier 4-5).
+  assert.equal(scoutState.capacity, 1, "tier-1-hire kan aldrig nå overall≥80 (TIER_OVERALL_BAND[1] max 44)");
+  assert.equal(scoutState.capacity, scoutCapacity(scoutState.scout));
+
+  // 6) Guarden afviser derfor korrekt en 2. mission (kapacitet stadig 1, IKKE
+  //    fordi den gamle mission blev slettet/glemt).
+  const secondMission = await startMission(
+    { teamId: "team-4", criteria: { scope: "country", value: "dk" }, seasonId: "season-1" },
+    supabase
+  );
+  assert.equal(secondMission.ok, false);
+  assert.equal(secondMission.error, "capacity");
 });

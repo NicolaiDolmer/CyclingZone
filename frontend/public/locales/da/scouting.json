@@ -13,6 +13,7 @@
     "defaultBody": "Du har ikke ansat en talentspejder. En standard-spejder (rating {overall}) dækker stadig dine målrettede opgaver og missioner, blot med et bredere skøn over hvad han finder.",
     "ratingLabel": "Rating",
     "capacityLabel": "{capacity, plural, one {1 opgave ad gangen} other {# opgaver ad gangen}}",
+    "capacityHintLocked": "En 2. samtidig opgave kræver en chefspejder med en overall omkring 80. At bygge Scouting Network alene giver den ikke.",
     "viewProfile": "Se profil"
   },
   "queue": {
@@ -47,7 +48,7 @@
     "topFind": "Topfund · gratis rapport"
   },
   "error": {
-    "capacity": "Din spejder er allerede fuldt booket.",
+    "capacity": "Din spejder er allerede fuldt booket. Se listen over aktive opgaver, din eksisterende opgave kører stadig og rapporterer som planlagt.",
     "insufficient_funds": "Ikke nok i kassen til at dække rejseomkostningen.",
     "no_active_season": "Ingen aktiv sæson lige nu.",
     "auth": "Du skal være logget ind.",

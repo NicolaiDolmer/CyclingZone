@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.14",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting Network: clearer capacity, no lost jobs",
+          "body": "Your scout card now spells out that a second job at once needs a chief scout rated about 80 overall, not just any hired scout or a built Scouting Network. We also confirmed (and locked in with a regression test) that a mission or targeted job started before you upgrade the facility or hire a scout is never lost or cancelled: it stays queued and reports back on schedule, and its travel cost was never at risk."
+        },
+        "da": {
+          "title": "Scouting Network: tydeligere kapacitet, ingen tabte opgaver",
+          "body": "Dit spejder-kort forklarer nu at en 2. samtidig opgave kræver en chefspejder med en overall omkring 80, ikke bare en ansat spejder eller en bygget Scouting Network. Vi har også bekræftet (og låst med en regressionstest) at en mission eller målrettet opgave startet FØR du opgraderer faciliteten eller ansætter en spejder aldrig bliver slettet eller annulleret: den forbliver i køen og rapporterer til tiden, og rejseomkostningen var aldrig i fare."
+        },
+        "refs": [2580]
+      }
+    ]
+  },
+  {
     "version": "7.13",
     "date": "2026-07-17",
     "label": "Beta",

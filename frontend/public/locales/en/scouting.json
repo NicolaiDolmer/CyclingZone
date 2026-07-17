@@ -13,6 +13,7 @@
     "defaultBody": "You have not hired a talent scout. A baseline scout (rating {overall}) still covers your targeted jobs and missions, just with a wider read on what he finds.",
     "ratingLabel": "Rating",
     "capacityLabel": "{capacity, plural, one {1 job at a time} other {# jobs at a time}}",
+    "capacityHintLocked": "A second job at once needs a chief scout rated about 80 overall. Building the Scouting Network alone doesn't grant it.",
     "viewProfile": "View profile"
   },
   "queue": {
@@ -47,7 +48,7 @@
     "topFind": "Top find · free report"
   },
   "error": {
-    "capacity": "Your scout is already at full capacity.",
+    "capacity": "Your scout is already at full capacity. See the active jobs list, your existing job is still queued and will report as scheduled.",
     "insufficient_funds": "Not enough balance to cover the travel cost.",
     "no_active_season": "No active season right now.",
     "auth": "You need to be logged in.",
