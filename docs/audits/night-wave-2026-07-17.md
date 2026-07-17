@@ -35,6 +35,12 @@
 
 Reserven (#2479/#2415/#2430) bevidst ikke trukket — dagbølgen sluttede med fuld kø leveret.
 
+## Slutfacit 17/7 (eftermiddag — merge-hale + Global Rank + kalibrering)
+
+Alle 14 dagbølge-PR'er merged (CI-reparationer: budget-serialisering løst 6× på bundle-budget.json; i18n-leaks; ui-anti-drift; én agent hang efter commit-uden-push → orkestrator pushede selv). Derudover: #2550 (race-days, backfill applied: 524/60 → 18/28) · #2546 (onboarding, kolonne applied) · #2559 (deploy-verify-falsk-alarm, fra ejer-chip-session) · 4 dependabot · #2573 (planner fuld bredde, #2568 del 1) · #2563 **Global Rank** (design ejer-låst efter mockup-oplæg; migration applied: tabeller+matview+RPC'er; rollover kørt for S0; uge+sæsonstart-snapshots taget; 365 aktive rangeret) · #2555 drift-vagt (tabel applied) · #2575 **rekalibrering variant C** (ejer-valg efter 3-variant-scorecard mod 17/7-population; favWin 38,1% i bånd; share4+ strukturelt afkoblet → #2574). Patch notes v7.09 + v7.11 (v7.10 = Discord-fix fra parallel session, #2569). **Dagstotal: 29 PR'er merged, 7 migrationer applied, 24 issues → done.**
+
+Ekstra læringer: (a) bundle-budgettet er en merge-serialisator ved bølger — hver PR bumper fra egen base og kolliderer; strukturelt fix = i18n-namespace-split (issue fra 16/7). (b) `ScheduleWakeup` fyrede pålideligt HELE dagen i aktiv session — nattens svigt er formentlig koblet til lange inaktive perioder. (c) Klassifier-denials (gh pr merge/issue edit) er flakys — GitHub-MCP som fallback virker.
+
 ## Udkast til morgen-merge-rækkefølge (backend/lav-konflikt først, migration sidst)
 
 1. **#2545** (#2436) — backend-only, raceEntryGenerator. Laveste risiko.

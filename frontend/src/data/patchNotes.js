@@ -4,6 +4,111 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.11",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Global Rank",
+        "en": {
+          "title": "Global Rank: one ranking for every manager",
+          "body": "A new ranking covers all managers across every division. You earn points from race results weighted by race prestige, and all points are halved at each season rollover, so staying active always beats old glory. The page shows your own position with weekly movement arrows, the biggest climbers of the season, and the best new managers. A small dashboard card keeps your rank in sight."
+        },
+        "da": {
+          "title": "Global Rank: én rangliste for alle managere",
+          "body": "En ny rangliste dækker alle managere på tværs af divisionerne. Du tjener point fra løbsresultater vægtet efter løbets prestige, og alle point halveres ved hvert sæsonskifte, så aktivitet altid slår gammel storhed. Siden viser din egen placering med ugentlige bevægelsespile, sæsonens største klatrere og de bedste nye managere. Et lille dashboard-kort holder din placering synlig."
+        },
+        "refs": [2453]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season 2",
+        "en": {
+          "title": "Season 2 becomes visible for planning",
+          "body": "The calendar and season planner can now switch between season 1 and season 2, so you can plan form and squads against next season's races as soon as the season 2 calendar is published."
+        },
+        "da": {
+          "title": "Sæson 2 bliver synlig til planlægning",
+          "body": "Kalenderen og sæsonplanlæggeren kan nu skifte mellem sæson 1 og sæson 2, så du kan planlægge form og trupper mod næste sæsons løb, så snart sæson 2-kalenderen er offentliggjort."
+        },
+        "refs": [2449, 2518]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Bulk price editing and asking price filter",
+          "body": "You can now mark several of your listed riders and adjust their prices in one go, including relative changes like +10% on all marked riders, with a live before and after preview. The transfer list also gained a min/max filter on asking price."
+        },
+        "da": {
+          "title": "Bulk-prisredigering og filter på udbudspris",
+          "body": "Du kan nu markere flere af dine listede ryttere og justere deres priser på én gang, inklusive relative ændringer som +10% på alle markerede, med live før- og efter-preview. Transferlisten har også fået et min/max-filter på udbudspris."
+        },
+        "refs": [2451, 2522]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Staff overview across all teams",
+          "body": "A new page shows every staff member in the game with their team, role and stats, with search and filtering and a clickable profile. Coach level bands are also simplified: youth and junior are now one U23 group, explained directly in the UI."
+        },
+        "da": {
+          "title": "Personale-oversigt på tværs af alle hold",
+          "body": "En ny side viser alt personale i spillet med hold, rolle og stats, med søgning, filtrering og klikbar profil. Træner-niveaubåndene er samtidig forenklet: youth og junior er nu én U23-gruppe, forklaret direkte i UI'et."
+        },
+        "refs": [2450, 2529]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Stage-by-stage updates and watchlist alerts",
+          "body": "During stage races you now get a notification after every stage with your best rider's result, not just after the final stage. And if a rider on your watchlist leaves the game, you are told instead of the rider silently disappearing."
+        },
+        "da": {
+          "title": "Etape-for-etape-opdateringer og ønskeliste-beskeder",
+          "body": "Under etapeløb får du nu en besked efter hver etape med din bedste rytters resultat, ikke kun efter den sidste. Og forlader en rytter på din ønskeliste spillet, får du besked i stedet for at rytteren bare forsvinder."
+        },
+        "refs": [2523, 2524]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Closer racing at the top",
+          "body": "Race simulation is recalibrated against the current rider population: favorites still win most, but no longer as predictably. Expect more open finales. A nightly watchdog now monitors race balance against live results so drift is caught automatically."
+        },
+        "da": {
+          "title": "Tættere løb i toppen",
+          "body": "Løbssimulationen er rekalibreret mod den aktuelle rytter-population: favoritterne vinder stadig mest, men ikke længere lige så forudsigeligt. Forvent mere åbne finaler. En natlig vagt overvåger nu balancen mod ægte resultater, så skævheder fanges automatisk."
+        },
+        "refs": [2557]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Faster pages, full-width planner, clickable results",
+          "body": "The dashboard and league overview load noticeably faster. The season planner now uses the full screen width. Race names on rider profile result tabs link to the race page. The onboarding card no longer reappears for established teams."
+        },
+        "da": {
+          "title": "Hurtigere sider, planner i fuld bredde, klikbare resultater",
+          "body": "Dashboardet og liga-overblikket loader mærkbart hurtigere. Sæsonplanlæggeren bruger nu hele skærmbredden. Løbsnavne på rytterprofilens resultat-faner linker til løbssiden. Kom i gang-kortet dukker ikke længere op igen for etablerede hold."
+        },
+        "refs": [2444, 2568, 2526, 2439]
+      }
+    ]
+  },
+  {
     "version": "7.10",
     "date": "2026-07-17",
     "label": "Beta",
