@@ -18,6 +18,7 @@ import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { ConfettiModal } from "../components/ConfettiModal";
 import OverbidToast from "../components/OverbidToast";
+import CountdownRing from "../components/CountdownRing";
 import {
   isManagerSeller,
   getAuctionLeaderId,
@@ -417,10 +418,13 @@ function AuctionCountdown({ end, status }) {
   const { t } = useTranslation("rider");
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
+  // #2577: sidste 10s vises som countdown-ring i stedet for tekst.
+  const [msLeft, setMsLeft] = useState(null);
   useEffect(() => {
     if (status === "completed") { setText(t("countdown.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
+      setMsLeft(diff);
       if (diff <= 0) { setText(t("countdown.expired")); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -432,6 +436,9 @@ function AuctionCountdown({ end, status }) {
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [end, status, t]);
+  if (status !== "completed" && msLeft != null && msLeft > 0 && msLeft <= 10000) {
+    return <CountdownRing closesAt={end} />;
+  }
   return (
     <span className={`font-mono font-bold text-base tabular-nums ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
       {text}

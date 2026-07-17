@@ -266,6 +266,8 @@ select option {
 .auction-bid-cell,
 .auction-rider-cell {
   background-color: var(--bg-card);
+  /* Blød overgang når -winning-tinten kommer/går (leader-skifte) — #2577. */
+  transition: background-color var(--dur-slow) var(--ease);
 }
 
 tr:hover .auction-bid-cell,
@@ -345,6 +347,18 @@ tr:hover .sticky-name-cell {
   .cz-menu-panel,
   .cz-toast-item { animation: none; }
   .cz-tooltip { transition: none; }
+}
+
+/* #2577: jersey handoff — enkelt puls når LeaderBadge lander på en ny række.
+   Ingen glow (D-MOTION); ring i accent-alpha, ikke skygge-blur.
+   prefers-reduced-motion slaar pulsen fra (spec A6, hard krav). */
+@keyframes cz-chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--accent) / 0); }
+  45%      { box-shadow: 0 0 0 5px rgb(var(--accent) / .3); }
+}
+.cz-chip-pulse { animation: cz-chip-pulse .45s var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .cz-chip-pulse { animation: none; }
 }
 
 /* ProgressMeter-fyld (#671 Plan 2c). Glidende bredde-overgang; INGEN glow.

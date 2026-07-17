@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.12",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Smoother auctions and standings",
+          "body": "Small motion touches across the live surfaces: the outbid toast now slides in instead of popping, the gold highlight on the leading bid fades softly when the lead changes, auctions show a countdown ring for the final 10 seconds (turning red for the last 3), standings rows glide to their new positions when points update, and the leader jersey chip pulses briefly when it lands on a new team. All animations respect your system's reduced motion setting."
+        },
+        "da": {
+          "title": "Blødere auktioner og rangliste",
+          "body": "Små bevægelses-detaljer på de levende flader: overbudt-beskeden glider nu ind i stedet for at poppe op, guld-markeringen på det førende bud toner blødt når føringen skifter, auktioner viser en nedtællingsring de sidste 10 sekunder (rød de sidste 3), ranglistens rækker glider til deres nye pladser når point opdateres, og førertrøje-chippen pulserer kort når den lander på et nyt hold. Alle animationer respekterer dit systems indstilling for reduceret bevægelse."
+        },
+        "refs": [2577]
+      }
+    ]
+  },
+  {
     "version": "7.11",
     "date": "2026-07-17",
     "label": "Beta",
