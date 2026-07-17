@@ -8,7 +8,6 @@ import {
 import { TRAINING_CONFIG } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { youthRateForPotential } from "./riderProgression.js";
-import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 
 test("default-program bruges når plan mangler OG type ukendt (spec 6.3: følger ALTID program)", () => {
@@ -201,8 +200,18 @@ test("applyDailyTick: uden hardDailyCap (default) kan samme scenarie give mere e
 
 // ── #2216 A4 (Task 7): staff-trænings-bonus (dimension×niveau, kun under caps, no-op uden staff) ──
 
-// En ren fysisk-ungdoms-coach (physical stærk, mental svag; youth stærk, senior svag).
-const PHYS_YOUTH_COACH = deriveStaffAbilities({ role: "training", tier: 5, name: "Karel Novotny" });
+// En ren fysisk-ungdoms-coach (physical stærk, mental svag; u23 stærk, senior svag).
+// #2529: LEVEL_BANDS = u23/senior (youth+junior kollapset til ét u23-bånd).
+// Håndbygget (IKKE deriveStaffAbilities): specializationMatch kræver kun
+// { overall, dimensions, levels }, og et fast fixture holder testen uafhængig
+// af PRNG-hash-tilfældighed (en navngivet kandidats akse-fordeling kan skifte
+// hvilken akse der ender øverst, når LEVEL_BANDS' længde ændres — som her).
+const PHYS_YOUTH_COACH = {
+  overall: 70,
+  dimensions: { physical: 95, mental: 20, technical: 50 },
+  levels: { u23: 95, senior: 20 },
+  roleSkills: {},
+};
 
 test("dailyAbilityDelta: uden staff (default-params) = bit-identisk med den gamle kæde", () => {
   // Regressions-vagt: den EKSPLICITTE gamle formel (uden staffBonus) skal give præcis
@@ -222,8 +231,8 @@ test("dailyAbilityDelta: fysisk-ungdoms-coach hæver en ung rytters fysiske delt
   const program = { focus: "vo2max", intensity: "hard" };
   const base = { ability: "climbing", current: 40, cap: 85, age: 18, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
   const withoutStaff = dailyAbilityDelta(base);
-  const withStaff = dailyAbilityDelta({ ...base, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" });
-  const factor = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" })
+  const withStaff = dailyAbilityDelta({ ...base, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
+  const factor = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "u23" })
     // Plan B (#1441): facilitets-magnitude (effectiveBonus) ganges også ind i kæden.
     * facilityTrainingMultiplier({ facilityTier: 5, staff: PHYS_YOUTH_COACH });
   assert.ok(factor > 1.0, "fixture skal give en ægte bonus");
@@ -239,7 +248,7 @@ test("dailyAbilityDelta: dimension-miss (mental) + niveau-miss (senior) → uæn
   // evne-uafhængig), så delta = uden-staff × facilityTrainingMultiplier præcist.
   const mentalBase = { ability: "aggression", current: 40, cap: 85, age: 18, program: { focus: "aggression", intensity: "normal" }, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
   const facMult = facilityTrainingMultiplier({ facilityTier: 5, staff: PHYS_YOUTH_COACH });
-  const mentalWith = dailyAbilityDelta({ ...mentalBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" });
+  const mentalWith = dailyAbilityDelta({ ...mentalBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
   const mentalWithout = dailyAbilityDelta(mentalBase);
   assert.ok(
     Math.abs(mentalWith - mentalWithout * facMult) < 1e-12,
@@ -248,7 +257,7 @@ test("dailyAbilityDelta: dimension-miss (mental) + niveau-miss (senior) → uæn
   // En senior rytters fysiske evne løftes MINDRE end en ungdoms (niveau-target).
   const physBase = { ability: "climbing", current: 40, cap: 85, age: 30, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
   const senior = dailyAbilityDelta({ ...physBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "senior" });
-  const youth = dailyAbilityDelta({ ...physBase, age: 18, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" });
+  const youth = dailyAbilityDelta({ ...physBase, age: 18, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23" });
   const youthNoStaff = dailyAbilityDelta({ ...physBase, age: 18 });
   const seniorNoStaff = dailyAbilityDelta(physBase);
   assert.ok((senior / seniorNoStaff) < (youth / youthNoStaff), "senior-løft < youth-løft (niveau-target)");
@@ -265,8 +274,8 @@ test("KRITISK non-regression: staff-bonus ændrer KUN daglig delta — cap-loope
     progress: { climbing: 0.999 },     // bar næsten fuld → ét +1 er lige på trapperne
     program: { focus: "vo2max", intensity: "hard" },
     conditionMult: 1, bonus: true, potentiale: 6,
-    // Stor bonus: fysisk-ungdoms-coach + fuld facilitet + youth-rytter.
-    staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth",
+    // Stor bonus: fysisk-ungdoms-coach + fuld facilitet + u23-rytter.
+    staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "u23",
   };
   const out = applyDailyTick(input);
   assert.ok(out.abilities.climbing <= 85, `cap sprængt: ${out.abilities.climbing} > 85`);
@@ -284,7 +293,7 @@ test("applyDailyTick: uden staff (default) = bit-identisk med samme tick uden st
     conditionMult: 0.95, bonus: true, potentiale: 5,
   };
   const withoutParams = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress } });
-  const withNullStaff = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, staff: null, facilityTier: 0, riderLevel: "junior" });
+  const withNullStaff = applyDailyTick({ ...base, abilities: { ...base.abilities }, progress: { ...base.progress }, staff: null, facilityTier: 0, riderLevel: "u23" });
   assert.deepEqual(withNullStaff, withoutParams, "null staff → identisk tick-output");
 });
 

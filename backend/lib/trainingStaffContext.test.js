@@ -37,15 +37,27 @@ test("facilitet uden chef → { tier, staff: null }", async () => {
   assert.deepEqual(ctx, { facilityTier: 3, staff: null });
 });
 
-test("facilitet + chef m. persisteret ability-række → staff = { overall, dimensions, levels }", async () => {
+test("facilitet + chef m. persisteret ability-række (allerede u23-migreret) → staff = { overall, dimensions, levels }", async () => {
   const supabase = createSupabaseMock({
     team_facilities: [{ team_id: TEAM_ID, track: "training", tier: 4 }],
     team_staff: [{ id: "st-1", team_id: TEAM_ID, role: "training", status: "active", tier: 4, name: "Karel Novotny" }],
-    staff_derived_abilities: [{ staff_id: "st-1", overall: 77, dimensions: { physical: 88 }, levels: { youth: 70 } }],
+    staff_derived_abilities: [{ staff_id: "st-1", overall: 77, dimensions: { physical: 88 }, levels: { u23: 70 } }],
   });
   const ctx = await loadTrainingStaffContext(supabase, TEAM_ID);
   assert.equal(ctx.facilityTier, 4);
-  assert.deepEqual(ctx.staff, { overall: 77, dimensions: { physical: 88 }, levels: { youth: 70 } });
+  assert.deepEqual(ctx.staff, { overall: 77, dimensions: { physical: 88 }, levels: { u23: 70 } });
+});
+
+// #2529: DB-rækker fra FØR migrationen kan stadig have det gamle youth/junior-format
+// i vinduet mellem merge og ejer-apply — graceful læsning må ikke knække.
+test("facilitet + chef m. FØR-migration ability-række (youth/junior) → normaliseret til u23=MAX", async () => {
+  const supabase = createSupabaseMock({
+    team_facilities: [{ team_id: TEAM_ID, track: "training", tier: 4 }],
+    team_staff: [{ id: "st-3", team_id: TEAM_ID, role: "training", status: "active", tier: 4, name: "Ane Iturriaga" }],
+    staff_derived_abilities: [{ staff_id: "st-3", overall: 80, dimensions: { physical: 90 }, levels: { youth: 55, junior: 71, senior: 60 } }],
+  });
+  const ctx = await loadTrainingStaffContext(supabase, TEAM_ID);
+  assert.deepEqual(ctx.staff.levels, { u23: 71, senior: 60 });
 });
 
 test("self-heal: manglende ability-række → deterministisk derivation fra (role,tier,name)", async () => {

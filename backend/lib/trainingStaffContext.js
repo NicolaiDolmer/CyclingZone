@@ -14,6 +14,7 @@
 //   • Self-heal (samme mønster som getStaffProfileHandler): mangler ability-rækken
 //     (staff ansat før A4-migrationen) afledes profilen deterministisk on-the-fly.
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
+import { normalizeLevelBands } from "./staffAbilityConstants.js";
 import { captureException } from "./sentry.js";
 
 const NEUTRAL = Object.freeze({ facilityTier: 0, staff: null });
@@ -49,7 +50,9 @@ export async function loadTrainingStaffContext(supabase, teamId) {
       staff = {
         overall: ab.overall,
         dimensions: ab.dimensions ?? {},
-        levels: ab.levels ?? {},
+        // #2529: graceful læsning — DB-rækker fra FØR u23-migrationen kan stadig
+        // have youth/junior-nøgler i vinduet mellem merge og ejer-apply.
+        levels: normalizeLevelBands(ab.levels ?? {}),
       };
     }
     return { facilityTier, staff };
