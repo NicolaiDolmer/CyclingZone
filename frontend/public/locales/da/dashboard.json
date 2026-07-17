@@ -135,7 +135,8 @@
       "divStandings": "Divisionsrangliste",
       "board": "Bestyrelsens status",
       "recentResults": "Seneste resultater",
-      "riderRanking": "Rytterrangliste"
+      "riderRanking": "Rytterrangliste",
+      "globalRank": "Global Rank"
     }
   },
   "board": {

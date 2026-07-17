@@ -140,7 +140,11 @@
       },
       "sellOnTransferList": {
         "title": "Sælg via transferlisten",
-        "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere markedet efter pris eller efter nyeste."
+        "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere OG filtrere markedet efter udbudspris, ud over at sortere efter nyeste."
+      },
+      "bulkEditPrices": {
+        "title": "Redigér mange priser på én gang",
+        "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
       "sendOffer": {
         "title": "Send et tilbud",
@@ -451,6 +455,33 @@
       "promotionRelegation": {
         "title": "Op- og nedrykning",
         "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned, delt mellem de to puljer nedenunder. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson."
+      }
+    },
+    "globalRank": {
+      "label": "Global Rank",
+      "whatIsIt": {
+        "title": "Hvad er Global Rank?",
+        "text": "Global Rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Sæson > Global Rank."
+      },
+      "howScored": {
+        "title": "Hvordan optjener jeg point?",
+        "text": "Du optjener point fra dine løbsresultater, vægtet efter løbets prestige (de samme point der allerede tæller til din sæsonplacering). Store løb (Monumenter, Grand Tours) er værd mest."
+      },
+      "decay": {
+        "title": "Hvorfor svinder mine point ind?",
+        "text": "Alle dine point halveres ved hvert sæsonskifte. Der er ingen fast udløbsdato og intet rullende vindue, kun simpel henfald: sæsonen du lige har afsluttet tæller stadig med, men til halv vægt, så en kvart, og så videre. Det holder ranglisten selv-begrænsende (din total lander omkring det dobbelte af én stærk sæsons point), og betyder at nylig form altid tæller mest."
+      },
+      "newManagers": {
+        "title": "Hvad med nye managere?",
+        "text": "En ny managers første sæson tæller til fuld vægt fra dag ét, side om side med veteraners halverede, ældre point, så der er ingen anciennitets-straf. Rookies (managere i deres første sæson) fremhæves også separat i panelet \"Bedste nye manager\"."
+      },
+      "inactive": {
+        "title": "Hvorfor er jeg forsvundet fra listen?",
+        "text": "Managere uden aktivitet i de seneste 2 sæsoner skjules fra Global Rank for at holde listen relevant. Dine point er ikke tabt, du dukker op igen med den korrekte placering, så snart du er aktiv igen."
+      },
+      "movement": {
+        "title": "Bevægelses-pilen",
+        "text": "Op/ned-pilen ved siden af din placering viser hvordan din position har ændret sig siden sidste uges snapshot (ikke live ved hvert side-load). Panelet \"Sæsonens klatrere\" måler i stedet pladser vundet siden sæsonstart."
       }
     },
     "riders": {

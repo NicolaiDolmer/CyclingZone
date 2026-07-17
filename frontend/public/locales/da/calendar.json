@@ -7,6 +7,14 @@
     "title": "Ingen aktiv sæson",
     "desc": "Løbskalenderen vises her, når en sæson er planlagt."
   },
+  "seasonMenu": {
+    "label": "Sæson",
+    "option": "S{number}"
+  },
+  "notGenerated": {
+    "title": "Sæson {number}s kalender er ikke klar endnu",
+    "desc": "Løbsprogrammet for denne sæson er ikke genereret endnu. Kig forbi igen tættere på sæsonstart."
+  },
   "empty": {
     "title": "Ingen løb denne måned",
     "desc": "Brug måneds-pilene til at finde planlagte løb."

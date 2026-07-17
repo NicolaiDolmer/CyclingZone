@@ -13,6 +13,7 @@
     "salaryRange": "Salary CZ$ (min-max)",
     "ageRange": "Age (min-max)",
     "bidRange": "Highest bid CZ$ (min-max)",
+    "askingPriceRange": "Asking price CZ$ (min-max)",
     "team": "Team",
     "teamAll": "All teams",
     "min": "Min",
@@ -46,6 +47,10 @@
     "bid": {
       "min": "Bid ≥ {amount} CZ$",
       "max": "Bid ≤ {amount} CZ$"
+    },
+    "askingPrice": {
+      "min": "Price ≥ {amount} CZ$",
+      "max": "Price ≤ {amount} CZ$"
     },
     "teamSelected": "Team selected",
     "statRange": "{label} {min}-{max}",

@@ -43,13 +43,18 @@ export default function CalendarPage() {
   const [division, setDivision] = useState(null); // null = all divisions
   const [mineOnly, setMineOnly] = useState(false);
   const [cursor, setCursor] = useState(null); // { year, month }
+  // #2449: sæson-vælger (S1/S2/...) — null = ingen eksplicit valg endnu (backend
+  // defaulter til den aktive sæson, uændret adfærd for gamle klienter).
+  const [seasonNumber, setSeasonNumber] = useState(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         if (!API) { setLoading(false); return; }
-        const res = await fetch(`${API}/api/races/calendar`, { headers: await authHeaders() });
+        setLoading(true);
+        const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
+        const res = await fetch(`${API}/api/races/calendar${qs}`, { headers: await authHeaders() });
         const json = await res.json();
         if (!alive) return;
         setData(json);
@@ -68,7 +73,7 @@ export default function CalendarPage() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [seasonNumber]);
 
   const todayISO = useMemo(() => copenhagenTodayISO(), []);
 
@@ -101,11 +106,24 @@ export default function CalendarPage() {
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
 
+  const availableSeasons = data?.availableSeasons || [];
+  // #2449: viser den viste sæsons nummer i vælgeren — det eksplicitte valg hvis
+  // sat, ellers hvad serveren faldt tilbage til (aktiv sæson).
+  const displaySeasonNumber = seasonNumber ?? data?.season?.number ?? null;
+  const onSeasonChange = (n) => setSeasonNumber(n);
+
   if (!data?.season) {
     return (
       <div className="mx-auto max-w-4xl">
-        <CalendarHeader t={t} season={null} division={division} onDivision={setDivision} data={data} />
-        <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("noSeason.title")} description={t("noSeason.desc")} />
+        <CalendarHeader
+          t={t} season={null} division={division} onDivision={setDivision} data={data}
+          availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
+        />
+        {seasonNumber != null ? (
+          <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("notGenerated.title", { number: seasonNumber })} description={t("notGenerated.desc")} />
+        ) : (
+          <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("noSeason.title")} description={t("noSeason.desc")} />
+        )}
       </div>
     );
   }
@@ -123,6 +141,9 @@ export default function CalendarPage() {
         division={division}
         onDivision={(v) => { setDivision(v); setTab("divisions"); }}
         data={data}
+        availableSeasons={availableSeasons}
+        seasonNumber={displaySeasonNumber}
+        onSeasonChange={onSeasonChange}
       />
 
       {/* Tab group + month navigation */}
@@ -239,7 +260,7 @@ export default function CalendarPage() {
 
 // ── header ───────────────────────────────────────────────────────────────────
 
-function CalendarHeader({ t, season, division, onDivision, data }) {
+function CalendarHeader({ t, season, division, onDivision, data, availableSeasons = [], seasonNumber = null, onSeasonChange }) {
   const divisionTree = data?.divisions || [];
   const eyebrow = season
     ? (season.raceDaysTotal
@@ -254,21 +275,38 @@ function CalendarHeader({ t, season, division, onDivision, data }) {
         )}
         <h1 className="font-display text-[2.75rem] leading-[0.95] uppercase tracking-wide text-cz-1">{t("title")}</h1>
       </div>
-      {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
-      {divisionTree.length > 0 && (
-        <Select
-          size="sm"
-          value={division ?? ""}
-          onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
-          className="w-40"
-          aria-label={t("divisionMenu.label")}
-        >
-          <option value="">{t("divisionMenu.all")}</option>
-          {divisionTree.map((d) => (
-            <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
-          ))}
-        </Select>
-      )}
+      <div className="flex items-center gap-2">
+        {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
+            (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
+        {availableSeasons.length > 1 && (
+          <Select
+            size="sm"
+            value={seasonNumber ?? ""}
+            onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
+            className="w-24"
+            aria-label={t("seasonMenu.label")}
+          >
+            {availableSeasons.map((s) => (
+              <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
+            ))}
+          </Select>
+        )}
+        {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
+        {divisionTree.length > 0 && (
+          <Select
+            size="sm"
+            value={division ?? ""}
+            onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
+            className="w-40"
+            aria-label={t("divisionMenu.label")}
+          >
+            <option value="">{t("divisionMenu.all")}</option>
+            {divisionTree.map((d) => (
+              <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
+            ))}
+          </Select>
+        )}
+      </div>
     </div>
   );
 }

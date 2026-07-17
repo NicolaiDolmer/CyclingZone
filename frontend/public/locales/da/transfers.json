@@ -253,6 +253,32 @@
     "manage": "Administrér",
     "close": "Luk",
     "offerAria": "Send tilbud på {riderName}",
-    "manageAria": "Administrér annonce for {riderName}"
+    "manageAria": "Administrér annonce for {riderName}",
+    "selectAria": "Vælg {riderName} til bulk-prisredigering"
+  },
+  "bulkPrice": {
+    "selected": "{count} markeret",
+    "selectAllVisible": "Markér alle viste ryttere ({count})",
+    "clear": "Ryd markering",
+    "mode": {
+      "percent": "Procent",
+      "amount": "Beløb CZ$",
+      "set": "Sæt pris"
+    },
+    "valueLabel": "Værdi",
+    "valuePlaceholder": {
+      "percent": "fx 10 for +10%, -10 for -10%",
+      "amount": "fx 500 eller -500",
+      "set": "Ny udbudspris"
+    },
+    "previewTitle": "Forhåndsvisning",
+    "previewEmpty": "Indtast en værdi for at se de nye priser.",
+    "previewMore": "+ {count} flere",
+    "apply": "Anvend på {count} ryttere",
+    "applying": "Anvender...",
+    "toastSuccess": "Opdaterede {count} priser",
+    "toastPartial": "Opdaterede {updated}, {failed} kunne ikke opdateres",
+    "toastNoChange": "Ingen prisændring at anvende",
+    "toastFailed": "Kunne ikke opdatere priser"
   }
 }

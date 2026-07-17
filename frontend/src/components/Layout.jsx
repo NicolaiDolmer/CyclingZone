@@ -92,6 +92,7 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
         { to: "/calendar",       label: t("nav.item.calendar") },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
+        { to: "/global-rank",    label: t("nav.item.globalRank") },
         // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
         // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
         { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar" },

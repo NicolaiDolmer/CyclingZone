@@ -140,7 +140,11 @@
       },
       "sellOnTransferList": {
         "title": "Sell via the transfer list",
-        "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort the market by price or by newest listings."
+        "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort or filter the market by asking price, in addition to sorting by newest listings."
+      },
+      "bulkEditPrices": {
+        "title": "Editing many prices at once",
+        "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
       },
       "sendOffer": {
         "title": "Send an offer",
@@ -451,6 +455,33 @@
       "promotionRelegation": {
         "title": "Promotion and relegation",
         "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season."
+      }
+    },
+    "globalRank": {
+      "label": "Global Rank",
+      "whatIsIt": {
+        "title": "What is Global Rank?",
+        "text": "Global Rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Season > Global Rank."
+      },
+      "howScored": {
+        "title": "How are points earned?",
+        "text": "You earn points from your race results, weighted by the race's prestige (the same points that already count toward your season standing). Bigger races (Monuments, Grand Tours) are worth more."
+      },
+      "decay": {
+        "title": "Why do my points shrink?",
+        "text": "All of your points are halved at every season change. There's no fixed expiry date and no rolling window, just simple decay: the season you just finished still counts, but at half weight, then a quarter, and so on. This keeps the ranking self-limiting (your total settles around twice a strong season's points) and means recent form always counts most."
+      },
+      "newManagers": {
+        "title": "What about new managers?",
+        "text": "A new manager's first season counts at full weight from day one, right alongside veterans' halved, older points, so there's no tenure penalty. Rookies (managers in their first season) are also highlighted separately in the \"Best new manager\" panel."
+      },
+      "inactive": {
+        "title": "Why did I disappear from the list?",
+        "text": "Managers with no activity in the last 2 seasons are hidden from Global Rank to keep the list relevant. Your points aren't lost, you'll reappear with the correct rank as soon as you're active again."
+      },
+      "movement": {
+        "title": "The movement arrow",
+        "text": "The up/down arrow next to your rank shows how your position changed since last week's snapshot (not live on every page load). The \"Climbers of the season\" panel instead measures places gained since the season started."
       }
     },
     "riders": {

@@ -16,8 +16,10 @@ function LegendItem({ children }) {
 
 export default function SeasonPlannerPage() {
   const { t } = useTranslation("planner");
-  const planner = usePlanner();
-  const { enabled, loading, riders, races, maxPerRider, today, leadupDays, busy } = planner;
+  // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
+  const [seasonNumber, setSeasonNumber] = useState(null);
+  const planner = usePlanner(seasonNumber);
+  const { enabled, loading, season, availableSeasons, riders, races, maxPerRider, today, leadupDays, busy } = planner;
 
   const [filter, setFilter] = useState("mine");
   const [selected, setSelected] = useState(null); // { mode: "race"|"rider", id }
@@ -76,6 +78,10 @@ export default function SeasonPlannerPage() {
   // peak"-nudge — ellers ser manageren begge (modstridende) beskeder på én gang.
   const hasSuggestions = (riders || []).some((r) => (r.peaks || []).some((p) => p.isSuggestion));
   const totalRealPeaks = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => !p.isSuggestion).length, 0);
+  // #2518: sæsonen findes (er oprettet), men kalenderen (#2449) er ikke genereret
+  // endnu — vis en forklarende tom-state i stedet for det generiske "ingen
+  // ryttere"-empty-state (holdet HAR ryttere, sæsonen mangler bare et program).
+  const seasonNotReady = seasonNumber != null && !season;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -84,14 +90,29 @@ export default function SeasonPlannerPage() {
           <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
           <p className="text-[12px] text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
         </div>
-        <div className="flex border border-cz-border rounded-cz overflow-hidden text-[11px] shrink-0">
-          {["mine", "all"].map((f) => (
-            <button
-              key={f}
-              className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-              onClick={() => setFilter(f)}
-            >{t(`filter.${f}`)}</button>
-          ))}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
+              sæson, så managere kan planlægge mod S2's program FØR den starter. */}
+          {(availableSeasons || []).length > 1 && (
+            <div className="flex border border-cz-border rounded-cz overflow-hidden text-[11px]">
+              {availableSeasons.map((s) => (
+                <button
+                  key={s.id}
+                  className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                  onClick={() => setSeasonNumber(s.number)}
+                >{t("seasonMenu.option", { number: s.number })}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex border border-cz-border rounded-cz overflow-hidden text-[11px]">
+            {["mine", "all"].map((f) => (
+              <button
+                key={f}
+                className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                onClick={() => setFilter(f)}
+              >{t(`filter.${f}`)}</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -101,7 +122,11 @@ export default function SeasonPlannerPage() {
         </div>
       )}
 
-      {!hasRiders && <EmptyState title={t("empty.title")} description={t("empty.description")} />}
+      {seasonNotReady && (
+        <EmptyState title={t("seasonNotReady.title", { number: seasonNumber })} description={t("seasonNotReady.description")} />
+      )}
+
+      {!seasonNotReady && !hasRiders && <EmptyState title={t("empty.title")} description={t("empty.description")} />}
 
       {/* #2455: assistenten har allerede udkastet form-programmerne — banneret
           gør forslagene OPDAGELIGE (issue-krav 3), i stedet for det gamle

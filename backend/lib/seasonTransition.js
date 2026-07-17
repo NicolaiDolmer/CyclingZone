@@ -45,6 +45,7 @@ import {
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
+import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 
 let processSeasonStartImpl;
@@ -540,6 +541,34 @@ export async function transitionToNextSeason({
     phase: "mark_previous_completed",
     ...(await markSeasonCompleted(supabase, fromSeasonId, transitionAtIso)),
   });
+
+  // Phase 3b (#2453 Global Rank): halvér alle bankede point + tilføj den netop
+  // afsluttede sæsons point (apply_global_rank_season_rollover-RPC, se
+  // database/2026-07-17-global-rank.sql). Additivt + isoleret: en fejl her må
+  // ALDRIG vælte resten af sæson-transitionen (samme disciplin som de øvrige
+  // additive faser, fx contract_expiring_notifications). RPC'en er IKKE
+  // automatisk retry-sikker ved delvis fejl (en halvering der delvist er kørt og
+  // køres igen ville halvere for meget) — en fejlet fase her kræver manuel
+  // undersøgelse, ikke blind retry af hele transitionToNextSeason.
+  const applyGlobalRankRolloverFn = deps.applyGlobalRankSeasonRollover ?? (async (sid) => {
+    const { error } = await supabase.rpc("apply_global_rank_season_rollover", {
+      p_completed_season_id: sid,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+  try {
+    log.push({
+      phase: "global_rank_decay",
+      ...(await applyGlobalRankRolloverFn(fromSeasonId)),
+    });
+  } catch (err) {
+    log.push({ phase: "global_rank_decay", error: err.message });
+    captureException(err, {
+      tags: { phase: "global_rank_decay" },
+      extra: { fromSeasonId, note: "kræver manuel undersøgelse — RPC ikke blind-retry-sikker (dobbelt halvering)" },
+    });
+  }
 
   log.push({
     phase: "close_prev_transfer_window",

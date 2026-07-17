@@ -51,6 +51,7 @@ import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
+import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { processStallWatchdog } from "./lib/stallWatchdog.js";
@@ -807,6 +808,15 @@ async function runRankingMatviewRefreshCron() {
   await refreshRankingMatviewsSafe(supabase);
 }
 
+// ─── Global Rank ugentligt bevægelses-snapshot (#2453) ────────────────────────
+// Kaldes dagligt (samme tick-cadence som andre 24h-jobs), men RPC'en no-op'er
+// selv medmindre >= 7 dage er gået siden seneste snapshot — effektivt ugentlig
+// kadence uden en ny interval-bucket. Til "▲/▼ siden sidste uge"-pilene på
+// /global-rank.
+async function runGlobalRankWeeklySnapshotCron() {
+  await takeGlobalRankWeeklySnapshotSafe(supabase);
+}
+
 // ─── Traffic-events retention: hold rå anonyme web-events ≤180 dage (#2040) ───
 // traffic_events er bevidst PII-fri, men rå events skal ikke leve for evigt.
 // Idempotent delete; service_role bypasser RLS.
@@ -1083,6 +1093,13 @@ export function startCron() {
   setInterval(
     trackedTick("ranking matview refresh", monitorCron("ranking-matview-refresh", runRankingMatviewRefreshCron, CRON_MONITOR_10MIN)),
     10 * 60 * 1000
+  );
+
+  // Every 24h: Global Rank ugentligt bevægelses-snapshot (#2453) — dagligt tjek,
+  // RPC'en no-op'er selv medmindre 7 dage er gået (se runGlobalRankWeeklySnapshotCron).
+  setInterval(
+    trackedTick("global rank weekly snapshot", monitorCron("global-rank-weekly-snapshot", runGlobalRankWeeklySnapshotCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
   );
 
   // Every 30 minutes: stall-watchdog (#2077) — fanger tavse stalls uden exception.
