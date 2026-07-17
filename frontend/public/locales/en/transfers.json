@@ -253,6 +253,32 @@
     "manage": "Manage",
     "close": "Close",
     "offerAria": "Send offer on {riderName}",
-    "manageAria": "Manage listing for {riderName}"
+    "manageAria": "Manage listing for {riderName}",
+    "selectAria": "Select {riderName} for bulk price edit"
+  },
+  "bulkPrice": {
+    "selected": "{count} selected",
+    "selectAllVisible": "Select all listed riders ({count})",
+    "clear": "Clear selection",
+    "mode": {
+      "percent": "Percent",
+      "amount": "Amount CZ$",
+      "set": "Set price"
+    },
+    "valueLabel": "Value",
+    "valuePlaceholder": {
+      "percent": "e.g. 10 for +10%, -10 for -10%",
+      "amount": "e.g. 500 or -500",
+      "set": "New asking price"
+    },
+    "previewTitle": "Preview",
+    "previewEmpty": "Enter a value to preview the new prices.",
+    "previewMore": "+ {count} more",
+    "apply": "Apply to {count} riders",
+    "applying": "Applying...",
+    "toastSuccess": "Updated {count} prices",
+    "toastPartial": "Updated {updated}, {failed} could not be updated",
+    "toastNoChange": "No price change to apply",
+    "toastFailed": "Could not update prices"
   }
 }

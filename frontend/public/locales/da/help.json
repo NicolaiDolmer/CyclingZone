@@ -140,7 +140,11 @@
       },
       "sellOnTransferList": {
         "title": "Sælg via transferlisten",
-        "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere markedet efter pris eller efter nyeste."
+        "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere OG filtrere markedet efter udbudspris, ud over at sortere efter nyeste."
+      },
+      "bulkEditPrices": {
+        "title": "Redigér mange priser på én gang",
+        "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
       "sendOffer": {
         "title": "Send et tilbud",

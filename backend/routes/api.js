@@ -4813,6 +4813,65 @@ router.delete("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res
   res.json({ success: true });
 });
 
+// PATCH /api/transfers/bulk-price — redigér asking_price på FLERE egne listinger i
+// ét kald (#2451). Frontend'ens bulk-prisredigering ("+10% på alle markerede")
+// ville ellers ramme marketWriteLimiter (30/min) efter ~30 markerede ryttere —
+// ét request for hele batchen tæller kun som ét write mod limiteren. Genbruger
+// SAMME validering pr. listing som enkelt-PATCH'en nedenfor (getListingPriceUpdateIssue),
+// så reglerne (ejer + open/negotiating + positivt heltal) aldrig kan divergere.
+// Delvist held igennem er tilladt: hver listing valideres uafhængigt, og svaret
+// lister både opdaterede og fejlede id'er så UI'en kan vise præcis hvad der landede.
+// MÅ stå FØR PATCH /transfers/:id — ellers matcher :id-routen "bulk-price" som id.
+const BULK_PRICE_MAX_ITEMS = 100;
+router.patch("/transfers/bulk-price", requireAuth, marketWriteLimiter, async (req, res) => {
+  const updates = Array.isArray(req.body?.updates) ? req.body.updates : null;
+  if (!updates || updates.length === 0) {
+    return res.status(400).json({ error: "No listings selected", errorCode: "bulk_price_empty" });
+  }
+  if (updates.length > BULK_PRICE_MAX_ITEMS) {
+    return res.status(400).json({
+      error: `Max ${BULK_PRICE_MAX_ITEMS} listings per call`,
+      errorCode: "bulk_price_too_many",
+      errorParams: { max: BULK_PRICE_MAX_ITEMS },
+    });
+  }
+
+  const ids = updates.map((u) => u?.id).filter(Boolean);
+  const { data: listings, error: fetchError } = await supabase
+    .from("transfer_listings")
+    .select("id, seller_team_id, status")
+    .in("id", ids);
+  if (fetchError) return res.status(500).json({ error: fetchError.message });
+  const listingById = new Map((listings || []).map((l) => [l.id, l]));
+
+  const updated = [];
+  const failed = [];
+  for (const u of updates) {
+    const askingPrice = Number(u?.asking_price);
+    const listing = u?.id ? listingById.get(u.id) : null;
+    const issue = getListingPriceUpdateIssue(listing, { teamId: req.team.id, askingPrice });
+    if (issue) {
+      failed.push({ id: u?.id, errorCode: {
+        not_found: "listing_not_found",
+        not_owner: "listing_not_owner",
+        already_closed: "listing_already_closed",
+        invalid_price: "invalid_asking_price",
+      }[issue.code] });
+      continue;
+    }
+    const { data, error } = await supabase
+      .from("transfer_listings")
+      .update({ asking_price: askingPrice })
+      .eq("id", u.id)
+      .select()
+      .single();
+    if (error) failed.push({ id: u.id, errorCode: "update_failed" });
+    else updated.push(data);
+  }
+
+  res.json({ updated, failed });
+});
+
 // PATCH /api/transfers/:id — redigér asking_price på egen listing (#1185).
 // Før skulle rytteren fjernes + genoprettes for at ændre prisen. Genbruger
 // ejerskabs-/status-reglerne fra DELETE-flowet (getListingCancelIssue) plus
