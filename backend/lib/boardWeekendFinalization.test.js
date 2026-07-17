@@ -22,97 +22,17 @@ import {
   resolveCrossedCheckpoint,
 } from "./boardWeekendFinalization.js";
 import { CHECKPOINT_KINDS } from "./boardWeekendUpdate.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
-// ─── Fake supabase (select/in/eq/order/limit + update.eq) ─────────────────────
-
+// #2598 · Tynd wrapper om den delte, projektion-aware fake (backend/lib/
+// testUtils/fakeSupabase.js). `opts.errorTables` (tabel → fejlbesked, ramte
+// tidligere kun upsert) er oversat til den delte helpers `errors`-option.
 function makeFakeSupabase(state, opts = {}) {
-  const updates = []; // { table, payload, filters }
-  function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function tableRows(table) {
-    if (!state[table]) state[table] = [];
-    return state[table];
+  const errors = {};
+  for (const [table, message] of Object.entries(opts.errorTables ?? {})) {
+    errors[table] = { upsert: message };
   }
-
-  function makeQuery(table, action, payload = null) {
-    const filters = [];
-    let order = null;
-    let limit = null;
-
-    function matches(row) {
-      return filters.every((f) => {
-        if (f.type === "eq") return row[f.column] === f.value;
-        if (f.type === "in") return f.values.includes(row[f.column]);
-        return true;
-      });
-    }
-
-    function execute() {
-      const rows = tableRows(table);
-      if (action === "select") {
-        let result = rows.filter(matches);
-        if (order) {
-          result = [...result].sort((a, b) => {
-            const av = a[order.column];
-            const bv = b[order.column];
-            if (av === bv) return 0;
-            const cmp = av < bv ? -1 : 1;
-            return order.ascending ? cmp : -cmp;
-          });
-        }
-        if (limit != null) result = result.slice(0, limit);
-        return Promise.resolve({ data: clone(result), error: null });
-      }
-      if (action === "update") {
-        const hit = rows.filter(matches);
-        for (const row of hit) Object.assign(row, clone(payload));
-        updates.push({ table, payload: clone(payload), filters: clone(filters) });
-        return Promise.resolve({ data: clone(hit), error: null });
-      }
-      if (action === "upsert") {
-        if (opts.errorTables?.[table]) {
-          return Promise.resolve({ data: null, error: { message: opts.errorTables[table] } });
-        }
-        const payloadArr = Array.isArray(payload) ? payload : [payload];
-        for (const row of payloadArr) rows.push(clone(row));
-        updates.push({ table, action: "upsert", payload: clone(payload) });
-        return Promise.resolve({ data: clone(payloadArr), error: null });
-      }
-      if (action === "insert") {
-        const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
-          id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`,
-          ...clone(row),
-        }));
-        rows.push(...newRows);
-        return Promise.resolve({ data: clone(newRows), error: null });
-      }
-      return Promise.resolve({ data: null, error: null });
-    }
-
-    const query = {
-      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
-      in(column, values) { filters.push({ type: "in", column, values }); return query; },
-      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
-      limit(n) { limit = n; return query; },
-      select() { return query; },
-      single() { return execute().then((r) => ({ data: r.data?.[0] || null, error: r.error })); },
-      maybeSingle() { return execute().then((r) => ({ data: r.data?.[0] || null, error: r.error })); },
-      then(resolve, reject) { return execute().then(resolve, reject); },
-    };
-    return query;
-  }
-
-  return {
-    updates,
-    from(table) {
-      tableRows(table);
-      return {
-        select() { return makeQuery(table, "select"); },
-        update(payload) { return makeQuery(table, "update", payload); },
-        insert(payload) { return makeQuery(table, "insert", payload); },
-        upsert(payload, _opts) { return makeQuery(table, "upsert", payload); },
-      };
-    },
-  };
+  return createFakeSupabase(state, { errors });
 }
 
 // ─── State-fixture ────────────────────────────────────────────────────────────
