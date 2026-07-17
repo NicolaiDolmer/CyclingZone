@@ -229,7 +229,7 @@ export default function AdminSeasonTab() {
   // pr.-pulje race-antal + tier/klasse-fordeling, så prestige-kaskaden (#2276:
   // div 4 må ikke arve div 1's monumenter) kan verificeres FØR "Generér".
   async function loadCalendarPreview() {
-    if (!calSeasonId) { showMsg("❌ Vælg en sæson", "error"); return; }
+    if (!calSeasonId) { showMsg("Vælg en sæson", "error"); return; }
     setLoad("cal_preview", true);
     setCalResult(null);
     try {
@@ -247,7 +247,7 @@ export default function AdminSeasonTab() {
   // #2449: ægte materialisering (races + stage-profiler + schedule). Idempotent —
   // gentagne kald indsætter kun manglende (pulje, løb)-par. Ejer-only knap.
   async function handleGenerateCalendar() {
-    if (!calSeasonId) { showMsg("❌ Vælg en sæson", "error"); return; }
+    if (!calSeasonId) { showMsg("Vælg en sæson", "error"); return; }
     const raceCount = (calPreview?.pools || []).reduce((n, p) => n + (p.races?.length || 0), 0);
     if (!confirm(`Generér sæson-kalenderen? Dette indsætter ca. ${raceCount || "?"} løb (+ etape-profiler/schedule) for sæsonen. Kør altid preview først.`)) return;
     setLoad("cal_generate", true);
@@ -417,7 +417,7 @@ export default function AdminSeasonTab() {
         </form>
       </AdminSection>
 
-      <AdminSection title="📅 Kalender-generator (#2449)">
+      <AdminSection title="Kalender-generator (#2449)">
         <p className="text-cz-3 text-xs mb-3">
           Genererer løbsprogrammet for ALLE fire divisioner (reproducerbar, deterministisk pr. sæson) — respekterer prestige-kaskaden pr. tier (#2276). Preview er ren læsning; Generér skriver races + etape-profiler + schedule (idempotent — gentagne kald indsætter kun manglende løb).
         </p>
@@ -471,7 +471,7 @@ export default function AdminSeasonTab() {
             </table>
             {(calPreview.truncated || []).length > 0 && (
               <p className="text-cz-warning text-xs px-3 py-2">
-                ⚠ {calPreview.truncated.length} pulje(r) fik færre etapeløb end target (katalog-loft) — se konsol/summary for detaljer.
+                {calPreview.truncated.length} pulje(r) fik færre etapeløb end target (katalog-loft) — se konsol/summary for detaljer.
               </p>
             )}
           </div>

@@ -7202,7 +7202,7 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
     const { data: season, error: seasonError } = await supabase
       .from("seasons").select("id, number, start_date").eq("id", seasonId).maybeSingle();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
-    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (!season) return res.status(404).json({ error: "Season not found" });
 
     const { data: pools, error: poolErr } = await supabase
       .from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
@@ -7257,7 +7257,7 @@ router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimi
     const { data: season, error: seasonError } = await supabase
       .from("seasons").select("id, number, start_date").eq("id", seasonId).maybeSingle();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
-    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (!season) return res.status(404).json({ error: "Season not found" });
 
     const summary = await materializeSeasonCalendar({
       supabase, seasonId: season.id, seasonStartDate: season.start_date, dryRun,
