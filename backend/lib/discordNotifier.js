@@ -17,6 +17,7 @@ import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
 import { isDmTypeEnabled } from "./discordDmPrefs.js";
 import { resolveDmRecipient } from "./discordDmRecipient.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
+import { recordDmAttempt } from "./discordDmRateGuard.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -345,7 +346,7 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
  * skriver til stdout/test-channel i stedet for ægte DM, så smoke-tests
  * kan asserter DM uden at spamme rigtige managers.
  */
-export async function notifyDiscordDM({ teamId = null, userId = null, type, title, description, fields = [] }) {
+export async function notifyDiscordDM({ teamId = null, userId = null, type, title, description, fields = [], cronRun = false }) {
   const payload = buildEmbed(type, title, description, fields);
 
   // #203: test-account / staging routing (teamId-scoped smoke-tests only).
@@ -372,8 +373,12 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
     // #449: ikke en fejl (user kan have valgt opt-out eller mangler discord_id),
     // men log som info så vi kan se hvis ALLE DMs skippes pga. data-issue.
     console.info("[discord-dm:no-recipient]", { teamId, userId, type });
+    // #2571: aggregeret rate-guard — no-op medmindre kalderen er en cron-tick
+    // (cronRun:true). Se discordDmRateGuard.js for hvorfor/hvordan.
+    recordDmAttempt({ type, skipped: true, cronRun });
     return;
   }
+  recordDmAttempt({ type, skipped: false, cronRun });
   // Per-type opt-out (default on when the pref is absent).
   if (!isDmTypeEnabled(recipient.prefs, type)) {
     console.info("[discord-dm:muted]", { teamId, userId, type });
@@ -462,7 +467,11 @@ export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAu
   });
 }
 
-export async function notifyAuctionWon({ riderName, finalPrice, teamId }) {
+// #2571: notifyAuctionWon har TO kaldere — cron.js' 60s-finalizer-tick (cron-drevet)
+// og POST /api/auctions/:id/finalize (admin-request-scopet). cronRun default false
+// (ikke sat), så kun cron.js' eksplicitte cronRun:true fodrer rate-guarden — den
+// manuelle admin-finalize skal ikke kunne forurene et cron-run-streak.
+export async function notifyAuctionWon({ riderName, finalPrice, teamId, cronRun = false }) {
   const fields = [{ name: "Final price", value: `${finalPrice?.toLocaleString("en-US")} CZ$` }];
   await notifyDiscordDM({
     teamId,
@@ -470,6 +479,7 @@ export async function notifyAuctionWon({ riderName, finalPrice, teamId }) {
     title: riderName,
     description: `You've won the auction for **${riderName}**! 🎉`,
     fields,
+    cronRun,
   });
 }
 
@@ -530,8 +540,12 @@ export async function notifyBoardUpdateDM({
   description,
   fields = [],
   notifyFn = notifyDiscordDM,
+  // #2571: eneste kalder i produktion er cron.js (board auto-accept + mid-season
+  // review) — default cronRun:true afspejler det, så rate-guarden ser strømmen
+  // uden at hvert call-site skal huske at sætte flaget.
+  cronRun = true,
 }) {
-  await notifyFn({ teamId, userId, type, title, description, fields });
+  await notifyFn({ teamId, userId, type, title, description, fields, cronRun });
 }
 
 export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {
