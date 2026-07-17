@@ -197,8 +197,12 @@ for (const { name, marker } of SEASON_SELECTABLE_ROUTES) {
 test("GET /peak-plans/board + GET /races/calendar eksponerer availableSeasons til UI'ets sæson-vælger", () => {
   const boardBlock = handlerBlock('router.get("/peak-plans/board"');
   assert.match(boardBlock, /availableSeasons/, "board skal returnere listen af oprettede sæsoner");
+  // #2600 · sæson 0 (bogførings-sæsonen, number=0) må aldrig tilbydes i spillerens
+  // sæson-vælger. Filteret .gt("number", 0) skjuler den; låses her så en fjernelse fejler.
+  assert.match(boardBlock, /\.gt\(\s*["']number["']\s*,\s*0\s*\)/, "board skal filtrere sæson 0 ud af spillerens vælger (#2600)");
   const calIdx = apiSource.indexOf('router.get("/races/calendar"');
   assert.ok(calIdx !== -1, "GET /races/calendar skal findes");
   const calBlock = apiSource.slice(calIdx, calIdx + 3500);
   assert.match(calBlock, /availableSeasons/, "kalenderen skal returnere listen af oprettede sæsoner");
+  assert.match(calBlock, /\.gt\(\s*["']number["']\s*,\s*0\s*\)/, "kalenderen skal filtrere sæson 0 ud af spillerens vælger (#2600)");
 });
