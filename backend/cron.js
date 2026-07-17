@@ -34,6 +34,7 @@ import {
   getOpsWebhook,
   sendOpsWebhook,
 } from "./lib/discordNotifier.js";
+import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
@@ -146,6 +147,11 @@ const XP_REWARDS = {
 // ─── Auction Finalizer ────────────────────────────────────────────────────────
 
 async function finalizeExpiredAuctions() {
+  // #2571: flush ved tick-start (ikke -slut) — så forrige tick's fire-and-forget
+  // discordNotify-kald (se nedenfor) har haft ~60s til at lande, uden at vi
+  // rører selve leverings-logikken (ingen ny await tilføjet i finalize-stien).
+  flushDmRunGuard(["auction_won"]);
+
   // Skip finalization while auctions are paused — otherwise frozen auctions whose
   // calculated_end is past would silently finalize before the admin resumes the market.
   // On resume, /api/admin/market/resume shifts calculated_end forward by the pause duration.
@@ -155,7 +161,10 @@ async function finalizeExpiredAuctions() {
   const results = await finalizeExpiredAuctionsShared({
     supabase,
     notifyTeamOwner,
-    discordNotify: (args) => notifyAuctionWon(args).catch(() => {}),
+    // cronRun:true — se notifyAuctionWon i discordNotifier.js: dette er den ene
+    // af to kaldere (den anden er admin-request-scopet finalize i routes/api.js,
+    // som bevidst IKKE sætter cronRun).
+    discordNotify: (args) => notifyAuctionWon({ ...args, cronRun: true }).catch(() => {}),
     logActivity,
     awardXP: awardTeamOwnerXP,
     now: new Date(),
@@ -337,6 +346,11 @@ const notifyUserWithBoardDM = async (args) => {
 };
 
 async function runBoardAutoAcceptCron() {
+  // #2571: begge board-DM-typer deles med runMidSeasonReviewCron (samme
+  // underliggende risiko: resolveDmRecipient-datafejl for board-strømmen) —
+  // se flushDmRunGuard-note i discordDmRateGuard.js for hvorfor et fælles
+  // per-type-streak på tværs af de to board-crons er tilsigtet.
+  flushDmRunGuard(["board_update", "board_critical"]);
   try {
     const result = await processBoardAutoAcceptCron({
       supabase,
@@ -364,6 +378,8 @@ async function runBoardAutoAcceptCron() {
 // Idempotens: per-board-per-season notif-dedupe via title-match + related_id.
 
 async function runMidSeasonReviewCron() {
+  // #2571: se flushDmRunGuard-kaldet i runBoardAutoAcceptCron ovenfor.
+  flushDmRunGuard(["board_update", "board_critical"]);
   try {
     const result = await processMidSeasonReviewCron({
       supabase,
