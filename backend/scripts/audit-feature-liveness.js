@@ -403,8 +403,16 @@ async function findFrontendApiCalls() {
 }
 
 // Tokenize til segmenter; placeholdere (`:foo` eller frontend `:param`) bliver til `*` (wildcard).
+// Et segment der blot INDEHOLDER `:param` (fx `board:param` fra `.../board${qs}`,
+// hvor qs er en query-string bygget som template-variabel uden separator-`/`)
+// bliver også wildcard — ellers falsk-positiver Detector B på ethvert kald der
+// suffixer `${qs}` direkte på path'en (#2449-mønstret ramte /races/calendar og
+// /peak-plans/board 17/7).
 function tokenize(path) {
-  return path.split("/").filter(Boolean).map((s) => (s.startsWith(":") ? "*" : s));
+  return path
+    .split("/")
+    .filter(Boolean)
+    .map((s) => (s.startsWith(":") || s.includes(":param") ? "*" : s));
 }
 
 // Bidirektionel match med wildcard-tolerance: hvis enten frontend eller backend
