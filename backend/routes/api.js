@@ -181,7 +181,6 @@ import {
   loadHumanSeasonEndTeams,
   processSeasonEnd,
   processSeasonStart,
-  repairSeasonEndFinanceAndBoard,
   updateRiderValues,
   updateStandings,
 } from "../lib/economyEngine.js";
@@ -7019,25 +7018,11 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
   }
 });
 
-router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const seasonId = req.params.id;
-    const force = req.body?.force === true;
-    const result = await repairSeasonEndFinanceAndBoard(seasonId, { force });
-
-    await logActivity("season_end_finance_board_repaired", {
-      meta: {
-        season_id: seasonId,
-        teams_processed: result.teamsProcessed,
-        force,
-      },
-    });
-
-    res.json({ success: true, season_id: seasonId, ...result });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// #2462: POST /admin/seasons/:id/repair-finance-board fjernet 2026-07-17 — engangs-
+// incident-repair-endpoint fra 2026-04-29 (season 6-hændelse, se docs/archive/
+// SEASON_END_REPAIR_HANDOFF_2026-04-29.md), aldrig haft en UI-knap, ikke kaldt siden.
+// repairSeasonEndFinanceAndBoard() i economyEngine.js er bevaret (testdækket) hvis en
+// tilsvarende hændelse skulle opstå igen — genindsæt da som script, ikke ugated HTTP.
 
 router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
