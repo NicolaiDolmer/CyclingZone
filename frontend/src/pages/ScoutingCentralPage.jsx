@@ -104,6 +104,11 @@ function ScoutCard({ scout, capacity, t }) {
       <p className="text-cz-3 text-[11px] mt-3 pt-2.5 border-t border-cz-border mb-0">
         {t("scoutCard.capacityLabel", { capacity })}
       </p>
+      {/* #2580: forebygger "byggede niveau 1, forventede 2 missioner"-forvirringen —
+          kapacitet 2 kræver spejderens overall≥80, ikke blot en købt facilitets-tier. */}
+      {capacity < 2 && (
+        <p className="text-cz-3 text-[10.5px] mt-1 mb-0">{t("scoutCard.capacityHintLocked")}</p>
+      )}
     </SectionCard>
   );
 }
