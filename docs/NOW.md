@@ -9,7 +9,7 @@
 >
 > **✅ 17/7 GENNEMFØRT (natbølge + dagbølge, én session):** **29 PR'er merged** (#2545-#2567 nat+dag, #2573 planner-bredde, #2575 rekalibrering C, 4 dependabot) · **7 migrationer applied** (onboarding-dismiss, race-days-backfill 524/60→18/28, 2 notifikations-typer, U23-bånd, Global Rank-pakken, drift-tabel) · **24 issues → done** · patch notes v7.09+v7.11 · Global Rank LIVE (design ejer-låst) · S2-synlighed live · drift-vagt live · rekalibrering C live (favWin 38,1% i bånd; #2557 åben til live-verify) · deploy-verify-falsk-alarm fixet (#2559). Fuld facit: [bølge-artifact](audits/night-wave-2026-07-17.md).
 >
-> **🌙 Session 16/7 sen aften:** Discord-sweep → 13 issues #2518-#2530; analyser #2528 (status quo S1→S2) + #2521 (3 kilder). MERGED+LIVE: #2531 Discord-EN · #2532 scout-køb · #2533 planner-dato-UX · #2534 · #2538 watchdog-fix · #2537 baseline-tilfredshed (v7.07) · #2539 dato-chips · #2458 ejer-go: mission 14→2 dage (v7.08) + 38 opgaver omdateret. Railway-MCP + Infisical kræver re-login.
+> **🧹 17/7 Discord-sweep + done-audit (ejer-anmodet):** 7 nye issues **#2599-#2605** (auto-udtagelse+ryd-alt high, sæson-0-bug, andres staff/faciliteter, in-game feedback-knap, mobil-flade, planlægnings-UX PCM-ref, kalender-brosten-ikon) — slottet i masterplan. Done-audit: **24 lukket** + **6 glemt-done→done**; backlog 423→406, done 61→45; 0 dubletter. Facit: [audit-2026-07-17](../.claude/audits/audit-2026-07-17.md). **Ejer-flag:** #2449 (S2-kalender ikke genereret endnu) + #2521 (5 hold stadig board-låst 50).
 
 > **🌊 Dagbølge 16/7 (7 Fable-spor, 08:57-09:55):** 5 PR'er + #2472-verifikation + masterplan **konsolideret 16/7** (ejer-go; analyse + 5 indarbejdede anbefalinger på [#2468](https://github.com/NicolaiDolmer/CyclingZone/issues/2468) — sæsongrænse-pakken er nu NU-kø pkt 2). **#1847 KORRIGERET:** 70% af "13.262 orphans" er by-design (team-rækker); ægte = **4.100 (1,7%), 100% AI-churn, alle display-sikre** — oprydnings-DELETE bevidst droppet (ville skade palmarès), i stedet navne-snapshot + DELETE-guard i #2481.
 
@@ -31,7 +31,7 @@
 
 > **🌙 16/7 aften ([#2463](https://github.com/NicolaiDolmer/CyclingZone/issues/2463) generalprøve):** 🔴 Rod-årsag fundet: auto-accept-uret målte race_days_completed (SUM etaper, alle divisioner — 524 af "60") mod dag-tærskler ⇒ 218 auto-accepts, 0 T-1-varsler nogensinde, 0 manuelle signeringer nogensinde; sæsonskiftet ville tvangs-acceptere alle 1yr-fornyelser på timer. **Fixet + merged:** #2514 (kalenderdags-ur pr. plan, 5 dage + T-3/T-1) · #2513 (Playwright-spec der signerer + wizard-escape ved proposal-fejl) · #2515 patch notes v7.03 (auto-merge). Følgebug udskilt: #2512 (renegotiation-lås permanent aktiv). Fund-detaljer: [issue-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/2463#issuecomment-4994998978).
 >
-> **🤖 Working agent:** Ingen aktiv session. _(17/7-session afsluttet: #2578 → PR #2586 MERGED+LIVE v7.13; #2580 → PR #2587 MERGED+LIVE v7.14, A valgt/copy-fejl/prod-verificeret.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
+> **🤖 Working agent:** Ingen aktiv session. _(17/7 Discord-sweep + done-audit afsluttet — se 🧹-blok ovenfor.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
 
 ## Standing context (forever-relaunch)
 
