@@ -49,6 +49,9 @@ const TYPE_CONFIG = {
   transfer_counter:          { Icon: ExchangeIcon,     color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
   transfer_interest:         { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/transfers" },
   watchlist_rider_listed:    { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
+  // #2524: rytteren er væk (slettet/forladt spillet) — ingen deep-link ind i en
+  // rytterprofil der ikke findes længere, kun ind i selve ønskelisten.
+  watchlist_departed:        { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/watchlist" },
   contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/team" },
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
   race_result:               { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
@@ -68,7 +71,7 @@ const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
   auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid","watchlist_rider_auction"],
-  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","contract_expiring"],
+  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","watchlist_departed","contract_expiring"],
   board:     ["board_update"],
   finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
 };

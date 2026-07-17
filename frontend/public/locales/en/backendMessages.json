@@ -146,6 +146,10 @@
       "title": "Contract expiring",
       "message": "{rider}'s contract expires at the end of season {season}."
     },
+    "watchlistDeparted": {
+      "title": "Rider has left the game",
+      "message": "{rider} has left the game and was removed from your watchlist."
+    },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",
       "messageSingle": "The board takes over in {daysLeft} day. Open the Board page and negotiate your {planLabel} now.",

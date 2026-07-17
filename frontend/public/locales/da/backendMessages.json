@@ -146,6 +146,10 @@
       "title": "Kontrakt udløber",
       "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."
     },
+    "watchlistDeparted": {
+      "title": "Rytter har forladt spillet",
+      "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
+    },
     "boardT1Reminder": {
       "title": "Sidste chance: {planLabel}",
       "messageSingle": "Bestyrelsen tager over om {daysLeft} dag. Åbn Bestyrelse-siden og forhandl din {planLabel} nu.",
