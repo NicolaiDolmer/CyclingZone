@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.10",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Board messages now actually arrive on Discord",
+          "body": "If you have Discord DMs switched on, board updates and board warnings were never delivered. The messages were built and then dropped before they were sent, so the board update toggle in your profile settings had no real effect. They now reach you as intended. Board notifications inside the game were not affected and kept working the whole time."
+        },
+        "da": {
+          "title": "Bestyrelses-beskeder når nu frem på Discord",
+          "body": "Hvis du har Discord-DM'er slået til, blev bestyrelses-opdateringer og bestyrelses-advarsler aldrig leveret. Beskederne blev bygget og derefter tabt, før de blev sendt, så knappen for bestyrelses-opdateringer i dine profilindstillinger reelt ingen effekt havde. De når nu frem som tiltænkt. Bestyrelses-notifikationer inde i spillet var ikke berørt og virkede hele tiden."
+        },
+        "refs": [2569]
+      }
+    ]
+  },
+  {
     "version": "7.09",
     "date": "2026-07-17",
     "label": "Beta",

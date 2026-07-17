@@ -19,5 +19,10 @@
   },
   "effect": { "body": "This chief's overall rating ({rating}) drives how much of the facility's effect is realised. The Training Center is active in-game today; the others are coming soon and show what they will do once they go live." },
   "history": { "body": "Contract history and tenure will appear here once staff contracts land." },
-  "switcher": { "count": "{index} / {total}" }
+  "switcher": { "count": "{index} / {total}" },
+  "public": {
+    "team": "Employed by {team}",
+    "viewTeam": "View team",
+    "limitedNote": "This is another manager's staff, so only rating and top specialization are visible. The full ability breakdown is only shown to the owning team."
+  }
 }

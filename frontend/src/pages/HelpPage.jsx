@@ -232,6 +232,7 @@ const SECTION_DEFS = [
       { id: "hireChiefScout", kind: "text" },
       { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
+      { id: "staffOverview", kind: "text" },
     ],
   },
   {
