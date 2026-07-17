@@ -46,33 +46,33 @@ test("staffEffectFactor: strengt monotont stigende i overall", () => {
 
 test("specializationMatch: baseline 1.0 for generalist / manglende akse", () => {
   // Ingen staff → 1.0 (nul effekt).
-  assert.equal(specializationMatch(null, { dimension: "physical", level: "youth" }), 1.0);
+  assert.equal(specializationMatch(null, { dimension: "physical", level: "u23" }), 1.0);
   // Staff uden dimensions/levels (fx ikke-training rolle uden de akser) → 1.0.
-  assert.equal(specializationMatch({ overall: 70 }, { dimension: "physical", level: "youth" }), 1.0);
+  assert.equal(specializationMatch({ overall: 70 }, { dimension: "physical", level: "u23" }), 1.0);
   // En perfekt generalist (alle akser = baseline-referencen) → 1.0.
   const generalist = {
     overall: STAFF_SPECIALIZATION.baselineOverall,
     dimensions: { physical: STAFF_SPECIALIZATION.baselineOverall, mental: STAFF_SPECIALIZATION.baselineOverall, technical: STAFF_SPECIALIZATION.baselineOverall },
-    levels: { youth: STAFF_SPECIALIZATION.baselineOverall, junior: STAFF_SPECIALIZATION.baselineOverall, senior: STAFF_SPECIALIZATION.baselineOverall },
+    levels: { u23: STAFF_SPECIALIZATION.baselineOverall, senior: STAFF_SPECIALIZATION.baselineOverall },
   };
-  assert.ok(Math.abs(specializationMatch(generalist, { dimension: "physical", level: "youth" }) - 1.0) < 1e-9);
+  assert.ok(Math.abs(specializationMatch(generalist, { dimension: "physical", level: "u23" }) - 1.0) < 1e-9);
 });
 
 test("specializationMatch: > 1.0 når chefens dimension + niveau er stærke", () => {
   const strong = {
     overall: 80,
     dimensions: { physical: 95, mental: 40, technical: 40 },
-    levels: { youth: 95, junior: 40, senior: 40 },
+    levels: { u23: 95, senior: 40 },
   };
-  const m = specializationMatch(strong, { dimension: "physical", level: "youth" });
+  const m = specializationMatch(strong, { dimension: "physical", level: "u23" });
   assert.ok(m > 1.0, `forventede >1.0, fik ${m}`);
   // Og ≤ loftet.
   assert.ok(m <= STAFF_SPECIALIZATION.cap + 1e-9, `over loft: ${m}`);
 });
 
 test("specializationMatch: svag akse giver < baseline-boost (men aldrig < gulv)", () => {
-  const strong = { overall: 80, dimensions: { physical: 95, mental: 40, technical: 40 }, levels: { youth: 95, junior: 40, senior: 40 } };
-  const onStrong = specializationMatch(strong, { dimension: "physical", level: "youth" });
+  const strong = { overall: 80, dimensions: { physical: 95, mental: 40, technical: 40 }, levels: { u23: 95, senior: 40 } };
+  const onStrong = specializationMatch(strong, { dimension: "physical", level: "u23" });
   const onWeak = specializationMatch(strong, { dimension: "mental", level: "senior" });
   assert.ok(onStrong > onWeak, "stærk akse skal matche højere end svag akse");
   assert.ok(onWeak >= STAFF_SPECIALIZATION.floor - 1e-9, `under gulv: ${onWeak}`);
@@ -82,8 +82,8 @@ test("specializationMatch: loftet håndhæves ved max akser", () => {
   // Rekalibreret (ejer-valg 2026-07-05): med de restaurerede vægte (0.25 + 0.15) rammer
   // MAX-akser (99,99) præcis 1 + 0.25 + 0.15 = 1.4 = cap. Cap'en er dermed BINDENDE ved
   // ekstremer (og lig raw-værdien her); invariant: aldrig over cap.
-  const max = { overall: 99, dimensions: { physical: 99, mental: 99, technical: 99 }, levels: { youth: 99, junior: 99, senior: 99 } };
-  const m = specializationMatch(max, { dimension: "physical", level: "youth" });
+  const max = { overall: 99, dimensions: { physical: 99, mental: 99, technical: 99 }, levels: { u23: 99, senior: 99 } };
+  const m = specializationMatch(max, { dimension: "physical", level: "u23" });
   assert.ok(m <= STAFF_SPECIALIZATION.cap + 1e-9, `over loft: ${m}`);
   assert.ok(Math.abs(m - STAFF_SPECIALIZATION.cap) < 1e-9, `forventede cap ${STAFF_SPECIALIZATION.cap}, fik ${m}`);
 });

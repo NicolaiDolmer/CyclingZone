@@ -372,7 +372,7 @@ test("akademi-alder (18): tickCaps=genberegnet livstidsloft (intet sæson-loft) 
     conditionMult: conditionMultiplier({ form: 50, fatigue: 10 }),
     bonus: true, potentiale: 4, hardDailyCap: ACADEMY.HARD_DAILY_CAP,
     academyRateMult: ACADEMY.INTERIM_RATE_MULT,
-    staff: null, facilityTier: 0, riderLevel: "youth",
+    staff: null, facilityTier: 0, riderLevel: "u23",
   });
 
   const rr = result.report.riders[0];
@@ -404,7 +404,7 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
 
   // Reference UDEN academyRateMult-parameteren overhovedet (default 1.0) — beviser at
   // motoren rent faktisk sender 1.0 for voksne, ikke bare et tal der tilfældigvis
-  // regner ud til det samme. riderLevel="junior": riderLevelBand(is_academy=false, 25).
+  // regner ud til det samme. riderLevel="u23": riderLevelBand(age=25) (#2529: <26 = u23).
   // #2471: caps = det genberegnede loft (samme formel for voksne som for ungdom).
   const lifetimeCaps = buildCapsForRider(riderAbilities, rider, rider.primary_type, rider.secondary_type);
   const expected = applyDailyTick({
@@ -413,7 +413,7 @@ test("voksen (25 år): academyRateMult=1.0 — bit-identisk med tick uden rate-m
     program: { focus: "vo2max", intensity: "hard" },
     conditionMult: conditionMultiplier({ form: 50, fatigue: 10 }),
     bonus: true, potentiale: 4, hardDailyCap: undefined,
-    staff: null, facilityTier: 0, riderLevel: "junior",
+    staff: null, facilityTier: 0, riderLevel: "u23",
   });
 
   const rr = result.report.riders[0];
@@ -831,14 +831,14 @@ test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bi
   const clubState = seedState();
   clubState.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
   clubState.team_staff = [{ id: "st-1", team_id: TEAM_ID, role: "training", status: "active", tier: 5, name: "Karel Novotny" }];
-  clubState.staff_derived_abilities = [{ staff_id: "st-1", overall: 90, dimensions: { physical: 95, mental: 60, technical: 60 }, levels: { youth: 60, junior: 90, senior: 70 } }];
+  clubState.staff_derived_abilities = [{ staff_id: "st-1", overall: 90, dimensions: { physical: 95, mental: 60, technical: 60 }, levels: { u23: 90, senior: 70 } }];
   const clubResult = await runTeamTrainingDay({
     supabase: createMockSupabase(clubState), teamId: TEAM_ID, seasonId: SEASON_ID,
     seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
   });
   const clubScore = clubResult.report.riders[0].score;
 
-  // Facilitets-magnituden (1 + effectiveBonus ≈ 1.16 ved t5/overall-90) + junior-match
+  // Facilitets-magnituden (1 + effectiveBonus ≈ 1.16 ved t5/overall-90) + u23-match (#2529)
   // skal give en STRENGT højere dags-score end baseline (samme rytter/dato/noise-seed).
   assert.ok(clubScore > baseScore, `club-score ${clubScore} skal være > baseline ${baseScore}`);
 

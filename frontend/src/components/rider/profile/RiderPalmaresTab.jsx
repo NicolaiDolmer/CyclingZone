@@ -12,6 +12,7 @@
 // fanen (lib/riderResultsTab.js groupRiderRaces) — ingen dublet-fetch.
 
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { groupRiderRaces } from "../../../lib/riderResultsTab.js";
 import { buildTrophyCase, careerTotals, seasonHonours } from "../../../lib/riderPalmares.js";
 import { formatNumber } from "../../../lib/intl.js";
@@ -164,9 +165,13 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
             <div className="flex flex-col gap-1.5">
               {entry.races.map((race) => (
                 <div key={race.raceId} className="flex items-start justify-between gap-2 flex-wrap min-h-[28px]">
-                  <span className="text-[12.5px] text-cz-1 font-semibold truncate">
+                  {/* #2526: samme klikbar-løbsnavn-mønster som Resultater-fanen. */}
+                  <Link
+                    to={`/races/${race.raceId}`}
+                    className="text-[12.5px] text-cz-1 font-semibold truncate hover:text-cz-accent-t transition-colors"
+                  >
                     {race.name ?? t("results.fallbackDash")}
-                  </span>
+                  </Link>
                   <div className="flex items-center gap-1 flex-wrap justify-end">
                     {race.achievements.map((a, i) => (
                       <AchievementChip

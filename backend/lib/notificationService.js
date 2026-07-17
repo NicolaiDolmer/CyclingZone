@@ -308,3 +308,209 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
+
+// ─── #2524 · Watchlist-notifikation ved rytter-sletning/-udgang ───────────────
+//
+// PROBLEM (#2524): rider_watchlist har INGEN FK-cascade til riders (bevidst —
+// en managers ønskeliste er en ren brugerfacing bekvemmelighed, ikke en
+// spil-invariant), så en slettet rytter efterlod en orphaned watchlist-række.
+// Frontend filtrerede den tavst væk (WatchlistPage.jsx, #1918) — rytteren
+// forsvandt uden forklaring. #2456-oprydningen (usolgte ungdomsryttere) var
+// den konkrete hændelse der eksponerede det: spillere måtte have det forklaret
+// manuelt på Discord.
+//
+// ÉN delt funktion, kaldt fra ALLE kendte rytter-sletnings-stier (se
+// callsites: auctionFinalization.deleteUnsoldYouthRider,
+// aiTeamGenerator.deleteAiTeamById/removeAiTeams/clearAllAiTeams), så en
+// fremtidig sletnings-sti (fx pension #2218) ikke kan glemme det — kald denne
+// funktion umiddelbart EFTER en bekræftet rytter-DELETE, aldrig før (ellers
+// notificeres/ryddes der for ryttere der reelt IKKE blev slettet, fx en
+// TOCTOU-guard der rammer 0 rækker).
+export const WATCHLIST_DEPARTED_TYPE = "watchlist_departed";
+
+/**
+ * Notificér enhver bruger der har en af `riders` på sin ønskeliste ("X has
+ * left the game"), og ryd derefter deres rider_watchlist-rækker for netop de
+ * ryttere. Kaldes med ryttere der ALLEREDE er bekræftet slettet fra `riders`
+ * (caller leverer id+navn, da rytter-rækken typisk er væk på kald-tidspunktet).
+ *
+ * Idempotent/no-op for ryttere uden ønskeliste-rækker. Fejl pr. bruger isoleres
+ * (samme mønster som resten af filen) — én fejlende notifikation stopper
+ * hverken de øvrige eller selve oprydningen. `notify` injicérbar for test.
+ *
+ * @param {object} args
+ * @param {object} args.supabase
+ * @param {Array<{id:string, firstname?:string, lastname?:string}>} args.riders
+ * @param {typeof notifyUser} [args.notify]
+ * @returns {Promise<{riders:number, watchers:number, delivered:number, deduped:number, failed:number, cleared:number}>}
+ */
+export async function notifyAndClearWatchlistForRiders({ supabase, riders, notify = notifyUser }) {
+  const stats = { riders: 0, watchers: 0, delivered: 0, deduped: 0, failed: 0, cleared: 0 };
+  const list = (riders || []).filter((r) => r?.id);
+  if (!list.length || !supabase?.from) return stats;
+  stats.riders = list.length;
+
+  const riderIds = list.map((r) => r.id);
+  const { data: watchRows, error } = await supabase
+    .from("rider_watchlist")
+    .select("id, user_id, rider_id")
+    .in("rider_id", riderIds);
+  if (error) {
+    throw new Error(`notifyAndClearWatchlistForRiders lookup: ${error.message}`);
+  }
+
+  const byRiderId = new Map(list.map((r) => [r.id, r]));
+  for (const row of watchRows || []) {
+    const rider = byRiderId.get(row.rider_id);
+    if (!rider || !row.user_id) continue;
+    stats.watchers += 1;
+    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim() || "Rider";
+    try {
+      const res = await notify({
+        supabase,
+        userId: row.user_id,
+        type: WATCHLIST_DEPARTED_TYPE,
+        title: "Rider has left the game",
+        message: `${riderName} has left the game and was removed from your watchlist.`,
+        relatedId: rider.id,
+        metadata: {
+          riderId: rider.id,
+          titleCode: "notif.watchlistDeparted.title",
+          titleParams: {},
+          messageCode: "notif.watchlistDeparted.message",
+          messageParams: { rider: riderName },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch (err) {
+      // Samme A2-lære som contract-expiring/race-result: må ALDRIG være 100%
+      // stille (#2389) — log + Sentry, isolér, fortsæt.
+      stats.failed += 1;
+      console.error(`  ❌ watchlist-departure-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "watchlist-departure" }, riderId: rider.id });
+    }
+  }
+
+  const { data: cleared, error: delErr } = await supabase
+    .from("rider_watchlist")
+    .delete()
+    .in("rider_id", riderIds)
+    .select("id");
+  if (delErr) {
+    throw new Error(`notifyAndClearWatchlistForRiders cleanup: ${delErr.message}`);
+  }
+  stats.cleared = (cleared ?? []).length;
+
+  return stats;
+}
+
+// ─── #2523 · Per-etape-notifikation (undgår "der sker ikke noget" i etapeløb) ─
+
+export const STAGE_RESULT_TYPE = "stage_result";
+
+/**
+ * #2523 · Indsæt in-app "din etape er kørt"-notifikationer til hver menneske-
+ * manager der havde mindst én rytter med et 'stage'-resultat i DENNE etape.
+ *
+ * Problem: raceRunner.simulateStageByIndex notificerer historisk KUN på
+ * final-etapen (#1952), så spillere oplevede 2+ dages stilhed under et
+ * etapeløb (@smukkethomsen, #2523). Denne funktion suppleres per etape —
+ * final-etapens samlede klassements-notifikation (emitRaceResultNotifications)
+ * består uændret; raceRunner kalder KUN denne funktion for ikke-final-etaper
+ * (se simulateStageByIndex's mellem-etape-gren) for at undgå dobbelt-besked.
+ *
+ * Manager uden ryttere i DENNE etape (fx eneste rytter DNF'et tidligere) har
+ * ingen 'stage'-række og optræder derfor slet ikke i fetchStageParticipants'
+ * resultat — ingen fejl, ingen tom/misvisende notifikation.
+ *
+ * Bedste resultat pr. manager: har et hold flere ryttere i etapen, vises
+ * rytteren med LAVEST rank (bedste placering) — samme "bedste-rytter"-logik
+ * spillere kender fra resultatsider.
+ *
+ * Idempotens: notifyUser dedup'er på (type, title, message, related_id) inden
+ * for 24t — message bærer etape-nummer + rytternavn + placering, så to
+ * forskellige etaper for samme løb aldrig kolliderer. `notify` +
+ * `fetchStageParticipants` er injicerbare for test.
+ */
+export async function emitStageResultNotifications({
+  supabase,
+  race,
+  stageNumber,
+  totalStages,
+  notify = notifyUser,
+  fetchStageParticipants = defaultFetchStageParticipants,
+}) {
+  const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
+  if (!race?.id || !stageNumber) return stats;
+
+  const rows = await fetchStageParticipants({ supabase, raceId: race.id, stageNumber });
+  const bestByManager = new Map();
+  for (const row of rows || []) {
+    if (!row?.userId) continue;
+    const existing = bestByManager.get(row.userId);
+    if (!existing || (row.rank != null && (existing.rank == null || row.rank < existing.rank))) {
+      bestByManager.set(row.userId, row);
+    }
+  }
+  stats.eligible = bestByManager.size;
+
+  const raceName = race.name ?? "your race";
+  for (const [userId, best] of bestByManager) {
+    const riderName = best.riderName ?? "your rider";
+    const position = best.rank ?? null;
+    try {
+      const res = await notify({
+        supabase,
+        userId,
+        type: STAGE_RESULT_TYPE,
+        title: "Stage result is in",
+        message: position != null
+          ? `Stage ${stageNumber} of ${raceName} is done. Your best: ${riderName}, position ${position}.`
+          : `Stage ${stageNumber} of ${raceName} is done.`,
+        relatedId: race.id,
+        metadata: {
+          raceId: race.id,
+          stageNumber,
+          totalStages: totalStages ?? null,
+          titleCode: "notif.stageResult.title",
+          titleParams: {},
+          messageCode: position != null ? "notif.stageResult.message" : "notif.stageResult.messageNoResult",
+          messageParams: { stage: stageNumber, race: raceName, rider: riderName, position },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch (err) {
+      stats.failed += 1;
+      console.error(`  ❌ stage-result-notifikation fejlede (race ${race?.id}, etape ${stageNumber}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "stage-result" }, raceId: race?.id, stageNumber });
+    }
+  }
+  return stats;
+}
+
+/**
+ * Hent 'stage'-resultatrækker for DENNE etape, kun for menneske-, ikke-frosne
+ * hold. race_results.team_id peger direkte på teams (ingen riders-mellemled
+ * nødvendigt, jf. makeResultRowPushers i raceRunner.js). Standard-
+ * implementering; injicérbar i test.
+ */
+async function defaultFetchStageParticipants({ supabase, raceId, stageNumber }) {
+  const { data, error } = await supabase
+    .from("race_results")
+    .select("rank, rider_name, team:team_id!inner(user_id, is_ai, is_frozen)")
+    .eq("race_id", raceId)
+    .eq("stage_number", stageNumber)
+    .eq("result_type", "stage")
+    .eq("team.is_ai", false)
+    .eq("team.is_frozen", false);
+  if (error) {
+    throw new Error(`Could not load stage participants for race ${raceId} stage ${stageNumber}: ${error.message}`);
+  }
+  return (data || []).map((row) => ({
+    userId: row.team?.user_id ?? null,
+    rank: row.rank ?? null,
+    riderName: row.rider_name ?? null,
+  }));
+}

@@ -438,7 +438,7 @@ export function runSpecializationBalance({
   //     fejl-match er reel men ikke ødelæggende (specializationMatch-floor beskytter).
   for (const dim of S.dimensions) {
     const other = S.dimensions.find((d) => d !== dim);
-    const need = { dimension: other, level: "youth" }; // helt andet behov
+    const need = { dimension: other, level: "u23" }; // helt andet behov (#2529: youth+junior → u23)
     const specialist = buildStaffProfile({ overall: S.overall, spread: S.spread, spec: { dimension: dim, level: "senior" } });
     const gVal = trainingValueFor(constants, leverage, generalist, need, division);
     const sVal = trainingValueFor(constants, leverage, specialist, need, division);
