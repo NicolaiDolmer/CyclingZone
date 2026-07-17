@@ -34,6 +34,7 @@ function makeSupabase(initial = {}) {
         if (f.t === "neq") return row[f.c] !== f.v;
         if (f.t === "in") return f.v.includes(row[f.c]);
         if (f.t === "gt") return (row[f.c] ?? 0) > f.v;
+        if (f.t === "gte") return (row[f.c] ?? "") >= f.v;
         if (f.t === "is") return f.v === null ? row[f.c] == null : row[f.c] === f.v;
         return true;
       });
@@ -44,6 +45,7 @@ function makeSupabase(initial = {}) {
       neq(c, v) { filters.push({ t: "neq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       gt(c, v) { filters.push({ t: "gt", c, v }); return builder; },
+      gte(c, v) { filters.push({ t: "gte", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
       order() { return builder; },
       // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
@@ -51,6 +53,11 @@ function makeSupabase(initial = {}) {
       range(from) {
         const data = from === 0 ? rows().filter(matches) : [];
         return Promise.resolve({ data, error: null });
+      },
+      // notifyUser's dedup-lookup (notificationService.js) chains .limit(1) after
+      // select/eq/gte/order — #2524 wiring surfaces this via notifyAndClearWatchlistForRiders.
+      limit(n) {
+        return Promise.resolve({ data: rows().filter(matches).slice(0, n), error: null });
       },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];
@@ -93,6 +100,13 @@ function makeSupabase(initial = {}) {
         const del = {
           eq(c, v) { filters.push({ t: "eq", c, v }); return del; },
           in(c, v) { filters.push({ t: "in", c, v }); return del; },
+          // #2524: notifyAndClearWatchlistForRiders chains .select("id") onto its
+          // rider_watchlist-delete for a deleted-row count.
+          select() {
+            const removed = rows().filter(matches);
+            state[table] = rows().filter((row) => !matches(row));
+            return Promise.resolve({ data: removed.map((r) => ({ id: r.id })), error: null });
+          },
           then(res, rej) {
             state[table] = rows().filter((row) => !matches(row));
             return Promise.resolve({ data: null, error: null }).then(res, rej);
@@ -705,6 +719,53 @@ test("#1847 deleteAiTeamById (heal-sweep-stien): samme navne-snapshot før sletn
   const rr = supabase.state.race_results.find((r) => r.id === "rr-solo");
   assert.equal(rr.rider_name, "Solo Kører", "rider_name snapshottet før sletning");
   assert.equal(rr.team_name, "AI Solo CC", "team_name snapshottet før sletning");
+});
+
+// ── #2524 · rider_watchlist har ingen FK-cascade — sletning af en AI-holds
+// ryttere (deleteAiTeamById/removeAiTeams/clearAllAiTeams) må notificere +
+// rydde enhver ønskeliste-række for netop de ryttere, ikke kun senior-/
+// ungdomsauktion-stien i auctionFinalization. ────────────────────────────────
+
+test("#2524 deleteAiTeamById: rydder + notificerer rider_watchlist for holdets ryttere", async () => {
+  const supabase = makeSupabase({
+    teams: [{ id: "ai-watched", name: "AI Watched CC", is_ai: true, league_division_id: 1 }],
+    riders: [{ id: "rid-w1", team_id: "ai-watched", firstname: "Watched", lastname: "Rytter" }],
+    rider_watchlist: [{ id: "wl-1", user_id: "user-1", rider_id: "rid-w1" }],
+    notifications: [],
+  });
+
+  await deleteAiTeamById(supabase, "ai-watched");
+
+  assert.equal(supabase.state.rider_watchlist.length, 0, "watchlist-rækken er ryddet");
+  assert.equal(supabase.state.notifications.length, 1, "watcheren fik en departure-notifikation");
+  const notif = supabase.state.notifications[0];
+  assert.equal(notif.user_id, "user-1");
+  assert.equal(notif.type, "watchlist_departed");
+  assert.match(notif.message, /Watched Rytter/);
+});
+
+test("#2524 clearAllAiTeams: rydder + notificerer rider_watchlist på tværs af batches", async () => {
+  const supabase = makeSupabase({
+    teams: [
+      { id: "ai-1", name: "AI One", is_ai: true, league_division_id: 1 },
+      { id: "ai-2", name: "AI Two", is_ai: true, league_division_id: 1 },
+    ],
+    riders: [
+      { id: "rid-1", team_id: "ai-1", firstname: "First", lastname: "Rytter" },
+      { id: "rid-2", team_id: "ai-2", firstname: "Second", lastname: "Rytter" },
+    ],
+    rider_watchlist: [
+      { id: "wl-1", user_id: "user-1", rider_id: "rid-1" },
+      { id: "wl-2", user_id: "user-2", rider_id: "rid-2" },
+    ],
+    notifications: [],
+  });
+
+  const res = await clearAllAiTeams(supabase);
+
+  assert.equal(res.teams, 2);
+  assert.equal(supabase.state.rider_watchlist.length, 0, "begge watchlist-rækker ryddet");
+  assert.equal(supabase.state.notifications.length, 2, "begge watchers notificeret");
 });
 
 // ── 2026-06-30 · defaultAllocateSquadForTeam: 24-trup, divisions-kvalitet via

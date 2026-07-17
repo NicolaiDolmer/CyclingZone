@@ -1,6 +1,10 @@
 // Frontend-SSOT for staff-evne-visning (#2220 A4b). Staff-shapen er
 // { overall, dimensions, levels, roleSkills }. Kolonner pr. rolle (spec §1.2).
-export const STAFF_LEVEL_KEYS = ["youth", "junior", "senior"];
+// #2529 (ejer-beslutning Discord 16/7): "youth" + "junior" kollapset til ÉT
+// "u23"-bånd (spillere kunne ikke finde forklaringen på båndene). Kaldes
+// "coaching group" i UI — IKKE "tier" — for ikke at kollidere med #2492's
+// tre-tier KLUBSTRUKTUR (Senior/U23/Junior), som er noget andet.
+export const STAFF_LEVEL_KEYS = ["u23", "senior"];
 export const STAFF_DIMENSION_KEYS = ["physical", "mental", "technical"];
 export const STAFF_ROLE_SKILL_KEYS = {
   training: [],

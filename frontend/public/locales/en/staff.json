@@ -5,10 +5,13 @@
   "roles": { "training": "Sports Director", "scouting": "Chief Scout", "medical": "Team Doctor", "academy": "Academy Director", "commercial": "Commercial Director" },
   "hero": { "tier": "Tier {tier}", "salary": "{amount} CZ$/season", "ratingEyebrow": "Rating /99", "specHeadline": "Best at {axis}" },
   "tabs": { "overview": "Overview", "effect": "Effect", "history": "History" },
-  "columns": { "dimensions": "Coaching", "levels": "Level focus", "roleSkills": "Role skills" },
+  "columns": {
+    "dimensions": "Coaching", "levels": "Coaching group focus", "roleSkills": "Role skills",
+    "levelsTooltip": "U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. A chief's coaching group focus shows which age group they train best, on top of their coaching dimensions."
+  },
   "axes": {
     "physical": "physical training", "mental": "mental training", "technical": "technical training",
-    "youth": "youth", "junior": "junior", "senior": "senior",
+    "u23": "U23", "senior": "senior",
     "evaluation": "talent evaluation", "reach": "network reach",
     "recovery": "recovery", "injuryPrevention": "injury prevention",
     "intake": "intake quality", "growth": "growth rate",
