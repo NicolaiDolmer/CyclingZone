@@ -139,6 +139,8 @@
     "dna_requires_identity_basis": "Your club identity isn't ready yet. Try again in a moment.",
     "dna_already_chosen": "Your club DNA is already set and can't be changed yet",
     "invalid_asking_price": "The asking price must be a positive whole number",
+    "bulk_price_empty": "No listings selected",
+    "bulk_price_too_many": "Max {max} listings per call",
     "team_transfer_frozen": "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading.",
     "offer_rider_amount_required": "rider_id and offer_amount are required",
     "swap_rider_ids_required": "offered_rider_id and requested_rider_id are required",

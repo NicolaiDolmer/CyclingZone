@@ -140,7 +140,11 @@
       },
       "sellOnTransferList": {
         "title": "Sell via the transfer list",
-        "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort the market by price or by newest listings."
+        "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort or filter the market by asking price, in addition to sorting by newest listings."
+      },
+      "bulkEditPrices": {
+        "title": "Editing many prices at once",
+        "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
       },
       "sendOffer": {
         "title": "Send an offer",

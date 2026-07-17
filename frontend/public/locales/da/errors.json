@@ -139,6 +139,8 @@
     "dna_requires_identity_basis": "Dit holds identitet er ikke klar endnu. Prøv igen om lidt.",
     "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)",
     "invalid_asking_price": "Prisen skal være et positivt heltal",
+    "bulk_price_empty": "Ingen listinger valgt",
+    "bulk_price_too_many": "Højst {max} listinger pr. kald",
     "team_transfer_frozen": "Dit hold er fastfrosset, fordi gælden er over divisions-loftet. Reducér gælden før du handler.",
     "offer_rider_amount_required": "rider_id og offer_amount kræves",
     "swap_rider_ids_required": "offered_rider_id og requested_rider_id kræves",

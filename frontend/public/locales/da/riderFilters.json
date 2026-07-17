@@ -13,6 +13,7 @@
     "salaryRange": "Løn CZ$ (min-max)",
     "ageRange": "Alder (min-max)",
     "bidRange": "Højeste bud CZ$ (min-max)",
+    "askingPriceRange": "Salgspris CZ$ (min-max)",
     "team": "Hold",
     "teamAll": "Alle hold",
     "min": "Min",
@@ -46,6 +47,10 @@
     "bid": {
       "min": "Bud ≥ {amount} CZ$",
       "max": "Bud ≤ {amount} CZ$"
+    },
+    "askingPrice": {
+      "min": "Pris ≥ {amount} CZ$",
+      "max": "Pris ≤ {amount} CZ$"
     },
     "teamSelected": "Hold valgt",
     "statRange": "{label} {min}-{max}",
