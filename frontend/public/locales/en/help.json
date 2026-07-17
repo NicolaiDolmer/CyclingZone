@@ -449,6 +449,25 @@
         "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season."
       }
     },
+    "globalRank": {
+      "label": "Global rank",
+      "whatIsIt": {
+        "title": "What is Global rank?",
+        "text": "Global rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Season > Global rank."
+      },
+      "howScored": {
+        "title": "How is the score calculated?",
+        "text": "Your score is your division-weighted points, averaged over the last 2 seasons you've played (current season counts double the previous one). A Division 1 result is worth more than the same result in Division 4, since it takes more to earn it."
+      },
+      "newManagers": {
+        "title": "What about new managers?",
+        "text": "The score is an average per season played, not a total. A new manager with one strong season is compared on that season's average, the same way a veteran's two seasons are averaged, so global rank measures performance, not how long you've been playing."
+      },
+      "movement": {
+        "title": "The movement arrow",
+        "text": "The up/down arrow next to your rank shows how your position changed since the last refresh (results are recalculated automatically, not live on every page load)."
+      }
+    },
     "riders": {
       "label": "Riders",
       "valueAndPrice": {

@@ -449,6 +449,25 @@
         "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned, delt mellem de to puljer nedenunder. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson."
       }
     },
+    "globalRank": {
+      "label": "Global rangliste",
+      "whatIsIt": {
+        "title": "Hvad er Global rank?",
+        "text": "Global rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Sæson > Global rangliste."
+      },
+      "howScored": {
+        "title": "Hvordan beregnes scoren?",
+        "text": "Din score er dine divisions-vægtede point, som gennemsnit over de seneste 2 sæsoner du har spillet (nuværende sæson tæller dobbelt af forrige). Et Division 1-resultat er værd mere end det samme resultat i Division 4, fordi det kræver mere at opnå."
+      },
+      "newManagers": {
+        "title": "Hvad med nye managere?",
+        "text": "Scoren er et gennemsnit pr. sæson deltaget, ikke en samlet sum. En ny manager med én stærk sæson sammenlignes på den sæsons snit, på samme måde som en veterans to sæsoner gennemsnittes — global rank måler dermed præstation, ikke hvor længe du har spillet."
+      },
+      "movement": {
+        "title": "Bevægelses-pilen",
+        "text": "Op/ned-pilen ved siden af din placering viser hvordan din position har ændret sig siden sidste opdatering (resultaterne genberegnes automatisk, ikke live ved hvert side-load)."
+      }
+    },
     "riders": {
       "label": "Ryttere",
       "valueAndPrice": {
