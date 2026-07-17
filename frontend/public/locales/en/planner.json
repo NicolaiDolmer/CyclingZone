@@ -7,6 +7,11 @@
     "title": "Season planner isn't live yet",
     "description": "This is where you'll plan each rider's form peaks across the season. Check back soon."
   },
+  "seasonMenu": { "option": "S{number}" },
+  "seasonNotReady": {
+    "title": "Season {number}'s calendar isn't ready yet",
+    "description": "The race program for this season hasn't been generated yet, so there's nothing to plan against. Check back closer to the season start."
+  },
   "firstRun": {
     "title": "Plan your first peak",
     "body": "Every rider is riding flat right now. Target a race and the planner builds a lead-up that lifts their form for the day that matters. Each rider can peak for up to {max} races a season, so choose where it counts.",

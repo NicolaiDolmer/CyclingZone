@@ -24,9 +24,12 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-const EMPTY = { season: null, maxPerRider: 2, today: null, leadupDays: 14, riders: [], races: [] };
+const EMPTY = { season: null, availableSeasons: [], maxPerRider: 2, today: null, leadupDays: 14, riders: [], races: [] };
 
-export function usePlanner() {
+// #2518: seasonNumber = null → backend defaulter til aktiv sæson (uændret
+// adfærd); et eksplicit nummer (fra sæson-vælgeren i SeasonPlannerPage) lader
+// manageren planlægge mod en ANDEN sæson (fx S2 før den starter, jf. #2449).
+export function usePlanner(seasonNumber = null) {
   const [enabled, setEnabled] = useState(false);
   const [board, setBoard] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -37,13 +40,15 @@ export function usePlanner() {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
     try {
-      const res = await fetch(`${API}/api/peak-plans/board`, { headers });
+      const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
+      const res = await fetch(`${API}/api/peak-plans/board${qs}`, { headers });
       if (!res.ok) { setLoading(false); return; }
       const data = await res.json();
       setEnabled(Boolean(data.enabled));
       if (data.enabled) {
         setBoard({
           season: data.season ?? null,
+          availableSeasons: data.availableSeasons ?? [],
           maxPerRider: data.maxPerRider ?? 2,
           today: data.today ?? null,
           leadupDays: data.leadupDays ?? 14,
@@ -57,7 +62,7 @@ export function usePlanner() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [seasonNumber]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -66,8 +71,11 @@ export function usePlanner() {
     if (!headers) return { ok: false, error: "auth" };
     setBusy(true);
     try {
+      const payload = (body || seasonNumber != null)
+        ? { ...(body || {}), ...(seasonNumber != null ? { season_number: seasonNumber } : {}) }
+        : undefined;
       const res = await fetch(`${API}/api/peak-plans${path}`, {
-        method, headers, body: body ? JSON.stringify(body) : undefined,
+        method, headers, body: payload ? JSON.stringify(payload) : undefined,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed", status: res.status };
@@ -78,7 +86,7 @@ export function usePlanner() {
     } finally {
       setBusy(false);
     }
-  }, [refresh]);
+  }, [refresh, seasonNumber]);
 
   const createPeak = useCallback((riderId, targetRaceId) =>
     mutate("", "POST", { rider_id: riderId, target_race_id: targetRaceId }), [mutate]);
