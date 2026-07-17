@@ -687,6 +687,10 @@
       "costs": {
         "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",
         "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger. Budgettér den som en tilbagevendende post, ikke kun den indledende pris."
+      },
+      "staffOverview": {
+        "title": "Se alle holds personale",
+        "text": "Personale-siden lister alle ansatte chefer på tværs af ligaen, som du kan filtrere på rolle, hold og tier. Klik på din egen chef for at se den fulde evne-oversigt. Klik på en anden managers chef, og du ser kun det samme som når du sammenligner ansættelses-kandidater: samlet rating, tier og top-specialisering, aldrig den fulde oversigt."
       }
     },
     "raceSelection": {

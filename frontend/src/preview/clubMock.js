@@ -109,8 +109,55 @@ function candidatesFor(role) {
   });
 }
 
+// #2450: personale-oversigt på tværs af hold. Preview har kun ét "rigtigt" team
+// (ejerens egen klub-state) — de øvrige rækker er en statisk, plausibel andre-
+// hold-pulje så oversigt + public-profil-fallback kan klikkes igennem uden en
+// ægte flerklub-backend. Egen staff (id `staff-<track>`) rammer stadig FØRST
+// /api/club/staff/:id (fuld matrix); disse `other-staff-N`-id'er 404'er der og
+// falder korrekt tilbage til /api/staff/:id/public (samme flow som prod).
+const OTHER_TEAMS = [
+  { id: "team-other-1", name: "Rocourt Cycling", division: 2 },
+  { id: "team-other-2", name: "Nordkyst Racing", division: 1 },
+  { id: "team-other-3", name: "Sud-Ouest CC", division: 3 },
+];
+const OTHER_STAFF_SEED = [
+  { team: OTHER_TEAMS[0], role: "training", tier: 4, name: "Elena Sarti" },
+  { team: OTHER_TEAMS[0], role: "medical", tier: 2, name: "Karel Novotny" },
+  { team: OTHER_TEAMS[1], role: "scouting", tier: 5, name: "Aldo Terranova" },
+  { team: OTHER_TEAMS[2], role: "commercial", tier: 3, name: "Ingrid Solheim" },
+];
+
+function directoryPayload() {
+  const own = TRACKS.map((track) => {
+    const f = state.facilities[track];
+    if (!f.staff) return null;
+    const ab = abilitiesFor(track, f.staff.tier, f.staff.name);
+    return {
+      id: `staff-${track}`, name: f.staff.name, role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier],
+      overall: ab.overall, topSpecialization: topAxisKey(ab),
+      teamId: "own-team", teamName: "Dit hold", division: 2, isAiTeam: false,
+    };
+  }).filter(Boolean);
+  const others = OTHER_STAFF_SEED.map((s, i) => {
+    const ab = abilitiesFor(s.role, s.tier, s.name);
+    return {
+      id: `other-staff-${i}`, name: s.name, role: s.role, tier: s.tier, salary: SALARY[s.tier],
+      overall: ab.overall, topSpecialization: topAxisKey(ab),
+      teamId: s.team.id, teamName: s.team.name, division: s.team.division, isAiTeam: false,
+    };
+  });
+  return { staff: [...own, ...others] };
+}
+
 // Router: (method, pathname, search, body) → { status, body }.
 export function clubMockRoute(method, pathname, search, body) {
+  if (pathname.endsWith("/api/staff/directory") && method === "GET") return { status: 200, body: directoryPayload() };
+  if (/\/api\/staff\/([^/]+)\/public$/.test(pathname) && method === "GET") {
+    const id = pathname.match(/\/api\/staff\/([^/]+)\/public$/)[1];
+    const row = directoryPayload().staff.find((s) => s.id === id);
+    if (!row) return { status: 404, body: { error: "staff_not_found" } };
+    return { status: 200, body: row };
+  }
   if (pathname.endsWith("/api/club/facilities") && method === "GET") return { status: 200, body: facilitiesPayload() };
   if (pathname.endsWith("/api/club/facilities/upgrade") && method === "POST") {
     const track = body?.track;
