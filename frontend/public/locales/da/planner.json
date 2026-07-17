@@ -7,6 +7,11 @@
     "title": "Sæsonplanlæggeren er ikke live endnu",
     "description": "Her planlægger du hver rytters form-peaks henover sæsonen. Kig forbi snart."
   },
+  "seasonMenu": { "option": "S{number}" },
+  "seasonNotReady": {
+    "title": "Sæson {number}s kalender er ikke klar endnu",
+    "description": "Løbsprogrammet for denne sæson er ikke genereret endnu, så der er intet at planlægge mod. Kig forbi igen tættere på sæsonstart."
+  },
   "firstRun": {
     "title": "Planlæg din første peak",
     "body": "Alle ryttere kører fladt lige nu. Sigt mod et løb, så bygger planlæggeren en optakt der løfter deres form til den dag der tæller. Hver rytter kan peake mod op til {max} løb pr. sæson, så vælg hvor det gør en forskel.",

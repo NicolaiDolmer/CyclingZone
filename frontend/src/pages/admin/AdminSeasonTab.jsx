@@ -42,6 +42,10 @@ export default function AdminSeasonTab() {
   const [seasonPreview, setSeasonPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loading, setLoading] = useState({});
+  // #2449 — kalender-generator (reproducerbar per-division-generering).
+  const [calSeasonId, setCalSeasonId] = useState("");
+  const [calPreview, setCalPreview] = useState(null);
+  const [calResult, setCalResult] = useState(null);
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
 
@@ -221,6 +225,50 @@ export default function AdminSeasonTab() {
     }
   }
 
+  // #2449: dry-run-preview af per-division-kalenderen — INGEN writes. Viser
+  // pr.-pulje race-antal + tier/klasse-fordeling, så prestige-kaskaden (#2276:
+  // div 4 må ikke arve div 1's monumenter) kan verificeres FØR "Generér".
+  async function loadCalendarPreview() {
+    if (!calSeasonId) { showMsg("❌ Vælg en sæson", "error"); return; }
+    setLoad("cal_preview", true);
+    setCalResult(null);
+    try {
+      const res = await fetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar/preview`, { headers: await getAuth() });
+      const data = await readAdminJson(res);
+      if (res.ok) setCalPreview(data);
+      else { setCalPreview(null); showMsg(`❌ ${adminErrorMessage(data, res)}`, "error"); }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("cal_preview", false);
+    }
+  }
+
+  // #2449: ægte materialisering (races + stage-profiler + schedule). Idempotent —
+  // gentagne kald indsætter kun manglende (pulje, løb)-par. Ejer-only knap.
+  async function handleGenerateCalendar() {
+    if (!calSeasonId) { showMsg("❌ Vælg en sæson", "error"); return; }
+    const raceCount = (calPreview?.pools || []).reduce((n, p) => n + (p.races?.length || 0), 0);
+    if (!confirm(`Generér sæson-kalenderen? Dette indsætter ca. ${raceCount || "?"} løb (+ etape-profiler/schedule) for sæsonen. Kør altid preview først.`)) return;
+    setLoad("cal_generate", true);
+    try {
+      const res = await fetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar?dryRun=false`, {
+        method: "POST", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        setCalResult(data);
+        showMsg(`✅ Kalender genereret: ${data.racesInserted} løb, ${data.stageProfiles} profiler, ${data.stageSchedules} etape-tider`);
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("cal_generate", false);
+    }
+  }
+
   async function loadSeasonPreview() {
     if (!previewSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
     setLoadingPreview(true);
@@ -367,6 +415,73 @@ export default function AdminSeasonTab() {
             </button>
           </div>
         </form>
+      </AdminSection>
+
+      <AdminSection title="📅 Kalender-generator (#2449)">
+        <p className="text-cz-3 text-xs mb-3">
+          Genererer løbsprogrammet for ALLE fire divisioner (reproducerbar, deterministisk pr. sæson) — respekterer prestige-kaskaden pr. tier (#2276). Preview er ren læsning; Generér skriver races + etape-profiler + schedule (idempotent — gentagne kald indsætter kun manglende løb).
+        </p>
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <div className="flex-1">
+            <label className="block text-cz-3 text-xs mb-1">Vælg sæson</label>
+            <select value={calSeasonId} onChange={e => { setCalSeasonId(e.target.value); setCalPreview(null); setCalResult(null); }}
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              <option value="">Vælg sæson...</option>
+              {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
+            </select>
+          </div>
+          <div className="flex items-end gap-2">
+            <button onClick={loadCalendarPreview} disabled={loading.cal_preview || !calSeasonId}
+              className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50">
+              {loading.cal_preview ? "Indlæser..." : "Preview (dry-run)"}
+            </button>
+            <button onClick={handleGenerateCalendar} disabled={loading.cal_generate || !calPreview}
+              title={!calPreview ? "Kør preview først" : undefined}
+              className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
+              {loading.cal_generate ? "Genererer..." : "Generér kalender"}
+            </button>
+          </div>
+        </div>
+
+        {calPreview && (
+          <div className="overflow-x-auto rounded-lg border border-cz-border mb-2">
+            <table data-sort-exempt="admin dry-run preview, altid kort og pulje-ordnet" className="w-full text-xs min-w-[640px]">
+              <thead>
+                <tr className="border-b border-cz-border">
+                  <th className="px-3 py-2 text-left">Pulje</th>
+                  <th className="px-3 py-2 text-right">Tier</th>
+                  <th className="px-3 py-2 text-right">Løb</th>
+                  <th className="px-3 py-2 text-right">Løbsdage</th>
+                  <th className="px-3 py-2 text-right">Etapeløb</th>
+                  <th className="px-3 py-2 text-left">Klasser</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calPreview.pools.map(p => (
+                  <tr key={p.leagueDivisionId} className="border-b border-cz-border">
+                    <td className="px-3 py-2 text-cz-1">{p.label || `#${p.leagueDivisionId}`}</td>
+                    <td className="px-3 py-2 text-right text-cz-2">{p.tier}</td>
+                    <td className="px-3 py-2 text-right font-mono">{p.races.length}</td>
+                    <td className="px-3 py-2 text-right font-mono">{p.totalRaceDays}</td>
+                    <td className="px-3 py-2 text-right font-mono">{p.stageRaceCount}</td>
+                    <td className="px-3 py-2 text-cz-3">{p.raceClasses.join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(calPreview.truncated || []).length > 0 && (
+              <p className="text-cz-warning text-xs px-3 py-2">
+                ⚠ {calPreview.truncated.length} pulje(r) fik færre etapeløb end target (katalog-loft) — se konsol/summary for detaljer.
+              </p>
+            )}
+          </div>
+        )}
+
+        {calResult && (
+          <p className="text-cz-success text-xs">
+            ✅ Genereret: {calResult.racesInserted} løb · {calResult.stageProfiles} profiler · {calResult.stageSchedules} etape-tider
+          </p>
+        )}
       </AdminSection>
 
       <AdminSection title="Aktive auktioner">
