@@ -33,7 +33,7 @@ const API = import.meta.env.VITE_API_URL;
 // højre side i max-w-6xl samtidig med spildt whitespace; samme klasse som /team.
 // "/staff" tilføjet per #2450 — personale-oversigten på tværs af hold har samme
 // tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff"]);
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner"]);
 // Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
 // ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
 // trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
