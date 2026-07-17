@@ -347,7 +347,7 @@
       },
       "racesAndResults": {
         "title": "Races and results",
-        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself."
+        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
       },
       "latestTeamResult": {
         "title": "Where do I see how my team did?",

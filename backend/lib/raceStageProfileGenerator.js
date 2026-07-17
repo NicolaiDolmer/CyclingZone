@@ -122,7 +122,12 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   mountain_classic:    { kind: "single", weights: [{ value: "high_mountain", weight: 50 }, { value: "mountain", weight: 50 }] },
   long_sprint_classic: { kind: "single", weights: [{ value: "rolling", weight: 1 }] },
 
-  grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }, { value: "ttt", weight: 2 }] },
+  // #2411: TTT scorer i dag som individuel enkeltstart (terrainBucket("ttt")→"itt" i
+  // raceTerrain.js — ni ryttere fra samme hold får hver deres tid). Pauset indtil
+  // motoren kan simulere ægte hold-TTT (separat fremtidigt issue): "ttt"-filleren
+  // (var weight 2) er fjernet — kun ITT genereres for fremtidige parcours. Eksisterende
+  // persisterede etaper med ttt RØRES IKKE (kun fremtidige genereringer påvirkes).
+  grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }] },
   mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
   hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
   sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },

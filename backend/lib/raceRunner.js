@@ -1451,6 +1451,11 @@ export async function simulateStageByIndex({
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
   notifyInApp = null,
+  // #2523: per-etape "din etape er kørt"-notifikation. Kaldt KUN for ikke-final-
+  // etaper (se mellem-etape-grenen nedenfor) — final-etapen beholder ALENE
+  // notifyInApp's samlede klassements-notifikation (#1952), for at undgå
+  // dobbelt-besked på den sidste etape.
+  notifyStageInApp = null,
   applyFatigue = applyRaceFatigue,
   applyStageResult = applyStageResultAtomic,
   // #2352 (Race v3 S1): injectable, default læser den ægte kill-switch.
@@ -1687,6 +1692,18 @@ export async function simulateStageByIndex({
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──
     if (!isFinalStage) {
+      // #2523: per-etape "din etape er kørt"-notifikation til deltagende managers.
+      // KUN her (ikke i finalization-grenen nedenfor) — final-etapen får i stedet
+      // notifyInApp's samlede klassements-notifikation, så en manager aldrig får
+      // to beskeder for samme etape. Best-effort (samme mønster som notifyDiscord/
+      // notifyInApp): en notif-fejl må ikke vælte afviklingen.
+      if (notifyStageInApp) {
+        try {
+          await notifyStageInApp({ race, stageNumber, totalStages });
+        } catch {
+          // best-effort: notificationService capturer internt, tavs slugning er bevidst.
+        }
+      }
       return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: totalStages };
     }
   }

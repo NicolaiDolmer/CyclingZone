@@ -185,7 +185,6 @@ import {
   loadHumanSeasonEndTeams,
   processSeasonEnd,
   processSeasonStart,
-  repairSeasonEndFinanceAndBoard,
   updateRiderValues,
   updateStandings,
 } from "../lib/economyEngine.js";
@@ -6009,6 +6008,20 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
   res.json({ ok: true, username: data.username });
 });
 
+// #2439: hold ældre end dette antal dage regnes som "etablerede" og skal
+// ALDRIG se onboarding-progress-kortet, uanset step-status — de 4 trin
+// (bud/træning/manuel-udtagelse/board-forhandling) er ægte spillerhandlinger
+// en veteran sagtens kan gå hele sæsoner uden at ramme (fx altid
+// squad-auto-fill), så completed_count når aldrig total_count for dem.
+// Matcher #2458s 14→2-dages-mønster for "etableret spiller"-grænser.
+const ONBOARDING_ESTABLISHED_TEAM_AGE_DAYS = 14;
+
+function isEstablishedTeam(team) {
+  if (!team?.created_at) return false;
+  const ageMs = Date.now() - new Date(team.created_at).getTime();
+  return ageMs > ONBOARDING_ESTABLISHED_TEAM_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 // GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager.
 //
 // #2288 Slice A: de gamle trin "team_named" og "first_rider_owned" er completed
@@ -6028,6 +6041,14 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
 //                              række" var altid sand. negotiation_status='completed'
 //                              sættes derimod kun når manageren selv har forhandlet en
 //                              plan færdig (PUT board-negotiate-ruten) — det ÆGTE signal.
+//
+// #2439: `dismissed` er nu SERVER-persisteret (teams.onboarding_progress_
+// dismissed_at) i stedet for det session-scopede sessionStorage-dismiss fra
+// #1569 — et afvist-klik holder på tværs af enheder/sessions. `established`
+// signalerer at frontend bør skjule kortet helt (uden at kræve et dismiss-klik)
+// for hold der er forbi den normale onboarding-periode. Graceful degradation:
+// mangler onboarding_progress_dismissed_at-kolonnen endnu (42703 via select *
+// giver blot undefined, ingen fejl), opfører dismissed sig som "ikke dismisset".
 router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const teamId = req.team?.id;
   const emptySteps = [
@@ -6037,7 +6058,10 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     { key: "board_plan_set", done: false },
   ];
   if (!teamId) {
-    return res.json({ steps: emptySteps, completed_count: 0, total_count: emptySteps.length });
+    return res.json({
+      steps: emptySteps, completed_count: 0, total_count: emptySteps.length,
+      dismissed: false, established: false,
+    });
   }
 
   const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
@@ -6056,8 +6080,29 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     { key: "board_plan_set", done: (boardsRes.count || 0) > 0 },
   ];
   const completed_count = steps.filter(s => s.done).length;
+  const dismissed = Boolean(req.team?.onboarding_progress_dismissed_at);
+  const established = isEstablishedTeam(req.team);
 
-  res.json({ steps, completed_count, total_count: steps.length });
+  res.json({ steps, completed_count, total_count: steps.length, dismissed, established });
+});
+
+// POST /api/me/onboarding-progress/dismiss — #2439: persistér "afvist" SERVER-
+// SIDE (teams.onboarding_progress_dismissed_at) så onboarding-progress-kortet
+// forbliver væk på tværs af enheder/sessions efter ét klik på ×, i stedet for
+// at genopstå ved næste nye fane/browser (det session-scopede sessionStorage-
+// dismiss fra #1569, som var rod-årsagen til at kortet "spammede" etablerede
+// spillere). Graceful degradation hvis migrationen ikke er anvendt endnu.
+router.post("/me/onboarding-progress/dismiss", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { error } = await supabase
+    .from("teams")
+    .update({ onboarding_progress_dismissed_at: new Date().toISOString() })
+    .eq("id", req.team.id);
+  if (error && error.code !== "42703") {
+    captureException(error);
+    return res.status(500).json({ error: error.message });
+  }
+  res.json({ ok: true });
 });
 
 // GET /api/training/today-status — letvægts-signal til Dashboard "Næste træk"
@@ -6977,25 +7022,11 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
   }
 });
 
-router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const seasonId = req.params.id;
-    const force = req.body?.force === true;
-    const result = await repairSeasonEndFinanceAndBoard(seasonId, { force });
-
-    await logActivity("season_end_finance_board_repaired", {
-      meta: {
-        season_id: seasonId,
-        teams_processed: result.teamsProcessed,
-        force,
-      },
-    });
-
-    res.json({ success: true, season_id: seasonId, ...result });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// #2462: POST /admin/seasons/:id/repair-finance-board fjernet 2026-07-17 — engangs-
+// incident-repair-endpoint fra 2026-04-29 (season 6-hændelse, se docs/archive/
+// SEASON_END_REPAIR_HANDOFF_2026-04-29.md), aldrig haft en UI-knap, ikke kaldt siden.
+// repairSeasonEndFinanceAndBoard() i economyEngine.js er bevaret (testdækket) hvis en
+// tilsvarende hændelse skulle opstå igen — genindsæt da som script, ikke ugated HTTP.
 
 router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
@@ -10102,14 +10133,50 @@ router.get("/board/status", requireAuth, async (req, res) => {
       ? (Date.now() - negotiationOpenedAt.getTime()) / (24 * 60 * 60 * 1000)
       : null;
 
+    // #2444 · identityBasis/teamDnaKey/dnaCanRechoose-forudsætningen afhænger kun
+    // af teamRes/isBaselinePhase (begge kendt her) — ikke af plan-loopets output.
+    // Løftet op så activeConsequences + dnaCanRechoose kan køre SAMTIDIG med
+    // plan-loopet nedenfor i stedet for bagefter (var 2 sekventielle round-trips
+    // efter et loop der selv var sekventielt).
+    const identityBasis = teamRes.data?.season_1_identity_basis || null;
+    const teamDnaKey = teamRes.data?.team_dna_key || null;
+    const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
+
+    const activeConsequencesPromise = (async () => {
+      try {
+        return await getActiveConsequencesForTeam(supabase, req.team.id);
+      } catch (e) {
+        console.warn(`[board/status] getActiveConsequencesForTeam failed:`, e?.message);
+        return [];
+      }
+    })();
+
+    // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første
+    // sæson. Kun relevant query når teamDnaKey + identityBasis findes og vi ikke
+    // er i baseline-fasen.
+    const dnaCanRechoosePromise = (teamDnaKey && identityBasis && !isBaselinePhase)
+      ? (async () => {
+        try {
+          return await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
+        } catch (e) {
+          console.warn(`[board/status] isWithinFirstSeasonForTeam failed:`, e?.message);
+          return false;
+        }
+      })()
+      : Promise.resolve(false);
+
     // Build per-plan data — kun for rigtige plan-typer (1yr/3yr/5yr), ikke baseline.
-    const plans = {};
-    for (const planType of PLAN_SEQUENCE) {
+    // #2444 · de op til 3 plan-typer er uafhængige af hinanden (hver bygger sit
+    // eget board-objekt fra allerede-hentede allBoards/allSnapshots/allEvents +
+    // sit eget loadGoalContextForBoard-kald) og kørte tidligere sekventielt i et
+    // for-loop — op til 3× de 3 interne queries efter hinanden. Promise.all
+    // parallelliserer plan-typerne; rækkefølgen i `plans` bevares uændret via
+    // PLAN_SEQUENCE-nøglerne uanset hvilken promise der lander først.
+    const planEntriesPromise = Promise.all(PLAN_SEQUENCE.map(async (planType) => {
       const board = realPlanBoards.find(b => b.plan_type === planType) || null;
 
       if (!board) {
-        plans[planType] = null;
-        continue;
+        return [planType, null];
       }
 
       const planDuration = getPlanDuration(board.plan_type);
@@ -10234,7 +10301,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         })
         : [];
 
-      plans[planType] = {
+      const planEntry = {
         board,
         plan_duration: planDuration,
         seasons_remaining: seasonsRemaining,
@@ -10272,11 +10339,19 @@ router.get("/board/status", requireAuth, async (req, res) => {
         },
         request_options: requestOptions,
       };
-    }
+
+      return [planType, planEntry];
+    }));
+
+    const [planEntries, activeConsequences, dnaCanRechoose] = await Promise.all([
+      planEntriesPromise,
+      activeConsequencesPromise,
+      dnaCanRechoosePromise,
+    ]);
+    const plans = Object.fromEntries(planEntries);
 
     // S-02b · Annotér eksisterende 5yr-mål med identity-feeding-rationale så BoardPage
     // kan rendere "Bygger paa din franske kerne"-badge på allerede signede planer.
-    const identityBasis = teamRes.data?.season_1_identity_basis || null;
     if (identityBasis && plans["5yr"]?.board?.current_goals) {
       const fiveYrGoals = typeof plans["5yr"].board.current_goals === "string"
         ? JSON.parse(plans["5yr"].board.current_goals)
@@ -10292,31 +10367,14 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
     // S-02e · Aktive konsekvenser (lag 2-6) — frontend renderer
     // BoardConsequencesPanel og BonusOfferCard på baggrund af denne liste.
-    let activeConsequences = [];
-    try {
-      activeConsequences = await getActiveConsequencesForTeam(supabase, req.team.id);
-    } catch (e) {
-      console.warn(`[board/status] getActiveConsequencesForTeam failed:`, e?.message);
-    }
+    // (activeConsequences hentet parallelt med plan-loopet ovenfor, #2444.)
     const bonusOffer = activeConsequences.find((c) => c.layer === 6) || null;
 
     // S-02f · Klub-DNA: returnér current valgt DNA + suggestions hvis ikke valgt.
     // Suggestions kun relevante når identity_basis findes (sæson 2+) og DNA endnu
     // ikke valgt. AI/bank/frozen får ikke vist DNA-card (men api.js returnerer
-    // allerede 404 før vi når hertil for non-manager teams).
-    const teamDnaKey = teamRes.data?.team_dna_key || null;
-    const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
-    // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første
-    // sæson. Når valgt-men-om-vælgeligt eksponerer vi stadig forslagene, så
-    // frontend kan tilbyde et skift; can_rechoose styrer "Skift DNA"-affordancen.
-    let dnaCanRechoose = false;
-    if (teamDnaKey && identityBasis && !isBaselinePhase) {
-      try {
-        dnaCanRechoose = await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
-      } catch (e) {
-        console.warn(`[board/status] isWithinFirstSeasonForTeam failed:`, e?.message);
-      }
-    }
+    // allerede 404 før vi når hertil for non-manager teams). (dnaCanRechoose
+    // hentet parallelt med plan-loopet ovenfor, #2444.)
     const dnaSuggestions = ((!teamDnaKey || dnaCanRechoose) && identityBasis && !isBaselinePhase)
       ? computeDnaSuggestions(identityBasis)
       : [];

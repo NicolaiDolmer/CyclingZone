@@ -6,6 +6,7 @@
   "scripts": {
     "sync-docs": "node scripts/sync-docs.js",
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
+    "test:check-patchnotes": "node --test scripts/check-patch-notes-version.test.js",
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
     "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
     "cleanup:worktrees": "pwsh -File scripts/prune-merged-worktrees.ps1",

@@ -228,6 +228,29 @@ test("arketype etapeløb: sprinter_tour_summits → præcis 1 TT + 2 bjerg, rest
   }
 });
 
+test("#2411 TTT pauset: INGEN arketype/generisk genererer 'ttt' (individuel enkeltstart-scoring er misvisende for holdtidskørsel)", () => {
+  const stageArchetypes = Object.entries(ARCHETYPE_PROFILES).filter(([, c]) => c.kind === "stage").map(([k]) => k);
+  for (const arch of stageArchetypes) {
+    for (const n of [3, 4, 5, 6, 8, 21]) {
+      for (let s = 1; s <= 30; s++) {
+        const types = generateRaceStageProfiles({ id: "r", external_id: `${arch}-ttt-${n}-${s}`, terrain_archetype: arch, race_type: "stage_race", stages: n }).map((p) => p.profile_type);
+        assert.ok(!types.includes("ttt"), `${arch} n=${n} seed ${s}: ttt genereret trods pause`);
+      }
+    }
+  }
+  // Generisk (ukendt arketype) + endagsløb genererede aldrig ttt — dokumenteret uændret.
+  for (const n of [2, 4, 5, 6, 21]) {
+    for (let seed = 1; seed <= 20; seed++) {
+      const types = generateRaceStageProfiles({ id: "x", race_type: "stage_race", stages: n }, { seed }).map((p) => p.profile_type);
+      assert.ok(!types.includes("ttt"), `generisk n=${n} seed=${seed}: ttt genereret`);
+    }
+  }
+  for (let seed = 1; seed <= 20; seed++) {
+    const types = generateRaceStageProfiles({ id: "single", race_type: "single" }, { seed }).map((p) => p.profile_type);
+    assert.ok(!types.includes("ttt"), `endagsløb seed=${seed}: ttt genereret`);
+  }
+});
+
 test("ukendt/NULL arketype etapeløb → uændret generisk adfærd (garanterer flad+bjerg)", () => {
   for (const n of [2, 4, 5, 6]) {
     for (let seed = 1; seed <= 20; seed++) {
