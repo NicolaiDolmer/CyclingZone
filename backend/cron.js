@@ -21,6 +21,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
   emitRaceResultNotifications, // #1952
+  emitStageResultNotifications, // #2523
 } from "./lib/notificationService.js";
 import {
   notifyAuctionWon,
@@ -756,6 +757,11 @@ async function runStageSchedulerCron() {
         const notifyInApp = async ({ race }) => {
           await emitRaceResultNotifications({ supabase, race });
         };
+        // #2523 · Per-etape "din etape er kørt"-notifikation (mellem-etaper KUN —
+        // se raceRunner.simulateStageByIndex's mellem-etape-gren for finalization-guarden).
+        const notifyStageInApp = async ({ race, stageNumber, totalStages }) => {
+          await emitStageResultNotifications({ supabase, race, stageNumber, totalStages });
+        };
         return runAdminSimulateStage({
           supabase,
           raceId,
@@ -768,6 +774,7 @@ async function runStageSchedulerCron() {
           updateStandings,
           notifyDiscord,
           notifyInApp,
+          notifyStageInApp,
         });
       },
     });

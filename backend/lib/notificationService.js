@@ -308,3 +308,113 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
+
+// ─── #2523 · Per-etape-notifikation (undgår "der sker ikke noget" i etapeløb) ─
+
+export const STAGE_RESULT_TYPE = "stage_result";
+
+/**
+ * #2523 · Indsæt in-app "din etape er kørt"-notifikationer til hver menneske-
+ * manager der havde mindst én rytter med et 'stage'-resultat i DENNE etape.
+ *
+ * Problem: raceRunner.simulateStageByIndex notificerer historisk KUN på
+ * final-etapen (#1952), så spillere oplevede 2+ dages stilhed under et
+ * etapeløb (@smukkethomsen, #2523). Denne funktion suppleres per etape —
+ * final-etapens samlede klassements-notifikation (emitRaceResultNotifications)
+ * består uændret; raceRunner kalder KUN denne funktion for ikke-final-etaper
+ * (se simulateStageByIndex's mellem-etape-gren) for at undgå dobbelt-besked.
+ *
+ * Manager uden ryttere i DENNE etape (fx eneste rytter DNF'et tidligere) har
+ * ingen 'stage'-række og optræder derfor slet ikke i fetchStageParticipants'
+ * resultat — ingen fejl, ingen tom/misvisende notifikation.
+ *
+ * Bedste resultat pr. manager: har et hold flere ryttere i etapen, vises
+ * rytteren med LAVEST rank (bedste placering) — samme "bedste-rytter"-logik
+ * spillere kender fra resultatsider.
+ *
+ * Idempotens: notifyUser dedup'er på (type, title, message, related_id) inden
+ * for 24t — message bærer etape-nummer + rytternavn + placering, så to
+ * forskellige etaper for samme løb aldrig kolliderer. `notify` +
+ * `fetchStageParticipants` er injicerbare for test.
+ */
+export async function emitStageResultNotifications({
+  supabase,
+  race,
+  stageNumber,
+  totalStages,
+  notify = notifyUser,
+  fetchStageParticipants = defaultFetchStageParticipants,
+}) {
+  const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
+  if (!race?.id || !stageNumber) return stats;
+
+  const rows = await fetchStageParticipants({ supabase, raceId: race.id, stageNumber });
+  const bestByManager = new Map();
+  for (const row of rows || []) {
+    if (!row?.userId) continue;
+    const existing = bestByManager.get(row.userId);
+    if (!existing || (row.rank != null && (existing.rank == null || row.rank < existing.rank))) {
+      bestByManager.set(row.userId, row);
+    }
+  }
+  stats.eligible = bestByManager.size;
+
+  const raceName = race.name ?? "your race";
+  for (const [userId, best] of bestByManager) {
+    const riderName = best.riderName ?? "your rider";
+    const position = best.rank ?? null;
+    try {
+      const res = await notify({
+        supabase,
+        userId,
+        type: STAGE_RESULT_TYPE,
+        title: "Stage result is in",
+        message: position != null
+          ? `Stage ${stageNumber} of ${raceName} is done. Your best: ${riderName}, position ${position}.`
+          : `Stage ${stageNumber} of ${raceName} is done.`,
+        relatedId: race.id,
+        metadata: {
+          raceId: race.id,
+          stageNumber,
+          totalStages: totalStages ?? null,
+          titleCode: "notif.stageResult.title",
+          titleParams: {},
+          messageCode: position != null ? "notif.stageResult.message" : "notif.stageResult.messageNoResult",
+          messageParams: { stage: stageNumber, race: raceName, rider: riderName, position },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch (err) {
+      stats.failed += 1;
+      console.error(`  ❌ stage-result-notifikation fejlede (race ${race?.id}, etape ${stageNumber}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "stage-result" }, raceId: race?.id, stageNumber });
+    }
+  }
+  return stats;
+}
+
+/**
+ * Hent 'stage'-resultatrækker for DENNE etape, kun for menneske-, ikke-frosne
+ * hold. race_results.team_id peger direkte på teams (ingen riders-mellemled
+ * nødvendigt, jf. makeResultRowPushers i raceRunner.js). Standard-
+ * implementering; injicérbar i test.
+ */
+async function defaultFetchStageParticipants({ supabase, raceId, stageNumber }) {
+  const { data, error } = await supabase
+    .from("race_results")
+    .select("rank, rider_name, team:team_id!inner(user_id, is_ai, is_frozen)")
+    .eq("race_id", raceId)
+    .eq("stage_number", stageNumber)
+    .eq("result_type", "stage")
+    .eq("team.is_ai", false)
+    .eq("team.is_frozen", false);
+  if (error) {
+    throw new Error(`Could not load stage participants for race ${raceId} stage ${stageNumber}: ${error.message}`);
+  }
+  return (data || []).map((row) => ({
+    userId: row.team?.user_id ?? null,
+    rank: row.rank ?? null,
+    riderName: row.rider_name ?? null,
+  }));
+}
