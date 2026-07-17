@@ -536,7 +536,8 @@ CREATE TABLE notifications (
     'deadline_day_warning','auction_cancelled','squad_enforced','rider_retired',
     'academy_intake_ready','academy_signed','academy_rejected',
     'academy_graduation_ready','academy_graduated','contract_expiring',
-    'academy_promoted','academy_demoted','watchlist_departed'
+    'academy_promoted','academy_demoted','watchlist_departed',
+    'admin_notice','stage_result'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,

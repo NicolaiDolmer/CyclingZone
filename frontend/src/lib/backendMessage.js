@@ -33,6 +33,8 @@ const RAW_KEYS = new Set([
   "seasonsCompleted", "planDuration",
   // #2174 · sæson-numre i leje-forslag (fx 3, 5) må ikke få tusind-separator.
   "seasonFrom", "seasonTo",
+  // #2523 · etape-nummer + placering (stage_result) er små heltal, ikke beløb.
+  "stage", "position",
 ]);
 
 /**

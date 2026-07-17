@@ -8,6 +8,8 @@ const {
   RACE_RESULT_TYPE,
   notifyAndClearWatchlistForRiders,
   WATCHLIST_DEPARTED_TYPE,
+  emitStageResultNotifications,
+  STAGE_RESULT_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -403,4 +405,110 @@ test("notifyAndClearWatchlistForRiders: deduped tælles separat fra delivered", 
 test("notifyAndClearWatchlistForRiders: tom rider-liste er no-op (ingen supabase-kald)", async () => {
   const stats = await notifyAndClearWatchlistForRiders({ supabase: {}, riders: [] });
   assert.deepEqual(stats, { riders: 0, watchers: 0, delivered: 0, deduped: 0, failed: 0, cleared: 0 });
+});
+
+// ─── #2523 · emitStageResultNotifications ──────────────────────────────────────
+
+const RACE_2 = { id: "race-2", name: "Tour du Tyrol" };
+
+test("#2523 emitStageResult: notificerer bedste rytter pr. manager (LAVEST rank vinder ved flere ryttere)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const fetchStageParticipants = async ({ raceId, stageNumber }) => {
+    assert.equal(raceId, "race-2");
+    assert.equal(stageNumber, 2);
+    return [
+      { userId: "u1", rank: 5, riderName: "Rider A" },
+      { userId: "u1", rank: 2, riderName: "Rider B" }, // bedre placering — vinder
+      { userId: "u2", rank: 1, riderName: "Rider C" },
+    ];
+  };
+
+  const stats = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 2, totalStages: 5, notify, fetchStageParticipants,
+  });
+
+  assert.equal(calls.length, 2, "kun distinct managers notificeres");
+  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0 });
+
+  const u1Call = calls.find((c) => c.userId === "u1");
+  assert.equal(u1Call.type, STAGE_RESULT_TYPE);
+  assert.equal(u1Call.type, "stage_result");
+  assert.equal(u1Call.relatedId, "race-2");
+  assert.match(u1Call.message, /Rider B/, "bedste (laveste rank) rytter vises, ikke den første i listen");
+  assert.match(u1Call.message, /position 2/);
+  assert.match(u1Call.message, /Stage 2 of Tour du Tyrol is done/);
+  assert.equal(u1Call.metadata.stageNumber, 2);
+  assert.equal(u1Call.metadata.totalStages, 5);
+  assert.equal(u1Call.metadata.titleCode, "notif.stageResult.title");
+  assert.equal(u1Call.metadata.messageCode, "notif.stageResult.message");
+  assert.deepEqual(u1Call.metadata.messageParams, { stage: 2, race: "Tour du Tyrol", rider: "Rider B", position: 2 });
+});
+
+test("#2523 emitStageResult: manager uden ryttere i DENNE etape optræder ikke i deltager-listen (ingen fejl/tom-besked)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  // u2 abandonede tidligere og har derfor INGEN 'stage'-række i denne etape.
+  const stats = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 3, totalStages: 5, notify,
+    fetchStageParticipants: async () => [{ userId: "u1", rank: 4, riderName: "Rider A" }],
+  });
+  assert.equal(calls.length, 1, "kun u1 (den eneste med et stage-resultat) notificeres");
+  assert.deepEqual(stats, { eligible: 1, delivered: 1, deduped: 0, failed: 0 });
+});
+
+test("#2523 emitStageResult: rækker uden userId (null team_id-join) ignoreres", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  const stats = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 1, totalStages: 3, notify,
+    fetchStageParticipants: async () => [{ userId: null, rank: 1, riderName: "AI Rider" }],
+  });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+});
+
+test("#2523 emitStageResult: deduped tælles separat fra delivered", async () => {
+  const { notify } = makeRaceNotifyRecorder((args) =>
+    args.userId === "u1" ? { delivered: false, deduped: true } : { delivered: true },
+  );
+  const stats = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 1, totalStages: 3, notify,
+    fetchStageParticipants: async () => [
+      { userId: "u1", rank: 1, riderName: "Rider A" },
+      { userId: "u2", rank: 2, riderName: "Rider B" },
+    ],
+  });
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 1, failed: 0 });
+});
+
+test("#2523 emitStageResult: en fejl pr. manager isoleres og stopper ikke resten", async () => {
+  const { notify } = makeRaceNotifyRecorder((args) => {
+    if (args.userId === "u1") throw new Error("transient insert error");
+    return { delivered: true };
+  });
+  const stats = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: 1, totalStages: 3, notify,
+    fetchStageParticipants: async () => [
+      { userId: "u1", rank: 1, riderName: "Rider A" },
+      { userId: "u2", rank: 2, riderName: "Rider B" },
+    ],
+  });
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 0, failed: 1 });
+});
+
+test("#2523 emitStageResult: manglende race.id eller stageNumber giver nul-stats uden fetch", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  let fetched = false;
+  const fetchStageParticipants = async () => { fetched = true; return []; };
+
+  const statsNoRace = await emitStageResultNotifications({
+    supabase: {}, race: {}, stageNumber: 1, totalStages: 3, notify, fetchStageParticipants,
+  });
+  assert.equal(fetched, false);
+  assert.deepEqual(statsNoRace, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+
+  const statsNoStage = await emitStageResultNotifications({
+    supabase: {}, race: RACE_2, stageNumber: null, totalStages: 3, notify, fetchStageParticipants,
+  });
+  assert.equal(fetched, false);
+  assert.deepEqual(statsNoStage, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+  assert.equal(calls.length, 0);
 });

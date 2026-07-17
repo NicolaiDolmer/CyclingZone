@@ -96,10 +96,14 @@ export default function DashboardPage() {
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
   const [onboardingProgress, setOnboardingProgress] = useState(null);
-  // #1569: progress-guiden dismisses kun for DENNE session (sessionStorage), ikke
-  // permanent — et fejlklik på X ved 0/4 trin må ikke dræbe den eneste onboarding-
-  // guide for altid. Den kommer tilbage ved næste besøg indtil alle trin er nået.
-  // Completion-kortet (4/4) beholder permanent localStorage-dismiss nedenfor.
+  // #2439: dismiss er nu SERVER-persisteret (teams.onboarding_progress_dismissed_at,
+  // via GET/POST /api/me/onboarding-progress) i stedet for det session-scopede
+  // sessionStorage-dismiss fra #1569 — sessionStorage nulstillede sig selv ved
+  // hver ny fane/browser-genstart/enhed, så kortet blev ved med at "spamme"
+  // etablerede spillere hvis completed_count aldrig nåede total_count. Vi
+  // beholder sessionStorage KUN som optimistisk øjeblikkelig UI-state før
+  // server-svaret er hentet (undgår et flash af kortet ved sideload) — den
+  // reelle sandhed kommer fra `dismissed`/`established` i progress-response'en.
   const [onboardingDismissed, setOnboardingDismissed] = useState(
     () => typeof window !== "undefined" && sessionStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
   );
@@ -302,6 +306,12 @@ export default function DashboardPage() {
         if (progRes.ok) {
           const prog = await progRes.json();
           setOnboardingProgress(prog);
+          // #2439: server er sandheden — et tidligere dismiss (andet device/
+          // session) eller et "etableret hold"-flag skal skjule kortet uden at
+          // manageren skal afvise det igen.
+          if (prog.dismissed || prog.established) {
+            setOnboardingDismissed(true);
+          }
         }
       } catch {
         // best-effort
@@ -470,9 +480,26 @@ export default function DashboardPage() {
   }
 
   function dismissOnboarding() {
-    // #1569: session-scoped (ikke permanent) — se init-kommentar ovenfor.
+    // Optimistisk lokal UI-state med det samme (undgår flash mens API-kaldet er i flugt).
     sessionStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
     setOnboardingDismissed(true);
+    // #2439: persistér SERVER-SIDE (teams.onboarding_progress_dismissed_at) så
+    // dismisset holder på tværs af enheder/sessions — erstatter det rent
+    // session-scopede sessionStorage-dismiss fra #1569, som var rod-årsagen
+    // til at kortet "spammede" etablerede spillere igen og igen.
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
+        await fetch(`${API}/api/me/onboarding-progress/dismiss`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // best-effort — lokal dismiss er allerede anvendt
+      }
+    })();
   }
 
   function dismissCompletion() {

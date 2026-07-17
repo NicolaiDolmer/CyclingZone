@@ -129,45 +129,53 @@ export async function loadGoalContextForBoard({
   let cumulativeTransferBalance = null;
 
   if (planSeasonIds.length > 0) {
-    // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
-    // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
-    // klassiker-optælling (kun endagsløb) splittes i JS via de delte helpers.
-    const { data: classicResults, error: monErr } = await supabase
-      .from("race_results")
-      .select("rank, races!inner(race_class, race_type, season_id)")
-      .eq("team_id", teamId)
-      .eq("result_type", "gc")
-      .lte("rank", 3)
-      .in("races.race_class", CLASSIC_RACE_CLASSES)
-      .in("races.season_id", planSeasonIds);
+    // #2444 · de tre queries herunder er uafhængige af hinanden (samme input:
+    // teamId + planSeasonIds) og kørte tidligere sekventielt (3 round-trips
+    // efter hinanden pr. plan-type, ×3 plan-typer i /board/status-loopet).
+    // Promise.all parallelliserer dem til én round-trip-bredde.
+    const [
+      { data: classicResults, error: monErr },
+      { data: jerseyResults, error: jerErr },
+      { data: transferTxs, error: trxErr },
+    ] = await Promise.all([
+      // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
+      // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
+      // klassiker-optælling (kun endagsløb) splittes i JS via de delte helpers.
+      supabase
+        .from("race_results")
+        .select("rank, races!inner(race_class, race_type, season_id)")
+        .eq("team_id", teamId)
+        .eq("result_type", "gc")
+        .lte("rank", 3)
+        .in("races.race_class", CLASSIC_RACE_CLASSES)
+        .in("races.season_id", planSeasonIds),
+      // Etapeløb-trøjer (point/bjerg/young, rank=1)
+      supabase
+        .from("race_results")
+        .select("rank, races!inner(season_id)")
+        .eq("team_id", teamId)
+        .in("result_type", ["points", "mountain", "young"])
+        .eq("rank", 1)
+        .in("races.season_id", planSeasonIds),
+      // Netto transfer-balance (positive = transfer_in/salg, negative = transfer_out/køb)
+      supabase
+        .from("finance_transactions")
+        .select("amount, type")
+        .eq("team_id", teamId)
+        .in("type", ["transfer_in", "transfer_out"])
+        .in("season_id", planSeasonIds),
+    ]);
     if (!monErr) {
       const podiumRows = classicResults || [];
       cumulativeMonumentPodiums = podiumRows.filter((row) => isMonumentRace(row.races)).length;
       cumulativeClassicPodiums = podiumRows.filter((row) => isClassicRace(row.races)).length;
     }
-
-    // Etapeløb-trøjer (point/bjerg/young, rank=1)
-    const { data: jerseyResults, error: jerErr } = await supabase
-      .from("race_results")
-      .select("rank, races!inner(season_id)")
-      .eq("team_id", teamId)
-      .in("result_type", ["points", "mountain", "young"])
-      .eq("rank", 1)
-      .in("races.season_id", planSeasonIds);
     if (!jerErr) {
       cumulativeJerseyWins = (jerseyResults || []).length;
       seasonJerseyWins = (jerseyResults || [])
         .filter((r) => r.races?.season_id === currentSeasonId)
         .length;
     }
-
-    // Netto transfer-balance (positive = transfer_in/salg, negative = transfer_out/køb)
-    const { data: transferTxs, error: trxErr } = await supabase
-      .from("finance_transactions")
-      .select("amount, type")
-      .eq("team_id", teamId)
-      .in("type", ["transfer_in", "transfer_out"])
-      .in("season_id", planSeasonIds);
     if (!trxErr) {
       cumulativeTransferBalance = (transferTxs || [])
         .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);

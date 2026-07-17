@@ -20,6 +20,16 @@
 -- ⚠️ Migration auto-applies i prod ved merge — EJEREN merger PR'en (database/*.sql).
 --    Verificér FØRST mod en disposabel Supabase-branch.
 --
+-- NB (2026-07-17, main-merge): #2560 (2026-07-17-notifications-stage-result-
+-- type.sql) blev merged og APPLIED mod prod imens denne PR var åben — dens
+-- 'stage_result'-type er derfor allerede live i notifications_type_check
+-- (verificeret mod prod: pg_get_constraintdef viser 'admin_notice' +
+-- 'stage_result' begge live, 'watchlist_departed' mangler stadig). Denne
+-- migrations DROP+ADD gen-erklærer HELE listen, så både 'stage_result' OG
+-- 'admin_notice' (#2229, tidligere live type) listes eksplicit her OVENPÅ
+-- 2026-07-17-notifications-stage-result-type.sql for ikke at fjerne dem ved
+-- en fremtidig apply.
+--
 -- IDEMPOTENT: DROP CONSTRAINT IF EXISTS før ADD CONSTRAINT (re-run = no-op).
 --
 -- Rollback: gen-deklarér constraint'et uden 'watchlist_departed'.
@@ -39,7 +49,8 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN
   'deadline_day_warning','auction_cancelled','squad_enforced','rider_retired',
   'academy_intake_ready','academy_signed','academy_rejected',
   'academy_graduation_ready','academy_graduated','contract_expiring',
-  'academy_promoted','academy_demoted','watchlist_departed'
+  'academy_promoted','academy_demoted','watchlist_departed',
+  'admin_notice','stage_result'
 ));
 
 COMMIT;

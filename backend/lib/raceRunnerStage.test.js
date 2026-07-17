@@ -459,6 +459,48 @@ test("gating: final-etape Discord-embed = HELE løbets race_results genlæst fra
   assert.equal(discordPayload.race.id, STAGE_RACE.id);
 });
 
+// ── #2523: per-etape "din etape er kørt"-notifikation ─────────────────────────
+test("#2523 gating: mellem-etape kalder notifyStageInApp (med stageNumber/totalStages), IKKE notifyInApp", async () => {
+  const supabase = cannedFor();
+  let stageCall = null; let inAppCalled = false;
+  await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 0, // etape 1 af 3 — mellem-etape
+    ...NOOP_DEPS,
+    notifyStageInApp: async (payload) => { stageCall = payload; },
+    notifyInApp: async () => { inAppCalled = true; },
+  });
+  assert.ok(stageCall, "notifyStageInApp skal kaldes på en mellem-etape (#2523)");
+  assert.equal(stageCall.race.id, STAGE_RACE.id);
+  assert.equal(stageCall.stageNumber, 1);
+  assert.equal(stageCall.totalStages, 3);
+  assert.equal(inAppCalled, false, "notifyInApp (final-klassement) må ikke kaldes på en mellem-etape");
+});
+
+test("#2523 gating: final-etape kalder IKKE notifyStageInApp (kun notifyInApp — undgår dobbelt-besked)", async () => {
+  const supabase = cannedFor();
+  let stageCalled = false; let inAppCalled = false;
+  await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 2, // etape 3 = final
+    recomputeRaceDays: async () => 12,
+    processBoardWeekend: async () => ({}),
+    applyFatigue: async () => ({ updated: 0 }),
+    notifyStageInApp: async () => { stageCalled = true; },
+    notifyInApp: async () => { inAppCalled = true; },
+  });
+  assert.equal(stageCalled, false, "notifyStageInApp må ALDRIG fyre på final-etapen (#2523 — undgår dobbelt-besked)");
+  assert.equal(inAppCalled, true, "notifyInApp (samlet klassement) skal fyre på final-etapen som hidtil (#1952)");
+});
+
+test("#2523 gating: notifyStageInApp-fejl er best-effort — vælter ikke afviklingen", async () => {
+  const supabase = cannedFor();
+  const result = await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 0,
+    ...NOOP_DEPS,
+    notifyStageInApp: async () => { throw new Error("boom"); },
+  });
+  assert.equal(result.stageNumber, 1, "afviklingen fuldfører selvom notifyStageInApp fejler");
+});
+
 // ── Entries auto-fill kun ved første etape ────────────────────────────────────
 test("entries: persist=true KUN ved stageIndex=0 (auto-fill skriver entries kun på etape 1)", async () => {
   // Tomt felt → auto-fill ville skrive race_entries hvis persist=true.

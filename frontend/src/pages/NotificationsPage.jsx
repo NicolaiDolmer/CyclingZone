@@ -55,6 +55,7 @@ const TYPE_CONFIG = {
   contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/team" },
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
   race_result:               { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
+  stage_result:              { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
   season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/dashboard" },
   season_ended:              { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/seasons" },
   salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning-bg0/8 border-cz-warning/15", link: "/finance" },
