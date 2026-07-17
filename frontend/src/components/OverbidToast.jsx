@@ -21,7 +21,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
         <div
           key={toast.id}
           role="status"
-          className="pointer-events-auto bg-cz-card border border-cz-danger/40 shadow-lg
+          className="cz-toast-item pointer-events-auto bg-cz-card border border-cz-danger/40 shadow-lg
             rounded-cz px-4 py-3 flex items-start gap-3"
         >
           <AlertTriangleIcon size={18} className="text-cz-danger flex-shrink-0 mt-0.5" />

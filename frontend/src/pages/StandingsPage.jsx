@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilitie
 import { mergeStandings } from "../lib/standingsMerge";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+import useFlipRows from "../hooks/useFlipRows";
 import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
@@ -348,6 +349,25 @@ export default function StandingsPage() {
     : divStandingsBase;
   const divStandings = divRanked.filter(matchesSearch);
 
+  // #2577: FLIP-reorder — rækker glider til nye pladser når data opdateres
+  // (realtime refetch / linse-/fane-skifte) i stedet for at hoppe.
+  const rowRef = useFlipRows([standings, divTab, poolTab, lens, search, strength]);
+
+  // #2577: jersey handoff — puls på LeaderBadge når føringen skifter hold inden
+  // for samme fane-kontekst (fane-/puljeskifte er ikke et "handoff").
+  const leaderId = lens === LENS_STANDINGS ? (divStandings[0]?.team_id ?? null) : null;
+  const leaderCtx = `${divTab}:${poolTab}`;
+  const prevLeader = useRef({ ctx: leaderCtx, id: leaderId });
+  const [leaderPulse, setLeaderPulse] = useState(false);
+  useEffect(() => {
+    const prev = prevLeader.current;
+    prevLeader.current = { ctx: leaderCtx, id: leaderId };
+    if (leaderId == null || prev.ctx !== leaderCtx || prev.id == null || prev.id === leaderId) return;
+    setLeaderPulse(true);
+    const timer = setTimeout(() => setLeaderPulse(false), 500);
+    return () => clearTimeout(timer);
+  }, [leaderId, leaderCtx]);
+
   const canPromote = divTab > RULES_NUMBERS.minDivision;
   const canRelegate = divTab < RULES_NUMBERS.maxDivision;
 
@@ -618,6 +638,7 @@ export default function StandingsPage() {
                         </tr>
                       )}
                       <tr
+                        ref={rowRef(s.team_id)}
                         onClick={() => navigate(`/teams/${s.team_id}?tab=results`)}
                         style={rowStyle}
                         className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
@@ -642,7 +663,7 @@ export default function StandingsPage() {
                               title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
                             {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen */}
                             <TeamLink id={s.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
-                            {isLeader && <LeaderBadge />}
+                            {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
                             {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
                             {/* #1718: diskret AI-markør (uden eget hue/emoji, samme dæmpede stil som
                                 rytter-ranglistens AI-tag) — AI-hold vises nu, men skal kunne skelnes. */}

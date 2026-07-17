@@ -18,6 +18,7 @@ import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
 import OverbidToast from "../components/OverbidToast";
+import CountdownRing from "../components/CountdownRing";
 import WatchlistStar from "../components/WatchlistStar";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import StatsToggle from "../components/StatsToggle";
@@ -107,6 +108,8 @@ function Countdown({ end, status }) {
   const { t, i18n } = useTranslation("auctions");
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
+  // #2577: sidste 10s vises som countdown-ring i stedet for tekst.
+  const [msLeft, setMsLeft] = useState(null);
 
   // Absolute end time in user's local timezone with explicit TZ label (e.g. "21:00 CEST")
   const endLabel = useMemo(() => {
@@ -122,6 +125,7 @@ function Countdown({ end, status }) {
     if (status === "completed") { setText(t("timer.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
+      setMsLeft(diff);
       if (diff <= 0) { setText(t("timer.expired")); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -138,11 +142,16 @@ function Countdown({ end, status }) {
     return () => clearInterval(tick);
   }, [end, status, t]);
 
+  const showRing = status !== "completed" && msLeft != null && msLeft > 0 && msLeft <= 10000;
   return (
     <span className="inline-flex flex-col items-center gap-0.5">
-      <span className={`font-mono text-xs ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
-        {text}
-      </span>
+      {showRing ? (
+        <CountdownRing closesAt={end} />
+      ) : (
+        <span className={`font-mono text-xs ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
+          {text}
+        </span>
+      )}
       {endLabel && (
         <span className="text-[9px] text-cz-3 leading-none">{endLabel}</span>
       )}
