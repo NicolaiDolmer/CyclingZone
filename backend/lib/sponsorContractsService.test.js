@@ -690,3 +690,68 @@ test("expireAndRenewContracts ignorerer pending der ikke matcher newSeasonNumber
   assert.equal(supabase.state.inserts[0].status, "active");
   assert.equal(supabase.state.inserts[0].start_season, 3);
 });
+
+// #2589: pending-rækker oprettet FØR #2512-fixet bærer en per_race_day_rate
+// beregnet med den gamle 60-dages-divisor. Ved aktivering (pending -> active)
+// skal servicen genberegne raten ud fra den NYE sæsons faktiske kalenderlængde
+// (race_days_total), IKKE bevare den frosne, forældede rate.
+test("expireAndRenewContracts genberegner per_race_day_rate ved aktivering ud fra den nye sæsons kalender", async () => {
+  const pending = {
+    id: "p-stale-rate",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: 2, // "activity"-varianten
+    guaranteed_base: 220000,
+    per_race_day_rate: 3000, // frosset med gammel 60-dages-divisor (#2512-æra)
+    expires_after_season: 4,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null }, // ingen forrige-sæson-standings → renownTarget 400000
+    activeSeason: { race_days_total: 28 }, // den nye sæsons faktiske kalenderlængde
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  const activatedFlip = supabase.state.updates.find((u) => u.id === "p-stale-rate");
+  assert.ok(activatedFlip, "forventede en aktiverings-update af den pending række");
+  assert.equal(activatedFlip.payload.status, "active");
+  // Genberegnet med 28-dages-divisor (400000 - 220000) / 28 ≈ 6429, IKKE den
+  // frosne 3000 (som var beregnet med den gamle 60-dages-divisor).
+  assert.equal(activatedFlip.payload.per_race_day_rate, 6429);
+  assert.notEqual(activatedFlip.payload.per_race_day_rate, pending.per_race_day_rate);
+
+  // Ingen default-insert: managerens valg blev stadig brugt (kun raten korrigeres).
+  assert.equal(supabase.state.inserts.length, 0);
+});
+
+test("expireAndRenewContracts ændrer IKKE per_race_day_rate når den allerede matcher den nye kalender", async () => {
+  const pending = {
+    id: "p-fresh-rate",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: 2,
+    guaranteed_base: 220000,
+    per_race_day_rate: 6429, // allerede korrekt for 28-dages-kalenderen
+    expires_after_season: 4,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeSeason: { race_days_total: 28 },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  const activatedFlip = supabase.state.updates.find((u) => u.id === "p-fresh-rate");
+  assert.ok(activatedFlip);
+  assert.equal(activatedFlip.payload.status, "active");
+  // Ingen unødig rate-ændring i payload'en når den allerede er korrekt.
+  assert.equal("per_race_day_rate" in activatedFlip.payload, false);
+});

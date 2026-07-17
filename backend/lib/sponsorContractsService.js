@@ -206,10 +206,32 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
 
     const pending = await getPendingContract({ supabase, teamId });
     if (pending && pending.start_season === newSeasonNumber) {
-      // Aktivér managerens valg: pending -> active.
+      // Aktivér managerens valg: pending -> active. Forward-guard (#2589): raten
+      // blev frosset ved PICK-tidspunktet ud fra dengang gældende calendarDays,
+      // som ikke kan kende den kommende sæsons faktiske kalenderlængde. Genberegn
+      // per_race_day_rate her ud fra den NYE sæsons kalender (seasons er allerede
+      // 'active' på dette tidspunkt i sæsonskiftet, jf. seasonTransition.js).
+      // guaranteedBase afhænger IKKE af calendarDays (kun perRaceDayRate gør), så
+      // vi kan sikkert genkende hvilken variant pending-rækken svarer til ved at
+      // matche length_seasons + guaranteed_base mod friskt genererede tilbud —
+      // samme teknik som getNegotiationState bruger til pendingVariant-aflæsning.
+      const refreshedOffers = await getOffers({
+        supabase,
+        teamId,
+        seasonNumber: newSeasonNumber,
+      });
+      const matched = refreshedOffers.find(
+        (o) =>
+          o.lengthSeasons === pending.length_seasons &&
+          o.guaranteedBase === pending.guaranteed_base,
+      );
+      const updatePayload = { status: "active" };
+      if (matched && matched.perRaceDayRate !== pending.per_race_day_rate) {
+        updatePayload.per_race_day_rate = matched.perRaceDayRate;
+      }
       const { error } = await supabase
         .from("sponsor_contracts")
-        .update({ status: "active" })
+        .update(updatePayload)
         .eq("id", pending.id);
       if (error) throw error;
       continue;
