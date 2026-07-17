@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { groupRiderRaces, racesForSeason, riderResultTotals, seasonsInRaces } from "../../../lib/riderResultsTab.js";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
@@ -160,7 +161,16 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                   {isStageRace && (
                     <span className={`text-[9px] text-cz-3 flex-shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
                   )}
-                  <span className="text-[12.5px] text-cz-1 font-semibold truncate">{race.name ?? t("results.fallbackDash")}</span>
+                  {/* #2526: løbsnavnet linker til løbssiden ("se hvem der slog mig").
+                      Etapeløbs-rækken er selv en <button> der toggler udfoldning —
+                      stopPropagation her forhindrer at et link-klik ALSO toggler den. */}
+                  <Link
+                    to={`/races/${race.raceId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[12.5px] text-cz-1 font-semibold truncate hover:text-cz-accent-t transition-colors"
+                  >
+                    {race.name ?? t("results.fallbackDash")}
+                  </Link>
                 </span>
                 <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-[10px] font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
                   {race.raceClass ?? "-"}
