@@ -6005,6 +6005,20 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
   res.json({ ok: true, username: data.username });
 });
 
+// #2439: hold ældre end dette antal dage regnes som "etablerede" og skal
+// ALDRIG se onboarding-progress-kortet, uanset step-status — de 4 trin
+// (bud/træning/manuel-udtagelse/board-forhandling) er ægte spillerhandlinger
+// en veteran sagtens kan gå hele sæsoner uden at ramme (fx altid
+// squad-auto-fill), så completed_count når aldrig total_count for dem.
+// Matcher #2458s 14→2-dages-mønster for "etableret spiller"-grænser.
+const ONBOARDING_ESTABLISHED_TEAM_AGE_DAYS = 14;
+
+function isEstablishedTeam(team) {
+  if (!team?.created_at) return false;
+  const ageMs = Date.now() - new Date(team.created_at).getTime();
+  return ageMs > ONBOARDING_ESTABLISHED_TEAM_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 // GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager.
 //
 // #2288 Slice A: de gamle trin "team_named" og "first_rider_owned" er completed
@@ -6024,6 +6038,14 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
 //                              række" var altid sand. negotiation_status='completed'
 //                              sættes derimod kun når manageren selv har forhandlet en
 //                              plan færdig (PUT board-negotiate-ruten) — det ÆGTE signal.
+//
+// #2439: `dismissed` er nu SERVER-persisteret (teams.onboarding_progress_
+// dismissed_at) i stedet for det session-scopede sessionStorage-dismiss fra
+// #1569 — et afvist-klik holder på tværs af enheder/sessions. `established`
+// signalerer at frontend bør skjule kortet helt (uden at kræve et dismiss-klik)
+// for hold der er forbi den normale onboarding-periode. Graceful degradation:
+// mangler onboarding_progress_dismissed_at-kolonnen endnu (42703 via select *
+// giver blot undefined, ingen fejl), opfører dismissed sig som "ikke dismisset".
 router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const teamId = req.team?.id;
   const emptySteps = [
@@ -6033,7 +6055,10 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     { key: "board_plan_set", done: false },
   ];
   if (!teamId) {
-    return res.json({ steps: emptySteps, completed_count: 0, total_count: emptySteps.length });
+    return res.json({
+      steps: emptySteps, completed_count: 0, total_count: emptySteps.length,
+      dismissed: false, established: false,
+    });
   }
 
   const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes] = await Promise.all([
@@ -6052,8 +6077,29 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     { key: "board_plan_set", done: (boardsRes.count || 0) > 0 },
   ];
   const completed_count = steps.filter(s => s.done).length;
+  const dismissed = Boolean(req.team?.onboarding_progress_dismissed_at);
+  const established = isEstablishedTeam(req.team);
 
-  res.json({ steps, completed_count, total_count: steps.length });
+  res.json({ steps, completed_count, total_count: steps.length, dismissed, established });
+});
+
+// POST /api/me/onboarding-progress/dismiss — #2439: persistér "afvist" SERVER-
+// SIDE (teams.onboarding_progress_dismissed_at) så onboarding-progress-kortet
+// forbliver væk på tværs af enheder/sessions efter ét klik på ×, i stedet for
+// at genopstå ved næste nye fane/browser (det session-scopede sessionStorage-
+// dismiss fra #1569, som var rod-årsagen til at kortet "spammede" etablerede
+// spillere). Graceful degradation hvis migrationen ikke er anvendt endnu.
+router.post("/me/onboarding-progress/dismiss", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { error } = await supabase
+    .from("teams")
+    .update({ onboarding_progress_dismissed_at: new Date().toISOString() })
+    .eq("id", req.team.id);
+  if (error && error.code !== "42703") {
+    captureException(error);
+    return res.status(500).json({ error: error.message });
+  }
+  res.json({ ok: true });
 });
 
 // GET /api/training/today-status — letvægts-signal til Dashboard "Næste træk"
