@@ -21,6 +21,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
   emitRaceResultNotifications, // #1952
+  emitStageResultNotifications, // #2523
 } from "./lib/notificationService.js";
 import {
   notifyAuctionWon,
@@ -61,7 +62,7 @@ import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
-import { captureException as sentryCapture, monitorCron } from "./lib/sentry.js";
+import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
@@ -88,9 +89,19 @@ const CRON_MONITOR_1MIN = {
   failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
+// #2440: checkinMargin 5→10. #2395 (threshold=2) dæmpede ÉN redeploy, men en
+// deploy-KLYNGE (6 genstarter på 30 min, 12/7+13/7) ramte ~12 forskellige jobs på
+// denne cadence samtidigt — hver genstart alene nåede stadig at bekræfte 1 miss
+// (slot ved +interval+margin=10min var for stramt relativt til gentagne
+// genstarter tættere end det), og NÆSTE genstart nåede at bekræfte miss #2 FØR
+// boot-primingen (se primeCronMonitorCheckIns nedenfor) nåede at nulstille
+// streaken → alarm. Margin=10 (slot bekræftes først ved +15min) giver rigelig
+// buffer til at boot-primingen altid når at resette streaken FØRST ved typiske
+// Railway-genstarts-gaps (~5-10 min i en klynge), mens en ægte død cron stadig
+// alarmerer inden for 2×5+10=20 min (dokumenteret+testet i cron.deployGrace.test.js).
 const CRON_MONITOR_5MIN = {
   schedule: { type: "interval", value: 5, unit: "minute" },
-  checkinMargin: 5, // min forsinkelse før et manglende tick regnes MISSED
+  checkinMargin: 10,
   maxRuntime: 15, // min før et in_progress-tick regnes TIMEOUT
   failureIssueThreshold: 2, // #2395: én deploy-miss alarmerer ikke; 2 i træk = ægte fejl
   timezone: "Etc/UTC",
@@ -756,6 +767,11 @@ async function runStageSchedulerCron() {
         const notifyInApp = async ({ race }) => {
           await emitRaceResultNotifications({ supabase, race });
         };
+        // #2523 · Per-etape "din etape er kørt"-notifikation (mellem-etaper KUN —
+        // se raceRunner.simulateStageByIndex's mellem-etape-gren for finalization-guarden).
+        const notifyStageInApp = async ({ race, stageNumber, totalStages }) => {
+          await emitStageResultNotifications({ supabase, race, stageNumber, totalStages });
+        };
         return runAdminSimulateStage({
           supabase,
           raceId,
@@ -768,6 +784,7 @@ async function runStageSchedulerCron() {
           updateStandings,
           notifyDiscord,
           notifyInApp,
+          notifyStageInApp,
         });
       },
     });
@@ -837,10 +854,68 @@ export function trackedTick(label, fn, deps = {}) {
   };
 }
 
+// ─── Deploy-grace: boot-priming af cron-monitors (#2440) ────────────────────
+// Rod-årsag: hver Railway-redeploy genstarter processen midt i en cron-cyklus.
+// Ved en deploy-KLYNGE (flere redeploys på kort tid — 6 på 30 min 12/7,
+// gentaget 13/7) ramte hver genstart ALLE periodiske monitors samtidig, og
+// #2395's failureIssueThreshold=2 dæmpede kun ÉN isoleret redeploy — to
+// redeploys tæt nok på hinanden nåede stadig at bekræfte 2 misses i træk for
+// de ~12 jobs på CRON_MONITOR_5MIN, før den næste genstart nåede at gøre noget.
+//
+// Fix: send et eksplicit "ok" check-in til Sentry for ALLE monitor-configs
+// med det samme processen booter — FØR nogen setInterval er sat op. Det
+// nulstiller Sentrys consecutive-miss-streak for hver monitor til 0 ved HVER
+// genstart, så en deploy-klynge aldrig ophober nok sammenhængende misses til
+// at nå threshold, uanset hvor mange genstarter der sker (kombineret med
+// checkinMargin-bufferen ovenfor). En REELT død cron (processen kører videre,
+// men jobbet holder op med at ticke) rammes ikke af dette — der sker ingen ny
+// boot/priming, så det normale schedule (interval + checkinMargin × threshold)
+// gælder uændret. Matematisk verificeret i cron.deployGrace.test.js.
+const ALL_CRON_MONITORS = [
+  ["auctions", CRON_MONITOR_1MIN],
+  ["deadline-day", CRON_MONITOR_5MIN],
+  ["squad-enforcement", CRON_MONITOR_5MIN],
+  ["debt-warnings", CRON_MONITOR_24H],
+  ["board-auto-accept", CRON_MONITOR_30MIN],
+  ["board-mid-season", CRON_MONITOR_30MIN],
+  ["daily-season-count-check", CRON_MONITOR_24H],
+  ["discord-bot-token-check", CRON_MONITOR_24H],
+  ["discord-role-sync", CRON_MONITOR_24H],
+  ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
+  ["training-sweep", CRON_MONITOR_5MIN],
+  ["graduation-sweep", CRON_MONITOR_5MIN],
+  ["scout-sweep", CRON_MONITOR_5MIN],
+  ["starter-squad-heal", CRON_MONITOR_5MIN],
+  ["academy-heal", CRON_MONITOR_5MIN],
+  ["rider-derive-heal", CRON_MONITOR_5MIN],
+  ["ai-trim-heal", CRON_MONITOR_5MIN],
+  ["auto-prize", CRON_MONITOR_5MIN],
+  ["stage-scheduler", CRON_MONITOR_5MIN],
+  ["ranking-matview-refresh", CRON_MONITOR_10MIN],
+  ["stall-watchdog", CRON_MONITOR_30MIN],
+  ["traffic-retention", CRON_MONITOR_24H],
+  ["entry-generator", CRON_MONITOR_60MIN],
+];
+
+export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
+  for (const [monitorSlug, config] of ALL_CRON_MONITORS) {
+    try {
+      captureCheckInFn({ monitorSlug, status: "ok" }, config);
+    } catch (err) {
+      // Priming må ALDRIG blokere boot — best-effort, log og fortsæt.
+      console.error(`  ⚠️ Cron-monitor priming fejlede for ${monitorSlug}:`, err.message);
+    }
+  }
+}
+
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
 export function startCron() {
   console.log("⏱  Cron jobs started");
+
+  // #2440: prime ALLE monitor-check-ins FØRST, før noget interval sættes op —
+  // se boot-priming-kommentaren ovenfor.
+  primeCronMonitorCheckIns();
 
   // Every 60 seconds: finalize auctions
   setInterval(

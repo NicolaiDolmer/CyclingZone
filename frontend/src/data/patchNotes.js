@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.09",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Your individual rider settings now beat the weekly routine",
+          "body": "If you set a rider to light training or rest, that choice now wins over your team's weekly routine. The routine is the default for riders without their own setting. The daily training page also shows exactly what each rider trains today and where that decision comes from, so the two screens no longer contradict each other."
+        },
+        "da": {
+          "title": "Dine individuelle rytter-indstillinger vinder nu over den ugentlige rutine",
+          "body": "Sætter du en rytter til let træning eller hvile, vinder det valg nu over holdets ugentlige rutine. Rutinen er standard for ryttere uden egen indstilling. Siden for daglig træning viser også præcis hvad hver rytter træner i dag og hvor beslutningen kommer fra, så de to skærme ikke længere modsiger hinanden."
+        },
+        "refs": [2438]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training uses the full screen width",
+          "body": "The daily training page no longer cuts off columns on the right while leaving unused space. It now uses the full width, and the rider name column stays fixed when you scroll sideways on smaller screens."
+        },
+        "da": {
+          "title": "Daglig træning bruger hele skærmbredden",
+          "body": "Siden for daglig træning skærer ikke længere kolonner af i højre side, mens der samtidig er ubrugt plads. Den bruger nu hele bredden, og rytternavn-kolonnen bliver stående når du scroller sidelæns på mindre skærme."
+        },
+        "refs": [2446]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Contract extensions no longer fail silently at max length",
+          "body": "Extending a rider who was already on the longest allowed contract could fail without any message. The extension now completes correctly and keeps the contract within the allowed range."
+        },
+        "da": {
+          "title": "Kontraktforlængelser fejler ikke længere stille ved maks-længde",
+          "body": "At forlænge en rytter der allerede var på den længst tilladte kontrakt kunne fejle uden nogen besked. Forlængelsen gennemføres nu korrekt og holder kontrakten inden for det tilladte interval."
+        },
+        "refs": [2424]
+      }
+    ]
+  },
+  {
     "version": "7.08",
     "date": "2026-07-16",
     "label": "Beta",

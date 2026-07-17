@@ -46,6 +46,9 @@ export default function AdminEconomyTab() {
 
   async function handleAdjustBalance() {
     if (!balTeam || !balAmount) { showMsg("❌ Vælg hold og angiv beløb", "error"); return; }
+    const teamName = teams.find(t => t.id === balTeam)?.name || "holdet";
+    const amountNum = parseInt(balAmount);
+    if (!confirm(`Juster balance for ${teamName} med ${amountNum > 0 ? "+" : ""}${amountNum.toLocaleString("da-DK")} CZ$?\n\nÅrsag: ${balReason || "(ingen angivet)"}\n\nHandlingen krediterer/debiterer holdets balance med det samme.`)) return;
     setLoad("balance", true);
     try {
       const res = await fetch(`${API}/api/admin/adjust-balance`, {

@@ -1899,6 +1899,15 @@ function makeYouthFinalizeSupabase({
       if (table === "transfer_listings") {
         return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
       }
+      if (table === "rider_watchlist") {
+        // #2524: deleteUnsoldYouthRider kalder notifyAndClearWatchlistForRiders
+        // efter en bekræftet sletning — ingen af disse fixtures har ønskeliste-
+        // rækker for youth-rytteren, så et tomt svar er nok.
+        return {
+          select: () => ({ in: () => Promise.resolve({ data: [], error: null }) }),
+          delete: () => ({ in: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
     _riderUpdates: riderUpdates,
