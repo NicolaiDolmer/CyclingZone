@@ -37,6 +37,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 - **race_results.result_type — kanonisk for endags-løb = `gc`** (ikke `stage`). Matcher XLSX-stien ("general results"→gc) + engine-opslaget `single: {gc: "Klassiker"}`. result_type er kun en label; præmie afhænger af `race_points`-opslaget, ikke result_type.
 - **Auction finalization** har parallelle paths i `api.js` og `cron.js`; begge skal delegere til `auctionFinalization.js` — ikke duplikere logik.
 - **AI/bank/frozen får aldrig board-state** — board features er manager-only.
+- **`board_plan_snapshots = 0` er FORVENTET, ikke en fejl (#2596):** tabellen er et sæson-slut-retrospektiv (skrives af `processTeamSeasonEnd`/`buildSeasonEndPreviewRows`), ikke spillerens live plan — den forbliver tom indtil første reelle sæson-slut for en 1yr/3yr/5yr-plan er kørt. `loadGoalContextForBoard` (`boardGoalContext.js`) håndterer tom-tabel-casen korrekt (falder tilbage til `null`-baseline → mål-evaluatorer returnerer `awaiting_data`). Forveksl den ikke med et brudt write-path (#2463 var tæt på denne fælde).
 - **Admin-resultatupload** — eneste upload-path er PCM-fallbacken `/api/admin/import-results-pcm` (multipart `files[]`, maks 30 filer, Excel-filer i memory med 10 MB loft pr. fil). Excel- og Sheets-import + dyn_cyclist-/UCI-sync er fjernet 2026-06-12 (#1179/#1180/#1207) og må ikke genindføres — forward-guard i `backend/lib/adminRouteOwnership.test.js`.
 
 ## Ved ændring
