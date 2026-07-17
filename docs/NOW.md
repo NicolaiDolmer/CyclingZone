@@ -16,7 +16,7 @@
 
 > **💰 Værdimodel v4 (#2428) — SHADOW LIVE (elite-præmie-retning, ejer 14/7).** Admin→Økonomi→"Rytter-værdi v4". Mega-stjerner v4 35-82M, ukøbelige; 6/7 gates grønne. Audit: [audits/2026-07-13-valuation-v4-shadow-scorecard.md](audits/2026-07-13-valuation-v4-shadow-scorecard.md).
 > **💸 Løn-decoupling slice A (shadow) MERGED** (PR [#2433](https://github.com/NicolaiDolmer/CyclingZone/pull/2433), 16/7). Per-division `SALARY_RATE_PROD`; alle gates grønne, INGEN økonomi-ændring endnu (kun harness/model på main). Audit: [audits/2026-07-14-salary-decoupling-scorecard.md](audits/2026-07-14-salary-decoupling-scorecard.md).
-> **🎯 NÆSTE (#2428, ejer-gated):** (1) Slice B cutover (predictBaseValue→v4 + lønmodel + migration bundlet, ejer merger; rør ALDRIG GENERATED/prize_earnings_bonus før da). (2) Udvikl-og-sælg A/B/C (ROI 172%).
+> **🎯 NÆSTE (#2428, ejer-gated):** (1) **[#2594](https://github.com/NicolaiDolmer/CyclingZone/issues/2594)** Slice B cutover (predictBaseValue→v4 + lønmodel + migration bundlet, ejer merger; rør ALDRIG GENERATED/prize_earnings_bonus før da). (2) **[#2591](https://github.com/NicolaiDolmer/CyclingZone/issues/2591)** udvikl-og-sælg A/B/C (ROI 172%, needs-decision) — gater #2594.
 
 > **v3-track: KOMPLET LIVE 16/7 (S1-S6).** S6 why-rapport merged + migration applied. Rest: `peak_planner_enabled` står på 'beta' — ejer tester (#2501/#2506-forbedringerne er inde) og flipper til 'on' når klar.
 
