@@ -63,6 +63,8 @@ export const STAFF_SALARY_BY_TIER = Object.freeze({ 1: 100, 2: 250, 3: 600, 4: 1
 export const STAFF_EFFECT_FACTOR_FLOOR = 0.5;
 export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
 
+// Niveau-affiniteter (levels): "u23"/"senior" (#2529: youth+junior kollapset til u23,
+// ejer-beslutning Discord 16/7 — spillere kunne ikke finde forklaringen på båndene).
 // Per-rytter specialiserings-multiplikator (specializationMatch) — IKKE i facilitets-
 // display-magnituden; bruges af trænings-hooket i Task 7 (dimension×niveau pr. rytter).
 // baseline 1.0 for en generalist / manglende akse; > 1.0 når chefens dimension OG

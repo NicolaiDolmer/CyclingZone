@@ -676,6 +676,10 @@
         "title": "Hiring a chief scout",
         "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
       },
+      "coachingGroups": {
+        "title": "Coaching groups: U23 vs Senior",
+        "text": "A Sports Director's coaching group focus shows which age group they train best. U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. This is a chief's own specialisation, separate from your club's Senior/U23/Junior squad structure: a coaching group is about which riders a chief trains best, not which squad a rider belongs to."
+      },
       "costs": {
         "title": "Costs: one-time build price + recurring upkeep",
         "text": "Each tier has a one-time build or upgrade price, paid once when you build it. On top of that, every built tier carries a smaller upkeep cost that is charged again automatically every season, alongside any staff salaries, so budget for it as a recurring line, not just the upfront price."

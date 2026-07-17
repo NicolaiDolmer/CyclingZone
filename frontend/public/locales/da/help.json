@@ -676,6 +676,10 @@
         "title": "Ansæt en chefscout",
         "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
       },
+      "coachingGroups": {
+        "title": "Trænings-grupper: U23 vs. Senior",
+        "text": "En sportsdirektørs trænings-gruppe-fokus viser hvilken aldersgruppe han træner bedst. U23 dækker akademi-ryttere og unge profs op til 25 år; Senior dækker ryttere fra 26 år og op. Det er chefens egen specialisering, adskilt fra din klubs Senior/U23/Junior-holdstruktur: en trænings-gruppe handler om hvilke ryttere en chef træner bedst, ikke hvilket hold en rytter hører til."
+      },
       "costs": {
         "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",
         "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger. Budgettér den som en tilbagevendende post, ikke kun den indledende pris."

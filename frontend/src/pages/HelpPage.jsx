@@ -230,6 +230,7 @@ const SECTION_DEFS = [
       { id: "liveTracksStatus", kind: "text" },
       { id: "staffSynergy", kind: "text" },
       { id: "hireChiefScout", kind: "text" },
+      { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
     ],
   },

@@ -27,7 +27,7 @@ const NAME_POOL = ["Marc Vandenbroucke", "Henrik Sørensen", "Luca Bertolini", "
 // klikkes igennem i preview. staff.id = `staff-<track>` (1 aktiv pr. spor).
 const OVERALL_BY_TIER = { 1: 36, 2: 52, 3: 63, 4: 74, 5: 82 };
 const DIMENSIONS = ["physical", "mental", "technical"];
-const LEVELS = ["youth", "junior", "senior"];
+const LEVELS = ["u23", "senior"]; // #2529: youth+junior kollapset til u23
 const ROLE_SKILLS = {
   training: [],
   scouting: ["evaluation", "reach"],

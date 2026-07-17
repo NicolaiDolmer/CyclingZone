@@ -47,7 +47,7 @@ export const STAFF_TRAINING_BONUS_CONFIG = Object.freeze({
  * @param {number|null} args.facilityTier — holdets trænings-facilitets-tier (0/null = ingen).
  * @param {object|null} args.staff        — den afledte staff-profil (dimensions/levels/overall) el. null.
  * @param {string}      args.ability      — rytter-evnen der trænes (fx "climbing").
- * @param {string}      args.riderLevel   — rytterens niveau-bånd ("youth"|"junior"|"senior").
+ * @param {string}      args.riderLevel   — rytterens niveau-bånd ("u23"|"senior", #2529).
  * @returns {number} multiplikator ≥ 1.0 (1.0 = ingen effekt / nul regression).
  */
 export function staffTrainingBonus({ facilityTier, staff, ability, riderLevel } = {}) {
