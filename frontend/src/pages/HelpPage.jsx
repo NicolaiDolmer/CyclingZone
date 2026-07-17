@@ -231,6 +231,7 @@ const SECTION_DEFS = [
       { id: "staffSynergy", kind: "text" },
       { id: "hireChiefScout", kind: "text" },
       { id: "costs", kind: "text" },
+      { id: "staffOverview", kind: "text" },
     ],
   },
   {

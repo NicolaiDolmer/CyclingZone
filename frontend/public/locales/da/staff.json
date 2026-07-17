@@ -16,5 +16,10 @@
   },
   "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Træningscentret er aktivt i spillet i dag; de øvrige kommer snart og viser hvad de vil gøre, når de går live." },
   "history": { "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander." },
-  "switcher": { "count": "{index} / {total}" }
+  "switcher": { "count": "{index} / {total}" },
+  "public": {
+    "team": "Ansat hos {team}",
+    "viewTeam": "Se hold",
+    "limitedNote": "Dette er en anden managers staff, så kun rating og top-specialisering er synlig. Den fulde evne-oversigt vises kun for ejer-holdet."
+  }
 }

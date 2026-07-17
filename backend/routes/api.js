@@ -176,6 +176,10 @@ import {
   getStaffProfileHandler,
 } from "../lib/facilityRoutesHandlers.js";
 import {
+  getStaffDirectoryHandler,
+  getStaffPublicProfileHandler,
+} from "../lib/staffOverviewHandlers.js";
+import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
   loadHumanSeasonEndTeams,
@@ -8441,6 +8445,42 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { status, body } = await getStaffProfileHandler(
       { teamId: req.team.id, staffId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Personale-oversigt på tværs af hold (#2450) ─────────────────────────────
+// Genbruger samme facilities_enabled-gate + auth/team-guard-konvention som
+// klub-staff-ruterne ovenfor. Logik i lib/staffOverviewHandlers.js (unit-testet
+// i staffOverview.test.js). Synlighed: candidate-niveau for ANDRES staff (aldrig
+// den fulde evne-matrix — den er fortsat kun /api/club/staff/:id, for ejeren).
+
+// GET /api/staff/directory?includeAi=1 — alt aktivt personale, tværs af hold.
+router.get("/staff/directory", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const includeAi = req.query?.includeAi === "1" || req.query?.includeAi === "true";
+    const { status, body } = await getStaffDirectoryHandler(
+      { includeAi },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/staff/:id/public — candidate-niveau profil for vilkårlig aktiv staff
+// (bruges når oversigten linker til staff, man ikke selv ejer).
+router.get("/staff/:id/public", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getStaffPublicProfileHandler(
+      { staffId: req.params.id },
       supabase,
       { flags: { facilitiesEnabled } }
     );
