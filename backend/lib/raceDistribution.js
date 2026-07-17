@@ -106,6 +106,23 @@ export function partitionRegenTargets({ cols = [], withdrawnIds, manualRaceIds, 
   return { target, skipped };
 }
 
+// #2599: "Ryd dag"/"Ryd alt" — target-partition for den eksplicitte, bekræftede
+// ryd-handling. Simplere end partitionRegenTargets: ingen manual/mode-skelnen, for en
+// bekræftet ryd-handling fjerner ALT for de valgte løb, inkl. manuelt udtagne (det er
+// netop pointen — spilleren har lige bekræftet det i en dialog). Eneste hårde guard er
+// frys (#1825): et igangværende etapeløb må ALDRIG røres, uanset hvad brugeren klikker.
+// Afmeldte løb rydder vi også (harmløst — de har typisk ingen entries alligevel).
+// Pure + deterministisk.
+export function partitionClearTargets({ cols = [] }) {
+  const target = [];
+  let skipped = 0;
+  for (const r of cols) {
+    if ((r.stages_completed ?? 0) > 0) { skipped += 1; continue; } // frys (#1825)
+    target.push(r);
+  }
+  return { target, skipped };
+}
+
 export function lockedWindowsFromEntries({ entries = [], windowByRace, excludeRaceIds = new Set() }) {
   const ridersByRace = new Map();
   for (const e of entries) {

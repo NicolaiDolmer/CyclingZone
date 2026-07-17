@@ -246,6 +246,21 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     withdrawnByRace.get(w.race_id).add(w.team_id);
   }
 
+  // 7b. #2599: eksplicitte "ryd"-markeringer (race_entry_clears). Spilleren har trykket
+  // "Ryd dag"/"Ryd alt" og bekræftet — generatoren må ALDRIG fylde den (race,team)-enhed
+  // ud igen, mirror afmeldings-mønsteret ovenfor, men pr. (race,team) i stedet for globalt
+  // pr. race (holdet deltager stadig, kun auto-udtagelsen er sat på pause). En efterfølgende
+  // manuel udtagelse ELLER et spiller-initieret auto-fill sletter markeringen igen
+  // (raceSelection.js / /races/distribution/regenerate) — først da må vi fylde ud igen.
+  // Rod-årsag for #2599's "manuelt ryddede trupper kommer tilbage": FØR denne markering
+  // fandtes var et tomt race_entries-sæt umuligt at skelne fra "aldrig rørt".
+  const { data: clearRows, error: clearErr } = await selectInChunks({
+    supabase, table: "race_entry_clears", columns: "race_id, team_id",
+    inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "team_id"], // PK → stabil paginering
+  });
+  if (clearErr) throw new Error(`race_entry_clears: ${clearErr.message}`);
+  const clearedRaceTeamKeys = new Set((clearRows || []).map((c) => `${c.race_id}|${c.team_id}`));
+
   // 8. Ryttere + abilities + fatigue for alle egnede hold (på tværs af puljer).
   const eligibleTeamIds = eligibleTeams.map((t) => t.id);
   const ridersByTeam = new Map();
@@ -323,10 +338,15 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         const sizeRule = selectionSizeForRace(race);
         const manualRiders = manualRidersByRaceTeam.get(key) || [];
         const fullManual = hasManual && manualRiders.length >= sizeRule.max;
-        // Afmeldt, igangværende, eller FULD manuel trup → spring over (lås rytter-tid).
-        if (isWithdrawn || fullManual || isStarted) {
+        // #2599: spilleren har eksplicit ryddet (og bekræftet) denne (race,team)-enhed —
+        // gælder KUN så længe der ikke er manuelle rækker igen (en efterfølgende manuel
+        // udtagelse sletter markeringen, se raceSelection.js, men hasManual vinder alligevel
+        // defensivt hvis sletningen skulle fejle/forsinkes).
+        const isCleared = !hasManual && clearedRaceTeamKeys.has(key);
+        // Afmeldt, igangværende, ryddet, eller FULD manuel trup → spring over (lås rytter-tid).
+        if (isWithdrawn || fullManual || isStarted || isCleared) {
           skipped += 1;
-          // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte gør ikke).
+          // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte/ryddede gør ikke).
           if (hasManual) lockedWindows.push({ window, riderIds: manualRiders });
           else if (isStarted) lockedWindows.push({ window, riderIds: startedRidersByRaceTeam.get(key) || [] });
           continue;

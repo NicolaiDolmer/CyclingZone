@@ -131,7 +131,7 @@ import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverride
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
@@ -3376,6 +3376,15 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     }
 
     await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds });
+    // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
+    // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
+    // gemningen ovenfor er allerede lykkedes, så en oprydningsfejl her må ALDRIG kunne gøre
+    // et vellykket gem til en 500 for spilleren — kun capture'es.
+    if (riderIds.length > 0) {
+      const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+        .delete().eq("race_id", race.id).eq("team_id", req.team.id);
+      if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (manual save): ${clearCleanupErr.message}`));
+    }
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
@@ -3566,6 +3575,14 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
 
+    // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
+    // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"
+    // for netop disse (race,team)-par. Slet en evt. clear-markering FØR skrivningen
+    // nedenfor, så entry-generator-sweepet ikke fortsat springer enheden over.
+    const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+      .delete().eq("team_id", req.team.id).in("race_id", target.map((r) => r.id));
+    if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
+
     const { data: teamRiders } = await supabase.from("riders")
       .select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
     const teamRiderIds = (teamRiders || []).map((r) => r.id);
@@ -3626,6 +3643,77 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       regenerated++;
     }
     res.json({ ok: true, regenerated, skipped, mode });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 1 — POST /api/races/distribution/clear?day=N&scope=day|all (#2599)
+// Eksplicit "Ryd dag" / "Ryd alt" — UI'et kræver en bekræftelses-dialog før kaldet.
+// I MODSÆTNING til en tom PUT /selection (som fortsat betyder "auto-udtag mig", uændret)
+// rydder dette ALLE entries for målet (inkl. manuelle — det er netop pointen med den
+// bekræftede handling) OG skriver en race_entry_clears-markering pr. (race,team), så
+// hverken den periodiske entry-generator-sweep (kører hver time + ved hvert deploy) eller
+// sæson-transitionen fylder dem ud igen. Markeringen slettes automatisk igen når
+// spilleren enten udtager manuelt (raceSelection.js) eller selv beder om auto-fill/
+// udfyld-manglende (regenerate-endpointet ovenfor) — først da fylder generatoren ud igen.
+//   scope=day (default): kun dagens (overlappende) løb — samme kolonne-sæt som regenerate.
+//   scope=all:            ALLE holdets planlagte (ikke-startede) løb resten af sæsonen.
+// Frys (#1825): igangværende etapeløb (stages_completed>0) springes ALTID over.
+router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const scope = req.query.scope === "all" ? "all" : "day";
+
+    const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
+    if (!season) return res.status(409).json({ error: "no_active_season" });
+
+    const { data: races } = await supabase
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+
+    let cols;
+    if (scope === "all") {
+      // Ryd alt: alle holdets planlagte (ikke-startede) løb resten af sæsonen, uanset dag.
+      cols = (races || []).filter((r) =>
+        r.status === "scheduled" &&
+        teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
+    } else {
+      // Ryd dag: samme dag-scopede kolonne-sæt som regenerate ovenfor.
+      const raceIds = (races || []).map((r) => r.id);
+      const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
+      const schedByRace = new Map();
+      for (const s of schedRows || []) {
+        if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+        schedByRace.get(s.race_id).push(s);
+      }
+      const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
+      const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
+      const { dayWindow } = resolveSeasonDay({ season, schedRows, dayParam: Number.parseInt(req.query.day, 10) });
+      cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+    }
+    if (!cols.length) return res.json({ ok: true, cleared: 0, skipped: 0, scope });
+
+    // Pure helper (testet): kun frys (#1825) undtager et løb — en bekræftet ryd-handling
+    // fjerner ALT, inkl. manuelt udtagne.
+    const { target, skipped } = partitionClearTargets({ cols });
+    if (!target.length) return res.json({ ok: true, cleared: 0, skipped, scope });
+
+    const targetIds = target.map((r) => r.id);
+    const { error: delErr } = await supabase.from("race_entries")
+      .delete().eq("team_id", req.team.id).in("race_id", targetIds);
+    if (delErr) throw new Error(`race_entries delete (clear): ${delErr.message}`);
+
+    const markerRows = targetIds.map((race_id) => ({ race_id, team_id: req.team.id }));
+    const { error: markErr } = await supabase.from("race_entry_clears")
+      .upsert(markerRows, { onConflict: "race_id,team_id" });
+    if (markErr) throw new Error(`race_entry_clears upsert: ${markErr.message}`);
+
+    res.json({ ok: true, cleared: targetIds.length, skipped, scope });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
