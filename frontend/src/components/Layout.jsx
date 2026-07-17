@@ -31,7 +31,9 @@ const API = import.meta.env.VITE_API_URL;
 // side-whitespace i den smalle max-w-4xl; cards/header cappes per-side i selve siden.
 // "/training" tilføjet per #2446 — roster-tabellen (9 kolonner) blev klippet i
 // højre side i max-w-6xl samtidig med spildt whitespace; samme klasse som /team.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training"]);
+// "/staff" tilføjet per #2450 — personale-oversigten på tværs af hold har samme
+// tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff"]);
 // Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
 // ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
 // trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
@@ -61,6 +63,9 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
         { to: "/board",          label: t("nav.item.board") },
         { to: "/finance",        label: t("nav.item.finance") },
         ...facilitiesNavItem(facilitiesEnabled, t),
+        // #2450: personale-oversigten forudsætter faciliteter (staff ansættes der),
+        // så den deler samme flag-gate/kilde som Klub-nav-item'et lige ovenfor.
+        ...(facilitiesEnabled ? [{ to: "/staff", label: t("nav.item.staffOverview") }] : []),
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
       ],

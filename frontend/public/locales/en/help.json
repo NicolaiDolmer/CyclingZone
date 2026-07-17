@@ -687,6 +687,10 @@
       "costs": {
         "title": "Costs: one-time build price + recurring upkeep",
         "text": "Each tier has a one-time build or upgrade price, paid once when you build it. On top of that, every built tier carries a smaller upkeep cost that is charged again automatically every season, alongside any staff salaries, so budget for it as a recurring line, not just the upfront price."
+      },
+      "staffOverview": {
+        "title": "Seeing every team's staff",
+        "text": "The Staff page lists every hired chief across the league, filterable by role, team and tier. Click your own chief to see their full ability breakdown. Click another manager's chief and you only see what you would see comparing hiring candidates: overall rating, tier and top specialization, never their full breakdown."
       }
     },
     "raceSelection": {

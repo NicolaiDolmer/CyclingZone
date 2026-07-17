@@ -1,0 +1,26 @@
+{
+  "page": { "title": "Staff", "subtitle": "{count} chiefs across the league" },
+  "filters": {
+    "search": "Search",
+    "searchPlaceholder": "Name or team",
+    "role": "Role",
+    "allRoles": "All roles",
+    "minTier": "Min. tier",
+    "anyTier": "Any tier",
+    "includeAi": "Include AI teams"
+  },
+  "table": {
+    "name": "Name",
+    "role": "Role",
+    "team": "Team",
+    "division": "Division",
+    "tier": "Tier",
+    "specialization": "Specialization",
+    "overall": "Rating",
+    "salary": "Salary",
+    "mine": "Mine",
+    "ai": "AI"
+  },
+  "disabled": { "title": "Not available yet", "description": "The staff area isn't open yet." },
+  "error": { "title": "Couldn't load staff", "description": "Something went wrong loading the staff directory. Try again in a moment." }
+}
