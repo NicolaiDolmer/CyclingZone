@@ -62,6 +62,8 @@ Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopret
 
 Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_background_progress`). En frossen transcript-mtime + 0 worktree-fremdrift = hang, ikke langsom agent.
 
+> **Natbølge 17/7-læring (orkestratoren vågnede aldrig):** én frossen agent holdt chunk-barrieren åben → ingen completion-notifikation, og ScheduleWakeup-fallback-heartbeaten fyrede aldrig (tavs single point of failure). Maskinen sov IKKE (keep-awake virkede). Konsekvens: 4. lag er obligatorisk — **per-agent timeout i workflow-scriptet** så barrieren aldrig kan hænge evigt, og heartbeat må ALDRIG være eneste vækning. Keep-awake kan orkestratoren selv starte som baggrundsproces ved preflight-GO (bekræftet 17/7). Detaljer: `.claude/learnings/2026-07-17-night-wave-orchestrator-never-woke.md`.
+
 ## Vercel deploy-rate-limit (høj-tempo-bølger)
 
 **Status 2026-06-23: projektet er på Vercel Pro** — det aggressive hobby-rate-limit ("retry in 24 hours", ramt 2026-06-20 efter ~13 hurtige merges) gælder derfor ikke længere i praksis. *Historisk på hobby-tier:* en høj-tempo-bølge kunne fryse **frontend-prod på sidste gode deploy** indtil reset/manuel re-deploy; **Railway (backend) var upåvirket**. Pro kan teoretisk stadig ramme et loft ved ekstreme bølger — overvåg, men forvent ikke 24t-frys.
