@@ -107,8 +107,12 @@ function makeSupabase(state, { failUpsert = null } = {}) {
         return Promise.resolve({ error: null });
       },
       upsert(rows, opts = {}) {
-        if (failUpsert && failUpsert({ table, rows })) {
-          return Promise.resolve({ error: { message: "injected upsert failure" } });
+        // #2436: failUpsert kan returnere `true` (generisk injiceret fejl, som hidtil)
+        // ELLER en streng (custom fejlbesked, fx en uq_race_entries_*-krænkelse-simulering).
+        const failResult = failUpsert && failUpsert({ table, rows });
+        if (failResult) {
+          const message = typeof failResult === "string" ? failResult : "injected upsert failure";
+          return Promise.resolve({ error: { message } });
         }
         calls.push({ table, insert: rows, upsert: true, opts });
         if (table === "race_entries" && opts.ignoreDuplicates) {
@@ -716,6 +720,84 @@ test("CYCLINGZONE-2D: stale auto-kaptajn (rytter forladt holdet) blokerer ikke n
   const captains = aEntries.filter((e) => e.race_role === "captain");
   assert.equal(captains.length, 1, "præcis én kaptajn");
   assert.equal(captains[0].rider_id, "t1-r0", "ny kaptajn indsat trods stale holder");
+});
+
+// ── #2436 (CYCLINGZONE-32): TOCTOU-retry på manual-scan vs. skrivning ─────────
+// Manager gemmer sin udtagelse (replace_race_selection) i vinduet mellem generatorens
+// manual-scan (trin 6) og selve skrivningen af enheden → uq_race_entries_captain-
+// kollision. Fix: fang PRÆCIS denne constraint, genlæs enhedens manuelle rækker
+// friskt, kør enheden om ÉN gang. Mocken simulerer TOCTOU'en via failUpsert, som her
+// (a) injicerer den konkurrerende manuelle række direkte i state ved FØRSTE
+// upsert-forsøg (ligesom en RPC der lige er landet), og returnerer den PRÆCISE
+// uq-fejlbesked Postgres ville give.
+
+test("#2436: uq_race_entries_captain ved 1. forsøg → re-scan → retry lykkes → INGEN capture", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8); // ingen manuelle entries ved generatorens scan (trin 6)
+
+  let injected = false;
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table }) => {
+      if (table !== "race_entries" || injected) return false;
+      injected = true;
+      // Simulér manager-gem der lander PRÆCIS her: en manuel kaptajn (t1-r7, ikke i
+      // generatorens auto-udvalg) skrives til DB, efter vores manual-scan men FØR
+      // vores eget insert af auto-kaptajnen (t1-r0) — Postgres ville afvise med
+      // uq_race_entries_captain.
+      state.race_entries.push({
+        race_id: "A", team_id: "t1", rider_id: "t1-r7", race_role: "captain", is_auto_filled: false,
+      });
+      return 'duplicate key value violates unique constraint "uq_race_entries_captain"';
+    },
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `retry burde have reddet enheden (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture ved en lykkedes retry");
+  assert.ok(injected, "sanity: TOCTOU-injektionen udløste rent faktisk");
+
+  const aEntries = state.race_entries.filter((e) => e.race_id === "A");
+  const captains = aEntries.filter((e) => e.race_role === "captain");
+  assert.equal(captains.length, 1, "præcis én kaptajn efter retry");
+  assert.equal(captains[0].rider_id, "t1-r7", "managerens (konkurrerende) manuelle kaptajn vandt");
+  assert.equal(captains[0].is_auto_filled, false, "kaptajn-rækken er stadig manuel");
+  // Genereret auto-lineup rundt om den manuelle kaptajn — INGEN auto-række må have
+  // fået special-rollen (den er allerede manager-ejet efter retry-neutraliseringen).
+  const autoRows = aEntries.filter((e) => e.is_auto_filled === true);
+  assert.ok(autoRows.length > 0, "enheden blev top-fyldt efter retry (ikke stående tom)");
+  for (const e of autoRows) assert.equal(e.race_role, "helper", `auto-række ${e.rider_id} fik special-rolle ${e.race_role} efter retry`);
+});
+
+test("#2436: uq_race_entries_captain kolliderer BEGGE forsøg → ægte bug, fejl captures", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+
+  // Konstant uq-krænkelse (hverken 1. forsøg eller retry'et løser noget) — repræsenterer
+  // en ÆGTE bug (samme signatur var symptom på reelle bugs 25/6+12/7). Signalet må
+  // ALDRIG slugges: retry'en prøver PRÆCIS én gang, så begge forsøg skal fejle synligt.
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table }) => (table === "race_entries"
+      ? 'duplicate key value violates unique constraint "uq_race_entries_captain"'
+      : false),
+  });
+
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(res.failed_units, 1, "enheden rapporteres som fejlet efter udtømt retry");
+  assert.equal(res.errors.length, 1, "præcis én fejl captured (ikke slugget)");
+  assert.match(res.errors[0], /uq_race_entries_captain/, "fejlbeskeden bærer den oprindelige constraint-signatur videre");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 0, "intet skrevet — enheden fejlede rent");
 });
 
 test("runRaceEntryGenerator: hold UDEN strategi-row → uændret (strategy=null)", async () => {
