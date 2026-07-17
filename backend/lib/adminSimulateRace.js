@@ -150,6 +150,9 @@ export async function runAdminSimulateStage({
   updateStandings,
   notifyDiscord = null,
   notifyInApp = null,
+  // #2523: per-etape "din etape er kørt"-notifikation — pass-through til
+  // raceRunner.simulateStageByIndex (kaldt KUN på mellem-etaper dér).
+  notifyStageInApp = null,
   simulateStageByIndex = simulateStageByIndexDefault,
 }) {
   if (!raceId) throw httpError(400, "race_id required");
@@ -220,6 +223,7 @@ export async function runAdminSimulateStage({
     updateStandings,
     notifyDiscord,
     notifyInApp,
+    notifyStageInApp,
   });
 }
 

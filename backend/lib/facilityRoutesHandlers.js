@@ -13,6 +13,7 @@ import {
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
+import { normalizeLevelBands } from "./staffAbilityConstants.js";
 import {
   purchaseFacilityUpgrade as defaultPurchase,
   hireStaff as defaultHire,
@@ -187,7 +188,9 @@ export async function getStaffProfileHandler({ teamId, staffId }, supabaseClient
     ? {
         overall: abilityRow.overall,
         dimensions: abilityRow.dimensions ?? {},
-        levels: abilityRow.levels ?? {},
+        // #2529: DB-rækker fra FØR u23-migrationen kan stadig have youth/junior-nøgler
+        // i vinduet mellem merge og ejer-apply — normalisér ved læsning (graceful).
+        levels: normalizeLevelBands(abilityRow.levels ?? {}),
         roleSkills: abilityRow.role_skills ?? {},
       }
     : (() => {

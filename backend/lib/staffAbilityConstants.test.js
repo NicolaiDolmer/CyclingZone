@@ -6,6 +6,7 @@ import {
   DIMENSION_TO_ABILITIES,
   TIER_OVERALL_BAND,
   riderLevelBand,
+  normalizeLevelBands,
 } from "./staffAbilityConstants.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -13,8 +14,8 @@ test("STAFF_ROLES = de 5 roller", () => {
   assert.deepEqual(STAFF_ROLES, ["training", "scouting", "medical", "academy", "commercial"]);
 });
 
-test("LEVEL_BANDS = youth/junior/senior", () => {
-  assert.deepEqual(LEVEL_BANDS, ["youth", "junior", "senior"]);
+test("LEVEL_BANDS = u23/senior (#2529 youth+junior kollapset)", () => {
+  assert.deepEqual(LEVEL_BANDS, ["u23", "senior"]);
 });
 
 test("DIMENSION_TO_ABILITIES grupperer physical(10)/mental(2)/technical(3)", () => {
@@ -47,13 +48,33 @@ test("TIER_OVERALL_BAND: lo<hi pr. tier og monotont stigende 1→5", () => {
   }
 });
 
-test("riderLevelBand: youth (academy && age<=21), senior (age>=26), junior ellers", () => {
-  assert.equal(riderLevelBand({ is_academy: true, age: 19 }), "youth");
-  assert.equal(riderLevelBand({ is_academy: true, age: 21 }), "youth");
-  // academy men over 21 → ikke youth
-  assert.equal(riderLevelBand({ is_academy: true, age: 22 }), "junior");
-  assert.equal(riderLevelBand({ is_academy: false, age: 19 }), "junior"); // ikke-academy ung = junior
-  assert.equal(riderLevelBand({ is_academy: false, age: 24 }), "junior");
+test("riderLevelBand (#2529): u23 (age<=25, uanset is_academy), senior (age>=26)", () => {
+  assert.equal(riderLevelBand({ is_academy: true, age: 19 }), "u23");
+  assert.equal(riderLevelBand({ is_academy: true, age: 21 }), "u23");
+  assert.equal(riderLevelBand({ is_academy: true, age: 22 }), "u23");
+  assert.equal(riderLevelBand({ is_academy: false, age: 19 }), "u23");
+  assert.equal(riderLevelBand({ is_academy: false, age: 24 }), "u23");
+  assert.equal(riderLevelBand({ is_academy: false, age: 25 }), "u23");
   assert.equal(riderLevelBand({ is_academy: false, age: 26 }), "senior");
   assert.equal(riderLevelBand({ is_academy: false, age: 30 }), "senior");
+});
+
+test("normalizeLevelBands: allerede migreret (u23/senior) → uændret pass-through", () => {
+  assert.deepEqual(normalizeLevelBands({ u23: 55, senior: 60 }), { u23: 55, senior: 60 });
+});
+
+test("normalizeLevelBands: gammelt format → u23 = MAX(youth, junior)", () => {
+  assert.deepEqual(normalizeLevelBands({ youth: 40, junior: 62, senior: 58 }), { u23: 62, senior: 58 });
+  assert.deepEqual(normalizeLevelBands({ youth: 70, junior: 33, senior: 58 }), { u23: 70, senior: 58 });
+});
+
+test("normalizeLevelBands: kun én af youth/junior til stede → brug den", () => {
+  assert.deepEqual(normalizeLevelBands({ youth: 45, senior: 58 }), { u23: 45, senior: 58 });
+  assert.deepEqual(normalizeLevelBands({ junior: 49, senior: 58 }), { u23: 49, senior: 58 });
+});
+
+test("normalizeLevelBands: null/undefined/tom → sikker default", () => {
+  assert.deepEqual(normalizeLevelBands(null), {});
+  assert.deepEqual(normalizeLevelBands(undefined), {});
+  assert.deepEqual(normalizeLevelBands({}), {});
 });

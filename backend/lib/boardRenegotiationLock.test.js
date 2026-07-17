@@ -86,3 +86,28 @@ test("manglende/0 race_days_total → ikke låst (fail-open, ingen falsk blokeri
 test("tærskel-konstant matcher forventet 50%", () => {
   assert.equal(RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT, 50);
 });
+
+// #2512 · Regression: race_days_total/race_days_completed er nu distinkte
+// kalender-løbsdage (~27-28 i en typisk sæson), IKKE SUM(stages) på tværs af
+// divisioner (der tidligere gav fx 524 mod 60 — permanent WINDOW-lås, uanset
+// faktiske løbsdage tilbage). Med den korrekte, lille enhed skal låsen
+// reagere proportionalt med reelle løbsdage tilbage, ikke være evigt aktiv.
+test("#2512: realistisk sæson-skala (~27 kalenderdage) — ikke låst tidligt med mange dage tilbage", () => {
+  const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(5, 27) }); // 22 dage tilbage, 18.5%
+  assert.equal(r.locked, false);
+});
+
+test("#2512: realistisk sæson-skala — WINDOW-låst når ≤5 kalenderdage reelt er tilbage", () => {
+  const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(22, 27) }); // 5 dage tilbage
+  assert.equal(r.locked, true);
+  assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_WINDOW");
+});
+
+test("#2512: gammel bug-signatur (524 completed / 60 total) ville have låst permanent — dokumenteret som IKKE længere den enhed vi bruger", () => {
+  // Denne test dokumenterer selve enheds-bugget: hvis nogen nogensinde igen
+  // fodrer funktionen med den gamle SUM(stages)-skala, låser den permanent,
+  // fordi raceDaysLeft bliver negativ. Fixet ligger i at seasonRaceDays.js nu
+  // SKRIVER begge felter i den lille, korrekte enhed — ikke i denne funktion.
+  const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(524, 60) });
+  assert.equal(r.locked, true); // uundgåeligt for guarden selv — kilden er nu fixet i seasonRaceDays.js
+});

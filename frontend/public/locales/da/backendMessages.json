@@ -142,9 +142,18 @@
       "title": "Resultat er klar",
       "message": "{race} er kørt. Se resultatet."
     },
+    "stageResult": {
+      "title": "Etaperesultat er klar",
+      "message": "Etape {stage} af {race} er kørt. Din bedste: {rider}, placering {position}.",
+      "messageNoResult": "Etape {stage} af {race} er kørt."
+    },
     "contractExpiring": {
       "title": "Kontrakt udløber",
       "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."
+    },
+    "watchlistDeparted": {
+      "title": "Rytter har forladt spillet",
+      "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
     },
     "boardT1Reminder": {
       "title": "Sidste chance: {planLabel}",

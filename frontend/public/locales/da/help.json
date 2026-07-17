@@ -304,6 +304,10 @@
         "title": "Notifikation ved salg",
         "text": "Hvis en rytter på din ønskeliste sættes til salg via transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken. Du holder dig dermed opdateret på dine favoritter uden aktivt at tjekke markedet."
       },
+      "departureNotification": {
+        "title": "Notifikation ved rytter-udgang",
+        "text": "Hvis en rytter på din ønskeliste forlader spillet (fx en usolgt ungdomsrytter efter sin auktion, eller en AI-holds rytter når holdet fjernes), får du en notifikation, og rytteren fjernes automatisk fra din ønskeliste."
+      },
       "watchlistCounter": {
         "title": "Watchlist-tæller",
         "text": "På en rytters statistikside kan du se 'X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."
@@ -347,7 +351,7 @@
       },
       "racesAndResults": {
         "title": "Løb og resultater",
-        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter."
+        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
       },
       "latestTeamResult": {
         "title": "Hvor ser jeg hvordan det gik mit hold?",
@@ -695,9 +699,17 @@
         "title": "Ansæt en chefscout",
         "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
       },
+      "coachingGroups": {
+        "title": "Trænings-grupper: U23 vs. Senior",
+        "text": "En sportsdirektørs trænings-gruppe-fokus viser hvilken aldersgruppe han træner bedst. U23 dækker akademi-ryttere og unge profs op til 25 år; Senior dækker ryttere fra 26 år og op. Det er chefens egen specialisering, adskilt fra din klubs Senior/U23/Junior-holdstruktur: en trænings-gruppe handler om hvilke ryttere en chef træner bedst, ikke hvilket hold en rytter hører til."
+      },
       "costs": {
         "title": "Omkostninger: engangs-byggepris + tilbagevendende drift",
         "text": "Hvert tier har en engangs-bygge- eller opgraderingspris, som betales én gang når du bygger det. Oveni det bærer hvert bygget tier en mindre driftsomkostning, som trækkes automatisk igen hver sæson, sammen med eventuelle staff-lønninger. Budgettér den som en tilbagevendende post, ikke kun den indledende pris."
+      },
+      "staffOverview": {
+        "title": "Se alle holds personale",
+        "text": "Personale-siden lister alle ansatte chefer på tværs af ligaen, som du kan filtrere på rolle, hold og tier. Klik på din egen chef for at se den fulde evne-oversigt. Klik på en anden managers chef, og du ser kun det samme som når du sammenligner ansættelses-kandidater: samlet rating, tier og top-specialisering, aldrig den fulde oversigt."
       }
     },
     "raceSelection": {

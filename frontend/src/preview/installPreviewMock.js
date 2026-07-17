@@ -78,9 +78,10 @@ export function installPreviewMock() {
         return jsonResponse(wantsObject(accept) ? restObject(table, url) : restRows(table, url));
       }
 
-      // Statefuld Klub-mock (#1441 A3): rout /api/club/* FØR den generiske /api/-
-      // blok, så køb/ansæt/fyr muterer in-memory-state og gennemklikket er ægte.
-      if (/\/api\/club\//.test(url)) {
+      // Statefuld Klub-mock (#1441 A3): rout /api/club/* + /api/staff/* (#2450
+      // personale-oversigt, samme mock-modul) FØR den generiske /api/-blok, så
+      // køb/ansæt/fyr muterer in-memory-state og gennemklikket er ægte.
+      if (/\/api\/(club|staff)\//.test(url)) {
         const u = new URL(url, window.location.origin);
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }

@@ -17,7 +17,8 @@ const NOW_FILE = "docs/NOW.md";
 const SMOKE_SPEC_FILE = "frontend/tests/e2e/core-smoke.spec.js";
 const SNAPSHOT_PREFIX = "frontend/tests/e2e/core-smoke.spec.js-snapshots/patch-notes-";
 // Escape-hatch til den sjældne nye top-entry der er verificeret sub-threshold:
-// sæt token'en i en commit-besked i PR'en.
+// sæt token'en ALENE på sin egen linje i en commit-besked i PR'en (#2535 —
+// substring-match citerede token'en fra andre beskeder/kommentarer utilsigtet).
 const SNAPSHOT_OPT_OUT = "[patch-notes-snapshot-ok]";
 
 function run(command, args, options = {}) {
@@ -73,6 +74,19 @@ function commitMessages(baseRef) {
   return tryRun("git", ["log", "--format=%B", `${baseRef}..HEAD`]);
 }
 
+// Opt-out kræver at token'en står ALENE på sin egen linje i en commit-besked —
+// ellers opter en besked der blot CITERER/nævner token'en (fx i en postmortem-
+// beskrivelse eller en anden guards fejlbesked) PR'en ud utilsigtet (#2535).
+function hasOptOutToken(messages, token) {
+  return messages
+    .split(/\r?\n/)
+    .some((line) => line.trim() === token);
+}
+
+function arraysEqual(a, b) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 // True hvis /patch-notes-ruten pixel-snapshottes i core-smoke.spec.js (dvs. har
 // et entry uden skipSnapshot:true). Mangler filen/entry'et, eller er ruten
 // skipSnapshot, findes der intet snapshot at drifte → refresh-kravet skippes.
@@ -93,14 +107,17 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-const root = repoRoot();
-const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
-const eventName = process.env.GITHUB_EVENT_NAME || "";
-const versions = parseVersions(readFile(root, PATCH_FILE));
+function main() {
+  const root = repoRoot();
+  const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
+  const eventName = process.env.GITHUB_EVENT_NAME || "";
+  const versions = parseVersions(readFile(root, PATCH_FILE));
 
-if (versions.length === 0) {
-  fail(`No version entries found in ${PATCH_FILE}.`);
-} else {
+  if (versions.length === 0) {
+    fail(`No version entries found in ${PATCH_FILE}.`);
+    return;
+  }
+
   const duplicates = versions.filter((version, index) => versions.indexOf(version) !== index);
   if (duplicates.length > 0) {
     fail(`Duplicate PatchNotes versions: ${[...new Set(duplicates)].join(", ")}.`);
@@ -119,7 +136,13 @@ if (versions.length === 0) {
   const baseContent = readGitFile(baseRef, PATCH_FILE);
   const baseVersions = baseContent ? parseVersions(baseContent) : [];
 
-  if (patchNotesChanged && baseVersions.length > 0) {
+  // Ændringer der IKKE rører den parsede versionsliste (kommentarer, typos,
+  // formattering) skal ikke tvinge et version-bump (#2535). Enhver reel
+  // ændring — ny entry, kollision, re-ordering — ændrer listen og rammer
+  // stadig bump-kravet nedenfor (#154-beskyttelsen).
+  const versionsUnchanged = baseVersions.length > 0 && arraysEqual(versions, baseVersions);
+
+  if (patchNotesChanged && baseVersions.length > 0 && !versionsUnchanged) {
     const currentTop = versions[0];
     const baseTop = baseVersions[0];
     const addedNewTopVersion = compareVersion(currentTop, baseTop) > 0;
@@ -134,20 +157,33 @@ if (versions.length === 0) {
     // Kun relevant hvis ruten faktisk snapshottes (ikke skipSnapshot, jf. #2211).
     if (addedNewTopVersion && eventName === "pull_request" && patchNotesRouteIsSnapshotted(root)) {
       const snapshotChanged = changed.some((file) => file.startsWith(SNAPSHOT_PREFIX));
-      const optedOut = commitMessages(baseRef).includes(SNAPSHOT_OPT_OUT);
+      const optedOut = hasOptOutToken(commitMessages(baseRef), SNAPSHOT_OPT_OUT);
       if (!snapshotChanged && !optedOut) {
         fail(
           `New PatchNotes version ${currentTop} added but core-smoke snapshots were not ` +
           `refreshed. /patch-notes opens the newest entry by default, so a new version grows ` +
           `first paint past the visual-diff threshold. Run \`cd frontend && npm run ` +
           `test:e2e:update\` and commit the updated ${SNAPSHOT_PREFIX}*.png files ` +
-          `(or add ${SNAPSHOT_OPT_OUT} to a commit message if the new entry is verified sub-threshold).`
+          `(or add ${SNAPSHOT_OPT_OUT} on its own line in a commit message if the new entry is ` +
+          `verified sub-threshold).`
         );
       }
     }
   }
+
+  if (!process.exitCode) {
+    console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}).`);
+  }
 }
 
-if (!process.exitCode) {
-  console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}).`);
+module.exports = {
+  parseVersions,
+  compareVersion,
+  hasOptOutToken,
+  arraysEqual,
+  patchNotesRouteIsSnapshotted,
+};
+
+if (require.main === module) {
+  main();
 }

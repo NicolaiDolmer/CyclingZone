@@ -39,6 +39,7 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
+import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
 
 export { AI_TEAM_NAME_PREFIX };
 
@@ -301,8 +302,12 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
 export async function deleteAiTeamById(supabase, teamId) {
   // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
   await snapshotRaceResultNamesForTeams(supabase, [teamId]);
+  // #2524: hent navn+id FØR delete — rider_watchlist har ingen FK-cascade, så
+  // rytteren ville ellers forsvinde tavst fra enhver managers ønskeliste.
+  const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").eq("team_id", teamId);
   const { error: rErr } = await supabase.from("riders").delete().eq("team_id", teamId);
   if (rErr) throw new Error(`AI-rider delete (${teamId}): ${rErr.message}`);
+  await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
   const { error: tErr } = await supabase.from("teams").delete().eq("id", teamId);
   if (tErr) throw new Error(`AI-team delete (${teamId}): ${tErr.message}`);
 }
@@ -359,8 +364,12 @@ async function removeAiTeams(supabase, aiTeams, count) {
     const batch = ids.slice(i, i + INSERT_BATCH);
     // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.
     await snapshotRaceResultNamesForTeams(supabase, batch);
+    // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
+    // notifyAndClearWatchlistForRiders).
+    const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").in("team_id", batch);
     const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
     if (rErr) throw new Error(`AI-rider delete: ${rErr.message}`);
+    await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
     const { error: tErr } = await supabase.from("teams").delete().in("id", batch);
     if (tErr) throw new Error(`AI-team delete: ${tErr.message}`);
   }
@@ -385,8 +394,12 @@ export async function clearAllAiTeams(supabase) {
   if (!ids.length) return { teams: 0 };
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
     const batch = ids.slice(i, i + INSERT_BATCH);
+    // #2524: hent navn+id FØR delete (rider_watchlist ingen FK-cascade — se
+    // notifyAndClearWatchlistForRiders).
+    const { data: watchedRiders } = await supabase.from("riders").select("id, firstname, lastname").in("team_id", batch);
     const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
     if (rErr) throw new Error(`clearAllAiTeams (rider delete): ${rErr.message}`);
+    await notifyAndClearWatchlistForRiders({ supabase, riders: watchedRiders || [] });
     const { error: tErr } = await supabase.from("teams").delete().in("id", batch);
     if (tErr) throw new Error(`clearAllAiTeams (team delete): ${tErr.message}`);
   }

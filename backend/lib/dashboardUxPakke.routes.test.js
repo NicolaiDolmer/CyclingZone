@@ -51,6 +51,35 @@ test("onboarding-progress: board_plan_set kræver negotiation_status='completed'
   );
 });
 
+// #2439: onboarding-progress-kortet re-triggerede for etablerede spillere,
+// fordi dismiss var session-scopet (sessionStorage, #1569) — completed_count
+// nåede aldrig total_count for veteraner der fx altid bruger squad-auto-fill,
+// så kortet dukkede op igen ved hver ny fane/browser/enhed. Fix: server-
+// persisteret dismiss (teams.onboarding_progress_dismissed_at) + en
+// "etableret hold"-auto-heuristik der skjuler kortet uden krav om et klik.
+test("onboarding-progress: GET returnerer server-persisteret dismissed + established (ikke kun completed_count)", () => {
+  const block = routeBlock('router.get("/me/onboarding-progress"', 4000);
+  assert.match(block, /onboarding_progress_dismissed_at/, "skal læse teams.onboarding_progress_dismissed_at");
+  assert.match(block, /dismissed\s*=\s*Boolean\(/, "dismissed skal afledes af den persisterede kolonne, ikke kun frontend-state");
+  assert.match(block, /established\s*=\s*isEstablishedTeam\(/, "established skal komme fra en hold-alder-heuristik");
+  assert.match(block, /steps,\s*completed_count,\s*total_count:\s*steps\.length,\s*dismissed,\s*established/, "response skal inkludere dismissed+established ved siden af steps");
+});
+
+test("onboarding-progress: isEstablishedTeam bruger teams.created_at-alder (ikke completed_count) til at afgøre 'etableret'", () => {
+  assert.match(
+    apiSource,
+    /function isEstablishedTeam\(team\)[\s\S]{0,300}created_at/,
+    "isEstablishedTeam skal basere sig på team.created_at, uafhængigt af step-completion",
+  );
+});
+
+test("POST /me/onboarding-progress/dismiss persisterer server-side og degraderer gracefully hvis kolonnen mangler (42703)", () => {
+  const block = routeBlock('router.post("/me/onboarding-progress/dismiss"', 1200);
+  assert.match(block, /\.from\("teams"\)/, "skal opdatere teams-tabellen");
+  assert.match(block, /onboarding_progress_dismissed_at:\s*new Date\(\)\.toISOString\(\)/, "skal sætte dismiss-timestamp");
+  assert.match(block, /error\.code\s*!==\s*"42703"/, "skal tåle en manglende onboarding_progress_dismissed_at-kolonne uden 500");
+});
+
 test("training/today-status: querier kun training_day_runs på team_id + tick_date (letvægts, ingen rider/condition-joins)", () => {
   const block = routeBlock('router.get("/training/today-status"');
   assert.match(block, /\.from\("training_day_runs"\)/);

@@ -33,7 +33,7 @@ test("training-rollen har dimensioner + niveau-affiniteter i [1,99]", () => {
   for (const d of ["physical", "mental", "technical"]) {
     assert.ok(p.dimensions[d] >= 1 && p.dimensions[d] <= 99, `dimension ${d}=${p.dimensions[d]}`);
   }
-  for (const l of ["youth", "junior", "senior"]) {
+  for (const l of ["u23", "senior"]) {
     assert.ok(p.levels[l] >= 1 && p.levels[l] <= 99, `level ${l}=${p.levels[l]}`);
   }
 });
@@ -52,7 +52,7 @@ test("return shape: role/tier/overall/dimensions/levels/roleSkills", () => {
   assert.equal(p.tier, 3);
   assert.equal(typeof p.overall, "number");
   assert.deepEqual(Object.keys(p.dimensions).sort(), ["mental", "physical", "technical"]);
-  assert.deepEqual(Object.keys(p.levels).sort(), ["junior", "senior", "youth"]);
+  assert.deepEqual(Object.keys(p.levels).sort(), ["senior", "u23"]);
   assert.equal(typeof p.roleSkills, "object");
 });
 
