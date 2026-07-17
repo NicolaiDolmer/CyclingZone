@@ -4781,12 +4781,13 @@ const BULK_PRICE_MAX_ITEMS = 100;
 router.patch("/transfers/bulk-price", requireAuth, marketWriteLimiter, async (req, res) => {
   const updates = Array.isArray(req.body?.updates) ? req.body.updates : null;
   if (!updates || updates.length === 0) {
-    return res.status(400).json({ error: "Ingen listinger angivet", errorCode: "bulk_price_empty" });
+    return res.status(400).json({ error: "No listings selected", errorCode: "bulk_price_empty" });
   }
   if (updates.length > BULK_PRICE_MAX_ITEMS) {
     return res.status(400).json({
-      error: `Højst ${BULK_PRICE_MAX_ITEMS} listinger pr. kald`,
+      error: `Max ${BULK_PRICE_MAX_ITEMS} listings per call`,
       errorCode: "bulk_price_too_many",
+      errorParams: { max: BULK_PRICE_MAX_ITEMS },
     });
   }
 
