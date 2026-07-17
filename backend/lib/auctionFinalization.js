@@ -13,7 +13,7 @@ import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRp
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
-import { buildContractExpiringNotification } from "./notificationService.js";
+import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -174,7 +174,14 @@ async function deleteUnsoldYouthRider({ supabase, rider }) {
     .eq("is_academy", false)
     .select("id");
   ensureNoError(delErr);
-  return (deleted ?? []).length > 0;
+  const wasDeleted = (deleted ?? []).length > 0;
+  // #2524: rider_watchlist har ingen FK-cascade — uden dette hook forsvinder
+  // rytteren tavst fra enhver managers ønskeliste (frontend-orphan-filter,
+  // WatchlistPage.jsx #1918). Notificér + ryd KUN når sletningen faktisk landede.
+  if (wasDeleted) {
+    await notifyAndClearWatchlistForRiders({ supabase, riders: [rider] });
+  }
+  return wasDeleted;
 }
 
 // #1308 Fase B: finalisér en ungdomsauktion. Ingen sælger (seller_team_id=NULL),

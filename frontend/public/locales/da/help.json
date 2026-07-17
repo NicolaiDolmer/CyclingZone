@@ -304,6 +304,10 @@
         "title": "Notifikation ved salg",
         "text": "Hvis en rytter på din ønskeliste sættes til salg via transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken. Du holder dig dermed opdateret på dine favoritter uden aktivt at tjekke markedet."
       },
+      "departureNotification": {
+        "title": "Notifikation ved rytter-udgang",
+        "text": "Hvis en rytter på din ønskeliste forlader spillet (fx en usolgt ungdomsrytter efter sin auktion, eller en AI-holds rytter når holdet fjernes), får du en notifikation, og rytteren fjernes automatisk fra din ønskeliste."
+      },
       "watchlistCounter": {
         "title": "Watchlist-tæller",
         "text": "På en rytters statistikside kan du se 'X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."

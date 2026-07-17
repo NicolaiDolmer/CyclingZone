@@ -1,8 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { notifyUser, notifyTeamOwner, emitRaceResultNotifications, RACE_RESULT_TYPE, emitStageResultNotifications, STAGE_RESULT_TYPE } =
-  await import("./notificationService.js");
+const {
+  notifyUser,
+  notifyTeamOwner,
+  emitRaceResultNotifications,
+  RACE_RESULT_TYPE,
+  notifyAndClearWatchlistForRiders,
+  WATCHLIST_DEPARTED_TYPE,
+  emitStageResultNotifications,
+  STAGE_RESULT_TYPE,
+} = await import("./notificationService.js");
 
 function createNotificationSupabase({
   teams = [],
@@ -257,6 +265,146 @@ test("emitRaceResult: manglende race.id giver nul-stats uden at hente deltagere"
   assert.equal(fetched, false, "ingen deltager-fetch uden race.id");
   assert.equal(calls.length, 0);
   assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+});
+
+// ─── #2524 · notifyAndClearWatchlistForRiders ─────────────────────────────────
+
+function createWatchlistSupabase({ watchlist = [] } = {}) {
+  const state = { watchlist: watchlist.map((w) => ({ ...w })) };
+  return {
+    state,
+    from(table) {
+      if (table !== "rider_watchlist") throw new Error(`Unexpected table: ${table}`);
+      return {
+        select(columns) {
+          assert.equal(columns, "id, user_id, rider_id");
+          return {
+            in(column, ids) {
+              assert.equal(column, "rider_id");
+              const data = state.watchlist
+                .filter((w) => ids.includes(w.rider_id))
+                .map((w) => ({ ...w }));
+              return Promise.resolve({ data, error: null });
+            },
+          };
+        },
+        delete() {
+          return {
+            in(column, ids) {
+              assert.equal(column, "rider_id");
+              const toDelete = state.watchlist.filter((w) => ids.includes(w.rider_id));
+              state.watchlist = state.watchlist.filter((w) => !ids.includes(w.rider_id));
+              return {
+                select(col) {
+                  assert.equal(col, "id");
+                  return Promise.resolve({ data: toDelete.map((w) => ({ id: w.id })), error: null });
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+function makeWatchlistNotifyRecorder(behavior = () => ({ delivered: true })) {
+  const calls = [];
+  const notify = async (args) => {
+    calls.push(args);
+    return behavior(args);
+  };
+  return { notify, calls };
+}
+
+test("notifyAndClearWatchlistForRiders: no-op for ryttere uden ønskeliste-rækker", async () => {
+  const supabase = createWatchlistSupabase({ watchlist: [] });
+  const { notify, calls } = makeWatchlistNotifyRecorder();
+
+  const stats = await notifyAndClearWatchlistForRiders({
+    supabase,
+    riders: [{ id: "rider-1", firstname: "Tadej", lastname: "Pogačar" }],
+    notify,
+  });
+
+  assert.equal(calls.length, 0);
+  assert.deepEqual(stats, { riders: 1, watchers: 0, delivered: 0, deduped: 0, failed: 0, cleared: 0 });
+});
+
+test("notifyAndClearWatchlistForRiders: notificerer hver watcher + rydder rækken", async () => {
+  const supabase = createWatchlistSupabase({
+    watchlist: [
+      { id: "wl-1", user_id: "user-1", rider_id: "rider-1" },
+      { id: "wl-2", user_id: "user-2", rider_id: "rider-1" },
+    ],
+  });
+  const { notify, calls } = makeWatchlistNotifyRecorder();
+
+  const stats = await notifyAndClearWatchlistForRiders({
+    supabase,
+    riders: [{ id: "rider-1", firstname: "Tadej", lastname: "Pogačar" }],
+    notify,
+  });
+
+  assert.equal(calls.length, 2);
+  assert.deepEqual(
+    calls.map((c) => c.userId).sort(),
+    ["user-1", "user-2"],
+  );
+  const call = calls[0];
+  assert.equal(call.type, WATCHLIST_DEPARTED_TYPE);
+  assert.equal(call.type, "watchlist_departed");
+  assert.equal(call.relatedId, "rider-1");
+  assert.equal(call.metadata.riderId, "rider-1");
+  assert.equal(call.metadata.titleCode, "notif.watchlistDeparted.title");
+  assert.equal(call.metadata.messageCode, "notif.watchlistDeparted.message");
+  assert.deepEqual(call.metadata.messageParams, { rider: "Tadej Pogačar" });
+  assert.match(call.message, /Tadej Pogačar/, "EN-first fallback-message indeholder rytternavnet");
+
+  assert.deepEqual(stats, { riders: 1, watchers: 2, delivered: 2, deduped: 0, failed: 0, cleared: 2 });
+  assert.deepEqual(supabase.state.watchlist, [], "rider_watchlist-rækken er ryddet");
+});
+
+test("notifyAndClearWatchlistForRiders: en fejlende notifikation isoleres og stopper ikke oprydningen", async () => {
+  const supabase = createWatchlistSupabase({
+    watchlist: [
+      { id: "wl-1", user_id: "user-1", rider_id: "rider-1" },
+      { id: "wl-2", user_id: "user-2", rider_id: "rider-1" },
+    ],
+  });
+  const { notify } = makeWatchlistNotifyRecorder((args) => {
+    if (args.userId === "user-1") throw new Error("transient insert error");
+    return { delivered: true };
+  });
+
+  const stats = await notifyAndClearWatchlistForRiders({
+    supabase,
+    riders: [{ id: "rider-1", firstname: "Tadej", lastname: "Pogačar" }],
+    notify,
+  });
+
+  assert.deepEqual(stats, { riders: 1, watchers: 2, delivered: 1, deduped: 0, failed: 1, cleared: 2 });
+  assert.deepEqual(supabase.state.watchlist, [], "rydder stadig watchlist selvom én notifikation fejlede");
+});
+
+test("notifyAndClearWatchlistForRiders: deduped tælles separat fra delivered", async () => {
+  const supabase = createWatchlistSupabase({
+    watchlist: [{ id: "wl-1", user_id: "user-1", rider_id: "rider-1" }],
+  });
+  const { notify } = makeWatchlistNotifyRecorder(() => ({ delivered: false, deduped: true }));
+
+  const stats = await notifyAndClearWatchlistForRiders({
+    supabase,
+    riders: [{ id: "rider-1", firstname: "Tadej", lastname: "Pogačar" }],
+    notify,
+  });
+
+  assert.deepEqual(stats, { riders: 1, watchers: 1, delivered: 0, deduped: 1, failed: 0, cleared: 1 });
+});
+
+test("notifyAndClearWatchlistForRiders: tom rider-liste er no-op (ingen supabase-kald)", async () => {
+  const stats = await notifyAndClearWatchlistForRiders({ supabase: {}, riders: [] });
+  assert.deepEqual(stats, { riders: 0, watchers: 0, delivered: 0, deduped: 0, failed: 0, cleared: 0 });
 });
 
 // ─── #2523 · emitStageResultNotifications ──────────────────────────────────────

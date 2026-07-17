@@ -309,6 +309,102 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
 }
 
+// ─── #2524 · Watchlist-notifikation ved rytter-sletning/-udgang ───────────────
+//
+// PROBLEM (#2524): rider_watchlist har INGEN FK-cascade til riders (bevidst —
+// en managers ønskeliste er en ren brugerfacing bekvemmelighed, ikke en
+// spil-invariant), så en slettet rytter efterlod en orphaned watchlist-række.
+// Frontend filtrerede den tavst væk (WatchlistPage.jsx, #1918) — rytteren
+// forsvandt uden forklaring. #2456-oprydningen (usolgte ungdomsryttere) var
+// den konkrete hændelse der eksponerede det: spillere måtte have det forklaret
+// manuelt på Discord.
+//
+// ÉN delt funktion, kaldt fra ALLE kendte rytter-sletnings-stier (se
+// callsites: auctionFinalization.deleteUnsoldYouthRider,
+// aiTeamGenerator.deleteAiTeamById/removeAiTeams/clearAllAiTeams), så en
+// fremtidig sletnings-sti (fx pension #2218) ikke kan glemme det — kald denne
+// funktion umiddelbart EFTER en bekræftet rytter-DELETE, aldrig før (ellers
+// notificeres/ryddes der for ryttere der reelt IKKE blev slettet, fx en
+// TOCTOU-guard der rammer 0 rækker).
+export const WATCHLIST_DEPARTED_TYPE = "watchlist_departed";
+
+/**
+ * Notificér enhver bruger der har en af `riders` på sin ønskeliste ("X has
+ * left the game"), og ryd derefter deres rider_watchlist-rækker for netop de
+ * ryttere. Kaldes med ryttere der ALLEREDE er bekræftet slettet fra `riders`
+ * (caller leverer id+navn, da rytter-rækken typisk er væk på kald-tidspunktet).
+ *
+ * Idempotent/no-op for ryttere uden ønskeliste-rækker. Fejl pr. bruger isoleres
+ * (samme mønster som resten af filen) — én fejlende notifikation stopper
+ * hverken de øvrige eller selve oprydningen. `notify` injicérbar for test.
+ *
+ * @param {object} args
+ * @param {object} args.supabase
+ * @param {Array<{id:string, firstname?:string, lastname?:string}>} args.riders
+ * @param {typeof notifyUser} [args.notify]
+ * @returns {Promise<{riders:number, watchers:number, delivered:number, deduped:number, failed:number, cleared:number}>}
+ */
+export async function notifyAndClearWatchlistForRiders({ supabase, riders, notify = notifyUser }) {
+  const stats = { riders: 0, watchers: 0, delivered: 0, deduped: 0, failed: 0, cleared: 0 };
+  const list = (riders || []).filter((r) => r?.id);
+  if (!list.length || !supabase?.from) return stats;
+  stats.riders = list.length;
+
+  const riderIds = list.map((r) => r.id);
+  const { data: watchRows, error } = await supabase
+    .from("rider_watchlist")
+    .select("id, user_id, rider_id")
+    .in("rider_id", riderIds);
+  if (error) {
+    throw new Error(`notifyAndClearWatchlistForRiders lookup: ${error.message}`);
+  }
+
+  const byRiderId = new Map(list.map((r) => [r.id, r]));
+  for (const row of watchRows || []) {
+    const rider = byRiderId.get(row.rider_id);
+    if (!rider || !row.user_id) continue;
+    stats.watchers += 1;
+    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim() || "Rider";
+    try {
+      const res = await notify({
+        supabase,
+        userId: row.user_id,
+        type: WATCHLIST_DEPARTED_TYPE,
+        title: "Rider has left the game",
+        message: `${riderName} has left the game and was removed from your watchlist.`,
+        relatedId: rider.id,
+        metadata: {
+          riderId: rider.id,
+          titleCode: "notif.watchlistDeparted.title",
+          titleParams: {},
+          messageCode: "notif.watchlistDeparted.message",
+          messageParams: { rider: riderName },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch (err) {
+      // Samme A2-lære som contract-expiring/race-result: må ALDRIG være 100%
+      // stille (#2389) — log + Sentry, isolér, fortsæt.
+      stats.failed += 1;
+      console.error(`  ❌ watchlist-departure-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "watchlist-departure" }, riderId: rider.id });
+    }
+  }
+
+  const { data: cleared, error: delErr } = await supabase
+    .from("rider_watchlist")
+    .delete()
+    .in("rider_id", riderIds)
+    .select("id");
+  if (delErr) {
+    throw new Error(`notifyAndClearWatchlistForRiders cleanup: ${delErr.message}`);
+  }
+  stats.cleared = (cleared ?? []).length;
+
+  return stats;
+}
+
 // ─── #2523 · Per-etape-notifikation (undgår "der sker ikke noget" i etapeløb) ─
 
 export const STAGE_RESULT_TYPE = "stage_result";
