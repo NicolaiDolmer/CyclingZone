@@ -574,7 +574,7 @@
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",
-        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen."
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens potentiale og alder; når alle evner i rytterens valgte fokus har nået loftet, viser roster-rækken \"Færdigudviklet i dette fokus\" i stedet for en linje. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen."
       },
       "longTermGrowth": {
         "title": "Langsigtet vækst",

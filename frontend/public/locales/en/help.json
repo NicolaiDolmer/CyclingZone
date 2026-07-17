@@ -574,7 +574,7 @@
       },
       "progressBars": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability. Progress carries over day to day. Nothing resets mid-season."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; when every ability in a rider's chosen focus has reached its ceiling, the roster row shows 'Fully developed in this focus' instead of a bar. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season."
       },
       "longTermGrowth": {
         "title": "Long-term growth",

@@ -25,6 +25,7 @@ export function useTraining() {
   const [todayRun, setTodayRun] = useState(null); // { executed_by, bonus_applied, report, tick_date, created_at } | null
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
+  const [capped, setCapped] = useState({});       // { <rider_id>: [ability] } — evner på livstidsloftet (#2578; kun nøgler, aldrig tal)
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
@@ -48,6 +49,7 @@ export function useTraining() {
         setTodayRun(data.todayRun ?? null);
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
+        setCapped(data.capped ?? {});
         setTrainability(data.trainability ?? {});
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
@@ -257,7 +259,7 @@ export function useTraining() {
   }, [refresh]);
 
   return {
-    slots, plans, teamId, enabled, todayRun, condition, progress, trainability, smartDefaultFocus,
+    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
     riderWeekPlans, savingRiderWeekPlanId,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,

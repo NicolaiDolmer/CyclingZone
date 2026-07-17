@@ -120,7 +120,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -1696,7 +1696,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       riderIds.length
         ? supabase
             .from("rider_derived_abilities")
-            .select("rider_id, ability_progress")
+            .select("*")
             .in("rider_id", riderIds)
         : Promise.resolve({ data: [] }),
       // #1895: holdets rytme (rider_id NULL) + pr-rytter-overrides (rider_id sat)
@@ -1734,12 +1734,19 @@ router.get("/training/me", requireAuth, async (req, res) => {
     }
 
     // Byg progress-map: rider_id → ability_progress (null-safe).
+    // #2578: + capped-map (rider_id → [ability]) — hvilke synlige evner står på
+    // livstidsloftet, så UI'et kan vise "færdigudviklet i dette fokus" i stedet
+    // for en død progress-bar. KUN ability-nøgler forlader serveren; selve
+    // cap-tallene forbliver server-hidden (#1162).
     const progress = {};
+    const capped = {};
     for (const row of progressResult.data ?? []) {
       progress[row.rider_id] = row.ability_progress ?? {};
+      const cappedForRider = cappedVisibleAbilities(row);
+      if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
     }
 
-    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped, trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

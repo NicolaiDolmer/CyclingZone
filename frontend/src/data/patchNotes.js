@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.13",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training progress is now honest about ceilings and today's gains",
+          "body": "Two things confused managers after yesterday's training rework: a progress bar that just paid out a +1 starts over near zero (which looked like lost progress), and riders who have reached their lifetime ceiling sat with a frozen bar and no explanation. The Training page now shows a '+N today' badge on every rider who gained whole ability points in today's session, and riders whose chosen focus is fully developed show a clear 'Fully developed in this focus' marker instead of a dead bar. The Help section explains both."
+        },
+        "da": {
+          "title": "Trænings-fremgang er nu ærlig om lofter og dagens gevinster",
+          "body": "To ting forvirrede managere efter gårsdagens trænings-omlægning: en fremskridtslinje der lige har udbetalt +1 starter forfra nær nul (hvilket lignede tabt fremgang), og ryttere der har nået deres livstidsloft stod med en frossen linje uden forklaring. Trænings-siden viser nu et \"+N i dag\"-mærkat på hver rytter der har vundet hele evne-point i dagens session, og ryttere hvis valgte fokus er færdigudviklet viser en tydelig \"Færdigudviklet i dette fokus\"-markering i stedet for en død linje. Hjælp-sektionen forklarer begge dele."
+        },
+        "refs": [2578]
+      }
+    ]
+  },
+  {
     "version": "7.12",
     "date": "2026-07-17",
     "label": "Beta",
