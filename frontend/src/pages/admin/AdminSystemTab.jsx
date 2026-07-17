@@ -5,6 +5,7 @@ import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
 import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
+import BalanceDriftWatchSection from "../../components/admin/sections/BalanceDriftWatchSection";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -319,6 +320,10 @@ export default function AdminSystemTab() {
           synlig for admin (uden for BETA_ENABLED-gaten, modsat de destruktive resets). */}
       <AdminSection title="Bestyrelse — åbn for test (frosset) eller live (ægte økonomi)">
         <BoardTestModeSection getAuth={getAuth} onMsg={showMsg} />
+      </AdminSection>
+
+      <AdminSection title="Balance-drift-vagt — race v3 mod prod (#2414)">
+        <BalanceDriftWatchSection getAuth={getAuth} />
       </AdminSection>
 
       {BETA_ENABLED && (

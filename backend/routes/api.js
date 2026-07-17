@@ -280,6 +280,7 @@ import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
+import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
 import { aggregateTraffic } from "../lib/trafficMetrics.js";
@@ -5893,6 +5894,37 @@ router.get("/admin/retention", requireAdmin, async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message || "Kunne ikke hente retention-data" });
+  }
+});
+
+// #2414 — Balance-drift-vagt: 14-dages trend + grøn/gul/rød mod race
+// v3-kalibreringens kanoniske bånd. Læser KUN den natlige jobs persisterede
+// snapshot (race_balance_drift_daily) — ingen genberegning mod race_results her.
+router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from("race_balance_drift_daily")
+      .select("metric_date, metrics, statuses, computed_at")
+      .order("metric_date", { ascending: false })
+      .limit(14);
+    if (error) throw error;
+
+    const ascRows = [...(rows || [])].reverse().map(r => ({ date: r.metric_date, statuses: r.statuses }));
+    const breaches = findConsecutiveBreaches(ascRows, { minConsecutiveDays: 3 });
+
+    res.json({
+      bands: BALANCE_DRIFT_BANDS,
+      alarmEligibleMetrics: ALARM_ELIGIBLE_METRICS,
+      days: (rows || []).map(r => ({
+        date: r.metric_date,
+        metrics: r.metrics,
+        statuses: r.statuses,
+        computedAt: r.computed_at,
+      })),
+      breaches,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Kunne ikke hente balance-drift-data" });
   }
 });
 

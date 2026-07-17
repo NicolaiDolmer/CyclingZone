@@ -61,6 +61,7 @@ import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
+import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { captureException as sentryCapture, monitorCron } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -803,6 +804,20 @@ async function runTrafficRetentionCron() {
   }
 }
 
+// ─── Balance-drift-vagt (#2414) ───────────────────────────────────────────────
+// Natlig: beregn gårsdagens dominans/varians-metrikker mod ÆGTE prod-resultater,
+// persistér i race_balance_drift_daily, alarmér Discord ved 3+ dages bånd-brud.
+// Read-only mod race_results/race_simulation_*/race_incidents (kun SELECT).
+
+async function runBalanceDriftWatchCron() {
+  await runBalanceDriftWatch({
+    supabase,
+    sendWebhookFn: sendOpsWebhook,
+    getOpsWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+  });
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -1009,6 +1024,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: balance-drift-vagt (#2414) — natlig kredibilitets-scorecard
+  // for race v3's kalibrerede bånd mod ÆGTE prod-resultater (i går, UTC).
+  setInterval(
+    trackedTick("balance-drift-watch", monitorCron("balance-drift-watch", runBalanceDriftWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1038,6 +1060,9 @@ export function startCron() {
   trackedTick("debt", checkDebtWarnings)();
   trackedTick("discord division-role sync", runDiscordRoleSyncCron)();
   trackedTick("traffic retention", runTrafficRetentionCron)();
+  // #2414: samme idempotens-begrundelse — upsert på metric_date, boot-run gør
+  // vagten ærlig uden at risikere dubletter/dobbelt-alarmer.
+  trackedTick("balance-drift-watch", runBalanceDriftWatchCron)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
