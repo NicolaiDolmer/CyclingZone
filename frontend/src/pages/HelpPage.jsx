@@ -186,7 +186,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatIsIt", kind: "text" },
       { id: "howScored", kind: "text" },
+      { id: "decay", kind: "text" },
       { id: "newManagers", kind: "text" },
+      { id: "inactive", kind: "text" },
       { id: "movement", kind: "text" },
     ],
   },

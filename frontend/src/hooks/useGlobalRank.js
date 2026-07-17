@@ -2,19 +2,23 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 
-// Global rank (#2453): ÉN rangliste på tværs af alle managers, over de seneste
-// 2 sæsoner (divisions- + sæson-vægtet, se database/2026-07-17-global-rank.sql
-// for den fulde beslutning). Læser KUN den færdig-beregnede global_rank_mv +
-// global_rank_snapshot (forrige refresh-cyklus' rang, til bevægelses-pilen) —
-// ingen live-aggregering (#2196/#2204/#2206-mønsteret).
+// Global Rank (#2453): ÉN rangliste på tværs af alle managers. Point halveres
+// ved hvert sæsonskifte (se database/2026-07-17-global-rank.sql +
+// backend/lib/globalRankFormula.js for den fulde beslutning). Læser KUN de
+// færdig-beregnede global_rank_mv + de to snapshot-tabeller (ugentlig
+// bevægelse, sæson-start) — ingen live-aggregering (#2196/#2204/#2206-mønsteret).
 //
 // fetchAllRows: matview'et vokser med antal hold (i dag under PostgREST's
 // 1000-rows-cap, men #2206 lærte os at ALDRIG antage det forbliver sådan).
+// Inaktive managere (active_recent=false) FILTRERES fra listen her (point
+// bevares i databasen — kun display-visibiliteten fjernes).
 
-const n = (v) => Number(v) || 0;
+const n = (v) => (v == null ? null : Number(v) || 0);
 
 export function useGlobalRank() {
   const [teams, setTeams] = useState([]);
+  const [climbers, setClimbers] = useState([]);
+  const [bestNewManagers, setBestNewManagers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,38 +26,60 @@ export function useGlobalRank() {
     setLoading(true);
     setError(null);
     try {
-      const [mvData, snapshotData] = await Promise.all([
+      const [mvData, weeklyData, seasonStartData] = await Promise.all([
         fetchAllRows(() => supabase
           .from("global_rank_mv").select("*")
-          .order("global_rank", { ascending: true })),
+          .order("global_rank", { ascending: true, nullsFirst: false })),
         fetchAllRows(() => supabase
-          .from("global_rank_snapshot").select("team_id, global_rank")
-          .order("team_id", { ascending: true })),
+          .from("global_rank_weekly_snapshot").select("team_id, global_rank")),
+        fetchAllRows(() => supabase
+          .from("global_rank_season_start_snapshot").select("team_id, global_rank")),
       ]);
 
-      const prevRankByTeam = new Map((snapshotData || []).map(s => [s.team_id, n(s.global_rank)]));
-      const rows = (mvData || []).map(row => {
-        const prevRank = prevRankByTeam.has(row.team_id) ? prevRankByTeam.get(row.team_id) : null;
+      const weeklyRankByTeam = new Map((weeklyData || []).map(s => [s.team_id, n(s.global_rank)]));
+      const seasonStartRankByTeam = new Map((seasonStartData || []).map(s => [s.team_id, n(s.global_rank)]));
+
+      // Inaktive managere (>= 2 sæsoner uden aktivitet) skjules — point bevares i mv'et,
+      // vises bare ikke her (#2453 accept: "managere uden aktivitet vises ikke på listen").
+      const active = (mvData || []).filter(row => row.active_recent);
+
+      const rows = active.map(row => {
         const currentRank = n(row.global_rank);
-        // movement > 0 = op ad ranglisten (lavere rank-tal), < 0 = ned. null = ingen
-        // forrige måling endnu (fx helt ny manager eller lige efter migration).
-        const movement = prevRank == null ? null : prevRank - currentRank;
+        const prevRank = weeklyRankByTeam.has(row.team_id) ? weeklyRankByTeam.get(row.team_id) : null;
+        const movement = (prevRank == null || currentRank == null) ? null : prevRank - currentRank;
+        const startRank = seasonStartRankByTeam.has(row.team_id) ? seasonStartRankByTeam.get(row.team_id) : null;
+        const placesGained = (startRank == null || currentRank == null) ? null : startRank - currentRank;
         return {
           team_id: row.team_id,
           name: row.name,
           division: row.division,
           is_ai: row.is_ai,
-          weighted_points_sum: n(row.weighted_points_sum),
-          seasons_played: n(row.seasons_played),
-          global_score: n(row.global_score),
+          banked_points: n(row.banked_points) || 0,
+          season_points: n(row.season_points) || 0,
+          global_points: n(row.global_points) || 0,
           global_rank: currentRank,
+          is_rookie: !!row.is_rookie,
           movement,
+          places_gained: placesGained,
         };
       });
+
       setTeams(rows);
+      setClimbers(
+        rows.filter(r => r.places_gained != null && r.places_gained > 0)
+          .sort((a, b) => b.places_gained - a.places_gained)
+          .slice(0, 10)
+      );
+      setBestNewManagers(
+        rows.filter(r => r.is_rookie)
+          .sort((a, b) => b.global_points - a.global_points)
+          .slice(0, 10)
+      );
     } catch (e) {
       setError(e);
       setTeams([]);
+      setClimbers([]);
+      setBestNewManagers([]);
     } finally {
       setLoading(false);
     }
@@ -61,5 +87,5 @@ export function useGlobalRank() {
 
   useEffect(() => { load(); }, [load]);
 
-  return { teams, loading, error, reload: load };
+  return { teams, climbers, bestNewManagers, loading, error, reload: load };
 }

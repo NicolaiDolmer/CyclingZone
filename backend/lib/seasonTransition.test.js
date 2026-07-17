@@ -317,35 +317,39 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       expireAndRenewContracts: async () => {},
       // #1836: kontraktudløb-notifikationer stubbet — egen unit-test dækker emit-logikken.
       emitContractExpiringNotifications: async () => ({ eligible: 0, delivered: 0, deduped: 0, failed: 0 }),
+      // #2453: Global Rank-rollover stubbet — egen unit-test dækker RPC-laget (SQL).
+      applyGlobalRankSeasonRollover: async () => ({ ok: true }),
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
   // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
-  // #1836: +contract_expiring_notifications = 11
-  assert.equal(result.log.length, 11);
+  // #1836: +contract_expiring_notifications; #2453: +global_rank_decay = 12
+  assert.equal(result.log.length, 12);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
   assert.equal(result.log[1].updated, true);
-  assert.equal(result.log[2].phase, "close_prev_transfer_window");
-  assert.equal(result.log[2].updated, true);
-  assert.equal(result.log[3].phase, "insert_next_transfer_window");
-  assert.equal(result.log[3].inserted, true);
-  assert.equal(result.log[4].phase, "sponsor_contracts_renewal");
-  assert.equal(result.log[4].teams, 1);
-  assert.equal(result.log[5].phase, "sponsor_payout");
-  assert.equal(result.log[5].count, 1);
-  assert.equal(result.log[6].phase, "season_payroll");
-  assert.equal(result.log[6].teams_processed, 1);
-  assert.equal(result.log[6].salary_count, 0);
-  assert.equal(result.log[7].phase, "admin_log");
-  assert.equal(result.log[7].inserted, true);
-  assert.equal(result.log[8].phase, "discord_broadcast");
-  assert.equal(result.log[8].sent, true);
-  assert.equal(result.log[9].phase, "season_started_notifications");
-  assert.equal(result.log[10].phase, "contract_expiring_notifications");
+  assert.equal(result.log[2].phase, "global_rank_decay");
+  assert.equal(result.log[2].ok, true);
+  assert.equal(result.log[3].phase, "close_prev_transfer_window");
+  assert.equal(result.log[3].updated, true);
+  assert.equal(result.log[4].phase, "insert_next_transfer_window");
+  assert.equal(result.log[4].inserted, true);
+  assert.equal(result.log[5].phase, "sponsor_contracts_renewal");
+  assert.equal(result.log[5].teams, 1);
+  assert.equal(result.log[6].phase, "sponsor_payout");
+  assert.equal(result.log[6].count, 1);
+  assert.equal(result.log[7].phase, "season_payroll");
+  assert.equal(result.log[7].teams_processed, 1);
+  assert.equal(result.log[7].salary_count, 0);
+  assert.equal(result.log[8].phase, "admin_log");
+  assert.equal(result.log[8].inserted, true);
+  assert.equal(result.log[9].phase, "discord_broadcast");
+  assert.equal(result.log[9].sent, true);
+  assert.equal(result.log[10].phase, "season_started_notifications");
+  assert.equal(result.log[11].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -558,8 +562,9 @@ test("transitionToNextSeason — re-run efter delvis fejl skipper allerede-gjort
   assert.equal(result.ok, true);
   assert.equal(result.log[0].skipped, true);
   assert.match(result.log[0].reason, /already exists/);
-  // Andre faser skal stadig køre
-  assert.equal(result.log[3].inserted, true);
+  // Andre faser skal stadig køre (#2453: +global_rank_decay skubbede insert_next_transfer_window fra 3→4)
+  assert.equal(result.log[4].phase, "insert_next_transfer_window");
+  assert.equal(result.log[4].inserted, true);
 });
 
 test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver alle skipped", async () => {
@@ -616,10 +621,14 @@ test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver a
   assert.equal(result.log[0].skipped, true, "sæson 1 eksisterer → skipped");
   assert.equal(result.log[1].phase, "mark_previous_completed");
   assert.equal(result.log[1].skipped, true, "sæson 0 allerede completed → skipped");
-  assert.equal(result.log[2].phase, "close_prev_transfer_window");
-  assert.equal(result.log[2].skipped, true, "win-0 allerede closed → skipped");
-  assert.equal(result.log[3].phase, "insert_next_transfer_window");
-  assert.equal(result.log[3].skipped, true, "sæson 1's window eksisterer → skipped");
+  // #2453: global_rank_decay-fasen indsat mellem mark_previous_completed og
+  // close_prev_transfer_window — mock-supabase har intet .rpc, så fasen
+  // fejler-og-fanges (additiv, må aldrig vælte transitionen).
+  assert.equal(result.log[2].phase, "global_rank_decay");
+  assert.equal(result.log[3].phase, "close_prev_transfer_window");
+  assert.equal(result.log[3].skipped, true, "win-0 allerede closed → skipped");
+  assert.equal(result.log[4].phase, "insert_next_transfer_window");
+  assert.equal(result.log[4].skipped, true, "sæson 1's window eksisterer → skipped");
   const adminLog = result.log.find((p) => p.phase === "admin_log");
   assert.ok(adminLog, "admin_log-fasen skal logges");
   assert.equal(adminLog.skipped, true, "admin_log-entry eksisterer → skipped");
@@ -673,10 +682,11 @@ test("transitionToNextSeason — resume efter partial failure efter mark_previou
   assert.equal(result.log[0].skipped, true, "sæson 1 var allerede insertet");
   assert.equal(result.log[1].phase, "mark_previous_completed");
   assert.equal(result.log[1].skipped, true, "sæson 0 var allerede completed (resume-scenariet)");
-  assert.equal(result.log[2].phase, "close_prev_transfer_window");
-  assert.equal(result.log[2].updated, true, "win-0 var 'open' → lukkes nu (fase 4 fejlede tidligere)");
-  assert.equal(result.log[3].phase, "insert_next_transfer_window");
-  assert.equal(result.log[3].inserted, true, "sæson 1's window manglede → oprettet nu");
+  assert.equal(result.log[2].phase, "global_rank_decay");
+  assert.equal(result.log[3].phase, "close_prev_transfer_window");
+  assert.equal(result.log[3].updated, true, "win-0 var 'open' → lukkes nu (fase 4 fejlede tidligere)");
+  assert.equal(result.log[4].phase, "insert_next_transfer_window");
+  assert.equal(result.log[4].inserted, true, "sæson 1's window manglede → oprettet nu");
   const adminLogResume = result.log.find((p) => p.phase === "admin_log");
   assert.ok(adminLogResume, "admin_log-fasen skal logges");
   assert.equal(adminLogResume.inserted, true, "admin_log-entry manglede → oprettet nu");

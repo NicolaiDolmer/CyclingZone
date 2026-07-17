@@ -454,22 +454,30 @@
       }
     },
     "globalRank": {
-      "label": "Global rank",
+      "label": "Global Rank",
       "whatIsIt": {
-        "title": "What is Global rank?",
-        "text": "Global rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Season > Global rank."
+        "title": "What is Global Rank?",
+        "text": "Global Rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Season > Global Rank."
       },
       "howScored": {
-        "title": "How is the score calculated?",
-        "text": "Your score is your division-weighted points, averaged over the last 2 seasons you've played (current season counts double the previous one). A Division 1 result is worth more than the same result in Division 4, since it takes more to earn it."
+        "title": "How are points earned?",
+        "text": "You earn points from your race results, weighted by the race's prestige (the same points that already count toward your season standing). Bigger races (Monuments, Grand Tours) are worth more."
+      },
+      "decay": {
+        "title": "Why do my points shrink?",
+        "text": "All of your points are halved at every season change. There's no fixed expiry date and no rolling window, just simple decay: the season you just finished still counts, but at half weight, then a quarter, and so on. This keeps the ranking self-limiting (your total settles around twice a strong season's points) and means recent form always counts most."
       },
       "newManagers": {
         "title": "What about new managers?",
-        "text": "The score is an average per season played, not a total. A new manager with one strong season is compared on that season's average, the same way a veteran's two seasons are averaged, so global rank measures performance, not how long you've been playing."
+        "text": "A new manager's first season counts at full weight from day one, right alongside veterans' halved, older points, so there's no tenure penalty. Rookies (managers in their first season) are also highlighted separately in the \"Best new manager\" panel."
+      },
+      "inactive": {
+        "title": "Why did I disappear from the list?",
+        "text": "Managers with no activity in the last 2 seasons are hidden from Global Rank to keep the list relevant. Your points aren't lost, you'll reappear with the correct rank as soon as you're active again."
       },
       "movement": {
         "title": "The movement arrow",
-        "text": "The up/down arrow next to your rank shows how your position changed since the last refresh (results are recalculated automatically, not live on every page load)."
+        "text": "The up/down arrow next to your rank shows how your position changed since last week's snapshot (not live on every page load). The \"Climbers of the season\" panel instead measures places gained since the season started."
       }
     },
     "riders": {

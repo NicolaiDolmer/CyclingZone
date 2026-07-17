@@ -541,6 +541,30 @@ export async function transitionToNextSeason({
     ...(await markSeasonCompleted(supabase, fromSeasonId, transitionAtIso)),
   });
 
+  // Phase 3b (#2453 Global Rank): halvér alle bankede point + tilføj den netop
+  // afsluttede sæsons point (apply_global_rank_season_rollover-RPC, se
+  // database/2026-07-17-global-rank.sql). Additivt + isoleret: en fejl her må
+  // ALDRIG vælte resten af sæson-transitionen (samme disciplin som de øvrige
+  // additive faser, fx contract_expiring_notifications). RPC'en er IKKE
+  // automatisk retry-sikker ved delvis fejl (en halvering der delvist er kørt og
+  // køres igen ville halvere for meget) — en fejlet fase her kræver manuel
+  // undersøgelse, ikke blind retry af hele transitionToNextSeason.
+  const applyGlobalRankRolloverFn = deps.applyGlobalRankSeasonRollover ?? (async (sid) => {
+    const { error } = await supabase.rpc("apply_global_rank_season_rollover", {
+      p_completed_season_id: sid,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+  try {
+    log.push({
+      phase: "global_rank_decay",
+      ...(await applyGlobalRankRolloverFn(fromSeasonId)),
+    });
+  } catch (err) {
+    log.push({ phase: "global_rank_decay", error: err.message });
+  }
+
   log.push({
     phase: "close_prev_transfer_window",
     ...(await closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso)),

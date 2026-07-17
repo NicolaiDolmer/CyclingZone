@@ -36,10 +36,35 @@ function MovementBadge({ movement, t }) {
   );
 }
 
+function SidePanel({ title, rows, emptyLabel, unitLabel, valueKey, valueSuffix, navigate }) {
+  return (
+    <Card className="p-4">
+      <h2 className="text-cz-1 font-semibold text-sm mb-3">{title}</h2>
+      {rows.length === 0 ? (
+        <p className="text-cz-3 text-xs py-2">{emptyLabel}</p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {rows.map((row, i) => (
+            <div key={row.team_id}
+              onClick={() => navigate(`/teams/${row.team_id}?tab=results`)}
+              className="flex items-center gap-2 py-1.5 border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle rounded px-1 -mx-1 transition-colors">
+              <span className="text-cz-3 font-mono text-xs w-4 flex-shrink-0">{i + 1}</span>
+              <span className="text-cz-1 text-sm truncate flex-1">{row.name}</span>
+              <span className="font-mono text-xs font-bold text-cz-accent-t flex-shrink-0">
+                {valueKey === "places_gained" ? `+${row[valueKey]}` : formatNumber(row[valueKey])} {valueSuffix || unitLabel}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function GlobalRankPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("globalRank");
-  const { teams, loading, error, reload } = useGlobalRank();
+  const { teams, climbers, bestNewManagers, loading, error, reload } = useGlobalRank();
   const [myTeamId, setMyTeamId] = useState(null);
   const [divFilter, setDivFilter] = useState(DIV_ALL);
   const [search, setSearch] = useState("");
@@ -82,7 +107,7 @@ export default function GlobalRankPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
@@ -90,7 +115,7 @@ export default function GlobalRankPage() {
         </div>
       </div>
 
-      {/* Egen placering fremhævet, altid synlig uanset filter/side (#2453 accept). */}
+      {/* Egen placering — fastgjort bånd øverst, altid synlig uanset filter/side (godkendt mockup). */}
       {myRow && (
         <Card className="mb-4 px-4 py-3.5 flex items-center gap-4 flex-wrap"
           style={{ boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" }}>
@@ -99,107 +124,129 @@ export default function GlobalRankPage() {
             {t("youBadge")}
           </span>
           <span className="font-mono font-bold text-lg text-cz-accent-t">#{myRow.global_rank}</span>
+          <MovementBadge movement={myRow.movement} t={t} />
           <span className="font-medium text-cz-1">{myRow.name}</span>
           <span className="text-cz-3 text-xs">{t("division", { n: myRow.division })}</span>
-          <span className="font-mono text-cz-2">{formatNumber(myRow.global_score)} {t("scoreUnit")}</span>
-          <MovementBadge movement={myRow.movement} t={t} />
+          <span className="font-mono text-cz-2">{formatNumber(myRow.global_points)} {t("scoreUnit")}</span>
         </Card>
       )}
 
-      {/* Division-faner */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <button onClick={() => setDivFilter(DIV_ALL)}
-          className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
-            ${divFilter === DIV_ALL ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
-          {t("divisionAll")}
-          <span className="ms-2 text-[10px] opacity-60">({teams.length})</span>
-        </button>
-        {divCounts.map(({ div, count }) => (
-          <button key={div} onClick={() => setDivFilter(div)}
-            className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
-              ${divFilter === div ? "border-opacity-30 text-cz-1" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
-            style={divFilter === div ? { backgroundColor: divColor(div, 0.08), borderColor: divColor(div, 0.25), color: divColor(div) } : {}}>
-            {t("division", { n: div })}
-            <span className="ms-2 text-[10px] opacity-60">({count})</span>
-          </button>
-        ))}
-        <Input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={t("searchPlaceholder")} className="w-44 ms-auto" />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+        <div>
+          {/* Division-faner */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <button onClick={() => setDivFilter(DIV_ALL)}
+              className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
+                ${divFilter === DIV_ALL ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
+              {t("divisionAll")}
+              <span className="ms-2 text-[10px] opacity-60">({teams.length})</span>
+            </button>
+            {divCounts.map(({ div, count }) => (
+              <button key={div} onClick={() => setDivFilter(div)}
+                className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
+                  ${divFilter === div ? "border-opacity-30 text-cz-1" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
+                style={divFilter === div ? { backgroundColor: divColor(div, 0.08), borderColor: divColor(div, 0.25), color: divColor(div) } : {}}>
+                {t("division", { n: div })}
+                <span className="ms-2 text-[10px] opacity-60">({count})</span>
+              </button>
+            ))}
+            <Input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")} className="w-44 ms-auto" />
+          </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
-          title={search ? t("noMatch") : t("noData")}
-        />
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table data-sort-exempt="Global rank, iboende vægtet point-orden" className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-10">#</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thDivision")}</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thSeasons")}</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thScore")}</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thMovement")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map(row => {
-                  const isMe = row.team_id === myTeamId;
-                  return (
-                    <tr key={row.team_id}
-                      onClick={() => navigate(`/teams/${row.team_id}?tab=results`)}
-                      style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : {}}
-                      className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
-                        ${row.global_rank === 1 ? "bg-cz-accent/[0.08]" : ""}`}>
-                      <td className="px-4 py-3.5">
-                        <span className={`font-mono font-bold text-sm ${row.global_rank === 1 ? "text-cz-accent-t" : row.global_rank <= 3 ? "text-cz-2" : "text-cz-3"}`}>
-                          {row.global_rank}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <TeamLink id={row.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{row.name}</TeamLink>
-                          {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
-                          {row.is_ai && <span className="text-[9px] font-medium uppercase text-cz-3 border border-cz-border px-1 py-0.5 rounded">{t("aiBadge")}</span>}
-                          {row.seasons_played <= 1 && <span className="text-[9px] font-medium uppercase text-cz-accent-t border border-cz-accent/30 px-1 py-0.5 rounded">{t("newManagerBadge")}</span>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 hidden sm:table-cell">
-                        <span className="text-xs font-medium" style={{ color: divColor(row.division) }}>{t("division", { n: row.division })}</span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{row.seasons_played}</td>
-                      <td className="px-4 py-3.5 text-right font-mono font-bold text-cz-1">{formatNumber(row.global_score)}</td>
-                      <td className="px-4 py-3.5 text-right"><MovementBadge movement={row.movement} t={t} /></td>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
+              title={search ? t("noMatch") : t("noData")}
+            />
+          ) : (
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table data-sort-exempt="Global Rank, inherent weighted point order" className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-cz-border">
+                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-10">#</th>
+                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thMovement")}</th>
+                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
+                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thDivision")}</th>
+                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thScore")}</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {pageRows.map(row => {
+                      const isMe = row.team_id === myTeamId;
+                      return (
+                        <tr key={row.team_id}
+                          onClick={() => navigate(`/teams/${row.team_id}?tab=results`)}
+                          style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : {}}
+                          className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
+                            ${row.global_rank === 1 ? "bg-cz-accent/[0.08]" : ""}`}>
+                          <td className="px-4 py-3.5">
+                            <span className={`font-mono font-bold text-sm ${row.global_rank === 1 ? "text-cz-accent-t" : row.global_rank <= 3 ? "text-cz-2" : "text-cz-3"}`}>
+                              {row.global_rank}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 hidden sm:table-cell"><MovementBadge movement={row.movement} t={t} /></td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <TeamLink id={row.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{row.name}</TeamLink>
+                              {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
+                              {row.is_ai && <span className="text-[9px] font-medium uppercase text-cz-3 border border-cz-border px-1 py-0.5 rounded">{t("aiBadge")}</span>}
+                              {row.is_rookie && <span className="text-[9px] font-medium uppercase text-cz-accent-t border border-cz-accent/30 px-1 py-0.5 rounded">{t("rookieBadge")}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 hidden sm:table-cell">
+                            <span className="text-xs font-medium" style={{ color: divColor(row.division) }}>{t("division", { n: row.division })}</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-mono font-bold text-cz-1">{formatNumber(row.global_points)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-          {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-cz-border flex items-center justify-between text-xs text-cz-3">
-              <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}
-                className="px-3 py-1.5 rounded-cz border border-cz-border disabled:opacity-40 disabled:cursor-not-allowed hover:text-cz-1">
-                {t("prevPage")}
-              </button>
-              <span>{t("pageOf", { page: page + 1, total: totalPages })}</span>
-              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                className="px-3 py-1.5 rounded-cz border border-cz-border disabled:opacity-40 disabled:cursor-not-allowed hover:text-cz-1">
-                {t("nextPage")}
-              </button>
-            </div>
+              {totalPages > 1 && (
+                <div className="px-4 py-3 border-t border-cz-border flex items-center justify-between text-xs text-cz-3">
+                  <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}
+                    className="px-3 py-1.5 rounded-cz border border-cz-border disabled:opacity-40 disabled:cursor-not-allowed hover:text-cz-1">
+                    {t("prevPage")}
+                  </button>
+                  <span>{t("pageOf", { page: page + 1, total: totalPages })}</span>
+                  <button disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    className="px-3 py-1.5 rounded-cz border border-cz-border disabled:opacity-40 disabled:cursor-not-allowed hover:text-cz-1">
+                    {t("nextPage")}
+                  </button>
+                </div>
+              )}
+
+              <div className="px-4 py-3 border-t border-cz-border text-xs text-cz-3">
+                {t("legendFormula")}
+              </div>
+            </Card>
           )}
+        </div>
 
-          <div className="px-4 py-3 border-t border-cz-border text-xs text-cz-3">
-            {t("legendFormula")}
-          </div>
-        </Card>
-      )}
+        {/* Sidepaneler — godkendt mockup: "Climbers of the season" + "Best new manager". */}
+        <div className="flex flex-col gap-4">
+          <SidePanel
+            title={t("climbersTitle")}
+            rows={climbers}
+            emptyLabel={t("climbersEmpty")}
+            valueKey="places_gained"
+            valueSuffix={t("placesUnit")}
+            navigate={navigate}
+          />
+          <SidePanel
+            title={t("bestNewManagerTitle")}
+            rows={bestNewManagers}
+            emptyLabel={t("bestNewManagerEmpty")}
+            valueKey="global_points"
+            unitLabel={t("scoreUnit")}
+            navigate={navigate}
+          />
+        </div>
+      </div>
     </div>
   );
 }

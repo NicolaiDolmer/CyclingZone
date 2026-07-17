@@ -1,66 +1,87 @@
-// Global rank (#2453): pointformlen bag global_rank_mv (database/2026-07-17-
-// global-rank.sql). Den FAKTISKE beregning kører i Postgres (matview, ikke
-// live) — denne fil er en 1:1 JS-mirror af SQL'ens CASE-udtryk, så
-// vægtningen (division + sæson) og "nye manager"-normaliseringen kan
-// testes med node --test uden en database. Ændrer du en konstant her,
-// SKAL den matchende konstant i .sql-filen ændres i samme PR.
+// Global Rank (#2453): pure JS mirror of the pointmodel behind global_rank_mv
+// (database/2026-07-17-global-rank.sql). The ACTUAL leaderboard is computed in
+// Postgres (matview, freshness-heartbeat pattern) — this file lets the decay
+// arithmetic + hide-inactive/rookie logic be tested with node --test without a
+// database. Change a formula here, change the matching SQL in the same PR.
 //
-// BESLUTNING (ejer godkender/justerer ved merge, se PR-body + issue #2453):
-//   * DIVISION_WEIGHTS: Div 1 tæller mest (4x), Div 4 mindst (1x) — en gammel
-//     Div-4-sejr skal ikke veje som en Div-1-sejr.
-//   * SEASON_WEIGHTS: kun de seneste 2 sæsoner tælles. recency=1 (nuværende)
-//     vejer dobbelt af recency=2 (forrige). Ældre sæsoner falder helt af.
-//   * Nye managere: global_score er et GENNEMSNIT pr. sæson deltaget
-//     (weighted_points_sum / seasons_played), ikke en rå sum — en ny manager
-//     med kun 1 sæson måles på sit per-sæson-snit, ikke straffet for færre
-//     sæsoner, men heller ikke favoriseret ved at "stakke" flere sæsoner.
+// DESIGN LÅST (ejer-godkendt 17/7, issue #2453):
+//   * Points come from race results, weighted by race prestige/tier (already
+//     baked into season_standings.total_points via race_points/race_class —
+//     no new parallel point source).
+//   * Decay: ALL banked points are HALVED at every season rollover
+//     (multiplication, not a rolling date window, not a hard expiry).
+//     Self-limiting: a constant P points/season converges to 2P
+//     (P + P/2 + P/4 + … ), never inflates without bound.
+//   * Managers with no activity in the last 2 seasons are hidden from the
+//     list — their points are preserved, and they rank correctly on comeback.
 
-export const DIVISION_WEIGHTS = { 1: 4, 2: 3, 3: 2, 4: 1 };
-
-// Nøgle = recency_rank (1 = mest aktuelle sæson, 2 = forrige). Kun disse to
-// tælles (matcher SQL'ens `WHERE rs.recency_rank <= 2`).
-export const SEASON_WEIGHTS = { 1: 1.0, 2: 0.5 };
-export const SEASON_WINDOW = 2;
-
-function divisionWeight(division) {
-  return DIVISION_WEIGHTS[division] ?? 1;
+// rollover: old banked balance + the season that just completed's points,
+// then halved. Matches apply_global_rank_season_rollover()'s single UPDATE.
+export function applySeasonRollover(bankedPoints, seasonPoints) {
+  const banked = Number(bankedPoints) || 0;
+  const season = Number(seasonPoints) || 0;
+  return Math.round((banked + season) * 0.5 * 100) / 100;
 }
 
-function seasonWeight(recencyRank) {
-  return SEASON_WEIGHTS[recencyRank] ?? 0;
+// live global points = banked (already-decayed prior seasons) + current
+// season's live points (season_standings.total_points for the active season).
+export function computeGlobalPoints(bankedPoints, currentSeasonPoints) {
+  return (Number(bankedPoints) || 0) + (Number(currentSeasonPoints) || 0);
 }
 
-// rows: [{ division, totalPoints, recencyRank }] — én række pr. (sæson, hold)
-// hvor holdet har en season_standings-række. recencyRank 1 = nuværende sæson.
-// Rækker med recencyRank > SEASON_WINDOW bidrager 0 (matcher SQL CASE ELSE 0),
-// men tælles ikke med i seasons_played heller (matcher `WHERE rs.recency_rank <= 2`
-// i SQL'ens weighted-CTE — kaldere bør allerede have filtreret dem ud).
-export function computeGlobalScore(rows) {
-  const inWindow = (rows || []).filter(r => r.recencyRank <= SEASON_WINDOW);
-  if (inWindow.length === 0) {
-    return { weightedPointsSum: 0, seasonsPlayed: 0, globalScore: 0 };
-  }
-  const weightedPointsSum = inWindow.reduce(
-    (sum, r) => sum + r.totalPoints * divisionWeight(r.division) * seasonWeight(r.recencyRank),
-    0,
-  );
-  const seasonsPlayed = inWindow.length;
-  const globalScore = Math.round((weightedPointsSum / seasonsPlayed) * 100) / 100;
-  return { weightedPointsSum, seasonsPlayed, globalScore };
+// A team is "active" if it has a season_standings row in one of the last 2
+// seasons (current + previous). Inactive teams are hidden from the list, but
+// their points are never touched by this check — only display visibility.
+export function isActiveRecent(seasonIdsPlayed, lastTwoSeasonIds) {
+  const played = new Set(seasonIdsPlayed || []);
+  return (lastTwoSeasonIds || []).some(id => played.has(id));
 }
 
-// Rangerer en liste af { teamId, rows } efter global_score DESC (RANK()-stil:
-// lige score = samme rang, næste rang springer over de lige-placerede — matcher
-// Postgres' RANK() window-funktion, IKKE ROW_NUMBER()).
+// Ranks teams RANK()-style (ties share a rank, next rank skips) — matches
+// Postgres RANK() OVER (PARTITION BY active_recent ORDER BY global_points DESC).
+// Only active teams are ranked; inactive teams get globalRank: null (hidden).
 export function rankTeams(teams) {
-  const scored = (teams || []).map(t => ({ teamId: t.teamId, ...computeGlobalScore(t.rows) }));
-  scored.sort((a, b) => b.globalScore - a.globalScore);
+  const active = (teams || []).filter(t => t.activeRecent);
+  const inactive = (teams || []).filter(t => !t.activeRecent);
+  const sorted = [...active].sort((a, b) => b.globalPoints - a.globalPoints);
   let rank = 0;
   let lastScore = null;
   let seen = 0;
-  return scored.map(s => {
+  const rankedActive = sorted.map(t => {
     seen += 1;
-    if (s.globalScore !== lastScore) { rank = seen; lastScore = s.globalScore; }
-    return { ...s, globalRank: rank };
+    if (t.globalPoints !== lastScore) { rank = seen; lastScore = t.globalPoints; }
+    return { ...t, globalRank: rank };
   });
+  const rankedInactive = inactive.map(t => ({ ...t, globalRank: null }));
+  return [...rankedActive, ...rankedInactive];
+}
+
+// "Climbers of the season": places gained since the season-start snapshot.
+// Positive = climbed (lower rank number now). Inactive/unranked teams (rank
+// null) are excluded — can't measure movement without a current rank.
+export function computeClimbers(rows, seasonStartRankByTeam) {
+  return (rows || [])
+    .filter(r => r.globalRank != null)
+    .map(r => {
+      const startRank = seasonStartRankByTeam.get(r.teamId);
+      const placesGained = startRank == null ? null : startRank - r.globalRank;
+      return { ...r, placesGained };
+    })
+    .filter(r => r.placesGained != null && r.placesGained > 0)
+    .sort((a, b) => b.placesGained - a.placesGained);
+}
+
+// "Best new manager": rookies (first season played) ranked by global points.
+export function computeBestNewManagers(rows) {
+  return (rows || [])
+    .filter(r => r.isRookie && r.globalRank != null)
+    .sort((a, b) => b.globalPoints - a.globalPoints);
+}
+
+// Movement since last weekly snapshot — same shape as the old "since last
+// refresh" idea, but anchored to a real weekly snapshot table now.
+export function computeMovement(currentRank, previousRank) {
+  if (currentRank == null) return null;
+  if (previousRank == null) return null;
+  return previousRank - currentRank;
 }

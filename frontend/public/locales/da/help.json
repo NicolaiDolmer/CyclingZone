@@ -454,22 +454,30 @@
       }
     },
     "globalRank": {
-      "label": "Global rangliste",
+      "label": "Global Rank",
       "whatIsIt": {
-        "title": "Hvad er Global rank?",
-        "text": "Global rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Sæson > Global rangliste."
+        "title": "Hvad er Global Rank?",
+        "text": "Global Rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Sæson > Global Rank."
       },
       "howScored": {
-        "title": "Hvordan beregnes scoren?",
-        "text": "Din score er dine divisions-vægtede point, som gennemsnit over de seneste 2 sæsoner du har spillet (nuværende sæson tæller dobbelt af forrige). Et Division 1-resultat er værd mere end det samme resultat i Division 4, fordi det kræver mere at opnå."
+        "title": "Hvordan optjener jeg point?",
+        "text": "Du optjener point fra dine løbsresultater, vægtet efter løbets prestige (de samme point der allerede tæller til din sæsonplacering). Store løb (Monumenter, Grand Tours) er værd mest."
+      },
+      "decay": {
+        "title": "Hvorfor svinder mine point ind?",
+        "text": "Alle dine point halveres ved hvert sæsonskifte. Der er ingen fast udløbsdato og intet rullende vindue, kun simpel henfald: sæsonen du lige har afsluttet tæller stadig med, men til halv vægt, så en kvart, og så videre. Det holder ranglisten selv-begrænsende (din total lander omkring det dobbelte af én stærk sæsons point), og betyder at nylig form altid tæller mest."
       },
       "newManagers": {
         "title": "Hvad med nye managere?",
-        "text": "Scoren er et gennemsnit pr. sæson deltaget, ikke en samlet sum. En ny manager med én stærk sæson sammenlignes på den sæsons snit, på samme måde som en veterans to sæsoner gennemsnittes — global rank måler dermed præstation, ikke hvor længe du har spillet."
+        "text": "En ny managers første sæson tæller til fuld vægt fra dag ét, side om side med veteraners halverede, ældre point, så der er ingen anciennitets-straf. Rookies (managere i deres første sæson) fremhæves også separat i panelet \"Bedste nye manager\"."
+      },
+      "inactive": {
+        "title": "Hvorfor er jeg forsvundet fra listen?",
+        "text": "Managere uden aktivitet i de seneste 2 sæsoner skjules fra Global Rank for at holde listen relevant. Dine point er ikke tabt, du dukker op igen med den korrekte placering, så snart du er aktiv igen."
       },
       "movement": {
         "title": "Bevægelses-pilen",
-        "text": "Op/ned-pilen ved siden af din placering viser hvordan din position har ændret sig siden sidste opdatering (resultaterne genberegnes automatisk, ikke live ved hvert side-load)."
+        "text": "Op/ned-pilen ved siden af din placering viser hvordan din position har ændret sig siden sidste uges snapshot (ikke live ved hvert side-load). Panelet \"Sæsonens klatrere\" måler i stedet pladser vundet siden sæsonstart."
       }
     },
     "riders": {

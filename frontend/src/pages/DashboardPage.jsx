@@ -27,6 +27,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
+import GlobalRankWidget from "../components/GlobalRankWidget";
 import { Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader } from "../components/ui";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
@@ -805,6 +806,9 @@ export default function DashboardPage() {
           )}
         </Card>
         )}
+
+        {/* Global Rank widget (#2453) — "#N ▲x · point", linker til /global-rank. */}
+        {isVisible("globalRank") && <GlobalRankWidget />}
 
         {/* Pending transfers + offers */}
         {isVisible("transfers") && (

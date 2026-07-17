@@ -1,71 +1,94 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeGlobalScore, rankTeams, DIVISION_WEIGHTS, SEASON_WEIGHTS } from "./globalRankFormula.js";
+import {
+  applySeasonRollover,
+  computeGlobalPoints,
+  isActiveRecent,
+  rankTeams,
+  computeClimbers,
+  computeBestNewManagers,
+  computeMovement,
+} from "./globalRankFormula.js";
 
-test("division weights: Div 1 counts more than Div 4 for identical points", () => {
-  const div1 = computeGlobalScore([{ division: 1, totalPoints: 100, recencyRank: 1 }]);
-  const div4 = computeGlobalScore([{ division: 4, totalPoints: 100, recencyRank: 1 }]);
-  assert.equal(div1.globalScore, 100 * DIVISION_WEIGHTS[1]);
-  assert.equal(div4.globalScore, 100 * DIVISION_WEIGHTS[4]);
-  assert.ok(div1.globalScore > div4.globalScore);
+test("applySeasonRollover: halves banked + season points combined", () => {
+  assert.equal(applySeasonRollover(100, 50), 75); // (100+50)*0.5
+  assert.equal(applySeasonRollover(0, 200), 100);
+  assert.equal(applySeasonRollover(100, 0), 50); // inactive team still decays
 });
 
-test("season weights: current season counts more than previous season", () => {
-  const current = computeGlobalScore([{ division: 2, totalPoints: 100, recencyRank: 1 }]);
-  const previous = computeGlobalScore([{ division: 2, totalPoints: 100, recencyRank: 2 }]);
-  assert.equal(current.globalScore, 100 * DIVISION_WEIGHTS[2] * SEASON_WEIGHTS[1]);
-  assert.equal(previous.globalScore, 100 * DIVISION_WEIGHTS[2] * SEASON_WEIGHTS[2]);
-  assert.ok(current.globalScore > previous.globalScore);
+test("applySeasonRollover: constant per-season points self-limit, never inflate without bound", () => {
+  let banked = 0;
+  const P = 100;
+  for (let i = 0; i < 20; i++) {
+    banked = applySeasonRollover(banked, P);
+  }
+  // Fixed point of banked' = 0.5*(banked+P) is banked = P — the banked balance
+  // converges to one season's worth, it never grows unbounded season over season.
+  assert.ok(banked <= P);
+  assert.ok(banked > 0.99 * P);
+  // The DISPLAYED global total (banked + live current-season points) peaks at
+  // ~2P right before the next rollover absorbs it — matches the design note
+  // "self-limiting (max ~2x one season's points)".
+  const displayedAtSeasonEnd = computeGlobalPoints(banked, P);
+  assert.ok(displayedAtSeasonEnd <= 2 * P);
+  assert.ok(displayedAtSeasonEnd > 1.9 * P);
 });
 
-test("new manager (1 season) is scored on per-season average, not penalized for tenure", () => {
-  // Veteran: two mediocre seasons averaging 50 weighted points/season.
-  const veteran = computeGlobalScore([
-    { division: 3, totalPoints: 25, recencyRank: 1 }, // 25*2*1.0 = 50
-    { division: 3, totalPoints: 50, recencyRank: 2 }, // 50*2*0.5 = 50
-  ]);
-  // Rookie: one strong season, same weighted value as veteran's average.
-  const rookie = computeGlobalScore([
-    { division: 3, totalPoints: 25, recencyRank: 1 }, // 25*2*1.0 = 50
-  ]);
-  assert.equal(veteran.seasonsPlayed, 2);
-  assert.equal(rookie.seasonsPlayed, 1);
-  // Averaging (not summing) means a rookie's single strong season can match a
-  // veteran's two-season average — tenure alone does not inflate the score.
-  assert.equal(veteran.globalScore, rookie.globalScore);
+test("computeGlobalPoints: banked + current season live points", () => {
+  assert.equal(computeGlobalPoints(75, 30), 105);
+  assert.equal(computeGlobalPoints(null, undefined), 0);
 });
 
-test("manager with no results in the window scores 0, not null/NaN", () => {
-  const noResults = computeGlobalScore([]);
-  assert.deepEqual(noResults, { weightedPointsSum: 0, seasonsPlayed: 0, globalScore: 0 });
-
-  const outsideWindow = computeGlobalScore([{ division: 1, totalPoints: 999, recencyRank: 5 }]);
-  assert.deepEqual(outsideWindow, { weightedPointsSum: 0, seasonsPlayed: 0, globalScore: 0 });
+test("isActiveRecent: true if team played in current or previous season", () => {
+  assert.equal(isActiveRecent(["s3"], ["s3", "s2"]), true);
+  assert.equal(isActiveRecent(["s2"], ["s3", "s2"]), true);
+  assert.equal(isActiveRecent(["s1"], ["s3", "s2"]), false); // 2+ seasons inactive
+  assert.equal(isActiveRecent([], ["s3", "s2"]), false);
 });
 
-test("unknown division falls back to weight 1 (defensive, matches SQL CASE ELSE 1)", () => {
-  const unknownDiv = computeGlobalScore([{ division: 99, totalPoints: 100, recencyRank: 1 }]);
-  assert.equal(unknownDiv.globalScore, 100 * 1);
-});
-
-test("rankTeams: RANK()-style — tied scores share a rank, next rank skips", () => {
+test("rankTeams: RANK()-style among active teams only, inactive get null (hidden)", () => {
   const ranked = rankTeams([
-    { teamId: "a", rows: [{ division: 1, totalPoints: 100, recencyRank: 1 }] }, // 400
-    { teamId: "b", rows: [{ division: 1, totalPoints: 100, recencyRank: 1 }] }, // 400 (tie with a)
-    { teamId: "c", rows: [{ division: 4, totalPoints: 100, recencyRank: 1 }] }, // 100
+    { teamId: "a", globalPoints: 400, activeRecent: true },
+    { teamId: "b", globalPoints: 400, activeRecent: true }, // tie with a
+    { teamId: "c", globalPoints: 100, activeRecent: true },
+    { teamId: "ghost", globalPoints: 9999, activeRecent: false }, // inactive, hidden
   ]);
   const byId = Object.fromEntries(ranked.map(r => [r.teamId, r.globalRank]));
   assert.equal(byId.a, 1);
   assert.equal(byId.b, 1);
-  assert.equal(byId.c, 3); // skips rank 2 (RANK, not DENSE_RANK — matches SQL RANK())
+  assert.equal(byId.c, 3); // skips rank 2 (RANK, not DENSE_RANK)
+  assert.equal(byId.ghost, null);
 });
 
-test("rankTeams: team with zero seasons ranks last, not crashes", () => {
-  const ranked = rankTeams([
-    { teamId: "a", rows: [{ division: 1, totalPoints: 100, recencyRank: 1 }] },
-    { teamId: "new", rows: [] },
-  ]);
-  const byId = Object.fromEntries(ranked.map(r => [r.teamId, r.globalRank]));
-  assert.equal(byId.a, 1);
-  assert.equal(byId.new, 2);
+test("computeClimbers: places gained since season-start snapshot, positive only", () => {
+  const rows = [
+    { teamId: "a", globalRank: 5 },
+    { teamId: "b", globalRank: 20 },
+    { teamId: "c", globalRank: 3 },
+  ];
+  const startRanks = new Map([["a", 10], ["b", 15], ["c", 3]]);
+  const climbers = computeClimbers(rows, startRanks);
+  // a: 10-5=+5 climbed. b: 15-20=-5 dropped (excluded). c: 3-3=0 (excluded, not >0).
+  assert.equal(climbers.length, 1);
+  assert.equal(climbers[0].teamId, "a");
+  assert.equal(climbers[0].placesGained, 5);
+});
+
+test("computeBestNewManagers: rookies only, ranked by global points desc", () => {
+  const rows = [
+    { teamId: "vet", isRookie: false, globalPoints: 500, globalRank: 1 },
+    { teamId: "r1", isRookie: true, globalPoints: 200, globalRank: 4 },
+    { teamId: "r2", isRookie: true, globalPoints: 350, globalRank: 2 },
+    { teamId: "hidden-rookie", isRookie: true, globalPoints: 999, globalRank: null },
+  ];
+  const best = computeBestNewManagers(rows);
+  assert.deepEqual(best.map(r => r.teamId), ["r2", "r1"]);
+});
+
+test("computeMovement: null when no current rank or no previous snapshot yet", () => {
+  assert.equal(computeMovement(null, 5), null);
+  assert.equal(computeMovement(5, null), null);
+  assert.equal(computeMovement(5, 10), 5); // moved up 5 places
+  assert.equal(computeMovement(10, 5), -5); // moved down 5 places
+  assert.equal(computeMovement(5, 5), 0);
 });
