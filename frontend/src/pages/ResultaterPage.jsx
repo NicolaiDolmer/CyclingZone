@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { fetchAllRows } from "../lib/supabasePagination";
 import { Link, useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
@@ -46,45 +45,51 @@ export default function ResultaterPage() {
 
     if (!seasonData) { setLoading(false); return; }
 
-    const [standingsRes, racesRes] = await Promise.all([
+    // #2444 · topRiders hentede tidligere ALLE sæsonens races + ALLE deres
+    // race_results (paginated fetchAllRows — kunne være titusindvis af rækker)
+    // og aggregerede point/sejre i JS, bare for at vise top-5. rider_rankings_mv
+    // (samme matview som RiderRankingsPage/#2175 bruger) har allerede disse tal
+    // færdig-aggregeret server-side — én let query mod top-5 + en lille display-
+    // join for de 5 rytter-id'er, ingen paginering nødvendig.
+    const [standingsRes, topRiderStatsRes] = await Promise.all([
       supabase
         .from("season_standings")
         .select("total_points, stage_wins, gc_wins, team:team_id(id, name, is_ai, division)")
         .eq("season_id", seasonData.id)
         .order("total_points", { ascending: false })
         .limit(5),
-      supabase.from("races").select("id").eq("season_id", seasonData.id),
+      supabase
+        .from("rider_rankings_mv")
+        .select("rider_id, points, stage_wins, gc_wins")
+        .eq("season_id", seasonData.id)
+        .order("points", { ascending: false })
+        .limit(5),
     ]);
 
     setTopTeams((standingsRes.data || []).filter(s => !s.team?.is_ai).slice(0, 3));
 
-    if (racesRes.data?.length) {
-      const raceIds = racesRes.data.map(r => r.id);
-      // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
-      // underberegnes resultat-aggregeringen for >1000 resultatrækker.
-      const results = await fetchAllRows(() => supabase
-        .from("race_results")
-        .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(name, is_ai))")
-        .in("race_id", raceIds)
-        .not("rider_id", "is", null)
-        .order("id", { ascending: true }));
-
-      const agg = {};
-      (results || []).forEach(r => {
-        if (!r.rider_id || !r.rider) return;
-        if (!agg[r.rider_id]) {
-          agg[r.rider_id] = { rider: r.rider, points: 0, stage_wins: 0, gc_wins: 0 };
-        }
-        agg[r.rider_id].points += r.points_earned || 0;
-        if (r.rank === 1 && r.result_type === "stage") agg[r.rider_id].stage_wins++;
-        if (r.rank === 1 && r.result_type === "gc")    agg[r.rider_id].gc_wins++;
-      });
+    const topStats = topRiderStatsRes.data || [];
+    if (topStats.length) {
+      const riderIds = topStats.map(s => s.rider_id);
+      const { data: displayData } = await supabase
+        .from("riders")
+        .select("id, firstname, lastname, nationality_code, team:team_id(name, is_ai)")
+        .in("id", riderIds);
+      const displayById = new Map((displayData || []).map(r => [r.id, r]));
 
       setTopRiders(
-        Object.values(agg)
-          .filter(a => a.rider)
-          .sort((a, b) => b.points - a.points)
-          .slice(0, 5)
+        topStats
+          .map(s => {
+            const rider = displayById.get(s.rider_id);
+            if (!rider) return null; // pensioneret/slettet siden matview-refresh
+            return {
+              rider,
+              points: Number(s.points) || 0,
+              stage_wins: Number(s.stage_wins) || 0,
+              gc_wins: Number(s.gc_wins) || 0,
+            };
+          })
+          .filter(Boolean)
       );
     }
 
