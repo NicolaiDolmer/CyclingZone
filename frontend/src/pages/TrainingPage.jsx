@@ -343,8 +343,9 @@ export default function TrainingPage() {
     return (
       <Fragment key={rider.id}>
       <tr className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
-        {/* Multi-select */}
-        <td className="px-4 py-3 w-8">
+        {/* Multi-select — sticky sammen med navnekolonnen (#2446), fast w-10 så
+            offsettet på navnekolonnen (left-10) matcher præcis. */}
+        <td className="px-2 py-3 w-10 sticky-name-cell sticky left-0 z-10">
           <input
             type="checkbox"
             checked={isSelected}
@@ -354,8 +355,10 @@ export default function TrainingPage() {
           />
         </td>
 
-        {/* Navn */}
-        <td className="px-4 py-3">
+        {/* Navn — sticky ved horisontal scroll (#2446), så rytter-identiteten aldrig
+            forsvinder når man scroller ud til fokus/intensitet-kolonnerne. Samme
+            opskrift som RidersPage/TeamPage (.sticky-name-cell). */}
+        <td className="px-4 py-3 sticky-name-cell sticky left-10 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-1.5">
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
@@ -850,7 +853,9 @@ export default function TrainingPage() {
             <table className="w-full text-sm" data-sortable>
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left w-8">
+                  {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
+                      offsettet på navne-kolonnen (left-10) matcher præcis. */}
+                  <th className="px-2 py-3 text-left w-10 sticky left-0 z-30 bg-cz-card">
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -860,7 +865,7 @@ export default function TrainingPage() {
                     />
                   </th>
                   <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                    className="px-4 py-3 text-left font-medium text-xs uppercase">
+                    className="px-4 py-3 text-left font-medium text-xs uppercase sticky left-10 z-30 bg-cz-card border-r border-cz-border">
                     {t("colRider")}
                   </SortTh>
                   <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
