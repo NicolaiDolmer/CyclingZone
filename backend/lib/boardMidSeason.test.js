@@ -28,6 +28,7 @@ import {
   resolveBoardRequest,
 } from "./boardEngine.js";
 import { processMidSeasonReviewCron } from "./boardMidSeason.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 // =====================================================================
 // applyTradeoffTighteningToGoals — pure function (F3)
@@ -671,80 +672,9 @@ function makeMidSeasonState({
   };
 }
 
-// makeFakeSupabase — minimal version til mid-season tests (samme pattern som boardEngine.test.js).
-// Supports eq/in/limit/order/maybeSingle/select/insert/update/delete/upsert.
+// #2598 · makeFakeSupabase — tynd wrapper om den delte, projektion-aware
+// fake (backend/lib/testUtils/fakeSupabase.js). Erstatter den tidligere
+// lokale, ikke-projicerende variant (samme pattern kopieret i boardEngine.test.js m.fl.).
 function makeFakeSupabase(state) {
-  function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function ensureTable(table) {
-    if (!state[table]) state[table] = [];
-    return state[table];
-  }
-
-  function makeQuery(table, action, payload = null) {
-    const filters = [];
-    let order = null;
-    let limit = null;
-
-    function matches(row) {
-      return filters.every((filter) => {
-        if (filter.type === "eq") return row[filter.column] === filter.value;
-        if (filter.type === "in") return filter.values.includes(row[filter.column]);
-        if (filter.type === "gte") return row[filter.column] >= filter.value;
-        return true;
-      });
-    }
-
-    function execute() {
-      const rows = ensureTable(table);
-
-      if (action === "select") {
-        let result = rows.filter(matches);
-        if (order) {
-          result = [...result].sort((a, b) => {
-            const av = a[order.column];
-            const bv = b[order.column];
-            if (av === bv) return 0;
-            const cmp = av < bv ? -1 : 1;
-            return order.ascending ? cmp : -cmp;
-          });
-        }
-        if (limit != null) result = result.slice(0, limit);
-        return Promise.resolve({ data: clone(result), error: null });
-      }
-
-      if (action === "insert") {
-        const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
-          id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`,
-          ...clone(row),
-        }));
-        rows.push(...newRows);
-        return Promise.resolve({ data: clone(newRows), error: null });
-      }
-
-      return Promise.resolve({ data: null, error: null });
-    }
-
-    const query = {
-      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
-      in(column, values) { filters.push({ type: "in", column, values }); return query; },
-      gte(column, value) { filters.push({ type: "gte", column, value }); return query; },
-      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
-      limit(n) { limit = n; return query; },
-      select() { return query; },
-      single() { return execute().then((r) => ({ data: r.data[0] || null, error: r.error })); },
-      maybeSingle() { return execute().then((r) => ({ data: r.data[0] || null, error: r.error })); },
-      then(resolve, reject) { return execute().then(resolve, reject); },
-    };
-    return query;
-  }
-
-  return {
-    from(table) {
-      ensureTable(table);
-      return {
-        select() { return makeQuery(table, "select"); },
-        insert(payload) { return makeQuery(table, "insert", payload); },
-      };
-    },
-  };
+  return createFakeSupabase(state);
 }
