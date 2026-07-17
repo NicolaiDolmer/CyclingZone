@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AlertTriangleIcon, XIcon } from "../../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -63,7 +64,11 @@ export default function BalanceDriftWatchSection({ getAuth }) {
   }, [getAuth]);
 
   if (loading) return <p className="text-cz-3 text-sm">Indlæser...</p>;
-  if (error) return <p className="text-cz-danger text-sm">❌ {error}</p>;
+  if (error) return (
+    <p className="text-cz-danger text-sm inline-flex items-center gap-1.5">
+      <XIcon size={14} aria-hidden="true" />{error}
+    </p>
+  );
   if (!data || data.days.length === 0) {
     return <p className="text-cz-3 text-sm">Ingen målinger endnu — jobbet kører natligt (24h-cron, #2414).</p>;
   }
@@ -74,9 +79,12 @@ export default function BalanceDriftWatchSection({ getAuth }) {
   return (
     <div>
       {data.breaches.length > 0 && (
-        <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
-          ⚠️ {data.breaches.length} bånd har været rødt i 3+ dage i træk:{" "}
-          {data.breaches.map(b => `${METRIC_LABELS[b.metric] || b.metric} (${b.days}d siden ${b.since})`).join(" · ")}
+        <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-cz-danger-bg text-cz-danger border border-cz-danger/30 flex items-start gap-1.5">
+          <AlertTriangleIcon size={14} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+          <span>
+            {data.breaches.length} bånd har været rødt i 3+ dage i træk:{" "}
+            {data.breaches.map(b => `${METRIC_LABELS[b.metric] || b.metric} (${b.days}d siden ${b.since})`).join(" · ")}
+          </span>
         </div>
       )}
       <p className="text-cz-3 text-xs mb-3">
