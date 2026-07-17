@@ -414,3 +414,40 @@ test("resolveDayIntensity: rest vinder på alle lag når sat", () => {
     assert.equal(resolveDayIntensity({ weekday: "sat", ...layer }), "rest");
   }
 });
+
+// #2438 — regressionstest for kontrakten: en individuel rytter-indstilling
+// overtrumfer den ugentlige rutine; rutinen er kun default for ryttere UDEN
+// override. Reproducerer bug-rapporten: manager satte holdrytme=hard, men
+// enkelte ryttere til rest/light via egen plan — de trænede alligevel hard.
+test("resolveDayIntensity: #2438 — rytterens EGEN eksplicitte plan (rest) vinder over holdets rytme (hard)", () => {
+  const result = resolveDayIntensity({
+    weekday: "mon",
+    riderOverrideDays: null,
+    teamWeekDays: { mon: { intensity: "hard" } },
+    planIntensity: "rest",
+    hasExplicitPlan: true,
+  });
+  assert.equal(result, "rest");
+});
+
+test("resolveDayIntensity: #2438 — uden eksplicit plan er holdrytmen stadig DEFAULT for rytteren", () => {
+  const result = resolveDayIntensity({
+    weekday: "mon",
+    riderOverrideDays: null,
+    teamWeekDays: { mon: { intensity: "hard" } },
+    planIntensity: "normal", // DEFAULT_PROGRAM-fallback, ikke en eksplicit rytter-plan
+    hasExplicitPlan: false,
+  });
+  assert.equal(result, "hard");
+});
+
+test("resolveDayIntensity: #2438 — individuel ugeplan-override vinder selv over rytterens EGEN eksplicitte plan", () => {
+  const result = resolveDayIntensity({
+    weekday: "mon",
+    riderOverrideDays: { mon: { intensity: "easy" } },
+    teamWeekDays: { mon: { intensity: "hard" } },
+    planIntensity: "rest",
+    hasExplicitPlan: true,
+  });
+  assert.equal(result, "easy");
+});

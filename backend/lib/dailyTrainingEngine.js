@@ -165,14 +165,19 @@ export async function runTeamTrainingDay({
     const cond = condByRider.get(rider.id) ?? { form: 50, fatigue: 0, injured_until: null, injury_cause: null };
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);
-    // #1895: lagdelt ugerytme-opløsning — rører KUN intensitet, aldrig
-    // program.focus. PR 2: rytterens EGEN pr-dag-override (hvis sat) vinder over
-    // holdets ugerytme, som vinder over sæson-intensiteten (resolveDayIntensity).
+    // #1895/#2438: lagdelt ugerytme-opløsning — rører KUN intensitet, aldrig
+    // program.focus. Prioritet: rytterens EGEN pr-dag-override (individuel
+    // ugeplan) > rytterens EGEN eksplicitte plan (training_plans, hasExplicitPlan)
+    // > holdets ugerytme (kun DEFAULT for ryttere uden egen override) >
+    // sæson-intensiteten (resolveDayIntensity). #2438 — ejerens præcedens: en
+    // individuel rytter-indstilling overtrumfer den ugentlige rutine.
+    const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
     program.intensity = resolveDayIntensity({
       weekday,
       riderOverrideDays: riderOverrideByRider.get(rider.id) ?? null,
       teamWeekDays,
       planIntensity: program.intensity,
+      hasExplicitPlan,
     });
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)

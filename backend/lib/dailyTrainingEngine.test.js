@@ -658,10 +658,11 @@ test("ability-history: en upsert-fejl kaster ikke — træningsdagen committes a
 
 // ── #1895 PR 1: ugentlig træningsrytme på holdniveau ──────────────────────────
 // NOW = 2026-06-12T10:00+02:00 → Copenhagen-dato "2026-06-12" → fredag ("fri").
-test("ugerytme: hold MED rytme styrer dagens intensitet (fredag='rest' overstyrer plan-intensitet 'hard')", async () => {
-  const state = seedState({
-    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
-  });
+// #2438-fix: holdrytmen er kun DEFAULT for ryttere UDEN egen eksplicit plan —
+// se de to tests nedenfor for den opdaterede kontrakt (rider uden plan følger
+// rytmen; rider MED egen plan overtrumfer den).
+test("ugerytme: rytter UDEN egen plan følger holdets rytme (fredag='rest')", async () => {
+  const state = seedState(); // ingen training_plans-row for r1 → intet eksplicit override
   state.training_week_plans = [{
     team_id: TEAM_ID, rider_id: null,
     days: { mon: { intensity: "hard" }, tue: { intensity: "hard" }, wed: { intensity: "hard" },
@@ -675,7 +676,32 @@ test("ugerytme: hold MED rytme styrer dagens intensitet (fredag='rest' overstyre
   });
 
   const rr = result.report.riders[0];
-  assert.equal(rr.intensity, "rest", "fredagens ugerytme (rest) vinder over plan-intensiteten (hard)");
+  assert.equal(rr.intensity, "rest", "uden egen plan er holdrytmen (rest) DEFAULT for rytteren");
+  assert.deepEqual(rr.gains, {}, "rest → ingen ability-gains i dag");
+});
+
+// #2438 — regressionstest for selve bug-rapporten: manager satte holdrytme=hard
+// (alle dage), men en enkelt rytter havde sin EGEN plan sat til "rest". Rytteren
+// trænede alligevel hard, fordi holdrytmen dengang ubetinget slog rytterens egen
+// plan. Kontrakten nu: en individuel rytter-indstilling overtrumfer rutinen.
+test("ugerytme: #2438 — rytter MED egen eksplicit plan ('rest') overtrumfer holdrytmen ('hard')", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "rest" }],
+  });
+  state.training_week_plans = [{
+    team_id: TEAM_ID, rider_id: null,
+    days: { mon: { intensity: "hard" }, tue: { intensity: "hard" }, wed: { intensity: "hard" },
+      thu: { intensity: "hard" }, fri: { intensity: "hard" }, sat: { intensity: "hard" }, sun: { intensity: "hard" } },
+  }];
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.intensity, "rest", "rytterens EGEN plan (rest) vinder over holdrytmen (hard) — #2438");
   assert.equal(rr.focus, "vo2max", "fokus er UÆNDRET af ugerytmen — bor kun i training_plans");
   assert.deepEqual(rr.gains, {}, "rest → ingen ability-gains i dag");
 });
@@ -690,10 +716,10 @@ test("ugerytme: hold UDEN rytme-row → uændret adfærd (regressions-guard, bit
   });
   assert.equal(resultWithoutRhythm.report.riders[0].intensity, "hard", "uden holdrytme følger dagen stadig plan-intensiteten uændret");
 
-  // Samme scenarie med en TOM/flad "normal hver dag"-rytme skal give BIT-IDENTISK resultat.
-  const withFlatRhythm = seedState({
-    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
-  });
+  // Samme scenarie med en flad "normal hver dag"-rytme, men rytteren har nu
+  // INGEN egen plan (falder til DEFAULT_PROGRAM) — så rytmen ER default for
+  // rytteren, og "normal" gælder.
+  const withFlatRhythm = seedState(); // ingen training_plans-row
   withFlatRhythm.training_week_plans = [{
     team_id: TEAM_ID, rider_id: null,
     days: { mon: { intensity: "normal" }, tue: { intensity: "normal" }, wed: { intensity: "normal" },
@@ -703,9 +729,19 @@ test("ugerytme: hold UDEN rytme-row → uændret adfærd (regressions-guard, bit
     supabase: createMockSupabase(withFlatRhythm), teamId: TEAM_ID, seasonId: SEASON_ID,
     seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
   });
-  // "normal" er hverken sat på fredag i den flade rytme forskelligt fra plan-intensiteten "hard" —
-  // KUN rytmens fri-nøgle betyder noget: her er den "normal", plan er "hard". Rytme vinder når sat.
-  assert.equal(resultFlat.report.riders[0].intensity, "normal", "flad rytme (alle 'normal') vinder over plan-intensiteten når rytmen ER sat");
+  assert.equal(resultFlat.report.riders[0].intensity, "normal", "uden egen plan gælder holdrytmen (normal) som default");
+
+  // #2438 — HAR rytteren derimod sin egen eksplicitte plan ('hard'), vinder DEN
+  // over den flade rytme ('normal'), selvom rytmen ER sat for dagen.
+  const withOwnPlanOverFlatRhythm = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  withOwnPlanOverFlatRhythm.training_week_plans = withFlatRhythm.training_week_plans;
+  const resultOwnPlanWins = await runTeamTrainingDay({
+    supabase: createMockSupabase(withOwnPlanOverFlatRhythm), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  assert.equal(resultOwnPlanWins.report.riders[0].intensity, "hard", "#2438 — rytterens egen plan (hard) vinder over holdrytmen (normal)");
 });
 
 test("ugerytme: bonus_applied følger stadig UDELUKKENDE executedBy (rytmen rører den ikke)", async () => {
@@ -731,13 +767,16 @@ test("ugerytme: bonus_applied følger stadig UDELUKKENDE executedBy (rytmen rør
 });
 
 // ── #1895 PR 2: rytter-pr-dag-override (rider_id sat i training_week_plans) ────
+// #2438: r2 har bevidst INGEN egen training_plans-row her — testen viser at
+// holdrytmen kun er default for en rytter der HVERKEN har en individuel
+// ugeplan-override ELLER sin egen eksplicitte plan. Havde r2 en egen plan
+// ("hard"), ville DEN nu vinde over rytmen (se testen umiddelbart derefter).
 test("rytter-override: r1's egen override vinder over holdets ugerytme", async () => {
   const state = seedState({
     riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
     abilities: [makeAbilityRow("r1"), makeAbilityRow("r2")],
     plans: [
       { rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
-      { rider_id: "r2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" },
     ],
   });
   state.training_week_plans = [
@@ -762,7 +801,7 @@ test("rytter-override: r1's egen override vinder over holdets ugerytme", async (
   const r1Row = result.report.riders.find((r) => r.rider_id === "r1");
   const r2Row = result.report.riders.find((r) => r.rider_id === "r2");
   assert.equal(r1Row.intensity, "rest", "r1's egen override (rest) vinder over holdrytmen (normal)");
-  assert.equal(r2Row.intensity, "normal", "r2 uden override falder tilbage til holdets ugerytme");
+  assert.equal(r2Row.intensity, "normal", "r2 uden override OG uden egen plan falder tilbage til holdets ugerytme");
   assert.equal(r1Row.focus, "vo2max", "fokus er UÆNDRET af rytter-override — bor kun i training_plans");
 });
 

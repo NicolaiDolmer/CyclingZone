@@ -51,14 +51,36 @@ export function weekdayKeyForDate(date = new Date()) {
 }
 
 // Samme lagdeling som backend resolveDayIntensity (training.js): rytter-override
-// (#1895 PR 2) > holdrytme > sæson-intensitet > "normal".
-export function resolveDayIntensityDisplay({ weekday, riderOverrideDays, teamWeekDays, planIntensity }) {
+// (individuel ugeplan) > rytterens EGEN eksplicitte plan (hasExplicitPlan) >
+// holdrytme (default for ryttere UDEN egen override) > sæson-intensitet > "normal".
+// #2438 — en individuel rytter-indstilling overtrumfer den ugentlige rutine;
+// rutinen er kun default for ryttere uden override.
+export function resolveDayIntensityDisplay({
+  weekday, riderOverrideDays, teamWeekDays, planIntensity, hasExplicitPlan = false,
+}) {
   const riderOverride = riderOverrideDays?.[weekday]?.intensity;
   if (isValidIntensity(riderOverride)) return riderOverride;
+  if (hasExplicitPlan && isValidIntensity(planIntensity)) return planIntensity;
   const teamDay = teamWeekDays?.[weekday]?.intensity;
   if (isValidIntensity(teamDay)) return teamDay;
   if (isValidIntensity(planIntensity)) return planIntensity;
   return "normal";
+}
+
+// #2438 — hvilket LAG afgør dagens effektive intensitet (til "én sandhed pr.
+// rytter"-visningen i TrainingPage). Samme prioritet som resolveDayIntensityDisplay,
+// men returnerer kilden i stedet for værdien.
+//   "individualPlan" — rytterens egen ugeplan-override for netop i dag
+//   "ownSetting"      — rytterens egen eksplicitte focus+intensity (training_plans)
+//   "teamRhythm"      — holdets ugentlige rutine (default, ingen egen override)
+//   "default"         — hverken override, egen plan eller holdrytme
+export function resolveDayIntensitySource({ weekday, riderOverrideDays, teamWeekDays, hasExplicitPlan = false }) {
+  const riderOverride = riderOverrideDays?.[weekday]?.intensity;
+  if (isValidIntensity(riderOverride)) return "individualPlan";
+  if (hasExplicitPlan) return "ownSetting";
+  const teamDay = teamWeekDays?.[weekday]?.intensity;
+  if (isValidIntensity(teamDay)) return "teamRhythm";
+  return "default";
 }
 
 export function isValidFocus(focus) {
