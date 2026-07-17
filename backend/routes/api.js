@@ -10062,14 +10062,50 @@ router.get("/board/status", requireAuth, async (req, res) => {
       ? (Date.now() - negotiationOpenedAt.getTime()) / (24 * 60 * 60 * 1000)
       : null;
 
+    // #2444 · identityBasis/teamDnaKey/dnaCanRechoose-forudsætningen afhænger kun
+    // af teamRes/isBaselinePhase (begge kendt her) — ikke af plan-loopets output.
+    // Løftet op så activeConsequences + dnaCanRechoose kan køre SAMTIDIG med
+    // plan-loopet nedenfor i stedet for bagefter (var 2 sekventielle round-trips
+    // efter et loop der selv var sekventielt).
+    const identityBasis = teamRes.data?.season_1_identity_basis || null;
+    const teamDnaKey = teamRes.data?.team_dna_key || null;
+    const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
+
+    const activeConsequencesPromise = (async () => {
+      try {
+        return await getActiveConsequencesForTeam(supabase, req.team.id);
+      } catch (e) {
+        console.warn(`[board/status] getActiveConsequencesForTeam failed:`, e?.message);
+        return [];
+      }
+    })();
+
+    // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første
+    // sæson. Kun relevant query når teamDnaKey + identityBasis findes og vi ikke
+    // er i baseline-fasen.
+    const dnaCanRechoosePromise = (teamDnaKey && identityBasis && !isBaselinePhase)
+      ? (async () => {
+        try {
+          return await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
+        } catch (e) {
+          console.warn(`[board/status] isWithinFirstSeasonForTeam failed:`, e?.message);
+          return false;
+        }
+      })()
+      : Promise.resolve(false);
+
     // Build per-plan data — kun for rigtige plan-typer (1yr/3yr/5yr), ikke baseline.
-    const plans = {};
-    for (const planType of PLAN_SEQUENCE) {
+    // #2444 · de op til 3 plan-typer er uafhængige af hinanden (hver bygger sit
+    // eget board-objekt fra allerede-hentede allBoards/allSnapshots/allEvents +
+    // sit eget loadGoalContextForBoard-kald) og kørte tidligere sekventielt i et
+    // for-loop — op til 3× de 3 interne queries efter hinanden. Promise.all
+    // parallelliserer plan-typerne; rækkefølgen i `plans` bevares uændret via
+    // PLAN_SEQUENCE-nøglerne uanset hvilken promise der lander først.
+    const planEntriesPromise = Promise.all(PLAN_SEQUENCE.map(async (planType) => {
       const board = realPlanBoards.find(b => b.plan_type === planType) || null;
 
       if (!board) {
-        plans[planType] = null;
-        continue;
+        return [planType, null];
       }
 
       const planDuration = getPlanDuration(board.plan_type);
@@ -10194,7 +10230,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         })
         : [];
 
-      plans[planType] = {
+      const planEntry = {
         board,
         plan_duration: planDuration,
         seasons_remaining: seasonsRemaining,
@@ -10232,11 +10268,19 @@ router.get("/board/status", requireAuth, async (req, res) => {
         },
         request_options: requestOptions,
       };
-    }
+
+      return [planType, planEntry];
+    }));
+
+    const [planEntries, activeConsequences, dnaCanRechoose] = await Promise.all([
+      planEntriesPromise,
+      activeConsequencesPromise,
+      dnaCanRechoosePromise,
+    ]);
+    const plans = Object.fromEntries(planEntries);
 
     // S-02b · Annotér eksisterende 5yr-mål med identity-feeding-rationale så BoardPage
     // kan rendere "Bygger paa din franske kerne"-badge på allerede signede planer.
-    const identityBasis = teamRes.data?.season_1_identity_basis || null;
     if (identityBasis && plans["5yr"]?.board?.current_goals) {
       const fiveYrGoals = typeof plans["5yr"].board.current_goals === "string"
         ? JSON.parse(plans["5yr"].board.current_goals)
@@ -10252,31 +10296,14 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
     // S-02e · Aktive konsekvenser (lag 2-6) — frontend renderer
     // BoardConsequencesPanel og BonusOfferCard på baggrund af denne liste.
-    let activeConsequences = [];
-    try {
-      activeConsequences = await getActiveConsequencesForTeam(supabase, req.team.id);
-    } catch (e) {
-      console.warn(`[board/status] getActiveConsequencesForTeam failed:`, e?.message);
-    }
+    // (activeConsequences hentet parallelt med plan-loopet ovenfor, #2444.)
     const bonusOffer = activeConsequences.find((c) => c.layer === 6) || null;
 
     // S-02f · Klub-DNA: returnér current valgt DNA + suggestions hvis ikke valgt.
     // Suggestions kun relevante når identity_basis findes (sæson 2+) og DNA endnu
     // ikke valgt. AI/bank/frozen får ikke vist DNA-card (men api.js returnerer
-    // allerede 404 før vi når hertil for non-manager teams).
-    const teamDnaKey = teamRes.data?.team_dna_key || null;
-    const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
-    // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første
-    // sæson. Når valgt-men-om-vælgeligt eksponerer vi stadig forslagene, så
-    // frontend kan tilbyde et skift; can_rechoose styrer "Skift DNA"-affordancen.
-    let dnaCanRechoose = false;
-    if (teamDnaKey && identityBasis && !isBaselinePhase) {
-      try {
-        dnaCanRechoose = await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
-      } catch (e) {
-        console.warn(`[board/status] isWithinFirstSeasonForTeam failed:`, e?.message);
-      }
-    }
+    // allerede 404 før vi når hertil for non-manager teams). (dnaCanRechoose
+    // hentet parallelt med plan-loopet ovenfor, #2444.)
     const dnaSuggestions = ((!teamDnaKey || dnaCanRechoose) && identityBasis && !isBaselinePhase)
       ? computeDnaSuggestions(identityBasis)
       : [];
