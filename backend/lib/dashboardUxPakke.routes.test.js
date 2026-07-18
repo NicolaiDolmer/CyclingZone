@@ -170,4 +170,9 @@ test("POST /dashboard/my-latest-result/seen: idempotent UPDATE persisterer my_re
   assert.match(block, /\.from\("teams"\)/, "skal opdatere teams-tabellen");
   assert.match(block, /my_result_seen_race_id:\s*raceId/, "skal sætte my_result_seen_race_id til det validerede race_id");
   assert.match(block, /error\.code\s*!==\s*"42703"/, "skal tåle en manglende my_result_seen_race_id-kolonne uden 500");
+  assert.match(
+    block,
+    /invalidateNamespace\("dashboard-my-latest-result"\)/,
+    "POST skal invalidere GET-cachen (TTL 60s) — ellers serveres seen:false op til 60s efter markering og badgen genopstår ved reload",
+  );
 });

@@ -8533,6 +8533,12 @@ router.post("/dashboard/my-latest-result/seen", requireAuth, async (req, res) =>
       .eq("id", req.team.id);
     if (error && error.code !== "42703") throw error;
 
+    // GET-endpointet er cached (TTL 60s, per-team-nøgle) — uden invalidering
+    // serveres seen:false op til 60s efter dette POST, og badgen dukker op
+    // igen ved reload. Namespace-invalidering er acceptabel: POST'er sker kun
+    // når en manager ser et NYT resultat (lav frekvens).
+    invalidateNamespace("dashboard-my-latest-result");
+
     res.json({ ok: true });
   } catch (e) {
     captureException(e);
