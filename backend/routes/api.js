@@ -3656,9 +3656,13 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     // kolonne — et select med en ikke-eksisterende kolonne fejler hele queryen og gav
     // tom roster → fladen kortsluttede til empty-state (#1840 hotfix). Surfacér fejl
     // loud i stedet for tavst tom (samme klasse som verify-før-claim).
-    const { data: riders, error: ridersErr } = await supabase
-      .from("riders").select(STRATEGY_ROSTER_COLUMNS)
-      .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (samme som PR #2610's write-/udtagelses-stier) —
+    // udelukker OGSÅ en rytter der er solgt men hvis holdskifte er parkeret
+    // (pending_team_id), så strategi-roster/a_chain/kaptajn-prioriteter er konsistente
+    // med udtagelses-flowet i stedet for at vise en allerede-solgt rytter som valgbar.
+    const { data: riders, error: ridersErr } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select(STRATEGY_ROSTER_COLUMNS).eq("team_id", req.team.id)
+    );
     if (ridersErr) throw new Error(`riders (strategy roster): ${ridersErr.message}`);
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const riderIdList = [...rosterIds];
@@ -3744,8 +3748,11 @@ router.put("/races/strategy", requireAuth, marketWriteLimiter, async (req, res) 
     if (capIn != null && (typeof capIn !== "object" || Array.isArray(capIn))) return res.status(400).json({ error: "strategy_invalid_body" });
     if (rulesIn != null && (typeof rulesIn !== "object" || Array.isArray(rulesIn))) return res.status(400).json({ error: "strategy_invalid_body" });
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET /races/strategy ovenfor + PR #2610) —
+    // en solgt-pending rytter må ikke kunne lægges i a_chain/kaptajn-prioriteter.
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     let raceIds = new Set();
@@ -3814,8 +3821,10 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     }
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET/PUT /races/strategy ovenfor + PR #2610).
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const teamRiderIds = (riders || []).map((r) => r.id);
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }, { data: allEntries }] = await Promise.all([
