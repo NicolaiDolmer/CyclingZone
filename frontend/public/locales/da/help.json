@@ -1071,7 +1071,7 @@
     },
     "academyIntakeExpiryFaq": {
       "q": "Udløber akademi-intake-tilbud?",
-      "a": "Ja. Et åbent intake-tilbud udløber automatisk efter 7 dage, hvis du hverken underskriver eller afviser det. Det forhindrer at et emne bliver ved med at stå skjult på et tilbud, ingen tager stilling til. Udløber dit tilbud, bliver emnet tilgængeligt for andre klubber på ungdomsmarkedet, nøjagtig som hvis du havde afvist ham, så det kan betale sig at beslutte inden fristen."
+      "a": "Ja. Et åbent intake-tilbud udløber automatisk efter 7 dage, hvis du hverken underskriver eller afviser det. Det forhindrer at et emne bliver ved med at stå skjult på et tilbud, ingen tager stilling til. Udløber dit tilbud, sættes emnet til salg for andre klubber på en ungdomsauktion, der løber et helt døgn (normale auktioner er meget kortere), så det kan betale sig at beslutte inden fristen."
     },
     "fatigueInjuryThresholdFaq": {
       "q": "Hvor højt kan jeg presse trætheden, før træning risikerer en skade?",

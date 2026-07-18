@@ -63,7 +63,7 @@ async function findActiveAuctionForRider(supabase, riderId) {
  * @param {object} [opts.auctionConfig]       — injicerbar timing-config (test)
  * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
-export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig } = {}) {
+export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!riderId) throw new Error("listRejectedAsYouthAuction: riderId required");
 
@@ -84,7 +84,13 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const startPrice = Math.max(1, Math.round(value * YOUTH_AUCTION_START_RATE));
 
-  const cfg = await resolveAuctionConfig(supabase, auctionConfig);
+  let cfg = await resolveAuctionConfig(supabase, auctionConfig);
+  // #2627/ejer-ønske 18/7: udløbne intake-ryttere skal ligge LÆNGERE på markedet
+  // end standard-varigheden (1 aktiv time i prod) — de har ingen ejer der venter,
+  // og en længere auktion giver flere hold chancen for at byde. Override rører
+  // kun varigheden; vindues-/extension-mekanikken er uændret (auktioner slutter
+  // stadig aldrig om natten, jf. active-window-modellen).
+  if (durationHours) cfg = { ...cfg, duration_hours: durationHours };
   const calculatedEnd = calculateAuctionEnd(now, cfg);
 
   const { data: auction, error: insErr } = await supabase
