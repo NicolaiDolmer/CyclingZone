@@ -21,6 +21,34 @@ export const PATCHES = [
           "body": "Tre relaterede rettelser. Assistenten auto-udtager ikke længere en skadet rytter til noget løb. En allerede udtaget skadet rytter kan nu altid fjernes fra en trup — også midt i et etapeløb, hvor truppen tidligere var helt låst. Og at vælge en rytter til et etapeløb bliver ikke længere stille blokeret af et auto-udtaget endagsløb et andet sted i vinduet: er det stadig bare assistentens forslag, ryddes det automatisk; er det et manuelt valg, eller er løbet allerede i gang, får du en klar fejl der navngiver rytteren og det konfliktende løb i stedet for en umærket fejl."
         },
         "refs": [2637]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Expired academy intake offers now pay you back if the rider sells",
+          "body": "If your Academy intake offer expires because you never signed or rejected it (see the previous note), you still keep some upside: should the youth auction end in a sale, you receive the full winning bid as compensation. If nobody bids, the rider simply stays in the game as a free agent, same as before."
+        },
+        "da": {
+          "title": "Udløbne akademi-intake-tilbud betaler dig nu tilbage, hvis rytteren sælges",
+          "body": "Udløber dit akademi-intake-tilbud fordi du hverken underskrev eller afviste det (se forrige note), beholder du stadig en fordel: ender ungdomsauktionen med et salg, modtager du hele det vindende bud som kompensation. Byder ingen, forbliver rytteren blot i spillet som fri agent, som i dag."
+        },
+        "refs": [2648]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Fixed a wrong \"Approaching ceiling\" message on young riders far from their potential",
+          "body": "A rider's Development tab could show \"Approaching ceiling\" even when their current level was nowhere near their potential, for example ability 29 against a ceiling of 90+. That happened whenever the 6-season growth forecast didn't resolve in time, regardless of how big the actual gap was. The message now only appears when a rider's level is genuinely close to their ceiling; riders with a long way still to go get an honest \"Long gap to ceiling\" line instead, so age-related and ceiling-related outlooks never contradict each other."
+        },
+        "da": {
+          "title": "Rettede en forkert \"Nærmer sig loftet\"-besked på unge ryttere langt fra deres potentiale",
+          "body": "En rytters Udvikling-fane kunne vise \"Nærmer sig loftet\", selvom niveauet i dag var langt fra potentialet, for eksempel evne 29 mod et loft på 90+. Det skete, når 6-sæsons-vækstprognosen ikke fandt et tidspunkt inden for vinduet, uanset hvor stort det reelle gab var. Beskeden vises nu kun når rytterens niveau reelt er tæt på loftet; ryttere med lang vej endnu tilbage får i stedet en ærlig \"Stort spring til loftet\"-linje, så alders- og loft-udsigterne aldrig modsiger hinanden."
+        },
+        "refs": [2645]
       }
     ]
   },

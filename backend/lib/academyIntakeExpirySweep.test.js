@@ -236,6 +236,47 @@ test("udløber KUN offered ældre end 7 dage; 24h-varighed videregives til aukti
   assert.equal(intakeRows.find((x) => x.id === "i-fresh").status, "offered");
 });
 
+test("#2648: expiredIntakeTeamId videregives = academy_intake-rækkens EGEN team_id (den manager der modtog netop dette tilbud)", async () => {
+  const intakeRows = [
+    { id: "i-a", rider_id: "r-a", team_id: "team-a", status: "offered", created_at: OLD },
+    { id: "i-b", rider_id: "r-b", team_id: "team-b", status: "offered", created_at: OLD },
+  ];
+  const riders = [
+    { id: "r-a", team_id: null, pending_team_id: null },
+    { id: "r-b", team_id: null, pending_team_id: null },
+  ];
+  const capture = {};
+  const auctionCalls = [];
+  await runIntakeOfferExpirySweep({
+    supabase: buildMockSupabase({ intakeRows, riders, capture }),
+    now: NOW,
+    isEnabled: async () => true,
+    listYouthAuctionFn: async (_sb, opts) => { auctionCalls.push(opts); return { id: "a" }; },
+  });
+  const byRider = Object.fromEntries(auctionCalls.map((c) => [c.riderId, c.expiredIntakeTeamId]));
+  assert.equal(byRider["r-a"], "team-a");
+  assert.equal(byRider["r-b"], "team-b", "hver rytter krediterer SIN EGEN tabende manager, ikke en fælles værdi");
+});
+
+test("#2648: forældet 'offered'-række med EJET rytter afstemmes — expiredIntakeTeamId sendes ALDRIG for den (kun team-løse kandidater auktioneres)", async () => {
+  const intakeRows = [
+    { id: "i-owned", rider_id: "r-owned", team_id: "team-x", status: "offered", created_at: OLD },
+  ];
+  const riders = [
+    { id: "r-owned", team_id: "team-x", pending_team_id: null },
+  ];
+  const capture = {};
+  const auctionCalls = [];
+  const r = await runIntakeOfferExpirySweep({
+    supabase: buildMockSupabase({ intakeRows, riders, capture }),
+    now: NOW,
+    isEnabled: async () => true,
+    listYouthAuctionFn: async (_sb, opts) => { auctionCalls.push(opts); return { id: "a" }; },
+  });
+  assert.equal(r.reconciled, 1);
+  assert.equal(auctionCalls.length, 0, "ejet rytter auktioneres aldrig — ingen kreditering at videregive");
+});
+
 test("fejlet auktions-listning aborterer ikke resten — rapporteres i auctionErrors", async () => {
   const intakeRows = [
     { id: "i1", rider_id: "r-fail", team_id: "t", status: "offered", created_at: OLD },

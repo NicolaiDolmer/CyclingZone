@@ -61,9 +61,13 @@ async function findActiveAuctionForRider(supabase, riderId) {
  * @param {string} opts.riderId
  * @param {Date}   [opts.now=new Date()]      — injicerbar til determinisme i test
  * @param {object} [opts.auctionConfig]       — injicerbar timing-config (test)
+ * @param {string} [opts.expiredIntakeTeamId] — #2648: manager hvis intake-tilbud
+ *   udløb (kompensation-mål). Sættes KUN af academyIntakeExpirySweep for
+ *   kandidater der bestod ejerskabs-guarden (#2646) — aldrig af
+ *   rejectAcademyCandidate (manager-initieret afvisning er ikke udløb).
  * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
-export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours } = {}) {
+export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig, durationHours, expiredIntakeTeamId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!riderId) throw new Error("listRejectedAsYouthAuction: riderId required");
 
@@ -116,6 +120,8 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
       min_increment: 1,
       calculated_end: calculatedEnd.toISOString(),
       is_youth: true,
+      // #2648: NULL medmindre kaldt fra academyIntakeExpirySweep — se JSDoc.
+      expired_intake_team_id: expiredIntakeTeamId ?? null,
     })
     .select()
     .single();

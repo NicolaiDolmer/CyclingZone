@@ -211,3 +211,32 @@ test("listRejectedAsYouthAuction: NÆGTER ved parkeret holdskifte (pending_team_
   );
   assert.equal(supabase._auctionInserts.length, 0);
 });
+
+// ─── #2648: expired_intake_team_id (kompensations-target) ────────────────────
+// Stemplet på selve auktionsrækken i det øjeblik den oprettes, så finalisering
+// aldrig behøver at gen-udlede "hvem mistede rytteren" fra et status-felt
+// (den fejlklasse hændelsen 18/7 handlede om — se PR #2646).
+
+test("listRejectedAsYouthAuction: expiredIntakeTeamId stemples på auktionsrækken (#2648, kaldt fra academyIntakeExpirySweep)", async () => {
+  const supabase = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+    durationHours: 24,
+    expiredIntakeTeamId: "losing-team",
+  });
+  const ins = supabase._auctionInserts[0];
+  assert.equal(ins.expired_intake_team_id, "losing-team");
+});
+
+test("listRejectedAsYouthAuction: expired_intake_team_id er NULL uden parameteren (#2648, rejectAcademyCandidate-flowet)", async () => {
+  const supabase = makeYouthMarketSupabase();
+  await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-06-20T12:00:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  const ins = supabase._auctionInserts[0];
+  assert.equal(ins.expired_intake_team_id, null, "manager-initieret afvisning krediterer aldrig");
+});
