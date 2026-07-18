@@ -30,6 +30,38 @@ test("determinisme: samme seed → samme kuld", () => {
   assert.deepEqual(a.map((c) => c.rider.firstname), b.map((c) => c.rider.firstname));
 });
 
+// ─── #2064 S0: count/serious-overrides (søndags-drip) ──────────────────────────
+
+test("countOverride=2 giver præcis 2 kandidater", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(42),
+    referenceYear: REF_YEAR,
+    existingNames: new Set(),
+    countOverride: 2,
+  });
+  assert.equal(out.length, 2);
+});
+
+test("seriousCountOverride=0 giver ingen seriøse", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(42),
+    referenceYear: REF_YEAR,
+    existingNames: new Set(),
+    countOverride: 2,
+    seriousCountOverride: 0,
+  });
+  assert.ok(out.every((c) => !c.is_serious), "ingen kandidat skal være seriøs");
+});
+
+test("uden overrides er adfærden uændret (3-5 kandidater)", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(42),
+    referenceYear: REF_YEAR,
+    existingNames: new Set(),
+  });
+  assert.ok(out.length >= 3 && out.length <= 5, `antal ${out.length}`);
+});
+
 test("nation-bias: identityBasis vægter dominant_nationality højere", () => {
   let dkBiased = 0, dkPlain = 0;
   for (let i = 0; i < 40; i++) {

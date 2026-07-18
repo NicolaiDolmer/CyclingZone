@@ -34,6 +34,8 @@ function pickYouthArchetype(rng) {
  * @param {number}  opts.referenceYear     beregner alder/fødselsdato mod dette år
  * @param {Set<string>} opts.existingNames foldNameNordic-sæt af eksisterende navne (muteres)
  * @param {{ dominant_nationality?: string }} [opts.identityBasis]  nation-bias
+ * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (drip-kuld-størrelse)
+ * @param {number|null} [opts.seriousCountOverride]  #2064 S0: overstyr antal seriøse
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({
@@ -41,13 +43,19 @@ export function generateAcademyCandidates({
   referenceYear,
   existingNames,
   identityBasis = null,
+  countOverride = null,
+  seriousCountOverride = null,
 }) {
   // ── Antal kandidater og seriøse ─────────────────────────────────────────────
-  const count =
-    ACADEMY.INTAKE_MIN + Math.floor(rng() * (ACADEMY.INTAKE_MAX - ACADEMY.INTAKE_MIN + 1));
-  const seriousCount =
-    ACADEMY.SERIOUS_MIN +
-    Math.floor(rng() * (ACADEMY.SERIOUS_MAX - ACADEMY.SERIOUS_MIN + 1));
+  // #2064 S0: `??` sikrer at rng()-trækkene sker i NØJAGTIG samme rækkefølge som
+  // før når overrides er null (determinisme for eksisterende kaldere uændret).
+  const count = countOverride ??
+    (ACADEMY.INTAKE_MIN + Math.floor(rng() * (ACADEMY.INTAKE_MAX - ACADEMY.INTAKE_MIN + 1)));
+  const seriousCount = Math.min(
+    seriousCountOverride ??
+      (ACADEMY.SERIOUS_MIN + Math.floor(rng() * (ACADEMY.SERIOUS_MAX - ACADEMY.SERIOUS_MIN + 1))),
+    count
+  );
 
   // ── Nationalitets-vægte (med evt. bias) ─────────────────────────────────────
   let natWeights = DEFAULT_NATIONALITY_WEIGHTS;
