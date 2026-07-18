@@ -47,7 +47,11 @@ export function makeBoardDmNotifier({ notifyUser, notifyBoardUpdateDM, supabase 
         type: args.type,
         title: args.title,
         description: args.message,
-      }).catch(() => {});
+      // best-effort: DM-spejlet må aldrig vælte selve in-app-notifikationen
+      // (den ER allerede oprettet ovenfor). Fejlen logges så en død webhook/
+      // bot-token stadig er synlig i Railway-logs — tavs sluk var netop
+      // fejlklassen bag CYCLINGZONE-35.
+      }).catch((err) => console.error("[board-dm-mirror] DM failed:", err?.message || err));
     }
 
     return result;
