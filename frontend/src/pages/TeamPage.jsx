@@ -53,8 +53,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // åbnes, så manageren ser tallet før bekræftelse.
   const [releaseQuote, setReleaseQuote] = useState(null);
   const [extendQuote, setExtendQuote] = useState(null);
-  // #1779: hvis quote-kaldet fejler (fx akademirytter → 403 fra extend-quote),
-  // skal feltet vise en forklaring i stedet for evig "indlæser…". { release, extend }.
+  // #1779: hvis quote-kaldet fejler skal feltet vise en forklaring i stedet for
+  // evig "indlæser…". { release, extend }. Fyring/release er stadig akademi-
+  // eksklusiv (egen flow, academyGraduation.js) → akademiryttere kan stadig ramme
+  // dette for "release". Kontraktforlængelse ramte det TIDLIGERE også for
+  // akademiryttere (403 fra extend-quote), men er nu tilladt direkte (#2179).
   const [quoteError, setQuoteError] = useState({ release: null, extend: null });
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).

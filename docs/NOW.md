@@ -24,6 +24,8 @@
 
 > **🐛 #2645 Del A fixed (18/7):** "Approaching ceiling" blev vist for unge ryttere langt fra loftet (evne 29/loft 90+) — fallback-gren tjekkede kun "ingen ETA fundet i 6-sæsons-vindue", ikke det faktiske gab. Nu kun "approaching" ved ≥85% af loft; ellers ny neutral "Long gap to ceiling"/"Stort spring til loftet". PR `fix/2645-ceiling-message-consistency`. Del B (peak-alderskurve-flytning) UBERØRT, afventer stadig ejer-go.
 >
+> **🎓 #2179 PR åben (18/7, worktree):** akademi-ryttere kunne ikke forlænge kontrakt uden op-/nedrykning. Backend-guard splittet (`loadOwnedRiderForExtension` uden akademi-udelukkelse; `release` forbliver akademi-eksklusiv). Frontend spejler forlæng-panelet på akademi-rytterens kort samme sted som senior (profil + holdside). PR `feat/2179-academy-contract-extension`, afventer ejer-review.
+>
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
 >
