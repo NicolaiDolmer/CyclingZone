@@ -70,11 +70,14 @@ function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet 
 // Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
 // replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
 // ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
-export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [] }) {
+export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [], removalOnly = false }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
-  await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection" });
+  // #2637: `removalOnly` (rute-laget har allerede verificeret at riderIds er en ægte
+  // delmængde af den gemte trup — ingen tilføjelser) lader en skadet rytter fjernes
+  // selv midt i et aktivt etapeløb; se assertLineupMutationAllowed.
+  await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection", allowRemovalOnly: removalOnly });
   // #2173: atomisk erstat via RPC. Tidligere var det en delete-then-insert UDEN
   // transaktion ("accepteret degradering") — fejlede insert efter delete, stod
   // løbet med 0 entries (tavst tab). replace_race_selection kører delete+insert i

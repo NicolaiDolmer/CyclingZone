@@ -25,6 +25,31 @@ test("validateSelectionClient: spejl af backend-koderne (#1906 fuld opstilling)"
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
 });
 
+// #2637: requireFull=false — en skadet rytter skal altid kunne fjernes fra en allerede
+// gemt/auto-udtaget trup, selv når det efterlader en delvis trup. Backend tillader en
+// delvis trup for ethvert efterfølgende gem (ejer 28/6, afløser #1906); requireFull=true
+// forbliver default så en FØRSTEGANGS-udtagelse stadig guides mod en fuld trup.
+test("validateSelectionClient: requireFull=false tillader en delvis trup (#2637, fjernelse af skadet rytter)", () => {
+  const partial = validateSelectionClient({
+    riderIds: ["a", "b", "c", "d", "e"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 6, max: 8 }, availableCount: 10, requireFull: false,
+  });
+  assert.ok(!partial.includes("selection_wrong_size"), "delvis trup er OK når requireFull=false");
+  assert.ok(!partial.includes("selection_insufficient_riders"));
+  // Stadig over feltstørrelsen → afvist uanset requireFull.
+  const overMax = validateSelectionClient({
+    riderIds: ["a", "b", "c", "d", "e", "f", "g", "h", "i"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 6, max: 8 }, availableCount: 10, requireFull: false,
+  });
+  assert.ok(overMax.includes("selection_wrong_size"), "over feltstørrelsen afvises stadig");
+  // requireFull udeladt (default true) → uændret #1906-adfærd.
+  const defaultBehavior = validateSelectionClient({
+    riderIds: ["a", "b", "c", "d", "e"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 6, max: 8 }, availableCount: 10,
+  });
+  assert.ok(defaultBehavior.includes("selection_wrong_size"), "default (requireFull=true) kræver stadig fuld trup");
+});
+
 test("pickFallbackCaptain: vælger højest suitability, ekskl. sprint/jæger (#2028)", () => {
   const suit = { a: 40, b: 90, c: 70, d: 95 };
   const suitabilityOf = (id) => suit[id];

@@ -270,6 +270,7 @@
     "boundIn": "Kører {race}",
     "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
+    "raceLiveNote": "Løbet er i gang. Du kan stadig fjerne ryttere (fx ved skade), men der kan ikke tilføjes nye før løbet er slut.",
     "save": "Gem udtagelse",
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",

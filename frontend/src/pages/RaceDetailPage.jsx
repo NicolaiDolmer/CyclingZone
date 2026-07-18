@@ -481,25 +481,23 @@ export default function RaceDetailPage() {
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false).
           S4: per-etape rute-match mod den valgte etape.
-          #2288 F: id'et er scroll-målet for /races/:id#selection-dybt-links. */}
+          #2288 F: id'et er scroll-målet for /races/:id#selection-dybt-links.
+          #2637: panelet vises nu OGSÅ mens løbet er "live" (0 < stages_completed <
+          stages) — status forbliver 'scheduled' hele afviklingen (#1825). Tidligere
+          skjulte vi hele panelet bag en statisk "trup låst"-besked her, så en skadet
+          rytter der blev udtaget FØR skaden ikke kunne fjernes midt i etapeløbet
+          (Discord-bug). Panelet selv forhindrer stadig TILFØJELSER til en frosset
+          trup (frozen-bevidst disabled-logik); kun fjernelse er tilladt, og backend
+          accepterer nu en ren fjernelse selv når stages_completed>0. */}
       {race.status === "scheduled" && (
         <div id="race-selection-anchor">
-        {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live"
-          ? (
-            <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
-              <p className="text-sm font-semibold text-cz-1">{t("racehub.lineupLocked.title")}</p>
-              <p className="text-xs text-cz-3 mt-0.5">{t("racehub.lineupLocked.note")}</p>
-            </div>
-          )
-          : (
-            <RaceSelectionPanel
-              raceId={race.id}
-              selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
-              selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
-              selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
-              selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
-            />
-          )}
+          <RaceSelectionPanel
+            raceId={race.id}
+            selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
+            selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
+            selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
+            selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
+          />
         </div>
       )}
 

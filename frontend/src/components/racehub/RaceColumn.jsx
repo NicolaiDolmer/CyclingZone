@@ -102,12 +102,21 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
             if (!r) return null;
             const role = roleOf(id);
             return (
-              <div key={id} className="w-full flex items-center justify-between px-3 py-1.5">
+              <div key={id} className="w-full flex items-center justify-between gap-2 px-3 py-1.5">
                 <span className="text-xs text-cz-1 truncate">
                   {r.name}
                   {role && <RoleBadge t={t} role={role} />}
                 </span>
-                <FitBar score={r.suitability} />
+                <span className="flex items-center gap-2 flex-shrink-0">
+                  <FitBar score={r.suitability} />
+                  {/* #2637: en igangværende trup er ellers helt read-only, men fjernelse
+                      skal ALTID være muligt (fx en rytter der bliver skadet midt i et
+                      etapeløb) — kun tilføjelse er frosset. Backend accepterer en ren
+                      fjernelse (ingen nye ryttere) selv når stages_completed>0. */}
+                  <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
+                    aria-label={t("racehub.column.remove")}
+                    className="text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
+                </span>
               </div>
             );
           })}

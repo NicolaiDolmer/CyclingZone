@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -365,4 +365,59 @@ test("mapRiderBindingDetails: kun ønskede riderIds medtages", () => {
     otherRaces: [{ raceId: "race-a", window: { start: 5, end: 6 }, riderIds: ["r1", "ghost"] }],
   });
   assert.deepEqual([...details.keys()], ["r1"]);
+});
+
+// #2637: classifyBindingConflicts — omfordeling fra et auto-udtaget endagsløb til et
+// manuelt valgt etapeløb. Auto-genereret + ikke-startet løb → løsbar (frigives
+// automatisk af kalderen); manuel entry ELLER allerede-startet løb → blocking (navngivet
+// fejl til spilleren).
+test("classifyBindingConflicts: auto-genereret + ikke-startet løb → resolvable", () => {
+  const details = new Map([["r1", "race-a"]]);
+  const raceMetaById = new Map([["race-a", { name: "Volta", stages_completed: 0 }]]);
+  const autoFilledKeys = new Set(["race-a|r1"]);
+  const riderNameById = new Map([["r1", "Rider One"]]);
+  const { resolvable, blocking } = classifyBindingConflicts({
+    boundRiderIds: ["r1"], details, raceMetaById, autoFilledKeys, riderNameById,
+  });
+  assert.equal(blocking.length, 0);
+  assert.equal(resolvable.length, 1);
+  assert.deepEqual(resolvable[0], { rider_id: "r1", rider_name: "Rider One", race_id: "race-a", race_name: "Volta" });
+});
+
+test("classifyBindingConflicts: MANUEL entry (ikke auto-genereret) → blocking, navngivet", () => {
+  const details = new Map([["r1", "race-a"]]);
+  const raceMetaById = new Map([["race-a", { name: "Volta", stages_completed: 0 }]]);
+  const autoFilledKeys = new Set(); // ingen auto-filled-markering → manuel entry
+  const riderNameById = new Map([["r1", "Rider One"]]);
+  const { resolvable, blocking } = classifyBindingConflicts({
+    boundRiderIds: ["r1"], details, raceMetaById, autoFilledKeys, riderNameById,
+  });
+  assert.equal(resolvable.length, 0);
+  assert.equal(blocking.length, 1);
+  assert.deepEqual(blocking[0], { rider_id: "r1", rider_name: "Rider One", race_id: "race-a", race_name: "Volta" });
+});
+
+test("classifyBindingConflicts: auto-genereret men løbet ER startet → blocking (frys respekteres)", () => {
+  const details = new Map([["r1", "race-a"]]);
+  const raceMetaById = new Map([["race-a", { name: "Volta", stages_completed: 2 }]]);
+  const autoFilledKeys = new Set(["race-a|r1"]);
+  const { resolvable, blocking } = classifyBindingConflicts({
+    boundRiderIds: ["r1"], details, raceMetaById, autoFilledKeys,
+  });
+  assert.equal(resolvable.length, 0);
+  assert.equal(blocking.length, 1);
+});
+
+test("classifyBindingConflicts: blandet — nogle løsbare, nogle blocking, klassificeres uafhængigt", () => {
+  const details = new Map([["r1", "race-a"], ["r2", "race-b"]]);
+  const raceMetaById = new Map([
+    ["race-a", { name: "Volta", stages_completed: 0 }],
+    ["race-b", { name: "Roubaix", stages_completed: 0 }],
+  ]);
+  const autoFilledKeys = new Set(["race-a|r1"]); // r2 er manuel i race-b
+  const { resolvable, blocking } = classifyBindingConflicts({
+    boundRiderIds: ["r1", "r2"], details, raceMetaById, autoFilledKeys,
+  });
+  assert.deepEqual(resolvable.map((r) => r.rider_id), ["r1"]);
+  assert.deepEqual(blocking.map((r) => r.rider_id), ["r2"]);
 });

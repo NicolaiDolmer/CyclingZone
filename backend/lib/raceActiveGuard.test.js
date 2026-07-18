@@ -66,6 +66,33 @@ test("assertLineupMutationAllowed: fail-open uden supabase og uden race (kalder-
   await assert.doesNotReject(() => assertLineupMutationAllowed({ raceId: "r1" }));
 });
 
+// #2637: en skadet rytter skal altid kunne fjernes — også midt i et aktivt etapeløb.
+// allowRemovalOnly lader kalderen (der har verificeret at mutationen er en ren
+// delmængde/fjernelse) omgå frysningen for netop DEN mutation.
+test("assertLineupMutationAllowed: allowRemovalOnly omgår frysningen for et igangværende (ikke-fuldført) løb", async () => {
+  await assert.doesNotReject(
+    () => assertLineupMutationAllowed({
+      raceId: "r1", race: { status: "scheduled", stages_completed: 3 }, label: "test", allowRemovalOnly: true,
+    })
+  );
+});
+
+test("assertLineupMutationAllowed: allowRemovalOnly redder IKKE et FÆRDIGGJORT løb (status=completed)", async () => {
+  await assert.rejects(
+    () => assertLineupMutationAllowed({
+      raceId: "r1", race: { status: "completed", stages_completed: 8 }, label: "test", allowRemovalOnly: true,
+    }),
+    (err) => err.code === "race_lineup_frozen"
+  );
+});
+
+test("assertLineupMutationAllowed: allowRemovalOnly=false (default) frysning uændret", async () => {
+  await assert.rejects(
+    () => assertLineupMutationAllowed({ raceId: "r1", race: { status: "scheduled", stages_completed: 3 }, label: "test" }),
+    (err) => err.code === "race_lineup_frozen"
+  );
+});
+
 // ── detectInFlightRacesWithoutEntries (detektion/alarm) ────────────────────────
 // Fake-supabase: races-tabellen returnerer canned in-flight-løb; race_entries returnerer
 // et count pr. race_id (head:true → { count }). eqs registreres så vi kan slå op.

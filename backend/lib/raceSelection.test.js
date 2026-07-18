@@ -95,6 +95,34 @@ test("saveSelection: freeRoleIds mappes til race_role='free_role' i replace_race
   assert.deepEqual(rpcArgs.args.p_roles, ["captain", "free_role", "free_role", "helper"]);
 });
 
+// #2637: en skadet rytter skal altid kunne fjernes fra en trup — også midt i et aktivt
+// etapeløb. saveSelection({ removalOnly: true }) skal ikke kaste race_lineup_frozen
+// selv når løbet er i gang (stages_completed>0); uden flaget (default false) kaster den.
+test("saveSelection: removalOnly=true omgår race_lineup_frozen-guarden for et igangværende løb", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  const race = { id: "race1", status: "scheduled", stages_completed: 3 };
+  await saveSelection({
+    supabase, race, teamId: "t1",
+    riderIds: ["r1", "r2"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+    removalOnly: true,
+  });
+  assert.equal(rpcArgs.name, "replace_race_selection");
+  assert.deepEqual(rpcArgs.args.p_rider_ids, ["r1", "r2"]);
+});
+
+test("saveSelection: uden removalOnly (default) afvises et igangværende løb stadig med race_lineup_frozen", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: null }) };
+  const race = { id: "race1", status: "scheduled", stages_completed: 3 };
+  await assert.rejects(
+    () => saveSelection({
+      supabase, race, teamId: "t1",
+      riderIds: ["r1", "r2", "r3"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+    }),
+    (err) => err.code === "race_lineup_frozen"
+  );
+});
+
 // Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.
 // Mock-supabase: thenable builder pr. tabel; eq/in/or/is registreres så riders-queriet
 // kan respektere is_academy-/pending_team_id-filtrene (akademi/under-handel ekskluderes

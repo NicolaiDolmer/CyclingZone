@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.24",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race Hub",
+        "en": {
+          "title": "Injured riders can now be removed from any squad, and reassigning them is easier",
+          "body": "Three related fixes. The assistant no longer auto-selects an injured rider for any race. An already-selected injured rider can now always be removed from a squad, even mid-stage-race, where the lineup used to be fully locked. And selecting a rider for a stage race no longer gets silently blocked by an auto-picked one-day race elsewhere in its window: if that pick is still just the assistant's suggestion, it's cleared automatically; if it's a manual pick or that race has already started, you get a clear error naming the rider and the conflicting race instead of an unlabeled one."
+        },
+        "da": {
+          "title": "Skadede ryttere kan nu altid fjernes fra en trup, og omfordeling er nemmere",
+          "body": "Tre relaterede rettelser. Assistenten auto-udtager ikke længere en skadet rytter til noget løb. En allerede udtaget skadet rytter kan nu altid fjernes fra en trup — også midt i et etapeløb, hvor truppen tidligere var helt låst. Og at vælge en rytter til et etapeløb bliver ikke længere stille blokeret af et auto-udtaget endagsløb et andet sted i vinduet: er det stadig bare assistentens forslag, ryddes det automatisk; er det et manuelt valg, eller er løbet allerede i gang, får du en klar fejl der navngiver rytteren og det konfliktende løb i stedet for en umærket fejl."
+        },
+        "refs": [2637]
+      }
+    ]
+  },
+  {
     "version": "7.23",
     "date": "2026-07-18",
     "label": "Beta",

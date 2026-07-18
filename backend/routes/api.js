@@ -130,7 +130,7 @@ import { computeRiderValueTrend, groupSnapshotsByRider } from "../lib/riderValue
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
@@ -2792,7 +2792,10 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     const raceV3Enabled = await isRaceEngineV3ScoringEnabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, status, season_id, league_division_id")
+      // #2637: stages_completed er nu med — panelet skal kunne se om løbet er "live"
+      // (0 < stages_completed < stages), så det kan forhindre TILFØJELSER til en
+      // frosset trup client-side (fjernelse er stadig altid tilladt, se PUT /selection).
+      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -3338,12 +3341,6 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
-    // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen IKKE
-    // ændres — buildRaceResults re-simulerer fra etape 1 med faste seeds, så et ændret
-    // startfelt gør viste etaperesultater inkonsistente. status forbliver 'scheduled' hele
-    // afviklingen, så vi gater på stages_completed. service_role-autofill (raceRunner,
-    // stageIndex=0) rammer ikke dette endpoint, så systemets felt-udfyldning er upåvirket.
-    if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
 
     // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje. Backend-
     // håndhævelse så hverken UI-fejl (#1801/#1802) eller direkte API-kald kan plante en
@@ -3363,6 +3360,24 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     }
 
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+
+    // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen som
+    // udgangspunkt IKKE ændres — buildRaceResults re-simulerer fra etape 1 med faste
+    // seeds, så et ændret startfelt gør viste etaperesultater inkonsistente. status
+    // forbliver 'scheduled' hele afviklingen, så vi gater på stages_completed.
+    // service_role-autofill (raceRunner, stageIndex=0) rammer ikke dette endpoint.
+    //
+    // #2637: ÉN undtagelse — en ren FJERNELSE (den nye rytter-liste er en ægte delmængde
+    // af den allerede gemte trup, ingen tilføjelser) er altid tilladt, også midt i et
+    // aktivt etapeløb. Root-cause: en skadet rytter blev fastlåst i en auto-udtaget
+    // etapeløbs-trup uden nogen vej ud, fordi denne freeze blokerede ALLE ændringer.
+    // Tilføjelser (og dermed en ny/større trup) er stadig hårdt frosset som før.
+    const currentRiderIds = new Set(ctx.selection?.rider_ids || []);
+    const isRemovalOnly = riderIds.length < currentRiderIds.size && riderIds.every((id) => currentRiderIds.has(id));
+    if ((race.stages_completed ?? 0) > 0 && !isRemovalOnly) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
+
     const result = validateSelection({
       riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
       teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
@@ -3381,10 +3396,58 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
-      return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound });
+      // #2637 (Discord-opfølgning på #2599): en rytter der er auto-udtaget til et
+      // ENDAGSLØB inden for dette (manuelt valgte) etapeløbs vindue blokerede tidligere
+      // ALTID gemningen. En assistent-forslag et andet sted må aldrig vinde over et
+      // manuelt valg her — så er konflikten en auto-genereret entry i et løb der IKKE
+      // er startet endnu, frigiver vi den automatisk (fjerner KUN den ene rytter fra
+      // det konfliktende løb) og fortsætter. Er konflikten derimod en MANUEL entry
+      // eller et løb der allerede er i gang, kan vi ikke gætte spillerens hensigt —
+      // afvis med en NAVNGIVET fejl (rytter + løb), så spilleren selv kan rydde den.
+      // "1 rytter = 1 løb pr. løbsdag" brydes aldrig: enten frigiver vi FØR vi gemmer,
+      // eller vi gemmer slet ikke.
+      const details = mapRiderBindingDetails({ riderIds: bound, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
+      const conflictRaceIds = [...new Set(details.values())];
+      const [{ data: conflictRaces, error: crErr }, { data: conflictEntries, error: ceErr }] = await Promise.all([
+        supabase.from("races").select("id, name, stages_completed").in("id", conflictRaceIds),
+        supabase.from("race_entries").select("race_id, rider_id, is_auto_filled")
+          .eq("team_id", req.team.id).in("race_id", conflictRaceIds).in("rider_id", bound),
+      ]);
+      if (crErr) return res.status(500).json({ error: crErr.message });
+      if (ceErr) return res.status(500).json({ error: ceErr.message });
+      const raceMetaById = new Map((conflictRaces || []).map((r) => [r.id, r]));
+      const autoFilledKeys = new Set(
+        (conflictEntries || []).filter((e) => e.is_auto_filled).map((e) => `${e.race_id}|${e.rider_id}`)
+      );
+      const riderNameById = new Map(ctx.riders.map((r) => [r.id, r.name]));
+      const { resolvable, blocking } = classifyBindingConflicts({
+        boundRiderIds: bound, details, raceMetaById, autoFilledKeys, riderNameById,
+      });
+
+      // #2637 (bug 3): navngiv fejlen (rytter + konkret løb) — spilleren kunne tidligere
+      // ikke se HVEM/HVOR uden at rekonstruere det fra klientens egne kladder.
+      if (blocking.length) {
+        return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: blocking });
+      }
+
+      // Alle konflikter er løsbare (auto-genereret + ikke-startet løb): frigiv dem — kun
+      // DEN pågældende rytter fjernes fra det konfliktende auto-udtaget løb — FØR vi
+      // gemmer denne udtagelse. replace_race_selection-RPC'en gentager binding-tjekket
+      // under advisory-lås (#2256), så en samtidig skrivning kan aldrig bryde invarianten.
+      for (const r of resolvable) {
+        const { error: relErr } = await supabase.from("race_entries").delete()
+          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true);
+        if (relErr) {
+          captureException(new Error(`race_entries auto-release (${r.race_id}/${r.rider_id}): ${relErr.message}`));
+          return res.status(500).json({ error: relErr.message });
+        }
+      }
     }
 
-    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds });
+    await saveSelection({
+      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
+      removalOnly: isRemovalOnly,
+    });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
     // gemningen ovenfor er allerede lykkedes, så en oprydningsfejl her må ALDRIG kunne gøre
@@ -3603,13 +3666,20 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
-      supabase.from("rider_condition").select("rider_id, fatigue").in("rider_id", teamRiderIds),
+      supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    // #2637: skadede ryttere (injured_until >= i dag) må ALDRIG auto-udtages — spejler
+    // raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
+    // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
+    const todayStr = copenhagenDateString();
+    const injuredIds = new Set(
+      (conditions || []).filter((c) => c.injured_until && c.injured_until >= todayStr).map((c) => c.rider_id)
+    );
     const riders = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
-      .filter((r) => r.abilities);
+      .filter((r) => r.abilities && !injuredIds.has(r.rider_id));
 
     const { data: profs } = await supabase.from("race_stage_profiles")
       .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", target.map((r) => r.id));
