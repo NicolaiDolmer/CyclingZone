@@ -24,9 +24,10 @@
 -- bevidst ingen spiller-læse-adgang til egne indsendelser i denne omgang —
 -- kun fremtidigt admin-værktøj (service-role) kan læse tabellen.
 --
--- ⚠️ Migration auto-applies i prod ved merge — EJEREN merger PR'en
---    (database/*.sql). Denne fil COMMITTES kun, den anvendes ALDRIG af
---    implementerings-agenten mod prod.
+-- ⚠️ Denne fil COMMITTES kun — den anvendes ALDRIG af implementerings-
+--    agenten mod prod. EJEREN merger PR'en (database/*.sql) og applier
+--    migrationen som et SEPARAT manuelt post-merge-skridt (apply sker IKKE
+--    automatisk ved merge).
 --
 -- IDEMPOTENT: CREATE TABLE IF NOT EXISTS + DROP POLICY IF EXISTS-mønster
 -- følges ikke (ingen policies) — re-run er et no-op via IF NOT EXISTS.
