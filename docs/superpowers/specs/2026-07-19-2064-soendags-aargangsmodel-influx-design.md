@@ -56,7 +56,7 @@ Ovenpå lægges årgangs-kvalitetsvariationen (±10 % seeded pr. sæson, ens for
 
 - **leverer** transition-day-hooken (Årgangsdags-kuld + generation_tag ved `transitionToNextSeason`),
 - **kræver ikke** gen-armering af auto-transition — men gen-armering med guards (min-sæsonlængde 28 dage, max 1 transition/døgn, søndags-lås) er den naturlige opfølger og behandles som **separat ejer-beslutning** i #2449/#2376-sporet. Indtil da udløser admin/ejer transitionen manuelt på Årgangsdagen.
-- **NB (akut, uden for denne pakke):** per 28-dages-aftalen er S1-finalen NU — S2-kalender (#2449) og transition skal ske snarest for at rytmen kan starte.
+- **NB (uden for denne pakke):** S1's løbskalender slutter **søndag 26/7** (racing-perioden 29/6→26/7 = de aftalte 28 dage; sæson-rækkens start 22/6 var pre-season). S2-kalenderen (#2449) skal være genereret og publiceret FØR da. Sæsonens slutdato aflæses ALTID af race-kalenderen (`max(races.scheduled_for)`), aldrig af konstanter eller sæson-rækkens `start_date`.
 
 ## 5. Økonomi- og invariant-respekt
 
