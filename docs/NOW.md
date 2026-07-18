@@ -29,7 +29,7 @@
 
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
-> **📋 v7.18 (denne PR):** Resultat-fanen viser nu ALLE holdets resultater (points-filteret skjulte 92% af historikken, #2593 del 1); pointgivende raekker fremhaeves fortsat.
+> **📋 v7.19 (denne PR):** Holdsider har nu en read-only "Staff & faciliteter"-fane for ALLE hold (#2601, saniteret: aldrig loen/kontrakt/opgraderings-oekonomi). facilities_enabled er 'on' i prod, saa fanen er live ved merge.
 >
 > **🤖 Working agent:** Claude Code (Fable, main-checkout) — 18/7 formiddagsbølge: #2617 · #2616 · #2592 · #2624-verify · #2603 (subagenter i worktrees). #2461 Discord-svar-udkast venter stadig ejer-review.
 

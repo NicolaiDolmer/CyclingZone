@@ -180,6 +180,7 @@ import {
   getStaffDirectoryHandler,
   getStaffPublicProfileHandler,
 } from "../lib/staffOverviewHandlers.js";
+import { getTeamPublicProfileHandler } from "../lib/teamPublicProfileHandlers.js";
 import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
@@ -8767,6 +8768,22 @@ router.get("/staff/:id/public", requireAuth, async (req, res) => {
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { status, body } = await getStaffPublicProfileHandler(
       { staffId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/teams/:id/public-profile — #2601: saniteret staff + faciliteter for
+// VILKÅRLIGT hold (konkurrence-transparens på holdsiden). Ingen løn/kontrakt/
+// opgraderings-økonomi — se teamPublicProfileHandlers.js for kontrakten.
+router.get("/teams/:id/public-profile", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getTeamPublicProfileHandler(
+      { teamId: req.params.id },
       supabase,
       { flags: { facilitiesEnabled } }
     );

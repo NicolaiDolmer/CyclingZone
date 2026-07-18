@@ -124,6 +124,7 @@
     "tabResults": "Resultater",
     "tabPalmares": "Palmarès",
     "tabTransfers": "Transferhistorik",
+    "tabClub": "Staff og faciliteter",
     "squadTitle": "Trup ({count} ryttere)",
     "viewCurrent": "Nuværende trup ({count})",
     "viewUpcoming": "Næste sæson ({count})",
@@ -191,6 +192,13 @@
       "mountain_day": "Bjergtrøje (dag)",
       "young_day": "Ungdomstrøje (dag)"
     }
+  },
+  "club": {
+    "facilitiesTitle": "Faciliteter",
+    "staffTitle": "Staff",
+    "noStaff": "Ingen staff ansat",
+    "errorTitle": "Kunne ikke indlæses",
+    "errorDescription": "Staff og faciliteter kunne ikke hentes lige nu."
   },
   "manager": {
     "back": "← Tilbage",
