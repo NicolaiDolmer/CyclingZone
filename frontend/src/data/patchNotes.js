@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.24",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Fixed a wrong \"Approaching ceiling\" message on young riders far from their potential",
+          "body": "A rider's Development tab could show \"Approaching ceiling\" even when their current level was nowhere near their potential, for example ability 29 against a ceiling of 90+. That happened whenever the 6-season growth forecast didn't resolve in time, regardless of how big the actual gap was. The message now only appears when a rider's level is genuinely close to their ceiling; riders with a long way still to go get an honest \"Long gap to ceiling\" line instead, so age-related and ceiling-related outlooks never contradict each other."
+        },
+        "da": {
+          "title": "Rettede en forkert \"Nærmer sig loftet\"-besked på unge ryttere langt fra deres potentiale",
+          "body": "En rytters Udvikling-fane kunne vise \"Nærmer sig loftet\", selvom niveauet i dag var langt fra potentialet, for eksempel evne 29 mod et loft på 90+. Det skete, når 6-sæsons-vækstprognosen ikke fandt et tidspunkt inden for vinduet, uanset hvor stort det reelle gab var. Beskeden vises nu kun når rytterens niveau reelt er tæt på loftet; ryttere med lang vej endnu tilbage får i stedet en ærlig \"Stort spring til loftet\"-linje, så alders- og loft-udsigterne aldrig modsiger hinanden."
+        },
+        "refs": [2645]
+      }
+    ]
+  },
+  {
     "version": "7.23",
     "date": "2026-07-18",
     "label": "Beta",

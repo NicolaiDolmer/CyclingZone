@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   dedupeSnapshots, pickChartTypeKeys, typeSeries, seasonSegments,
-  seasonDelta, seasonAbilityGains, dominantPlan, gainDayCount,
+  seasonDelta, seasonAbilityGains, dominantPlan, gainDayCount, ceilingOutlookKey,
 } from "./developmentReport.js";
 import { riderTypeRating } from "./riderRating.js";
 
@@ -151,4 +151,37 @@ test("gainDayCount: tæller kun dage med mindst én evne-gevinst", () => {
   ];
   assert.equal(gainDayCount(entries), 2);
   assert.equal(gainDayCount(null), 0);
+});
+
+// #2645 Del A — spillerrapport 18/7: rytter med evne 29 og loft 90+ fik teksten
+// "Approaching ceiling" (frontend/public/locales/en/rider.json
+// profile.development.projection.approaching). Root cause: backendens
+// ceilingTiming() returnerer null når det viste 6-sæsons-vindue ikke rummer et
+// ETA-punkt — UANSET om gabet er 2 point eller 60 point. Frontend brugte det
+// null-resultat alene som betingelse for "approaching" (RiderDevelopmentTab.jsx
+// ceilingRows()). Låser klassen: en loft-besked ("approaching") må ALDRIG vises
+// når evnen er langt under loftet, og alders-familien ("pastPeak") må aldrig
+// bruge loft-familiens ord eller omvendt.
+test("ceilingOutlookKey: evne 29 mod loft 90+ (uden ETA i vinduet) er IKKE 'approaching' — #2645", () => {
+  // Reproducerer den ægte projektion for en 20-årig med now=29, ceilLo=90 (se
+  // backend/lib/developmentProjection.js ceilingTiming — reachLo=-1 i dette tilfælde).
+  const projection = { now: 29, ceil: { lo: 90, hi: 95 }, timing: null, pastPeak: false };
+  const key = ceilingOutlookKey(projection);
+  assert.notEqual(key, "approaching", "evne 29 er IKKE 'approaching' et loft på 90+ — stort gab, lang horisont");
+  assert.equal(key, "gapToCeiling");
+});
+
+test("ceilingOutlookKey: reelt tæt på loftet (≥85%) uden ETA giver 'approaching'", () => {
+  const projection = { now: 87, ceil: { lo: 90, hi: 93 }, timing: null, pastPeak: false };
+  assert.equal(ceilingOutlookKey(projection), "approaching");
+});
+
+test("ceilingOutlookKey: lige under 85%-tærsklen giver 'gapToCeiling', ikke 'approaching'", () => {
+  const projection = { now: 75, ceil: { lo: 90, hi: 93 }, timing: null, pastPeak: false }; // 75/90 = 0.833
+  assert.equal(ceilingOutlookKey(projection), "gapToCeiling");
+});
+
+test("ceilingOutlookKey: pastPeak vinder altid (alders-familien), uanset evne/loft-gab", () => {
+  assert.equal(ceilingOutlookKey({ now: 29, ceil: { lo: 90, hi: 95 }, timing: null, pastPeak: true }), "pastPeak");
+  assert.equal(ceilingOutlookKey({ now: 88, ceil: { lo: 90, hi: 93 }, timing: null, pastPeak: true }), "pastPeak");
 });

@@ -23,7 +23,7 @@
 import { useTranslation } from "react-i18next";
 import {
   dedupeSnapshots, pickChartTypeKeys, typeSeries, seasonSegments,
-  seasonDelta, seasonAbilityGains, dominantPlan, gainDayCount,
+  seasonDelta, seasonAbilityGains, dominantPlan, gainDayCount, ceilingOutlookKey,
 } from "../../../lib/developmentReport.js";
 import { riderHistoryFromRuns } from "../../../lib/trainingReport.js";
 import { HISTORY_DAYS } from "../../../lib/useTrainingHistory.js";
@@ -207,11 +207,12 @@ function rangeText(lo, hi, t, keys) {
 function ceilingRows(projection, t) {
   if (!projectionActive(projection)) return [];
   if (!projection.timing) {
-    // Ingen ren "til loft"-ETA: enten efter peak (i tilbagegang) eller en rytter hvis
-    // vækst flader ud lige under loftet (plateauer). Vis en ærlig kvalitativ udsigt.
-    const value = projection.pastPeak
-      ? t("profile.development.projection.pastPeak")
-      : t("profile.development.projection.approaching");
+    // Ingen ren "til loft"-ETA inden for display-vinduet: enten efter peak (i
+    // tilbagegang), reelt tæt på loftet men plateauende, ELLER bare en lang
+    // udviklingshorisont (stort gab, uden for de 6 viste sæsoner). Disse tre må
+    // ikke få samme tekst — "approaching ceiling" er kun sand i det midterste
+    // tilfælde (#2645 Del A: 29-evne/90+-loft blev fejlagtigt vist som "approaching").
+    const value = t(`profile.development.projection.${ceilingOutlookKey(projection)}`);
     return [{ label: t("profile.development.projection.outlook"), value, cls: "text-cz-2" }];
   }
   const { seasons, ageAt } = projection.timing;
