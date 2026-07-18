@@ -25,6 +25,27 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.18",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Team results tab now shows your full race history",
+          "body": "The results tab on your team page only showed point-scoring results, which hid 92% of your team's race history — including, sometimes, the exact race the dashboard's \"How your team did\" card had just linked you to. It now shows every result, with point-scoring rows still highlighted."
+        },
+        "da": {
+          "title": "Holdets resultat-fane viser nu hele løbshistorikken",
+          "body": "Resultat-fanen på din holdside viste kun pointgivende resultater, hvilket skjulte 92% af holdets løbshistorik — herunder til tider netop det løb som dashboardets \"Sådan gik det for dit hold\"-kort lige havde linket til. Den viser nu alle resultater, med de pointgivende rækker stadig fremhævet."
+        },
+        "refs": [2593]
+      }
+    ]
+  },
+  {
     "version": "7.17",
     "date": "2026-07-18",
     "label": "Beta",
