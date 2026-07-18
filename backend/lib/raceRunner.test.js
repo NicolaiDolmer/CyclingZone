@@ -287,6 +287,7 @@ function makeSupabase(canned = {}) {
       eq() { return b; },
       in() { return b; },
       or() { return b; },
+      is() { return b; },
       order() { return b; },
       gte() { return b; },
       maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },

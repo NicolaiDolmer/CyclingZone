@@ -28,6 +28,7 @@ function makeSupabase(canned = {}) {
       eq() { return b; },
       in() { return b; },
       or() { return b; },
+      is() { return b; },
       order() { return b; },
       gte() { return b; },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
