@@ -283,7 +283,10 @@ export function apiResponse(pathname) {
       (r) => r.race_id === "race-done-2" && r.stage_number === 2
     );
     return {
-      race: { id: "race-done-2", name: "Giro di Preview", race_type: "stage_race", stages: 2, last_import: "2026-06-30T15:00:00.000Z" },
+      // seen:false — #2593 (del 2): matcher det ægte endpoints kontrakt (server-side
+      // seen-flag i samme payload). false lader preview'ens "Nyt"-badge vises som
+      // forventet ved gennemklik; POST /seen rammer den generiske "ok:true"-mock.
+      race: { id: "race-done-2", name: "Giro di Preview", race_type: "stage_race", stages: 2, last_import: "2026-06-30T15:00:00.000Z", seen: false },
       placements: [
         { rider_id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", rider_name: "Ada Pedersen", nationality_code: "dk", rank: 2, finish_time: "+0:22", points_earned: 40 },
       ],

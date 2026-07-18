@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Card } from "./ui";
@@ -6,6 +6,7 @@ import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
 import { buildRaceRecap } from "../lib/raceRecap.js";
+import { supabase } from "../lib/supabase";
 
 // #2466 — "How your team did": resultat-push for holdets seneste finaliserede
 // løb. Modsat "Seneste resultater"-kortet (løbets VINDER) viser dette kort DINE
@@ -16,9 +17,9 @@ import { buildRaceRecap } from "../lib/raceRecap.js";
 // data-kontrakt (GET /api/dashboard/my-latest-result):
 //   null      → fetch ikke landet (eller fejlet) → render intet (ingen død boks)
 //   race:null → holdet har ingen finaliserede løb endnu → empty state m. kalender-CTA
-//   ellers    → { race, placements, stage_wins, totals, recap }
+//   ellers    → { race: { ..., seen }, placements, stage_wins, totals, recap }
 
-const SEEN_KEY = "cz-dashboard-my-result-seen";
+const API = import.meta.env.VITE_API_URL;
 const MAX_SECONDARY_ROWS = 4;
 
 function placementName(p) {
@@ -26,28 +27,48 @@ function placementName(p) {
   return p.rider_name || "—";
 }
 
-// "Nyt"-markering indtil set (#2466): localStorage husker det senest sete løb;
-// et nyere løb i payloaden viser badgen i DENNE session og markeres set med det
-// samme, så den er væk ved næste besøg.
-function useSeenBadge(raceId) {
+// "Nyt"-markering indtil set (#2593 del 2): SERVER-flaget (race.seen) er nu
+// sandheden, ikke det device-scopede localStorage-flag fra #2466 — det
+// nulstillede sig ved enhedsskifte (54,9% af besøg er mobil), så badgen
+// dukkede falsk op igen på en anden enhed for et løb manageren allerede havde
+// set. Ingen localStorage-fallback: featuren er en "nyt siden sidst"-badge,
+// ikke en kritisk sti, så en ekstra offline-cache ville kun tilføje endnu en
+// sandhedskilde at holde synkron for lidt gevinst. race.seen mangler kolonnen
+// endnu (før ejer anvender migrationen) → undefined → behandles som usét
+// (samme adfærd som badgen altid havde ved allerførste besøg).
+function useSeenBadge(race) {
   const [isNew, setIsNew] = useState(false);
+  const markedRef = useRef(null);
   useEffect(() => {
-    if (!raceId || typeof window === "undefined") return;
-    try {
-      if (window.localStorage.getItem(SEEN_KEY) !== raceId) {
-        setIsNew(true);
-        window.localStorage.setItem(SEEN_KEY, raceId);
+    const raceId = race?.id;
+    if (!raceId) return;
+    setIsNew(!race.seen);
+    if (race.seen || markedRef.current === raceId) return;
+    markedRef.current = raceId;
+    // Fire-and-forget, samme mønster som DashboardPage.dismissOnboarding: lokal
+    // badge-visning venter ikke på roundtrippen, og fejl er stille (badgen
+    // dukker blot op igen næste besøg — ingen død funktionalitet).
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
+        await fetch(`${API}/api/dashboard/my-latest-result/seen`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ race_id: raceId }),
+        });
+      } catch {
+        // best-effort — badgen markeres blot set igen ved næste visning
       }
-    } catch {
-      // localStorage kan være disabled (privacy mode) — badge er nice-to-have
-    }
-  }, [raceId]);
+    })();
+  }, [race?.id, race?.seen]);
   return isNew;
 }
 
 export default function MyLatestResultCard({ data }) {
   const { t } = useTranslation(["dashboard", "races"]);
-  const isNew = useSeenBadge(data?.race?.id);
+  const isNew = useSeenBadge(data?.race);
 
   // Recap-momentet genbruger den eksisterende fortælle-logik + races-namespacets
   // oversættelser 1:1 (ingen dublerede strenge). Backend har trimmet rækkerne
