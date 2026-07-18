@@ -9,26 +9,14 @@ import assert from "node:assert/strict";
 
 import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { CLASSIC_RACE_CLASSES } from "./boardConstants.js";
+import { createRecorderSupabase } from "./testUtils/fakeSupabase.js";
 
-// Minimal chainable Supabase-mock. Registrerer filtre pr. tabel og returnerer
-// canned data. Builder er thenable (cumulative-queries awaiter direkte) OG har
-// .order() der returnerer et Promise (snapshot-query slutter med .order()).
+// #2598 · Tynd wrapper om den delte, projektion-aware recorder-fake
+// (backend/lib/testUtils/fakeSupabase.js) — "canned" data pr. tabel (ingen
+// reel server-side filtrering), men registrerer filter-kald til assertions
+// OG projicerer output ned til de kolonner koden rent faktisk select()'ede.
 function makeSupabase(tableData, recorder) {
-  return {
-    from(table) {
-      const result = { data: tableData[table] ?? [], error: null };
-      const builder = {
-        select() { return builder; },
-        eq(col, val) { recorder.push(["eq", table, col, val]); return builder; },
-        gte(col, val) { recorder.push(["gte", table, col, val]); return builder; },
-        lte(col, val) { recorder.push(["lte", table, col, val]); return builder; },
-        in(col, val) { recorder.push(["in", table, col, val]); return builder; },
-        order() { return Promise.resolve(result); },
-        then(resolve, reject) { return Promise.resolve(result).then(resolve, reject); },
-      };
-      return builder;
-    },
-  };
+  return createRecorderSupabase(tableData, recorder);
 }
 
 test("#54 · snapshot-query afgrænses til aktuel plan-cyklus + u25-baseline derfra", async () => {

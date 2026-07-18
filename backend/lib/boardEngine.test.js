@@ -20,6 +20,7 @@ import {
   startSequentialNegotiation,
 } from "./boardEngine.js";
 import { processBoardAutoAcceptCron } from "./boardAutoAccept.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-facing labels", () => {
   const riders = Array.from({ length: 8 }, (_, index) => ({
@@ -1982,138 +1983,14 @@ test("chooseDnaForTeam refuses with the season-agnostic code when identity basis
   assert.equal(state.teams[0].team_dna_key, null);
 });
 
+// #2598 · Tynd wrapper om den delte, projektion-aware fake (backend/lib/
+// testUtils/fakeSupabase.js). `options.failInsertOn` (tabel-navn → alle
+// inserts på den tabel fejler) er oversat til den delte helpers
+// `errors`-option.
 function makeFakeSupabase(state, options = {}) {
-  const { failInsertOn = null } = options;
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
+  const errors = {};
+  if (options.failInsertOn) {
+    errors[options.failInsertOn] = { insert: "insert blew up" };
   }
-
-  function ensureTable(table) {
-    if (!state[table]) state[table] = [];
-    return state[table];
-  }
-
-  function makeQuery(table, action, payload = null) {
-    const filters = [];
-    let order = null;
-    let limit = null;
-
-    function matches(row) {
-      return filters.every((filter) => {
-        if (filter.type === "eq") return row[filter.column] === filter.value;
-        if (filter.type === "in") return filter.values.includes(row[filter.column]);
-        if (filter.type === "gte") return row[filter.column] >= filter.value;
-        if (filter.type === "is") return row[filter.column] === filter.value;
-        return true;
-      });
-    }
-
-    function execute() {
-      const rows = ensureTable(table);
-
-      if (action === "select") {
-        let result = rows.filter(matches);
-        if (order) {
-          result = [...result].sort((a, b) => {
-            const av = a[order.column];
-            const bv = b[order.column];
-            if (av === bv) return 0;
-            const cmp = av < bv ? -1 : 1;
-            return order.ascending ? cmp : -cmp;
-          });
-        }
-        if (limit != null) result = result.slice(0, limit);
-        return Promise.resolve({ data: clone(result), error: null });
-      }
-
-      if (action === "delete") {
-        const deleted = rows.filter(matches);
-        state[table] = rows.filter((row) => !matches(row));
-        return Promise.resolve({ data: clone(deleted), error: null });
-      }
-
-      if (action === "update") {
-        const updated = [];
-        for (const row of rows) {
-          if (matches(row)) {
-            Object.assign(row, clone(payload));
-            updated.push(row);
-          }
-        }
-        return Promise.resolve({ data: clone(updated), error: null });
-      }
-
-      if (action === "insert") {
-        if (failInsertOn && table === failInsertOn) {
-          return Promise.resolve({ data: null, error: { message: "insert blew up" } });
-        }
-        const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
-          id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`,
-          ...clone(row),
-        }));
-        rows.push(...newRows);
-        return Promise.resolve({ data: clone(newRows), error: null });
-      }
-
-      if (action === "upsert") {
-        const conflictKeys = (payload?._onConflict || "id").split(",").map((k) => k.trim());
-        const data = payload?._payload ?? payload;
-        const incoming = Array.isArray(data) ? data : [data];
-        const result = [];
-
-        for (const row of incoming) {
-          const existing = rows.find((existingRow) =>
-            conflictKeys.every((key) => existingRow[key] === row[key])
-          );
-          if (existing) {
-            Object.assign(existing, clone(row));
-            result.push(existing);
-          } else {
-            const inserted = { id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`, ...clone(row) };
-            rows.push(inserted);
-            result.push(inserted);
-          }
-        }
-        return Promise.resolve({ data: clone(result), error: null });
-      }
-
-      return Promise.resolve({ data: null, error: null });
-    }
-
-    const query = {
-      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
-      in(column, values) { filters.push({ type: "in", column, values }); return query; },
-      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
-      limit(n) { limit = n; return query; },
-      select() { return query; },
-      single() {
-        return execute().then((result) => ({ data: result.data[0] || null, error: result.error }));
-      },
-      maybeSingle() {
-        return execute().then((result) => ({ data: result.data[0] || null, error: result.error }));
-      },
-      gte(column, value) { filters.push({ type: "gte", column, value }); return query; },
-      is(column, value) { filters.push({ type: "is", column, value }); return query; },
-      then(resolve, reject) {
-        return execute().then(resolve, reject);
-      },
-    };
-
-    return query;
-  }
-
-  return {
-    from(table) {
-      ensureTable(table);
-      return {
-        select() { return makeQuery(table, "select"); },
-        delete() { return makeQuery(table, "delete"); },
-        update(payload) { return makeQuery(table, "update", payload); },
-        insert(payload) { return makeQuery(table, "insert", payload); },
-        upsert(payload, opts = {}) {
-          return makeQuery(table, "upsert", { _payload: payload, _onConflict: opts.onConflict });
-        },
-      };
-    },
-  };
+  return createFakeSupabase(state, { errors });
 }

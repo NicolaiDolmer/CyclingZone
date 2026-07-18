@@ -4,62 +4,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { isBoardTestModeActive, setLatestWindowTestMode } from "./boardTestMode.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
-// Minimal fake supabase: én tabel (transfer_windows) med order/limit/maybeSingle + update.
+// #2598 · Delt, projektion-aware fake (backend/lib/testUtils/fakeSupabase.js)
+// erstatter den tidligere lokale, ikke-projicerende variant.
 function makeFakeSupabase(windows = []) {
-  const state = { transfer_windows: windows.map((w) => ({ ...w })) };
-
-  function makeQuery(table) {
-    let descByCreated = false;
-    let limitN = Infinity;
-    const filters = [];
-    let updatePayload = null;
-    let isUpdate = false;
-
-    function rows() {
-      let r = state[table].filter((row) =>
-        filters.every((f) => row[f.column] === f.value)
-      );
-      if (descByCreated) {
-        r = [...r].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-      }
-      if (limitN !== Infinity) r = r.slice(0, limitN);
-      return r;
-    }
-
-    const query = {
-      select() { return query; },
-      eq(column, value) { filters.push({ column, value }); return query; },
-      order(column, opts) { if (column === "created_at") descByCreated = !opts?.ascending; return query; },
-      limit(n) { limitN = n; return query; },
-      update(payload) { isUpdate = true; updatePayload = payload; return query; },
-      maybeSingle() {
-        const r = rows();
-        return Promise.resolve({ data: r[0] || null, error: null });
-      },
-      then(resolve, reject) {
-        if (isUpdate) {
-          for (const row of state[table]) {
-            if (filters.every((f) => row[f.column] === f.value)) Object.assign(row, updatePayload);
-          }
-          return Promise.resolve({ data: null, error: null }).then(resolve, reject);
-        }
-        return Promise.resolve({ data: rows(), error: null }).then(resolve, reject);
-      },
-    };
-    return query;
-  }
-
-  return {
-    state,
-    from(table) {
-      if (!state[table]) state[table] = [];
-      return {
-        select() { return makeQuery(table).select(); },
-        update(payload) { return makeQuery(table).update(payload); },
-      };
-    },
-  };
+  return createFakeSupabase({ transfer_windows: windows.map((w) => ({ ...w })) });
 }
 
 test("isBoardTestModeActive returns false when no windows exist", async () => {

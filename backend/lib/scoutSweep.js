@@ -21,22 +21,46 @@ export function shouldSweepNow(now = new Date()) {
 
 // Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
 // kendt potentiale, mappet til scoutMission's forventede rider-form.
-async function defaultLoadCandidates(supabase) {
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, potentiale, birthdate, nationality_code, is_retired, team:team_id(league_division_id)")
-    .eq("is_retired", false)
-    .not("potentiale", "is", null);
+//
+// #2581: to hold på Discord samme morgen rapporterede rytternavne fra en
+// mission-shortlist de ikke kunne søge frem noget sted. Read-only prod-audit
+// (17/7) viste rytterne FAKTISK findes (0 rigtige orphans blandt 46 nogensinde
+// shortlistede) — men 17/46 (37%) er lige nu skjult for ALLE ikke-admins af
+// riders-RLS-policyen "Public read riders" (is_offered_intake_rider): en rytter
+// der står som et UAFKLARET akademi-intake-tilbud (academy_intake.status =
+// 'offered', endnu ikke accepteret/afvist af det tilbudte hold) er globalt
+// usøgbar, ikke kun for det tilbudte hold. defaultLoadCandidates kendte ikke
+// til akademi-intake-tilstanden og kunne derfor lægge sådan en rytter i en
+// shortlist — spilleren fik et navn han reelt ikke kunne slå op nogen steder.
+// Fix: ekskludér 'offered'-intake-ryttere fra kandidat-poolen (samme diskriminator
+// som RLS-policyen), så missioner kun peger på faktisk søgbare ryttere.
+export async function defaultLoadCandidates(supabase) {
+  const [{ data, error }, { data: offered, error: intakeError }] = await Promise.all([
+    supabase
+      .from("riders")
+      .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
+      .eq("is_retired", false)
+      .not("potentiale", "is", null),
+    supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
+  ]);
   if (error) throw new Error(`scoutSweep: candidate riders load failed: ${error.message}`);
+  if (intakeError) throw new Error(`scoutSweep: offered-intake load failed: ${intakeError.message}`);
+  const offeredIntakeRiderIds = new Set((offered ?? []).map((r) => r.rider_id));
   const currentYear = new Date().getFullYear();
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    potentiale: r.potentiale,
-    divisionId: r.team?.league_division_id ?? null,
-    country: r.nationality_code ?? null,
-    age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
-    isNmEligible: true,
-  }));
+  return (data ?? [])
+    .filter((r) => !offeredIntakeRiderIds.has(r.id))
+    .map((r) => ({
+      id: r.id,
+      potentiale: r.potentiale,
+      divisionId: r.team?.league_division_id ?? null,
+      country: r.nationality_code ?? null,
+      age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
+      isNmEligible: true,
+      // #2581: bruges af scoutMission.generateShortlist til at ekskludere
+      // holdets EGNE ryttere fra shortlisten (en "opdagelse" af egen rytter
+      // er meningsløs — prod-audit fandt 2/46 tilfælde).
+      ownerTeamId: r.team_id ?? null,
+    }));
 }
 
 async function defaultGetScout(supabase, teamId) {

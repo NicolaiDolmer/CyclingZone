@@ -20,6 +20,7 @@ function makeSupabase(state) {
       eq(col, val) { q.filters.push(["eq", col, val]); return api; },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
       or() { return api; },
+      is(col, val) { q.filters.push(["is", col, val]); return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       order() { return api; },
       insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
@@ -29,6 +30,7 @@ function makeSupabase(state) {
           if (op === "eq") rows = rows.filter((r) => r[col] === val);
           if (op === "in") rows = rows.filter((r) => val.includes(r[col]));
           if (op === "gte") rows = rows.filter((r) => r[col] != null && r[col] >= val);
+          if (op === "is") rows = rows.filter((r) => (r[col] ?? null) === val);
         }
         resolve({ data: rows, error: null });
       },
@@ -108,6 +110,19 @@ test("autofill vælger ALDRIG akademiryttere (Rod B)", async () => {
   const supabase = makeSupabase(state);
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
   assert.ok(!entrants.some((e) => e.rider_id === "t1-academy"), "akademirytter aldrig autopicket");
+});
+
+// #2579: sim-tids-autofill må heller ALDRIG vælge en rytter der er SOLGT men hvis
+// holdskifte er parkeret (pending_team_id) pga. et aktivt etapeløb hos dette hold
+// (#1995) — team_id peger stadig på holdet i den periode.
+test("autofill vælger ALDRIG en solgt-men-parkeret rytter (pending_team_id, #2579)", async () => {
+  const state = baseState();
+  // Stærkeste rytter på t1 er solgt (afventer flush) → ville blive valgt hvis ufiltreret.
+  state.riders.push({ id: "t1-sold-pending", team_id: "t1", firstname: "S", lastname: "old", is_u25: false, is_retired: false, is_academy: false, pending_team_id: "t2" });
+  state.rider_derived_abilities.push({ rider_id: "t1-sold-pending", ...ab(99) });
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
+  assert.ok(!entrants.some((e) => e.rider_id === "t1-sold-pending"), "solgt-men-parkeret rytter aldrig autopicket");
 });
 
 // Rod B: committede ghost-entries (rytter solgt/fyret/blevet akademi/pensioneret EFTER
