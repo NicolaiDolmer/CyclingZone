@@ -8,6 +8,7 @@
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
+import { lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
 
 const COMPLETED_LIMIT = 20;
 
@@ -100,6 +101,11 @@ const JOB_CONFIG_RESPONSE = Object.freeze({
 // afsløre en rytter der lige nu er skjult/utilgængelig, uanset hvad den var på
 // genererings-tidspunktet (#2623-rod-årsagen).
 export async function getScoutState(teamId, supabaseClient) {
+  // #2644 (ejer-beslutning 18/7): due enkelt-rytter-undersøgelser (~30 min)
+  // modnes ved visning — nattesweepet er kun backstop for hold der aldrig
+  // åbner siden. Skal ske FØR active/completed loades, så en netop-due
+  // undersøgelse dukker op som færdig rapport i samme svar.
+  await lazyCompleteDueTargetAssignments({ supabase: supabaseClient, teamId });
   const [scout, active, completedRaw] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),

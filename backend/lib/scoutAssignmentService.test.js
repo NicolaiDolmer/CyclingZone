@@ -109,10 +109,14 @@ function createScoutSupabase({
         return {
           select(_columns) {
             const filters = {};
+            const lteFilters = {};
             let order = null;
             let limitN = null;
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              // #2644: lazyCompleteDueTargetAssignments filtrerer på created_at <=
+              // due-grænsen. Rækker uden created_at (ældre tests) er aldrig due.
+              lte(column, value) { lteFilters[column] = value; return chain; },
               order(column, opts) { order = { column, ...opts }; return chain; },
               limit(n) { limitN = n; return chain; },
               maybeSingle() {
@@ -120,7 +124,9 @@ function createScoutSupabase({
                 return Promise.resolve({ data: row ? clone(row) : null, error: null });
               },
               then(resolve) {
-                let rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+                let rows = state.assignments.filter((r) =>
+                  Object.entries(filters).every(([k, v]) => r[k] === v) &&
+                  Object.entries(lteFilters).every(([k, v]) => r[k] != null && r[k] <= v));
                 if (order) {
                   rows = [...rows].sort((a, b) => {
                     const av = a[order.column], bv = b[order.column];
@@ -143,16 +149,23 @@ function createScoutSupabase({
             };
           },
           update(payload) {
-            return {
-              eq(column, value) {
-                assert.equal(column, "id");
-                const row = state.assignments.find((r) => r.id === value);
-                assert.ok(row, `scout_assignments update: ukendt id ${value}`);
-                Object.assign(row, payload);
-                state.updates.push({ id: value, payload: clone(payload) });
-                return Promise.resolve({ error: null });
+            // #2644: skal både bære den gamle kæde (.eq("id") → await) og
+            // lazy-claimens status-conditional (.eq("id").eq("status").select("id")).
+            const filters = {};
+            let wantSelect = false;
+            const chain = {
+              eq(column, value) { filters[column] = value; return chain; },
+              select() { wantSelect = true; return chain; },
+              then(resolve) {
+                const rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+                for (const row of rows) {
+                  Object.assign(row, payload);
+                  state.updates.push({ id: row.id, payload: clone(payload) });
+                }
+                return resolve({ data: wantSelect ? rows.map((r) => ({ id: r.id })) : null, error: null });
               },
             };
+            return chain;
           },
         };
       }

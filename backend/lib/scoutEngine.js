@@ -27,15 +27,12 @@ export const DEFAULT_SCOUT = Object.freeze({
 // potentiale-sløret shortlist — de er alle uændrede.
 // #2644 (ejer-beslutning 18/7): enkelt-rytter-undersøgelse ("target") svarer på
 // ~30 minutter, UANSET niveau — ejeren justerede eksplicit ned fra mockuppens
-// ~2 timer ("Må gerne være meget kort"). Selve modningen kører stadig KUN via den
-// nattelige sweep (kl. 22 CET, scoutSweep.js/shouldSweepNow) — der findes ingen
-// minut-præcis maturation i arkitekturen (mirror af trainingSweep.js). daysPerLevel:0
-// er derfor den ærlige oversættelse: readyDateFor sætter ready_on = started_on
-// (samme kalenderdag, uanset niveau-spring), så opgaven modner ved SAMME dags
-// sweep i stedet for at vente 1-3 dage. targetEtaMinutes er en UI-visnings-værdi
-// (flavor-copy "~30 min"), ikke en håndhævet deadline — reel ventetid varierer
-// med hvornår på dagen opgaven startes (op til ~22 timer hvis startet lige efter
-// midnat, ned mod minutter hvis startet kort før kl. 22).
+// ~2 timer ("Må gerne være meget kort"). etaMinutes er en HÅNDHÆVET deadline:
+// lazyCompleteDueTargetAssignments (scoutTargetMaturation.js) modner due
+// undersøgelser ved hver visning af Scouting-centralen (getScoutState), 30 min
+// efter start. daysPerLevel:0 sætter ready_on = started_on (samme kalenderdag),
+// så den nattelige 22-sweep (scoutSweep.js) er backstop for hold der aldrig
+// åbner siden inden da.
 export const SCOUT_JOB_CONFIG = Object.freeze({
   target: Object.freeze({ daysPerLevel: 0, costPerLevel: 1000, etaMinutes: 30 }),
   mission: Object.freeze({ days: 2, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),

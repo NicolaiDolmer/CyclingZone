@@ -12,6 +12,7 @@
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { generateShortlist } from "./scoutMission.js";
 import { getScoutState } from "./scoutAssignmentService.js";
+import { completeTargetAssignment } from "./scoutTargetMaturation.js";
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -80,33 +81,8 @@ async function defaultGetScout(supabase, teamId) {
   return scout;
 }
 
-async function completeTargetAssignment({ supabase, assignment }) {
-  const { data: existing, error } = await supabase
-    .from("scout_actions")
-    .select("rider_id")
-    .eq("team_id", assignment.team_id)
-    .eq("rider_id", assignment.rider_id);
-  if (error) throw new Error(`scout_actions load: ${error.message}`);
-  const currentLevel = Math.min((existing ?? []).length, 3);
-  const needed = Math.max(0, (assignment.target_level ?? 0) - currentLevel);
-
-  for (let i = 0; i < needed; i++) {
-    const { error: insErr } = await supabase
-      .from("scout_actions")
-      .insert({ team_id: assignment.team_id, rider_id: assignment.rider_id, season_id: assignment.season_id ?? null });
-    if (insErr) throw new Error(`scout_actions insert: ${insErr.message}`);
-  }
-
-  const { error: updErr } = await supabase
-    .from("scout_assignments")
-    .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      result: { level: assignment.target_level },
-    })
-    .eq("id", assignment.id);
-  if (updErr) throw new Error(`scout_assignments update: ${updErr.message}`);
-}
+// completeTargetAssignment flyttet til scoutTargetMaturation.js (#2644):
+// deles med lazy-finaliseringen i scoutAssignmentService.getScoutState.
 
 async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now }) {
   const [candidates, scout] = await Promise.all([

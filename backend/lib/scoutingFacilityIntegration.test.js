@@ -146,10 +146,14 @@ function createChainSupabase({ team }) {
             let limitN = null;
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              // #2644: getScoutState's lazy-modning filtrerer på created_at <= due.
+              // Rækker uden created_at (denne mocks default) er aldrig due → no-op.
+              lte(column, value) { filters[column] = { lte: value }; return chain; },
               order() { return chain; },
               limit(n) { limitN = n; return chain; },
               then(resolve) {
-                let rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+                let rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) =>
+                  (v && typeof v === "object" && "lte" in v) ? (r[k] != null && r[k] <= v.lte) : r[k] === v));
                 if (limitN != null) rows = rows.slice(0, limitN);
                 return Promise.resolve({ data: clone(rows), error: null }).then(resolve);
               },
