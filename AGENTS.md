@@ -9,7 +9,7 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 ## Hard rules
 
 > **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️.
+> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 🔒 (pre-push hook + `leak-check` CI) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI).
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
@@ -31,6 +31,14 @@ _Arbejdsregler for Claude i cycling-manager-repo'et. Single source of truth for 
 7. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
 
 8. **OneDrive-context hardlinks (siden 2026-05-07, scope reduceret 2026-05-12 per #327):** Memory og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_PC_SETUP.md` + `docs/HOOKS.md`.
+
+9. **SQL/migrations-mandat (ejer 18/7, [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)) — afløser "ejer applier"-reglen:** Claude kører selv SQL/migrationer mod prod (`apply_migration`/`execute_sql`) under disse rammer:
+   - **Rækkefølge:** migration committes i PR → PR merges → apply. Aldrig apply af u-merget SQL (eneste undtagelse: additiv/idempotent fil hvor featuren ellers er brudt live — dokumentér i issue/PR).
+   - **Idempotens:** alle filer følger `IF NOT EXISTS`/`DROP POLICY IF EXISTS`-mønstret (håndhævet af migration-idempotency-CI).
+   - **Post-apply-verifikation:** read-only-tjek (`information_schema`/`pg_*`) + notér resultatet i issue- eller PR-kommentar.
+   - **Destruktive klasser er FORTSAT ejer-gated pr. tilfælde:** `DROP TABLE`/kolonne, masse-DELETE/UPDATE af spillerdata, RLS-lempelser — jf. "ejer ser live-tilstand før atombomber".
+   - **Mekanik:** filer i `database/2026-*.sql` (top-niveau) auto-applies desuden af `auto-migrate.yml` ved push til main (~3 min delay). MCP-apply bruges til at fremrykke/verificere en merged migration samt til one-off data-SQL under rammerne ovenfor — begge veje er idempotente via `schema_migrations`-tracking hhv. filkonventionen.
+   - **Backup-forudsætning:** Supabase-org er på Pro-plan (daglige automatiske backups) — verificeret 2026-07-18. PITR-add-on-status kan ikke aflæses via MCP; ejer bekræfter i dashboard.
 
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 
