@@ -168,7 +168,22 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
   };
 }
 
+// #2644 del 2 (ejer-go 18/7): missioner target'er nu ENTEN kontraktfrie ELLER
+// ryttere på andre managers hold — spillerens valg pr. mission, gemt på selve
+// mission_criteria (jsonb, ingen migration nødvendig). Navngivet targetPool for
+// IKKE at kollidere med criteria.scope (division/country/u23/nm — det EKSISTERENDE
+// geografiske/aldersmæssige missions-filter, en helt anden akse). Default
+// "free_agents" (bagudkompatibel: gamle assignments uden feltet læses som
+// free_agents af scoutSweep.js' completeMissionAssignment).
+export const VALID_MISSION_TARGET_POOLS = Object.freeze(["free_agents", "other_teams"]);
+
 export async function startMission({ teamId, criteria, seasonId }, supabaseClient, now = new Date()) {
+  const targetPool = criteria?.targetPool ?? "free_agents";
+  if (!VALID_MISSION_TARGET_POOLS.includes(targetPool)) {
+    return { ok: false, error: "invalid_target_pool" };
+  }
+  const normalizedCriteria = { ...criteria, targetPool };
+
   const [scout, active, balance] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),
@@ -188,7 +203,7 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
       team_id: teamId,
       staff_id: scout.isDefault ? null : scout.id,
       kind: "mission",
-      mission_criteria: criteria,
+      mission_criteria: normalizedCriteria,
       travel_cost: cost,
       started_on: startedOn,
       ready_on: readyOn,
@@ -200,7 +215,7 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
 
   const debit = await debitTeam(teamId, cost, "scout_travel", null, seasonId, supabaseClient, {
     idempotent: true,
-    metadata: { code: "tx.scoutTravel", params: { kind: "mission", criteria } },
+    metadata: { code: "tx.scoutTravel", params: { kind: "mission", criteria: normalizedCriteria } },
     audit: {
       sourcePath: "scoutAssignmentService.startMission",
       idempotencyKey: `scout_travel:${teamId}:${inserted.id}`,
@@ -209,7 +224,7 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
 
   return {
     ok: true,
-    assignment: { id: inserted.id, kind: "mission", criteria, travelCost: cost, startedOn, readyOn },
+    assignment: { id: inserted.id, kind: "mission", criteria: normalizedCriteria, travelCost: cost, startedOn, readyOn },
     ...(debit.skipped ? { skipped: true } : {}),
   };
 }

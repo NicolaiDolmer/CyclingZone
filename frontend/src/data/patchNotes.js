@@ -35,6 +35,20 @@ export const PATCHES = [
           "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
         },
         "refs": [2649]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Choose who your scout missions target",
+          "body": "Starting a scouting mission now lets you pick who your scout looks for: free agents (riders without a contract, recommended, you can sign them straight away), or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Free agents stays the default. Every report still only ever contains riders who exist and can be found in search."
+        },
+        "da": {
+          "title": "Vælg hvem dine spejder-missioner målretter",
+          "body": "At starte en spejder-mission lader dig nu vælge hvem din spejder leder efter: kontraktfrie ryttere (uden kontrakt, anbefalet, du kan hente dem med det samme), eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Kontraktfrie er stadig default. Hver rapport indeholder stadig kun ryttere der findes og kan søges frem."
+        },
+        "refs": [2644]
       }
     ]
   },
