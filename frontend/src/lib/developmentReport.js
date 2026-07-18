@@ -139,3 +139,34 @@ export function dominantPlan(entries) {
 export function gainDayCount(entries) {
   return (Array.isArray(entries) ? entries : []).filter((e) => isBreakthrough(e?.row)).length;
 }
+
+// ── Loft-udsigt (#2645 Del A) ────────────────────────────────────────────────────
+//
+// Bug (spillerrapport 18/7): en rytter med evne 29 og loft 90+ fik teksten
+// "Approaching ceiling" — fordi backendens ceilingTiming() returnerer null når den
+// optimistiske envelope ikke når loft-båndet inden for DISPLAY_SEASONS (6 sæsoner),
+// UANSET hvor stort gabet reelt er. Frontend brugte det null-resultat som eneste
+// betingelse for "approaching", og blandede dermed evne/loft-familien ("approaching
+// ceiling") sammen med tilfælde der reelt bare er en lang udviklingshorisont.
+//
+// To besked-familier må ALDRIG låne hinandens ord (#2645): ALDER/peak-vindue
+// ("past peak") vs. EVNE/loft-afstand ("approaching ceiling"). En loft-besked må
+// kun vises når rytterens nu-rating faktisk er tæt på det konservative loft
+// (ceilLo) — her sat til ≥85% (ejer-valgt tærskel, #2645 Del A accept-kriterie).
+export const NEAR_CEILING_RATIO = 0.85;
+
+// Outlook-i18n-nøgle for grenen uden ren "til loft"-ETA (projection.timing == null):
+//   • pastPeak (alder > PEAK_AGE)                     → "pastPeak" (alders-familien)
+//   • ikke pastPeak, men now/ceilLo ≥ NEAR_CEILING_RATIO → "approaching" (reelt tæt på)
+//   • ellers (stort gab, bare uden for display-vinduet) → "gapToCeiling" (ærlig, neutral)
+// Kræver projection.now + projection.ceil.lo — begge findes altid når
+// projectionActive(projection) er sand (se RiderDevelopmentTab.jsx).
+export function ceilingOutlookKey(projection) {
+  if (projection?.pastPeak) return "pastPeak";
+  const now = projection?.now;
+  const ceilLo = projection?.ceil?.lo;
+  if (typeof now === "number" && typeof ceilLo === "number" && ceilLo > 0 && now / ceilLo >= NEAR_CEILING_RATIO) {
+    return "approaching";
+  }
+  return "gapToCeiling";
+}
