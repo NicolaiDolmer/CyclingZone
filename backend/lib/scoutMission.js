@@ -76,7 +76,14 @@ function deterministicShuffle(items, seedKey) {
 // Returnerer { shortlist: [rider_id,...], topRiderId } (topRiderId = bedste SCORE,
 // ikke shufflet position — det er target for den gratis niveau-1-rapport).
 export function generateShortlist({ candidates, criteria, scout = DEFAULT_SCOUT, teamId, missionId }) {
-  const pool = filterCandidatePool(candidates, criteria);
+  // #2581: ekskludér holdets EGNE ryttere — en mission der "opdager" en rytter
+  // holdet allerede ejer er meningsløs (prod-audit 17/7 fandt 2/46 tilfælde).
+  // candidate.ownerTeamId er undefined for kaldere der ikke sætter den (fx
+  // eksisterende tests) — filteret er da et no-op, ingen kontraktændring.
+  const filteredCandidates = Array.isArray(candidates)
+    ? candidates.filter((r) => r.ownerTeamId == null || r.ownerTeamId !== teamId)
+    : candidates;
+  const pool = filterCandidatePool(filteredCandidates, criteria);
   if (pool.length === 0) return { shortlist: [], topRiderId: null };
 
   // Ægte rang (0 = bedst potentiale) — bruges KUN til scoring-vægtning, aldrig
