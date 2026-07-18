@@ -16,7 +16,7 @@
 
 ## 2. Kadence og volumen
 
-28-dages sæson, mandag-start → 4 søndage: S-søndag 1-3 = **drip**, S-søndag 4 = **Årgangsdag** (= transition-dag).
+**Ingen pre-season (ejer 19/7):** cyklussen er præcis 28 dage — racing starter mandagen efter Årgangsdagen. Mandag-start → 4 søndage: S-søndag 1-3 = **drip**, S-søndag 4 = **Årgangsdag** (= transition-dag). (S2: racing 27/7→søndag 23/8.)
 
 | Facilitets-niveau (akademi) | Drip pr. søndag (×3) | Årgangsdag | Sæson-total |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Ovenpå lægges årgangs-kvalitetsvariationen (±10 % seeded pr. sæson, ens for
 
 1. **Idempotens-markør:** én række pr. (hold, søndags-dato) i ny tabel `academy_intake_ticks` (UNIQUE) — boot-run/replica-sikker (lærdom fra #2646-hændelsen: dagskvote/markør, aldrig pr.-boot-kvote).
 2. **Drip:** for hvert menneske-hold med akademi: generér N kandidater (tabel §2) via eksisterende `academyGenerator.js` → `academy_intake` rows (status `offered`) med **`generation_tag` = aktiv sæson-id** (ny kolonne; stemples i ALLE ungdoms-kanaler — #2493-forberedelse).
-3. **Årgangsdag-detektion:** er denne søndag sæsonens dag 28 → generér finale-kuldet i stedet for drippen. Kuldet ledsages af notifikation ("Årgangen af sæson N er ankommet") — genbrug notifikations-motoren.
+3. **Årgangsdag-detektion:** er denne søndag sæsonens sidste løbsdag (aflæst af race-kalenderen: `max(races.scheduled_for)` — ALDRIG konstanter) → generér finale-kuldet i stedet for drippen. Kuldet ledsages af **in-app**-notifikation ("Årgangen af sæson N er ankommet") — genbrug notifikations-motoren. Ingen Discord-announce (ejer 19/7; kan tilføjes senere).
 4. **Verdens-influx (governor):** generér M frie agenter via `fictionalRiderGenerator` med §5.3's profil (mest journeymen 18-26, moderat potentiale; få sen-opdagede talenter). **M = f(målt afgang)**: pension-flag + #2456-sletninger + AI-trim i det rullende sæsonvindue, fordelt over sæsonens søndage. Med dagens afgang ≈ 0 er M ≈ 0 — governoren er selvkalibrerende og kan aldrig oversvømme markedet. Ingen fast konstant.
 5. AI-hold får IKKE akademi-kandidater i v1 (AI-ungdom hører til tre-tier Fase 5/6, #2492); AI-fornyelse sker via verdens-influx + eksisterende reconcile.
 
@@ -82,11 +82,14 @@ Harness: udvid `progressionSimHarness.js`-mønstret; kør mod ægte population-s
 
 ## 7. Slices (hver = egen PR + scorecard hvor markeret)
 
+**Opstart (ejer 19/7): drippen går live 19/7** — S0 shipper samme dag med konservative defaults og UDEN de balancefølsomme dele (fast 2 kandidater/hold, eksisterende generator-profil og caps — dvs. ren gentagelse af det allerede-live intake-maskineri på ugentlig kadence). Dokumenteret afvigelse fra simulér-før-ship: volumen er lille og systemet eksisterende; alt NYT balancefølsomt (sæson-budget 12+, talent-odds, facilitets-skalering, finale-kuld, verdens-influx) forbliver sim-gated bag S1-scorecardet.
+
 | Slice | Indhold | Gate |
 |---|---|---|
+| **S0** *(19/7)* | `sundayIntakeTick` v1: drip 2/hold/søndag + `generation_tag` + migrationer + #1799-fix; kør dagens tick post-merge | Backend-tests; dagens drip verificeret i prod (read-only) |
 | **S1** | Sim-harness + kalibreringsrapport (read-only; låser §2-tallene) | Scorecard I1-I6 → ejer-go |
-| **S2** | `sundayIntakeTick` + drip + `generation_tag` + migrationer + #1799-fix | Backend-tests; første søndags-drip verificeret i prod |
-| **S3** | Årgangsdag: transition-hook, finale-kuld, notifikation/recap-UI (EN+DA, mobil-first) | Klik-verify på preview m. seed-data; patch notes + help.json |
+| **S2** | Volumen/odds-opgradering af drippen til §2-tallene | S1-scorecard godkendt |
+| **S3** | Årgangsdag: transition-hook, finale-kuld, in-app notifikation/recap-UI (EN+DA, mobil-first) | Klik-verify på preview m. seed-data; patch notes + help.json; sigte: klar til 26/7 hvis muligt, ellers S2-finalen 23/8 |
 | **S4** | Verdens-influx-governor (frie agenter) | I1/I3 re-kørt; markeds-medianer overvåget efter go-live |
 | **S5** | Facilitets-skalering (odds + volumen; tænd akademi-effekt-hook) | I4; koordinér m. facilitets-A2-scope |
 
