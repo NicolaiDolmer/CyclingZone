@@ -859,7 +859,7 @@
     },
     "developmentProjectionFaq": {
       "q": "Hvad er projektionen på Udvikling-fanen?",
-      "a": "Det er et bud på hvor en rytter er på vej hen: en stiplet linje fra hans nuværende type-rating mod et skraveret loft-bånd, med et cirka-estimat af hvor mange sæsoner og i hvilken alder han når det. Det er altid et interval, aldrig et eksakt tal, for ingen kender en rytters præcise loft. Båndet er bevidst upræcist, så det ikke kan regnes tilbage til hans skjulte potentiale, og det er skjult for fremmede ryttere du ikke har scoutet."
+      "a": "Det er et bud på hvor en rytter er på vej hen: en stiplet linje fra hans nuværende type-rating mod et skraveret loft-bånd, med et cirka-estimat af hvor mange sæsoner og i hvilken alder han når det. Det er altid et interval, aldrig et eksakt tal, for ingen kender en rytters præcise loft. Båndet er bevidst upræcist, så det ikke kan regnes tilbage til hans skjulte potentiale, og det er skjult for fremmede ryttere du ikke har scoutet. To forskellige ting kan begge nævne alder her, og de svarer på forskellige spørgsmål: 'Alder ved loft' er hvornår denne projektion forventer at hans nuværende vækst når loft-båndet, hvilket kan ske længe før hans karrieretop (alder 27-28), hvis han stadig har år med udviklingsrum tilbage. En rytter hvis niveau stadig er langt fra loftet får i stedet en ærlig 'Stort spring til loftet'-linje frem for et forkert 'Nærmer sig loftet', som er forbeholdt ryttere der reelt er tæt på."
     },
     "watchlistSaleNotificationFaq": {
       "q": "Får jeg besked når en rytter på min ønskeliste sættes til salg?",

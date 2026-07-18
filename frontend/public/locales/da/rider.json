@@ -412,6 +412,7 @@
         "atCeiling": "Ved loftet nu",
         "outlook": "Udsigt",
         "approaching": "Nærmer sig loftet",
+        "gapToCeiling": "Stort spring til loftet",
         "pastPeak": "Efter peak, i tilbagegang"
       }
     },

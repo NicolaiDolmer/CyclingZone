@@ -412,6 +412,7 @@
         "atCeiling": "At ceiling now",
         "outlook": "Outlook",
         "approaching": "Approaching ceiling",
+        "gapToCeiling": "Long gap to ceiling",
         "pastPeak": "Past peak, declining"
       }
     },

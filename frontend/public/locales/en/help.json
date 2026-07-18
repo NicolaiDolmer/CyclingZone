@@ -859,7 +859,7 @@
     },
     "developmentProjectionFaq": {
       "q": "What is the projection on the Development tab?",
-      "a": "It is a forecast of where a rider is heading: a dashed line from his current type rating toward a shaded ceiling band, with a rough estimate of how many seasons and at what age he reaches it. It is always a range, never an exact number, because nobody knows a rider's exact ceiling. The band is deliberately fuzzy so it cannot be reverse-engineered into his hidden potential, and it stays hidden for rival riders you have not scouted."
+      "a": "It is a forecast of where a rider is heading: a dashed line from his current type rating toward a shaded ceiling band, with a rough estimate of how many seasons and at what age he reaches it. It is always a range, never an exact number, because nobody knows a rider's exact ceiling. The band is deliberately fuzzy so it cannot be reverse-engineered into his hidden potential, and it stays hidden for rival riders you have not scouted. Two separate things can both mention age here, and they answer different questions: 'Ceiling age' is when this projection expects his current growth to reach his ceiling band, which can happen well before his career peak (age 27-28) if he still has years of development room left. A rider whose level is still far from his ceiling gets an honest 'Long gap to ceiling' line instead of a false 'Approaching ceiling', reserved for riders who are genuinely close."
     },
     "watchlistSaleNotificationFaq": {
       "q": "Do I get notified when a rider on my watchlist is listed for sale?",

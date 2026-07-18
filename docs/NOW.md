@@ -24,10 +24,12 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) · v3-flip-forudsætninger #2376 · Palmarès-rest (#1997: roster-tidslinje, mulig S3) · #1996 del 2 (claude:blocked) · #2436 (lav) · perf/CI-rest [#2511](https://github.com/NicolaiDolmer/CyclingZone/issues/2511). **Kendt bug:** test-konti wipes (#2245, high). Mobil = 54,9% af app-besøg.
 
+> **🐛 #2645 Del A fixed (18/7):** "Approaching ceiling" blev vist for unge ryttere langt fra loftet (evne 29/loft 90+) — fallback-gren tjekkede kun "ingen ETA fundet i 6-sæsons-vindue", ikke det faktiske gab. Nu kun "approaching" ved ≥85% af loft; ellers ny neutral "Long gap to ceiling"/"Stort spring til loftet". PR `fix/2645-ceiling-message-consistency`. Del B (peak-alderskurve-flytning) UBERØRT, afventer stadig ejer-go.
+>
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
 >
- **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
+ **🤖 Working agent:** Fable-arkitekt kører 18/7 eftermiddags-bølge (brugerrapport-bølgen): 5 sonnet-agenter i worktrees → #2637 auto-udtag · #2645A ceiling-beskeder · #2649+#2643 fyr-staff/dobbeltjob · #2644+#2623 scouting · #2648 intake-v2. Nyt balance-fund: [#2650](https://github.com/NicolaiDolmer/CyclingZone/issues/2650) fatigue-mætning (AI-median 100, human 90) — simulér-før-ship, ejer-gate. #2461 Discord-svar-udkast venter stadig ejer-review.
 >
 ## Standing context (forever-relaunch)
 
