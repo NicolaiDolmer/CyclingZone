@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
-import FeedbackModal from "./FeedbackModal";
+// #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
+// skal ikke belaste hovedbundlet (perf-gate: 888 KB > 885 KB-loftet uden lazy).
+const FeedbackModal = lazy(() => import("./FeedbackModal"));
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
@@ -571,7 +573,11 @@ export default function Layout() {
       )}
       {/* #2602: én modal-instans delt af desktop- og mobil-sidebaren (begge
           knapper kalder samme setFeedbackOpen via sidebarProps). */}
-      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {feedbackOpen && (
+        <Suspense fallback={null}>
+          <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
