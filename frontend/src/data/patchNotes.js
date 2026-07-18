@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.22",
+    "version": "7.23",
     "date": "2026-07-18",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Et åbent akademi-intake-tilbud stod tidligere for evigt, hvis du hverken underskrev eller afviste det. Det udløber nu automatisk efter 7 dage, så et gammelt tilbud aldrig holder en kandidat skjult for resten af spillet. Udløber dit tilbud, sættes rytteren på auktion for alle andre klubber i en ungdomsauktion, der løber et helt døgn. Usolgte ryttere bliver i spillet som frie agenter."
         },
         "refs": [2627]
+      }
+    ]
+  },
+  {
+    "version": "7.22",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race Hub",
+        "en": {
+          "title": "Cleared squads stay cleared, and \"Rebuild all\" no longer overwrites you",
+          "body": "The assistant was proactively filling in race squads for the rest of the season on every deploy, and a squad you had manually cleared could come back on the next auto-fill pass, because an empty lineup and \"never touched\" looked identical to it. There are now dedicated \"Clear day\" and \"Clear all\" buttons (with a confirmation) that mark a race as cleared for good, until you ask for auto-fill or pick riders yourself. \"Rebuild all\" no longer replaces your picks with fresh AI suggestions on its own; it clears the day instead, so you choose what happens next."
+        },
+        "da": {
+          "title": "Ryddede trupper forbliver ryddet, og \"Genopbyg alt\" overskriver ikke længere dig",
+          "body": "Assistenten fyldte proaktivt løb-trupper ud for resten af sæsonen ved hvert deploy, og en trup du manuelt havde ryddet kunne komme tilbage ved næste auto-udfyld, fordi en tom udtagelse og \"aldrig rørt\" så identiske ud for systemet. Der er nu dedikerede \"Ryd dag\"- og \"Ryd alt\"-knapper (med bekræftelse), der markerer et løb som ryddet for godt, indtil du selv beder om auto-udfyld eller udtager manuelt. \"Genopbyg alt\" erstatter ikke længere dine valg med nye AI-forslag på egen hånd; den rydder dagen i stedet, så du vælger hvad der sker næst."
+        },
+        "refs": [2599]
       }
     ]
   },

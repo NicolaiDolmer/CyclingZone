@@ -194,7 +194,7 @@ function emptyState() {
   return {
     races: [], race_stage_schedule: [], race_stage_profiles: [],
     teams: [], riders: [], rider_derived_abilities: [], rider_condition: [],
-    race_entries: [], race_withdrawals: [],
+    race_entries: [], race_withdrawals: [], race_entry_clears: [],
     team_race_strategy: [], team_rider_role_rules: [],
   };
 }
@@ -321,6 +321,63 @@ test("runRaceEntryGenerator: afmeldte hold får ingen entries", async () => {
   assert.ok(state.race_entries.filter((e) => e.race_id === "A" && e.team_id === "t1").length > 0,
     "t1 deltager stadig");
   assert.ok(res.skipped >= 1, "afmeldingen tæller som skipped (race,team)-par");
+});
+
+// #2599: rod-årsagen for "manuelt ryddede trupper kommer tilbage" — et race_entry_clears-
+// markering (skrevet af det nye "Ryd dag/alt"-endpoint) må ALDRIG blive fyldt ud igen af
+// den periodiske sweep, PRÆCIS som en afmelding. I modsætning til afmelding deltager
+// holdet stadig (kun auto-udtagelsen er sat på pause) og markeringen er pr. (race,team),
+// ikke global for løbet — t1's clear på A påvirker ikke t2.
+test("runRaceEntryGenerator: ryddet (race,team) uden manuel udtagelse regenereres IKKE (#2599)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 3 }];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "A", stage_number: 2, scheduled_at: "2026-07-02T10:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "A", ...flatProfile(2) }];
+  state.teams = [
+    { id: "t1", is_test_account: false, is_frozen: false, league_division_id: 3 },
+    { id: "t2", is_test_account: false, is_frozen: false, league_division_id: 3 },
+  ];
+  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t2", 8);
+  // t1 har trykket "Ryd dag" på A og bekræftet — ingen manuelle entries tilbage.
+  state.race_entry_clears = [{ race_id: "A", team_id: "t1" }];
+
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.team_id === "t1").length, 0,
+    "ryddet hold t1 forbliver tomt — sweepet fylder IKKE ud igen");
+  assert.ok(state.race_entries.filter((e) => e.race_id === "A" && e.team_id === "t2").length > 0,
+    "t2 (uden clear-markering) auto-udtages normalt");
+  assert.ok(res.skipped >= 1, "clear-markeringen tæller som skipped (race,team)-par");
+});
+
+test("runRaceEntryGenerator: manuel udtagelse OVERSTYRER en gammel clear-markering (#2599)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 3 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 3 }];
+  seedTeamRiders(state, "t1", 8);
+  // Stale clear-markering der (defensivt) IKKE er blevet ryddet af raceSelection.js —
+  // en manuel entry skal vinde uanset (hasManual tjekkes FØR isCleared i generatoren).
+  state.race_entry_clears = [{ race_id: "A", team_id: "t1" }];
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+  ];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(state.race_entries.find((e) => e.race_id === "A" && e.rider_id === "t1-r0" && e.is_auto_filled === false),
+    "den manuelle entry er bevaret");
+  assert.ok(state.race_entries.some((e) => e.race_id === "A" && e.is_auto_filled === true),
+    "truppen top-fyldes normalt trods den stale clear-markering — manuel udtagelse vinder");
 });
 
 test("runRaceEntryGenerator: to løb samme CET-dag deler ALDRIG en rytter (#1823 regression)", async () => {
