@@ -51,6 +51,9 @@ export default function RaceSelectionPanel({
   const [sel, setSel] = useState(EMPTY_SELECTION);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
+  // #2637: rytter/løb-navne til den navngivne selection_rider_bound-besked (bug 3 —
+  // fejlen skal sige HVEM/HVOR, ikke bare en opak kode). Sat af save() fra body.conflicts.
+  const [errorDetail, setErrorDetail] = useState(null);
   const [touched, setTouched] = useState(false);
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
@@ -67,6 +70,7 @@ export default function RaceSelectionPanel({
     setData(null);
     setStatus("idle");
     setErrorKey(null);
+    setErrorDetail(null);
     setTouched(false);
     (async () => {
       const headers = await authHeaders();
@@ -116,11 +120,20 @@ export default function RaceSelectionPanel({
   // #2376: free_role vises som badge (rollens editor er boardets rollekort, ikke dette
   // panel) — round-trip'et i save() sikrer at badge'n matcher hvad der reelt gemmes.
   const freeRoleSet = new Set(sel.freeRoleIds || []);
-  const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
+  // #2637: kræv kun en FULD trup ved en førstegangs-udtagelse (#1906, ingen gemt
+  // selection endnu). Findes der allerede en gemt/auto-udtaget udtagelse, tillader
+  // backenden en delvis trup for ethvert efterfølgende gem (ejer 28/6) — typisk fordi
+  // en skadet rytter netop er fjernet fra en allerede committet etapeløbs-trup.
+  const clientErrors = validateSelectionClient({ ...sel, size, availableCount, requireFull: !data.selection });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
   const atMax = sel.riderIds.length >= size.max;
+  // #2637: løbet er "live" (0 < stages_completed < stages, status forbliver 'scheduled'
+  // hele afviklingen, #1825) — trup-TILFØJELSER er frosset, men fjernelse er altid
+  // tilladt. Bruges til at gråne ikke-valgte ryttere, så manageren ikke oplever et
+  // forvirrende "gemt, men afvist" for et forsøg på at tilføje en ny rytter midt i løbet.
+  const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
   const saving = status === "saving";
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
@@ -172,6 +185,7 @@ export default function RaceSelectionPanel({
     if (!headers) return;
     setStatus("saving");
     setErrorKey(null);
+    setErrorDetail(null);
     // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
     // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
@@ -193,6 +207,10 @@ export default function RaceSelectionPanel({
       if (!res.ok) {
         setStatus("error");
         setErrorKey(body.error || "generic");
+        // #2637 (bug 3): backend navngiver nu konflikten (rytter + løb) i stedet for en
+        // opak kode — brug den førte konflikt til en klar, konkret besked.
+        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+        setErrorDetail(conflict ? { rider: conflict.rider_name ?? "—", race: conflict.race_name ?? "—" } : null);
         return;
       }
       setStatus("saved");
@@ -261,6 +279,14 @@ export default function RaceSelectionPanel({
         </p>
       )}
 
+      {/* #2637: løbet er live — forklar HVORFOR ikke-valgte ryttere er grånet, så
+          fjernelse (fx af en skadet rytter) ikke fremstår som en generel lås. */}
+      {raceLive && (
+        <p className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
+          {t("selection.raceLiveNote")}
+        </p>
+      )}
+
       {/* Rytterliste — responsivt. På mobil (<sm) en stablet liste: en 5-kolonne
           tabel kræver ~488px og tvinger en vandret scroll-container på 393px-
           viewporten. Under Playwrights Pixel 5 (isMobile) emulering skævvrider
@@ -278,7 +304,11 @@ export default function RaceSelectionPanel({
           const bound = boundByRider.get(rider.id) ?? null;
           // #2265: en bunden, IKKE-valgt rytter kan ikke tilføjes; en bunden, VALGT rytter
           // beholder aktiv checkbox så konflikten kan løses ved at fjerne ham.
-          const disabled = rider.injured || (bound && !checked) || (!checked && atMax) || saving;
+          // #2637: en skadet rytter må ALDRIG TILFØJES, men skal altid kunne FJERNES —
+          // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
+          // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
+          // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
+          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
@@ -357,7 +387,9 @@ export default function RaceSelectionPanel({
             {visibleRiders.map((rider) => {
               const checked = sel.riderIds.includes(rider.id);
               const bound = boundByRider.get(rider.id) ?? null;
-              const disabled = rider.injured || (bound && !checked) || (!checked && atMax) || saving;
+              // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
+              // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
+              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
@@ -447,7 +479,11 @@ export default function RaceSelectionPanel({
             ))}
             {status === "error" && errorKey && (
               <p className="text-xs text-cz-danger">
-                {t([`selection.errors.${errorKey}`, "selection.errors.generic"], errParams)}
+                {/* #2637: en navngivet selection_rider_bound-fejl (rytter + løb) er langt
+                    mere handlingsbar end den opake generiske besked. */}
+                {errorKey === "selection_rider_bound" && errorDetail
+                  ? t("selection.errors.selection_rider_bound_named", errorDetail)
+                  : t([`selection.errors.${errorKey}`, "selection.errors.generic"], errParams)}
               </p>
             )}
             {status === "saved" && (

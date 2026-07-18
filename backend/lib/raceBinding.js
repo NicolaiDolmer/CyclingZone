@@ -114,6 +114,41 @@ export function mapRiderBindingDetails({ riderIds = [], thisWindow, otherRaces =
   return details;
 }
 
+// #2637: klassificér hver bundet rytter (fra findRiderBindingConflicts): kan konflikten
+// LØSES automatisk, eller skal den afvises med en navngivet fejl?
+//
+// Root-cause: en rytter auto-udtaget til et endagsløb inden for et manuelt valgt
+// etapeløbs vindue blokerede FØR ALTID gemningen ("selection_rider_bound"), selvom
+// assistentens forslag aldrig burde vinde over et manuelt valg. Nu: er konflikten en
+// AUTO-genereret entry i et løb der IKKE er startet endnu, kan den frigives automatisk
+// (kalderen sletter kun DEN ene rytter fra det konfliktende løb, se PUT /selection).
+// Er konflikten derimod en MANUEL entry, eller er det konfliktende løb allerede i gang,
+// kan vi ikke gætte spillerens hensigt — den klassificeres som "blocking", og kalderen
+// afviser med en navngivet 409 (rytter + løb) i stedet.
+//
+// Ren funktion — al DB-hentning ligger hos kalderen (loadTeamBindingContext +
+// supplerende race/entry-opslag for de konkrete konflikt-løb).
+//
+// @param {{ boundRiderIds: string[], details: Map<string,string>, raceMetaById: Map<string,{name?:string, stages_completed?:number}>, autoFilledKeys: Set<string>, riderNameById?: Map<string,string> }} args
+// @returns {{ resolvable: Array, blocking: Array }} — hvert element: { rider_id, rider_name, race_id, race_name }
+export function classifyBindingConflicts({ boundRiderIds = [], details, raceMetaById, autoFilledKeys, riderNameById = new Map() }) {
+  const resolvable = [];
+  const blocking = [];
+  for (const riderId of boundRiderIds) {
+    const raceId = details.get(riderId) ?? null;
+    const meta = raceId ? raceMetaById.get(raceId) : null;
+    const item = {
+      rider_id: riderId, rider_name: riderNameById.get(riderId) ?? null,
+      race_id: raceId, race_name: meta?.name ?? null,
+    };
+    const isAutoFilled = raceId ? autoFilledKeys.has(`${raceId}|${riderId}`) : false;
+    const raceAlreadyStarted = (meta?.stages_completed ?? 0) > 0;
+    if (isAutoFilled && !raceAlreadyStarted) resolvable.push(item);
+    else blocking.push(item);
+  }
+  return { resolvable, blocking };
+}
+
 // Efter en reschedule der introducerer overlap: find ryttere udtaget (manuelt) til to
 // tidsoverlappende løb. Pure + deterministisk. Returnerer ét par pr. konflikt med det
 // kronologisk TIDLIGSTE løb som "keep" og det senere som "drop" (resolve = fjern

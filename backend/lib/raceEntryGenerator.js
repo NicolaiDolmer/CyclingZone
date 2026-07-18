@@ -10,6 +10,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -298,9 +299,29 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
     }
 
+    // #2637 (Discord-bug, opfølgning på #2599): skadede ryttere (injured_until >= i dag)
+    // må ALDRIG auto-udtages — hverken af den proaktive sweep her eller af manuel
+    // "auto-fill" (regenerate-endpointet, api.js). Spec 6.5 (#1306) lukkede allerede dette
+    // hul for raceRunner.fillMissingTeamEntries (race-tids-autofyld); denne sweep manglede
+    // den samme guard, så en rytter kunne blive skadet EFTER at være auto-udtaget til en
+    // etapeløbs-trup, og ingen efterfølgende sweep-kørsel fjernede ham igen. Nu udelukkes
+    // skadede ryttere fra kandidat-poolen HVER kørsel — er han allerede en auto-række,
+    // forsvinder han fra `desired` og bliver diff'et ud (toDelete) af applyUnitDiff.
+    let injuredIds = new Set();
+    if (riderIds.length) {
+      const { data: injured, error: injErr } = await selectInChunks({
+        supabase, table: "rider_condition", columns: "rider_id, injured_until",
+        inColumn: "rider_id", ids: riderIds, orderBy: ["rider_id"],
+        extra: (q) => q.gte("injured_until", copenhagenDateString()),
+      });
+      if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
+      injuredIds = new Set((injured || []).map((r) => r.rider_id));
+    }
+
     for (const r of riders || []) {
       const abRow = abilityByRider.get(r.id);
       if (!abRow) continue; // rytter uden abilities kan ikke scores → spring over (mirror raceRunner).
+      if (injuredIds.has(r.id)) continue; // #2637: skadet → aldrig kandidat til auto-udtagelse.
       if (!ridersByTeam.has(r.team_id)) ridersByTeam.set(r.team_id, []);
       ridersByTeam.get(r.team_id).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
     }

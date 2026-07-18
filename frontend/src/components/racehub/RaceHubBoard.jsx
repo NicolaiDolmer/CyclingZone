@@ -197,9 +197,22 @@ export default function RaceHubBoard() {
       }
       if (res && !res.ok) {
         const b = await res.json().catch(() => ({}));
-        // #1983/#1984: backend's overlap-afvisning er opak ("en rytter kører et overlappende løb").
-        // Den NAVNGIVES her — rytter + det konkrete overlappende løb — udledt af kladden + bound_rider_ids.
+        // #1983/#1984/#2637: backend's overlap-afvisning er opak ("en rytter kører et
+        // overlappende løb"). Den NAVNGIVES her — rytter + det konkrete overlappende løb.
         if (b.error === "selection_rider_bound") {
+          // #2637: backend sender nu `conflicts` (rytter-navn + løb-navn, server-udledt —
+          // pålidelig uanset om det konfliktende løb overhovedet er en synlig kolonne på
+          // BOARDET lige nu). Foretræk den frem for den lokale kladde-heuristik nedenfor,
+          // som kun kan navngive konflikten når begge løb er blandt de viste kolonner
+          // (rod-årsag for "fejlen forsvinder aldrig, selvom jeg rydder" — spilleren kunne
+          // ikke se konflikten fordi det andet løb slet ikke var på skærmen).
+          const serverConf = Array.isArray(b.conflicts) ? b.conflicts[0] : null;
+          if (serverConf) {
+            return {
+              ok: false,
+              error: { code: "selection_rider_bound_named", params: { rider: serverConf.rider_name || "—", race: serverConf.race_name || "—" } },
+            };
+          }
           const draftCols = columns.map((c) => ({ ...c, selection: { rider_ids: draftOf(c).rider_ids } }));
           const overlaps = findSelectionOverlaps({ columns: draftCols });
           const boundIds = new Set(b.bound_rider_ids || []);

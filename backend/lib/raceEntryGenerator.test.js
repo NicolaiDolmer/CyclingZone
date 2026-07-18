@@ -380,6 +380,62 @@ test("runRaceEntryGenerator: manuel udtagelse OVERSTYRER en gammel clear-markeri
     "truppen top-fyldes normalt trods den stale clear-markering — manuel udtagelse vinder");
 });
 
+// #2637 (Discord-bug, opfølgning på #2599): spec 6.5 (#1306) lukkede allerede dette hul
+// for raceRunner.fillMissingTeamEntries (race-tids-autofyld) — denne proaktive sweep
+// (Race Hub Fase 0b) manglede den samme injured-guard, så en etapeløbs-trup kunne blive
+// auto-udtaget MED en skadet rytter, og ingen efterfølgende sweep fjernede ham igen.
+test("runRaceEntryGenerator: skadet rytter vælges ALDRIG af auto-udtagelsen (#2637)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 4 }];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "A", stage_number: 2, scheduled_at: "2026-07-02T10:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "A", ...flatProfile(2) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 4 }];
+  seedTeamRiders(state, "t1", 8);
+  // t1-r0 er skadet langt ude i fremtiden (robust mod test-kørslens faktiske dato).
+  state.rider_condition.find((c) => c.rider_id === "t1-r0").injured_until = "2099-01-01";
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(
+    !state.race_entries.some((e) => e.race_id === "A" && e.rider_id === "t1-r0"),
+    "skadet rytter t1-r0 må ALDRIG auto-udtages"
+  );
+  assert.ok(
+    state.race_entries.some((e) => e.race_id === "A" && e.team_id === "t1"),
+    "de øvrige raske ryttere autofyldes stadig normalt"
+  );
+});
+
+test("runRaceEntryGenerator: en rytter der bliver skadet EFTER auto-udtagelse fjernes af næste sweep (#2637)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 5 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 5 }];
+  seedTeamRiders(state, "t1", 8);
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  const pickedIds = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(pickedIds.length > 0, "løbet blev auto-fyldt ved 1. kørsel");
+  const injuredNow = pickedIds[0];
+
+  // Rytteren bliver skadet EFTER 1. kørsel (fx et styrt i et andet løb).
+  state.rider_condition.find((c) => c.rider_id === injuredNow).injured_until = "2099-01-01";
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(
+    !state.race_entries.some((e) => e.race_id === "A" && e.rider_id === injuredNow),
+    "rytteren fjernes af næste sweep-kørsel efter at være blevet skadet"
+  );
+});
+
 test("runRaceEntryGenerator: to løb samme CET-dag deler ALDRIG en rytter (#1823 regression)", async () => {
   const state = emptyState();
   const seasonId = "season1";

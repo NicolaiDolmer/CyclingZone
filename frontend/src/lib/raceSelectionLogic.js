@@ -38,16 +38,29 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
   return best;
 }
 
-// Spejler backend raceSelection.validateSelection PRÆCIST (#1906): fuld opstilling
-// kræves. `required` = løbets pladsantal (size.max). To distinkte fejl så UI kan guide:
+// Spejler backend raceSelection.validateSelection (#1906 for `requireFull=true`).
+// `required` = løbets pladsantal (size.max). To distinkte fejl så UI kan guide:
 //   selection_insufficient_riders → holdet har for få raske ryttere (afmeld / hent fri-agenter)
 //   selection_wrong_size          → holdet KAN fylde, men har valgt for få/mange
-export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, availableCount }) {
+//
+// `requireFull` (default true, #1906 "hård fuld opstilling"): en FØRSTEGANGS-udtagelse
+// via dette panel skal nå size.max før Gem aktiveres — det guider nye managere til en
+// komplet trup i stedet for at lade dem gemme 1-2 ryttere ved et uheld. #2637: backendens
+// egen validateSelection tillader en DELVIS trup for ethvert efterfølgende gem (ejer
+// 28/6, afløser #1906) — kun over feltstørrelsen afvises. Panelet SKAL derfor tillade en
+// delvis trup igen når der allerede FINDES en gemt/auto-udtaget udtagelse (fx en skadet
+// rytter der fjernes fra en allerede committet etapeløbs-trup); kalderen sætter
+// `requireFull: !data.selection`.
+export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, availableCount, requireFull = true }) {
   const errors = [];
   const required = size.max;
-  if (Number.isFinite(availableCount) && availableCount < required) {
-    errors.push("selection_insufficient_riders");
-  } else if (riderIds.length !== required) {
+  if (requireFull) {
+    if (Number.isFinite(availableCount) && availableCount < required) {
+      errors.push("selection_insufficient_riders");
+    } else if (riderIds.length !== required) {
+      errors.push("selection_wrong_size");
+    }
+  } else if (riderIds.length > required) {
     errors.push("selection_wrong_size");
   }
   if (!captainId) errors.push("selection_captain_required");
