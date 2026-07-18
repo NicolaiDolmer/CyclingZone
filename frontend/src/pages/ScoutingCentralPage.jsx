@@ -190,8 +190,7 @@ function TargetPoolCard({ id, name, title, subtitle, recommended, selected, onSe
         </span>
         {recommended && (
           <span
-            className="text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-cz-pill shrink-0"
-            style={{ backgroundColor: "#e8c547", color: "#1a1f38" }}
+            className="text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-cz-pill shrink-0 bg-cz-accent text-cz-on-accent"
           >
             {t("mission.form.recommended")}
           </span>
