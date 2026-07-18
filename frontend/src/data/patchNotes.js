@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.24",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Expired academy intake offers now pay you back if the rider sells",
+          "body": "If your Academy intake offer expires because you never signed or rejected it (see the previous note), you still keep some upside: should the youth auction end in a sale, you receive the full winning bid as compensation. If nobody bids, the rider simply stays in the game as a free agent, same as before."
+        },
+        "da": {
+          "title": "Udløbne akademi-intake-tilbud betaler dig nu tilbage, hvis rytteren sælges",
+          "body": "Udløber dit akademi-intake-tilbud fordi du hverken underskrev eller afviste det (se forrige note), beholder du stadig en fordel: ender ungdomsauktionen med et salg, modtager du hele det vindende bud som kompensation. Byder ingen, forbliver rytteren blot i spillet som fri agent, som i dag."
+        },
+        "refs": [2648]
+      }
+    ]
+  },
+  {
     "version": "7.23",
     "date": "2026-07-18",
     "label": "Beta",

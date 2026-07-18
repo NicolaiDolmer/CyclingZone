@@ -244,6 +244,7 @@
       "auction_winner_payment": "Auction purchase",
       "auction_seller_payout": "Auction sale",
       "auction_guaranteed_bank_sale": "Bank-guaranteed sale",
+      "intake_expiry_auction_compensation": "Intake expiry compensation",
       "transfer_purchase": "Transfer purchase",
       "transfer_sale": "Transfer sale",
       "swap_cash_delta": "Swap (cash difference)",

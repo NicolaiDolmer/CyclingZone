@@ -152,6 +152,39 @@ test("calculateAuctionEnd: default-config (close=22) uændret — Tir 19:40 → 
   assert.equal(cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG)), "2026-05-06 19:40:00");
 });
 
+// =============================================================================
+// #2648: intake-udløbs-auktioner — 24 AKTIVE timer (respekterer stadig
+// nat-reglen 08–24/pause 00–08, jf. academyIntakeExpirySweep.
+// INTAKE_EXPIRY_AUCTION_DURATION_HOURS). 16 aktive timer/dag under prod-
+// config C24 (08–24 alle dage), så 24h spænder over TRE kalenderdage.
+// =============================================================================
+
+test("calculateAuctionEnd: 24h-varighed (intake-udløb) — start Fre 22:00, spænder over nat-pausen TO gange", () => {
+  // Fre 22:00 → close 24:00 = 2h brugt, 22h tilbage.
+  // Lør 08:00–24:00 = 16h brugt (22h→6h tilbage), Søn 08:00 + 6h = Søn 14:00.
+  assert.equal(
+    cph(calculateAuctionEnd(iso("2026-06-26T20:00:00Z"), { ...C24, duration_hours: 24 })),
+    "2026-06-28 14:00:00"
+  );
+});
+
+test("calculateAuctionEnd: 24h-varighed (intake-udløb) — start i dead-hours (Lør 02:00) snapper til 08:00-open FØRST", () => {
+  // Lør 02:00 er dead time → snapper til Lør 08:00. 24h derfra: Lør 08–24 = 16h
+  // brugt (8h tilbage), Søn 08:00 + 8h = Søn 16:00.
+  assert.equal(
+    cph(calculateAuctionEnd(iso("2026-06-27T00:00:00Z"), { ...C24, duration_hours: 24 })),
+    "2026-06-28 16:00:00"
+  );
+});
+
+test("calculateAuctionEnd: 24h-varighed (intake-udløb) — start midt i vinduet lander PRÆCIS ved dagens close efter fuld dag + rest", () => {
+  // Lør 10:00 → close 24:00 = 14h brugt, 10h tilbage. Søn 08:00 + 10h = Søn 18:00.
+  assert.equal(
+    cph(calculateAuctionEnd(iso("2026-06-27T08:00:00Z"), { ...C24, duration_hours: 24 })),
+    "2026-06-28 18:00:00"
+  );
+});
+
 test("calculateAuctionEnd: default-config (weekend close=23) uændret — Lør 19:40 → Søn 10:40", () => {
   assert.equal(cph(calculateAuctionEnd(iso("2026-05-09T17:40:00Z"), CFG)), "2026-05-10 10:40:00");
 });

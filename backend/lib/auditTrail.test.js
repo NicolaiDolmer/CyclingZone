@@ -467,6 +467,9 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
   // finalize_academy_acquisition-RPC (ikke incrementBalanceWithAudit), så den er
   // ikke længere et scannet callsite her. idempotency_key bæres stadig i
   // RPC-payloaden (youth_auction_winner:<auctionId>).
+  // #2648: kreditering af den manager hvis intake-tilbud udløb — en cron-retry
+  // af en allerede-krediteret intake-udløbs-auktion må ikke dobbelt-betale.
+  "auctionFinalization.finalizeYouthAuctionRecord.intakeExpiryCompensation",
 ]);
 
 const CALLSITE_FILES = [
@@ -485,8 +488,10 @@ const CALLSITE_FILES = [
   { rel: "./economyEngine.js", expectedCalls: 2 },
   // #1558: youth-stiens debit flyttede til finalize_academy_acquisition-RPC'en,
   // så incrementBalanceWithAudit-callsites faldt fra 4 til 3 (senior buyer/seller
-  // + guaranteedBankSale).
-  { rel: "./auctionFinalization.js", expectedCalls: 3 },
+  // + guaranteedBankSale). #2648: en 4. callsite tilføjet — kreditering af den
+  // manager hvis intake-tilbud udløb, når en intake-udløbs-ungdomsauktion
+  // sælges (finalizeYouthAuctionRecord's intakeExpiryCompensation-gren).
+  { rel: "./auctionFinalization.js", expectedCalls: 4 },
 ];
 
 function extractIncrementCalls(source) {
