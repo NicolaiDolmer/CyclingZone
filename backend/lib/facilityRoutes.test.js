@@ -20,6 +20,7 @@ const {
   getStaffCandidatesHandler,
   postStaffHireHandler,
   postStaffFireHandler,
+  postStaffReleaseHandler,
   getStaffProfileHandler,
 } = await import("./facilityRoutesHandlers.js");
 const { FACILITY_TRACKS, FACILITY_TIER_UPKEEP, FACILITY_TIER_PRICE } = await import("./facilityConstants.js");
@@ -376,6 +377,61 @@ test("POST fire: flag off → 403 facilities_disabled (via ægte service-gate)",
   assert.equal(body.error, "facilities_disabled");
 });
 
+// ── POST /api/club/staff/:id/release (#2649) ────────────────────────────────
+
+test("POST release: staff_not_found → 404 (ukendt/ikke-ejet)", async () => {
+  const { status, body } = await postStaffReleaseHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" },
+    createSupabaseMock(),
+    { flags: ENABLED, releaseStaff: async () => ({ ok: false, error: "staff_not_found" }) }
+  );
+  assert.equal(status, 404);
+  assert.equal(body.error, "staff_not_found");
+});
+
+test("POST release: already_released → 409 (dobbelt-klik-guard)", async () => {
+  const { status, body } = await postStaffReleaseHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" },
+    createSupabaseMock(),
+    { flags: ENABLED, releaseStaff: async () => ({ ok: false, error: "already_released" }) }
+  );
+  assert.equal(status, 409);
+  assert.equal(body.error, "already_released");
+});
+
+test("POST release: insufficient_funds → 400 med severance+balance i body", async () => {
+  const { status, body } = await postStaffReleaseHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" },
+    createSupabaseMock(),
+    { flags: ENABLED, releaseStaff: async () => ({ ok: false, error: "insufficient_funds", severance: 8_000, balance: 1_000 }) }
+  );
+  assert.equal(status, 400);
+  assert.equal(body.error, "insufficient_funds");
+  assert.equal(body.severance, 8_000);
+  assert.equal(body.balance, 1_000);
+});
+
+test("POST release: happy path → 200 med severance + role + name", async () => {
+  const { status, body } = await postStaffReleaseHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" },
+    createSupabaseMock(),
+    { flags: ENABLED, releaseStaff: async () => ({ ok: true, severance: 8_000, role: "training", name: "Coach Testsen" }) }
+  );
+  assert.equal(status, 200);
+  assert.equal(body.severance, 8_000);
+  assert.equal(body.role, "training");
+  assert.equal(body.name, "Coach Testsen");
+});
+
+test("POST release: flag off → 403 facilities_disabled (via ægte service-gate)", async () => {
+  const { status, body } = await postStaffReleaseHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" },
+    createSupabaseMock()
+  );
+  assert.equal(status, 403);
+  assert.equal(body.error, "facilities_disabled");
+});
+
 // ── GET /api/club/staff/:id — fuld profil ────────────────────────────────────
 
 // Mock for profil-handleren: team_staff-opslag (id+team_id → single) +
@@ -494,6 +550,7 @@ const CLUB_ROUTES = [
   ['router.post("/club/staff/hire"', "postStaffHireHandler"],
   ['router.post("/club/staff/fire"', "postStaffFireHandler"],
   ['router.get("/club/staff/:id"', "getStaffProfileHandler"],
+  ['router.post("/club/staff/:id/release"', "postStaffReleaseHandler"],
 ];
 
 for (const [marker, handler] of CLUB_ROUTES) {

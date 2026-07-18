@@ -3,11 +3,12 @@
 // Hård gate: alle funktioner er no-ops mens FACILITIES_ENABLED=false; tests
 // injicerer flags-parameteren ({ facilitiesEnabled: true }) — prod-callsites
 // udelader den så koden følger kode-konstanten.
-import { FACILITIES_ENABLED, FACILITY_TRACKS, staffSalaryFor } from "./facilityConstants.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS, staffSalaryFor, staffReleaseSeverance } from "./facilityConstants.js";
 import { validateUpgrade, validateHire, getUpgradePrice, severanceCost } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { debitTeam } from "./economyEngine.js";
+import { FINANCE_REASON } from "./economyConstants.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
 
@@ -42,6 +43,22 @@ async function loadActiveStaff(teamId, role, supabaseClient) {
     .eq("status", "active")
     .maybeSingle();
   if (error) throw new Error(`facilityService: could not load active staff for ${teamId}/${role}: ${error.message}`);
+  return data;
+}
+
+// #2649: opslag på staffId (i stedet for role) TIL ejerskabs-guarden i releaseStaff.
+// .eq("team_id", teamId) håndhæves i APPLIKATIONS-koden her (ikke kun RLS) — en
+// staff-række der findes, men tilhører et andet hold, matcher aldrig denne query
+// og giver samme "staff_not_found" som et ukendt id (ingen oplysningslæk om,
+// hvorvidt id'et findes hos en anden).
+async function loadStaffById(teamId, staffId, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("team_staff")
+    .select("id, name, role, tier, salary, status")
+    .eq("id", staffId)
+    .eq("team_id", teamId)
+    .maybeSingle();
+  if (error) throw new Error(`facilityService: could not load staff ${staffId} for ${teamId}: ${error.message}`);
   return data;
 }
 
@@ -201,4 +218,56 @@ export async function fireStaff(
   if (updateError) throw new Error(`facilityService: staff fire-update failed for ${staff.id}: ${updateError.message}`);
 
   return { ok: true, severance: cost, ...(debit.skipped ? { skipped: true } : {}) };
+}
+
+// #2649: opsig EGET staff (staffId-baseret, ikke role-baseret som fireStaff)
+// mod severance = 4 × ugentlig løn (staffReleaseSeverance — ny, ejer-godkendt
+// model). Bruges af den nye "Release staff"-knap på staff-profil/-oversigt
+// (frontend/src/pages/StaffProfilePage.jsx + StaffOverviewPage.jsx).
+//
+// Rækkefølge er BEVIDST: status-check FØR debit, og status-check er den
+// primære double-click-guard (2. kald ser status='fired' → already_released,
+// INGEN ny debit). idempotencyKey er et sekundært lag for den ægte samtidigheds-
+// race (to kald begge læser status='active' før nogen skriver) — DB'ens unikke
+// index på idempotency_key sikrer at kun ét af dem rent faktisk debiterer
+// (se database/2026-05-09-audit-log-foundation.sql:uniq_finance_idempotency_key).
+export async function releaseStaff(
+  { teamId, staffId, seasonId, seasonNumber },
+  supabaseClient,
+  flags = DEFAULT_FLAGS
+) {
+  if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
+  if (!staffId) return { ok: false, error: "staff_not_found" };
+
+  const staff = await loadStaffById(teamId, staffId, supabaseClient);
+  if (!staff) return { ok: false, error: "staff_not_found" };
+  if (staff.status !== "active") return { ok: false, error: "already_released" };
+
+  const balance = await loadTeamBalance(teamId, supabaseClient);
+  const severance = staffReleaseSeverance(staff.salary);
+  if (balance < severance) return { ok: false, error: "insufficient_funds", severance, balance };
+
+  const debit = await debitTeam(teamId, severance, "staff_severance", null, seasonId, supabaseClient, {
+    idempotent: true,
+    metadata: { code: "tx.staffRelease", params: { role: staff.role, staffName: staff.name } },
+    audit: {
+      sourcePath: "facilityService.releaseStaff",
+      reasonCode: FINANCE_REASON.STAFF_RELEASE_SEVERANCE,
+      idempotencyKey: `staff_release_severance:${teamId}:${staff.id}`,
+    },
+  });
+
+  const { error: updateError } = await supabaseClient
+    .from("team_staff")
+    .update({ status: "fired", fired_season: seasonNumber })
+    .eq("id", staff.id);
+  if (updateError) throw new Error(`facilityService: staff release-update failed for ${staff.id}: ${updateError.message}`);
+
+  return {
+    ok: true,
+    severance,
+    role: staff.role,
+    name: staff.name,
+    ...(debit.skipped ? { skipped: true } : {}),
+  };
 }

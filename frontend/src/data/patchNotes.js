@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.25",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Release staff — for a severance fee",
+          "body": "You can now release your own staff (Sports Director, Chief Scout, Team Doctor, Academy Director, Commercial Director) from their staff profile or the staff overview list. Releasing them ends the contract immediately and opens the role for a new hire right away, but it isn't free: you pay a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit."
+        },
+        "da": {
+          "title": "Opsig staff — mod et opsigelsesgebyr",
+          "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
+        },
+        "refs": [2649]
+      }
+    ]
+  },
+  {
     "version": "7.24",
     "date": "2026-07-18",
     "label": "Beta",

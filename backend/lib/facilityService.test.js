@@ -7,8 +7,9 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
-const { purchaseFacilityUpgrade, hireStaff, fireStaff } = await import("./facilityService.js");
-const { FACILITY_TIER_PRICE, staffSalaryFor } = await import("./facilityConstants.js");
+const { purchaseFacilityUpgrade, hireStaff, fireStaff, releaseStaff } = await import("./facilityService.js");
+const { FACILITY_TIER_PRICE, staffSalaryFor, staffReleaseSeverance } = await import("./facilityConstants.js");
+const { FINANCE_REASON } = await import("./economyConstants.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
 const { deriveStaffAbilities } = await import("./staffAbilityDerivation.js");
 
@@ -513,4 +514,105 @@ test("fire: no active staff → no_active_staff, no debit", async () => {
   assert.deepEqual(result, { ok: false, error: "no_active_staff" });
   assert.equal(supabase.state.finance_transactions.length, 0);
   assert.equal(supabase.state.staffUpdates.length, 0);
+});
+
+// ─── releaseStaff (#2649 — staffId-baseret opsigelse, severance = 4×ugentlig løn) ──
+
+test("release: happy path debits staffReleaseSeverance(salary), sets status=fired + fired_season, frees role", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 50_000 },
+    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, name: "Coach Testsen" }],
+  });
+  const expectedSeverance = staffReleaseSeverance(22_000); // round(22000/11)=2000 × 4 = 8000
+
+  const result = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+
+  assert.deepEqual(result, { ok: true, severance: expectedSeverance, role: "training", name: "Coach Testsen" });
+  assert.equal(expectedSeverance, 8_000);
+  assert.equal(supabase.state.team.balance, 50_000 - 8_000);
+  assert.equal(supabase.state.finance_transactions.length, 1);
+  const tx = supabase.state.finance_transactions[0];
+  assert.equal(tx.type, "staff_severance");
+  assert.equal(tx.amount, -8_000);
+  assert.equal(tx.reason_code, FINANCE_REASON.STAFF_RELEASE_SEVERANCE);
+  assert.equal(tx.idempotency_key, "staff_release_severance:team-1:staff-9");
+  assert.equal(tx.source_path, "facilityService.releaseStaff");
+
+  assert.equal(supabase.state.staffUpdates.length, 1);
+  assert.deepEqual(supabase.state.staffUpdates[0], { id: "staff-9", payload: { status: "fired", fired_season: 7 } });
+  assert.equal(supabase.state.staff[0].status, "fired");
+});
+
+test("release: insufficient funds → insufficient_funds with severance+balance, no debit, staff stays active", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000 },
+    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2 }],
+  });
+
+  const result = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: false, error: "insufficient_funds", severance: 8_000, balance: 1_000 });
+  assert.equal(supabase.state.finance_transactions.length, 0);
+  assert.equal(supabase.state.staffUpdates.length, 0);
+  assert.equal(supabase.state.staff[0].status, "active");
+});
+
+test("release: staff belonging to ANOTHER team → staff_not_found (ownership guard, no leak)", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    staff: [{ id: "staff-9", team_id: "team-2", role: "training", status: "active", salary: 22_000, tier: 2 }],
+  });
+
+  const result = await releaseStaff({ ...BASE_ARGS, teamId: "team-1", staffId: "staff-9" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: false, error: "staff_not_found" });
+  assert.equal(supabase.state.finance_transactions.length, 0);
+});
+
+test("release: unknown staffId → staff_not_found", async () => {
+  const supabase = createFacilitySupabase({ team: { id: "team-1", balance: 1_000_000 }, staff: [] });
+  const result = await releaseStaff({ ...BASE_ARGS, staffId: "nope" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: false, error: "staff_not_found" });
+});
+
+test("release: double-call (sequential) does NOT charge severance twice — 2nd call sees status=fired", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 50_000 },
+    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, name: "Coach Testsen" }],
+  });
+
+  const first = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+  assert.equal(first.ok, true);
+  assert.equal(supabase.state.team.balance, 50_000 - 8_000);
+
+  const second = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+  assert.deepEqual(second, { ok: false, error: "already_released" });
+  // Balance uændret siden 1. kald — INGEN dobbelt-debit.
+  assert.equal(supabase.state.team.balance, 50_000 - 8_000);
+  assert.equal(supabase.state.finance_transactions.length, 1);
+});
+
+test("release: true-concurrent race (idempotent debit-skip via idempotency_key) → 2nd RPC-call skipped, no double charge", async () => {
+  // Simulerer to samtidige kald der BEGGE læste status='active' før nogen skrev
+  // (raceren dette dækker: begge passerer status-checket, kun ÉT debiterer reelt).
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 50_000 },
+    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, name: "Coach Testsen" }],
+  });
+  let call = 0;
+  const originalRpc = supabase.rpc.bind(supabase);
+  supabase.rpc = (name, params) => {
+    call += 1;
+    if (call === 2) return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+    return originalRpc(name, params);
+  };
+
+  const first = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+  assert.equal(first.ok, true);
+  assert.equal(supabase.state.team.balance, 50_000 - 8_000);
+
+  // Reset staff til 'active' for at simulere at kald #2's status-check løb FØR kald #1's update.
+  supabase.state.staff[0].status = "active";
+  const second = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
+  assert.deepEqual(second, { ok: true, severance: 8_000, role: "training", name: "Coach Testsen", skipped: true });
+  // Balance uændret af det 2. (skippede) kald.
+  assert.equal(supabase.state.team.balance, 50_000 - 8_000);
 });
