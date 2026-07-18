@@ -49,6 +49,20 @@ export const PATCHES = [
           "body": "En rytters Udvikling-fane kunne vise \"Nærmer sig loftet\", selvom niveauet i dag var langt fra potentialet, for eksempel evne 29 mod et loft på 90+. Det skete, når 6-sæsons-vækstprognosen ikke fandt et tidspunkt inden for vinduet, uanset hvor stort det reelle gab var. Beskeden vises nu kun når rytterens niveau reelt er tæt på loftet; ryttere med lang vej endnu tilbage får i stedet en ærlig \"Stort spring til loftet\"-linje, så alders- og loft-udsigterne aldrig modsiger hinanden."
         },
         "refs": [2645]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting missions now only target free agents, and a targeted look-up answers in ~30 minutes",
+          "body": "Missions target free agents you can sign right away, so a mission never comes back with a rider sitting on another human team's roster. A single targeted rider look-up now answers in about 30 minutes at any scout level, down from up to 3 days before. Reports also can't reference a rider who has since become unavailable (an unresolved academy offer or a pending transfer): the check runs fresh every time you open your Scouting page, and each rider's report now shows their current status (free agent, or which team signed them)."
+        },
+        "da": {
+          "title": "Spejder-missioner target'er nu kun kontraktfrie ryttere, og en målrettet undersøgelse svarer på ~30 minutter",
+          "body": "Missioner target'er kontraktfrie ryttere du kan hente med det samme, så en mission aldrig kommer tilbage med en rytter der sidder på et andet menneske-holds trup. En målrettet enkelt-rytter-undersøgelse svarer nu på cirka 30 minutter uanset spejder-niveau, ned fra op til 3 dage før. Rapporter kan heller ikke længere referere en rytter der siden er blevet utilgængelig (et uafklaret akademi-tilbud eller en ventende handel): tjekket kører friskt hver gang du åbner Spejder-siden, og hver rytters rapport viser nu deres nuværende status (kontraktfri, eller hvilket hold der hentede dem)."
+        },
+        "refs": [2644, 2623]
       }
     ]
   },
