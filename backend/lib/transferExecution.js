@@ -465,13 +465,16 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     return failure(409, "The rider changed status during confirmation. The deal was cancelled", "stale_rider_state");
   }
 
-  // #1906 defense-in-depth: når rytteren reelt skifter hold (team_id flyttet ved
-  // direkte registrering), ryd hans fremtidige ghost-race_entries med det samme.
-  // I deferRegistration-stien flyttes kun pending_team_id (team_id bliver hos
-  // sælger), så ingen ghost dannes endnu — derfor kun her.
-  if (!deferRegistration) {
-    await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "transfer" });
-  }
+  // #1906 defense-in-depth: ryd rytterens fremtidige ghost-race_entries med det
+  // samme. #2579: dette gælder OGSÅ i deferRegistration-stien — handlen er
+  // accepteret og betalt HER, uanset om selve team_id-flytningen er parkeret pga.
+  // et aktivt etapeløb hos sælger (#1995). Uden dette ville en rytter der allerede
+  // var manuelt udtaget til et ANDET, ikke-startet løb hos sælger (før salget)
+  // blive hængende der — en solgt rytter kan stadig vælges til et løb, selvom
+  // transferen (selve holdskiftet) er blokeret. clearFutureRaceEntries rammer
+  // KUN scheduled/stages_completed=0-løb, så det aktive låste løb (grunden til
+  // parkeringen) er strukturelt udelukket — den entry røres aldrig her.
+  await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "transfer" });
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
   // 07d Fase B / #240: actor flyder gennem auditCtx (api fra confirmTransferOffer,
@@ -710,13 +713,11 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(409, "The requested rider changed status during confirmation. The swap was cancelled", "stale_requested_rider_state");
   }
 
-  // #1906 defense-in-depth: begge byttede ryttere skifter hold ved direkte
-  // registrering (team_id flyttet) → ryd hver deres fremtidige ghost-race_entries.
-  // I deferRegistration-stien flyttes kun pending_team_id, så ingen ghost dannes endnu.
-  if (!deferRegistration) {
-    await clearFutureRaceEntriesSafe({ supabase, riderId: offered.id, label: "swap" });
-    await clearFutureRaceEntriesSafe({ supabase, riderId: requested.id, label: "swap" });
-  }
+  // #1906 defense-in-depth: ryd begge byttede ryttere fremtidige ghost-race_entries.
+  // #2579: også i deferRegistration-stien (se executeTransferOffer for begrundelsen) —
+  // byttehandlen er accepteret HER, uanset om selve team_id-flytningen parkeres.
+  await clearFutureRaceEntriesSafe({ supabase, riderId: offered.id, label: "swap" });
+  await clearFutureRaceEntriesSafe({ supabase, riderId: requested.id, label: "swap" });
 
   if (cash !== 0) {
     // Slice 07c: balance + finance_transactions atomic via RPC.

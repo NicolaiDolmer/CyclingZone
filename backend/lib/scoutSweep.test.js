@@ -1,7 +1,7 @@
 // Talentspejder Fase 3 (#2244) — scoutSweep: mirror af trainingSweep.test.js.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { shouldSweepNow, runScoutSweep } from "./scoutSweep.js";
+import { shouldSweepNow, runScoutSweep, defaultLoadCandidates } from "./scoutSweep.js";
 
 describe("shouldSweepNow", () => {
   it("sweep kun efter kl. 22 dansk tid", () => {
@@ -13,13 +13,17 @@ describe("shouldSweepNow", () => {
 // Supabase-mock: understøtter både chainable query-builders (.eq/.lte/.not) OG
 // direkte await (thenable) + separate insert()-mocks pr. tabel.
 function makeMockSupabase({
-  assignments = [], scoutActions = [], sweepRuns = [], candidates = [], scoutState = { scout: { overall: 40, roleSkills: { evaluation: 40, reach: 40 }, isDefault: true } },
+  assignments = [], scoutActions = [], sweepRuns = [], candidates = [], offeredIntake = [],
+  scoutState = { scout: { overall: 40, roleSkills: { evaluation: 40, reach: 40 }, isDefault: true } },
 } = {}) {
   const state = {
     assignments: JSON.parse(JSON.stringify(assignments)),
     scoutActions: JSON.parse(JSON.stringify(scoutActions)),
     sweepRuns: JSON.parse(JSON.stringify(sweepRuns)),
     candidates,
+    // #2581: 'offered' akademi-intake-rækker — defaultLoadCandidates ekskluderer
+    // disse rider_ids (globalt usøgbare via riders-RLS så længe tilbuddet står åbent).
+    offeredIntake: JSON.parse(JSON.stringify(offeredIntake)),
     updates: [],
     inserts: { scout_actions: [], scout_sweep_runs: [] },
   };
@@ -88,6 +92,9 @@ function makeMockSupabase({
       if (table === "riders") {
         return { select: () => queryBuilder(state.candidates), not: () => queryBuilder(state.candidates) };
       }
+      if (table === "academy_intake") {
+        return { select: () => queryBuilder(state.offeredIntake) };
+      }
       if (table === "team_staff" || table === "staff_derived_abilities") {
         return {
           select: () => {
@@ -104,6 +111,48 @@ function makeMockSupabase({
 }
 
 const afterWindow = new Date("2026-07-10T20:30:00Z"); // 22:30 CEST → tickDate 2026-07-10
+
+// #2581: to hold rapporterede rytternavne fra en mission-shortlist de ikke kunne
+// søge frem. Prod-audit (17/7) fandt 0 ægte orphans, men 17/46 (37%) af nogensinde
+// shortlistede ryttere er "offered"-akademi-intake-kandidater — globalt usøgbare
+// via riders-RLS-policyen indtil det tilbudte hold accepterer/afviser. Se
+// scoutSweep.js' defaultLoadCandidates-kommentar for den fulde diagnose.
+describe("defaultLoadCandidates (#2581)", () => {
+  const riderRow = (overrides) => ({
+    id: "r1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
+    team_id: null, is_retired: false, team: null, ...overrides,
+  });
+
+  it("ekskluderer ryttere med et uafklaret ('offered') akademi-intake-tilbud", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1" }), riderRow({ id: "r2" })],
+      offeredIntake: [{ rider_id: "r1", status: "offered" }],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
+  });
+
+  it("inkluderer ryttere hvis intake-tilbud allerede er afklaret (status != 'offered')", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1" })],
+      // 'accepted'-raekken matcher IKKE academy_intake-queryens .eq('status','offered')
+      // → r1 er ikke længere skjult, må optræde i kandidat-poolen.
+      offeredIntake: [{ rider_id: "r1", status: "accepted" }],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.deepEqual(candidates.map((c) => c.id), ["r1"]);
+  });
+
+  it("mapper ownerTeamId fra riders.team_id (bruges af generateShortlist til own-rider-exclusion)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", team_id: "team-9" }), riderRow({ id: "r2", team_id: null })],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.equal(candidates.find((c) => c.id === "r1").ownerTeamId, "team-9");
+    assert.equal(candidates.find((c) => c.id === "r2").ownerTeamId, null);
+  });
+});
 
 describe("runScoutSweep", () => {
   it("before_window skip", async () => {

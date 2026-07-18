@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "./boardUtils.js";
+// #2596 · Drift-guard: satisfactionToModifier (bånd >=80/60/40/20, ellers
+// 0.80) er duplikeret i frontend (boardUtils.js) og backend
+// (boardEvaluation.js — den autoritative kilde for board.budget_modifier),
+// fordi de er separate npm-packages. Denne fil pinner frontend-kopien mod
+// den delte, dokumenterede bånd-tabel; backend/lib/boardEvaluation.test.js
+// pinner backend-kopien mod SAMME tabel. Ændres ét bånd på én side, fejler
+// den sides pin — så frontendens forklaringstekst (#2307's
+// satisfactionExplainer) kan ikke stille drifte fra board.budget_modifier.
+// (Direkte cross-import af boardEvaluation.js kan ikke bruges her: den
+// trækker backend-only deps ind som ikke loader i CI's frontend-build-job.)
 
 // #55 · De 7 nye S-02d-måltyper faldt før til default:false i frontendens egen
 // evaluator, så header-tæller + top-3-ikoner undertalte opnåede mål. Fixet
@@ -116,6 +126,29 @@ test("satisfactionToModifier · ankerpunkter", () => {
   assert.equal(satisfactionToModifier(80), 1.20);
   assert.equal(satisfactionToModifier(40), 1.00);
   assert.equal(satisfactionToModifier(10), 0.80);
+});
+
+// #2596 · FE↔BE-paritet for satisfactionToModifier-båndene. Dækker begge
+// bånd-kanter (fx 79 vs 80) for hvert af de 5 trin, så en enkelt
+// off-by-one-ændring i backend (fx >80 i stedet for >=80) også fanges.
+test("satisfactionToModifier · FE↔BE-paritet (#2596)", () => {
+  // Delt, dokumenteret bånd-tabel — SAMME tabel pinnes backend-side i
+  // backend/lib/boardEvaluation.test.js. Kant-prøverne (19/20, 39/40,
+  // 59/60, 79/80) fanger en off-by-one (fx >80 i stedet for >=80).
+  const expected = [
+    [-10, 0.80], [0, 0.80], [19, 0.80],
+    [20, 0.90], [21, 0.90], [39, 0.90],
+    [40, 1.00], [41, 1.00], [59, 1.00],
+    [60, 1.10], [61, 1.10], [79, 1.10],
+    [80, 1.20], [81, 1.20], [100, 1.20], [150, 1.20],
+  ];
+  for (const [satisfaction, modifier] of expected) {
+    assert.equal(
+      satisfactionToModifier(satisfaction),
+      modifier,
+      `satisfaction=${satisfaction}: frontend satisfactionToModifier divergerer fra delt bånd-tabel`
+    );
+  }
 });
 
 test("getPlanDuration · 1/3/5", () => {

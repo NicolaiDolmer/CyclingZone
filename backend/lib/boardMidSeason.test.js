@@ -611,6 +611,88 @@ test("processMidSeasonReviewCron skipper hold uden 1yr-completed plan", async ()
   assert.equal(summary.banners_sent, 0);
 });
 
+// #2596 · divisionManagerCount skal tælles pr. PULJE (league_division_id),
+// ikke pr. tier (division) — ellers inflaterer relative_rank's beatCount i
+// divisioner med >1 pulje. team-1 + team-2 deler pulje 101 (2 humane
+// managers); team-3 sidder alene i pulje 202. Tier 3 rummer alle tre (3
+// humane managers), så et tier-bredt (pre-fix) divisionManagerCount ville
+// givet team-1 beatCount=3-2=1 >= target(1) → 'ahead' → intet trigger. Det
+// korrekte pulje-baserede tal (2) giver beatCount=2-2=0 < target(1) →
+// 'behind' → 100% behind-mål → banner.
+test("processMidSeasonReviewCron: relative_rank taeller pulje-baseret (league_division_id), ikke tier-bredt", async () => {
+  const state = {
+    teams: [
+      {
+        id: "team-1", user_id: "user-1", is_ai: false, is_bank: false,
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #2",
+      },
+      {
+        id: "team-2", user_id: "user-2", is_ai: false, is_bank: false,
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #1",
+      },
+      {
+        id: "team-3", user_id: "user-3", is_ai: false, is_bank: false,
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool B #1",
+      },
+    ],
+    riders: [],
+    seasons: [{
+      id: "season-5", number: 5, status: "active",
+      race_days_completed: 30, race_days_total: 60,
+    }],
+    board_profiles: [
+      {
+        id: "board-1", team_id: "team-1", plan_type: "1yr", satisfaction: 60,
+        current_goals: [{ type: "relative_rank", target: 1 }],
+        negotiation_status: "completed", is_baseline: false,
+      },
+      {
+        id: "board-2", team_id: "team-2", plan_type: "1yr", satisfaction: 60,
+        current_goals: [], negotiation_status: "completed", is_baseline: false,
+      },
+      {
+        id: "board-3", team_id: "team-3", plan_type: "1yr", satisfaction: 60,
+        current_goals: [], negotiation_status: "completed", is_baseline: false,
+      },
+    ],
+    season_standings: [
+      {
+        team_id: "team-1", season_id: "season-5", division: 3,
+        league_division_id: 101, rank_in_division: 2,
+        total_points: 100, stage_wins: 0, gc_wins: 0, prize_money: 0,
+      },
+      {
+        team_id: "team-2", season_id: "season-5", division: 3,
+        league_division_id: 101, rank_in_division: 1,
+        total_points: 200, stage_wins: 0, gc_wins: 0, prize_money: 0,
+      },
+      {
+        team_id: "team-3", season_id: "season-5", division: 3,
+        league_division_id: 202, rank_in_division: 1,
+        total_points: 150, stage_wins: 0, gc_wins: 0, prize_money: 0,
+      },
+    ],
+    transfer_windows: [{
+      id: "tw-1", board_negotiation_state: "complete", created_at: "2026-05-05T00:00:00Z",
+    }],
+    notifications: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const banners = [];
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async (args) => {
+      banners.push(args);
+      return { delivered: true, deduped: false };
+    },
+  });
+
+  assert.equal(summary.teams_checked, 3);
+  assert.equal(banners.length, 1, "kun team-1 (pulje 101) skal trigge banner");
+  assert.equal(banners[0].userId, "user-1");
+});
+
 // =====================================================================
 // Test fixtures
 // =====================================================================

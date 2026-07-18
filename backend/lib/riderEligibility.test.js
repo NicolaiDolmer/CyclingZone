@@ -43,16 +43,18 @@ test("filterEligibleEntries: ghost-entries (akademi/pensioneret/off-team/slettet
   assert.deepEqual(live.map((e) => e.rider_id), ["ok"]);
 });
 
-test("applyRiderEligibilityFilter: kæder akademi- + pensioneret-filter på query'en", () => {
+test("applyRiderEligibilityFilter: kæder akademi- + pensioneret- + ikke-under-handel-filter på query'en", () => {
   const calls = [];
   const q = {
     eq(col, val) { calls.push(["eq", col, val]); return q; },
     or(expr) { calls.push(["or", expr]); return q; },
+    is(col, val) { calls.push(["is", col, val]); return q; },
   };
   const out = applyRiderEligibilityFilter(q);
   assert.equal(out, q, "returnerer query'en (kædebar)");
   assert.deepEqual(calls, [
     ["eq", "is_academy", false],
     ["or", "is_retired.is.null,is_retired.eq.false"],
+    ["is", "pending_team_id", null],
   ]);
 });

@@ -9,13 +9,23 @@
 // rytterens NUVÆRENDE tilstand, så en solgt/fyret/promoveret rytter hang ved som
 // "ghost" i lineup (151 off-team i prod). Konsolidér her; brug ét sted.
 
-// Påfør eligibility-filteret (akademi + pensioneret) på en supabase-query. Team-
-// afgrænsningen (.eq/.in på team_id) sættes af kalderen, da den varierer (ét hold
-// vs. mange). Idempotent at kæde oven på en eksisterende query.
+// Påfør eligibility-filteret (akademi + pensioneret + ikke-under-handel) på en
+// supabase-query. Team-afgrænsningen (.eq/.in på team_id) sættes af kalderen, da den
+// varierer (ét hold vs. mange). Idempotent at kæde oven på en eksisterende query.
 //   - is_academy: kun rene seniorryttere (akademiryttere er ikke løbs-berettigede, #1307/#1308).
 //   - is_retired: null ELLER false (pensionerede udelades; null = aldrig sat = aktiv).
+//   - pending_team_id: null (#2579 — en rytter der er SOLGT, men hvis fysiske
+//     holdskifte er PARKERET pga. et aktivt etapeløb hos sælger (#1995), må ikke
+//     kunne tilføjes en NY udtagelse hos sælgeren, mens handlen afventer flush.
+//     team_id peger stadig på sælger i den periode (se stageRaceTransferDefer.js),
+//     så uden dette filter ville han fremstå som en helt almindelig rosterrytter for
+//     ALLE fremtidige løb — ikke kun det ene han allerede er låst i. Rytterens
+//     eksisterende entry i det AKTIVE løb rammes ikke af dette filter (det er en
+//     candidate-pool-gate til NY udtagelse, ikke et ghost-tjek på committede
+//     entries — se isEligibleRider/filterEligibleEntries, som bevidst IKKE tjekker
+//     pending_team_id, da de bruges til at validere det låste løbs EGNE entries).
 export function applyRiderEligibilityFilter(query) {
-  return query.eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+  return query.eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false").is("pending_team_id", null);
 }
 
 // Rent predikat: må `rider` køre for `teamId`? Bruges til at krydse committede

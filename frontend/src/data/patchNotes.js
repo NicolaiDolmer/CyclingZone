@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.15",
-    "date": "2026-07-17",
+    "version": "7.16",
+    "date": "2026-07-18",
     "label": "Beta",
     "changes": [
       {
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Kalenderens terræn-legend viser nu et distinkt brosten-ikon mellem Sprint og Kuperet, så brostens-løb ikke længere ligner en flad sprint-etape ved et hurtigt blik. Enkeltstart og holdstart beholder også hver deres eget ikon."
         },
         "refs": [2605]
+      }
+    ]
+  },
+  {
+    "version": "7.15",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting Network: reports only point to riders you can actually look up",
+          "body": "Some scouting mission reports named riders you couldn't find anywhere. Root cause: the shortlist could include a rider currently sitting in another team's unresolved academy intake offer, which the platform hides from everyone until that team accepts or declines it, or (rarely) a rider already on your own roster. Missions now skip both cases, so every name in a report is a real, searchable rider."
+        },
+        "da": {
+          "title": "Scouting Network: rapporter peger nu kun på ryttere du faktisk kan slå op",
+          "body": "Nogle spejder-mission-rapporter nævnte ryttere du ikke kunne finde nogen steder. Rodårsag: shortlisten kunne indeholde en rytter der lige nu står i et uafklaret akademi-intake-tilbud hos et andet hold, hvilket skjuler ham for alle indtil det hold accepterer eller afviser tilbuddet, eller (sjældent) en rytter der allerede er på din egen trup. Missioner springer nu begge tilfælde over, så hvert navn i en rapport er en ægte, søgbar rytter."
+        },
+        "refs": [2581]
       }
     ]
   },
