@@ -24,6 +24,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.AUCTION_WINNER_PAYMENT]: "Auction purchase",
   [FINANCE_REASON.AUCTION_SELLER_PAYOUT]: "Auction sale",
   [FINANCE_REASON.AUCTION_GUARANTEED_BANK_SALE]: "Bank-guaranteed sale",
+  [FINANCE_REASON.INTAKE_EXPIRY_AUCTION_COMPENSATION]: "Intake expiry compensation",
   [FINANCE_REASON.TRANSFER_PURCHASE]: "Transfer purchase",
   [FINANCE_REASON.TRANSFER_SALE]: "Transfer sale",
   [FINANCE_REASON.SWAP_CASH_DELTA]: "Swap (cash difference)",

@@ -208,6 +208,10 @@ async function deleteUnsoldYouthRider({ supabase, rider }) {
 // "usolgt = væk" — se deleteUnsoldYouthRider ovenfor).
 // Akademiryttere bypasser senior-30-cap'en og transfervindue-pending (de tæller
 // ikke mod senior-truppen), så ingen squad-violation-/pending-logik her.
+// #2648 (intake-udløb v2): er auction.expired_intake_team_id sat (kun for
+// intake-udløbs-auktioner, jf. academyIntakeExpirySweep), krediteres bud-
+// summen den manager i stedet for at forblive et rent sink — kompensation
+// for det udløbne intake-tilbud (ejer-beslutning 18/7).
 async function finalizeYouthAuctionRecord({
   supabase,
   auction,
@@ -368,6 +372,65 @@ async function finalizeYouthAuctionRecord({
     rider_name: `${rider.firstname} ${rider.lastname}`,
     amount: price,
   });
+
+  // #2648 (intake-udløb v2, ejer-beslutning 18/7): denne auktion stammer fra et
+  // udløbet intake-tilbud NETOP HVIS auction.expired_intake_team_id er sat —
+  // en kolonne stemplet KUN af academyIntakeExpirySweep, og KUN for kandidater
+  // der bestod ejerskabs-guarden (#2646) på udløbs-tidspunktet. Almindelige
+  // ungdomsauktioner (manager-initieret afvisning via rejectAcademyCandidate)
+  // har feltet NULL og udløser derfor ALDRIG kreditering — genbruger #2646-
+  // guarden ved konstruktion i stedet for at gen-udlede "hvem mistede
+  // rytteren" fra et status-felt ved finalisering (præcis den fejlklasse
+  // hændelsen 18/7 handlede om).
+  //
+  // Placeret FØR closeAuction (samme rækkefølge-princip som resten af filen —
+  // se finalizeAuctionRecord's senior-gren, hvor betaling/kreditering altid
+  // sker inden auktionen lukkes): crasher processen mellem betaling og
+  // credit, forbliver auktionen "active/extended", og en cron-retry når
+  // hertil igen — idempotency_key gør re-forsøget sikkert (23505 no-op'er i
+  // stedet for at dobbelt-betale). Lukkede vi auktionen FØRST, ville en
+  // retry stoppe ved "already_completed" og kompensationen aldrig blive
+  // forsøgt igen.
+  if (auction.expired_intake_team_id) {
+    const compensation = await incrementBalanceWithAudit(supabase, {
+      teamId: auction.expired_intake_team_id,
+      delta: price,
+      payload: {
+        type: "transfer_in",
+        amount: price,
+        description: `Kompensation: udløbet intake-tilbud for ${rider.firstname} ${rider.lastname} solgt på auktion`,
+        metadata: {
+          code: "tx.intakeExpiryCompensation",
+          params: { riderName: `${rider.firstname} ${rider.lastname}` },
+        },
+        season_id: activeSeasonId,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "auctionFinalization.finalizeYouthAuctionRecord.intakeExpiryCompensation",
+        reason_code: FINANCE_REASON.INTAKE_EXPIRY_AUCTION_COMPENSATION,
+        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+        related_entity_id: auction.id,
+        idempotency_key: `intake_expiry_compensation:${auction.id}`,
+      },
+    }, { allowDuplicate: true });
+
+    if (!compensation.skipped) {
+      await notifyTeamOwner(
+        auction.expired_intake_team_id,
+        "academy_intake_expired_compensation",
+        "Academy intake offer expired: rider sold",
+        `Your academy intake offer for ${rider.firstname} ${rider.lastname} expired, and he was sold at auction. You received ${price} CZ$.`,
+        auction.id,
+        {
+          riderId: rider.id,
+          titleCode: "notif.intakeExpiryCompensation.title",
+          titleParams: {},
+          messageCode: "notif.intakeExpiryCompensation.message",
+          messageParams: { rider: `${rider.firstname} ${rider.lastname}`, amount: price },
+        }
+      );
+    }
+  }
 
   await closeAuction({
     supabase,

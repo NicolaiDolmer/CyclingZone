@@ -22,6 +22,16 @@
 //
 // Flag intake_offer_expiry_enabled er fail-safe OFF og blev slukket under
 // hændelsen — GEN-TÆNDING ER EJER-ONLY (jf. husreglen om live-systemer).
+//
+// #2648 (intake-udløb v2, ejer-beslutning 18/7): stemples HER, i selve
+// udvælgelsen af ejerskabs-verificerede team-løse kandidater (efter lag 1
+// ovenfor), hvilken manager der modtog netop den udløbne intake-rækkes
+// tilbud — expiredIntakeTeamId videregives til youthMarket.listRejectedAsYouthAuction,
+// som stempler den PÅ selve auktionsrækken (expired_intake_team_id). Sælges
+// rytteren siden, krediteres salgssummen den manager (auctionFinalization.
+// finalizeYouthAuctionRecord) — kompensation for inaktivitet. rejectAcademyCandidate
+// (manager-initieret afvisning, IKKE udløb) kalder samme funktion UDEN denne
+// parameter og udløser derfor aldrig kreditering.
 import { isIntakeOfferExpiryEnabled } from "./academyIntakeExpiryFlag.js";
 import { listRejectedAsYouthAuction } from "./youthMarket.js";
 
@@ -66,6 +76,13 @@ export async function runIntakeOfferExpirySweep({
     .limit(budget * 2);
   if (selError) throw new Error(`academy_intake expiry select: ${selError.message}`);
   if (!candidates?.length) return { ran: true, expired: 0, auctioned: 0, reconciled: 0, cutoff: cutoffIso };
+
+  // #2648: candidate.team_id er den manager der MODTOG intake-tilbuddet (kun
+  // NOT NULL-feltet på academy_intake-rækken selv) — den mistede rytteren, hvis
+  // rytteren viser sig faktisk team-løs nedenfor (lag 1). Stemples på selve
+  // auktionsrækken (expired_intake_team_id) som kreditering-target, se
+  // youthMarket.listRejectedAsYouthAuction + auctionFinalization.
+  const teamIdByCandidateId = new Map(candidates.map((c) => [c.id, c.team_id]));
 
   // Lag 1 — ejerskabs-sandheden bor på RYTTEREN, ikke på intake-rækken.
   const riderIds = [...new Set(candidates.map((c) => c.rider_id))];
@@ -123,6 +140,9 @@ export async function runIntakeOfferExpirySweep({
         riderId: row.rider_id,
         now,
         durationHours: INTAKE_EXPIRY_AUCTION_DURATION_HOURS,
+        // #2648: kompensations-target — udelukkende den manager der modtog
+        // NETOP DENNE intake-rækkes tilbud (allerede ejerskabs-verificeret ovenfor).
+        expiredIntakeTeamId: teamIdByCandidateId.get(row.id) ?? null,
       });
       if (auction) auctioned += 1;
     } catch (e) {

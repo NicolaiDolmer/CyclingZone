@@ -271,6 +271,9 @@ export const FINANCE_REASON = Object.freeze({
   AUCTION_WINNER_PAYMENT: "auction_winner_payment",
   AUCTION_SELLER_PAYOUT: "auction_seller_payout",
   AUCTION_GUARANTEED_BANK_SALE: "auction_guaranteed_bank_sale",
+  // #2648: intake-udløbs-auktion solgt → provenu til manageren hvis intake-
+  // tilbud udløb (kompensation for inaktivitet, ejer-beslutning 18/7).
+  INTAKE_EXPIRY_AUCTION_COMPENSATION: "intake_expiry_auction_compensation",
   // Transfers
   TRANSFER_PURCHASE: "transfer_purchase",
   TRANSFER_SALE: "transfer_sale",

@@ -32,6 +32,7 @@
     "forcedDebtSale": "Forced sale (debt ceiling): {riderName}",
     "youthAuctionWin": "Won youth rider {riderName} at auction",
     "academySigning": "Academy signing: {riderName}",
+    "intakeExpiryCompensation": "Compensation: expired intake offer for {riderName} sold at auction",
     "transferBuy": "Bought {riderName} via transfer",
     "transferSell": "Sold {riderName} via transfer",
     "swapCash": "Swap cash settlement: {offeredName} ↔ {requestedName}",
@@ -154,6 +155,10 @@
     "watchlistDeparted": {
       "title": "Rider has left the game",
       "message": "{rider} has left the game and was removed from your watchlist."
+    },
+    "intakeExpiryCompensation": {
+      "title": "Academy intake offer expired: rider sold",
+      "message": "Your academy intake offer for {rider} expired, and he was sold at auction. You received {amount} CZ$."
     },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",

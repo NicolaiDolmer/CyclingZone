@@ -244,6 +244,7 @@
       "auction_winner_payment": "Auktion-køb",
       "auction_seller_payout": "Auktion-salg",
       "auction_guaranteed_bank_sale": "Bank-garanti-salg",
+      "intake_expiry_auction_compensation": "Kompensation (udløbet intake-tilbud)",
       "transfer_purchase": "Transfer-køb",
       "transfer_sale": "Transfer-salg",
       "swap_cash_delta": "Bytte (kontant-difference)",

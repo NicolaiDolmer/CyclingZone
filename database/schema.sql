@@ -205,6 +205,7 @@ CREATE TABLE auctions (
   guaranteed_price INTEGER,
   is_flash BOOLEAN NOT NULL DEFAULT FALSE,
   is_youth BOOLEAN NOT NULL DEFAULT FALSE, -- ungdomsauktion (#1308): afvist akademi-kandidat
+  expired_intake_team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- #2648: manager hvis intake-tilbud udløb (kompensations-target)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -537,7 +538,8 @@ CREATE TABLE notifications (
     'academy_intake_ready','academy_signed','academy_rejected',
     'academy_graduation_ready','academy_graduated','contract_expiring',
     'academy_promoted','academy_demoted','watchlist_departed',
-    'admin_notice','stage_result'
+    'admin_notice','stage_result',
+    'academy_intake_expired_compensation'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,
