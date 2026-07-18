@@ -6,6 +6,11 @@
 
 ALTER TABLE riders ADD COLUMN IF NOT EXISTS generation_tag TEXT;
 
+-- riders bruger KOLONNE-niveau SELECT-grants (#2238/#1309/#2241): en ny kolonne
+-- er usynlig (silent 403) for anon/authenticated uden eksplicit grant. Taggen er
+-- ikke-sensitiv ('s1', 's2', ...) og skal kunne vises i klienten (#2493 årgangs-UI).
+GRANT SELECT (generation_tag) ON public.riders TO anon, authenticated;
+
 CREATE TABLE IF NOT EXISTS academy_intake_ticks (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   tick_date DATE NOT NULL,

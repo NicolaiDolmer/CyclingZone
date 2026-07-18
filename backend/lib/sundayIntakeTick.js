@@ -116,6 +116,10 @@ export async function runSundayIntakeTick({
         },
       });
     } catch (e) {
+      // best-effort: fejlen sluges IKKE reelt — den samles i errors[] som
+      // returneres til cron-handleren og captures aggregeret i Sentry dér.
+      // Ét holds fejl må ikke vælte de andre holds drip (claimet står, så
+      // holdet retries ikke i dag — bevidst: hellere miss end dobbelt-kuld).
       errors.push(`${team.id}: ${e?.message ?? e}`);
     }
   }

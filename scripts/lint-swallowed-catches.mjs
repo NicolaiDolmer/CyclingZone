@@ -169,7 +169,7 @@ export function findSwallowedCatches(rawSrc) {
 const BASELINE = {
   "backend/lib/seasonTransition.js": 4,
   "backend/lib/responseCache.js": 4,
-  "backend/cron.js": 4,
+  "backend/cron.js": 3,
   "backend/lib/raceRunner.js": 3,
   "backend/lib/pcmResultsImport.js": 3,
   "backend/lib/discordDmDelivery.js": 3,
@@ -182,7 +182,7 @@ const BASELINE = {
   "backend/lib/starterSquadHealSweep.js": 1,
   "backend/lib/starterSquadAllocator.js": 1,
   "backend/lib/sentry.js": 1,
-  "backend/lib/raceEntryGenerator.js": 1,
+  "backend/lib/raceEntryGenerator.js": 0,
   "backend/lib/raceEntryCleanup.js": 1,
   "backend/lib/featureStage.js": 1,
   "backend/lib/discordRoleSync.js": 1,
