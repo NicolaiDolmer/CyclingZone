@@ -43,6 +43,45 @@ test("kandidater har overall (fra derivation) + topSpecialization, deterministis
   assert.deepEqual(generateStaffCandidates(ARGS), cands);
 });
 
+// ── #2643-opfølgning: navnepulje-udvidelse mod cross-team-kollisioner ──
+
+test("STAFF_NAME_POOL er stor nok, unik og velformet", () => {
+  // 40 navne gav ~78% kollisionsrate i prod (60 staff-rows, 40 hold). Puljen skal
+  // holde trit med en liga på ~40-60 hold — gulvet er 120 så en fremtidig trim
+  // ikke stille genindfører problemet.
+  assert.ok(STAFF_NAME_POOL.length >= 120, `pool er ${STAFF_NAME_POOL.length}, skal være >= 120`);
+  assert.equal(new Set(STAFF_NAME_POOL).size, STAFF_NAME_POOL.length, "dubletter i puljen");
+  for (const name of STAFF_NAME_POOL) {
+    assert.equal(name, name.trim());
+    assert.ok(/^\S+.* \S+/.test(name), `"${name}" ligner ikke "Fornavn Efternavn"`);
+  }
+});
+
+test("cross-team-kollisionsrate ved prod-skala er markant under gammel pulje", () => {
+  // Prod-lignende scenarie: 40 hold, ~60 ansættelser (alle hyrer training, hver 2.
+  // også scouting), hire = kandidat[0]. Deterministisk (faste seeds) → stabil rate.
+  // Gammel 40-navns-pulje målte 75% kolliderende rows her (sim 2026-07-18, matcher
+  // de 78% observeret i prod); 150-puljen måler 35%. Grænsen 50% er regression-guard
+  // med margin — bider hvis puljen skrumper eller trækket skævvrides.
+  const hires = [];
+  for (let t = 0; t < 40; t++) {
+    const teamId = `00000000-0000-4000-8000-${String(t).padStart(12, "0")}`;
+    const roles = t % 2 === 0 ? ["training", "scouting"] : ["training"];
+    for (const role of roles) {
+      const [first] = generateStaffCandidates({ teamId, seasonNumber: 3, role, facilityTier: 3 });
+      hires.push({ team: teamId, name: first.name });
+    }
+  }
+  const teamsByName = new Map();
+  for (const h of hires) {
+    if (!teamsByName.has(h.name)) teamsByName.set(h.name, new Set());
+    teamsByName.get(h.name).add(h.team);
+  }
+  const collidingRows = hires.filter((h) => teamsByName.get(h.name).size >= 2).length;
+  const rate = collidingRows / hires.length;
+  assert.ok(rate < 0.5, `kollisionsrate ${(rate * 100).toFixed(1)}% (${collidingRows}/${hires.length}) — forventet < 50%`);
+});
+
 test("topSpecialization = etiket på den højest-scorende akse (dimension/niveau/rolle)", () => {
   for (const c of generateStaffCandidates(ARGS)) {
     const p = deriveStaffAbilities({ role: c.role, tier: c.tier, name: c.name });

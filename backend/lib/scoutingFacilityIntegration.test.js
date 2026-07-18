@@ -219,31 +219,31 @@ test("#2530: scouting-facilitet LIVE — købt tier bounder hire-tier, hyret che
 });
 
 test("#2530: topspejder (overall>=80) fra en tier-5-facilitet giver kapacitet 2 gennem HELE kæden", async () => {
-  const supabase = createChainSupabase({ team: { id: "team-2", balance: 1_000_000 } });
+  const supabase = createChainSupabase({ team: { id: "team-5", balance: 1_000_000 } });
 
   for (let i = 0; i < 5; i++) {
     await purchaseFacilityUpgrade(
-      { teamId: "team-2", track: "scouting", seasonId: "season-1", seasonNumber: 1 },
+      { teamId: "team-5", track: "scouting", seasonId: "season-1", seasonNumber: 1 },
       supabase,
       ENABLED
     );
   }
   assert.equal(supabase.state.facilities[0].tier, 5);
 
-  // Determinisk seed for (team-2, season 1, scouting): topkandidaten er tier 5 / overall 86.
-  const candidates = generateStaffCandidates({ teamId: "team-2", seasonNumber: 1, role: "scouting", facilityTier: 5 });
+  // Determinisk seed for (team-5, season 1, scouting): topkandidaten er tier 5 / overall 89 (seed re-valgt efter #2643-puljeudvidelsen).
+  const candidates = generateStaffCandidates({ teamId: "team-5", seasonNumber: 1, role: "scouting", facilityTier: 5 });
   const topCandidate = candidates.reduce((best, c) => (c.overall > best.overall ? c : best), candidates[0]);
   assert.equal(topCandidate.tier, 5);
   assert.ok(topCandidate.overall >= 80, `test-fixturen forudsætter en overall>=80-kandidat, fik ${topCandidate.overall}`);
 
   const hireResult = await hireStaff(
-    { teamId: "team-2", role: "scouting", candidateName: topCandidate.name, seasonId: "season-1", seasonNumber: 1 },
+    { teamId: "team-5", role: "scouting", candidateName: topCandidate.name, seasonId: "season-1", seasonNumber: 1 },
     supabase,
     ENABLED
   );
   assert.equal(hireResult.ok, true);
 
-  const scoutState = await getScoutState("team-2", supabase);
+  const scoutState = await getScoutState("team-5", supabase);
   assert.equal(scoutState.scout.overall, topCandidate.overall);
   assert.equal(scoutState.capacity, 2, "overall>=80 skal give kapacitet 2 (spec beslutning 2, scoutEngine.js)");
 });
