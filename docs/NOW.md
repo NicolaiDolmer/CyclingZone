@@ -4,14 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** (1) **#2612 (#2599) — merge + kør `race_entry_clears`-migration** (sidste bølge-PR; de 9 andre LIVE). (2) **Bølge-beslutninger (issues oprettet):** #2621 sæson-0-DB-række · #2622 sweep-scope (8.841-entry-autofill) · #2623 backfill 17 usøgbare scout-ryttere · #2589 sponsor-slice · #2624 board-harness-verify. (3) **Ejer-tests i prod:** /training · Global Rank · bulk-priser /transfers. (4) **S2-generering:** admin → Sæson → "Generér kalender" (dry-run FØRST). (5) Discord-announce 17/7-pakken.
-> _(✅ #2580/PR #2587 LUKKET+LIVE v7.14 17/7: A valgt = copy-fejl, intet datatab; prod-verificeret af Claude.)_
+> **🎯 Next action (ejer):** (1) **PR #2630** merge → kør `2026-07-18-player-feedback.sql` manuelt (feedback-knap, konfliktfri, reviewet). (2) **PR #2620** merge (board-DM-spam-fix, guard fixet). (3) **PR #2612 (#2599)** — migration; `audit`-check rød, sig til hvis Claude skal kigge. (4) **👍/👎:** #2621 sæson-0 (anbef. behold) · #2622 sweep-horisont (anbef. 2 løbsdage human) · #2627 intake-udløb (**242 ryttere globalt usynlige**) · #2632 staff-løn-eksponering (anbef. luk). (5) **#2603 mobil-bug:** re-upload screenshot i issuet ELLER navngiv skærmen (CDN-link udløbet, claude:blocked). (6) S2-generering + Discord-announce (uændret fra 17/7).
 >
-> **🌊 18/7 Værdi-bølge (10 issues, subagent-fan-out + adversarisk verify) — 9 MERGED + LIVE (prod READY):** #2598 test-fakes · #2571 DM-aggregat (+ #2618 guard-bug-følgefix) · #2596 board-footguns · #2579 solgt rytter · #2581 scout-fantomryttere (⚠️ 17 hist. usøgbare — backfill?) · #2605 kalender-brosten-ikon · #2600 Sæson 0 (⚠️ ÆGTE data-tilstand: seasons.number=0 bogførings-række — behold/slet?) · #2597 værdi-trend-pile. **Ejer-rest:** #2612 (#2599 auto-udtagelse+ryd-alt — migration, ejer merger+applier; sweep fylder stadig hele sæsonen 8.841 entries, indsnævring = produktbeslutning). **Afvist:** #2589 sponsor-rate (virker ikke for 36% af hold — issuet åbent m. metode). **Nye:** #2616 strategi-dup · #2617 squad-enforcement-guard.
+> **🌊 18/7 formiddagsbølge (Fable-arkitekt + sonnet-subagenter, 10:45-12:20) — 5 MERGED + LIVE (Vercel READY + backend /health OK):** #2616 strategi-eligibility-dedup · #2592 board-guard-indeks-bug (ægte UI/enforcement-afvigelse) · #2593 del 1 resultat-fane (points-filter skjulte 92% af historik; del 2 seen-flag åben) · #2617 squad-guard i BEGGE grene (scope-udvidet efter ejer-spørgsmål: auto-SALG var det live hul) · #2601 se andres staff/faciliteter (nyt saniteret endpoint). **Verify:** #2624 harness byte-identisk ✅. **Nye issues m. prod-data:** #2627 intake-udløb (242 skjulte ryttere) · #2628 skema-drift pending_team_id · #2632 staff-løn. **I morgen:** verificér nattens scout-sweep (første post-#2611-kørsel kl. 22).
 >
-> **✅ 17/7:** 29 PR'er merged + 7 migrationer + 24 issues→done (Global Rank LIVE, S2-synlighed, drift-vagt, rekalibrering C — #2557 åben til live-verify). **Ejer-flag:** #2449 (S2-kalender ikke genereret) + #2521 (5 hold board-låst 50). Facit: [natbølge](audits/night-wave-2026-07-17.md) · [audit](../.claude/audits/audit-2026-07-17.md).
-
-> **🌊 Dagbølge 16/7 (7 Fable-spor, 08:57-09:55):** 5 PR'er + #2472-verifikation + masterplan **konsolideret 16/7** (ejer-go; analyse + 5 indarbejdede anbefalinger på [#2468](https://github.com/NicolaiDolmer/CyclingZone/issues/2468) — sæsongrænse-pakken er nu NU-kø pkt 2). **#1847 KORRIGERET:** 70% af "13.262 orphans" er by-design (team-rækker); ægte = **4.100 (1,7%), 100% AI-churn, alle display-sikre** — oprydnings-DELETE bevidst droppet (ville skade palmarès), i stedet navne-snapshot + DELETE-guard i #2481.
+> **✅ 17/7:** 29 PR'er merged + 7 migrationer + 24 issues→done (Global Rank LIVE, S2-synlighed, drift-vagt, rekalibrering C — #2557 åben til live-verify). **Ejer-flag:** #2449 (S2-kalender ikke genereret) + #2521 (5 hold board-låst 50). Facit: [natbølge](audits/night-wave-2026-07-17.md) · [audit](../.claude/audits/audit-2026-07-17.md). 18/7 værdi-bølge (9 merged): detaljer i git-log + issue-tråde.
 
 > **🩹 [#2407](https://github.com/NicolaiDolmer/CyclingZone/issues/2407):** #2481 merged + orphan-guard applied 16/7; 5 overskudshold markeret (3/1/1) — sweepen trimmer til 24/24/24, **verificér 17/7**. Backup: `backup_2407_20260715_pending_removal`.
 
@@ -29,9 +26,7 @@
 
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
-> **📋 v7.19 (denne PR):** Holdsider har nu en read-only "Staff & faciliteter"-fane for ALLE hold (#2601, saniteret: aldrig loen/kontrakt/opgraderings-oekonomi). facilities_enabled er 'on' i prod, saa fanen er live ved merge.
->
-> **🤖 Working agent:** Claude Code (Fable, main-checkout) — 18/7 formiddagsbølge: #2617 · #2616 · #2592 · #2624-verify · #2603 (subagenter i worktrees). #2461 Discord-svar-udkast venter stadig ejer-review.
+> **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
 
 ## Standing context (forever-relaunch)
 
