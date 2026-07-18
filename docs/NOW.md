@@ -26,6 +26,8 @@
 
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
+> **📋 v7.22 (denne PR):** #2627 akademi-intake-tilbud udløber efter 7 dage (`intake_offer_expiry_enabled`-sweep) → frigiver 242 globalt skjulte ryttere. Ingen migration (CHECK-constraint har allerede 'expired'). Ejer armerer flaget.
+>
 > **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
 
 ## Standing context (forever-relaunch)

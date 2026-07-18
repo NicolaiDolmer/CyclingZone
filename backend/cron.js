@@ -64,6 +64,7 @@ import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
+import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
@@ -727,6 +728,20 @@ async function runRaceEntryGeneratorSweepCron() {
   }
 }
 
+// ─── Akademi-intake-udløb (#2627) ─────────────────────────────────────────────
+// Rod-årsag: 'offered'-tilbud har ingen udløbstid, så inaktive holds åbne tilbud
+// akkumulerer og skjuler ryttere for HELE spillerbasen via is_offered_intake_rider
+// (RLS). Sætter 'offered'-rækker ældre end INTAKE_OFFER_EXPIRY_DAYS (7) til
+// 'expired' + resolved_at. Gated bag intake_offer_expiry_enabled (fail-safe OFF).
+// Idempotent (WHERE status='offered' i UPDATE'en) → daglig cadence er nok.
+
+async function runIntakeOfferExpirySweepCron() {
+  const r = await runIntakeOfferExpirySweep({ supabase });
+  if (r.ran && r.expired > 0) {
+    console.log(`🎓 Intake-udløb: ${r.expired} 'offered'-tilbud sat til 'expired' (cutoff ${r.cutoff})`);
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -1139,6 +1154,15 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
+  // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
+  // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
+  // (WHERE status='offered') → immediate-run nedenfor er sikkert.
+  setInterval(
+    trackedTick("intake-offer-expiry", monitorCron("intake-offer-expiry", runIntakeOfferExpirySweepCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1171,6 +1195,10 @@ export function startCron() {
   // #2414: samme idempotens-begrundelse — upsert på metric_date, boot-run gør
   // vagten ærlig uden at risikere dubletter/dobbelt-alarmer.
   trackedTick("balance-drift-watch", runBalanceDriftWatchCron)();
+  // #2627: samme idempotens-begrundelse (WHERE status='offered') — boot-run gør
+  // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
+  // rammer lige efter det normale tick.
+  trackedTick("intake-offer-expiry", runIntakeOfferExpirySweepCron)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
