@@ -10546,11 +10546,22 @@ router.get("/board/status", requireAuth, async (req, res) => {
             // raceDaysLeft = absolute, planDuration/seasonsCompleted bruges
             // af 5yr/3yr-mid-cycle-guard, satisfactionDeltaPct = abs(current-50)
             // som proxy for "hvor langt er vi fra plan-start-baseline 50".
+            //
+            // #2592 · seasonsCompleted her SKAL være arbejds-sæson-indekset
+            // (weekendEvalContext.seasonsCompleted, samme min(planDuration,
+            // board.seasons_completed+1) som buildBoardEvalContext bruger) —
+            // ikke den rå lokale `seasonsCompleted`-variabel ovenfor (kun til
+            // planEntry.seasons_completed-DISPLAY-feltet). POST /board/request
+            // (linje ~11161) fodrer getBoardRequestAvailability's SAMME F6-guard
+            // via buildBoardEvalContext, altså allerede med arbejdsindekset. Før
+            // dette fix brugte GET /board/status's options-liste (denne kaldesti)
+            // det rå tal — så UI'ets "disabled: for tidligt i forløbet" kunne
+            // vise en anden lås-tilstand end den POST'en reelt ville håndhæve.
             raceDaysLeft: activeSeason
               ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
               : null,
             planDuration,
-            seasonsCompleted,
+            seasonsCompleted: weekendEvalContext.seasonsCompleted,
             satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
           },
         })
