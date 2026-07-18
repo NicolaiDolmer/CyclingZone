@@ -4,6 +4,10 @@
 import { staffSalaryFor } from "./facilityConstants.js";
 import { deriveStaffAbilities, topSpecialization } from "./staffAbilityDerivation.js";
 
+// #2643-opfølgning: 40 navne gav ~78% kollisionsrate på tværs af hold i prod
+// (birthday paradox ved 40 hold × 5 roller) — spillere læste det som "samme person
+// ansat to gange". Puljen er udvidet til 150; de oprindelige 40 står FØRST og
+// uændret (allerede ansatte team_staff-rækker beholder deres navn i DB).
 export const STAFF_NAME_POOL = Object.freeze([
   "Marc Vandenbroucke", "Sofie Lindqvist", "Aldo Terranova", "Pieter Claes", "Jonas Weinberger",
   "Camille Roussel", "Iker Zabaleta", "Tomasz Wielgosz", "Bram Van Dijck", "Elena Sarti",
@@ -13,6 +17,29 @@ export const STAFF_NAME_POOL = Object.freeze([
   "Wout Segers", "Katarzyna Mazur", "Henrik Dahlgren", "Aurelien Costa", "Nils Brandt",
   "Rosa Delgado", "Viktor Hlinka", "Maren Vollan", "Julien Charrier", "Enzo Marini",
   "Sanne De Witte", "Ondrej Blaha", "Freja Holmgren", "Bastien Moreau", "Luca Antonelli",
+  // ── Udvidelse 2026-07-18 (håndkurateret, fiktive — ingen kendte cykelnavne) ──
+  "Stijn Vermassen", "Dries Callewaert", "Lotte Vermeire", "Maarten Deconinck", "Els Vanhoutte",
+  "Ward Plancke", "Joris Ravensbergen", "Femke Zijlstra", "Ruben Hoekstra", "Gijs Meulendijk",
+  "Annelies Verstraete", "Romain Delacroix", "Margaux Vasseur", "Etienne Chabrol", "Clement Barbier",
+  "Amandine Leroux", "Fabrice Toussaint", "Nadine Girardet", "Olivier Rochefort", "Gaspard Meunier",
+  "Pauline Verdier", "Yannick Sabatier", "Fabrizio Montanari", "Chiara Lombardi", "Dario Pellegrino",
+  "Silvia Caruso", "Matteo Fabbri", "Giulia Serafini", "Renzo Cattaneo", "Alessia Vitale",
+  "Corrado Bianchi", "Ornella Ricci", "Tullio Sabbatini", "Unai Etxeberria", "Nerea Aguirre",
+  "Joaquin Baeza", "Maite Arriaga", "Gorka Mendizabal", "Alvaro Castejon", "Itziar Urrutia",
+  "Ramon Escudero", "Blanca Navarrete", "Xabier Goikoetxea", "Carmen Villalba", "Mads Brogaard",
+  "Signe Kjeldsen", "Anders Vestergaard", "Mette Juhl", "Troels Bundgaard", "Kirsten Hedegaard",
+  "Lasse Winther", "Birgitte Krogh", "Sindre Halvorsen", "Tuva Eikeland", "Eirik Sandvik",
+  "Kjetil Moldestad", "Solveig Haugland", "Torstein Lunde", "Ida Fossum", "Gustav Ekelund",
+  "Linnea Sandell", "Oskar Melin", "Ebba Norling", "Joel Cederholm", "Vera Ahlberg",
+  "Tilda Rosenqvist", "Matthias Kellner", "Franziska Ebner", "Lukas Steinbach", "Verena Achleitner",
+  "Florian Reindl", "Heike Sommerfeld", "Urs Kaufmann", "Leonie Hartwig", "Marek Zawadzki",
+  "Agnieszka Pilarska", "Bartosz Krupa", "Dorota Lisowska", "Szymon Gajewski", "Ewa Sobczak",
+  "Jakub Prochazka", "Tereza Dvorakova", "Radek Svoboda", "Lenka Horakova", "Matej Kral",
+  "Zuzana Beranova", "Ziga Kranjc", "Petra Zupancic", "Anze Kavcic", "Marko Horvat",
+  "Rui Carvalho", "Ines Figueiredo", "Nuno Sarmento", "Beatriz Antunes", "Callum Prewett",
+  "Declan Whelan", "Fiona MacAllister", "Harry Pemberton", "Niamh Gallagher", "Gareth Ludlow",
+  "Eleanor Braithwaite", "Esteban Quintero", "Valentina Cardenas", "Mauricio Zuleta", "Camila Restrepo",
+  "Hernan Bocanegra", "Toby Lawson", "Bridget Kennealy", "Wade Culpepper", "Sasha Delaney",
 ]);
 
 // mulberry32 — lille deterministisk PRNG (ingen Math.random: reproducérbarhed er kontrakten).

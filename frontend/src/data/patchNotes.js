@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Far fewer staff candidates sharing the same name across teams",
+          "body": "The pool of staff candidate names has grown from 40 to 150. With the old pool, most leagues ended up with the same name employed by several teams at once, which could read as one person holding two jobs. Every staff member has always been a separate person with their own profile, but candidates offered from now on draw from the much larger pool, so cross-team name clashes become the exception rather than the rule. Already-hired staff keep their names."
+        },
+        "da": {
+          "title": "Langt færre staff-kandidater deler navn på tværs af hold",
+          "body": "Puljen af staff-kandidatnavne er vokset fra 40 til 150. Med den gamle pulje endte de fleste ligaer med samme navn ansat hos flere hold på én gang, hvilket kunne ligne én person med to jobs. Hver staff har altid været en separat person med sin egen profil, men kandidater der tilbydes fremover trækkes fra den langt større pulje, så navnesammenfald på tværs af hold bliver undtagelsen frem for reglen. Allerede ansat staff beholder deres navne."
+        },
+        "refs": [2643]
+      },
+      {
         "category": "new",
         "audience": "player",
         "topic": "Staff",
