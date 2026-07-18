@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.16",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Cobbles now have their own calendar icon",
+          "body": "The race calendar's terrain legend now shows a distinct cobbles icon between Sprint and Hilly, so cobbled races no longer look identical to a flat sprint stage at a glance. Time trial and team time trial keep their own icons too."
+        },
+        "da": {
+          "title": "Brosten har nu sit eget kalender-ikon",
+          "body": "Kalenderens terræn-legend viser nu et distinkt brosten-ikon mellem Sprint og Kuperet, så brostens-løb ikke længere ligner en flad sprint-etape ved et hurtigt blik. Enkeltstart og holdstart beholder også hver deres eget ikon."
+        },
+        "refs": [2605]
+      }
+    ]
+  },
+  {
     "version": "7.15",
     "date": "2026-07-17",
     "label": "Beta",

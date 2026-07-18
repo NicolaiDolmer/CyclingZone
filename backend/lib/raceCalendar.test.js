@@ -53,10 +53,11 @@ test("splitISODate parser uden TZ-skred", () => {
 
 // ── terræn-buckets ───────────────────────────────────────────────────────────
 
-test("calendarTerrainBucket folder 9 profile_types til 5 viste buckets", () => {
+test("calendarTerrainBucket folder 9 profile_types til 6 viste buckets", () => {
   assert.equal(calendarTerrainBucket("flat"), "sprint");
   assert.equal(calendarTerrainBucket("rolling"), "sprint");
-  assert.equal(calendarTerrainBucket("cobbles"), "sprint");
+  // Brosten har egen bucket/glyf (#2605 — var tidligere umulig at skelne fra sprint).
+  assert.equal(calendarTerrainBucket("cobbles"), "cobbles");
   assert.equal(calendarTerrainBucket("hilly"), "hilly");
   assert.equal(calendarTerrainBucket("classic"), "hilly");
   assert.equal(calendarTerrainBucket("mountain"), "mountain");
@@ -75,6 +76,10 @@ test("dominantCalendarBucket vælger hyppigste bucket med stabil tiebreak", () =
   // Enkeltstart og holdstart er nu distinkte buckets (#1953).
   assert.equal(dominantCalendarBucket(["itt"]), "itt");
   assert.equal(dominantCalendarBucket(["ttt"]), "ttt");
+  // Brosten er nu en distinkt bucket (#2605): flertal af brosten-etaper dominerer,
+  // og tie cobbles(1) vs hilly(1) → bucket-rækkefølge cobbles vinder (før sprint/hilly).
+  assert.equal(dominantCalendarBucket(["cobbles", "cobbles", "hilly"]), "cobbles");
+  assert.equal(dominantCalendarBucket(["cobbles", "hilly"]), "cobbles");
   assert.equal(dominantCalendarBucket([]), null);
   assert.equal(dominantCalendarBucket(null), null);
 });

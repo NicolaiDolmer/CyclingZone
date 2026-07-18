@@ -41,10 +41,16 @@ test("kalenderen renderer header, faner, måneds-grid og legend", async ({ page 
   await expect(page.getByRole("link", { name: /Tour des Hauts Plateaux/ }).first()).toBeVisible();
 
   // Legend med terræn-typer. Enkeltstart (ITT) og Holdstart (TTT) er nu distinkte
-  // legend-poster med hver sin glyf (#1953).
+  // legend-poster med hver sin glyf (#1953). Brosten har sin egen legend-post + glyf
+  // (#2605 — var tidligere umulig at skelne fra en flad sprint-etape).
   await expect(page.getByText("Bjerge", { exact: true })).toBeVisible();
+  await expect(page.getByText("Brosten", { exact: true })).toBeVisible();
   await expect(page.getByText("Enkeltstart", { exact: true })).toBeVisible();
   await expect(page.getByText("Holdstart", { exact: true })).toBeVisible();
+
+  // Brosten-løbet (E3 Saxo Classic, seedet #2605) vises som en klikbar chip med
+  // det distinkte brosten-ikon (ikke det generiske sprint-ikon).
+  await expect(page.getByRole("link", { name: /E3 Saxo Classic/ }).first()).toBeVisible();
 });
 
 test("'Alle hold'-fanen viser andre divisioners løb (dæmpet)", async ({ page }) => {
