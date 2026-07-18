@@ -1075,7 +1075,7 @@
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",
-      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window."
+      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If nobody bids, the rider stays in the game as a free agent and can be picked up again later."
     },
     "fatigueInjuryThresholdFaq": {
       "q": "How high can I push fatigue before training risks an injury?",

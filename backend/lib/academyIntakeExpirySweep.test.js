@@ -8,10 +8,10 @@ import {
   INTAKE_EXPIRY_MAX_PER_RUN,
 } from "./academyIntakeExpirySweep.js";
 
-test("konstanter: 7 dages udløb, 24h-auktion, 25 pr. kørsel", () => {
+test("konstanter: 7 dages udløb, 24h-auktion, 30 pr. kørsel", () => {
   assert.equal(INTAKE_OFFER_EXPIRY_DAYS, 7);
   assert.equal(INTAKE_EXPIRY_AUCTION_DURATION_HOURS, 24);
-  assert.equal(INTAKE_EXPIRY_MAX_PER_RUN, 25);
+  assert.equal(INTAKE_EXPIRY_MAX_PER_RUN, 30);
 });
 
 test("runIntakeOfferExpirySweep: skip når flag OFF", async () => {
@@ -139,8 +139,8 @@ test("cap: højst INTAKE_EXPIRY_MAX_PER_RUN pr. kørsel, ældste først (drypvis
   assert.equal(r.expired, INTAKE_EXPIRY_MAX_PER_RUN);
   assert.equal(r.auctioned, INTAKE_EXPIRY_MAX_PER_RUN);
   assert.equal(auctionCalls[0], "r0", "ældste tilbud skal tages først");
-  // De 15 nyeste er urørte (tages i senere ticks).
-  assert.equal(rows.filter((x) => x.status === "offered").length, 15);
+  // De 10 nyeste er urørte (tages i senere ticks).
+  assert.equal(rows.filter((x) => x.status === "offered").length, 10);
 });
 
 test("re-guard: en række der blev signed mellem select og update flippes IKKE og auktioneres IKKE", async () => {

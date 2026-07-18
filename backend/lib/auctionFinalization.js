@@ -152,6 +152,23 @@ function getEffectiveAuctionBidderId(auction, sellerOwned) {
 // Bemærk: riders-FK'en fra auctions er ON DELETE CASCADE, så den lukkede
 // auktionsrække (og dens bud) følger med rytteren ud.
 async function deleteUnsoldYouthRider({ supabase, rider }) {
+  // #2627/ejer-beslutning 18/7: en rytter hvis intake-tilbud UDLØB (inaktiv
+  // manager svarede aldrig) slettes IKKE ved usolgt auktion — han forbliver i
+  // spillet som fri agent (team_id=null, is_academy=false) og kan hentes igen:
+  // synlig via ryttersidens fri-agent-filter og kan sættes på auktion af enhver
+  // manager (POST /api/auctions tillader frie agenter). #2456's "usolgt = væk"
+  // gælder fortsat for AFVISTE kandidater (et aktivt hold har taget stilling).
+  const { data: expiredIntake, error: expErr } = await supabase
+    .from("academy_intake")
+    .select("id")
+    .eq("rider_id", rider.id)
+    .eq("status", "expired")
+    .limit(1);
+  ensureNoError(expErr);
+  if ((expiredIntake ?? []).length > 0) {
+    return false;
+  }
+
   const { data: resultRows, error: resErr } = await supabase
     .from("race_results")
     .select("id")

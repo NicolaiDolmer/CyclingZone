@@ -21,8 +21,8 @@
 // prod 18/7). is_offered_intake_rider() filtrerer på status='offered', så
 // udløbet frigiver rytteren synligheds-mæssigt øjeblikkeligt.
 //
-// Drypvis udrulning: maks INTAKE_EXPIRY_MAX_PER_RUN (25) pr. dagligt tick,
-// ældste først — første kørsler tager backloggen (~223 pr. 18/7) over ~9 dage
+// Drypvis udrulning: maks INTAKE_EXPIRY_MAX_PER_RUN (30, ejer-justeret fra 25) pr. dagligt tick,
+// ældste først — første kørsler tager backloggen (~223 pr. 18/7) over ~8 dage
 // i stedet for at dumpe alt på auktionsmarkedet på én gang. Bonus: jævn
 // auktionsaktivitet (ejer-ønske 17/7 om mere markedsliv).
 //
@@ -40,7 +40,7 @@ import { listRejectedAsYouthAuction } from "./youthMarket.js";
 
 export const INTAKE_OFFER_EXPIRY_DAYS = 7;
 export const INTAKE_EXPIRY_AUCTION_DURATION_HOURS = 24;
-export const INTAKE_EXPIRY_MAX_PER_RUN = 25;
+export const INTAKE_EXPIRY_MAX_PER_RUN = 30;
 
 export async function runIntakeOfferExpirySweep({
   supabase,
