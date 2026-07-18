@@ -309,7 +309,7 @@ export default function RidersPage() {
   async function loadRiders({ silent = false } = {}) {
     if (!silent) setLoading(true);
     // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
-    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
+    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
       const [{ rows, count }, { data: auctionData }] = await Promise.all([
         fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect }),

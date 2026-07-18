@@ -569,6 +569,11 @@ function makeSignRejectSupabase({
           single() {
             return Promise.resolve({ data: { user_id: "user-1" }, error: null });
           },
+          // #2594: signAcademyCandidate slår holdets division op for at prissætte
+          // lønnen (per-division sats).
+          maybeSingle() {
+            return Promise.resolve({ data: { id: "team-A", division: 1 }, error: null });
+          },
         };
         return teamsApi;
       }

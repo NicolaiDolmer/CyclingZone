@@ -84,6 +84,10 @@ function simulateCareer(rider, abilities, model) {
   const type = rider?.primary_type ?? null;
   const potentiale = rider?.potentiale;
   const age0 = Number(rider?.age);
+  // #2594: uden gyldig alder kan hverken NPV'en eller sæson-0-leddet forankres i
+  // karrieren — returnér null (samme kontrakt som manglende abilities) i stedet
+  // for et tavst prod_0-kollaps (NaN-alder fik survival til at dø efter sæson 0).
+  if (!Number.isFinite(age0)) return null;
 
   const alpha = Number.isFinite(Number(fit.alpha)) ? Number(fit.alpha) : 1;
   const c = Number.isFinite(Number(fit.c)) ? Number(fit.c) : 0;

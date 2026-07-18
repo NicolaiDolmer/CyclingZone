@@ -182,6 +182,26 @@ export const UPKEEP_BEFORE_FIRST_RACE_ENABLED = false;
 // (getRiderSalary + projectYouthSalary, som har sin egen 0.067-konstant).
 export const SALARY_RATE = 0.067;
 
+// #2594 løn-decoupling CUTOVER: løn = current_production_value × SALARY_RATE_PROD.
+// Værdi (market_value) prissætter FREMTIDEN (karriere-NPV, v4); løn prissætter
+// NUTIDEN (forventet produktion i indeværende sæson). Per-division satser
+// kalibreret 18/7 mod ægte population (rate_d = Σløn_d/Σcpv_d — bevarer hver
+// divisions lønbyrde ved konstruktion; ejer-valg 14/7, G1 i
+// docs/audits/2026-07-18-salary-decoupling-cutover-scorecard.md). `global`
+// (Σløn/Σcpv over alle) bruges hvor division er ukendt (fx free-agent-estimat).
+// Ændring her → opdatér frontend-spejlet i marketValues (getRiderSalary +
+// projectYouthSalary). SALARY_RATE (0.067) ovenfor er den GAMLE market_value-
+// kobling — bevares kun til reference/legacy-harnesses, bruges ikke af løn længere.
+export const SALARY_RATE_PROD = Object.freeze({
+  byDiv: Object.freeze({ 1: 0.3029, 2: 0.3238, 3: 0.1481, 4: 0.2087 }),
+  global: 0.1606,
+});
+
+// Slå løn-satsen op for en division (1-4); ukendt/manglende division → global sats.
+export function salaryRateForDivision(division) {
+  return SALARY_RATE_PROD.byDiv[Number(division)] ?? SALARY_RATE_PROD.global;
+}
+
 // ============================================================
 // 07d Fase A: audit-trail enums.
 // MUST matche database/2026-05-09-audit-log-foundation.sql CHECK constraints.

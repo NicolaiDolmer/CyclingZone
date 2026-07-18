@@ -115,7 +115,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   // (SQUAD_PURCHASE_MARKUP), #1205. uci_points er frosset/afkoblet (#1101).
   const { data: freeAgents, error: faError } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus")
+    .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
     .is("team_id", null)
     .order("market_value", { ascending: true })
     .limit(limit);
@@ -126,7 +126,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   if (pool.length < count && aiTeamIds.size > 0) {
     const { data: aiOwned, error: aiOwnedError } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus")
+      .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
       .in("team_id", [...aiTeamIds])
       .order("market_value", { ascending: true })
       .limit(limit);
@@ -183,7 +183,7 @@ async function executeAutoPurchase({
   // fetchActiveSeasonNumber giver korrekt contract_end_season; rider-objektet har
   // salary/base_value/prize_earnings_bonus fra candidate-SELECT (tilføjet i #1309).
   const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
-  const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
+  const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: team.division });
 
   // #2617: samme #1995-guard som transfer-/swap-/auktions-flowene (#2579) —
   // kandidaten (typisk AI-ejet, kan i sjældne tilfælde være fri agent hvis han

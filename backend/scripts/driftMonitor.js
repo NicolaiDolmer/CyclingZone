@@ -21,22 +21,27 @@ async function runAudit() {
   const issues = [];
 
   try {
-    // 1. Tjek Salary-konsistens
-    // Salary skal være 10% af (UCI points * 4000 + bonus), min 5 UCI points.
+    // 1. Tjek Salary-invarianter (#2594): løn er FROSSEN ved signering og re-prises
+    // kun ved forlængelse, så en formel-sammenligning mod live-værdier ville flagge
+    // enhver trænet rytter. Invarianterne der SKAL holde: (a) alle ejede ryttere har
+    // salary != null (#1309), (b) ingen løn over runaway-loftet (G4: sponsor 240k).
     const { error: salaryError } = await supabase.rpc('check_salary_drift');
-    
-    // Hvis RPC ikke findes endnu, bruger vi en rå query (fallback)
+
+    // Hvis RPC ikke findes, bruger vi en rå query (fallback)
     if (salaryError) {
+      const SALARY_RUNAWAY_CEILING = 240000; // = sæson-sponsoratet (G4-loftet)
       const { data: riders, error: queryError } = await supabase
         .from('riders')
-        .select('id, name, salary, uci_points, prize_earnings_bonus')
+        .select('id, firstname, lastname, salary')
         .not('team_id', 'is', null);
 
       if (!queryError) {
         riders.forEach(r => {
-          const expected = Math.round(Math.max((Math.max(r.uci_points, 5) * 4000 + (r.prize_earnings_bonus || 0)) * 0.10, 1));
-          if (Math.abs(r.salary - expected) > 1) {
-            issues.push(`Salary Drift: Rider ${r.name} (${r.id}) has ${r.salary}, expected ${expected}`);
+          const name = `${r.firstname ?? ''} ${r.lastname ?? ''}`.trim();
+          if (r.salary == null) {
+            issues.push(`Salary Drift: Rider ${name} (${r.id}) er ejet men har salary=null (#1309-invariant)`);
+          } else if (Number(r.salary) > SALARY_RUNAWAY_CEILING) {
+            issues.push(`Salary Drift: Rider ${name} (${r.id}) har løn ${r.salary} > runaway-loft ${SALARY_RUNAWAY_CEILING}`);
           }
         });
       }

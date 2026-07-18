@@ -9,6 +9,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { ACADEMY } from "./academyFlag.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
@@ -387,14 +388,21 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // 2. Hent rytterens markedsværdi og beregn løn + signing-fee.
   const { data: rider, error: riderErr } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, market_value, base_value, prize_earnings_bonus")
+    .select("id, firstname, lastname, market_value, base_value, prize_earnings_bonus, current_production_value")
     .eq("id", riderId)
     .maybeSingle();
   if (riderErr) throw new Error(`signAcademyCandidate rider lookup: ${riderErr.message}`);
   if (!rider) throw new Error(`signAcademyCandidate: rytter ${riderId} ikke fundet`);
 
+  // #2594: løn = current_production_value × per-division-sats (holdets division).
+  // Signing-fee er derimod en KØBSPRIS og bliver korrekt på markedsværdien.
+  const { data: signingTeam } = await supabase
+    .from("teams").select("id, division").eq("id", teamId).maybeSingle();
   const value = calculateRiderMarketValue(rider);
-  const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
+  const salary = computeFrozenSalary({
+    current_production_value: rider.current_production_value,
+    division: signingTeam?.division,
+  });
   const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
   const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();

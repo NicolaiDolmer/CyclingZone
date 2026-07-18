@@ -492,11 +492,11 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi er rytterens baseværdi (beregnet ud fra rytterens stats og ryttertype) plus gennemsnittet af rytterens præmiepenge i de seneste sæsoner (op til 3). Startprisen på en auktion skal minimum svare til rytterens Værdi."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi."
       },
       "salary": {
         "title": "Løn",
-        "text": "Hver rytters årsløn fastsættes ved signering til ca. 6,7% af markedsværdien på det tidspunkt og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
+        "text": "Hver rytters årsløn fastsættes ved signering ud fra hvad rytteren forventes at producere i indeværende sæson, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Værdi og løn svarer på to forskellige spørgsmål: værdien er prisen på rytterens fremtid, lønnen er omkostningen ved det han leverer lige nu. Unge talenter er derfor billige at have på lønningslisten, mens etablerede stjerner får løn der matcher deres niveau. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
@@ -639,7 +639,7 @@
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (ca. 6,7% af aktuel markedsværdi) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
+        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
       }
     },
     "academy": {

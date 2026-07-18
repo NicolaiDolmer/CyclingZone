@@ -18,6 +18,8 @@ import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
 import { computeRiderTypes, RIDER_TYPE_KEYS, ABILITY_KEYS } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
+import { currentProductionValue } from "./riderCareerNpv.js";
+import { ageForSeason } from "./riderProgressionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 
@@ -26,7 +28,16 @@ const UPSERT_BATCH = 500;
 const WRITE_CONCURRENCY = 25;
 
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
-const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModel.json");
+// #2594 cutover: v4 (karriere-NPV) er den live værdi-model.
+const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModelV4.json");
+
+// v4 forankrer alder i den aktive sæson (ageForSeason). Fallback: sæson 1.
+async function activeSeasonNumber(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`active season lookup: ${error.message}`);
+  return data?.number ?? 1;
+}
 
 const noop = () => {};
 
@@ -163,12 +174,22 @@ export async function deriveForRiderIds(supabase, riderIds, {
     typeByRider.set(a.rider_id, { primary_type: primary.key, secondary_type: secondary.key });
   }
 
-  // 3) base_value (kræver primary_type + abilities).
+  // 3) base_value + current_production_value (kræver primary_type + abilities;
+  //    v4 kræver desuden age + potentiale — birthdate/potentiale er i selected).
+  const seasonNumber = await activeSeasonNumber(supabase);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
   const riderUpdates = riders.map((r) => {
     const t = typeByRider.get(r.id) || { primary_type: null, secondary_type: null };
-    const bv = predictBaseValue({ ...r, primary_type: t.primary_type }, abilityByRider.get(r.id), valModel);
-    return { id: r.id, ...t, ...(bv != null ? { base_value: bv } : {}) };
+    const valueRider = { ...r, primary_type: t.primary_type, age: ageForSeason(r.birthdate, seasonNumber) };
+    const ab = abilityByRider.get(r.id);
+    const bv = predictBaseValue(valueRider, ab, valModel);
+    const cpv = currentProductionValue(valueRider, ab, valModel);
+    return {
+      id: r.id,
+      ...t,
+      ...(bv != null ? { base_value: bv } : {}),
+      ...(cpv != null ? { current_production_value: cpv } : {}),
+    };
   });
 
   if (dryRun) {
@@ -261,11 +282,14 @@ export async function deriveForRiderIds(supabase, riderIds, {
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
-  const [riders, abilities] = await Promise.all([
-    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus, is_academy, salary").order("id")),
+  const [riders, abilities, teams, seasonNumber] = await Promise.all([
+    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus, is_academy, salary, birthdate, potentiale, team_id").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
+    fetchAllRows(() => supabase.from("teams").select("id, division").order("id")),
+    activeSeasonNumber(supabase),
   ]);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+  const divisionByTeam = new Map(teams.map((t) => [t.id, t.division]));
 
   const updates = [];
   let noAbilities = 0;
@@ -273,16 +297,19 @@ export async function runBaseValueBackfill(supabase, { dryRun = true, model, log
   const oldVals = [];
   const newVals = [];
   for (const r of riders) {
-    const bv = predictBaseValue(r, abilityByRider.get(r.id), m);
+    const valueRider = { ...r, age: ageForSeason(r.birthdate, seasonNumber) };
+    const ab = abilityByRider.get(r.id);
+    const bv = predictBaseValue(valueRider, ab, m);
     if (bv == null) { noAbilities++; continue; }
-    const update = { id: r.id, base_value: bv };
+    const cpv = currentProductionValue(valueRider, ab, m);
+    const update = { id: r.id, base_value: bv, ...(cpv != null ? { current_production_value: cpv } : {}) };
     // #2083 forward-guard: hold in-academy-rytteres frosne løn i sync med den
-    // genberegnede base_value (delt SALARY_RATE via computeFrozenSalary). Uden dette
-    // efterlod #1791 lønnen frossen på den gamle, højere værdi. Seniorer
-    // (is_academy=false) røres ALDRIG — deres kontrakt-løn er bevidst frossen ved
-    // signering. Kun akademiryttere med en eksisterende løn re-synkes.
-    if (r.is_academy && r.salary != null) {
-      update.salary = computeFrozenSalary({ base_value: bv, prize_earnings_bonus: r.prize_earnings_bonus });
+    // genberegnede værdi. #2594: løn-basen er nu current_production_value ×
+    // per-division-sats. Seniorer (is_academy=false) røres ALDRIG — deres
+    // kontrakt-løn er bevidst frossen ved signering. Kun akademiryttere med en
+    // eksisterende løn re-synkes.
+    if (r.is_academy && r.salary != null && cpv != null) {
+      update.salary = computeFrozenSalary({ current_production_value: cpv, division: divisionByTeam.get(r.team_id) });
       salariesRecomputed++;
     }
     updates.push(update);

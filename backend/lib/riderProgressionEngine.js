@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { predictBaseValue } from "./riderValuation.js";
+import { currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { resolveTrainingModifier } from "./training.js";
@@ -40,7 +41,8 @@ export function ageForSeason(birthdate, seasonNumber) {
 let cachedModel = null;
 function defaultModel() {
   if (!cachedModel) {
-    cachedModel = JSON.parse(readFileSync(join(__dirname, "riderValuationModel.json"), "utf8"));
+    // #2594 cutover: v4-modellen (karriere-NPV) er nu den live værdi-model.
+    cachedModel = JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8"));
   }
   return cachedModel;
 }
@@ -185,7 +187,12 @@ export async function developRidersForSeason({
     const after = abilitySum(next);
     if (after > before) summary.grew++; else if (after < before) summary.declined++;
 
-    const newBaseValue = predictBaseValue({ primary_type: r.primary_type }, next, model);
+    // #2594: v4 kræver alder + potentiale (karriere-NPV) — begge er i scope her.
+    // Alder-leddet betyder at sæson-reconcilen nu også flytter værdi ved aldring
+    // (ønsket, #1364 §Symmetri). current_production_value (løn-basen) følger med.
+    const valueRider = { primary_type: r.primary_type, potentiale: r.potentiale, age };
+    const newBaseValue = predictBaseValue(valueRider, next, model);
+    const newCpv = currentProductionValue(valueRider, next, model);
 
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;
@@ -193,6 +200,7 @@ export async function developRidersForSeason({
 
     const riderPatch = { is_u25: age < 25 };
     if (newBaseValue != null) riderPatch.base_value = newBaseValue;
+    if (newCpv != null) riderPatch.current_production_value = newCpv;
     if (retirement.retire) { riderPatch.is_retired = true; summary.retired++; }
     riderUpdates.push({ id: r.id, patch: riderPatch });
 

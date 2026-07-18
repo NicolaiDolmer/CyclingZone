@@ -23,6 +23,11 @@
 // Se docs/decisions/rider-valuation-model-v1.md.
 
 import { RIDER_TYPES, ABILITY_KEYS } from "./riderTypes.js";
+// #2594 cutover: v4-modellen (karriere-NPV) lever i riderCareerNpv.js. Cirkulær
+// import (riderCareerNpv importerer blendedOutput m.fl. herfra) er sikker i ESM:
+// begge moduler eksporterer kun hoistede function declarations og kører ingen af
+// modpartens bindings ved module-eval.
+import { predictBaseValueV4 } from "./riderCareerNpv.js";
 
 export { ABILITY_KEYS };
 
@@ -73,6 +78,15 @@ export function blendedOutput(abilities = {}, primaryType = null, alpha = 1) {
 // Fjerde argument (opts) accepteres for bagudkompatibilitet, men ignoreres
 // (modellen bruger hverken alder eller asOf).
 export function predictBaseValue(rider, abilities, model /*, opts */) {
+  // #2594 CUTOVER-DISPATCH: et v4-model-objekt (version 4, koefficienter under
+  // model.fit) sendes til karriere-NPV-motoren bag SAMME interface — call-sites
+  // er uændrede, de skal blot (a) indlæse riderValuationModelV4.json og (b) give
+  // rider.age + rider.potentiale med. Et v3-model-objekt (koefficienter i roden)
+  // beregner som hidtil — offline-harnesses der stadig indlæser
+  // riderValuationModel.json (v3) er dermed bevidst uberørte.
+  if (Number(model?.version) >= 4 && model?.fit) {
+    return predictBaseValueV4(rider, abilities, model);
+  }
   if (!model || !Number.isFinite(Number(model.a)) || !Number.isFinite(Number(model.b))) return null;
   const haveAbilities = ABILITY_KEYS.some((k) => Number.isFinite(Number(abilities?.[k])));
   if (!haveAbilities) return null;

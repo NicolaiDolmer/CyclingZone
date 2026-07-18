@@ -83,12 +83,17 @@ CREATE TABLE riders (
   -- UCI Points (legacy/afkoblet siden #1101-cutover 2026-06-10 — styrer IKKE økonomien)
   uci_points INTEGER DEFAULT 1,
   prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
-  -- Data-drevet rytter-værdi (#1101, model v3 — riderValuationModel.json).
-  -- Skrives af backfillRiderBaseValue/relaunch-orchestrator. NULL = endnu ikke
-  -- beregnet (insert→backfill-vinduet) — generated-kolonnerne falder da tilbage
-  -- til 1000 (bundskala; spejles i marketUtils.RIDER_BASE_VALUE_FALLBACK).
+  -- Data-drevet rytter-værdi (#1101 → #2594: model v4, karriere-NPV —
+  -- riderValuationModelV4.json). Skrives af backfill/value-sweep/progression.
+  -- NULL = endnu ikke beregnet (insert→backfill-vinduet) — generated-kolonnen
+  -- falder da tilbage til 1000 (spejles i marketUtils.RIDER_BASE_VALUE_FALLBACK).
   base_value INTEGER,
-  market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000) + prize_earnings_bonus) STORED,
+  -- #2594 løn-decoupling: forventet produktion i INDEVÆRENDE sæson (v4 sæson-0-
+  -- led, uden elite-præmie). Løn-base: salary = cpv × SALARY_RATE_PROD[division].
+  current_production_value INTEGER,
+  -- #2594: prize_earnings_bonus indgår IKKE længere (v4 prissætter forventede
+  -- præmier selv — bonussen dobbelt-talte). Fase 3 (#1281) tilføjer market_premium.
+  market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000)) STORED,
   -- salary: FROSSEN kontrakt-løn (#1309). Var GENERATED (10% af market_value);
   -- nu sat ved signering og fast til udløb. Skrives af runContractSeed +
   -- finalization (create-if-missing). NULL = free agent (UI estimerer).
