@@ -7,6 +7,8 @@
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
+import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
+import { lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
 
 const COMPLETED_LIMIT = 20;
 
@@ -84,20 +86,32 @@ async function loadCurrentLevel(teamId, riderId, supabaseClient) {
 }
 
 // Priser/varigheder som frontend skal vise — SSOT er SCOUT_JOB_CONFIG i scoutEngine.js.
+// #2644: targetDaysPerLevel afløst af targetEtaMinutes (flad ~30 min, uanset niveau —
+// se scoutEngine.js' kommentar for den ærlige nattelige-sweep-forbeholdelse).
 const JOB_CONFIG_RESPONSE = Object.freeze({
-  targetDaysPerLevel: SCOUT_JOB_CONFIG.target.daysPerLevel,
+  targetEtaMinutes: SCOUT_JOB_CONFIG.target.etaMinutes,
   targetCostPerLevel: SCOUT_JOB_CONFIG.target.costPerLevel,
   missionDays: SCOUT_JOB_CONFIG.mission.days,
   missionCost: SCOUT_JOB_CONFIG.mission.cost,
 });
 
 // {scout, active, completed, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
+// #2644 beslutning 2/3: completed-rapporter hydreres med en server-side synligheds-
+// guard (scoutReportVisibility.js) FØR de forlader serveren — en rapport må aldrig
+// afsløre en rytter der lige nu er skjult/utilgængelig, uanset hvad den var på
+// genererings-tidspunktet (#2623-rod-årsagen).
 export async function getScoutState(teamId, supabaseClient) {
-  const [scout, active, completed] = await Promise.all([
+  // #2644 (ejer-beslutning 18/7): due enkelt-rytter-undersøgelser (~30 min)
+  // modnes ved visning — nattesweepet er kun backstop for hold der aldrig
+  // åbner siden. Skal ske FØR active/completed loades, så en netop-due
+  // undersøgelse dukker op som færdig rapport i samme svar.
+  await lazyCompleteDueTargetAssignments({ supabase: supabaseClient, teamId });
+  const [scout, active, completedRaw] = await Promise.all([
     loadScout(teamId, supabaseClient),
     loadActiveAssignments(teamId, supabaseClient),
     loadCompletedAssignments(teamId, supabaseClient),
   ]);
+  const completed = await hydrateCompletedVisibility(supabaseClient, completedRaw);
   return { scout, active, completed, capacity: scoutCapacity(scout), jobConfig: JOB_CONFIG_RESPONSE };
 }
 

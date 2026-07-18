@@ -49,7 +49,7 @@ export function useScouting() {
   const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn } }
   const [jobCapacity, setJobCapacity] = useState(1);
   const [jobActiveCount, setJobActiveCount] = useState(0);
-  const [jobConfig, setJobConfig] = useState(null); // { targetDaysPerLevel, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
+  const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
 
   const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
   const pendingRef = useRef(new Set());   // ids der venter på næste batch

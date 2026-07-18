@@ -113,7 +113,7 @@ function ScoutCard({ scout, capacity, t }) {
   );
 }
 
-function ActiveQueue({ active, riderNames, onCancel, cancellingId, t }) {
+function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t }) {
   if (active.length === 0) {
     return (
       <SectionCard>
@@ -131,13 +131,20 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, t }) {
       </h3>
       <ul className="list-none p-0 m-0 space-y-2.5">
         {active.map((a) => {
-          const days = daysUntil(a.ready_on);
           const label = a.kind === "target"
             ? (riderNames[a.rider_id] ?? t("queue.loadingRider"))
             : missionCriteriaLabel(a.mission_criteria, {
                 translateScope: (s) => t(`mission.scope.${s}`),
                 translateCountry: (code) => getCountryName(code),
               });
+          // #2644: målrettede undersøgelser svarer på ~30 min uanset niveau —
+          // vis den flade ETA-copy i stedet for den dags-baserede reportIn/-Today,
+          // som stadig bruges til missioner (2 dage).
+          const reportLabel = a.kind === "target"
+            ? t("queue.targetReportIn", { minutes: jobConfig?.targetEtaMinutes ?? 30 })
+            : (daysUntil(a.ready_on) > 0
+                ? t("queue.reportIn", { days: daysUntil(a.ready_on) })
+                : t("queue.reportToday"));
           return (
             <li key={a.id} className="flex items-center justify-between gap-3 flex-wrap border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
               <div>
@@ -145,9 +152,7 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, t }) {
                   {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
                 </span>
                 <p className="text-cz-1 text-[13px] m-0 mt-0.5">{label}</p>
-                <p className="text-cz-2 text-[11.5px] m-0 mt-0.5">
-                  {days > 0 ? t("queue.reportIn", { days }) : t("queue.reportToday")}
-                </p>
+                <p className="text-cz-2 text-[11.5px] m-0 mt-0.5">{reportLabel}</p>
               </div>
               <Button
                 variant="ghost" size="sm"
@@ -184,7 +189,10 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
       <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1">
         {t("mission.form.title")}
       </h3>
-      <p className="text-cz-2 text-[11.5px] mt-1 mb-3">{t("mission.form.subtitle")}</p>
+      <p className="text-cz-2 text-[11.5px] mt-1 mb-0.5">{t("mission.form.subtitle")}</p>
+      {/* #2644: missioner target'er KUN kontraktfrie ryttere for nu — "andre
+          managers hold"-targeting er bevidst udskudt (se PR-noten). */}
+      <p className="text-cz-3 text-[11px] mt-0.5 mb-3">{t("mission.form.targetingNote")}</p>
       <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
         <div>
           <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mission.form.scopeLabel")}</label>
@@ -248,16 +256,30 @@ function ShortlistFeed({ completed, riderNames, t }) {
               })}
             </p>
             <ul className="list-none p-0 m-0 mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-              {m.result.shortlist.map((riderId) => (
-                <li key={riderId} className="text-cz-1 text-[13px]">
-                  {riderNames[riderId] ?? t("queue.loadingRider")}
-                  {riderId === m.result.top_rider_id && (
-                    <span className="ms-1.5 text-[10px] font-mono uppercase tracking-[0.08em] text-cz-accent-t">
-                      {t("shortlist.topFind")}
-                    </span>
-                  )}
-                </li>
-              ))}
+              {m.result.shortlist.map((riderId) => {
+                // #2644 beslutning 4: rytterens NUVÆRENDE status (kontraktfri /
+                // holdnavn) — serveren har allerede fjernet skjulte/usøgbare
+                // ryttere (scoutReportVisibility.js), så alt her er reelt synligt.
+                const status = m.riderStatus?.[riderId];
+                const statusLabel = status?.status === "team"
+                  ? status.teamName
+                  : status?.status === "free_agent"
+                    ? t("shortlist.statusFreeAgent")
+                    : null;
+                return (
+                  <li key={riderId} className="text-cz-1 text-[13px]">
+                    {riderNames[riderId] ?? t("queue.loadingRider")}
+                    {statusLabel && (
+                      <span className="ms-1.5 text-[11px] text-cz-3">· {statusLabel}</span>
+                    )}
+                    {riderId === m.result.top_rider_id && (
+                      <span className="ms-1.5 text-[10px] font-mono uppercase tracking-[0.08em] text-cz-accent-t">
+                        {t("shortlist.topFind")}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </li>
         ))}
@@ -309,7 +331,7 @@ export default function ScoutingCentralPage() {
 
       <div className="flex flex-col gap-3">
         <ScoutCard scout={central.scout} capacity={central.capacity} t={t} />
-        <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} t={t} />
+        <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} />
         <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
         <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
       </div>

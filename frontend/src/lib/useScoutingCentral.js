@@ -26,7 +26,7 @@ export function useScoutingCentral() {
   const [active, setActive] = useState([]);
   const [completed, setCompleted] = useState([]);
   const [capacity, setCapacity] = useState(1);
-  const [jobConfig, setJobConfig] = useState(null); // { targetDaysPerLevel, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
+  const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);

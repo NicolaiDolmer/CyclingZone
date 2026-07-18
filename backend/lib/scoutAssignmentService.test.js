@@ -16,13 +16,18 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createScoutSupabase({ team, staff = [], abilities = [], assignments = [], scoutActions = [] }) {
+function createScoutSupabase({
+  team, staff = [], abilities = [], assignments = [], scoutActions = [],
+  riders = [], academyIntake = [],
+}) {
   const state = {
     team: clone(team),
     staff: clone(staff),
     abilities: clone(abilities),
     assignments: clone(assignments),
     scoutActions: clone(scoutActions),
+    riders: clone(riders),
+    academyIntake: clone(academyIntake),
     finance_transactions: [],
     updates: [],
   };
@@ -104,10 +109,14 @@ function createScoutSupabase({ team, staff = [], abilities = [], assignments = [
         return {
           select(_columns) {
             const filters = {};
+            const lteFilters = {};
             let order = null;
             let limitN = null;
             const chain = {
               eq(column, value) { filters[column] = value; return chain; },
+              // #2644: lazyCompleteDueTargetAssignments filtrerer på created_at <=
+              // due-grænsen. Rækker uden created_at (ældre tests) er aldrig due.
+              lte(column, value) { lteFilters[column] = value; return chain; },
               order(column, opts) { order = { column, ...opts }; return chain; },
               limit(n) { limitN = n; return chain; },
               maybeSingle() {
@@ -115,7 +124,9 @@ function createScoutSupabase({ team, staff = [], abilities = [], assignments = [
                 return Promise.resolve({ data: row ? clone(row) : null, error: null });
               },
               then(resolve) {
-                let rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+                let rows = state.assignments.filter((r) =>
+                  Object.entries(filters).every(([k, v]) => r[k] === v) &&
+                  Object.entries(lteFilters).every(([k, v]) => r[k] != null && r[k] <= v));
                 if (order) {
                   rows = [...rows].sort((a, b) => {
                     const av = a[order.column], bv = b[order.column];
@@ -138,16 +149,61 @@ function createScoutSupabase({ team, staff = [], abilities = [], assignments = [
             };
           },
           update(payload) {
-            return {
-              eq(column, value) {
-                assert.equal(column, "id");
-                const row = state.assignments.find((r) => r.id === value);
-                assert.ok(row, `scout_assignments update: ukendt id ${value}`);
-                Object.assign(row, payload);
-                state.updates.push({ id: value, payload: clone(payload) });
-                return Promise.resolve({ error: null });
+            // #2644: skal både bære den gamle kæde (.eq("id") → await) og
+            // lazy-claimens status-conditional (.eq("id").eq("status").select("id")).
+            const filters = {};
+            let wantSelect = false;
+            const chain = {
+              eq(column, value) { filters[column] = value; return chain; },
+              select() { wantSelect = true; return chain; },
+              then(resolve) {
+                const rows = state.assignments.filter((r) => Object.entries(filters).every(([k, v]) => r[k] === v));
+                for (const row of rows) {
+                  Object.assign(row, payload);
+                  state.updates.push({ id: row.id, payload: clone(payload) });
+                }
+                return resolve({ data: wantSelect ? rows.map((r) => ({ id: r.id })) : null, error: null });
               },
             };
+            return chain;
+          },
+        };
+      }
+
+      // #2644: riders/academy_intake — kun brugt af hydrateCompletedVisibility
+      // (scoutReportVisibility.js) når completed-assignments faktisk refererer
+      // rider-id'er. Minimal chainable mock: select().eq()?.in().
+      if (table === "riders") {
+        return {
+          select() {
+            const filters = [];
+            const chain = {
+              eq(col, val) { filters.push([col, val]); return chain; },
+              in(col, vals) {
+                const rows = state.riders
+                  .filter((r) => vals.includes(r[col]))
+                  .filter((r) => filters.every(([c, v]) => r[c] === v));
+                return Promise.resolve({ data: clone(rows), error: null });
+              },
+            };
+            return chain;
+          },
+        };
+      }
+      if (table === "academy_intake") {
+        return {
+          select() {
+            const filters = [];
+            const chain = {
+              eq(col, val) { filters.push([col, val]); return chain; },
+              in(col, vals) {
+                const rows = state.academyIntake
+                  .filter((r) => vals.includes(r[col]))
+                  .filter((r) => filters.every(([c, v]) => r[c] === v));
+                return Promise.resolve({ data: clone(rows), error: null });
+              },
+            };
+            return chain;
           },
         };
       }
@@ -174,7 +230,7 @@ test("getScoutState: exposes jobConfig (priser/varigheder) fra SCOUT_JOB_CONFIG"
   const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
   const result = await getScoutState("team-1", supabase);
   assert.deepEqual(result.jobConfig, {
-    targetDaysPerLevel: SCOUT_JOB_CONFIG.target.daysPerLevel,
+    targetEtaMinutes: SCOUT_JOB_CONFIG.target.etaMinutes,
     targetCostPerLevel: SCOUT_JOB_CONFIG.target.costPerLevel,
     missionDays: SCOUT_JOB_CONFIG.mission.days,
     missionCost: SCOUT_JOB_CONFIG.mission.cost,
@@ -217,6 +273,77 @@ test("getScoutState: returns active + completed (capped 20) assignments", async 
   assert.deepEqual(result.completed.map((r) => r.id), ["a3", "a2"]); // nyeste først
 });
 
+// ─── getScoutState: #2644 synligheds-guard (scoutReportVisibility.js) ────────
+// Test der låser klassen (#2623/#2644): en rapport må ALDRIG afsløre en rytter
+// der lige nu er skjult/utilgængelig — hverken via et åbent akademi-intake-
+// tilbud eller et sat pending_team_id — uanset hvad han var på genererings-
+// tidspunktet.
+
+test("getScoutState: mission-shortlist skjuler rytter med åbent ('offered') akademi-intake-tilbud", async () => {
+  const assignments = [{
+    id: "m1", team_id: "team-1", status: "completed", kind: "mission",
+    completed_at: "2026-07-18T00:00:00Z",
+    result: { shortlist: ["rider-hidden", "rider-visible"], top_rider_id: "rider-hidden" },
+  }];
+  const riders = [
+    { id: "rider-hidden", team_id: null, pending_team_id: null, is_academy: false, team: null },
+    { id: "rider-visible", team_id: null, pending_team_id: null, is_academy: false, team: null },
+  ];
+  const academyIntake = [{ rider_id: "rider-hidden", status: "offered" }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders, academyIntake });
+  const result = await getScoutState("team-1", supabase);
+  const mission = result.completed.find((a) => a.id === "m1");
+  assert.deepEqual(mission.result.shortlist, ["rider-visible"]);
+  assert.equal(mission.result.top_rider_id, null); // topfundet VAR den skjulte rytter
+  assert.deepEqual(mission.riderStatus, { "rider-visible": { status: "free_agent" } });
+});
+
+test("getScoutState: mission-shortlist skjuler rytter med pending_team_id (midt i handelsflow)", async () => {
+  const assignments = [{
+    id: "m1", team_id: "team-1", status: "completed", kind: "mission",
+    completed_at: "2026-07-18T00:00:00Z",
+    result: { shortlist: ["rider-pending", "rider-free"], top_rider_id: "rider-free" },
+  }];
+  const riders = [
+    { id: "rider-pending", team_id: null, pending_team_id: "team-9", is_academy: false, team: null },
+    { id: "rider-free", team_id: null, pending_team_id: null, is_academy: false, team: null },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const result = await getScoutState("team-1", supabase);
+  const mission = result.completed.find((a) => a.id === "m1");
+  assert.deepEqual(mission.result.shortlist, ["rider-free"]);
+  assert.equal(mission.result.top_rider_id, "rider-free");
+});
+
+test("getScoutState: rytter der har fået et hold siden rapporten blev genereret forbliver synlig med holdnavn (#2644 beslutning 4)", async () => {
+  const assignments = [{
+    id: "m1", team_id: "team-1", status: "completed", kind: "mission",
+    completed_at: "2026-07-18T00:00:00Z",
+    result: { shortlist: ["rider-signed"], top_rider_id: "rider-signed" },
+  }];
+  const riders = [
+    { id: "rider-signed", team_id: "team-42", pending_team_id: null, is_academy: false, team: { name: "FC Nordkyst" } },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const result = await getScoutState("team-1", supabase);
+  const mission = result.completed.find((a) => a.id === "m1");
+  assert.deepEqual(mission.result.shortlist, ["rider-signed"]); // IKKE skjult — bare ikke længere fri agent
+  assert.deepEqual(mission.riderStatus, { "rider-signed": { status: "team", teamName: "FC Nordkyst" } });
+});
+
+test("getScoutState: target-rapport skjuler rider_id hvis rytteren er blevet usøgbar siden opgaven modnede", async () => {
+  const assignments = [{
+    id: "t1", team_id: "team-1", status: "completed", kind: "target",
+    rider_id: "rider-hidden", completed_at: "2026-07-18T00:00:00Z", result: { level: 2 },
+  }];
+  const riders = [{ id: "rider-hidden", team_id: null, pending_team_id: "team-9", is_academy: false, team: null }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const result = await getScoutState("team-1", supabase);
+  const target = result.completed.find((a) => a.id === "t1");
+  assert.equal(target.rider_id, null);
+  assert.deepEqual(target.riderStatus, {});
+});
+
 // ─── startTargetAssignment ────────────────────────────────────────────────────
 
 test("startTargetAssignment: happy path (level 0→1) inserts + debits travel cost", async () => {
@@ -228,7 +355,9 @@ test("startTargetAssignment: happy path (level 0→1) inserts + debits travel co
   assert.equal(result.assignment.targetLevel, 1);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.target.costPerLevel);
   assert.equal(result.assignment.startedOn, "2026-07-10");
-  assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (daysPerLevel × 1 step)
+  // #2644: target daysPerLevel=0 (~30 min svartid, uanset niveau) — modner
+  // samme kalenderdag ved nattens sweep, ikke i morgen.
+  assert.equal(result.assignment.readyOn, "2026-07-10");
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.target.costPerLevel);
   assert.equal(supabase.state.finance_transactions.length, 1);
   const tx = supabase.state.finance_transactions[0];
@@ -251,7 +380,7 @@ test("startTargetAssignment: existing scout_actions level advances fromLevel/toL
   assert.equal(result.ok, true);
   assert.equal(result.assignment.targetLevel, 3);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.target.costPerLevel); // 1 step
-  assert.equal(result.assignment.readyOn, "2026-07-11"); // +1 dag (1 niveau-step)
+  assert.equal(result.assignment.readyOn, "2026-07-10"); // #2644: daysPerLevel=0 → samme dag
 });
 
 test("startTargetAssignment: already at maxLevel (3) → max_level, no insert/debit", async () => {

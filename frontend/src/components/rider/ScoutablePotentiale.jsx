@@ -32,8 +32,11 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
-    scoutSystemEnabled, jobCapacity, jobActiveCount, pendingFor,
+    scoutSystemEnabled, jobCapacity, jobActiveCount, pendingFor, jobConfig,
   } = scouting;
+  // #2644 (ejer-beslutning 18/7): målrettet undersøgelse svarer på ~30 min,
+  // uanset niveau — se scoutEngine.js for den fulde nattelige-sweep-forbeholdelse.
+  const targetEtaMinutes = jobConfig?.targetEtaMinutes ?? 30;
 
   const riderId = rider?.id;
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
 
   const pendingBadge = scoutSystemEnabled && pending && (
     <span className="text-[11px] text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
-      {t("rider:scouting.pendingShort", { days: pending.days })}
+      {t("rider:scouting.pendingShort", { minutes: targetEtaMinutes })}
     </span>
   );
 

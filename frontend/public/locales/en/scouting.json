@@ -23,6 +23,7 @@
     "kindMission": "Mission",
     "reportIn": "Report in {days, plural, one {1 day} other {# days}}",
     "reportToday": "Report due today",
+    "targetReportIn": "Report in ~{minutes} min",
     "loadingRider": "Loading rider…",
     "cancel": "Cancel"
   },
@@ -30,6 +31,7 @@
     "form": {
       "title": "Start a mission",
       "subtitle": "Send your scout to cover a scene for a shortlist of prospects.",
+      "targetingNote": "Targets free agents you can sign right away.",
       "scopeLabel": "Scope",
       "countryLabel": "Country",
       "submit": "Start mission",
@@ -45,7 +47,8 @@
   "shortlist": {
     "title": "Mission shortlists",
     "empty": "No mission has reported back yet.",
-    "topFind": "Top find · free report"
+    "topFind": "Top find · free report",
+    "statusFreeAgent": "Free agent"
   },
   "error": {
     "capacity": "Your scout is already at full capacity. See the active jobs list, your existing job is still queued and will report as scheduled.",

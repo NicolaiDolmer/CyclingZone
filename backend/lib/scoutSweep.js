@@ -12,6 +12,7 @@
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { generateShortlist } from "./scoutMission.js";
 import { getScoutState } from "./scoutAssignmentService.js";
+import { completeTargetAssignment } from "./scoutTargetMaturation.js";
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -19,8 +20,14 @@ export function shouldSweepNow(now = new Date()) {
   return copenhagenHour(now) >= SWEEP_FROM_HOUR;
 }
 
-// Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
-// kendt potentiale, mappet til scoutMission's forventede rider-form.
+// Standard kandidat-loader for missioner: alle ikke-pensionerede, KONTRAKTFRIE
+// ryttere med kendt potentiale, mappet til scoutMission's forventede rider-form.
+//
+// #2644 (ejer-beslutning 18/7): missioner target'er KUN kontraktfrie/frit
+// tilgængelige ryttere for nu — "andre managers hold"-targeting er BEVIDST
+// UDSKUDT (ikke implementeret her). team_id IS NULL alene er ikke nok: en rytter
+// med pending_team_id sat er midt i et handelsflow (#1995/#2579) og derfor ikke
+// reelt tilgængelig lige nu, selvom team_id (endnu) er NULL i overgangen.
 //
 // #2581: to hold på Discord samme morgen rapporterede rytternavne fra en
 // mission-shortlist de ikke kunne søge frem noget sted. Read-only prod-audit
@@ -33,14 +40,19 @@ export function shouldSweepNow(now = new Date()) {
 // til akademi-intake-tilstanden og kunne derfor lægge sådan en rytter i en
 // shortlist — spilleren fik et navn han reelt ikke kunne slå op nogen steder.
 // Fix: ekskludér 'offered'-intake-ryttere fra kandidat-poolen (samme diskriminator
-// som RLS-policyen), så missioner kun peger på faktisk søgbare ryttere.
+// som RLS-policyen), så missioner kun peger på faktisk søgbare ryttere. Denne
+// genererings-tidspunkt-guard suppleres af et UAFHÆNGIGT view-tidspunkt-lag
+// (scoutReportVisibility.js) der genkontrollerer synligheden når rapporten
+// FAKTISK vises (#2623: synligheden kan ændre sig mellem de to tidspunkter).
 export async function defaultLoadCandidates(supabase) {
   const [{ data, error }, { data: offered, error: intakeError }] = await Promise.all([
     supabase
       .from("riders")
       .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
       .eq("is_retired", false)
-      .not("potentiale", "is", null),
+      .not("potentiale", "is", null)
+      .is("team_id", null) // #2644: kun kontraktfrie ryttere for nu
+      .is("pending_team_id", null), // #2644: ikke midt i et handelsflow
     supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
   ]);
   if (error) throw new Error(`scoutSweep: candidate riders load failed: ${error.message}`);
@@ -56,9 +68,10 @@ export async function defaultLoadCandidates(supabase) {
       country: r.nationality_code ?? null,
       age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
       isNmEligible: true,
-      // #2581: bruges af scoutMission.generateShortlist til at ekskludere
-      // holdets EGNE ryttere fra shortlisten (en "opdagelse" af egen rytter
-      // er meningsløs — prod-audit fandt 2/46 tilfælde).
+      // #2581/#2644: candidate.ownerTeamId er nu ALTID null (kandidat-poolen er
+      // begrænset til kontraktfrie ryttere ovenfor) — feltet bevares alligevel som
+      // defense-in-depth for generateShortlist's egen-hold-udelukkelse og for
+      // bagudkompatibilitet med kaldere der ikke går via denne loader.
       ownerTeamId: r.team_id ?? null,
     }));
 }
@@ -68,33 +81,8 @@ async function defaultGetScout(supabase, teamId) {
   return scout;
 }
 
-async function completeTargetAssignment({ supabase, assignment }) {
-  const { data: existing, error } = await supabase
-    .from("scout_actions")
-    .select("rider_id")
-    .eq("team_id", assignment.team_id)
-    .eq("rider_id", assignment.rider_id);
-  if (error) throw new Error(`scout_actions load: ${error.message}`);
-  const currentLevel = Math.min((existing ?? []).length, 3);
-  const needed = Math.max(0, (assignment.target_level ?? 0) - currentLevel);
-
-  for (let i = 0; i < needed; i++) {
-    const { error: insErr } = await supabase
-      .from("scout_actions")
-      .insert({ team_id: assignment.team_id, rider_id: assignment.rider_id, season_id: assignment.season_id ?? null });
-    if (insErr) throw new Error(`scout_actions insert: ${insErr.message}`);
-  }
-
-  const { error: updErr } = await supabase
-    .from("scout_assignments")
-    .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      result: { level: assignment.target_level },
-    })
-    .eq("id", assignment.id);
-  if (updErr) throw new Error(`scout_assignments update: ${updErr.message}`);
-}
+// completeTargetAssignment flyttet til scoutTargetMaturation.js (#2644):
+// deles med lazy-finaliseringen i scoutAssignmentService.getScoutState.
 
 async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now }) {
   const [candidates, scout] = await Promise.all([
