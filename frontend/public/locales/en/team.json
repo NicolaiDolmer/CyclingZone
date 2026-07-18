@@ -124,6 +124,7 @@
     "tabResults": "Results",
     "tabPalmares": "Palmarès",
     "tabTransfers": "Transfer history",
+    "tabClub": "Staff & Facilities",
     "squadTitle": "Squad ({count} riders)",
     "viewCurrent": "Current squad ({count})",
     "viewUpcoming": "Next season ({count})",
@@ -191,6 +192,13 @@
       "mountain_day": "Mountains jersey (day)",
       "young_day": "Youth jersey (day)"
     }
+  },
+  "club": {
+    "facilitiesTitle": "Facilities",
+    "staffTitle": "Staff",
+    "noStaff": "No staff hired",
+    "errorTitle": "Couldn't load this",
+    "errorDescription": "Staff and facilities couldn't be loaded right now."
   },
   "manager": {
     "back": "← Back",

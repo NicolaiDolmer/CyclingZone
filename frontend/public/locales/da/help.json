@@ -722,6 +722,10 @@
       "staffOverview": {
         "title": "Se alle holds personale",
         "text": "Personale-siden lister alle ansatte chefer på tværs af ligaen, som du kan filtrere på rolle, hold og tier. Klik på din egen chef for at se den fulde evne-oversigt. Klik på en anden managers chef, og du ser kun det samme som når du sammenligner ansættelses-kandidater: samlet rating, tier og top-specialisering, aldrig den fulde oversigt."
+      },
+      "teamPublicProfile": {
+        "title": "Se en konkurrents staff og faciliteter",
+        "text": "Alle holds side har en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser navne, roller og facilitets-niveauer, samme som når du sammenligner ansættelses-kandidater: aldrig løn, kontrakt-detaljer eller opgraderingspriser, uanset om det er dit eget holds side eller en andens."
       }
     },
     "raceSelection": {

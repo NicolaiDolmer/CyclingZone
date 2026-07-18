@@ -722,6 +722,10 @@
       "staffOverview": {
         "title": "Seeing every team's staff",
         "text": "The Staff page lists every hired chief across the league, filterable by role, team and tier. Click your own chief to see their full ability breakdown. Click another manager's chief and you only see what you would see comparing hiring candidates: overall rating, tier and top specialization, never their full breakdown."
+      },
+      "teamPublicProfile": {
+        "title": "Seeing a rival's staff and facilities",
+        "text": "Any team's page has a Staff & Facilities tab, so you can scout what a rival has built without opening their squad blind. It shows names, roles and facility tiers, same as comparing hiring candidates: never salaries, contract details or upgrade costs, whether it's your own team's page or someone else's."
       }
     },
     "raceSelection": {

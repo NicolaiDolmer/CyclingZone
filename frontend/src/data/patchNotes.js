@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.18",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "See other teams' staff and facilities",
+          "body": "Any team's page now has a Staff & Facilities tab, so you can scout what a rival has built without opening their squad blind. It shows the same level of detail you'd see comparing hiring candidates — names, roles and tiers — never their salaries or upgrade costs."
+        },
+        "da": {
+          "title": "Se andre holds staff og faciliteter",
+          "body": "Alle holds side har nu en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser samme detaljeniveau som når du sammenligner ansættelseskandidater — navne, roller og niveauer — aldrig deres løn eller opgraderingspriser."
+        },
+        "refs": [2601]
+      }
+    ]
+  },
+  {
     "version": "7.17",
     "date": "2026-07-18",
     "label": "Beta",

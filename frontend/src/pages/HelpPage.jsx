@@ -245,6 +245,7 @@ const SECTION_DEFS = [
       { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
       { id: "staffOverview", kind: "text" },
+      { id: "teamPublicProfile", kind: "text" },
     ],
   },
   {
