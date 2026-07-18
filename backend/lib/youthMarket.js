@@ -69,11 +69,23 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
 
   const { data: rider, error } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, base_value, market_value, prize_earnings_bonus, team_id")
+    .select("id, firstname, lastname, base_value, market_value, prize_earnings_bonus, team_id, pending_team_id")
     .eq("id", riderId)
     .maybeSingle();
   if (error) throw new Error(`listRejectedAsYouthAuction rider lookup: ${error.message}`);
   if (!rider) throw new Error(`listRejectedAsYouthAuction: rider ${riderId} not found`);
+
+  // ⚠️ Hændelse 18/7 (#2627): en EJET rytter må ALDRIG kunne listes som
+  // ungdomsauktion — 16 hold-ejede ryttere blev auktioneret fordi en opstrøms
+  // kaldesti stolede på en forældet intake-status. Ejerskabs-sandheden tjekkes
+  // derfor HÅRDT her, uanset kaldesti (defense-in-depth; kaster i stedet for
+  // tavst at springe over, så opstrøms-buggen bliver synlig i logs/Sentry).
+  if (rider.team_id !== null && rider.team_id !== undefined) {
+    throw new Error(`listRejectedAsYouthAuction: rider ${riderId} is OWNED by team ${rider.team_id} — refusing to auction`);
+  }
+  if (rider.pending_team_id !== null && rider.pending_team_id !== undefined) {
+    throw new Error(`listRejectedAsYouthAuction: rider ${riderId} has a parked team change (pending_team_id) — refusing to auction`);
+  }
 
   // Hurtig vej: ligger rytteren allerede på en aktiv auktion (gentaget afvisning
   // eller dobbeltklik), så er afvisningen idempotent — returnér den i stedet for
