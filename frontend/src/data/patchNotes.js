@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.19",
+    "version": "7.20",
     "date": "2026-07-18",
     "label": "Beta",
     "changes": [
