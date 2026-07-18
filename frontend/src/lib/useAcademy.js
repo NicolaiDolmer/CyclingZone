@@ -26,6 +26,7 @@ export function useAcademy() {
   const [seniorCount, setSeniorCount] = useState(0);
   const [seniorMax, setSeniorMax] = useState(30);
   const [balance, setBalance]   = useState(null);
+  const [division, setDivision] = useState(null); // #2594: løn-satsen er per-division
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
@@ -39,10 +40,11 @@ export function useAcademy() {
       if (!user?.id) return;
       const { data: team } = await supabase
         .from("teams")
-        .select("balance")
+        .select("balance, division")
         .eq("user_id", user.id)
         .single();
       if (team && team.balance != null) setBalance(Number(team.balance));
+      if (team && team.division != null) setDivision(Number(team.division));
     } catch {
       /* saldo er nice-to-have — behold tidligere state */
     }
@@ -188,5 +190,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, refresh };
+  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, refresh };
 }

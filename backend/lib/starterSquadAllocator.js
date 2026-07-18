@@ -33,7 +33,10 @@ import { predictBaseValue } from "./riderValuation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
-const VALUATION_MODEL = JSON.parse(readFileSync(join(__dirname, "./riderValuationModel.json"), "utf8"));
+// #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
+// med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
+// tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
+const VALUATION_MODEL = JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8"));
 
 export const STARTER_SQUAD = Object.freeze({
   CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
@@ -188,7 +191,12 @@ export function generateAiRiderBatchWithCap({
       const physiology = seedPhysiologyFromLegacy(candidate);
       const abilities = deriveAbilities(physiology, candidate);
       const { primary } = computeRiderTypes(abilities, TYPES_BASELINE);
-      const value = predictBaseValue({ ...candidate, primary_type: primary.key }, abilities, VALUATION_MODEL);
+      // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
+      const value = predictBaseValue(
+        { ...candidate, primary_type: primary.key, age: computeAge(candidate.birthdate, referenceYear) },
+        abilities,
+        VALUATION_MODEL
+      );
       const withinValueCap = value == null || valueCap == null || value <= valueCap;
       const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;
       if (withinValueCap && withinTypeCap) {

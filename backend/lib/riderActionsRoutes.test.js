@@ -114,13 +114,16 @@ test("release blokeres når balance < gebyr, tillades ellers", () => {
 });
 
 test("extend producerer en højere udløbssæson + frisk løn fra værdi", () => {
+  // #2594: lønnen kommer nu fra current_production_value × req.team.division-sats
+  // (ikke længere market_value × 0.067).
   const next = computeContractExtension({
-    market_value: 500_000,
+    current_production_value: 500_000,
+    division: 3,
     contract_end_season: 3,
     contract_length: 1,
     currentSeason: 2,
   });
   assert.equal(next.contract_end_season, 4); // 3 + 1
   assert.equal(next.contract_length, 2);
-  assert.equal(next.salary, 33_500); // 6.7% af 500_000
+  assert.equal(next.salary, 74_050); // 500_000 × 0.1481 (division 3)
 });

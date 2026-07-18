@@ -492,11 +492,11 @@
       "label": "Riders",
       "valueAndPrice": {
         "title": "Value and price",
-        "text": "A rider's market value is their base value (calculated from the rider's stats and rider type) plus the average of the rider's prize money over the most recent seasons (up to 3). The starting price on an auction must at minimum equal the rider's Value."
+        "text": "A rider's market value comes from the game's valuation model: it estimates the production the rider is expected to deliver for the rest of his career, measured against the game's own season calendar and adjusted for age, development and rider type. Young talents carry value for the seasons ahead of them; veterans are priced on what they have left; the game's absolute elite carry star prices far beyond any team's budget. The starting price on an auction must at minimum equal the rider's Value."
       },
       "salary": {
         "title": "Salary",
-        "text": "Each rider's annual salary is set at signing as about 6.7% of their market value at that moment, and is then frozen: it does not change automatically as the rider develops. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
+        "text": "Each rider's annual salary is set at signing based on what the rider is expected to produce in the current season, and is then frozen: it does not change automatically as the rider develops. Value and salary answer two different questions: value is the price of the rider's future, salary is the cost of what he delivers right now. Young talents are therefore cheap to keep on the payroll, while established stars earn wages that match their output. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "abilitiesExplained": {
         "title": "The 15 abilities and where they matter",
@@ -639,7 +639,7 @@
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (roughly 6.7% of current market value) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
+        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
       }
     },
     "academy": {

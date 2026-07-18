@@ -18,6 +18,11 @@ function makeMockSupabase(tables) {
       in() { return api; },
       order() { return api; },
       range() { return Promise.resolve({ data: tables[table] ?? [], error: null }); },
+      // #2594: backfillCores.activeSeasonNumber slår aktiv sæson op via
+      // .select("number").eq("status","active").maybeSingle() (deriveForRiderIds
+      // + runBaseValueBackfill kalder begge denne). Ingen seeded "seasons"-tabel
+      // i disse fixtures → fallback til sæson 1 (uændret eksisterende adfærd).
+      maybeSingle() { return Promise.resolve({ data: (tables[table] ?? [])[0] ?? null, error: null }); },
       upsert(rows, opts) { writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
       update(patch) {
         return {

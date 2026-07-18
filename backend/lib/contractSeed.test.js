@@ -13,14 +13,14 @@ import {
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-test("computeFrozenSalary = strict_fair_v1 rate (0.067)", () => {
-  // E2: GREATEST(1, ROUND((COALESCE(base_value,1000)+prize)*0.067))
-  assert.equal(computeFrozenSalary({ base_value: 1_000_000, prize_earnings_bonus: 0 }), 67_000);
-  assert.equal(computeFrozenSalary({ base_value: 50_000, prize_earnings_bonus: 5_000 }), 3_685);
-  // NULL/0 base_value → fallback 1000 → salary 67
-  assert.equal(computeFrozenSalary({ base_value: null, prize_earnings_bonus: 0 }), 67);
+test("computeFrozenSalary = current_production_value × per-division sats (#2594)", () => {
+  // GREATEST(1, ROUND(COALESCE(current_production_value,1000) × SALARY_RATE_PROD[division]))
+  assert.equal(computeFrozenSalary({ current_production_value: 1_000_000, division: 1 }), 302_900);
+  assert.equal(computeFrozenSalary({ current_production_value: 50_000, division: 3 }), 7_405);
+  // NULL/0 current_production_value → fallback 1000; ukendt division → global sats (0.1606)
+  assert.equal(computeFrozenSalary({ current_production_value: null }), 161);
   // bundgrænse 1
-  assert.equal(computeFrozenSalary({ base_value: 1, prize_earnings_bonus: 0 }), 1);
+  assert.equal(computeFrozenSalary({ current_production_value: 1, division: 1 }), 1);
 });
 
 test("pickContractLength giver 1-3, ~1/3 fordeling, deterministisk pr. seed", () => {
@@ -61,22 +61,23 @@ test("contractOnAcquirePatch: rytter MED kontrakt → {} (arves uændret, regene
 });
 
 test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
-  const patch = contractOnAcquirePatch({ salary: null, base_value: 1_000_000, prize_earnings_bonus: 0 }, 1);
+  const patch = contractOnAcquirePatch({ salary: null, current_production_value: 1_000_000 }, 1, { division: 1 });
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 67_000); // 6.7% af 1_000_000
+  assert.equal(patch.salary, 302_900); // 1_000_000 × 0.3029 (division 1)
   assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
 test("contractOnAcquirePatch: undefined salary behandles som kontraktløs (free agent)", () => {
-  const patch = contractOnAcquirePatch({ base_value: 50_000, prize_earnings_bonus: 5_000 }, 3);
+  // Udeladt division (fx free agent uden erhvervende hold) → global sats.
+  const patch = contractOnAcquirePatch({ current_production_value: 50_000 }, 3);
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 3_685); // 6.7% af (50_000 + 5_000)
+  assert.equal(patch.salary, 8_030); // 50_000 × 0.1606 (global)
   assert.equal(patch.contract_end_season, 4); // 3 + 2 - 1
 });
 
-test("contractOnAcquirePatch: kontraktløs + NULL base_value → fallback salary 100", () => {
-  const patch = contractOnAcquirePatch({ salary: null, base_value: null }, 1);
-  assert.equal(patch.salary, 67);
+test("contractOnAcquirePatch: kontraktløs + NULL current_production_value → fallback 1000 × global-sats", () => {
+  const patch = contractOnAcquirePatch({ salary: null, current_production_value: null }, 1);
+  assert.equal(patch.salary, 161); // max(1, round(1000 × 0.1606))
   assert.equal(patch.contract_length, 2);
   assert.equal(patch.contract_end_season, 2);
 });
@@ -120,25 +121,25 @@ test("computeReleaseBuyoutFee: rundes til nærmeste heltal", () => {
 // markedsværdi (samme SALARY_RATE-formel som signering). contract_end_season
 // +1, contract_length +1 (eller min 1 hvis NULL).
 
-test("computeContractExtension: ny løn fra market_value, end+1, length+1", () => {
+test("computeContractExtension: ny løn fra current_production_value, end+1, length+1", () => {
   const next = computeContractExtension({
-    market_value: 1_000_000,
+    current_production_value: 1_000_000,
+    division: 1,
     contract_end_season: 4,
     contract_length: 2,
   });
-  assert.equal(next.salary, 67_000); // 6.7% af 1_000_000 (= computeFrozenSalary)
+  assert.equal(next.salary, 302_900); // 1_000_000 × 0.3029 (= computeFrozenSalary)
   assert.equal(next.contract_end_season, 5); // 4 + 1
   assert.equal(next.contract_length, 3); // 2 + 1
 });
 
-test("computeContractExtension: bruger base_value+prize hvis market_value mangler", () => {
+test("computeContractExtension: udeladt division → global sats", () => {
   const next = computeContractExtension({
-    base_value: 50_000,
-    prize_earnings_bonus: 5_000,
+    current_production_value: 50_000,
     contract_end_season: 2,
     contract_length: 1,
   });
-  assert.equal(next.salary, 3_685); // 6.7% af (50_000 + 5_000)
+  assert.equal(next.salary, 8_030); // 50_000 × 0.1606 (global)
   assert.equal(next.contract_end_season, 3);
   assert.equal(next.contract_length, 2);
 });
@@ -147,12 +148,13 @@ test("computeContractExtension: NULL contract-felter → end baseres på current
   // Kontraktløs/NULL end: forlængelsen forankres i currentSeason så den nye
   // udløbssæson altid ligger i fremtiden (currentSeason + 1).
   const next = computeContractExtension({
-    market_value: 200_000,
+    current_production_value: 200_000,
+    division: 4,
     contract_end_season: null,
     contract_length: null,
     currentSeason: 3,
   });
-  assert.equal(next.salary, 13_400); // 6.7% af 200_000
+  assert.equal(next.salary, 41_740); // 200_000 × 0.2087 (division 4)
   assert.equal(next.contract_end_season, 4); // currentSeason(3) + 1
   assert.equal(next.contract_length, 1);
 });
@@ -160,7 +162,7 @@ test("computeContractExtension: NULL contract-felter → end baseres på current
 test("computeContractExtension: udløbet kontrakt forlænges fra currentSeason, ikke fortid", () => {
   // end(2) < currentSeason(5): forlæng fra current, ikke fra fortidens end.
   const next = computeContractExtension({
-    market_value: 100_000,
+    current_production_value: 100_000,
     contract_end_season: 2,
     contract_length: 2,
     currentSeason: 5,
@@ -175,7 +177,7 @@ test("computeContractExtension: udløbet kontrakt forlænges fra currentSeason, 
 // gange forlængelsen kaldes.
 test("computeContractExtension: allerede på MAX_LENGTH(3) → clampes, crasher IKKE riders_contract_length_check", () => {
   const next = computeContractExtension({
-    market_value: 100_000,
+    current_production_value: 100_000,
     contract_end_season: 4,
     contract_length: 3,
     currentSeason: 4,
@@ -188,7 +190,7 @@ test("computeContractExtension: allerede på MAX_LENGTH(3) → clampes, crasher 
 // Supabase-mock spejler starterSquadAllocator.test.js: range() returnerer hele
 // listen (fetchAllRows kalder .range() for paginering). update-calls optages.
 
-function makeContractSupabase({ owned, activeSeasonNumber = 1 }) {
+function makeContractSupabase({ owned, teams = [], activeSeasonNumber = 1 }) {
   const updates = [];
   const supabase = {
     from(table) {
@@ -197,6 +199,14 @@ function makeContractSupabase({ owned, activeSeasonNumber = 1 }) {
           select() { return api; },
           eq() { return api; },
           maybeSingle() { return Promise.resolve({ data: { number: activeSeasonNumber }, error: null }); },
+        };
+        return api;
+      }
+      if (table === "teams") {
+        const api = {
+          select() { return api; },
+          order() { return api; },
+          range() { return Promise.resolve({ data: teams, error: null }); },
         };
         return api;
       }
@@ -224,11 +234,15 @@ function makeContractSupabase({ owned, activeSeasonNumber = 1 }) {
 
 test("runContractSeed: founders → 2 sæsoner, andre ejede → 1-3, free agents urørt", async () => {
   const owned = [
-    { id: "r1", team_id: "founder1", base_value: 1_000_000, prize_earnings_bonus: 0 },
-    { id: "r2", team_id: "founder1", base_value: 200_000,   prize_earnings_bonus: 0 },
-    { id: "r3", team_id: "ai1",      base_value: 500_000,   prize_earnings_bonus: 0 },
+    { id: "r1", team_id: "founder1", current_production_value: 1_000_000 },
+    { id: "r2", team_id: "founder1", current_production_value: 200_000 },
+    { id: "r3", team_id: "ai1",      current_production_value: 500_000 },
   ];
-  const supabase = makeContractSupabase({ owned, activeSeasonNumber: 1 });
+  const teams = [
+    { id: "founder1", division: 1 },
+    { id: "ai1", division: 3 },
+  ];
+  const supabase = makeContractSupabase({ owned, teams, activeSeasonNumber: 1 });
 
   const res = await runContractSeed(supabase, {
     dryRun: false,
@@ -243,28 +257,29 @@ test("runContractSeed: founders → 2 sæsoner, andre ejede → 1-3, free agents
 
   const byId = Object.fromEntries(supabase._updates.map((u) => [u.id, u.patch]));
 
-  // Founder r1: length=2, end=2, salary=67_000 (6.7% af 1_000_000)
+  // Founder r1 (division 1): length=2, end=2, salary=302_900 (1_000_000 × 0.3029)
   assert.equal(byId.r1.contract_length, 2);
   assert.equal(byId.r1.contract_end_season, 2);
-  assert.equal(byId.r1.salary, 67_000);
+  assert.equal(byId.r1.salary, 302_900);
 
-  // Founder r2: length=2, end=2, salary=13_400 (6.7% af 200_000)
+  // Founder r2 (division 1): length=2, end=2, salary=60_580 (200_000 × 0.3029)
   assert.equal(byId.r2.contract_length, 2);
   assert.equal(byId.r2.contract_end_season, 2);
-  assert.equal(byId.r2.salary, 13_400);
+  assert.equal(byId.r2.salary, 60_580);
 
-  // Non-founder r3: length 1-3, end = 1 + length - 1, salary=33_500 (6.7% af 500_000)
+  // Non-founder r3 (division 3): length 1-3, end = 1 + length - 1, salary=74_050 (500_000 × 0.1481)
   assert.ok(byId.r3.contract_length >= 1 && byId.r3.contract_length <= 3,
     `r3 length=${byId.r3.contract_length} ude af 1-3`);
   assert.equal(byId.r3.contract_end_season, byId.r3.contract_length); // = 1 + length - 1
-  assert.equal(byId.r3.salary, 33_500);
+  assert.equal(byId.r3.salary, 74_050);
 });
 
 test("runContractSeed (dryRun): ingen writes, kun preview-count", async () => {
   const owned = [
-    { id: "r1", team_id: "founder1", base_value: 800_000, prize_earnings_bonus: 0 },
+    { id: "r1", team_id: "founder1", current_production_value: 800_000 },
   ];
-  const supabase = makeContractSupabase({ owned, activeSeasonNumber: 1 });
+  const teams = [{ id: "founder1", division: 1 }];
+  const supabase = makeContractSupabase({ owned, teams, activeSeasonNumber: 1 });
 
   const res = await runContractSeed(supabase, {
     dryRun: true,

@@ -13,11 +13,11 @@ test("buildSalaryFilterOr — intet løn-filter → null", () => {
 });
 
 test("buildSalaryFilterOr — kun max_salary: estimat-grenen tillader NULL-løn via market_value", () => {
-  // value-bound = round(5000/0.067) = 74627
+  // #2594: value-bound = round(5000/0.1606) = 31133 (global prod-sats, ikke længere 0.067)
   const or = buildSalaryFilterOr({ max_salary: "5000" });
   assert.equal(
     or,
-    "and(salary.not.is.null,salary.lte.5000),and(salary.is.null,market_value.lte.74627)",
+    "and(salary.not.is.null,salary.lte.5000),and(salary.is.null,current_production_value.lte.31133)",
   );
   // Den kritiske rettelse: en gren matcher EKSPLICIT salary.is.null (free agents),
   // som det gamle `salary.lte`-filter ekskluderede.
@@ -26,10 +26,10 @@ test("buildSalaryFilterOr — kun max_salary: estimat-grenen tillader NULL-løn 
 
 test("buildSalaryFilterOr — kun min_salary", () => {
   const or = buildSalaryFilterOr({ min_salary: "1000" });
-  // value-bound = round(1000/0.067) = 14925
+  // value-bound = round(1000/0.1606) = 6227
   assert.equal(
     or,
-    "and(salary.not.is.null,salary.gte.1000),and(salary.is.null,market_value.gte.14925)",
+    "and(salary.not.is.null,salary.gte.1000),and(salary.is.null,current_production_value.gte.6227)",
   );
 });
 
@@ -38,7 +38,7 @@ test("buildSalaryFilterOr — tosidet interval AND'er begge grænser i hver gren
   assert.equal(
     or,
     "and(salary.not.is.null,salary.gte.1000,salary.lte.5000)," +
-      "and(salary.is.null,market_value.gte.14925,market_value.lte.74627)",
+      "and(salary.is.null,current_production_value.gte.6227,current_production_value.lte.31133)",
   );
 });
 

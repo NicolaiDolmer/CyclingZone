@@ -34,7 +34,7 @@ import { predictBaseValue, riderOverall } from "../lib/riderValuation.js";
 // Kontrakt 3 (backend/lib/riderCareerNpv.js) — bygget parallelt, landet 13/7:
 //   predictBaseValueV4(rider, abilities, model) → number|null
 //   careerTrajectory(rider, abilities, model) → [{ s, age, O, prod, survival, discounted }]
-import { careerTrajectory, predictBaseValueV4 } from "../lib/riderCareerNpv.js";
+import { careerTrajectory, currentProductionValue, predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { checkAnchorOrdering } from "../lib/riderValuationFit.js";
 import { riderAge } from "../lib/valuationScorecard.js";
 import {
@@ -172,8 +172,16 @@ async function main() {
       projectedAbilities,
       v4Model
     );
+    // #2594: løn-leddet i cost-modellen bruger den ÆGTE nye løn-base (cpv ved
+    // signering, frossen) — ikke den gamle værdi-koblede sats.
+    const cpvStart = currentProductionValue(
+      { primary_type: bestProspect.primary_type, potentiale: bestProspect.potentiale, age: bestProspect.age },
+      bestProspect.abilities,
+      v4Model
+    );
     gPnl = developAndSellGate({
       bvStart: bestProspect.v4Value,
+      cpvStart,
       bvAtHorizon: bvAtHorizon ?? bestProspect.v4Value,
       seasons: DEVELOP_SELL_SEASONS,
     });

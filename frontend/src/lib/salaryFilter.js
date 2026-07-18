@@ -20,13 +20,14 @@ export function buildSalaryFilterOr(filters = {}) {
   if (!filters.min_salary && !filters.max_salary) return null;
   const frozenParts = [];
   const estimateParts = ["salary.is.null"];
+  // #2594: estimat-grenen matcher getRiderSalary's nye base — current_production_value.
   if (filters.min_salary) {
     frozenParts.push(`salary.gte.${parseInt(filters.min_salary, 10)}`);
-    estimateParts.push(`market_value.gte.${salaryBoundToValueBound(filters.min_salary)}`);
+    estimateParts.push(`current_production_value.gte.${salaryBoundToValueBound(filters.min_salary)}`);
   }
   if (filters.max_salary) {
     frozenParts.push(`salary.lte.${parseInt(filters.max_salary, 10)}`);
-    estimateParts.push(`market_value.lte.${salaryBoundToValueBound(filters.max_salary)}`);
+    estimateParts.push(`current_production_value.lte.${salaryBoundToValueBound(filters.max_salary)}`);
   }
   const frozenBranch = `and(salary.not.is.null,${frozenParts.join(",")})`;
   const estimateBranch = `and(${estimateParts.join(",")})`;

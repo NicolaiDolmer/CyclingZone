@@ -57,7 +57,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   function openPromote() {
     setAcademyModal({
       direction: "promote",
-      newSalary: projectSeniorSalary(rider),
+      newSalary: projectSeniorSalary(rider, { division: academy.division }),
       currentSalary: null,
       capLabel: `${academy.seniorCount} / ${academy.seniorMax}`,
       capAfterLabel: `${academy.seniorCount + 1} / ${academy.seniorMax}`,
@@ -82,7 +82,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
     const max = academy.slots?.max ?? 8;
     setAcademyModal({
       direction: "demote",
-      newSalary: projectYouthSalary(rider),
+      newSalary: projectYouthSalary(rider, { division: academy.division }),
       currentSalary: rider.salary ?? null,
       capLabel: `${used} / ${max}`,
       capAfterLabel: `${used + 1} / ${max}`,
