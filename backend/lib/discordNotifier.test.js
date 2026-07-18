@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback } from "./discordNotifier.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
 
 function makeCaptureSpy() {
@@ -52,6 +52,56 @@ test("resolveDmTargetFromInput — ukendt env-værdi falder tilbage til webhook 
   assert.equal(resolveDmTargetFromInput({ envValue: "bogus", isTestAccount: false }), "webhook");
   assert.equal(resolveDmTargetFromInput({ envValue: "", isTestAccount: false }), "webhook");
   assert.equal(resolveDmTargetFromInput({ envValue: null, isTestAccount: false }), "webhook");
+});
+
+// #2602: in-game feedback-knap — Discord-mirror er guarded af
+// DISCORD_FEEDBACK_WEBHOOK_URL og må ALDRIG falde tilbage til default-webhooken
+// (i modsætning til getOpsWebhookUrl), da spillerfeedback er umodereret fritekst
+// og ikke må lække ind i en offentlig kanal ved et uheld.
+test("notifyPlayerFeedback — no-op (sender intet) når DISCORD_FEEDBACK_WEBHOOK_URL ikke er sat", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "bug",
+      message: "Something broke",
+      pagePath: "/team",
+      teamName: "Team CSC",
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    assert.equal(calls.length, 0);
+  } finally {
+    if (original !== undefined) process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
+});
+
+test("notifyPlayerFeedback — poster embed til DISCORD_FEEDBACK_WEBHOOK_URL når sat", async () => {
+  const original = process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+  process.env.DISCORD_FEEDBACK_WEBHOOK_URL = "https://discord.com/api/webhooks/test/feedback";
+  try {
+    const calls = [];
+    await notifyPlayerFeedback({
+      category: "bug",
+      message: "Something broke",
+      pagePath: "/team",
+      teamName: "Team CSC",
+      sendWebhookFn: async (...args) => calls.push(args),
+    });
+    assert.equal(calls.length, 1);
+    const [url, payload] = calls[0];
+    assert.equal(url, "https://discord.com/api/webhooks/test/feedback");
+    const embed = payload.embeds[0];
+    assert.match(embed.title, /Bug report/);
+    assert.equal(embed.description, "Something broke");
+    assert.deepEqual(embed.fields, [
+      { name: "Team", value: "Team CSC" },
+      { name: "Page", value: "/team" },
+    ]);
+  } finally {
+    if (original === undefined) delete process.env.DISCORD_FEEDBACK_WEBHOOK_URL;
+    else process.env.DISCORD_FEEDBACK_WEBHOOK_URL = original;
+  }
 });
 
 // #2569: board-cronsene kalder notifyBoardUpdateDM({ userId }). Tog signaturen

@@ -25,6 +25,48 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.21",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "\"New\" badge on your results card now follows your account",
+          "body": "The \"New\" badge on \"How your team did\" remembered which race you'd seen in your browser only, so it reset every time you switched device — and with over half of visits on mobile, that meant seeing \"New\" again for a result you'd already checked. It now follows your account across every device."
+        },
+        "da": {
+          "title": "\"Nyt\"-badge på dit resultat-kort følger nu din konto",
+          "body": "\"Nyt\"-badget på \"Sådan gik det for dit hold\" huskede kun hvilket løb du havde set i din browser, så det nulstillede sig hver gang du skiftede enhed — og med over halvdelen af besøg på mobil betød det \"Nyt\" igen for et resultat du allerede havde tjekket. Det følger nu din konto på tværs af alle enheder."
+        },
+        "refs": [2593]
+      }
+    ]
+  },
+  {
+    "version": "7.20",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "New: send feedback and bug reports without Discord",
+          "body": "A Contact button now sits at the bottom of the menu, next to Help. Open it to send feedback, report a bug or share an idea directly with the developer, no Discord account needed. Bug reports automatically include which page you were on to make them easier to track down."
+        },
+        "da": {
+          "title": "Nyt: send feedback og fejlrapporter uden Discord",
+          "body": "En Kontakt-knap sidder nu nederst i menuen, ved siden af Hjælp. Åbn den for at sende feedback, melde en fejl eller dele en idé direkte til udvikleren, uden behov for en Discord-konto. Fejlrapporter inkluderer automatisk hvilken side du var på, så de er lettere at spore."
+        },
+        "refs": [2602]
+      }
+    ]
+  },
+  {
     "version": "7.19",
     "date": "2026-07-18",
     "label": "Beta",

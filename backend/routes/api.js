@@ -100,6 +100,7 @@ import {
   notifySwapCompleted,
   notifySeasonEvent,
   notifyWatchlistRiderAuction,
+  notifyPlayerFeedback,
   sendTestEmbed,
   sendTestDM,
   getBotToken,
@@ -322,6 +323,7 @@ import {
   boardWriteLimiter,
   marketWriteLimiter,
   presencePulseLimiter,
+  feedbackLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -8480,6 +8482,12 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         race_type: raceMeta.race_type,
         stages: raceMeta.stages,
         last_import: lastImport,
+        // #2593 (del 2): server-side seen-flag i SAMME payload som løbet selv
+        // — ingen ekstra roundtrip for at læse status. teams.my_result_seen_race_id
+        // er undefined hvis migrationen ikke er anvendt endnu (req.team kommer
+        // fra `select("*")` i requireAuth) → seen degraderer til false, samme
+        // "vis badge"-adfærd som før kolonnen fandtes.
+        seen: raceId === req.team.my_result_seen_race_id,
       },
       placements,
       stage_wins,
@@ -8493,6 +8501,52 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     res.status(500).json({ error: e.message });
   }
 }));
+
+// POST /api/dashboard/my-latest-result/seen — #2593 (del 2): persistér SERVER-
+// SIDE (teams.my_result_seen_race_id) at manageren har set kortets "Nyt"-badge
+// for et givent løb, i stedet for det device-scopede localStorage-flag
+// ("cz-dashboard-my-result-seen") fra #2466 — det nulstiller sig selv ved
+// enhedsskifte (54,9% af besøg er mobil). Team udledes udelukkende server-side
+// (req.team fra requireAuth) — klienten kan ikke markere et andet holds løb
+// som set. race_id valideres mod holdets EGNE race_results-rækker for at undgå
+// at et vilkårligt race-id kan skrives ind (lav risiko — det er kun en badge —
+// men billig at lukke). Idempotent: gentagne kald med samme race_id er en no-op
+// (samme UPDATE-værdi). Graceful degradation hvis kolonnen mangler (42703),
+// samme mønster som /me/onboarding-progress/dismiss.
+router.post("/dashboard/my-latest-result/seen", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const raceId = req.body?.race_id;
+  if (!raceId) return res.status(400).json({ error: "race_id required" });
+
+  try {
+    const { data: ownRow, error: ownError } = await supabase
+      .from("race_results")
+      .select("race_id")
+      .eq("race_id", raceId)
+      .eq("team_id", req.team.id)
+      .limit(1)
+      .maybeSingle();
+    if (ownError) throw ownError;
+    if (!ownRow) return res.status(404).json({ error: "No result found for this race" });
+
+    const { error } = await supabase
+      .from("teams")
+      .update({ my_result_seen_race_id: raceId })
+      .eq("id", req.team.id);
+    if (error && error.code !== "42703") throw error;
+
+    // GET-endpointet er cached (TTL 60s, per-team-nøgle) — uden invalidering
+    // serveres seen:false op til 60s efter dette POST, og badgen dukker op
+    // igen ved reload. Namespace-invalidering er acceptabel: POST'er sker kun
+    // når en manager ser et NYT resultat (lav frekvens).
+    invalidateNamespace("dashboard-my-latest-result");
+
+    res.json({ ok: true });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // GET /api/cache-stats — operational hit/miss counters per namespace
 // Admin-only; used during baseline measurement and incident triage.
@@ -9975,6 +10029,59 @@ router.get("/online-count", requireAuth, async (req, res) => {
   const { count } = await supabase.from("users")
     .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
   res.json({ count: count || 0 });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAYER FEEDBACK (#2602) — in-game kontakt/feedback/bug-rapport uden Discord
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const FEEDBACK_CATEGORIES = ["feedback", "bug", "idea"];
+const FEEDBACK_MESSAGE_MAX_LENGTH = 4000;
+
+// POST /api/feedback — spillerindsendt feedback/bug/idé. user_id/team_id
+// udledes ALTID server-side fra req.user/req.team (auth) — klienten sender
+// aldrig egne id'er. Skrives via service-role (samme supabase-klient som
+// resten af api.js), RLS på player_feedback har ingen policies der ellers
+// ville tillade klient-skrivning.
+router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
+  const { category, message, page_path: pagePath, viewport } = req.body || {};
+
+  if (!FEEDBACK_CATEGORIES.includes(category)) {
+    return res.status(400).json({ error: "Invalid category", errorCode: "feedback_invalid_category" });
+  }
+  const trimmed = typeof message === "string" ? message.trim() : "";
+  if (!trimmed) {
+    return res.status(400).json({ error: "Message is required", errorCode: "feedback_message_required" });
+  }
+  if (trimmed.length > FEEDBACK_MESSAGE_MAX_LENGTH) {
+    return res.status(400).json({ error: "Message is too long", errorCode: "feedback_message_too_long" });
+  }
+
+  const { data, error } = await supabase.from("player_feedback").insert({
+    user_id: req.user.id,
+    team_id: req.team?.id || null,
+    category,
+    message: trimmed,
+    page_path: typeof pagePath === "string" ? pagePath.slice(0, 500) : null,
+    viewport: typeof viewport === "string" ? viewport.slice(0, 50) : null,
+    user_agent: (req.headers["user-agent"] || "").slice(0, 500) || null,
+  }).select("id").single();
+
+  if (error) {
+    console.error("[feedback] insert failed:", error.message);
+    return res.status(500).json({ error: "Could not submit feedback", errorCode: "feedback_insert_failed" });
+  }
+
+  // Best-effort mirror til ejer-Discord — no-op hvis DISCORD_FEEDBACK_WEBHOOK_URL
+  // ikke er sat. Må aldrig fejle selve indsendelsen for spilleren.
+  notifyPlayerFeedback({
+    category,
+    message: trimmed,
+    pagePath,
+    teamName: req.team?.name || null,
+  }).catch(err => console.error("[feedback] discord mirror failed:", err.message));
+
+  res.json({ ok: true, id: data.id });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
