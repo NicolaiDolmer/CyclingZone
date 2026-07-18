@@ -135,7 +135,9 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // vinduet før første fetch.
   // TONE: "Send scout"/"Send spejder"-copy er plain/factual v1 — ejer-tone-session
   // for scouting-job-copy er stadig åben (spec §Åbne detaljer); review pending.
-  const TARGET_JOB_DAYS = jobConfig?.targetDaysPerLevel ?? 3;
+  // #2644 (ejer-beslutning 18/7): ~30 min svartid, uanset niveau — afløser den
+  // gamle dags-baserede varighed (se scoutEngine.js for den fulde forbeholdelse).
+  const TARGET_JOB_MINUTES = jobConfig?.targetEtaMinutes ?? 30;
   const TARGET_JOB_COST = jobConfig?.targetCostPerLevel ?? 1000;
 
   const scoutButton = (labelKey) => {
@@ -143,7 +145,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
       return (
         <span className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-2 whitespace-nowrap">
           <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
-          {t("scouting.pendingJob", { days: pending.days })}
+          {t("scouting.pendingJob", { minutes: TARGET_JOB_MINUTES })}
         </span>
       );
     }
@@ -159,7 +161,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
         {busy
           ? t("scouting.scouting")
           : scoutSystemEnabled
-            ? t("scouting.sendScoutJob", { days: TARGET_JOB_DAYS, cost: TARGET_JOB_COST })
+            ? t("scouting.sendScoutJob", { minutes: TARGET_JOB_MINUTES, cost: TARGET_JOB_COST })
             : t(labelKey)}
         {!scoutSystemEnabled && slots && <span className="text-cz-3 font-mono text-[10.5px]">{slots.remaining}/{slots.total}</span>}
       </button>

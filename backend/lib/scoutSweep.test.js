@@ -34,6 +34,7 @@ function makeMockSupabase({
     const b = {
       select() { return b; },
       eq(col, val) { filters.push([col, val]); return b; },
+      is(col, val) { filters.push([col, val]); return b; }, // .is(col, null) — samme null-lighed som .eq i mocken
       lte(col, val) { lteVal = [col, val]; return b; },
       not() { return b; }, // .not("potentiale", "is", null) — no-op in mock (candidates pre-filtered)
       order() { return b; },
@@ -120,7 +121,7 @@ const afterWindow = new Date("2026-07-10T20:30:00Z"); // 22:30 CEST → tickDate
 describe("defaultLoadCandidates (#2581)", () => {
   const riderRow = (overrides) => ({
     id: "r1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
-    team_id: null, is_retired: false, team: null, ...overrides,
+    team_id: null, pending_team_id: null, is_retired: false, team: null, ...overrides,
   });
 
   it("ekskluderer ryttere med et uafklaret ('offered') akademi-intake-tilbud", async () => {
@@ -143,14 +144,26 @@ describe("defaultLoadCandidates (#2581)", () => {
     assert.deepEqual(candidates.map((c) => c.id), ["r1"]);
   });
 
-  it("mapper ownerTeamId fra riders.team_id (bruges af generateShortlist til own-rider-exclusion)", async () => {
+  // #2644 (ejer-beslutning 18/7): missioner target'er KUN kontraktfrie ryttere —
+  // en rytter med team_id sat forlader kandidat-poolen helt (query-niveau filter,
+  // ikke kun scoutMission's own-rider-udelukkelse).
+  it("ekskluderer ryttere med et team_id sat (kun kontraktfrie ryttere, #2644)", async () => {
     const supabase = makeMockSupabase({
       candidates: [riderRow({ id: "r1", team_id: "team-9" }), riderRow({ id: "r2", team_id: null })],
       offeredIntake: [],
     });
     const candidates = await defaultLoadCandidates(supabase);
-    assert.equal(candidates.find((c) => c.id === "r1").ownerTeamId, "team-9");
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
     assert.equal(candidates.find((c) => c.id === "r2").ownerTeamId, null);
+  });
+
+  it("ekskluderer ryttere med pending_team_id sat (midt i et handelsflow, #2644)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", pending_team_id: "team-9" }), riderRow({ id: "r2", pending_team_id: null })],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
   });
 });
 

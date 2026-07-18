@@ -5,7 +5,8 @@
 //
 // Ejer-låste defaults (docs/superpowers/plans/2026-07-10-talentspejder-fase-3.md):
 //   default-spejder overall 40 · kapacitet 1 (2 ved overall≥80)
-//   target: 1 dag/niveau-step, 1.000/niveau-step
+//   target: 1.000/niveau-step, ~30 min svartid UANSET niveau (ejer-beslutning 18/7,
+//   #2644 — se targetEtaMinutes nedenfor for hvorfor "30 min" og "0 dage" er samme ting)
 //   mission: 2 dage, 6.000 flat
 //   (rekalibreret 10/7 fra 15.000/60.000 efter scoutTravelScorecard-FAIL:
 //    85-177% af sæsonindkomst ved aktiv kadence, mål [2%,15%] —
@@ -24,8 +25,19 @@ export const DEFAULT_SCOUT = Object.freeze({
 // overmorgen"-loopet passer spillets 1-2 logins/dag-rytme. Inflation styres
 // ikke af varigheden men af kapacitet (1-2 samtidige), rejseomkostninger og
 // potentiale-sløret shortlist — de er alle uændrede.
+// #2644 (ejer-beslutning 18/7): enkelt-rytter-undersøgelse ("target") svarer på
+// ~30 minutter, UANSET niveau — ejeren justerede eksplicit ned fra mockuppens
+// ~2 timer ("Må gerne være meget kort"). Selve modningen kører stadig KUN via den
+// nattelige sweep (kl. 22 CET, scoutSweep.js/shouldSweepNow) — der findes ingen
+// minut-præcis maturation i arkitekturen (mirror af trainingSweep.js). daysPerLevel:0
+// er derfor den ærlige oversættelse: readyDateFor sætter ready_on = started_on
+// (samme kalenderdag, uanset niveau-spring), så opgaven modner ved SAMME dags
+// sweep i stedet for at vente 1-3 dage. targetEtaMinutes er en UI-visnings-værdi
+// (flavor-copy "~30 min"), ikke en håndhævet deadline — reel ventetid varierer
+// med hvornår på dagen opgaven startes (op til ~22 timer hvis startet lige efter
+// midnat, ned mod minutter hvis startet kort før kl. 22).
 export const SCOUT_JOB_CONFIG = Object.freeze({
-  target: Object.freeze({ daysPerLevel: 1, costPerLevel: 1000 }),
+  target: Object.freeze({ daysPerLevel: 0, costPerLevel: 1000, etaMinutes: 30 }),
   mission: Object.freeze({ days: 2, cost: 6000, shortlistMin: 3, shortlistMax: 5 }),
 });
 

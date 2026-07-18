@@ -802,9 +802,9 @@
     "notScouted": "Ikke scoutet",
     "scoutToReveal": "Potentialet er skjult, indtil du scouter rytteren",
     "pendingTitle": "Din spejder arbejder allerede på denne rytter",
-    "pendingShort": "Rapport om {days, plural, one {1 dag} other {# dage}}",
-    "pendingJob": "Spejderen arbejder, rapport om {days, plural, one {1 dag} other {# dage}}",
-    "sendScoutJob": "Send spejder ({days, plural, one {1 dag} other {# dage}}, {cost, number})"
+    "pendingShort": "Rapport om ~{minutes} min",
+    "pendingJob": "Spejderen arbejder, rapport om ~{minutes} min",
+    "sendScoutJob": "Send spejder (~{minutes} min, {cost, number})"
   },
   "condition": {
     "form": "Form",

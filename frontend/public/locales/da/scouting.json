@@ -23,6 +23,7 @@
     "kindMission": "Mission",
     "reportIn": "Rapport om {days, plural, one {1 dag} other {# dage}}",
     "reportToday": "Rapport klar i dag",
+    "targetReportIn": "Rapport om ~{minutes} min",
     "loadingRider": "Indlæser rytter…",
     "cancel": "Annullér"
   },
@@ -30,6 +31,7 @@
     "form": {
       "title": "Start en mission",
       "subtitle": "Send din spejder ud for at dække en scene og få en shortlist af emner.",
+      "targetingNote": "Målretter kontraktfrie ryttere du kan hente med det samme.",
       "scopeLabel": "Omfang",
       "countryLabel": "Land",
       "submit": "Start mission",
@@ -45,7 +47,8 @@
   "shortlist": {
     "title": "Missions-shortlister",
     "empty": "Ingen mission har meldt sig endnu.",
-    "topFind": "Topfund · gratis rapport"
+    "topFind": "Topfund · gratis rapport",
+    "statusFreeAgent": "Kontraktfri"
   },
   "error": {
     "capacity": "Din spejder er allerede fuldt booket. Se listen over aktive opgaver, din eksisterende opgave kører stadig og rapporterer som planlagt.",
