@@ -20,14 +20,20 @@ export function shouldSweepNow(now = new Date()) {
   return copenhagenHour(now) >= SWEEP_FROM_HOUR;
 }
 
-// Standard kandidat-loader for missioner: alle ikke-pensionerede, KONTRAKTFRIE
-// ryttere med kendt potentiale, mappet til scoutMission's forventede rider-form.
+// Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
+// kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
+// parametriseret (#2644 del 2, ejer-go 18/7): targetPool "free_agents" (default)
+// eller "other_teams" — SAMME guards (ikke midt i handelsflow, ikke skjult af
+// åbent akademi-intake-tilbud) gælder for begge, kun team_id-filteret vender.
 //
-// #2644 (ejer-beslutning 18/7): missioner target'er KUN kontraktfrie/frit
-// tilgængelige ryttere for nu — "andre managers hold"-targeting er BEVIDST
-// UDSKUDT (ikke implementeret her). team_id IS NULL alene er ikke nok: en rytter
-// med pending_team_id sat er midt i et handelsflow (#1995/#2579) og derfor ikke
-// reelt tilgængelig lige nu, selvom team_id (endnu) er NULL i overgangen.
+// free_agents: team_id IS NULL — kontraktfrie ryttere (#2644 del 1, oprindelig
+// scope). En rytter med pending_team_id sat er midt i et handelsflow (#1995/
+// #2579) og derfor ikke reelt tilgængelig lige nu, selvom team_id (endnu) er
+// NULL i overgangen — ekskluderes uanset targetPool.
+// other_teams: team_id IS NOT NULL — ryttere ejet af en (anden) manager.
+// Selve egen-hold-udelukkelsen sker IKKE her (denne loader kender ikke det
+// kaldende holds id) men i scoutMission.js' generateShortlist via
+// candidate.ownerTeamId (sat til r.team_id nedenfor for begge scopes).
 //
 // #2581: to hold på Discord samme morgen rapporterede rytternavne fra en
 // mission-shortlist de ikke kunne søge frem noget sted. Read-only prod-audit
@@ -44,15 +50,20 @@ export function shouldSweepNow(now = new Date()) {
 // genererings-tidspunkt-guard suppleres af et UAFHÆNGIGT view-tidspunkt-lag
 // (scoutReportVisibility.js) der genkontrollerer synligheden når rapporten
 // FAKTISK vises (#2623: synligheden kan ændre sig mellem de to tidspunkter).
-export async function defaultLoadCandidates(supabase) {
+export async function defaultLoadCandidates(supabase, targetPool = "free_agents") {
+  let ridersQuery = supabase
+    .from("riders")
+    .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
+    .eq("is_retired", false)
+    .not("potentiale", "is", null)
+    .is("pending_team_id", null); // #2644: ikke midt i et handelsflow, uanset scope
+
+  ridersQuery = targetPool === "other_teams"
+    ? ridersQuery.not("team_id", "is", null) // #2644 del 2: kun ryttere PÅ et hold
+    : ridersQuery.is("team_id", null); // free_agents (default): kun kontraktfrie
+
   const [{ data, error }, { data: offered, error: intakeError }] = await Promise.all([
-    supabase
-      .from("riders")
-      .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
-      .eq("is_retired", false)
-      .not("potentiale", "is", null)
-      .is("team_id", null) // #2644: kun kontraktfrie ryttere for nu
-      .is("pending_team_id", null), // #2644: ikke midt i et handelsflow
+    ridersQuery,
     supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
   ]);
   if (error) throw new Error(`scoutSweep: candidate riders load failed: ${error.message}`);
@@ -68,10 +79,10 @@ export async function defaultLoadCandidates(supabase) {
       country: r.nationality_code ?? null,
       age: r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null,
       isNmEligible: true,
-      // #2581/#2644: candidate.ownerTeamId er nu ALTID null (kandidat-poolen er
-      // begrænset til kontraktfrie ryttere ovenfor) — feltet bevares alligevel som
-      // defense-in-depth for generateShortlist's egen-hold-udelukkelse og for
-      // bagudkompatibilitet med kaldere der ikke går via denne loader.
+      // #2581/#2644: for free_agents er ownerTeamId ALTID null (kandidat-poolen
+      // er begrænset til kontraktfrie ryttere ovenfor); for other_teams er det
+      // rytterens FAKTISKE ejerhold — generateShortlist bruger det til at
+      // ekskludere holdets EGNE ryttere fra dets egen mission-shortlist.
       ownerTeamId: r.team_id ?? null,
     }));
 }
@@ -85,8 +96,12 @@ async function defaultGetScout(supabase, teamId) {
 // deles med lazy-finaliseringen i scoutAssignmentService.getScoutState.
 
 async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now }) {
+  // #2644 del 2: sweepen læser targetPool fra selve assignmentens mission_criteria
+  // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibelt
+  // default "free_agents" for assignments der blev startet FØR denne feature.
+  const targetPool = assignment.mission_criteria?.targetPool ?? "free_agents";
   const [candidates, scout] = await Promise.all([
-    loadCandidates(supabase),
+    loadCandidates(supabase, targetPool),
     getScout(supabase, assignment.team_id),
   ]);
   const { shortlist, topRiderId } = generateShortlist({

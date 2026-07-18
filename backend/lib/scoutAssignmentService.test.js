@@ -331,6 +331,26 @@ test("getScoutState: rytter der har fået et hold siden rapporten blev genereret
   assert.deepEqual(mission.riderStatus, { "rider-signed": { status: "team", teamName: "FC Nordkyst" } });
 });
 
+// #2644 del 2: en mission startet med targetPool "other_teams" finder pr.
+// definition ryttere PÅ et hold — rapporten skal vise holdnavnet fra start,
+// ikke kun når en oprindeligt fri agent senere bliver hentet (testen ovenfor).
+test("getScoutState: other_teams-mission viser fundne ryttere med korrekt holdnavn", async () => {
+  const assignments = [{
+    id: "m1", team_id: "team-1", status: "completed", kind: "mission",
+    mission_criteria: { scope: "u23", targetPool: "other_teams" },
+    completed_at: "2026-07-18T00:00:00Z",
+    result: { shortlist: ["rider-rival"], top_rider_id: "rider-rival" },
+  }];
+  const riders = [
+    { id: "rider-rival", team_id: "team-77", pending_team_id: null, is_academy: false, team: { name: "Team Rival" } },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const result = await getScoutState("team-1", supabase);
+  const mission = result.completed.find((a) => a.id === "m1");
+  assert.deepEqual(mission.result.shortlist, ["rider-rival"]);
+  assert.deepEqual(mission.riderStatus, { "rider-rival": { status: "team", teamName: "Team Rival" } });
+});
+
 test("getScoutState: target-rapport skjuler rider_id hvis rytteren er blevet usøgbar siden opgaven modnede", async () => {
   const assignments = [{
     id: "t1", team_id: "team-1", status: "completed", kind: "target",
@@ -437,14 +457,17 @@ test("startTargetAssignment: hired scout overall>=80 → capacity 2 allows secon
 
 // ─── startMission ─────────────────────────────────────────────────────────────
 
-test("startMission: happy path inserts flat-cost mission + debits", async () => {
+test("startMission: happy path inserts flat-cost mission + debits, defaults targetPool to free_agents", async () => {
   const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
   const criteria = { scope: "division", value: "div-1" };
   const result = await startMission({ teamId: "team-1", criteria, seasonId: "season-1" }, supabase, NOW);
   assert.equal(result.ok, true);
   assert.equal(result.assignment.travelCost, SCOUT_JOB_CONFIG.mission.cost);
   assert.equal(result.assignment.readyOn, "2026-07-12"); // +2 dage (mission.days)
-  assert.deepEqual(supabase.state.assignments[0].mission_criteria, criteria);
+  // #2644 del 2: ingen targetPool i input-criteria → normaliseret til "free_agents"
+  // (bagudkompatibel default, ikke en kontraktændring for eksisterende kaldere).
+  assert.deepEqual(supabase.state.assignments[0].mission_criteria, { ...criteria, targetPool: "free_agents" });
+  assert.deepEqual(result.assignment.criteria, { ...criteria, targetPool: "free_agents" });
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.mission.cost);
 });
 
@@ -454,6 +477,26 @@ test("startMission: insufficient balance → insufficient_funds", async () => {
     { teamId: "team-1", criteria: { scope: "u23" }, seasonId: "season-1" }, supabase, NOW
   );
   assert.deepEqual(result, { ok: false, error: "insufficient_funds" });
+});
+
+// #2644 del 2 (ejer-go 18/7): targeting-valg — spilleren vælger free_agents
+// (default/bagudkompatibel) eller other_teams pr. mission.
+
+test("startMission: targetPool: 'other_teams' accepteres og gemmes på mission_criteria", async () => {
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
+  const criteria = { scope: "u23", targetPool: "other_teams" };
+  const result = await startMission({ teamId: "team-1", criteria, seasonId: "season-1" }, supabase, NOW);
+  assert.equal(result.ok, true);
+  assert.deepEqual(supabase.state.assignments[0].mission_criteria, { scope: "u23", targetPool: "other_teams" });
+});
+
+test("startMission: ugyldig targetPool → invalid_target_pool, ingen insert/debit", async () => {
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
+  const criteria = { scope: "u23", targetPool: "rival_managers" };
+  const result = await startMission({ teamId: "team-1", criteria, seasonId: "season-1" }, supabase, NOW);
+  assert.deepEqual(result, { ok: false, error: "invalid_target_pool" });
+  assert.equal(supabase.state.assignments.length, 0);
+  assert.equal(supabase.state.finance_transactions.length, 0);
 });
 
 // ─── idempotent-skip propagation ────────────────────────────────────────────

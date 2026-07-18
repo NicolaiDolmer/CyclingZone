@@ -272,7 +272,21 @@ export function apiResponse(pathname) {
   // Playwright-fixtures (fixtures.js kalder apiResponse direkte), hvor centralen
   // bevidst forbliver gated så nav-snapshots ikke ændrer sig.
   if (pathname.endsWith("/api/scouting/me")) {
-    return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
+    // #2244/#2644: scoutSystemEnabled gater Scouting-centralen (useScoutingCentral.js) —
+    // uden feltet viser previewen kun tom-state, selvom job-modellen faktisk er 'on' i prod.
+    return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id, scoutSystemEnabled: true };
+  }
+  // #2644 del 2: Scouting-centralens state — spejder, aktive/afsluttede opgaver,
+  // kapacitet, jobConfig (priser/varigheder til MissionForm). Tom kø som default;
+  // dækker targeting-valg-kortenes visning + form-submit-flow i preview.
+  if (pathname.endsWith("/api/scouting/central")) {
+    return {
+      scout: { overall: 40, roleSkills: { evaluation: 40, reach: 40 }, isDefault: true },
+      active: [],
+      completed: [],
+      capacity: 1,
+      jobConfig: { targetEtaMinutes: 30, targetCostPerLevel: 1000, missionDays: 2, missionCost: 6000 },
+    };
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
