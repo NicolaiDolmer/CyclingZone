@@ -1,0 +1,30 @@
+{
+  "title": "Contact",
+  "subtitle": "No Discord? Send feedback, report a bug or share an idea directly with the developer.",
+  "close": "Close",
+  "field": {
+    "category": "Category",
+    "message": "Message",
+    "messageHelper": "{count} characters left"
+  },
+  "category": {
+    "feedback": "Feedback",
+    "bug": "Bug report",
+    "idea": "Idea",
+    "feedbackPlaceholder": "What's on your mind?",
+    "bugPlaceholder": "What happened? What did you expect instead?",
+    "ideaPlaceholder": "What would you like to see in the game?"
+  },
+  "submit": "Send",
+  "sent": {
+    "text": "Thanks. Your message has been sent.",
+    "close": "Close"
+  },
+  "error": {
+    "invalidCategory": "Pick a category first.",
+    "messageRequired": "Write a message before sending.",
+    "messageTooLong": "Your message is too long. Keep it under 4000 characters.",
+    "rateLimited": "You've sent a few messages already. Try again in a bit.",
+    "generic": "Could not send your message. Try again in a moment."
+  }
+}

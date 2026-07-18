@@ -227,6 +227,10 @@
       "headToHead": {
         "title": "Compare two teams (Head-to-Head)",
         "text": "Open League & standings (under Season & Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
+      },
+      "contactSupport": {
+        "title": "Contact & feedback",
+        "text": "No Discord? Use the Contact button at the bottom of the menu to send feedback, report a bug or share an idea directly with the developer. Pick a category, write your message and send. A bug report automatically includes the page you were on, which makes it easier to track down."
       }
     },
     "discord": {

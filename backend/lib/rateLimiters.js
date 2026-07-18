@@ -99,6 +99,20 @@ export const presencePulseLimiter = buildLimiter({
   errorCode: "rate_request",
 });
 
+// In-game feedback/bug-report submissions (#2602). Low-frequency, deliberate
+// action (not a UI poll) — 5/10min is generous for genuine use and still caps
+// scripted spam of the (unauthenticated-adjacent, service-role-inserted) table.
+// #2602: `message` is English (not the Danish "legacy fallback" other limiters
+// carry) — this endpoint has no pre-i18n callers to stay backwards-compatible
+// with, and an EN-first raw string avoids a new backend i18n-leak (Refs #1068).
+export const feedbackLimiter = buildLimiter({
+  name: "feedback",
+  windowMs: 600_000,
+  max: 5,
+  message: "Too many submissions in a short time. Try again shortly.",
+  errorCode: "rate_feedback",
+});
+
 // Internal export for tests so they can exercise the same factory without
 // hard-coding production thresholds.
 export const __testing__ = { buildLimiter, userOrIpKey };

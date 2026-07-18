@@ -100,6 +100,7 @@ import {
   notifySwapCompleted,
   notifySeasonEvent,
   notifyWatchlistRiderAuction,
+  notifyPlayerFeedback,
   sendTestEmbed,
   sendTestDM,
   getBotToken,
@@ -321,6 +322,7 @@ import {
   boardWriteLimiter,
   marketWriteLimiter,
   presencePulseLimiter,
+  feedbackLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -9949,6 +9951,59 @@ router.get("/online-count", requireAuth, async (req, res) => {
   const { count } = await supabase.from("users")
     .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
   res.json({ count: count || 0 });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAYER FEEDBACK (#2602) — in-game kontakt/feedback/bug-rapport uden Discord
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const FEEDBACK_CATEGORIES = ["feedback", "bug", "idea"];
+const FEEDBACK_MESSAGE_MAX_LENGTH = 4000;
+
+// POST /api/feedback — spillerindsendt feedback/bug/idé. user_id/team_id
+// udledes ALTID server-side fra req.user/req.team (auth) — klienten sender
+// aldrig egne id'er. Skrives via service-role (samme supabase-klient som
+// resten af api.js), RLS på player_feedback har ingen policies der ellers
+// ville tillade klient-skrivning.
+router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
+  const { category, message, page_path: pagePath, viewport } = req.body || {};
+
+  if (!FEEDBACK_CATEGORIES.includes(category)) {
+    return res.status(400).json({ error: "Invalid category", errorCode: "feedback_invalid_category" });
+  }
+  const trimmed = typeof message === "string" ? message.trim() : "";
+  if (!trimmed) {
+    return res.status(400).json({ error: "Message is required", errorCode: "feedback_message_required" });
+  }
+  if (trimmed.length > FEEDBACK_MESSAGE_MAX_LENGTH) {
+    return res.status(400).json({ error: "Message is too long", errorCode: "feedback_message_too_long" });
+  }
+
+  const { data, error } = await supabase.from("player_feedback").insert({
+    user_id: req.user.id,
+    team_id: req.team?.id || null,
+    category,
+    message: trimmed,
+    page_path: typeof pagePath === "string" ? pagePath.slice(0, 500) : null,
+    viewport: typeof viewport === "string" ? viewport.slice(0, 50) : null,
+    user_agent: (req.headers["user-agent"] || "").slice(0, 500) || null,
+  }).select("id").single();
+
+  if (error) {
+    console.error("[feedback] insert failed:", error.message);
+    return res.status(500).json({ error: "Could not submit feedback", errorCode: "feedback_insert_failed" });
+  }
+
+  // Best-effort mirror til ejer-Discord — no-op hvis DISCORD_FEEDBACK_WEBHOOK_URL
+  // ikke er sat. Må aldrig fejle selve indsendelsen for spilleren.
+  notifyPlayerFeedback({
+    category,
+    message: trimmed,
+    pagePath,
+    teamName: req.team?.name || null,
+  }).catch(err => console.error("[feedback] discord mirror failed:", err.message));
+
+  res.json({ ok: true, id: data.id });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
