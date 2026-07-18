@@ -49,6 +49,34 @@ test("riders har IKKE en `overall`-kolonne (fidelitets-beviset bag #1840)", asyn
   );
 });
 
+test("riders.pending_team_id findes og er SELECT-bar (#2628 drift-lukker)", async () => {
+  // #2628: kolonnen findes i prod (fra #1995/#2579-parkeringsmekanikken), men var
+  // ALDRIG en committet migration i database/ — RACE_HUB_SCHEMA_FILES loadede den
+  // derfor ikke, og enhver kontrakt-test der rørte kolonnen fejlede med
+  // "column does not exist". Dette beviser at drift-lukkeren
+  // (2026-07-18-riders-pending-team-id-drift-closer.sql) faktisk loader kolonnen —
+  // en ÆGTE SQL-SELECT, ikke kun et kilde-scan (jf. #2616-regressionens fallback).
+  assert.ok(await columnExists(db, "riders", "pending_team_id"), "riders.pending_team_id skal findes");
+
+  const { rows } = await db.query(
+    "SELECT id, pending_team_id FROM riders WHERE pending_team_id IS NOT NULL LIMIT 1",
+  );
+  assert.ok(Array.isArray(rows), "SELECT mod riders.pending_team_id skal kunne køre uden fejl");
+});
+
+test("riders_pending_team_id_fkey peger på teams(id) (matcher prod verificeret via Supabase MCP)", async () => {
+  const { rows } = await db.query(`
+    SELECT ccu.table_name AS foreign_table
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.constraint_column_usage ccu
+      ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
+    WHERE tc.table_schema = 'public'
+      AND tc.table_name = 'riders'
+      AND tc.constraint_name = 'riders_pending_team_id_fkey'
+  `);
+  assert.equal(rows[0]?.foreign_table, "teams", "FK skal pege på teams(id) som i prod");
+});
+
 test("academy_intake findes (BEGIN/COMMIT-transaktioner i academy-mvp loader korrekt i PGlite)", async () => {
   // 2026-06-13-academy-mvp.sql wrapper sin DDL i en eksplicit BEGIN/COMMIT. Hvis
   // PGlite's exec() nogensinde ændrer transaktions-semantik, ville academy_intake

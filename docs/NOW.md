@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer):** (1) **PR #2630** merge → kør `2026-07-18-player-feedback.sql` manuelt (feedback-knap, konfliktfri, reviewet). (2) **PR #2620** merge (board-DM-spam-fix, guard fixet). (3) **PR #2612 (#2599)** — migration; `audit`-check rød, sig til hvis Claude skal kigge. (4) **👍/👎:** #2621 sæson-0 (anbef. behold) · #2622 sweep-horisont (anbef. 2 løbsdage human) · #2627 intake-udløb (**242 ryttere globalt usynlige**) · #2632 staff-løn-eksponering (anbef. luk). (5) **#2603 mobil-bug:** re-upload screenshot i issuet ELLER navngiv skærmen (CDN-link udløbet, claude:blocked). (6) S2-generering + Discord-announce (uændret fra 17/7).
+> **🎯 Next action (ejer):** (1) **Merge-kø (rækkefølge!):** PR #2630 (v7.20 feedback-knap → apply `player-feedback.sql`) → PR #2636 (v7.21 seen-flag → apply `my-result-seen.sql`) → PR #2634 (harness-drift, apply valgfri/no-op) → PR #2620 (board-DM-fix, ingen migration). Alle 4 reviewet+godkendt af Claude. (3) **PR #2612 (#2599)** — migration; `audit`-check rød, sig til hvis Claude skal kigge. (4) **👍/👎:** #2621 sæson-0 (anbef. behold) · #2622 sweep-horisont (anbef. 2 løbsdage human) · #2627 intake-udløb (**242 ryttere globalt usynlige**) · #2632 staff-løn-eksponering (anbef. luk). (5) **#2603 mobil-bug:** re-upload screenshot i issuet ELLER navngiv skærmen (CDN-link udløbet, claude:blocked). (6) S2-generering + Discord-announce (uændret fra 17/7).
 >
 > **🌊 18/7 formiddagsbølge (Fable-arkitekt + sonnet-subagenter, 10:45-12:20) — 5 MERGED + LIVE (Vercel READY + backend /health OK):** #2616 strategi-eligibility-dedup · #2592 board-guard-indeks-bug (ægte UI/enforcement-afvigelse) · #2593 del 1 resultat-fane (points-filter skjulte 92% af historik; del 2 seen-flag åben) · #2617 squad-guard i BEGGE grene (scope-udvidet efter ejer-spørgsmål: auto-SALG var det live hul) · #2601 se andres staff/faciliteter (nyt saniteret endpoint). **Verify:** #2624 harness byte-identisk ✅. **Nye issues m. prod-data:** #2627 intake-udløb (242 skjulte ryttere) · #2628 skema-drift pending_team_id · #2632 staff-løn. **I morgen:** verificér nattens scout-sweep (første post-#2611-kørsel kl. 22).
 >
@@ -29,6 +29,8 @@
 > **📋 v7.21 (denne PR):** #2593 del 2 — "Nyt"-badge på resultat-kortet flyttet fra localStorage til server (teams.my_result_seen_race_id, migration commited — ejer applier), PR afventer ejer-merge.
 
 > **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
+>
+> **📋 v7.20 (denne PR):** In-game Kontakt-knap (#2602) — feedback/bug/idé-modal ved siden af Hjælp; player_feedback-migration (ejer applier separat efter merge); Discord-spejl kræver DISCORD_FEEDBACK_WEBHOOK_URL (no-op indtil sat).
 
 ## Standing context (forever-relaunch)
 

@@ -1,0 +1,30 @@
+{
+  "title": "Kontakt",
+  "subtitle": "Ingen Discord? Send feedback, meld en fejl eller del en idé direkte til udvikleren.",
+  "close": "Luk",
+  "field": {
+    "category": "Kategori",
+    "message": "Besked",
+    "messageHelper": "{count} tegn tilbage"
+  },
+  "category": {
+    "feedback": "Feedback",
+    "bug": "Fejlrapport",
+    "idea": "Idé",
+    "feedbackPlaceholder": "Hvad tænker du på?",
+    "bugPlaceholder": "Hvad skete der? Hvad havde du forventet i stedet?",
+    "ideaPlaceholder": "Hvad kunne du tænke dig at se i spillet?"
+  },
+  "submit": "Send",
+  "sent": {
+    "text": "Tak. Din besked er sendt.",
+    "close": "Luk"
+  },
+  "error": {
+    "invalidCategory": "Vælg en kategori først.",
+    "messageRequired": "Skriv en besked før du sender.",
+    "messageTooLong": "Din besked er for lang. Hold den under 4000 tegn.",
+    "rateLimited": "Du har allerede sendt et par beskeder. Prøv igen om lidt.",
+    "generic": "Din besked kunne ikke sendes. Prøv igen om et øjeblik."
+  }
+}

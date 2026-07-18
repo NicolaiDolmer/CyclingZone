@@ -50,6 +50,7 @@
     "rate_market": "Too many market actions in a short time. Wait a moment.",
     "rate_board": "Too many board actions in a short time. Wait a moment.",
     "rate_request": "Too many requests in a short time. Wait a moment.",
+    "rate_feedback": "Too many submissions in a short time. Try again shortly.",
     "rider_not_owned": "You don't own this rider",
     "rider_is_academy": "Academy riders are managed in your academy. Graduate them to your senior squad first.",
     "rider_retired": "This rider has retired",

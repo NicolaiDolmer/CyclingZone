@@ -227,6 +227,10 @@
       "headToHead": {
         "title": "Sammenlign to hold (Head-to-Head)",
         "text": "Åbn Liga & rangliste (under Sæson & Resultater). Klik på rang-tallet ved to hold for at vælge dem, og tryk Sammenlign for at åbne en side-om-side-drawer: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Dit eget hold er valgt først som standard."
+      },
+      "contactSupport": {
+        "title": "Kontakt & feedback",
+        "text": "Ingen Discord? Brug Kontakt-knappen nederst i menuen til at sende feedback, melde en fejl eller dele en idé direkte til udvikleren. Vælg en kategori, skriv din besked og send. En fejlrapport inkluderer automatisk den side du var på, hvilket gør den lettere at spore."
       }
     },
     "discord": {
