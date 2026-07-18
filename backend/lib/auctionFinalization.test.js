@@ -1788,6 +1788,7 @@ function makeYouthFinalizeSupabase({
   claimRaced = false,      // simulér at et bud lander mellem read og atomisk claim → claim rammer 0 rækker
   riderRaceResults = [],   // race_results-rækker for rytteren (#1847-guard)
   riderNowOwned = false,   // rytteren har imens fået et hold → conditional DELETE rammer 0 rækker
+  riderHasExpiredIntake = false, // #2627: rytterens intake-tilbud UDLØB → usolgt beholdes som fri agent
 }) {
   const riderUpdates = [];
   const auctionUpdates = [];
@@ -1860,6 +1861,22 @@ function makeYouthFinalizeSupabase({
         return {
           select: () => ({
             eq: () => ({ limit: () => Promise.resolve({ data: riderRaceResults, error: null }) }),
+          }),
+        };
+      }
+      if (table === "academy_intake") {
+        // #2627: deleteUnsoldYouthRider tjekker om rytteren har et UDLØBET
+        // intake-tilbud (status='expired') — i så fald beholdes han som fri agent.
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => Promise.resolve({
+                  data: riderHasExpiredIntake ? [{ id: "intake-expired-row" }] : [],
+                  error: null,
+                }),
+              }),
+            }),
           }),
         };
       }
@@ -2057,6 +2074,34 @@ test("youth-auktion UDEN bud (#2456): auktionen claimes atomisk (completed) og r
   assert.ok(claim, "auktionen lukket via conditional claim");
   assert.equal(claim.status, "completed");
   assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "rytteren slettet");
+});
+
+test("youth-auktion UDEN bud men UDLØBET intake (#2627): rytteren beholdes som fri agent, slettes IKKE", async () => {
+  const auction = {
+    id: "youth-auc-expired-1",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: null,
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({
+    auction, buyerBalance: 0, academyCount: 0, riderHasExpiredIntake: true,
+  });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "youth_no_bids");
+  // Ejer-beslutning 18/7: udløbne intake-ryttere forlader ALDRIG spillet ved
+  // usolgt auktion — de forbliver frie agenter (team_id=null, is_academy=false)
+  // og kan hentes igen (fri-agent-filter + enhver manager kan auktionere dem).
+  assert.equal(result.rider_deleted, false, "udløbet intake-rytter må IKKE slettes");
+  assert.equal(supabase._riderDeleteAttempts.length, 0, "ingen delete må overhovedet forsøges");
+  assert.deepEqual(supabase._riderDeletions, []);
 });
 
 test("youth-auktion UDEN bud men RACENDE bud (#2456 TOCTOU): claim rammer 0 rækker → rytteren røres IKKE, buddet vinder", async () => {

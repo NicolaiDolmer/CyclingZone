@@ -30,6 +30,8 @@
 
 >
 > **📋 v7.22 (denne PR):** Ryd dag/Ryd alt i race-hubben + clear-markeringer saa auto-fill ikke gen-udfylder bevidst ryddede trupper (#2599).
+>
+> **📋 v7.23 (denne PR):** Akademi-intake-tilbud udloeber efter 7 dage; udloebne ryttere ryger paa 24-timers ungdomsauktion (drypvis, maks 25/dag). Flag: intake_offer_expiry_enabled (OFF til ejer armerer).
 > **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
 >
 > **📋 v7.20 (denne PR):** In-game Kontakt-knap (#2602) — feedback/bug/idé-modal ved siden af Hjælp; player_feedback-migration (ejer applier separat efter merge); Discord-spejl kræver DISCORD_FEEDBACK_WEBHOOK_URL (no-op indtil sat).

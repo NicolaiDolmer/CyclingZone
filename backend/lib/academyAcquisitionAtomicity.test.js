@@ -217,6 +217,15 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
           delete: () => ({ in: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
         };
       }
+      if (table === "academy_intake") {
+        // #2627: deleteUnsoldYouthRider tjekker for et UDLØBET intake-tilbud før
+        // sletning — disse fixtures er afviste/almindelige youth (ingen expired-række).
+        return {
+          select: () => ({
+            eq: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+          }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };

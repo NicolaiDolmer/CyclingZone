@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.23",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy intake offers now expire after 7 days",
+          "body": "An open Academy intake offer used to sit forever if you never signed or rejected it. It now expires automatically after 7 days, so an old offer never keeps a prospect hidden from the rest of the game. If your offer expires, the rider goes up for auction to every other club in a youth auction that runs a full 24 hours. Unsold riders stay in the game as free agents."
+        },
+        "da": {
+          "title": "Akademi-intake-tilbud udløber nu efter 7 dage",
+          "body": "Et åbent akademi-intake-tilbud stod tidligere for evigt, hvis du hverken underskrev eller afviste det. Det udløber nu automatisk efter 7 dage, så et gammelt tilbud aldrig holder en kandidat skjult for resten af spillet. Udløber dit tilbud, sættes rytteren på auktion for alle andre klubber i en ungdomsauktion, der løber et helt døgn. Usolgte ryttere bliver i spillet som frie agenter."
+        },
+        "refs": [2627]
+      }
+    ]
+  },
+  {
     "version": "7.22",
     "date": "2026-07-17",
     "label": "Beta",

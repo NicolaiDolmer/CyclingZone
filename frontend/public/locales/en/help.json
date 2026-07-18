@@ -1073,6 +1073,10 @@
       "q": "How often do I get new Academy prospects, and does scouting reset?",
       "a": "Academy intake happens once per season: at the start of each season (or when you first set up your team) you get a small cohort of prospects to review and sign 0-2 of into your Academy. There's no extra cohort mid-season. Scouting works differently: you get 15 scouting actions per season, refilled automatically at the next season start, and you can spend them on any rider, not just your own Academy prospects, to narrow down how good they really are."
     },
+    "academyIntakeExpiryFaq": {
+      "q": "Do Academy intake offers expire?",
+      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If nobody bids, the rider stays in the game as a free agent and can be picked up again later."
+    },
     "fatigueInjuryThresholdFaq": {
       "q": "How high can I push fatigue before training risks an injury?",
       "a": "Injury risk from training only kicks in once a rider's Fatigue reaches 70 and you set Hard intensity; below 70, Hard training carries no injury risk at all. Above that, the risk grows with fatigue, so keep an eye on the risk badge on the rider before you save the program. This applies to Academy riders too: they train through the same daily program as your senior squad and can pick up an injury from Hard training, even though they can't be selected for races yet."

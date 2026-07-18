@@ -1073,6 +1073,10 @@
       "q": "Hvor ofte får jeg nye akademi-emner, og resetter scouting?",
       "a": "Akademi-indtag sker én gang pr. sæson: ved hver sæsons start (eller når du opretter dit hold) får du et lille kuld emner, du kan vurdere og signe 0-2 af ind i dit Akademi. Der kommer ikke et ekstra kuld midt i sæsonen. Scouting fungerer anderledes: du får 15 scouting-handlinger pr. sæson, som genopfyldes automatisk ved næste sæsonstart, og du kan bruge dem på enhver rytter, ikke kun dine egne akademi-emner, for at indsnævre hvor god han egentlig er."
     },
+    "academyIntakeExpiryFaq": {
+      "q": "Udløber akademi-intake-tilbud?",
+      "a": "Ja. Et åbent intake-tilbud udløber automatisk efter 7 dage, hvis du hverken underskriver eller afviser det. Det forhindrer at et emne bliver ved med at stå skjult på et tilbud, ingen tager stilling til. Udløber dit tilbud, sættes emnet til salg for andre klubber på en ungdomsauktion, der løber et helt døgn (normale auktioner er meget kortere), så det kan betale sig at beslutte inden fristen. Byder ingen, bliver rytteren i spillet som fri agent og kan hentes igen senere."
+    },
     "fatigueInjuryThresholdFaq": {
       "q": "Hvor højt kan jeg presse trætheden, før træning risikerer en skade?",
       "a": "Skaderisiko fra træning findes først, når en rytters Træthed når 70, og du sætter Hård intensitet; under 70 giver Hård træning slet ingen skaderisiko. Over det vokser risikoen med trætheden, så hold øje med risiko-mærket på rytteren, før du gemmer programmet. Det gælder også akademi-ryttere: de træner gennem det samme daglige program som din senior-trup og kan pådrage sig en skade fra Hård træning, selvom de endnu ikke kan udtages til løb."
