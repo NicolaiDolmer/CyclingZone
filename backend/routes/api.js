@@ -8480,6 +8480,12 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         race_type: raceMeta.race_type,
         stages: raceMeta.stages,
         last_import: lastImport,
+        // #2593 (del 2): server-side seen-flag i SAMME payload som løbet selv
+        // — ingen ekstra roundtrip for at læse status. teams.my_result_seen_race_id
+        // er undefined hvis migrationen ikke er anvendt endnu (req.team kommer
+        // fra `select("*")` i requireAuth) → seen degraderer til false, samme
+        // "vis badge"-adfærd som før kolonnen fandtes.
+        seen: raceId === req.team.my_result_seen_race_id,
       },
       placements,
       stage_wins,
@@ -8493,6 +8499,46 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     res.status(500).json({ error: e.message });
   }
 }));
+
+// POST /api/dashboard/my-latest-result/seen — #2593 (del 2): persistér SERVER-
+// SIDE (teams.my_result_seen_race_id) at manageren har set kortets "Nyt"-badge
+// for et givent løb, i stedet for det device-scopede localStorage-flag
+// ("cz-dashboard-my-result-seen") fra #2466 — det nulstiller sig selv ved
+// enhedsskifte (54,9% af besøg er mobil). Team udledes udelukkende server-side
+// (req.team fra requireAuth) — klienten kan ikke markere et andet holds løb
+// som set. race_id valideres mod holdets EGNE race_results-rækker for at undgå
+// at et vilkårligt race-id kan skrives ind (lav risiko — det er kun en badge —
+// men billig at lukke). Idempotent: gentagne kald med samme race_id er en no-op
+// (samme UPDATE-værdi). Graceful degradation hvis kolonnen mangler (42703),
+// samme mønster som /me/onboarding-progress/dismiss.
+router.post("/dashboard/my-latest-result/seen", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const raceId = req.body?.race_id;
+  if (!raceId) return res.status(400).json({ error: "race_id required" });
+
+  try {
+    const { data: ownRow, error: ownError } = await supabase
+      .from("race_results")
+      .select("race_id")
+      .eq("race_id", raceId)
+      .eq("team_id", req.team.id)
+      .limit(1)
+      .maybeSingle();
+    if (ownError) throw ownError;
+    if (!ownRow) return res.status(404).json({ error: "No result found for this race" });
+
+    const { error } = await supabase
+      .from("teams")
+      .update({ my_result_seen_race_id: raceId })
+      .eq("id", req.team.id);
+    if (error && error.code !== "42703") throw error;
+
+    res.json({ ok: true });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // GET /api/cache-stats — operational hit/miss counters per namespace
 // Admin-only; used during baseline measurement and incident triage.

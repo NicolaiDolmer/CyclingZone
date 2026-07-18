@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.21",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "\"New\" badge on your results card now follows your account",
+          "body": "The \"New\" badge on \"How your team did\" remembered which race you'd seen in your browser only, so it reset every time you switched device — and with over half of visits on mobile, that meant seeing \"New\" again for a result you'd already checked. It now follows your account across every device."
+        },
+        "da": {
+          "title": "\"Nyt\"-badge på dit resultat-kort følger nu din konto",
+          "body": "\"Nyt\"-badget på \"Sådan gik det for dit hold\" huskede kun hvilket løb du havde set i din browser, så det nulstillede sig hver gang du skiftede enhed — og med over halvdelen af besøg på mobil betød det \"Nyt\" igen for et resultat du allerede havde tjekket. Det følger nu din konto på tværs af alle enheder."
+        },
+        "refs": [2593]
+      }
+    ]
+  },
+  {
     "version": "7.19",
     "date": "2026-07-18",
     "label": "Beta",
