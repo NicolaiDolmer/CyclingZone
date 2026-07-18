@@ -222,3 +222,22 @@ test("#2469 forward-guard: season-end + season-end-preview bygger context via bu
   const seasonEndBlock = sliceBetween(economySource, "async function processTeamSeasonEnd", "export async function updateRiderValues");
   assert.match(seasonEndBlock, /buildBoardEvalContext\(/, "season-end skal dele byggeren");
 });
+
+// ── #2592: mid-cycle-guard skal bruge samme sæson-indeks som visningen ──────
+// /board/status's requestOptions-liste (buildBoardRequestOptions) og den
+// faktiske POST /board/request-håndhævelse (resolveBoardRequest) kalder begge
+// den samme getBoardRequestAvailability/F6-mid-cycle-guard i boardRequests.js.
+// POST-stien fodrer guarden via buildBoardEvalContext (arbejds-sæson-indeks =
+// seasons_completed+1, cappet — se testen ovenfor "kanoniske felter"). Før
+// #2592-fixet fodrede /board/status's options-liste guarden med det RÅ
+// board.seasons_completed i stedet — samme tærskel, to forskellige indekser,
+// så UI'ets "disabled: for tidligt i forløbet"-visning kunne afvige fra hvad
+// en reel POST ville afgøre for nøjagtig samme board-tilstand.
+test("#2592 forward-guard: /board/status's requestOptions bruger weekendEvalContext.seasonsCompleted (arbejdsindeks), ikke den rå lokale seasonsCompleted", () => {
+  const block = sliceBetween(apiSource, 'router.get("/board/status"', 'router.post("/board/');
+  assert.match(
+    block,
+    /buildBoardRequestOptions\(\{[\s\S]*?seasonsCompleted:\s*weekendEvalContext\.seasonsCompleted/,
+    "/board/status skal fodre mid-cycle-guarden med samme arbejds-sæson-indeks som POST /board/request bruger (weekendEvalContext.seasonsCompleted), ikke den rå board.seasons_completed-variabel der kun er til seasons_completed-DISPLAY-feltet"
+  );
+});
