@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer):** (1) **Merge-kø (rækkefølge!):** PR #2630 (v7.20 feedback-knap → apply `player-feedback.sql`) → PR #2636 (v7.21 seen-flag → apply `my-result-seen.sql`) → PR #2634 (harness-drift, apply valgfri/no-op) → PR #2620 (board-DM-fix, ingen migration). Alle 4 reviewet+godkendt af Claude. (3) **PR #2612 (#2599)** — migration; `audit`-check rød, sig til hvis Claude skal kigge. (4) **👍/👎:** #2621 sæson-0 (anbef. behold) · #2622 sweep-horisont (anbef. 2 løbsdage human) · #2627 intake-udløb (**242 ryttere globalt usynlige**) · #2632 staff-løn-eksponering (anbef. luk). (5) **#2603 mobil-bug:** re-upload screenshot i issuet ELLER navngiv skærmen (CDN-link udløbet, claude:blocked). (6) S2-generering + Discord-announce (uændret fra 17/7).
+> **🎯 Next action (ejer):** (1) **👍/👎 [#2639](https://github.com/NicolaiDolmer/CyclingZone/issues/2639)** — trim 7 overskuds-AI-hold i D4 (goer audit-CI-checket groent). (2) **#2622**: post spiller-pollen (udkast i issuet) om auto-udtagelses-horisont. (3) **#2603 + #2604**: re-upload billeder i issues (CDN-links udloebet, begge claude:blocked). (4) S2-generering (admin, dry-run foerst) + Discord-announce. (5) Valgfrit: DISCORD_FEEDBACK_WEBHOOK_URL i Railway (feedback-Discord-spejl).
 >
-> **🌊 18/7 formiddagsbølge (Fable-arkitekt + sonnet-subagenter, 10:45-12:20) — 5 MERGED + LIVE (Vercel READY + backend /health OK):** #2616 strategi-eligibility-dedup · #2592 board-guard-indeks-bug (ægte UI/enforcement-afvigelse) · #2593 del 1 resultat-fane (points-filter skjulte 92% af historik; del 2 seen-flag åben) · #2617 squad-guard i BEGGE grene (scope-udvidet efter ejer-spørgsmål: auto-SALG var det live hul) · #2601 se andres staff/faciliteter (nyt saniteret endpoint). **Verify:** #2624 harness byte-identisk ✅. **Nye issues m. prod-data:** #2627 intake-udløb (242 skjulte ryttere) · #2628 skema-drift pending_team_id · #2632 staff-løn. **I morgen:** verificér nattens scout-sweep (første post-#2611-kørsel kl. 22).
+> **🌊 18/7 heldagsboelge (Fable-arkitekt + sonnet-subagenter, 10:45-15:10) — 11 PR'er MERGED + LIVE, 4 migrationer applied (ejer-mandat #2642):** #2616 eligibility-dedup · #2592 board-guard-bug · #2593 resultat-fane (del 1+2: 92%-filter + server-seen-flag) · #2617 squad-guard BEGGE grene · #2601 se andres staff/faciliteter · #2602 in-game Kontakt-knap (LIVE+funktionel) · #2599 Ryd dag/alt · #2628 harness-drift · #2619 board-DM-dedup · **#2627 intake-udloeb LIVE+armeret** (7d-udloeb → 24h-ungdomsauktion, 30/dag drypvis, usolgte = frie agenter; foerste boelge prod-verificeret: 30 udloebet + 30 auktioner, rest 193). **Ejer-beslutninger eksekveret:** #2621 behold · #2632 loen offentlig · **NY POLITIK #2642: Claude koerer selv SQL/migrationer** (memory opdateret; docs-opdatering aabent i issuet). **Verify i morgen:** [#2641](https://github.com/NicolaiDolmer/CyclingZone/issues/2641) scout-sweep (kl. 22-koerslen) + intake-boelge 2. Patch notes v7.18-v7.23.
 >
 > **✅ 17/7:** 29 PR'er merged + 7 migrationer + 24 issues→done (Global Rank LIVE, S2-synlighed, drift-vagt, rekalibrering C — #2557 åben til live-verify). **Ejer-flag:** #2449 (S2-kalender ikke genereret) + #2521 (5 hold board-låst 50). Facit: [natbølge](audits/night-wave-2026-07-17.md) · [audit](../.claude/audits/audit-2026-07-17.md). 18/7 værdi-bølge (9 merged): detaljer i git-log + issue-tråde.
 
@@ -26,16 +26,9 @@
 
 > **🩺 Sentry/Railway-triage 18/7:** 1 nyt Sentry-issue **CYCLINGZONE-35** (board_update-DM'er 100% skippet, #2571-guarden) — verificeret false-positive + fixet autonomt: board-DM'en re-fyrede hvert 30-min-tick uden for in-app 24h-dedup → DM-spam-latent + falsk guard-streak når eneste due modtager var ulinket (`discord_id=null`). Fix ([#2619](https://github.com/NicolaiDolmer/CyclingZone/issues/2619)/PR [#2620](https://github.com/NicolaiDolmer/CyclingZone/pull/2620), backend-only, ejer-merge): gate DM på `result.delivered`. Sentry resolvet, postmortem skrevet. Ingen 48h-restance. Railway ellers rent (transfer_offer no-recipient = benigne #449-drops til ulinkede hold; entry-sweep sund).
 
-> **📋 v7.21 (denne PR):** #2593 del 2 — "Nyt"-badge på resultat-kortet flyttet fra localStorage til server (teams.my_result_seen_race_id, migration commited — ejer applier), PR afventer ejer-merge.
-
 >
-> **📋 v7.22 (denne PR):** Ryd dag/Ryd alt i race-hubben + clear-markeringer saa auto-fill ikke gen-udfylder bevidst ryddede trupper (#2599).
+ **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
 >
-> **📋 v7.23 (denne PR):** Akademi-intake-tilbud udloeber efter 7 dage; udloebne ryttere ryger paa 24-timers ungdomsauktion (drypvis, maks 25/dag). Flag: intake_offer_expiry_enabled (OFF til ejer armerer).
-> **🤖 Working agent:** Ingen aktiv session. _(18/7 formiddagsbølge afsluttet — se 🌊-blok.)_ #2461 Discord-svar-udkast venter stadig ejer-review.
->
-> **📋 v7.20 (denne PR):** In-game Kontakt-knap (#2602) — feedback/bug/idé-modal ved siden af Hjælp; player_feedback-migration (ejer applier separat efter merge); Discord-spejl kræver DISCORD_FEEDBACK_WEBHOOK_URL (no-op indtil sat).
-
 ## Standing context (forever-relaunch)
 
 - **Liga-struktur (ejer 22/6):** 4-divisions-pyramide 1/2/4/8; ægte managere ind fra bunden. Op/nedrykning: #1152 afventer godkendelse. Rytterprofil-rest: hero/rating #2006 + højde/vægt+compare #2266.
