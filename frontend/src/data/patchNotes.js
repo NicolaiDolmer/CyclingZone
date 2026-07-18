@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.20",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "New: send feedback and bug reports without Discord",
+          "body": "A Contact button now sits at the bottom of the menu, next to Help. Open it to send feedback, report a bug or share an idea directly with the developer, no Discord account needed. Bug reports automatically include which page you were on to make them easier to track down."
+        },
+        "da": {
+          "title": "Nyt: send feedback og fejlrapporter uden Discord",
+          "body": "En Kontakt-knap sidder nu nederst i menuen, ved siden af Hjælp. Åbn den for at sende feedback, melde en fejl eller dele en idé direkte til udvikleren, uden behov for en Discord-konto. Fejlrapporter inkluderer automatisk hvilken side du var på, så de er lettere at spore."
+        },
+        "refs": [2602]
+      }
+    ]
+  },
+  {
     "version": "7.19",
     "date": "2026-07-18",
     "label": "Beta",

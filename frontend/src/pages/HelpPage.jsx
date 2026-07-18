@@ -104,6 +104,7 @@ const SECTION_DEFS = [
       { id: "onlineStatus", kind: "text" },
       { id: "managersOnline", kind: "text" },
       { id: "headToHead", kind: "text" },
+      { id: "contactSupport", kind: "text" },
     ],
   },
   {

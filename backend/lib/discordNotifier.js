@@ -611,6 +611,37 @@ export async function sendTestEmbed(webhookUrl) {
   }
 }
 
+// ── In-game feedback mirror (#2602) ───────────────────────────────────────────
+// Player-submitted feedback/bug reports (POST /api/feedback) are mirrored to a
+// private owner-facing channel so they don't require a separate admin UI to
+// notice. Guarded by DISCORD_FEEDBACK_WEBHOOK_URL — silent no-op (no fallback
+// to the default/general webhook) when unset, since this is unmoderated
+// free-text from players and must not leak into a public channel by accident.
+const FEEDBACK_CATEGORY_LABELS = {
+  feedback: "💬 Feedback",
+  bug: "🐛 Bug report",
+  idea: "💡 Idea",
+};
+
+export async function notifyPlayerFeedback({ category, message, pagePath, teamName, sendWebhookFn = sendWebhook }) {
+  const url = (process.env.DISCORD_FEEDBACK_WEBHOOK_URL || "").trim();
+  if (!url) return;
+  const fields = [];
+  if (teamName) fields.push({ name: "Team", value: teamName });
+  if (pagePath) fields.push({ name: "Page", value: pagePath });
+  const payload = {
+    embeds: [{
+      title: FEEDBACK_CATEGORY_LABELS[category] || category,
+      description: message.length > 1800 ? `${message.slice(0, 1800)}…` : message,
+      color: category === "bug" ? 0xe74c3c : category === "idea" ? 0xe8c547 : 0x3498db,
+      fields,
+      footer: { text: "Cycling Zone · in-game feedback" },
+      timestamp: new Date().toISOString(),
+    }],
+  };
+  await sendWebhookFn(url, payload);
+}
+
 export async function notifySeasonEvent({ type, seasonNumber, webhookUrl }) {
   const url = webhookUrl || await getDefaultWebhook();
   if (!url) return;
