@@ -66,6 +66,7 @@ import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
+import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
@@ -740,6 +741,27 @@ async function runIntakeOfferExpirySweepCron() {
   }
 }
 
+// ─── Sunday Intake Drip (#2064 S0) ───────────────────────────────────────────
+// Søndags-drip af akademi-kandidater. Modulet er selv søndags-gated + claim-
+// idempotent, så timelig polling + boot-run er sikre.
+async function runSundayIntakeTickCron() {
+  try {
+    const r = await runSundayIntakeTick({ supabase, now: new Date() });
+    if (r.ran && r.candidates > 0) {
+      console.log(`🎓 Søndags-drip: ${r.candidates} akademi-kandidater til ${r.teams} hold (${r.tickDate})`);
+    }
+    if (r.errors?.length) {
+      console.error(`Søndags-drip delfejl (${r.errors.length}):`, r.errors.join("; "));
+      sentryCapture(new Error(`sunday-intake-drip partial failures: ${r.errors.join("; ")}`), {
+        tags: { cron: "sunday intake drip" },
+      });
+    }
+  } catch (err) {
+    console.error("Cron error (sunday intake drip):", err.message);
+    sentryCapture(err, { tags: { cron: "sunday intake drip" } });
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -1161,6 +1183,12 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 60 minutes: sunday-intake-drip (#2064 S0) — modulet er selv søndags-
+  // gated + claim-idempotent pr. (hold, dato), så en times cadence bare fylder
+  // søndagens vindue op uden risiko for dobbelt-kuld. IKKE wrappet i monitorCron
+  // (den forventer succes hvert vindue; denne tick er bevidst søndags-only).
+  setInterval(trackedTick("sunday-intake-drip", runSundayIntakeTickCron), 60 * 60 * 1000);
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1197,6 +1225,7 @@ export function startCron() {
   // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
   // rammer lige efter det normale tick.
   trackedTick("intake-offer-expiry", runIntakeOfferExpirySweepCron)();
+  trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
