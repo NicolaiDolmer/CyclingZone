@@ -86,6 +86,9 @@ export async function runIntakeOfferExpirySweep({
       });
       if (auction) auctioned += 1;
     } catch (e) {
+      // best-effort: én fejlet auktions-listning må ikke vælte resten af battchen —
+      // fejlen SLUGES ikke reelt: den samles i auctionErrors, som returneres til
+      // cron-handleren og dermed lander i Railway-loggen/Sentry-cron-monitoren.
       auctionErrors.push(`${row.rider_id}: ${e?.message ?? e}`);
     }
   }
