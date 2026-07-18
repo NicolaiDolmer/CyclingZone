@@ -63,6 +63,20 @@ export const PATCHES = [
           "body": "Dit spejder-kort forklarer nu at en 2. samtidig opgave kræver en chefspejder med en overall omkring 80, ikke bare en ansat spejder eller en bygget Scouting Network. Vi har også bekræftet (og låst med en regressionstest) at en mission eller målrettet opgave startet FØR du opgraderer faciliteten eller ansætter en spejder aldrig bliver slettet eller annulleret: den forbliver i køen og rapporterer til tiden, og rejseomkostningen var aldrig i fare."
         },
         "refs": [2580]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Season picker no longer shows a nonexistent \"Season 0\"",
+          "body": "The season selector on the Calendar and Season Planner pages could list \"Season 0\", a leftover open-beta bookkeeping season with zero races that was never meant to be picked. It's now filtered out, so the selector only ever offers real, playable seasons."
+        },
+        "da": {
+          "title": "Sæson-vælgeren viser ikke længere en \"Sæson 0\" der ikke findes",
+          "body": "Sæson-vælgeren på Kalender- og Sæsonplanlægger-siderne kunne vise \"Sæson 0\", en efterladt bogførings-sæson fra åben beta uden nogen løb, som aldrig var tænkt til at kunne vælges. Den er nu filtreret fra, så vælgeren kun tilbyder rigtige, spillebare sæsoner."
+        },
+        "refs": [2600]
       }
     ]
   },

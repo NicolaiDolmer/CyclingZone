@@ -2470,9 +2470,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #2518: sæson-vælgeren i UI'et bygges fra denne liste (alle oprettede
     // sæsoner, uanset status) — sendt uanset om DEN VALGTE sæson findes, så
     // "Sæson 2 er endnu ikke oprettet" kan vises sammen med en S1-fane at falde
-    // tilbage på.
+    // tilbage på. #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er
+    // IKKE en rigtig spillesæson og skal aldrig tilbydes i vælgeren.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) return res.json({ enabled: true, season: null, availableSeasons, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
 
@@ -2925,8 +2926,10 @@ router.get("/races/calendar", requireAuth, async (req, res) => {
         : seasonQuery.eq("status", "active").maybeSingle()
     );
     if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
+    // #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
+    // spillesæson og skal aldrig tilbydes i kalenderens sæson-vælger.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
       return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
