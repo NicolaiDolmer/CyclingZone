@@ -64,15 +64,25 @@ Kør ved session-start eller efter Desktop-app-opdatering:
 ```
 # Verificér at ingen disabled plugins er synlige i skills-listen:
 # 1. Start ny Claude Code session i CyclingZone
-# 2. I session-start system-reminder — check at INGEN af disse prefix er til stede:
-#    code-modernization:*, vercel:*, product-management:*, marketing:*, design:*, productivity:*
+# 2. I session-start system-reminder — check at INGEN skills starter med disse præfikser
+#    (prefix-glob, uanset publisher-suffix — se drift_check.match_mode i snapshot-filerne):
+#    code-modernization@*  →  fanger code-modernization@claude-plugins-official m.fl.
+#    vercel@*              →  fanger vercel@claude-plugins-official
+#    vercel-plugin@*       →  fanger vercel-plugin@vercel (nyt marketplace-ID, #2684)
+#    product-management@*  →  fanger product-management@claude-plugins-official m.fl.
+#    marketing@*
+#    design@*
+#    productivity@*
 # 3. Opdatér drift_check.last_verified i docs/metrics/harness-snapshot-<PC>.json
 ```
+
+> **Vigtigt — marketplace-ID-drift (#2684):** Plugin-udgivere kan ændre publisher-suffix når et plugin genudgives via nyt marketplace (fx `vercel@claude-plugins-official` → `vercel-plugin@vercel`). Brug ALTID prefix-match på plugin-navnets BASE (alt til venstre for `@`), ikke det fulde ID. Exact-match-check FEJLER ved sådanne omdøbninger.
 
 Hvis et disabled plugin dukker op:
 1. Verificér at det stadig er `false` i `.claude/settings.json`
 2. Hvis ja → Desktop-kanal-drift bekræftet → disable igen via `/plugin` UI i Claude Code Desktop
-3. Rapportér til #605-epic-tråden
+3. Tilføj evt. nyt publisher-suffix til `should_be_absent`-listen i snapshot-filerne (brug `nyt-navn@*`-format)
+4. Rapportér til #605-epic-tråden
 
 ---
 

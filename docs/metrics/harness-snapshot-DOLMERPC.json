@@ -44,17 +44,19 @@
   },
   "drift_check": {
     "description": "Verificér ved session-start (og efter Desktop-app-opdatering) at disse plugins ER FRAVÆRENDE i skills-listen. Fremkommer de → re-disable via .claude/settings.json (project-level). Se docs/AI_OPS_DISABLE_PLAYBOOK.md#desktop-kanal-drift.",
+    "match_mode": "prefix-glob — brug som prefix-match: ethvert skill der STARTER MED et af disse mønstre er uønsket, uanset publisher-suffix. Fx vercel@* fanger både vercel@claude-plugins-official OG vercel-plugin@vercel (nyt marketplace-ID). Fix for #2684: exact-match fejlede da Vercel-pluginet kom tilbage under nyt ID.",
     "should_be_absent": [
-      "code-modernization@claude-plugins-official",
-      "vercel@claude-plugins-official",
-      "product-management@claude-plugins-official",
-      "marketing@claude-plugins-official",
-      "design@claude-plugins-official",
-      "productivity@claude-plugins-official"
+      "code-modernization@*",
+      "vercel@*",
+      "vercel-plugin@*",
+      "product-management@*",
+      "marketing@*",
+      "design@*",
+      "productivity@*"
     ],
     "correct_disable_channel": "project-level .claude/settings.json (repo-committed) — vinder over Desktop-kanal og user-level settings",
     "last_verified": "2026-05-29",
-    "issue_ref": "#1286"
+    "issue_ref": "#1286, #2684"
   },
   "total_harness_tokens": 14948,
   "cross_pc_parity_vs_NicolaiPC": {

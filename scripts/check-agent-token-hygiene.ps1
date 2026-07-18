@@ -185,6 +185,18 @@ if (Test-Path $snapshotPath) {
       $harnessValue = [int]$snap.total_harness_tokens
       $harnessSource = "measured-snapshot ($snapshotPath)"
     }
+    # Staleness-check: snapshot >30 dage gammel → WARN om re-maaling (#2684)
+    if ($snap.captured) {
+      try {
+        $capturedDate = [datetimeoffset]::Parse($snap.captured)
+        $daysOld = ([datetimeoffset]::UtcNow - $capturedDate).Days
+        if ($daysOld -gt 30) {
+          Add-Result $results "harness-snapshot-staleness" "WARN" "$snapshotPath er $daysOld dage gammel (captured: $($snap.captured)) — re-maal harness jf. docs/metrics/HARNESS_MEASUREMENT.md (efter disable-boelge)"
+        }
+      } catch {
+        # Ignorér dato-parse-fejl lydløst — snapshot er stadig brugbart til tokens
+      }
+    }
   } catch {
     Add-Result $results "harness-snapshot-parse" "WARN" "Kunne ikke parse $snapshotPath, bruger default estimate $HarnessTokensEstimate"
   }
