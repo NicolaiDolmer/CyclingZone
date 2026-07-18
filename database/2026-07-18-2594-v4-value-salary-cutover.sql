@@ -23,6 +23,11 @@
 
 ALTER TABLE riders ADD COLUMN IF NOT EXISTS current_production_value INTEGER;
 
+-- riders bruger KOLONNE-niveau SELECT-grants (#1162): uden eksplicit GRANT er den
+-- nye kolonne usynlig for anon/authenticated (#2238-klassen). Frontend læser den
+-- (løn-estimat + løn-filter), så den skal granta.
+GRANT SELECT (current_production_value) ON public.riders TO anon, authenticated;
+
 COMMENT ON COLUMN riders.current_production_value IS
   '#2428/#2594: forventet produktion i indeværende sæson (v4 sæson-0-led, skaleret, uden elite-præmie). Løn-base: salary = cpv × SALARY_RATE_PROD[division], frossen ved signering (#1309).';
 
@@ -52,6 +57,11 @@ BEGIN
       WHERE owner_is_ai = false AND is_retired = false;
   END IF;
 END $$;
+
+-- DROP COLUMN fjernede market_value's kolonne-grant sammen med kolonnen —
+-- re-grant EFTER genopbygningen, ellers bliver rytter-siden tom for alle
+-- brugere (#2238-klassen). Idempotent (GRANT er det altid).
+GRANT SELECT (market_value) ON public.riders TO anon, authenticated;
 
 COMMENT ON COLUMN riders.market_value IS
   '#2594: GENERATED = COALESCE(base_value, 1000). base_value er v4-karriere-NPV (fremtids-pris); prize_earnings_bonus indgår IKKE længere (dobbelt-talte præmier). Fase 3 (#1281) tilføjer market_premium.';
