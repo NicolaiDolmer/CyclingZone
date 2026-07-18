@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Puljen af staff-kandidatnavne er vokset fra 40 til 150. Med den gamle pulje endte de fleste ligaer med samme navn ansat hos flere hold på én gang, hvilket kunne ligne én person med to jobs. Hver staff har altid været en separat person med sin egen profil, men kandidater der tilbydes fremover trækkes fra den langt større pulje, så navnesammenfald på tværs af hold bliver undtagelsen frem for reglen. Allerede ansat staff beholder deres navne."
         },
         "refs": [2643]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Release staff — for a severance fee",
+          "body": "You can now release your own staff (Sports Director, Chief Scout, Team Doctor, Academy Director, Commercial Director) from their staff profile or the staff overview list. Releasing them ends the contract immediately and opens the role for a new hire right away, but it isn't free: you pay a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit."
+        },
+        "da": {
+          "title": "Opsig staff — mod et opsigelsesgebyr",
+          "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
+        },
+        "refs": [2649]
       }
     ]
   },

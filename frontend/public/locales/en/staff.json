@@ -24,5 +24,26 @@
     "team": "Employed by {team}",
     "viewTeam": "View team",
     "limitedNote": "This is another manager's staff, so only rating and top specialization are visible. The full ability breakdown is only shown to the owning team."
+  },
+  "release": {
+    "button": "Release staff",
+    "title": "Release {name}?",
+    "body": "The contract ends immediately. You'll pay severance now, and the role is open for a new hire right away.",
+    "severanceLabel": "Severance ({multiplier} × {weeklyWage} CZ$)",
+    "wagesFreedLabel": "Weekly wages freed up",
+    "slotLabel": "{role} slot",
+    "slotValue": "Open immediately",
+    "keepButton": "Keep him/her",
+    "confirmButton": "Release for {amount} CZ$",
+    "confirmBusy": "Releasing…",
+    "errors": {
+      "staff_not_found": "This staff member isn't on your team anymore.",
+      "already_released": "Already released.",
+      "insufficient_funds": "You can't afford the severance ({amount} CZ$).",
+      "facilities_disabled": "Staff management isn't available yet.",
+      "auth": "You need to be signed in to do that.",
+      "network": "Connection failed. Try again in a moment.",
+      "failed": "Couldn't release this staff member. Try again in a moment."
+    }
   }
 }

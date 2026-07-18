@@ -29,6 +29,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.TRANSFER_SALE]: "Transfer sale",
   [FINANCE_REASON.SWAP_CASH_DELTA]: "Swap (cash difference)",
   [FINANCE_REASON.RIDER_RELEASE_BUYOUT]: "Release fee",
+  [FINANCE_REASON.STAFF_RELEASE_SEVERANCE]: "Staff severance",
   [FINANCE_REASON.LOAN_FEE_PAID]: "Loan fee paid",
   [FINANCE_REASON.LOAN_FEE_RECEIVED]: "Loan fee received",
   [FINANCE_REASON.LOAN_FEE_REFUNDED]: "Loan fee refunded",

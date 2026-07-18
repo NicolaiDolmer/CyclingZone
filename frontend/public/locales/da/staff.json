@@ -24,5 +24,26 @@
     "team": "Ansat hos {team}",
     "viewTeam": "Se hold",
     "limitedNote": "Dette er en anden managers staff, så kun rating og top-specialisering er synlig. Den fulde evne-oversigt vises kun for ejer-holdet."
+  },
+  "release": {
+    "button": "Opsig staff",
+    "title": "Opsig {name}?",
+    "body": "Ansættelsen slutter med det samme. Du betaler severance nu, og pladsen er åben for ny-hyring med det samme.",
+    "severanceLabel": "Severance ({multiplier} × {weeklyWage} CZ$)",
+    "wagesFreedLabel": "Ugentlig løn frigjort",
+    "slotLabel": "{role}-plads",
+    "slotValue": "Åben med det samme",
+    "keepButton": "Behold ham/hende",
+    "confirmButton": "Opsig for {amount} CZ$",
+    "confirmBusy": "Opsiger…",
+    "errors": {
+      "staff_not_found": "Denne staff er ikke på dit hold længere.",
+      "already_released": "Allerede opsagt.",
+      "insufficient_funds": "Du har ikke råd til severance ({amount} CZ$).",
+      "facilities_disabled": "Staff-styring er ikke tilgængelig endnu.",
+      "auth": "Du skal være logget ind for at gøre det.",
+      "network": "Forbindelsen fejlede. Prøv igen om lidt.",
+      "failed": "Kunne ikke opsige denne staff. Prøv igen om lidt."
+    }
   }
 }
