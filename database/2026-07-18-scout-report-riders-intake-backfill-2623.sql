@@ -1,8 +1,14 @@
 -- #2623 — Backfill-kandidat: historiske scout-rapport-ryttere der stadig er
 -- usøgbare via et åbent ('offered') akademi-intake-tilbud.
 --
--- STATUS: IKKE KØRT. Forberedt til ejer-review, jf. opgavebeskrivelsen for
--- #2644/#2623 ("skriv idempotent backfill-SQL, kør den ikke").
+-- STATUS: ⚠️ AUTO-APPLIED 2026-07-18 17:32:56Z — UTILSIGTET. Filen var "forberedt
+-- til ejer-review, ikke kørt" (jf. #2644/#2623-opgaven), men blev committet som
+-- database/2026-*.sql og dermed kørt af auto-migrate.yml ~3 min efter merge af
+-- PR #2659. Effekt: 16 rækker → 'expired' UDEN 24h-auktion/#2648-kompensation
+-- (heraf 3 tilbud under 7-dages-grænsen, 1-4 dage gamle). Ejerskabs-guarden
+-- holdt (kun team-løse ryttere ramt). Postmortem:
+-- .claude/learnings/2026-07-19-prepared-sql-auto-applied-footgun.md.
+-- Fremadrettet: udkast-SQL hører til i database/proposals/ (uden for globben).
 --
 -- Kontekst (read-only prod-audit 2026-07-18, execute_sql mod ghwvkxzhsbbltzfnuhhz):
 --   Alle 50 ryttere der nogensinde er lagt i en mission-shortlist
