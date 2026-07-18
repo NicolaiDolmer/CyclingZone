@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.28",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy candidates arrive every Sunday",
+          "body": "Your academy now receives fresh candidates every Sunday. Sign the ones you believe in or reject them - unanswered offers expire after 7 days. This is the first step of the season-cohort model, where the final Sunday of each season becomes the big intake day."
+        },
+        "da": {
+          "title": "Nye akademi-kandidater ankommer hver søndag",
+          "body": "Dit akademi modtager nu friske kandidater hver søndag. Signér dem du tror på, eller afvis dem - ubesvarede tilbud udløber efter 7 dage. Det er første skridt i sæson-årgangsmodellen, hvor sæsonens sidste søndag bliver den store intake-dag."
+        },
+        "refs": [2064]
+      }
+    ]
+  },
+  {
     "version": "7.27",
     "date": "2026-07-18",
     "label": "Beta",

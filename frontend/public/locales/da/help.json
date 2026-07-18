@@ -650,7 +650,7 @@
       },
       "intakeCohort": {
         "title": "Sæsonens indtagelseskuld",
-        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen."
+        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen. Nye akademi-kandidater ankommer hver søndag. Kandidater du hverken signerer eller afviser, udløber efter 7 dage."
       },
       "signingProspects": {
         "title": "Signering af talenter",
