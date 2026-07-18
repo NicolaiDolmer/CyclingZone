@@ -334,6 +334,7 @@ const FAQ_KEYS = [
   "overlappingRaces",
   "teamStrategyFaq",
   "relaunchTeamMoney",
+  "staffReleaseFaq",
 ];
 
 function buildSections(t, vars) {

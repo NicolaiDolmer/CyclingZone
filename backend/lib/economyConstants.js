@@ -280,6 +280,8 @@ export const FINANCE_REASON = Object.freeze({
   SWAP_CASH_DELTA: "swap_cash_delta",
   // Rytter-handlinger (manager-initieret)
   RIDER_RELEASE_BUYOUT: "rider_release_buyout", // #1719 fyrings-/opsigelsesgebyr
+  // Staff-handlinger (manager-initieret)
+  STAFF_RELEASE_SEVERANCE: "staff_release_severance", // #2649 opsigelses-gebyr (4×ugentlig løn)
   // Lejeaftaler
   LOAN_FEE_PAID: "loan_fee_paid",
   LOAN_FEE_RECEIVED: "loan_fee_received",

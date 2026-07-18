@@ -175,6 +175,7 @@ import {
   getStaffCandidatesHandler,
   postStaffHireHandler,
   postStaffFireHandler,
+  postStaffReleaseHandler,
   getStaffProfileHandler,
 } from "../lib/facilityRoutesHandlers.js";
 import {
@@ -8944,6 +8945,23 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { status, body } = await getStaffProfileHandler(
       { teamId: req.team.id, staffId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
+// løn, #2649 — ejer-godkendt gebyr-model). staff_not_found → 404 (ukendt/ikke-
+// ejet); already_released → 409 (dobbelt-klik-guard); insufficient_funds → 400.
+router.post("/club/staff/:id/release", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
+    const { status, body } = await postStaffReleaseHandler(
+      { teamId: req.team.id, staffId: req.params.id, seasonId, seasonNumber },
       supabase,
       { flags: { facilitiesEnabled } }
     );
