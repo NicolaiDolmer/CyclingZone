@@ -60,6 +60,7 @@ Ovenpå lægges årgangs-kvalitetsvariationen (±10 % seeded pr. sæson, ens for
 
 ## 5. Økonomi- og invariant-respekt
 
+- **Akademi-tilgang er lukket land (#2456, ejer-instruks 13/7):** ryttere kommer KUN ind i et akademi via (a) eget intake (denne spec) og (b) vundne ungdomsauktioner. Direkte signering af frie ungdomsryttere ind i akademiet blev fjernet med #2456/PR #2483 og må ikke genindføres — "talenter skal komme til ens eget akademi, ikke købes på fri transfer". Verdens-influx-agenterne (§3.4) lander derfor altid i den almindelige fri-agent-pool (senior-marked), aldrig som akademi-tilbud.
 - Akademi-caps uændret: 8 basispladser (+0-5 facilitet), drift 5.000/plads/sæson (gold sink — flere aktive pladser = større sink, ingen ny guld-kilde), akademi-løn-rate 0.067, signing-fee-rate 0.25, ungdoms-mult 1.5 (`GAME_INVARIANTS.md`/#1308).
 - Salary frossen ved signering (#1309) — uændret.
 - v4-værdimodellen røres ikke; nye ryttere får værdi via eksisterende `predictBaseValue`/cpv-flow.
@@ -91,6 +92,10 @@ Harness: udvid `progressionSimHarness.js`-mønstret; kør mod ægte population-s
 
 UI-noter (S3): kandidat-kort genbruger eksisterende intake-UI; Årgangsdags-recap er også krønike-føde (#2490). Anti-AI-slop-æstetik per brand-reglerne.
 
-## 8. Relaterede issues
+## 8. Spillerfeedback-forankring (Discord-kanal 1522915781766283296, gennemgået 19/7)
+
+Ejerens idé-kanal 4/7-18/7 krydstjekket for akademi/ungdom: søndags-modellen svarer direkte på 4/7-ønsket ("Kan der komme flere ryttere til intake? Kan der komme flere nye ryttere hver søndag?") og 13/7-prioriteringen ("brugerne vil meget gerne have forbedringer til akademierne nu"). Øvrige punkter fra kanalen er allerede shippet: #2179 (forlæng uden promotion), #2456 (frie ungdomsryttere fjernet fra akademiet — nu invariant i §5), #2644/#2660 (spejder-targeting frie/andre hold), #2659 (kun eksisterende ryttere + hurtig enkelt-scouting), #2627/#2648 (24h-auktion + provenu til mistende manager). Åbne, relaterede men separate spor: #2454 (potentiale 1-99), junior/U23-løb (addendum Fase 5/6), træningshastighed (#2262/#2650).
+
+## 9. Relaterede issues
 
 Bygger på: #2064 (dette design), #2627/#2648 (udløb/kompensation), #1308/#1309 (invarianter), #1543/#1162 (scout-usikkerhed). Forbereder: #2493 (årgangs-cyklus — generation_tag + navngivning), #2494 (scout-vindue), #2495 (filosofi-skoler farver kuld), #2492 (tre-tier). Koordinér: #2449 (S2-kalender, AKUT), #2376, #1137 (progression L0 — pension kører via eksisterende engine ved transition). Fixer: #1799.
