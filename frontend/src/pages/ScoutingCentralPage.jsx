@@ -169,9 +169,43 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
   );
 }
 
+// #2644 del 2 (ejer-godkendt mockup, 18/7): targeting-valg-kort — radio-adfærd,
+// ét valgt ad gangen. Native radio (sr-only) under en styled <label> for a11y/
+// keyboard uden at give afkald på card-visuallet.
+function TargetPoolCard({ id, name, title, subtitle, recommended, selected, onSelect, t }) {
+  return (
+    <label
+      htmlFor={id}
+      className={`flex-1 min-w-[190px] cursor-pointer rounded-cz border-2 px-3 py-2.5 transition-colors ${
+        selected ? "border-cz-1 bg-cz-subtle" : "border-cz-border bg-cz-card hover:border-cz-3"
+      }`}
+    >
+      <input
+        type="radio" id={id} name={name} className="sr-only"
+        checked={selected} onChange={onSelect}
+      />
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-display text-[14px] leading-none tracking-[0.02em] uppercase text-cz-1">
+          {title}
+        </span>
+        {recommended && (
+          <span
+            className="text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-cz-pill shrink-0"
+            style={{ backgroundColor: "#e8c547", color: "#1a1f38" }}
+          >
+            {t("mission.form.recommended")}
+          </span>
+        )}
+      </div>
+      <p className="text-cz-3 text-[11px] mt-1.5 mb-0 leading-snug">{subtitle}</p>
+    </label>
+  );
+}
+
 function MissionForm({ onSubmit, busy, jobConfig, t }) {
   const [scope, setScope] = useState("u23");
   const [country, setCountry] = useState(COUNTRY_CODES[0] ?? "dk");
+  const [targetPool, setTargetPool] = useState("free_agents");
   const [result, setResult] = useState(null);
 
   const needsCountry = scope === "country" || scope === "nm";
@@ -179,7 +213,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setResult(null);
-    const criteria = needsCountry ? { scope, value: country } : { scope };
+    const criteria = needsCountry ? { scope, value: country, targetPool } : { scope, targetPool };
     const r = await onSubmit(criteria);
     setResult(r);
   };
@@ -189,10 +223,32 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
       <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1">
         {t("mission.form.title")}
       </h3>
-      <p className="text-cz-2 text-[11.5px] mt-1 mb-0.5">{t("mission.form.subtitle")}</p>
-      {/* #2644: missioner target'er KUN kontraktfrie ryttere for nu — "andre
-          managers hold"-targeting er bevidst udskudt (se PR-noten). */}
-      <p className="text-cz-3 text-[11px] mt-0.5 mb-3">{t("mission.form.targetingNote")}</p>
+      <p className="text-cz-2 text-[11.5px] mt-1 mb-2.5">{t("mission.form.subtitle")}</p>
+
+      {/* #2644 del 2: targeting-valg — kontraktfrie (default/anbefalet) vs.
+          ryttere på andre managers hold. */}
+      <div
+        role="radiogroup"
+        aria-label={t("mission.form.targetPoolLabel")}
+        className="flex gap-2.5 flex-wrap mb-1"
+      >
+        <TargetPoolCard
+          id="target-pool-free-agents" name="targetPool" t={t}
+          title={t("mission.form.pool.freeAgents.title")}
+          subtitle={t("mission.form.pool.freeAgents.subtitle")}
+          recommended
+          selected={targetPool === "free_agents"}
+          onSelect={() => setTargetPool("free_agents")}
+        />
+        <TargetPoolCard
+          id="target-pool-other-teams" name="targetPool" t={t}
+          title={t("mission.form.pool.otherTeams.title")}
+          subtitle={t("mission.form.pool.otherTeams.subtitle")}
+          selected={targetPool === "other_teams"}
+          onSelect={() => setTargetPool("other_teams")}
+        />
+      </div>
+      <p className="text-cz-3 text-[11px] mt-1.5 mb-3">{t("mission.form.existenceGuarantee")}</p>
       <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
         <div>
           <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mission.form.scopeLabel")}</label>

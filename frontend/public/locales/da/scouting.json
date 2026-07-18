@@ -31,7 +31,19 @@
     "form": {
       "title": "Start en mission",
       "subtitle": "Send din spejder ud for at dække en scene og få en shortlist af emner.",
-      "targetingNote": "Målretter kontraktfrie ryttere du kan hente med det samme.",
+      "targetPoolLabel": "Hvem skal spejdes",
+      "recommended": "Anbefalet",
+      "pool": {
+        "freeAgents": {
+          "title": "Kontraktfrie",
+          "subtitle": "Ryttere uden kontrakt. Du kan hente dem med det samme."
+        },
+        "otherTeams": {
+          "title": "Ryttere på andre hold",
+          "subtitle": "Spejd talent ejet af andre managers. Hentning kræver bud eller forhandling."
+        }
+      },
+      "existenceGuarantee": "Hver rapport indeholder kun ryttere der findes og kan søges frem.",
       "scopeLabel": "Omfang",
       "countryLabel": "Land",
       "submit": "Start mission",
@@ -53,6 +65,7 @@
   "error": {
     "capacity": "Din spejder er allerede fuldt booket. Se listen over aktive opgaver, din eksisterende opgave kører stadig og rapporterer som planlagt.",
     "insufficient_funds": "Ikke nok i kassen til at dække rejseomkostningen.",
+    "invalid_target_pool": "Ugyldigt targeting-valg. Prøv igen.",
     "no_active_season": "Ingen aktiv sæson lige nu.",
     "auth": "Du skal være logget ind.",
     "network": "Netværksfejl. Prøv igen.",

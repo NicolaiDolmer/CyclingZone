@@ -30,17 +30,22 @@ function makeMockSupabase({
 
   function queryBuilder(rows, { supportsLte = false } = {}) {
     const filters = [];
+    const notNullFilters = [];
     let lteVal = null;
     const b = {
       select() { return b; },
       eq(col, val) { filters.push([col, val]); return b; },
       is(col, val) { filters.push([col, val]); return b; }, // .is(col, null) — samme null-lighed som .eq i mocken
       lte(col, val) { lteVal = [col, val]; return b; },
-      not() { return b; }, // .not("potentiale", "is", null) — no-op in mock (candidates pre-filtered)
+      // .not(col, "is", null) → reel IS NOT NULL (#2644 del 2: skal kunne skelne
+      // free_agents/other_teams i defaultLoadCandidates-testene nedenfor).
+      // Andre .not()-kald (fx potentiale) forbliver no-op — fixtures er pre-filtreret.
+      not(col, op, val) { if (op === "is" && val === null) notNullFilters.push(col); return b; },
       order() { return b; },
       limit() { return b; },
       then(resolve) {
         let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
+        if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
         if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] <= lteVal[1]);
         return Promise.resolve({ data: JSON.parse(JSON.stringify(out)), error: null }).then(resolve);
       },
@@ -144,10 +149,10 @@ describe("defaultLoadCandidates (#2581)", () => {
     assert.deepEqual(candidates.map((c) => c.id), ["r1"]);
   });
 
-  // #2644 (ejer-beslutning 18/7): missioner target'er KUN kontraktfrie ryttere —
-  // en rytter med team_id sat forlader kandidat-poolen helt (query-niveau filter,
-  // ikke kun scoutMission's own-rider-udelukkelse).
-  it("ekskluderer ryttere med et team_id sat (kun kontraktfrie ryttere, #2644)", async () => {
+  // #2644 (ejer-beslutning 18/7): free_agents (default targetPool) — en rytter
+  // med team_id sat forlader kandidat-poolen helt (query-niveau filter, ikke
+  // kun scoutMission's own-rider-udelukkelse).
+  it("free_agents (default): ekskluderer ryttere med et team_id sat", async () => {
     const supabase = makeMockSupabase({
       candidates: [riderRow({ id: "r1", team_id: "team-9" }), riderRow({ id: "r2", team_id: null })],
       offeredIntake: [],
@@ -163,6 +168,39 @@ describe("defaultLoadCandidates (#2581)", () => {
       offeredIntake: [],
     });
     const candidates = await defaultLoadCandidates(supabase);
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
+  });
+
+  // #2644 del 2 (ejer-go 18/7): other_teams-targeting — spejlvendt filter af
+  // free_agents. Samme guards (pending_team_id, offered-intake) gælder uændret.
+  it("other_teams: inkluderer KUN ryttere MED team_id sat, ownerTeamId = rytterens faktiske hold", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", team_id: "team-9" }), riderRow({ id: "r2", team_id: null })],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase, "other_teams");
+    assert.deepEqual(candidates.map((c) => c.id), ["r1"]);
+    assert.equal(candidates.find((c) => c.id === "r1").ownerTeamId, "team-9");
+  });
+
+  it("other_teams: ekskluderer stadig ryttere med pending_team_id sat (midt i handelsflow)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [
+        riderRow({ id: "r1", team_id: "team-9", pending_team_id: "team-42" }),
+        riderRow({ id: "r2", team_id: "team-9", pending_team_id: null }),
+      ],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase, "other_teams");
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
+  });
+
+  it("other_teams: ekskluderer stadig ryttere med uafklaret ('offered') akademi-intake-tilbud", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", team_id: "team-9" }), riderRow({ id: "r2", team_id: "team-9" })],
+      offeredIntake: [{ rider_id: "r1", status: "offered" }],
+    });
+    const candidates = await defaultLoadCandidates(supabase, "other_teams");
     assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
   });
 });
@@ -230,6 +268,64 @@ describe("runScoutSweep", () => {
     // Gratis L1-rapport: én scout_actions-række på topfundet.
     assert.equal(supabase.state.inserts.scout_actions.length, 1);
     assert.equal(supabase.state.inserts.scout_actions[0].rider_id, res.top_rider_id);
+  });
+
+  // #2644 del 2: sweepen bruger IKKE en injiceret loadCandidates her — den
+  // rigtige defaultLoadCandidates skal selv læse targetPool fra assignmentens
+  // mission_criteria og filtrere kandidat-poolen derefter.
+  it("mission-assignment: sweepen læser targetPool fra mission_criteria (other_teams)", async () => {
+    const candidates = [
+      {
+        id: "free-1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
+        team_id: null, pending_team_id: null, is_retired: false, team: null,
+      },
+      {
+        id: "owned-1", potentiale: 4, birthdate: "1999-01-01", nationality_code: "DK",
+        team_id: "team-9", pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+      },
+    ];
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "m1", team_id: "team-1", kind: "mission", status: "active",
+        mission_criteria: { scope: "division", value: "div-1", targetPool: "other_teams" },
+        ready_on: "2026-07-10", season_id: "season-1",
+      }],
+      candidates,
+    });
+    const result = await runScoutSweep({ supabase, now: afterWindow });
+    assert.deepEqual(result, { swept: 1 });
+    const res = supabase.state.assignments[0].result;
+    // Kun owned-1 kvalificerer i other_teams-scope (free-1 er kontraktfri → udelades).
+    assert.deepEqual(res.shortlist, ["owned-1"]);
+    assert.equal(res.top_rider_id, "owned-1");
+  });
+
+  // Bagudkompatibilitet: en assignment startet FØR #2644 del 2 (ingen targetPool
+  // gemt på mission_criteria) skal opføre sig som free_agents — ikke fejle eller
+  // pludselig targete andre holds ryttere.
+  it("mission-assignment: mangler targetPool på mission_criteria (gammel assignment) → free_agents-default", async () => {
+    const candidates = [
+      {
+        id: "free-1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
+        team_id: null, pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+      },
+      {
+        id: "owned-1", potentiale: 4, birthdate: "1999-01-01", nationality_code: "DK",
+        team_id: "team-9", pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+      },
+    ];
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "m1", team_id: "team-1", kind: "mission", status: "active",
+        mission_criteria: { scope: "division", value: "div-1" }, // ingen targetPool
+        ready_on: "2026-07-10", season_id: "season-1",
+      }],
+      candidates,
+    });
+    const result = await runScoutSweep({ supabase, now: afterWindow });
+    assert.deepEqual(result, { swept: 1 });
+    const res = supabase.state.assignments[0].result;
+    assert.deepEqual(res.shortlist, ["free-1"]);
   });
 
   it("mission uden matchende kandidater: ingen top-find, stadig completed med tom shortlist", async () => {

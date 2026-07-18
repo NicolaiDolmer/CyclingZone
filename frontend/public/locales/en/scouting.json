@@ -31,7 +31,19 @@
     "form": {
       "title": "Start a mission",
       "subtitle": "Send your scout to cover a scene for a shortlist of prospects.",
-      "targetingNote": "Targets free agents you can sign right away.",
+      "targetPoolLabel": "Who to scout",
+      "recommended": "Recommended",
+      "pool": {
+        "freeAgents": {
+          "title": "Free agents",
+          "subtitle": "Riders without a contract. You can sign them straight away."
+        },
+        "otherTeams": {
+          "title": "Riders on other teams",
+          "subtitle": "Scout talent owned by other managers. Signing them means bidding or negotiating."
+        }
+      },
+      "existenceGuarantee": "Every report only contains riders who exist and can be found in search.",
       "scopeLabel": "Scope",
       "countryLabel": "Country",
       "submit": "Start mission",
@@ -53,6 +65,7 @@
   "error": {
     "capacity": "Your scout is already at full capacity. See the active jobs list, your existing job is still queued and will report as scheduled.",
     "insufficient_funds": "Not enough balance to cover the travel cost.",
+    "invalid_target_pool": "Invalid targeting choice. Try again.",
     "no_active_season": "No active season right now.",
     "auth": "You need to be logged in.",
     "network": "Network error. Try again.",
