@@ -52,3 +52,13 @@ test("TeamProfilePage refererer IKKE længere de gamle PCM stat_*-kolonner (#152
     "de 14 PCM stat_*-kolonner er erstattet af de 15 CZ-evner — ingen må overleve i visnings-koden",
   );
 });
+
+// #2601 — "club"-fanen (read-only Staff + Facilities for ETHVERT hold) skal wires
+// ind i TABS + tab-listen + rendres via TeamClubTab, samme mønster som transfers/
+// palmares/results.
+test("TeamProfilePage har 'club' i TABS og rendrer TeamClubTab med teamId (#2601)", () => {
+  assert.match(source, /const TABS = \[[^\]]*"club"[^\]]*\]/, "TABS skal inkludere 'club'");
+  assert.match(source, /import TeamClubTab from "\.\.\/components\/TeamClubTab"/);
+  assert.match(source, /activeTab === "club" && \(\s*<TeamClubTab teamId=\{id\} \/>/);
+  assert.match(source, /key: "club", label: t\("profile\.tabClub"\)/);
+});

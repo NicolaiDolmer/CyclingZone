@@ -100,6 +100,7 @@ import {
   notifySwapCompleted,
   notifySeasonEvent,
   notifyWatchlistRiderAuction,
+  notifyPlayerFeedback,
   sendTestEmbed,
   sendTestDM,
   getBotToken,
@@ -131,6 +132,7 @@ import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverride
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
+import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCopenhagenISODate } from "../lib/raceCalendar.js";
@@ -179,6 +181,7 @@ import {
   getStaffDirectoryHandler,
   getStaffPublicProfileHandler,
 } from "../lib/staffOverviewHandlers.js";
+import { getTeamPublicProfileHandler } from "../lib/teamPublicProfileHandlers.js";
 import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
@@ -320,6 +323,7 @@ import {
   boardWriteLimiter,
   marketWriteLimiter,
   presencePulseLimiter,
+  feedbackLimiter,
   userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
@@ -1038,12 +1042,14 @@ router.post("/riders/value-trend", requireAuth, async (req, res) => {
     const snapshotsByRider = groupSnapshotsByRider(history || []);
     const result = {};
     for (const r of riders || []) {
-      result[r.id] = computeRiderValueTrend({
-        currentBaseValue: r.base_value,
-        snapshotsAsc: snapshotsByRider.get(r.id) || [],
-        baseline: RIDER_TYPES_BASELINE,
-        model: VALUATION_MODEL,
-      });
+      result[r.id] = {
+        windows: computeRiderValueTrend({
+          currentBaseValue: r.base_value,
+          snapshotsAsc: snapshotsByRider.get(r.id) || [],
+          baseline: RIDER_TYPES_BASELINE,
+          model: VALUATION_MODEL,
+        }),
+      };
     }
     res.json(result);
   } catch (err) {
@@ -2469,9 +2475,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #2518: sæson-vælgeren i UI'et bygges fra denne liste (alle oprettede
     // sæsoner, uanset status) — sendt uanset om DEN VALGTE sæson findes, så
     // "Sæson 2 er endnu ikke oprettet" kan vises sammen med en S1-fane at falde
-    // tilbage på.
+    // tilbage på. #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er
+    // IKKE en rigtig spillesæson og skal aldrig tilbydes i vælgeren.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) return res.json({ enabled: true, season: null, availableSeasons, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
 
@@ -2924,8 +2931,10 @@ router.get("/races/calendar", requireAuth, async (req, res) => {
         : seasonQuery.eq("status", "active").maybeSingle()
     );
     if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
+    // #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
+    // spillesæson og skal aldrig tilbydes i kalenderens sæson-vælger.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
       return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
@@ -3583,8 +3592,13 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       .delete().eq("team_id", req.team.id).in("race_id", target.map((r) => r.id));
     if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
 
-    const { data: teamRiders } = await supabase.from("riders")
-      .select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2579: delt eligibility-filter (i stedet for den tidligere duplikerede
+    // akademi/pensioneret-kæde) — udelukker OGSÅ en rytter der er solgt men
+    // hvis holdskifte er parkeret (pending_team_id) pga. et aktivt etapeløb hos
+    // dette hold, så regenereringen ikke re-udtager en allerede-solgt rytter.
+    const { data: teamRiders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const teamRiderIds = (teamRiders || []).map((r) => r.id);
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([
@@ -3733,9 +3747,13 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     // kolonne — et select med en ikke-eksisterende kolonne fejler hele queryen og gav
     // tom roster → fladen kortsluttede til empty-state (#1840 hotfix). Surfacér fejl
     // loud i stedet for tavst tom (samme klasse som verify-før-claim).
-    const { data: riders, error: ridersErr } = await supabase
-      .from("riders").select(STRATEGY_ROSTER_COLUMNS)
-      .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (samme som PR #2610's write-/udtagelses-stier) —
+    // udelukker OGSÅ en rytter der er solgt men hvis holdskifte er parkeret
+    // (pending_team_id), så strategi-roster/a_chain/kaptajn-prioriteter er konsistente
+    // med udtagelses-flowet i stedet for at vise en allerede-solgt rytter som valgbar.
+    const { data: riders, error: ridersErr } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select(STRATEGY_ROSTER_COLUMNS).eq("team_id", req.team.id)
+    );
     if (ridersErr) throw new Error(`riders (strategy roster): ${ridersErr.message}`);
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const riderIdList = [...rosterIds];
@@ -3821,8 +3839,11 @@ router.put("/races/strategy", requireAuth, marketWriteLimiter, async (req, res) 
     if (capIn != null && (typeof capIn !== "object" || Array.isArray(capIn))) return res.status(400).json({ error: "strategy_invalid_body" });
     if (rulesIn != null && (typeof rulesIn !== "object" || Array.isArray(rulesIn))) return res.status(400).json({ error: "strategy_invalid_body" });
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET /races/strategy ovenfor + PR #2610) —
+    // en solgt-pending rytter må ikke kunne lægges i a_chain/kaptajn-prioriteter.
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     let raceIds = new Set();
@@ -3891,8 +3912,10 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     }
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET/PUT /races/strategy ovenfor + PR #2610).
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const teamRiderIds = (riders || []).map((r) => r.id);
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }, { data: allEntries }] = await Promise.all([
@@ -8842,6 +8865,22 @@ router.get("/staff/:id/public", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/teams/:id/public-profile — #2601: saniteret staff + faciliteter for
+// VILKÅRLIGT hold (konkurrence-transparens på holdsiden). Ingen løn/kontrakt/
+// opgraderings-økonomi — se teamPublicProfileHandlers.js for kontrakten.
+router.get("/teams/:id/public-profile", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getTeamPublicProfileHandler(
+      { teamId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
 router.patch("/admin/loan-config", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
@@ -10029,6 +10068,59 @@ router.get("/online-count", requireAuth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PLAYER FEEDBACK (#2602) — in-game kontakt/feedback/bug-rapport uden Discord
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const FEEDBACK_CATEGORIES = ["feedback", "bug", "idea"];
+const FEEDBACK_MESSAGE_MAX_LENGTH = 4000;
+
+// POST /api/feedback — spillerindsendt feedback/bug/idé. user_id/team_id
+// udledes ALTID server-side fra req.user/req.team (auth) — klienten sender
+// aldrig egne id'er. Skrives via service-role (samme supabase-klient som
+// resten af api.js), RLS på player_feedback har ingen policies der ellers
+// ville tillade klient-skrivning.
+router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
+  const { category, message, page_path: pagePath, viewport } = req.body || {};
+
+  if (!FEEDBACK_CATEGORIES.includes(category)) {
+    return res.status(400).json({ error: "Invalid category", errorCode: "feedback_invalid_category" });
+  }
+  const trimmed = typeof message === "string" ? message.trim() : "";
+  if (!trimmed) {
+    return res.status(400).json({ error: "Message is required", errorCode: "feedback_message_required" });
+  }
+  if (trimmed.length > FEEDBACK_MESSAGE_MAX_LENGTH) {
+    return res.status(400).json({ error: "Message is too long", errorCode: "feedback_message_too_long" });
+  }
+
+  const { data, error } = await supabase.from("player_feedback").insert({
+    user_id: req.user.id,
+    team_id: req.team?.id || null,
+    category,
+    message: trimmed,
+    page_path: typeof pagePath === "string" ? pagePath.slice(0, 500) : null,
+    viewport: typeof viewport === "string" ? viewport.slice(0, 50) : null,
+    user_agent: (req.headers["user-agent"] || "").slice(0, 500) || null,
+  }).select("id").single();
+
+  if (error) {
+    console.error("[feedback] insert failed:", error.message);
+    return res.status(500).json({ error: "Could not submit feedback", errorCode: "feedback_insert_failed" });
+  }
+
+  // Best-effort mirror til ejer-Discord — no-op hvis DISCORD_FEEDBACK_WEBHOOK_URL
+  // ikke er sat. Må aldrig fejle selve indsendelsen for spilleren.
+  notifyPlayerFeedback({
+    category,
+    message: trimmed,
+    pagePath,
+    teamName: req.team?.name || null,
+  }).catch(err => console.error("[feedback] discord mirror failed:", err.message));
+
+  res.json({ ok: true, id: data.id });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ACHIEVEMENTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -10614,11 +10706,22 @@ router.get("/board/status", requireAuth, async (req, res) => {
             // raceDaysLeft = absolute, planDuration/seasonsCompleted bruges
             // af 5yr/3yr-mid-cycle-guard, satisfactionDeltaPct = abs(current-50)
             // som proxy for "hvor langt er vi fra plan-start-baseline 50".
+            //
+            // #2592 · seasonsCompleted her SKAL være arbejds-sæson-indekset
+            // (weekendEvalContext.seasonsCompleted, samme min(planDuration,
+            // board.seasons_completed+1) som buildBoardEvalContext bruger) —
+            // ikke den rå lokale `seasonsCompleted`-variabel ovenfor (kun til
+            // planEntry.seasons_completed-DISPLAY-feltet). POST /board/request
+            // (linje ~11161) fodrer getBoardRequestAvailability's SAMME F6-guard
+            // via buildBoardEvalContext, altså allerede med arbejdsindekset. Før
+            // dette fix brugte GET /board/status's options-liste (denne kaldesti)
+            // det rå tal — så UI'ets "disabled: for tidligt i forløbet" kunne
+            // vise en anden lås-tilstand end den POST'en reelt ville håndhæve.
             raceDaysLeft: activeSeason
               ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
               : null,
             planDuration,
-            seasonsCompleted,
+            seasonsCompleted: weekendEvalContext.seasonsCompleted,
             satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
           },
         })

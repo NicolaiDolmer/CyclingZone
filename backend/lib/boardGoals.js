@@ -739,7 +739,15 @@ export function inferNegotiationIndexesFromGoals({
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
   const {
-    isFinalSeason = true,
+    // #2596 · ensrettet mod false (matcher evaluateGoalProgress's default,
+    // :895). Var tidligere `true` her og `false` dér — samme manglende felt
+    // betød "sidste sæson" ét sted og "ikke sidste sæson" et andet. Inert for
+    // alle konsoliderede stier (de sætter feltet eksplicit via
+    // buildBoardEvalContext); `false` er den sikre retning for uforudsete
+    // fremtidige kald uden feltet. :907's eksplicitte `isFinalSeason: true`
+    // (den autoritative "met"-beregning i evaluateGoalProgress) er UÆNDRET —
+    // det er ikke en workaround for denne default, se kommentaren dér.
+    isFinalSeason = false,
     activeLoanCount = 0,
     planStartSponsorIncome,
     currentSponsorIncome,

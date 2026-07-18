@@ -104,6 +104,7 @@ const SECTION_DEFS = [
       { id: "onlineStatus", kind: "text" },
       { id: "managersOnline", kind: "text" },
       { id: "headToHead", kind: "text" },
+      { id: "contactSupport", kind: "text" },
     ],
   },
   {
@@ -245,6 +246,7 @@ const SECTION_DEFS = [
       { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
       { id: "staffOverview", kind: "text" },
+      { id: "teamPublicProfile", kind: "text" },
     ],
   },
   {

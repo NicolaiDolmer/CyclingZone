@@ -4,8 +4,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "./boardTestModeService.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
-const fakeSupabase = { from() { return {}; } };
+// #2598 · openBoardTestMode/openBoardLive delegerer alt supabase-arbejde til
+// injicerede deps (resetBetaBoardProfiles/startSequentialNegotiation/
+// setLatestWindowTestMode) — selve klienten rører intet direkte, den skal
+// blot bestå `supabase?.from`-guarden. Delt fake bruges for konsistens.
+const fakeSupabase = createFakeSupabase({});
 
 test("openBoardTestMode kører reset → onboarding → set-flag i den rækkefølge", async () => {
   const order = [];
@@ -49,18 +54,12 @@ test("openBoardLive kræver en supabase-client", async () => {
 });
 
 test("closeBoardTestMode sætter flaget til false (idempotent rollback)", async () => {
-  let captured = null;
-  const supabase = {
-    from() {
-      return {
-        select() { return { order() { return { limit() { return { maybeSingle: () => Promise.resolve({ data: { id: "w-1" }, error: null }) }; } }; } }; },
-        update(payload) { captured = payload; return { eq: () => Promise.resolve({ error: null }) }; },
-      };
-    },
-  };
+  // #2598 · Delt fake: setLatestWindowTestMode læser seneste window (order+
+  // limit+maybeSingle) og opdaterer board_test_mode via .update().eq(id).
+  const supabase = createFakeSupabase({ transfer_windows: [{ id: "w-1", created_at: "2026-01-01", board_test_mode: true }] });
 
   const result = await closeBoardTestMode(supabase);
   assert.equal(result.ok, true);
   assert.equal(result.board_test_mode, false);
-  assert.deepEqual(captured, { board_test_mode: false });
+  assert.equal(supabase.state.transfer_windows[0].board_test_mode, false);
 });

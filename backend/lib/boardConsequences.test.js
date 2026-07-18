@@ -24,6 +24,7 @@ import {
   selectForcedListingRider,
 } from "./boardConsequences.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 // =====================================================================
 // Constants + helpers
@@ -1065,84 +1066,10 @@ test("getActiveConsequencesForTeam returns active rows sorted by layer", async (
 // Fake supabase for tests (mimics core PostgREST surface)
 // =====================================================================
 
+// #2598 · Tynd wrapper om den delte, projektion-aware fake (backend/lib/
+// testUtils/fakeSupabase.js) — beholder default-tomme tabeller så tests der
+// asserterer på supabase.state.<table> ikke skal medsende dem eksplicit.
 function makeFakeSupabase(initialState = {}) {
-  const state = JSON.parse(JSON.stringify(initialState));
-  for (const key of ["board_consequences", "transfer_listings", "riders", "teams"]) {
-    if (!state[key]) state[key] = [];
-  }
-
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
-
-  function ensureTable(table) {
-    if (!state[table]) state[table] = [];
-    return state[table];
-  }
-
-  function makeQuery(table, action, payload = null) {
-    const filters = [];
-
-    function matches(row) {
-      return filters.every((filter) => {
-        if (filter.type === "eq") return row[filter.column] === filter.value;
-        if (filter.type === "in") return filter.values.includes(row[filter.column]);
-        return true;
-      });
-    }
-
-    function execute() {
-      const rows = ensureTable(table);
-      if (action === "select") {
-        return Promise.resolve({ data: clone(rows.filter(matches)), error: null });
-      }
-      if (action === "delete") {
-        const deleted = rows.filter(matches);
-        state[table] = rows.filter((row) => !matches(row));
-        return Promise.resolve({ data: clone(deleted), error: null });
-      }
-      if (action === "update") {
-        const updated = [];
-        for (const row of rows) {
-          if (matches(row)) {
-            Object.assign(row, clone(payload));
-            updated.push(row);
-          }
-        }
-        return Promise.resolve({ data: clone(updated), error: null });
-      }
-      if (action === "insert") {
-        const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
-          id: row.id || `${table}-${Math.random().toString(36).slice(2, 9)}`,
-          ...clone(row),
-        }));
-        rows.push(...newRows);
-        return Promise.resolve({ data: clone(newRows), error: null });
-      }
-      return Promise.resolve({ data: null, error: null });
-    }
-
-    const query = {
-      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
-      in(column, values) { filters.push({ type: "in", column, values }); return query; },
-      select() { return query; },
-      single() { return execute().then((res) => ({ data: res.data?.[0] || null, error: res.error })); },
-      maybeSingle() { return execute().then((res) => ({ data: res.data?.[0] || null, error: res.error })); },
-      then(resolve, reject) { return execute().then(resolve, reject); },
-    };
-    return query;
-  }
-
-  return {
-    state,
-    from(table) {
-      ensureTable(table);
-      return {
-        select() { return makeQuery(table, "select"); },
-        delete() { return makeQuery(table, "delete"); },
-        update(payload) { return makeQuery(table, "update", payload); },
-        insert(payload) { return makeQuery(table, "insert", payload); },
-      };
-    },
-  };
+  const state = { board_consequences: [], transfer_listings: [], riders: [], teams: [], ...initialState };
+  return createFakeSupabase(state);
 }

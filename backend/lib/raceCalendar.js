@@ -17,15 +17,17 @@ export function tierToDivision(tier) {
   return Number.isFinite(tier) ? tier : null;
 }
 
-// 9 profile_types → 5 spiller-vendte terræn-buckets der matcher legend'en
-// (Sprint · Kuperet · Bjerge · Enkeltstart · Holdstart). Folder cobbles+classic ind i
-// de viste kategorier (cobbles er fladt-med-rumlen → sprint-bucket; classic er kuperet →
-// hilly). itt=enkeltstart, ttt=holdstart — hver sin glyf på kalenderen, så en enkeltstart
-// ikke ligner en flad sprint og en holdstart skelnes fra enkeltstart (#1953).
+// 9 profile_types → 6 spiller-vendte terræn-buckets der matcher legend'en
+// (Sprint · Brosten · Kuperet · Bjerge · Enkeltstart · Holdstart). Folder classic
+// ind i hilly (classic er kuperet). cobbles har sin EGEN bucket (#2605 — spillere
+// efterspurgte et synligt brosten-ikon i kalenderen; tidligere blev den foldet ind
+// i sprint-bucket og var umulig at skelne fra en flad etape). itt=enkeltstart,
+// ttt=holdstart — hver sin glyf på kalenderen, så en enkeltstart ikke ligner en
+// flad sprint og en holdstart skelnes fra enkeltstart (#1953).
 const PROFILE_TO_CAL_BUCKET = {
   flat: "sprint",
   rolling: "sprint",
-  cobbles: "sprint",
+  cobbles: "cobbles",
   hilly: "hilly",
   classic: "hilly",
   mountain: "mountain",
@@ -34,14 +36,14 @@ const PROFILE_TO_CAL_BUCKET = {
   ttt: "ttt",
 };
 
-export const CALENDAR_TERRAIN_BUCKETS = Object.freeze(["sprint", "hilly", "mountain", "itt", "ttt"]);
+export const CALENDAR_TERRAIN_BUCKETS = Object.freeze(["sprint", "cobbles", "hilly", "mountain", "itt", "ttt"]);
 
 export function calendarTerrainBucket(profileType) {
   return PROFILE_TO_CAL_BUCKET[profileType] || "sprint";
 }
 
 // Dominerende terræn-bucket på tværs af et løbs etaper. Tie → bucket-rækkefølgen
-// (sprint < hilly < mountain < itt) som stabil tiebreak. Tomt → null (intet badge).
+// (sprint < cobbles < hilly < mountain < itt < ttt) som stabil tiebreak. Tomt → null (intet badge).
 export function dominantCalendarBucket(profileTypes) {
   if (!Array.isArray(profileTypes) || profileTypes.length === 0) return null;
   const counts = new Map();

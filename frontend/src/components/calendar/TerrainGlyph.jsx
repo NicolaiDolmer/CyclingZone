@@ -6,6 +6,10 @@ import { profileShape } from "../../lib/stageProfileConfig.js";
 // elevation profile (the app only stores profile_type + finale_type, not metres).
 const BUCKET_TO_PROFILE = {
   sprint: "flat",
+  // Brosten får sin egen silhuet (lav, chikaneret rumlen) så et brosten-løb ikke deler
+  // ikon med en flad sprint-etape — spillerønske, #2605. Kalender-buckets emitteres af
+  // backend/lib/raceCalendar.js (samme #2605-udvidelse: cobbles er nu sin egen bucket).
+  cobbles: "cobbles",
   hilly: "hilly",
   mountain: "mountain",
   itt: "itt",

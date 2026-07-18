@@ -6,6 +6,7 @@ import {
   computeResultsCompetitivenessFloor,
   evaluateBoardSeason,
   RESULTS_COMPETITIVENESS_FLOOR_SCALE,
+  satisfactionToModifier,
 } from "./boardEvaluation.js";
 
 test("#1267 · floor: top-placering → ~fuldt gulv, bund → 0, manglende data → 0", () => {
@@ -72,4 +73,26 @@ test("#1267 · et vinderløst hold der slutter højt straffes ikke som et bundho
     high.newSatisfaction > low.newSatisfaction + 10,
     `højt-placeret (${high.newSatisfaction}) skal ligge klart over bundhold (${low.newSatisfaction})`,
   );
+});
+
+// #2596 · Drift-guard (backend-side): satisfactionToModifier-båndene pinnes mod
+// den delte, dokumenterede tabel. SAMME tabel pinnes frontend-side i
+// frontend/src/lib/boardUtils.test.js. Ændres ét bånd på én side uden den
+// anden, fejler den sides pin — så board.budget_modifier og frontendens
+// forklaringstekst (#2307) ikke kan drifte fra hinanden.
+test("#2596 · satisfactionToModifier: bånd-tabel (autoritativ, matcher frontend-pin)", () => {
+  const expected = [
+    [-10, 0.80], [0, 0.80], [19, 0.80],
+    [20, 0.90], [21, 0.90], [39, 0.90],
+    [40, 1.00], [41, 1.00], [59, 1.00],
+    [60, 1.10], [61, 1.10], [79, 1.10],
+    [80, 1.20], [81, 1.20], [100, 1.20], [150, 1.20],
+  ];
+  for (const [satisfaction, modifier] of expected) {
+    assert.equal(
+      satisfactionToModifier(satisfaction),
+      modifier,
+      `satisfaction=${satisfaction}: backend satisfactionToModifier divergerer fra delt bånd-tabel`,
+    );
+  }
 });

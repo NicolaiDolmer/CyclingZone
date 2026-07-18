@@ -49,6 +49,7 @@
   "legend": {
     "title": "Terræn",
     "sprint": "Sprint",
+    "cobbles": "Brosten",
     "hilly": "Kuperet",
     "mountain": "Bjerge",
     "itt": "Enkeltstart",
@@ -56,6 +57,7 @@
   },
   "terrain": {
     "sprint": "Sprint",
+    "cobbles": "Brosten",
     "hilly": "Kuperet",
     "mountain": "Bjerge",
     "itt": "Enkeltstart",

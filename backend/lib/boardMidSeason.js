@@ -87,7 +87,7 @@ export async function processMidSeasonReviewCron({
   // 3. Batch-load standings for sæsonen — bruges af evaluateGoalProgress + relative_rank
   const { data: standingsAll, error: standingsError } = await supabase
     .from("season_standings")
-    .select("team_id, division, rank_in_division, total_points, stage_wins, gc_wins, prize_money")
+    .select("team_id, division, league_division_id, rank_in_division, total_points, stage_wins, gc_wins, prize_money")
     .eq("season_id", activeSeason.id);
   if (standingsError) throw standingsError;
 
@@ -96,24 +96,37 @@ export async function processMidSeasonReviewCron({
   for (const standing of standingsAll || []) {
     standingsByTeam.set(standing.team_id, standing);
   }
-  // Antal humane managers pr. division — bruges af relative_rank-evaluator.
+  // #2596 · Antal humane managers pr. PULJE (league_division_id, #1608) — bruges
+  // af relative_rank-evaluatoren, som sammenligner mod rank_in_division (pulje-
+  // rang, ikke tier-rang). Var tidligere talt pr. tier (standing.division), som
+  // i divisioner med >1 pulje inflaterer relative_rank's beatCount (forkert
+  // mål-status). Samme fallback-semantik som loadGoalContextForBoard
+  // (boardGoalContext.js): rows uden league_division_id (pre-pulje-data) tælles
+  // stadig tier-bredt, prefixet så pulje- og tier-nøgler aldrig kolliderer.
   const humanTeamIds = new Set(humanTeams.map((t) => t.id));
+  function poolKey(standing) {
+    return standing.league_division_id != null
+      ? `pool:${standing.league_division_id}`
+      : standing.division != null ? `tier:${standing.division}` : null;
+  }
   for (const standing of standingsAll || []) {
     if (!humanTeamIds.has(standing.team_id)) continue;
-    const div = standing.division;
-    if (div == null) continue;
-    divisionManagerCounts.set(div, (divisionManagerCounts.get(div) || 0) + 1);
+    const key = poolKey(standing);
+    if (key == null) continue;
+    divisionManagerCounts.set(key, (divisionManagerCounts.get(key) || 0) + 1);
   }
 
   for (const team of humanTeams) {
     summary.teams_checked += 1;
     try {
+      const standing = standingsByTeam.get(team.id) || null;
+      const key = standing ? poolKey(standing) : null;
       const result = await processTeamMidSeason({
         supabase,
         team,
         activeSeason,
-        standing: standingsByTeam.get(team.id) || null,
-        divisionManagerCount: divisionManagerCounts.get(team.division) || null,
+        standing,
+        divisionManagerCount: key != null ? divisionManagerCounts.get(key) || null : null,
         notifyUser,
         now,
       });

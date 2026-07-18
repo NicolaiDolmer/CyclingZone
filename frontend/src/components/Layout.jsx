@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
+// #2602 · lazy: modalen aabnes kun ved klik paa Kontakt — dens kode (+i18n-traek)
+// skal ikke belaste hovedbundlet (perf-gate: 888 KB > 885 KB-loftet uden lazy).
+const FeedbackModal = lazy(() => import("./FeedbackModal"));
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
@@ -180,7 +183,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -259,6 +262,20 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
         ))}
 
+        {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
+            IKKE en flydende knap. Åbner FeedbackModal i stedet for at navigere,
+            derfor et rent button-element frem for NavItem (som altid er en NavLink). */}
+        <button
+          type="button"
+          onClick={() => { onNav?.(); onOpenFeedback?.(); }}
+          className="group relative flex items-center w-full mx-2 px-3 py-2 rounded-lg text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
+            <span className="truncate">{contactLabel}</span>
+          </span>
+        </button>
+
         {/* #679: fast Discord-join-link mod community-serveren (ekstern). */}
         <DiscordJoinLink variant="sidebar" label={t("sidebar.joinDiscord")} onClick={onNav} className="mt-1" />
       </nav>
@@ -286,6 +303,7 @@ export default function Layout() {
   const [unread, setUnread]   = useState(0);
   const [isAdmin, setIsAdmin]               = useState(false);
   const [mobileOpen, setMobileOpen]         = useState(false);
+  const [feedbackOpen, setFeedbackOpen]     = useState(false);
   const [openGroups, setOpenGroups]         = useState({});
   const [onlineCount, setOnlineCount]       = useState(0);
   const [teamLoaded, setTeamLoaded]         = useState(false);
@@ -490,7 +508,12 @@ export default function Layout() {
   const bottomItems = buildBottomItems(t);
 
   const needsSetup = teamLoaded && !team?.manager_name;
-  const sidebarProps = { navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel: t("nav.item.logout") };
+  const sidebarProps = {
+    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread,
+    logoutLabel: t("nav.item.logout"),
+    onOpenFeedback: () => setFeedbackOpen(true),
+    contactLabel: t("nav.item.contact"),
+  };
 
   return (
     <div className="min-h-screen bg-cz-body flex">
@@ -547,6 +570,13 @@ export default function Layout() {
           initialTeamName={setupPrefill.teamName}
           initialManagerName={setupPrefill.managerName}
         />
+      )}
+      {/* #2602: én modal-instans delt af desktop- og mobil-sidebaren (begge
+          knapper kalder samme setFeedbackOpen via sidebarProps). */}
+      {feedbackOpen && (
+        <Suspense fallback={null}>
+          <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+        </Suspense>
       )}
     </div>
   );

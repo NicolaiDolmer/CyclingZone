@@ -23,6 +23,7 @@ import {
   resolveNegotiationOpenedAt,
   processBoardAutoAcceptCron,
 } from "./boardAutoAccept.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-07-16T15:00:00Z");
@@ -85,97 +86,12 @@ test("resolveNegotiationOpenedAt: alt ugyldigt/manglende → null (kaldestedet s
 // processBoardAutoAcceptCron — orchestrator med fake supabase
 // =====================================================================
 
-// Minimal fake supabase (samme mønster som boardMidSeason.test.js) —
-// understøtter select/eq/order/limit/maybeSingle/upsert/update.
-//
-// #2469 · Fake'en RESPEKTERER select-kolonnelisten (projektion). Filtrering
-// (.eq) sker på den FULDE række — som i Postgres — projektionen rammer kun
-// outputtet.
+// #2598 · Tynd wrapper om den delte, projektion-aware fake (backend/lib/
+// testUtils/fakeSupabase.js) — denne fils lokale variant var referencen for
+// #2473/#2469; selve implementeringen bor nu ét sted, denne fil er blot
+// endnu en forbruger af den.
 function makeFakeSupabase(state) {
-  function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function ensureTable(table) {
-    if (!state[table]) state[table] = [];
-    return state[table];
-  }
-
-  function parseColumns(columns) {
-    if (!columns || columns === "*") return null;
-    return String(columns).split(",").map((c) => c.trim()).filter(Boolean);
-  }
-
-  function project(row, cols) {
-    if (!cols) return row;
-    const out = {};
-    for (const col of cols) {
-      if (Object.prototype.hasOwnProperty.call(row, col)) out[col] = row[col];
-    }
-    return out;
-  }
-
-  function makeQuery(table, action, payload = null, columns = null) {
-    const filters = [];
-    const projection = parseColumns(columns);
-    let order = null;
-    let limit = null;
-
-    function matches(row) {
-      return filters.every((f) => {
-        if (f.type === "eq") return row[f.column] === f.value;
-        return true;
-      });
-    }
-
-    function execute() {
-      const rows = ensureTable(table);
-      if (action === "select") {
-        let result = rows.filter(matches);
-        if (order) {
-          result = [...result].sort((a, b) => {
-            const av = a[order.column]; const bv = b[order.column];
-            if (av === bv) return 0;
-            return (av < bv ? -1 : 1) * (order.ascending ? 1 : -1);
-          });
-        }
-        if (limit != null) result = result.slice(0, limit);
-        return Promise.resolve({ data: clone(result).map((r) => project(r, projection)), error: null });
-      }
-      if (action === "upsert") {
-        const newRows = Array.isArray(payload) ? payload : [payload];
-        for (const newRow of newRows) {
-          const idx = rows.findIndex((r) => r.team_id === newRow.team_id && r.plan_type === newRow.plan_type);
-          if (idx >= 0) rows[idx] = { ...rows[idx], ...clone(newRow) };
-          else rows.push({ id: `${table}-${rows.length + 1}`, ...clone(newRow) });
-        }
-        return Promise.resolve({ data: clone(newRows), error: null });
-      }
-      if (action === "update") {
-        for (const row of rows.filter(matches)) Object.assign(row, clone(payload));
-        return Promise.resolve({ data: null, error: null });
-      }
-      return Promise.resolve({ data: null, error: null });
-    }
-
-    const query = {
-      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
-      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
-      limit(n) { limit = n; return query; },
-      select() { return query; },
-      single() { return execute().then((r) => ({ data: r.data?.[0] ?? null, error: r.error })); },
-      maybeSingle() { return execute().then((r) => ({ data: r.data?.[0] ?? null, error: r.error })); },
-      then(resolve, reject) { return execute().then(resolve, reject); },
-    };
-    return query;
-  }
-
-  return {
-    from(table) {
-      return {
-        select(columns) { return makeQuery(table, "select", null, columns); },
-        upsert(payload) { return makeQuery(table, "upsert", payload); },
-        update(payload) { return makeQuery(table, "update", payload); },
-      };
-    },
-  };
+  return createFakeSupabase(state);
 }
 
 function baseState({ teamCreatedAt, boardUpdatedAt, negotiationStatus = "pending" }) {

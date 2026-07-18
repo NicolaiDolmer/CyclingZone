@@ -589,12 +589,14 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id)
     );
 
-    // #1906 defense-in-depth: rytteren forlod sælgeren — ryd hans fremtidige
-    // race_entries så de ikke hænger ved som ghost og phantom-binder en ægte rytter.
-    // #1995: i defer-stien bliver rytteren hos sælger til race-slut (flushen rydder).
-    if (!deferTeamChange) {
-      await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
-    }
+    // #1906 defense-in-depth: rytteren er solgt — ryd hans fremtidige race_entries
+    // så de ikke hænger ved som ghost og phantom-binder en ægte rytter. #2579: også
+    // i defer-stien (rytteren bliver hos sælger KUN for det aktive løb til race-slut,
+    // jf. #1995) — uden dette kunne en rytter der allerede var manuelt udtaget til et
+    // ANDET, ikke-startet løb hos sælger blive hængende der efter salget. Rammer kun
+    // scheduled/stages_completed=0-løb, så det aktive låste løb (flushen rydder ved
+    // race-slut) er strukturelt udelukket.
+    await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
 
     // #822: rytteren er solgt — luk alle åbne transfer_listings så han ikke
     // står som zombie-"til salg" på transfermarkedet. Gælder også ved lukket

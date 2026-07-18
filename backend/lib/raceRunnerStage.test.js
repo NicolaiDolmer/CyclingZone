@@ -63,6 +63,7 @@ function makeSupabase(canned = {}, opts = {}) {
       eq() { return b; },
       in() { return b; },
       or() { return b; },
+      is() { return b; },
       order() { return b; },
       limit() { return b; },
       range() { return b; },
@@ -667,7 +668,7 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
     },
     from(table) {
       const b = {
-        select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
+        select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; }, is() { return b; },
         order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; }, lt() { return b; },
         maybeSingle() {
           const data = table === "seasons"
@@ -727,7 +728,7 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
     from(table) {
       if (table === "race_entries") entriesLoaded++;
       const b = {
-        select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
+        select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; }, is() { return b; },
         order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; }, lt() { return b; },
         maybeSingle() {
           const data = table === "seasons"

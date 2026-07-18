@@ -96,16 +96,18 @@ test("saveSelection: freeRoleIds mappes til race_role='free_role' i replace_race
 });
 
 // Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.
-// Mock-supabase: thenable builder pr. tabel; eq/in/or registreres så riders-queriet
-// kan respektere is_academy-filteret (akademiryttere ekskluderes fra rosteren).
+// Mock-supabase: thenable builder pr. tabel; eq/in/or/is registreres så riders-queriet
+// kan respektere is_academy-/pending_team_id-filtrene (akademi/under-handel ekskluderes
+// fra rosteren).
 function makeSelectionSupabase(state) {
   function from(table) {
-    const f = { eqs: {}, ins: {} };
+    const f = { eqs: {}, ins: {}, is: {} };
     const b = {
       select() { return b; },
       eq(col, val) { f.eqs[col] = val; return b; },
       in(col, vals) { f.ins[col] = vals; return b; },
       or() { f.orRetired = true; return b; },
+      is(col, val) { f.is[col] = val; return b; },
       order() { return b; },
       then(resolve, reject) {
         let rows = state[table] || [];
@@ -113,7 +115,8 @@ function makeSelectionSupabase(state) {
           rows = rows.filter((r) =>
             (f.eqs.team_id === undefined || r.team_id === f.eqs.team_id) &&
             (f.eqs.is_academy === undefined || r.is_academy === f.eqs.is_academy) &&
-            (!f.orRetired || r.is_retired == null || r.is_retired === false)
+            (!f.orRetired || r.is_retired == null || r.is_retired === false) &&
+            (f.is.pending_team_id === undefined || (r.pending_team_id ?? null) === f.is.pending_team_id)
           );
         } else if (f.eqs.race_id !== undefined) {
           rows = rows.filter((r) => r.race_id === f.eqs.race_id && (f.eqs.team_id === undefined || r.team_id === f.eqs.team_id));
@@ -148,6 +151,32 @@ test("getSelectionContext: ghost-entries (akademi/off-roster) udelades fra selec
   assert.ok(!ctx.selection.rider_ids.includes("academy"), "akademi-ghost udeladt af selection");
   assert.equal(ctx.selection.rider_ids.length, 5, "kun de 5 gyldige tæller (ærlig count)");
   assert.ok(!ctx.riders.some((r) => r.id === "academy"), "akademirytter ikke i rosteren");
+});
+
+// #2579: en rytter der er SOLGT, men hvis holdskifte er parkeret (pending_team_id)
+// pga. et aktivt etapeløb hos sælger (#1995), må ikke kunne tilføjes en NY udtagelse
+// hos sælgeren — team_id peger stadig på sælger i den periode, så uden dette filter
+// ville han fremstå som en helt almindelig rosterrytter for et andet, ikke-låst løb.
+test("getSelectionContext: rytter med pending_team_id (solgt, afventer flush) er ikke valgbar til en NY udtagelse", async () => {
+  const teamId = "seller";
+  const state = {
+    riders: [
+      ...["r1", "r2", "r3", "r4", "r5"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+      // Solgt til "buyer" — team_id er stadig sælger (aktivt etapeløb parkerer flytningen).
+      { id: "sold-pending", team_id: teamId, pending_team_id: "buyer", is_academy: false, is_retired: false, firstname: "Sold", lastname: "Pending" },
+    ],
+    race_stage_profiles: [{ race_id: "race2", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    // Ingen committede entries for "race2" endnu — vi tester at han ikke KAN vælges,
+    // ikke at en eksisterende entry fjernes (det dækkes af clearFutureRaceEntriesSafe
+    // ved transfer-bekræftelse).
+    race_entries: [],
+    rider_derived_abilities: ["r1", "r2", "r3", "r4", "r5"].map((id) => ({ rider_id: id, climbing: 50, sprint: 50, aggression: 40 })),
+    rider_condition: [],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({ supabase, race: { id: "race2", race_class: "Class2" }, teamId });
+  assert.ok(!ctx.riders.some((r) => r.id === "sold-pending"), "solgt-men-parkeret rytter er ikke i den valgbare roster");
+  assert.equal(ctx.riders.length, 5, "kun de 5 ikke-solgte tæller");
 });
 
 // #2376: getSelectionContext skal surface free_role_ids (array — flere ryttere kan dele rollen).

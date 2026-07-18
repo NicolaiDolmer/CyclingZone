@@ -50,6 +50,7 @@
     "rate_market": "For mange markedshandlinger på kort tid. Vent et øjeblik.",
     "rate_board": "For mange bestyrelseshandlinger på kort tid. Vent et øjeblik.",
     "rate_request": "For mange forespørgsler på kort tid. Vent et øjeblik.",
+    "rate_feedback": "For mange indsendelser på kort tid. Prøv igen om lidt.",
     "rider_not_owned": "Du ejer ikke denne rytter",
     "rider_is_academy": "Akademiryttere styres i dit akademi. Ryk dem op til seniortruppen først.",
     "rider_retired": "Rytteren er pensioneret",
