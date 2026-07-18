@@ -48,4 +48,10 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_riders_pending_team_id ON public.riders (pending_team_id);
 
+-- #2241-guard + prod-spejling: prod har column-level SELECT til anon+authenticated
+-- (verificeret read-only 18/7 via information_schema.column_privileges) — uden
+-- granten ville en klient-query der rører kolonnen stille 403'e (#2238-klassen).
+-- Idempotent (GRANT er additivt) og no-op mod prod.
+GRANT SELECT (pending_team_id) ON public.riders TO anon, authenticated;
+
 COMMIT;
