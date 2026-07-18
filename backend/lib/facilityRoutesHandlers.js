@@ -18,6 +18,7 @@ import {
   purchaseFacilityUpgrade as defaultPurchase,
   hireStaff as defaultHire,
   fireStaff as defaultFire,
+  releaseStaff as defaultRelease,
 } from "./facilityService.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -158,6 +159,30 @@ export async function postStaffFireHandler(
 ) {
   const result = await fireStaff({ teamId, role, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) return { status: statusForError(result.error, { no_active_staff: 404 }), body: { error: result.error } };
+  return { status: 200, body: result };
+}
+
+// POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
+// løn, #2649). staff_not_found → 404 (ukendt ELLER et andet holds staff — samme
+// fejl, ingen oplysningslæk); already_released → 409 (dobbelt-klik-guard,
+// releaseStaff har allerede sat status='fired'); insufficient_funds → 400 med
+// severance+balance i body så UI kan vise det klare beløb.
+export async function postStaffReleaseHandler(
+  { teamId, staffId, seasonId, seasonNumber },
+  supabaseClient,
+  { flags = DEFAULT_FLAGS, releaseStaff: releaseStaffFn = defaultRelease } = {}
+) {
+  const result = await releaseStaffFn({ teamId, staffId, seasonId, seasonNumber }, supabaseClient, flags);
+  if (!result.ok) {
+    return {
+      status: statusForError(result.error, { staff_not_found: 404, already_released: 409 }),
+      body: {
+        error: result.error,
+        ...(result.severance != null ? { severance: result.severance } : {}),
+        ...(result.balance != null ? { balance: result.balance } : {}),
+      },
+    };
+  }
   return { status: 200, body: result };
 }
 

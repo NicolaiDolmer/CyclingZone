@@ -19,7 +19,8 @@
     "overall": "Rating",
     "salary": "Løn",
     "mine": "Mit",
-    "ai": "AI"
+    "ai": "AI",
+    "actions": "Handlinger"
   },
   "disabled": { "title": "Ikke tilgængelig endnu", "description": "Personale-området er ikke åbnet endnu." },
   "error": { "title": "Kunne ikke hente personale", "description": "Noget gik galt under indlæsning af personale-oversigten. Prøv igen om lidt." }

@@ -115,7 +115,32 @@ export function staffSalaryFor(overall) {
 }
 
 // Fyring: betal resterende sæsonløn × faktor (spec §2.2, sink + friktion).
+// NB: dette er den ÆLDRE model bag Klub-facilitetssidens rolle-baserede
+// "fyr"-flow (StaffPanel.jsx → /api/club/staff/fire, uændret her). #2649
+// (opsigelses-knap på staff-profil/-oversigt) bruger en NY, ejer-godkendt
+// model — staffReleaseSeverance() nedenfor — og de to konsolideres først når
+// rigtige kontrakter lander (#2217/#2218).
 export const STAFF_SEVERANCE_FACTOR = 0.5;
+
+// #2649 (opsigelses-gebyr, ejer-beslutning 18/7): severance = 4 × ugentlig løn.
+// `salary` er sæson-løn (opkrævet én gang v. sæsonstart, se processSeasonStart);
+// en "ugentlig løn" findes ikke som eget felt, så den afledes ved at dele
+// sæson-lønnen med sæsonens længde i uger. Sæsonen er 10-12 uger (docs/i18n/
+// GLOSSARY.md), 11 = centralt scenarie — samme antagelse som
+// scripts/scoutTravelScorecard.js bruger til sin sæson-længde-sensitivitet.
+export const STAFF_RELEASE_SEASON_WEEKS = 11;
+export const STAFF_RELEASE_SEVERANCE_WEEKS = 4;
+
+// Ugentlig løn afledt af sæson-lønnen (rundet til nærmeste heltal).
+export function staffWeeklyWage(salary) {
+  return Math.round((salary || 0) / STAFF_RELEASE_SEASON_WEEKS);
+}
+
+// Opsigelses-gebyr for #2649-flowet: 4 × ugentlig løn. Deterministisk af salary
+// alene (ingen RNG) — samme tal vises i bekræftelses-dialogen og trækkes ved bekræftelse.
+export function staffReleaseSeverance(salary) {
+  return STAFF_RELEASE_SEVERANCE_WEEKS * staffWeeklyWage(salary);
+}
 
 // Effekt-model (spec §2.2: facilitet = kapacitet, staff = udnyttelsesgrad).
 // effectiveBonus = FACILITY_BASE_EFFECT[track][facilityTier] × staffUtilization(staffTier)

@@ -1,20 +1,44 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { EmptyState, PageLoader } from "../components/ui";
+import { EmptyState, PageLoader, Button } from "../components/ui";
 import { useStaffProfile } from "../lib/useStaffProfile.js";
+import { useStaffRelease } from "../lib/useStaffRelease.js";
 import TeamLink from "../components/TeamLink.jsx";
 import StaffSwitcherBar from "../components/staff/profile/StaffSwitcherBar.jsx";
 import StaffProfileHero from "../components/staff/profile/StaffProfileHero.jsx";
 import StaffProfileTabs from "../components/staff/profile/StaffProfileTabs.jsx";
 import StaffAbilityColumns from "../components/staff/profile/StaffAbilityColumns.jsx";
+import ReleaseStaffModal from "../components/staff/ReleaseStaffModal.jsx";
+import { formatNumber } from "../lib/intl";
 
 export default function StaffProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation("staff");
   const { profile, roster, status, facilitiesLoading } = useStaffProfile(id);
+  const { release, busy: releaseBusy } = useStaffRelease();
   const [tab, setTab] = useState("overview");
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [releaseError, setReleaseError] = useState(null);
+
+  // Staff-release-endpointet returnerer korte fejlkoder ({ error, severance,
+  // balance }), IKKE #678's errorCode/errorParams-kontrakt — så vi mapper selv
+  // til staff:release.errors.* i stedet for at bruge resolveApiError.
+  async function confirmRelease() {
+    setReleaseError(null);
+    const r = await release(id);
+    if (r.ok) {
+      setReleaseOpen(false);
+      navigate(-1);
+      return;
+    }
+    if (r.error === "insufficient_funds") {
+      setReleaseError(t("release.errors.insufficient_funds", { amount: formatNumber(r.severance) }));
+      return;
+    }
+    setReleaseError(t(`release.errors.${r.error}`, { defaultValue: t("release.errors.failed") }));
+  }
 
   // "public" = #2450 candidate-niveau fallback (staff man ikke selv ejer) —
   // stadig et gyldigt visnings-loading-forløb, ikke en fejl/forbudt-tilstand.
@@ -53,6 +77,23 @@ export default function StaffProfilePage() {
             <p className="text-[13px] text-cz-2 max-w-prose">{t("effect.body", { rating: overall })}</p>
           )}
           {tab === "history" && <p className="text-[13px] text-cz-2">{t("history.body")}</p>}
+
+          {/* #2649 — opsig EGET staff (destruktiv, sidst i handlingsrækken). */}
+          <div className="mt-5 pt-4 border-t border-cz-border">
+            <Button variant="danger" size="sm" onClick={() => setReleaseOpen(true)}>
+              {t("release.button")}
+            </Button>
+          </div>
+          <ReleaseStaffModal
+            show={releaseOpen}
+            staffName={profile.name}
+            role={profile.role}
+            salary={profile.salary}
+            error={releaseError}
+            busy={releaseBusy}
+            onCancel={() => { if (!releaseBusy) setReleaseOpen(false); }}
+            onConfirm={confirmRelease}
+          />
         </>
       )}
     </div>

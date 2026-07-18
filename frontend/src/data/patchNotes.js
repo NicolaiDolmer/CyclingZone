@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.25",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Far fewer staff candidates sharing the same name across teams",
+          "body": "The pool of staff candidate names has grown from 40 to 150. With the old pool, most leagues ended up with the same name employed by several teams at once, which could read as one person holding two jobs. Every staff member has always been a separate person with their own profile, but candidates offered from now on draw from the much larger pool, so cross-team name clashes become the exception rather than the rule. Already-hired staff keep their names."
+        },
+        "da": {
+          "title": "Langt færre staff-kandidater deler navn på tværs af hold",
+          "body": "Puljen af staff-kandidatnavne er vokset fra 40 til 150. Med den gamle pulje endte de fleste ligaer med samme navn ansat hos flere hold på én gang, hvilket kunne ligne én person med to jobs. Hver staff har altid været en separat person med sin egen profil, men kandidater der tilbydes fremover trækkes fra den langt større pulje, så navnesammenfald på tværs af hold bliver undtagelsen frem for reglen. Allerede ansat staff beholder deres navne."
+        },
+        "refs": [2643]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Release staff — for a severance fee",
+          "body": "You can now release your own staff (Sports Director, Chief Scout, Team Doctor, Academy Director, Commercial Director) from their staff profile or the staff overview list. Releasing them ends the contract immediately and opens the role for a new hire right away, but it isn't free: you pay a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit."
+        },
+        "da": {
+          "title": "Opsig staff — mod et opsigelsesgebyr",
+          "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
+        },
+        "refs": [2649]
+      }
+    ]
+  },
+  {
     "version": "7.24",
     "date": "2026-07-18",
     "label": "Beta",

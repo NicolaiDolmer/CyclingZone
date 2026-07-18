@@ -6,10 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useStaffDirectory } from "../lib/useStaffDirectory.js";
+import { useStaffRelease } from "../lib/useStaffRelease.js";
 import { supabase } from "../lib/supabase.js";
 import { formatNumber } from "../lib/intl";
 import { statStyle } from "../lib/statColor.js";
-import { Card, Select, Input, EmptyState, PageLoader, Checkbox } from "../components/ui";
+import { Card, Select, Input, EmptyState, PageLoader, Checkbox, Button } from "../components/ui";
+import ReleaseStaffModal from "../components/staff/ReleaseStaffModal.jsx";
 
 const ROLES = ["training", "scouting", "medical", "academy", "commercial"];
 const TIERS = [1, 2, 3, 4, 5];
@@ -22,7 +24,7 @@ function OverallBadge({ value }) {
   );
 }
 
-function StaffRow({ row, isMine, onSelect, t, tStaff }) {
+function StaffRow({ row, isMine, onSelect, onRelease, t, tStaff }) {
   return (
     <tr onClick={() => onSelect(row)} className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
       <td className="px-3 py-2.5">
@@ -41,6 +43,17 @@ function StaffRow({ row, isMine, onSelect, t, tStaff }) {
       </td>
       <td className="px-2 py-2.5 text-center"><OverallBadge value={row.overall} /></td>
       <td className="px-3 py-2.5 text-right text-cz-2 text-xs font-mono">{formatNumber(row.salary)}</td>
+      <td className="px-3 py-2.5 text-right">
+        {isMine && (
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onRelease(row); }}
+          >
+            {tStaff("release.button")}
+          </Button>
+        )}
+      </td>
     </tr>
   );
 }
@@ -51,11 +64,32 @@ export default function StaffOverviewPage() {
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [includeAi, setIncludeAi] = useState(false);
-  const { staff, enabled, loading, error } = useStaffDirectory({ includeAi });
+  const { staff, enabled, loading, error, refresh } = useStaffDirectory({ includeAi });
+  const { release, busy: releaseBusy } = useStaffRelease();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [minTier, setMinTier] = useState("");
   const [myTeamId, setMyTeamId] = useState(null);
+  const [releasingRow, setReleasingRow] = useState(null); // #2649 — row Release-knappen blev åbnet fra
+  const [releaseError, setReleaseError] = useState(null);
+
+  // #2649: samme fejlkode-mapping som StaffProfilePage.jsx (endpointet returnerer
+  // korte koder, ikke #678's errorCode/errorParams-kontrakt).
+  async function confirmRelease() {
+    if (!releasingRow) return;
+    setReleaseError(null);
+    const r = await release(releasingRow.id);
+    if (r.ok) {
+      setReleasingRow(null);
+      await refresh();
+      return;
+    }
+    if (r.error === "insufficient_funds") {
+      setReleaseError(tStaff("release.errors.insufficient_funds", { amount: formatNumber(r.severance) }));
+      return;
+    }
+    setReleaseError(tStaff(`release.errors.${r.error}`, { defaultValue: tStaff("release.errors.failed") }));
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -128,19 +162,31 @@ export default function StaffOverviewPage() {
                 <th className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.specialization")}</th>
                 <th className="px-2 py-3 text-center font-medium uppercase tracking-wider">{t("table.overall")}</th>
                 <th className="px-3 py-3 text-right font-medium uppercase tracking-wider">{t("table.salary")}</th>
+                <th className="px-3 py-3 text-right font-medium uppercase tracking-wider">{t("table.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-12 text-center text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</td></tr>
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</td></tr>
               ) : filtered.map((row) => (
                 <StaffRow key={row.id} row={row} isMine={row.teamId === myTeamId}
-                  onSelect={(r) => navigate(`/staff/${r.id}`)} t={t} tStaff={tStaff} />
+                  onSelect={(r) => navigate(`/staff/${r.id}`)} onRelease={setReleasingRow} t={t} tStaff={tStaff} />
               ))}
             </tbody>
           </table>
         </div>
       </Card>
+
+      <ReleaseStaffModal
+        show={Boolean(releasingRow)}
+        staffName={releasingRow?.name}
+        role={releasingRow?.role}
+        salary={releasingRow?.salary}
+        error={releaseError}
+        busy={releaseBusy}
+        onCancel={() => { if (!releaseBusy) { setReleasingRow(null); setReleaseError(null); } }}
+        onConfirm={confirmRelease}
+      />
     </div>
   );
 }

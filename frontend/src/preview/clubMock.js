@@ -2,7 +2,7 @@
 // SEED_CLUB så ejerens gennemklik er ægte (køb hæver tier, ansæt/fyr fylder/tømmer).
 // Konstanterne er en 1:1-spejling af backend/lib/facilityConstants.js (parity-test
 // i clubMock.parity.test.js sikrer de ikke driver fra hinanden — co-SSOT).
-import { SEED_CLUB } from "./seedData.js";
+import { SEED_CLUB, TEST_TEAM } from "./seedData.js";
 
 const PRICE = { 1: 12000, 2: 26000, 3: 50000, 4: 100000, 5: 240000 };
 const UPKEEP = { 0: 0, 1: 1500, 2: 3500, 3: 8000, 4: 15000, 5: 30000 };
@@ -135,7 +135,12 @@ function directoryPayload() {
     return {
       id: `staff-${track}`, name: f.staff.name, role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier],
       overall: ab.overall, topSpecialization: topAxisKey(ab),
-      teamId: "own-team", teamName: "Dit hold", division: 2, isAiTeam: false,
+      // #2649-verifikationsfund: brugte tidligere en fiktiv "own-team"-streng
+      // der ALDRIG matchede den ægte TEST_TEAM.id — så StaffOverviewPage's
+      // isMine-sammenligning (row.teamId === myTeamId) var altid falsk i preview,
+      // og hverken "Mit"-badget eller Release-knappen kunne nogensinde vises/
+      // klikkes igennem. TEST_TEAM.id er samme kilde som fixtures/øvrig preview-state.
+      teamId: TEST_TEAM.id, teamName: "Dit hold", division: 2, isAiTeam: false,
     };
   }).filter(Boolean);
   const others = OTHER_STAFF_SEED.map((s, i) => {
@@ -190,6 +195,23 @@ export function clubMockRoute(method, pathname, search, body) {
     const severance = Math.round(SALARY[f.staff.tier] * 0.5);
     f.staff = null;
     return { status: 200, body: { ok: true, severance } };
+  }
+  // #2649: POST /api/club/staff/:id/release — severance = 4 × ugentlig løn
+  // (samme formel som backend/lib/facilityConstants.js staffReleaseSeverance,
+  // 11 = sæson-uger). id = `staff-<track>` (samme preview-id-konvention som
+  // resten af filen). Kun EGEN staff kan matches her — `other-staff-N`-id'er
+  // rammer ikke `state.facilities` og giver korrekt staff_not_found.
+  if (/\/api\/club\/staff\/([^/]+)\/release$/.test(pathname) && method === "POST") {
+    const id = pathname.match(/\/api\/club\/staff\/([^/]+)\/release$/)[1];
+    const track = id.replace(/^staff-/, "");
+    const f = state.facilities[track];
+    if (!f?.staff) return { status: 404, body: { error: "staff_not_found" } };
+    const weeklyWage = Math.round(SALARY[f.staff.tier] / 11);
+    const severance = weeklyWage * 4;
+    const role = track;
+    const name = f.staff.name;
+    f.staff = null;
+    return { status: 200, body: { ok: true, severance, role, name } };
   }
   // #2220 A4b: GET /api/club/staff/:id — fuld evne-profil (id = `staff-<track>`).
   // Efter candidates-tjekket ovenfor, så /candidates ikke fanges her.
