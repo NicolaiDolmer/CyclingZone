@@ -134,3 +134,45 @@ test("rider-ranking: seasons/races Supabase-fejl kastes (throw), ikke tavst || [
   assert.match(block, /seasonError/, "season-queryen skal tjekke error og kaste");
   assert.match(block, /racesError/, "races-queryen skal tjekke error og kaste");
 });
+
+// #2593 (del 2) — "Nyt"-badget på MyLatestResultCard brugte localStorage
+// (nulstiller sig pr. enhed/browser; 54,9% af besøg er mobil). Fix:
+// server-persisteret seen-flag (teams.my_result_seen_race_id), samme mønster
+// som teams.onboarding_progress_dismissed_at (#2439).
+test("my-latest-result: GET inkluderer race.seen afledt af teams.my_result_seen_race_id (ingen ekstra roundtrip for at læse status)", () => {
+  const block = routeBlock('router.get("/dashboard/my-latest-result"', 5000);
+  assert.match(
+    block,
+    /seen:\s*raceId\s*===\s*req\.team\.my_result_seen_race_id/,
+    "race-objektet i GET-responsen skal inkludere et seen-felt afledt af den persisterede kolonne",
+  );
+});
+
+test("POST /dashboard/my-latest-result/seen: team udledes udelukkende server-side (req.team), ikke fra request-body", () => {
+  const block = routeBlock('router.post("/dashboard/my-latest-result/seen"', 1800);
+  assert.match(block, /if \(!req\.team\)/, "skal afvise uden hold (samme guard som naboendpoints)");
+  assert.match(block, /\.eq\("team_id",\s*req\.team\.id\)/, "ownership-check skal filtrere på req.team.id, ikke et body-felt");
+  assert.match(block, /\.eq\("id",\s*req\.team\.id\)/, "UPDATE på teams skal ramme req.team.id");
+});
+
+test("POST /dashboard/my-latest-result/seen: validerer race_id mod holdets EGNE race_results FØR skrivning (kan ikke markere et vilkårligt løb som set)", () => {
+  const block = routeBlock('router.post("/dashboard/my-latest-result/seen"', 1800);
+  assert.match(
+    block,
+    /\.from\("race_results"\)[\s\S]*?\.eq\("race_id",\s*raceId\)[\s\S]*?\.eq\("team_id",\s*req\.team\.id\)/,
+    "skal tjekke at holdet reelt har en race_results-række for det race_id der markeres set",
+  );
+  assert.match(block, /if \(!ownRow\)\s*return res\.status\(404\)/, "manglende ejerskab skal give 404, ikke stille skrive kolonnen");
+});
+
+test("POST /dashboard/my-latest-result/seen: idempotent UPDATE persisterer my_result_seen_race_id og degraderer gracefully hvis kolonnen mangler (42703)", () => {
+  const block = routeBlock('router.post("/dashboard/my-latest-result/seen"', 1800);
+  assert.match(block, /\.from\("teams"\)/, "skal opdatere teams-tabellen");
+  assert.match(block, /my_result_seen_race_id:\s*raceId/, "skal sætte my_result_seen_race_id til det validerede race_id");
+  assert.match(block, /error\.code\s*!==\s*"42703"/, "skal tåle en manglende my_result_seen_race_id-kolonne uden 500");
+  assert.match(
+    block,
+    /invalidateNamespace\("dashboard-my-latest-result"\)/,
+    "POST skal invalidere GET-cachen (TTL 60s) — ellers serveres seen:false op til 60s efter markering og badgen genopstår ved reload",
+  );
+});
