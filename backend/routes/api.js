@@ -1110,12 +1110,16 @@ router.get("/physiology/division-benchmark", requireAuth, cached({ namespace: "p
 // RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-// To manager-handlinger på en ejet senior-rytter. Begge deler RiderActionModal
-// på frontend (Min trup). De følger samme guard-mønster som POST /transfers og
-// POST /auctions: requireAuth + marketWriteLimiter + owner-check + retired-check.
-// Akademiryttere har deres EGEN release-flow (academyGraduation.js) og afvises her.
+// Manager-handlinger på en ejet rytter. Deler RiderActionModal / RiderManageActions
+// på frontend (Min trup + rytter-profilen). De følger samme guard-mønster som
+// POST /transfers og POST /auctions: requireAuth + marketWriteLimiter + owner-check
+// + retired-check. Akademiryttere har deres EGEN release-flow (academyGraduation.js)
+// og afvises af release-guarden — men #2179: kontraktforlængelse kræver IKKE
+// op-/nedrykning længere, så extend-quote/extend-contract bruger en separat guard
+// der IKKE ekskluderer akademi-ryttere.
 
 // Delt guard: hent en ejet, ikke-pensioneret SENIOR-rytter (ikke-akademi).
+// Bruges af release/release-quote — akademi har sit eget release-flow.
 // Returnerer { rider } ved succes, eller { error: { status, body } } ved guard-fejl.
 async function loadOwnedSeniorRiderForAction(req, riderId) {
   const { data: rider } = await supabase
@@ -1131,6 +1135,26 @@ async function loadOwnedSeniorRiderForAction(req, riderId) {
   }
   if (rider.is_academy) {
     return { error: { status: 400, body: { error: "Academy riders use the academy release flow", errorCode: "rider_is_academy" } } };
+  }
+  return { rider };
+}
+
+// #2179: delt guard til kontrakt-FORLÆNGELSE — samme owner/retired-check som
+// loadOwnedSeniorRiderForAction, men UDEN akademi-eksklusionen. Akademi-ryttere
+// har allerede salary/contract_length/contract_end_season sat ved signing
+// (academyIntake.js), og computeContractExtension() er købt-blind for is_academy —
+// den genberegner udelukkende ud fra market_value/base_value/contract-felterne.
+async function loadOwnedRiderForExtension(req, riderId) {
+  const { data: rider } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname, team_id, is_retired, salary, market_value, base_value, prize_earnings_bonus, contract_length, contract_end_season")
+    .eq("id", riderId)
+    .single();
+  if (!rider || rider.team_id !== req.team.id) {
+    return { error: { status: 403, body: { error: "You don't own this rider", errorCode: "rider_not_owned" } } };
+  }
+  if (rider.is_retired) {
+    return { error: { status: 409, body: { error: "This rider has retired", errorCode: "rider_retired" } } };
   }
   return { rider };
 }
@@ -1156,10 +1180,11 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
 });
 
-// GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson (#1720).
+// GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson
+// (#1720; #2179 akademi-ryttere tilladt uden op-/nedrykning).
 router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
   const currentSeason = await getActiveSeasonNumber();
@@ -1256,9 +1281,10 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
 // POST /api/riders/:id/extend-contract — forlæng kontrakten 1 sæson og genforhandl
 // lønnen fra rytterens aktuelle markedsværdi (#1720). Ingen pengebevægelse — kun
 // kontraktfelterne opdateres. Returnerer den nye løn så frontend kan vise den.
+// #2179: virker nu også direkte på akademi-ryttere — ingen op-/nedrykning krævet.
 router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 

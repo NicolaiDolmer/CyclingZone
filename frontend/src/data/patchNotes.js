@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.26",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Extend an academy rider's contract without promoting them first",
+          "body": "You can now extend an academy rider's contract directly from their profile or your squad page, at the same renegotiated salary as a senior rider. Previously the only way to renew an academy rider's contract was to promote them to your senior squad, extend, and move them back down. Releasing an academy rider still goes through the academy flow."
+        },
+        "da": {
+          "title": "Forlæng en akademi-rytters kontrakt uden at rykke dem op først",
+          "body": "Du kan nu forlænge en akademi-rytters kontrakt direkte fra deres profil eller din holdside, til samme genforhandlede løn som en senior-rytter. Tidligere var den eneste måde at forny en akademi-rytters kontrakt på at rykke dem op i seniortruppen, forlænge, og flytte dem ned igen. At frigive en akademi-rytter går stadig via akademi-flowet."
+        },
+        "refs": [2179]
+      }
+    ]
+  },
+  {
     "version": "7.25",
     "date": "2026-07-18",
     "label": "Beta",
