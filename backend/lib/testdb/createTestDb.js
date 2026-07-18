@@ -27,6 +27,9 @@ const DATABASE_DIR = join(__dirname, "..", "..", "..", "database");
 //   4..N race-engine-migrations — fysiologi, stage-profiler, slice2, progress
 //   - academy-mvp               — is_academy-relaterede tabeller
 //   - team-race-strategy        — selve strategi-tabellen (#1834 / S3)
+//   - riders-pending-team-id-drift-closer — riders.pending_team_id + FK + index
+//                                 (#2628 — kolonnen findes i prod, men var ALDRIG
+//                                 committet som migration; se filens header)
 //
 // rider-types loades tidligt fordi strategi-rosterens projektion (primary_type /
 // secondary_type) afhænger af de kolonner — uden den fejler fidelitets-meta-testen.
@@ -39,7 +42,9 @@ const DATABASE_DIR = join(__dirname, "..", "..", "..", "database");
 // i prod men ikke i det loadede skema). Tilføj OGSÅ en kolonne-assertion i den
 // relevante contract-test, så et glemt fil-tilføj fanges. Robustere fremtid (load alle
 // database/*.sql i dato-orden, fejl loud ved inkompatibel migration) er en tracket
-// opfølgning, ikke gjort her.
+// opfølgning, ikke gjort her. #2628 fandt YDERLIGERE hånd-vedligeholdelses-drift
+// (kolonner i prod som denne liste ikke loader) på flere tabeller — dokumenteret i
+// PR-body, ikke fixet her (kun pending_team_id var i scope).
 export const RACE_HUB_SCHEMA_FILES = [
   "schema.sql",
   "2026-06-06-rider-types.sql",
@@ -50,6 +55,7 @@ export const RACE_HUB_SCHEMA_FILES = [
   "2026-06-20-races-stage-progress.sql",
   "2026-06-13-academy-mvp.sql",
   "2026-06-25-team-race-strategy.sql",
+  "2026-07-18-riders-pending-team-id-drift-closer.sql",
 ];
 
 // Supabase-prærekvisitter som migrationerne antager findes i prod, men som PGlite
