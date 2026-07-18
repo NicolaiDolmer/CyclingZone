@@ -11,11 +11,17 @@ import { logFirstEvent } from "../lib/logEvent";
 import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
 import SortableTh from "./ui/SortableTh";
 
-// #824 (Discord-feedback): Holdets resultatliste — kun pointgivende resultater,
-// med rytternavn pr. resultat. Attribution = race_results.team_id (holdet på
-// løbstidspunktet — samme felt som præmie-udbetalingen bogfører på), IKKE
-// rytterens nuværende hold, så solgte ryttere tæller stadig for det hold de
-// kørte for.
+// #824 (Discord-feedback): Holdets resultatliste, med rytternavn pr. resultat.
+// Attribution = race_results.team_id (holdet på løbstidspunktet — samme felt
+// som præmie-udbetalingen bogfører på), IKKE rytterens nuværende hold, så
+// solgte ryttere tæller stadig for det hold de kørte for.
+//
+// #2593 (opfølger på #2466): viser ALLE resultater, ikke kun pointgivende.
+// Den oprindelige `.gt("points_earned", 0)`-filter (#824) skjulte 92% af
+// holdenes historik i prod (5.919 af 78.213 rækker var pointgivende) — og
+// kunne skjule præcis det løb dashboard-kortet "Sådan gik det for dit hold"
+// (#2466) netop linkede til, hvis holdet ikke scorede point i det løb.
+// Pointgivende resultater fremhæves stadig visuelt (se points-cellen).
 
 // Konkurrence-label pr. resultatrække. Etape viser etapenummer; gc på endagsløb
 // vises som endagsresultat (samme skelnen som rytter-ranglistens klassiker-sejre).
@@ -57,7 +63,6 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
             .from("race_results")
             .select("id, rank, result_type, stage_number, points_earned, prize_money, rider_name, rider:rider_id(id, firstname, lastname), race:race_id(id, name, race_type, season:season_id(number))")
             .eq("team_id", teamId)
-            .gt("points_earned", 0)
             .order("id", { ascending: true })),
           supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
         ]);
@@ -216,7 +221,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
                       <span className="text-cz-2">{r.rider_name || "—"}</span>
                     )}
                   </td>
-                  <td className="py-2 text-right font-mono font-bold text-cz-1 whitespace-nowrap">
+                  <td className={`py-2 text-right font-mono whitespace-nowrap ${r.points_earned > 0 ? "font-bold text-cz-1" : "text-cz-3"}`}>
                     {formatNumber(r.points_earned || 0)}
                   </td>
                   <td className="py-2 text-right font-mono text-cz-2 whitespace-nowrap">
