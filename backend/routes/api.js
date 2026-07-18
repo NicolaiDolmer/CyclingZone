@@ -1039,12 +1039,14 @@ router.post("/riders/value-trend", requireAuth, async (req, res) => {
     const snapshotsByRider = groupSnapshotsByRider(history || []);
     const result = {};
     for (const r of riders || []) {
-      result[r.id] = computeRiderValueTrend({
-        currentBaseValue: r.base_value,
-        snapshotsAsc: snapshotsByRider.get(r.id) || [],
-        baseline: RIDER_TYPES_BASELINE,
-        model: VALUATION_MODEL,
-      });
+      result[r.id] = {
+        windows: computeRiderValueTrend({
+          currentBaseValue: r.base_value,
+          snapshotsAsc: snapshotsByRider.get(r.id) || [],
+          baseline: RIDER_TYPES_BASELINE,
+          model: VALUATION_MODEL,
+        }),
+      };
     }
     res.json(result);
   } catch (err) {

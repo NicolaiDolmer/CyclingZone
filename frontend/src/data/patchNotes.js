@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.17",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Value trend arrows now show up on your squad list",
+          "body": "The little up/down arrow next to each rider's value (their 7/14-day price movement) was silently missing from the squad list because the bulk data request behind it had the wrong shape and got dropped. It now matches the rider profile page, and a regression test locks both requests to the same shape so this can't quietly break again."
+        },
+        "da": {
+          "title": "Værdi-trend-pile er nu tilbage på holdlisten",
+          "body": "Den lille pil op/ned ved siden af hver rytters værdi (deres 7/14-dages prisbevægelse) manglede stille og roligt på holdlisten fordi bulk-forespørgslen bag den havde forkert form og blev droppet. Den matcher nu rytterprofil-siden, og en regressionstest låser begge forespørgsler til samme form, så det ikke kan gå i stykker igen uden varsel."
+        },
+        "refs": [2597]
+      }
+    ]
+  },
+  {
     "version": "7.16",
     "date": "2026-07-18",
     "label": "Beta",
