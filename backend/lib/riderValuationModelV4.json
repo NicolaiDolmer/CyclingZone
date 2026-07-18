@@ -1,7 +1,7 @@
 {
   "version": 4,
   "method": "sim-production-npv",
-  "fitted_at": "2026-07-14T07:41:14.824Z",
+  "fitted_at": "2026-07-18T19:04:14.692Z",
   "sim_run_id": "75507b50",
   "K": 30,
   "season_id": "00000000-0000-0000-0000-000000000001",
@@ -11,78 +11,78 @@
   "horizon_model": "survival-weighted",
   "fit": {
     "alpha": 1,
-    "a": 4.598962,
-    "b": 0.09534681,
-    "c": -0.00009818051,
+    "a": 4.407784,
+    "b": 0.10097084,
+    "c": -0.0001198094,
     "offset": {
-      "sprinter": -0.119959,
-      "tt": -0.139083,
-      "climber": 0.184899,
-      "puncheur": 2.030708,
-      "brostensrytter": 1.046779,
-      "baroudeur": 0.159048,
-      "rouleur": 0.184802,
-      "gc": 0.580036
+      "sprinter": -0.08007,
+      "tt": -0.139055,
+      "climber": 0.179844,
+      "puncheur": 2.070607,
+      "brostensrytter": 0.849752,
+      "baroudeur": 0.0269,
+      "rouleur": 0.029417,
+      "gc": 0.46318
     },
-    "r2_log": 0.2605,
-    "n_samples": 5999
+    "r2_log": 0.2634,
+    "n_samples": 6027
   },
   "type_stats": {
     "sprinter": {
-      "n": 1189,
-      "median_prize": 1538,
-      "p90_prize": 15705
+      "n": 1190,
+      "median_prize": 1586,
+      "p90_prize": 15473
     },
     "tt": {
-      "n": 2610,
-      "median_prize": 521,
-      "p90_prize": 4128
+      "n": 2622,
+      "median_prize": 465,
+      "p90_prize": 4370
     },
     "climber": {
-      "n": 1930,
-      "median_prize": 469,
-      "p90_prize": 18853
+      "n": 1947,
+      "median_prize": 455,
+      "p90_prize": 19148
     },
     "puncheur": {
       "n": 19,
-      "median_prize": 57660,
-      "p90_prize": 264548
+      "median_prize": 67870,
+      "p90_prize": 334313
     },
     "brostensrytter": {
       "n": 59,
-      "median_prize": 21675,
-      "p90_prize": 64040
+      "median_prize": 23960,
+      "p90_prize": 70475
     },
     "baroudeur": {
       "n": 34,
-      "median_prize": 6863,
-      "p90_prize": 48855
+      "median_prize": 4233,
+      "p90_prize": 48638
     },
     "rouleur": {
-      "n": 123,
-      "median_prize": 6575,
-      "p90_prize": 49998
+      "n": 122,
+      "median_prize": 5281,
+      "p90_prize": 36203
     },
     "gc": {
-      "n": 35,
-      "median_prize": 74093,
-      "p90_prize": 456905
+      "n": 34,
+      "median_prize": 48060,
+      "p90_prize": 563245
     }
   },
-  "scale": 2.7492114,
+  "scale": 2.9779287,
   "scale_ref": {
-    "median_current_base_value": 6972,
-    "median_v4_raw_npv": 2536,
-    "n_calibration": 6412
+    "median_current_base_value": 7016,
+    "median_v4_raw_npv": 2356,
+    "n_calibration": 6431
   },
   "elite_premium": {
     "overall_threshold": 45,
-    "k": 0.0984017,
+    "k": 0.095009,
     "floor_overall": 58,
-    "floor": 8215000,
-    "affordability_ceiling": 4107500,
+    "floor": 8315500,
+    "affordability_ceiling": 4157750,
     "unbuyable_seasons": 4,
-    "target_top": 82150000
+    "target_top": 83155000
   },
   "notes": "Værdimodel v4 (#2428, SHADOW) — fittet på simuleret sæson-produktion (scripts/simulateSeasonProduction.js, inkl. free agents som virtuelle hold), ikke på ejer-anchors som v3. alpha valgt via grid-search over log-R². scale = global faktor så median(v4) matcher median(nuværende base_value). elite_premium = stejl konveks præmie over overall-tærskel så de enormt gode ryttere er ukøbelige i unbuyable_seasons sæsoner (kalibreret mod rigeste holds råd-loft); ejer-tunbart. Styrer INGEN økonomi (shadow, ingen migration)."
 }

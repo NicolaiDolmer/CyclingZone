@@ -602,7 +602,7 @@ test("finalizeAuctionById allows a winner up to the hard cap + registers immedia
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-05-09T17:20:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -781,7 +781,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T08:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -975,7 +975,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T10:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1078,7 +1078,7 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T10:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1152,7 +1152,7 @@ test("finalizeAuctionById closes open transfer listings on finalization (#822)",
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T11:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1227,7 +1227,7 @@ test("finalizeAuctionById closes open transfer listings on guaranteed sale to th
     team_id: "bank",
     pending_team_id: null,
     acquired_at: "2026-06-10T12:00:00.000Z",
-    salary: 67,
+    salary: 303, // fallback 1000 × 0.3029 (bank-team division 1)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1406,7 +1406,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1521,7 +1521,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1618,7 +1618,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-29T17:00:00.000Z",
-    salary: 67,
+    salary: 148, // fallback 1000 × 0.1481 (initiator-team division 3)
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1644,8 +1644,8 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
 // ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────
 
 // Kontraktløs vinder (salary == null) → standard-kontrakt oprettes i samme
-// rider-update som ejerskabsskiftet (salary fra base_value/bonus, length 2,
-// end = aktiv sæson + 1).
+// rider-update som ejerskabsskiftet (salary fra current_production_value ×
+// vinderens divisions-sats, length 2, end = aktiv sæson + 1).
 test("finalizeAuctionById creates a default contract for a contractless winner (#1309)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
@@ -1664,8 +1664,7 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
           lastname: "Contract",
           team_id: "seller-team",
           salary: null, // kontraktløs free agent
-          base_value: 1_000_000,
-          prize_earnings_bonus: 0,
+          current_production_value: 500_000,
         },
       },
       teams: {
@@ -1702,7 +1701,7 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-13T10:00:00.000Z",
-    salary: 67_000, // 6.7% af 1_000_000
+    salary: 74_050, // 500_000 × 0.1481 (buyer-team division 3)
     contract_length: 2,
     contract_end_season: 2, // aktiv sæson 1 + 2 - 1
   }]);
@@ -1938,6 +1937,16 @@ function makeYouthFinalizeSupabase({
         return {
           select: () => ({ in: () => Promise.resolve({ data: [], error: null }) }),
           delete: () => ({ in: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
+        };
+      }
+      if (table === "teams") {
+        // #2594: finalizeYouthAuctionRecord slår vinderens division op for at
+        // prissætte akademi-lønnen (per-division sats). Fast division 3 for de
+        // ovenstående (deterministiske) salary-forventninger i testene.
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: buyer.id, division: 3 }, error: null }) }),
+          }),
         };
       }
       throw new Error(`Unexpected table: ${table}`);

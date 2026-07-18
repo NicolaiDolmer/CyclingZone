@@ -35,5 +35,7 @@ test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede s
   assert.ok(ids.includes("r2"), "ændret rytter skrives");
   assert.ok(!ids.includes("r3"), "rytter uden abilities springes over");
   const u2 = updates.find((u) => u.id === "r2");
-  assert.deepEqual(Object.keys(u2).sort(), ["base_value", "id", "primary_type", "secondary_type"]);
+  // #2594: recomputeRiderValue returnerer nu også current_production_value
+  // (løn-basen); selectChangedValueUpdates diff'er + skriver den med.
+  assert.deepEqual(Object.keys(u2).sort(), ["base_value", "current_production_value", "id", "primary_type", "secondary_type"]);
 });

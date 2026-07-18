@@ -208,9 +208,10 @@ test("developAndSellGate: negativ P&L fejler (net-positiv=false)", () => {
 });
 
 test("developAndSellGate: for højt ROI = dominant strategi → fejler selvom net-positiv", () => {
-  // bvAtHorizon 400000 → pnl=247000, ROI=247000/153000=161% > 50% → dominant.
+  // #2594: MAX_DEVELOP_SELL_ROI er nu 2.5 (var 0.5) — ROI skal over 250% for at dominere.
+  // bvAtHorizon 600000 → pnl=447000, ROI=447000/153000≈292% > 250% → dominant.
   const gate = developAndSellGate({
-    bvStart: 100000, bvAtHorizon: 400000, seasons: 3, academy: TEST_ACADEMY,
+    bvStart: 100000, bvAtHorizon: 600000, seasons: 3, academy: TEST_ACADEMY,
   });
   assert.equal(gate.ok, false);
   assert.match(gate.detail, /ikke-dominant=false/);

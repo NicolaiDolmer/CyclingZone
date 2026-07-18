@@ -377,7 +377,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .from("riders")
       // #1836: contract_end_season med så køb-trigger kan afgøre om kontrakten
       // udløber i indeværende sæson.
-      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, contract_end_season")
+      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment] = await Promise.all([
@@ -427,7 +427,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // parkering (lukket vindue) og direkte registrering (åbent vindue), fordi den
   // generiske pending-flush ved vindue-åbning kun flytter team_id.
   const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
-  const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
+  const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: buyerState.division });
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -604,10 +604,10 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // afgøre create-if-missing vs. inherit-if-present for BEGGE ryttere.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -644,8 +644,9 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // sikker for et evt. kontraktløst tilfælde. Skrives både ved parkering og
   // direkte registrering (pending-flush flytter kun team_id).
   const swapSeasonNumber = await fetchActiveSeasonNumber(supabase);
-  const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber);
-  const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber);
+  // Division = det MODTAGENDE holds (offered → receiving, requested → proposing).
+  const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber, { division: receivingState.division });
+  const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber, { division: proposingState.division });
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.

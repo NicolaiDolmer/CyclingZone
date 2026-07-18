@@ -50,16 +50,24 @@ test("kun interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
   //   5. GET  /admin/rider-valuation-preview-v4 — #2428 v4-NPV karriere-fremskrivning
   //      (predictBaseValueV4); ADMIN-only (requireAdmin), potentiale forlader aldrig
   //      responset (verificeret i egen test nedenfor).
-  // Dukker en sjette select med potentiale op, skal den reviewes bevidst —
+  //   6. GET  /riders/:id/value-trend — v4-værditrend for ÉN rytter; potentiale
+  //      fødes ind i recomputeRiderValue, kun delta-vinduer (ikke rå potentiale)
+  //      returneres.
+  //   7. POST /riders/value-trend — samme værditrend, batch-variant.
+  // Dukker et ottende select med potentiale op, skal den reviewes bevidst —
   // den må ikke ende i et klient-response.
   const matches = apiSource.match(/\.select\([^)]*\bpotentiale\b[^)]*\)/g) ?? [];
   assert.equal(
     matches.length,
-    5,
-    `forventede præcis 5 interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
+    7,
+    `forventede præcis 7 interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
   );
   for (const m of matches) {
-    assert.match(m, /id,\s*(team_id,\s*potentiale|potentiale)/, `uventet potentiale-select: ${m}`);
+    assert.match(
+      m,
+      /id,\s*(team_id,\s*potentiale|potentiale)|base_value, birthdate, potentiale/,
+      `uventet potentiale-select: ${m}`,
+    );
   }
 });
 

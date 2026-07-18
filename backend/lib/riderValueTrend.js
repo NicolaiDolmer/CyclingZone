@@ -37,7 +37,10 @@ function findSnapshotAtOrBefore(snapshotsAsc, referenceMs) {
 // Returnerer { "7": {delta, pct, actualDaysAgo, snapshotDate} | null, "14": {...} | null }.
 // null for et vindue betyder: historikken rækker ikke langt nok tilbage endnu
 // (fx nytilkommen rytter) — UI'et skal da bare UDELADE deltaet, aldrig fabrikere.
-export function computeRiderValueTrend({ currentBaseValue, snapshotsAsc = [], baseline, model, now = new Date() }) {
+// #2594: `rider` bærer age + potentiale (v4-modellen kræver dem til karriere-NPV'en).
+// Historikken er ≤14 dage gammel = samme sæson, så nuværende alder er korrekt for
+// snapshottet (alder er sæson-drevet).
+export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshotsAsc = [], baseline, model, now = new Date() }) {
   const windows = {};
   const nowMs = now.getTime();
   // Number(null) === 0 (falsk-finite) — eksplicit null/undefined-tjek FØRST,
@@ -48,7 +51,7 @@ export function computeRiderValueTrend({ currentBaseValue, snapshotsAsc = [], ba
     const targetMs = nowMs - days * DAY_MS;
     const snap = findSnapshotAtOrBefore(snapshotsAsc, targetMs);
     if (!snap?.abilities) { windows[days] = null; continue; }
-    const historical = recomputeRiderValue({}, snap.abilities, baseline, model);
+    const historical = recomputeRiderValue(rider, snap.abilities, baseline, model);
     if (historical.base_value == null || historical.base_value <= 0) { windows[days] = null; continue; }
     const delta = Math.round(Number(currentBaseValue) - historical.base_value);
     const pct = Math.round((delta / historical.base_value) * 1000) / 10; // 1 decimal

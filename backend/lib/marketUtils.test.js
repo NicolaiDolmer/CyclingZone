@@ -427,21 +427,20 @@ test("resolveRiderSalary: frossen salary vinder over estimat", () => {
   assert.equal(resolveRiderSalary({ salary: 12345, base_value: 1_000_000 }), 12345);
 });
 
-test("resolveRiderSalary: NULL salary → 6.7% af market_value (E2 strict_fair_v1)", () => {
-  // market_value vinder: 6.7% af 500_000 = 33_500
-  assert.equal(resolveRiderSalary({ salary: null, market_value: 500_000 }), 33_500);
-  // fallback til base_value + bonus: 6.7% af (50_000 + 5_000) = 3_685
-  assert.equal(resolveRiderSalary({ salary: null, base_value: 50_000, prize_earnings_bonus: 5_000 }), 3_685);
+test("resolveRiderSalary: NULL salary → current_production_value × global prod-sats (#2594)", () => {
+  // free agent-estimat bruger ALTID global sats (0.1606) — ingen erhvervende hold-division kendt.
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 500_000 }), 80_300); // 500_000 × 0.1606
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: 50_000 }), 8_030); // 50_000 × 0.1606
 });
 
 test("resolveRiderSalary: salary 0 bevares (gratis kontrakt, ikke estimat)", () => {
   assert.equal(resolveRiderSalary({ salary: 0, base_value: 1_000_000 }), 0);
 });
 
-test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 67", () => {
-  assert.equal(resolveRiderSalary({ salary: null, base_value: null }), 67);
+test("resolveRiderSalary: NULL salary + NULL current_production_value → fallback 1000 → 161", () => {
+  assert.equal(resolveRiderSalary({ salary: null, current_production_value: null }), 161);
   // undefined salary behandles som free agent (== null loose)
-  assert.equal(resolveRiderSalary({}), 67);
+  assert.equal(resolveRiderSalary({}), 161);
 });
 
 // #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.

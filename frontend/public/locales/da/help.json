@@ -492,11 +492,11 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi er rytterens baseværdi (beregnet ud fra rytterens stats og ryttertype) plus gennemsnittet af rytterens præmiepenge i de seneste sæsoner (op til 3). Startprisen på en auktion skal minimum svare til rytterens Værdi."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi."
       },
       "salary": {
         "title": "Løn",
-        "text": "Hver rytters årsløn fastsættes ved signering til ca. 6,7% af markedsværdien på det tidspunkt og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
+        "text": "Hver rytters årsløn fastsættes ved signering ud fra hvad rytteren forventes at producere i indeværende sæson, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Værdi og løn svarer på to forskellige spørgsmål: værdien er prisen på rytterens fremtid, lønnen er omkostningen ved det han leverer lige nu. Unge talenter er derfor billige at have på lønningslisten, mens etablerede stjerner får løn der matcher deres niveau. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
@@ -639,7 +639,7 @@
       },
       "freeAgents": {
         "title": "Free agents",
-        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (ca. 6,7% af aktuel markedsværdi) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
+        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
       }
     },
     "academy": {
@@ -683,7 +683,7 @@
       },
       "promoteDemote": {
         "title": "Ryk op og flyt ryttere ned",
-        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt, fyre en rytter eller flytte ryttere mellem din senior-trup og dit akademi direkte fra rytterens egen profil-side. Kontraktforlængelse virker nu også direkte på akademiryttere, til samme genforhandlede løn som en senior-rytter — du behøver ikke rykke dem op først."
+        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt, fyre en rytter eller flytte ryttere mellem din senior-trup og dit akademi direkte fra rytterens egen profil-side. Kontraktforlængelse virker nu også direkte på akademiryttere, til samme genforhandlede løn som en senior-rytter; du behøver ikke rykke dem op først."
       }
     },
     "facilities": {

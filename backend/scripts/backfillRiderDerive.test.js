@@ -44,6 +44,10 @@ function makeMock({ riders = [], derived = [] }) {
         }
         return Promise.resolve({ data: [], error: null });
       },
+      // #2594: backfillCores.activeSeasonNumber slår aktiv sæson op via
+      // .select("number").eq("status","active").maybeSingle(). Ingen seeded
+      // "seasons"-tabel her → fallback til sæson 1 (uændret adfærd).
+      maybeSingle() { return Promise.resolve({ data: null, error: null }); },
       upsert(rows, opts) { writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
       update(patch) {
         return { eq(col, val) { writes.updates.push({ table, patch, col, val }); return Promise.resolve({ error: null }); } };
