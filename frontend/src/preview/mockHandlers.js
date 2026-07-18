@@ -266,10 +266,15 @@ export function apiResponse(pathname) {
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
+  // NB: i preview-interceptoren (installPreviewMock) fanges /api/scouting/me af
+  // scoutingMock.js FØR denne blok (med scoutSystemEnabled: true, så Scouting-
+  // centralen kan klikkes igennem). Denne variant — uden flag — rammes kun af
+  // Playwright-fixtures (fixtures.js kalder apiResponse direkte), hvor centralen
+  // bevidst forbliver gated så nav-snapshots ikke ændrer sig.
   if (pathname.endsWith("/api/scouting/me")) {
-    // #2244/#2644: scoutSystemEnabled gater Scouting-centralen (useScoutingCentral.js) —
-    // uden feltet viser previewen kun tom-state, selvom job-modellen faktisk er 'on' i prod.
-    return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id, scoutSystemEnabled: true };
+    // BEVIDST uden scoutSystemEnabled her (jf. kommentaren ovenfor): live preview
+    // får flaget fra scoutingMock.js; fixtures forbliver gated (nav-snapshots).
+    return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
   }
   // #2644 del 2: Scouting-centralens state — spejder, aktive/afsluttede opgaver,
   // kapacitet, jobConfig (priser/varigheder til MissionForm). Tom kø som default;

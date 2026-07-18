@@ -8,6 +8,7 @@
 import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
+import { scoutingMockRoute } from "./scoutingMock.js";
 import { TEST_USER } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
@@ -97,6 +98,18 @@ export function installPreviewMock() {
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = plannerMockRoute(method, u.pathname, u.search, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
+      // Statefuld Scouting-central-mock (#2244/#2644): rout /api/scouting/* +
+      // POST /api/riders/names FØR de generiske /api-blokke, så start/annullér
+      // muterer state og gennemklikket er ægte. Returnerer null for uhåndterede
+      // paths (fx /api/scouting/estimates) → falder videre som før.
+      if (/\/api\/(scouting\/|riders\/names)/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = scoutingMockRoute(method, u.pathname, body);
         if (res) return jsonResponse(res.body, res.status);
       }
 
