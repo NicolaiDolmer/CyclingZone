@@ -49,6 +49,7 @@
   "legend": {
     "title": "Terrain",
     "sprint": "Sprint",
+    "cobbles": "Cobbles",
     "hilly": "Hilly",
     "mountain": "Mountain",
     "itt": "Time trial",
@@ -56,6 +57,7 @@
   },
   "terrain": {
     "sprint": "Sprint",
+    "cobbles": "Cobbles",
     "hilly": "Hilly",
     "mountain": "Mountain",
     "itt": "Time trial",

@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.15",
-    "date": "2026-07-17",
+    "version": "7.17",
+    "date": "2026-07-18",
     "label": "Beta",
     "changes": [
       {
@@ -21,6 +21,48 @@ export const PATCHES = [
           "body": "Den lille pil op/ned ved siden af hver rytters værdi (deres 7/14-dages prisbevægelse) manglede stille og roligt på holdlisten fordi bulk-forespørgslen bag den havde forkert form og blev droppet. Den matcher nu rytterprofil-siden, og en regressionstest låser begge forespørgsler til samme form, så det ikke kan gå i stykker igen uden varsel."
         },
         "refs": [2597]
+      }
+    ]
+  },
+  {
+    "version": "7.16",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Cobbles now have their own calendar icon",
+          "body": "The race calendar's terrain legend now shows a distinct cobbles icon between Sprint and Hilly, so cobbled races no longer look identical to a flat sprint stage at a glance. Time trial and team time trial keep their own icons too."
+        },
+        "da": {
+          "title": "Brosten har nu sit eget kalender-ikon",
+          "body": "Kalenderens terræn-legend viser nu et distinkt brosten-ikon mellem Sprint og Kuperet, så brostens-løb ikke længere ligner en flad sprint-etape ved et hurtigt blik. Enkeltstart og holdstart beholder også hver deres eget ikon."
+        },
+        "refs": [2605]
+      }
+    ]
+  },
+  {
+    "version": "7.15",
+    "date": "2026-07-17",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting Network: reports only point to riders you can actually look up",
+          "body": "Some scouting mission reports named riders you couldn't find anywhere. Root cause: the shortlist could include a rider currently sitting in another team's unresolved academy intake offer, which the platform hides from everyone until that team accepts or declines it, or (rarely) a rider already on your own roster. Missions now skip both cases, so every name in a report is a real, searchable rider."
+        },
+        "da": {
+          "title": "Scouting Network: rapporter peger nu kun på ryttere du faktisk kan slå op",
+          "body": "Nogle spejder-mission-rapporter nævnte ryttere du ikke kunne finde nogen steder. Rodårsag: shortlisten kunne indeholde en rytter der lige nu står i et uafklaret akademi-intake-tilbud hos et andet hold, hvilket skjuler ham for alle indtil det hold accepterer eller afviser tilbuddet, eller (sjældent) en rytter der allerede er på din egen trup. Missioner springer nu begge tilfælde over, så hvert navn i en rapport er en ægte, søgbar rytter."
+        },
+        "refs": [2581]
       }
     ]
   },
@@ -42,6 +84,20 @@ export const PATCHES = [
           "body": "Dit spejder-kort forklarer nu at en 2. samtidig opgave kræver en chefspejder med en overall omkring 80, ikke bare en ansat spejder eller en bygget Scouting Network. Vi har også bekræftet (og låst med en regressionstest) at en mission eller målrettet opgave startet FØR du opgraderer faciliteten eller ansætter en spejder aldrig bliver slettet eller annulleret: den forbliver i køen og rapporterer til tiden, og rejseomkostningen var aldrig i fare."
         },
         "refs": [2580]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Season picker no longer shows a nonexistent \"Season 0\"",
+          "body": "The season selector on the Calendar and Season Planner pages could list \"Season 0\", a leftover open-beta bookkeeping season with zero races that was never meant to be picked. It's now filtered out, so the selector only ever offers real, playable seasons."
+        },
+        "da": {
+          "title": "Sæson-vælgeren viser ikke længere en \"Sæson 0\" der ikke findes",
+          "body": "Sæson-vælgeren på Kalender- og Sæsonplanlægger-siderne kunne vise \"Sæson 0\", en efterladt bogførings-sæson fra åben beta uden nogen løb, som aldrig var tænkt til at kunne vælges. Den er nu filtreret fra, så vælgeren kun tilbyder rigtige, spillebare sæsoner."
+        },
+        "refs": [2600]
       }
     ]
   },

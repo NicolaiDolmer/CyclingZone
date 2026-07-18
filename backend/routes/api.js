@@ -131,6 +131,7 @@ import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverride
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
+import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCopenhagenISODate } from "../lib/raceCalendar.js";
@@ -2471,9 +2472,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #2518: sæson-vælgeren i UI'et bygges fra denne liste (alle oprettede
     // sæsoner, uanset status) — sendt uanset om DEN VALGTE sæson findes, så
     // "Sæson 2 er endnu ikke oprettet" kan vises sammen med en S1-fane at falde
-    // tilbage på.
+    // tilbage på. #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er
+    // IKKE en rigtig spillesæson og skal aldrig tilbydes i vælgeren.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) return res.json({ enabled: true, season: null, availableSeasons, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
 
@@ -2926,8 +2928,10 @@ router.get("/races/calendar", requireAuth, async (req, res) => {
         : seasonQuery.eq("status", "active").maybeSingle()
     );
     if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
+    // #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
+    // spillesæson og skal aldrig tilbydes i kalenderens sæson-vælger.
     const { data: allSeasonsRows } = await supabase
-      .from("seasons").select("id, number, status").order("number", { ascending: true });
+      .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
       return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
@@ -3568,8 +3572,13 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
 
-    const { data: teamRiders } = await supabase.from("riders")
-      .select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2579: delt eligibility-filter (i stedet for den tidligere duplikerede
+    // akademi/pensioneret-kæde) — udelukker OGSÅ en rytter der er solgt men
+    // hvis holdskifte er parkeret (pending_team_id) pga. et aktivt etapeløb hos
+    // dette hold, så regenereringen ikke re-udtager en allerede-solgt rytter.
+    const { data: teamRiders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const teamRiderIds = (teamRiders || []).map((r) => r.id);
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([

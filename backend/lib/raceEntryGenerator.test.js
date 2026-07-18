@@ -84,6 +84,7 @@ function makeSupabase(state, { failUpsert = null } = {}) {
       eq(col, val) { q.filters.push(["eq", col, val]); return api; },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
       or() { return api; },
+      is(col, val) { q.filters.push(["is", col, val]); return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
@@ -145,6 +146,7 @@ function makeSupabase(state, { failUpsert = null } = {}) {
           if (op === "eq") rows = rows.filter((r) => r[col] === val);
           if (op === "in") rows = rows.filter((r) => val.includes(r[col]));
           if (op === "gte") rows = rows.filter((r) => r[col] != null && r[col] >= val);
+          if (op === "is") rows = rows.filter((r) => (r[col] ?? null) === val);
         }
         if (q.op === "delete") {
           calls.push({ table, delete: true, filters: q.filters });
@@ -411,6 +413,35 @@ test("runRaceEntryGenerator: akademiryttere auto-vælges ALDRIG (Rod B)", async 
   const picked = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
   assert.ok(picked.length > 0, "A blev autofyldt");
   assert.ok(!picked.includes("t1-academy"), "akademirytter må ALDRIG auto-vælges");
+});
+
+// #2579: en rytter der er SOLGT, men hvis holdskifte er parkeret (pending_team_id)
+// pga. et aktivt etapeløb hos sælger (#1995), må ikke auto-udtages til et NYT løb hos
+// sælgeren — team_id peger stadig på sælger i den periode. Repro: stærkeste rytter er
+// solgt-men-parkeret; generatoren skal springe ham over ligesom en akademirytter.
+test("runRaceEntryGenerator: solgt-men-parkeret rytter (pending_team_id) auto-vælges ALDRIG (#2579)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "A", stage_number: 2, scheduled_at: "2026-07-02T10:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "A", ...flatProfile(2) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Stærkeste rytter på holdet er solgt (afventer flush) → autopick ville vælge ham
+  // til dette HELT ANDET løb hvis ufiltreret, selvom handlen allerede er gennemført.
+  state.riders.push({ id: "t1-sold-pending", team_id: "t1", is_retired: false, is_academy: false, pending_team_id: "buyer" });
+  state.rider_derived_abilities.push({ rider_id: "t1-sold-pending", ...ab(99) });
+  state.rider_condition.push({ rider_id: "t1-sold-pending", fatigue: 0 });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  const picked = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(picked.length > 0, "A blev autofyldt");
+  assert.ok(!picked.includes("t1-sold-pending"), "solgt-men-parkeret rytter må ALDRIG auto-vælges til et nyt løb");
 });
 
 test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {

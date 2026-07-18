@@ -117,6 +117,33 @@ test("generateShortlist: different missionId → different shuffle order (not a 
   assert.notDeepEqual(a.shortlist, b.shortlist);
 });
 
+// #2581: en mission-shortlist der peger på en rytter holdet allerede ejer er
+// meningsløs (og fandtes i prod, 2/46 tilfælde) — ownerTeamId ekskluderer dem.
+test("generateShortlist: ekskluderer holdets EGNE ryttere (#2581)", () => {
+  const candidates = makePool(5).map((r, i) => ({ ...r, ownerTeamId: i === 0 ? "team-1" : null }));
+  const result = generateShortlist({
+    candidates, criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+  });
+  assert.ok(!result.shortlist.includes("rider-0"), "egen rytter (rider-0, ownerTeamId=team-1) må ikke optræde i shortlisten");
+});
+
+test("generateShortlist: candidates uden ownerTeamId (legacy/eksisterende tests) er uændret", () => {
+  const candidates = makePool(30);
+  const withOwner = generateShortlist({
+    candidates: candidates.map((r) => ({ ...r, ownerTeamId: null })),
+    criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+  });
+  const withoutOwner = generateShortlist({
+    candidates, criteria: { scope: "division", value: "div-1" },
+    scout: DEFAULT_SCOUT, teamId: "team-1", missionId: "m-1",
+  });
+  // ownerTeamId udeladt (undefined) opfører sig identisk med eksplicit null —
+  // det (undefined == null)-tjek i generateShortlist er et no-op for begge.
+  assert.deepEqual(withoutOwner, withOwner);
+});
+
 test("generateShortlist: never sorted by potentiale descending (position != rank)", () => {
   const candidates = makePool(30);
   const result = generateShortlist({
