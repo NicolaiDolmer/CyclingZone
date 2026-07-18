@@ -23,6 +23,10 @@ function createMockSupabase(initialState) {
     transferWindows: [...(initialState.transferWindows || [])],
     transferListings: [...(initialState.transferListings || [])],
     seasons: [...(initialState.seasons || [])],
+    // #2617: aktive fleretape-løb + deltagelser til shouldDeferTeamChange-guarden
+    // i executeAutoPurchase (samme #1995-mekanik som transfer/swap/auktion).
+    races: [...(initialState.races || [])],
+    raceEntries: [...(initialState.raceEntries || [])],
     financeTransactions: [],
     notifications: [],
     riderUpdates: [],
@@ -48,6 +52,8 @@ function createMockSupabase(initialState) {
     if (table === "finance_transactions") return financeTransactionsTable();
     if (table === "notifications") return notificationsTable();
     if (table === "seasons") return seasonsTable();
+    if (table === "races") return racesTable();
+    if (table === "race_entries") return raceEntriesTable();
     throw new Error(`Unexpected table: ${table}`);
   }
 
@@ -335,6 +341,56 @@ function createMockSupabase(initialState) {
       },
     };
     return builder;
+  }
+
+  // #2617: getRidersInActiveStageRace (stageRaceTransferDefer.js) bruger
+  // .select("id").eq("race_type","stage_race").neq("status","completed").gt("stages_completed",0)
+  function racesTable() {
+    return {
+      select(_cols) {
+        const filters = {};
+        const builder = {
+          eq(col, val) { filters[col] = val; return builder; },
+          neq(col, val) { filters[`!${col}`] = val; return builder; },
+          gt(col, val) { filters[`>${col}`] = val; return builder; },
+          then(resolve) {
+            const rows = state.races.filter(r => {
+              for (const [k, v] of Object.entries(filters)) {
+                if (k.startsWith("!")) {
+                  if (r[k.slice(1)] === v) return false;
+                } else if (k.startsWith(">")) {
+                  if (!((r[k.slice(1)] || 0) > v)) return false;
+                } else if (r[k] !== v) {
+                  return false;
+                }
+              }
+              return true;
+            });
+            resolve({ data: rows, error: null });
+          },
+        };
+        return builder;
+      },
+    };
+  }
+
+  // #2617: getRidersInActiveStageRace 2. trin: .select("rider_id").in("race_id", raceIds).in("rider_id", ids)
+  function raceEntriesTable() {
+    return {
+      select(_cols) {
+        const filters = {};
+        const builder = {
+          in(col, vals) { filters[col] = vals; return builder; },
+          then(resolve) {
+            const rows = state.raceEntries.filter(e =>
+              Object.entries(filters).every(([k, v]) => v.includes(e[k]))
+            );
+            resolve({ data: rows, error: null });
+          },
+        };
+        return builder;
+      },
+    };
   }
 
   function financeTransactionsTable() {
@@ -1246,4 +1302,209 @@ test("processSquadEnforcementCron: per-team fail kalder captureExceptionFn med t
   assert.equal(captureCalls[0].ctx.extra.seasonId, "season-1");
   // Window skal stadig completes selv om en team fejlede
   assert.ok(supabase.state.transferWindows[0].squad_enforcement_completed_at != null);
+});
+
+// ─── #2617 active-stage-race-guard i executeAutoPurchase (#1995/#2579-parkering) ──
+//
+// Fund fra adversarisk verify af PR #2610: executeAutoPurchase kaldte ALDRIG
+// shouldDeferTeamChange, så en AI-ejet rytter midt i et aktivt fleretape-løb
+// kunne få team_id flyttet direkte til et menneske-hold under squad-enforcement
+// — samme attribution-splitting-bug som #1995 løste for transfer/swap/auktion.
+
+test("#2617: auto-køb af rytter i AKTIVT etapeløb parkeres (#1995) — team_id uændret, pending_team_id sat", async () => {
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t1", name: "Human", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false },
+      { id: "ai-team", name: "AI", balance: 0, division: 3, user_id: null, is_ai: true, is_bank: false },
+    ],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      })),
+      // Eneste tilgængelige kandidat: AI-ejet, i gang med en aktiv etape (stages_completed>0).
+      {
+        id: "ai-rider", firstname: "Active", lastname: "Racer", team_id: "ai-team",
+        ai_team_id: "ai-team", market_value: 20_000,
+      },
+    ],
+    races: [
+      { id: "race-1", race_type: "stage_race", status: "scheduled", stages_completed: 2 },
+    ],
+    raceEntries: [
+      { race_id: "race-1", rider_id: "ai-rider" },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const notifications = [];
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async (teamId, type, title, message) => {
+      notifications.push({ teamId, type, title, message });
+    },
+    createEmergencyLoanFn: async () => { throw new Error("Should not be called — balance er tilstrækkelig"); },
+    now: new Date("2026-07-18T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér for at dække auto-køb-stien
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "auto_purchased");
+  assert.equal(result.purchases.length, 1);
+  assert.equal(result.purchases[0].deferred, true, "purchase-resultatet skal flagge deferred=true");
+
+  const aiRider = supabase.state.riders.find(r => r.id === "ai-rider");
+  // Kerne-assertion (#2617): team_id må IKKE være flyttet til køber med det samme.
+  assert.equal(aiRider.team_id, "ai-team", "team_id skal forblive uændret — rytteren er midt i et aktivt etapeløb");
+  assert.equal(aiRider.pending_team_id, "t1", "pending_team_id skal parkere det tilsigtede holdskifte (#1995 Model B)");
+  assert.equal(aiRider.acquired_at, undefined, "acquired_at sættes først ved flush, ikke ved parkering");
+
+  // Betalingen sker STRAKS uanset defer (#1995 Model B: "handel sker STRAKS").
+  const purchaseTx = supabase.state.financeTransactions.find(t => t.type === "auto_squad_purchase");
+  assert.ok(purchaseTx, "betalingen skal registreres selvom holdskiftet er parkeret");
+  assert.equal(purchaseTx.amount, -30_000); // 20_000 * SQUAD_PURCHASE_MARKUP (1.5)
+
+  // Owner-notifikation nævner at rytteren først skifter hold ved løbs-slut.
+  assert.equal(notifications.length, 1);
+  assert.match(notifications[0].message, /will join the team once their ongoing stage race finishes/);
+  assert.match(notifications[0].message, /Active Racer/);
+});
+
+test("#2617: auto-køb af rytter der IKKE er i et aktivt etapeløb forbliver uændret (forward-guard)", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      })),
+      { id: "fa1", firstname: "Free", lastname: "Agent", team_id: null, market_value: 20_000, ai_team_id: null },
+    ],
+    // Aktivt etapeløb findes, men fa1 deltager ikke i det.
+    races: [{ id: "race-1", race_type: "stage_race", status: "scheduled", stages_completed: 2 }],
+    raceEntries: [{ race_id: "race-1", rider_id: "some-other-rider" }],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-07-18T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.code, "auto_purchased");
+  assert.equal(result.purchases[0].deferred, false);
+
+  const fa1 = supabase.state.riders.find(r => r.id === "fa1");
+  assert.equal(fa1.team_id, "t1", "ingen aktiv etape-deltagelse → normal direkte team_id-flytning");
+  assert.equal(fa1.pending_team_id, null);
+  assert.equal(fa1.acquired_at, "2026-07-18T12:00:00.000Z");
+});
+
+// ─── #2617 (udvidet scope): active-stage-race-guard i auto-SALGET (den LIVE gren) ──
+//
+// Over-max håndhæves i prod (min=0 gør købs-grenen inert). executeAutoSale
+// flipper team_id direkte og KAN ikke parkeres (pending_team_id=null betyder
+// "intet pending" — salg til fri agent har ingen parkerings-repræsentation).
+// Guarden er derfor kandidat-udvælgelse: ryttere i aktive fleretape-løb springes
+// over; er hele overskuddet låst, udskydes salget til næste vindue (bøden
+// dækker stadig hele afvigelsen).
+
+test("#2617: auto-salg springer rytter i AKTIVT etapeløb over — næst-nyeste sælges i stedet", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 1_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: Array.from({ length: 31 }, (_, i) => ({
+      id: `r${i}`,
+      firstname: "Rider",
+      lastname: `${i}`,
+      team_id: "t1",
+      market_value: 100_000,
+      ai_team_id: "ai-team",
+      acquired_at: `2026-01-01T00:${String(i).padStart(2, "0")}:00Z`,
+      created_at: "2026-01-01",
+    })),
+    // r30 er NYEST erhvervet (normal salgs-kandidat) men midt i et aktivt etapeløb.
+    races: [
+      { id: "race-1", race_type: "stage_race", status: "scheduled", stages_completed: 2 },
+    ],
+    raceEntries: [
+      { race_id: "race-1", rider_id: "r30" },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 500, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "auto_sold");
+  assert.equal(result.deviatingCount, 1);
+  assert.equal(result.sales.length, 1);
+  assert.equal(result.salesDeferredByRacing, 0);
+  // r30 (i aktivt løb) fredes — r29 (næst-nyeste) sælges i stedet.
+  assert.equal(result.sales[0].riderId, "r29");
+  assert.equal(supabase.state.riders.find(r => r.id === "r30").team_id, "t1");
+  assert.equal(supabase.state.riders.find(r => r.id === "r29").team_id, "ai-team");
+  // Bøden dækker stadig hele afvigelsen.
+  assert.equal(result.fineAmount, 100_000);
+});
+
+test("#2617: ALLE overskuds-kandidater i aktivt løb → intet salg dette vindue, bøde uændret", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 1_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: Array.from({ length: 31 }, (_, i) => ({
+      id: `r${i}`,
+      firstname: "Rider",
+      lastname: `${i}`,
+      team_id: "t1",
+      market_value: 100_000,
+      ai_team_id: "ai-team",
+      acquired_at: `2026-01-01T00:${String(i).padStart(2, "0")}:00Z`,
+      created_at: "2026-01-01",
+    })),
+    // ALLE 31 ryttere er i det aktive løb → ingen lovlig salgs-kandidat.
+    races: [
+      { id: "race-1", race_type: "stage_race", status: "scheduled", stages_completed: 1 },
+    ],
+    raceEntries: Array.from({ length: 31 }, (_, i) => ({ race_id: "race-1", rider_id: `r${i}` })),
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 500, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.sales.length, 0);
+  assert.equal(result.salesDeferredByRacing, 1);
+  // Ingen team_id rørt — alle 31 bliver på holdet til løbet er slut.
+  assert.ok(supabase.state.riders.every(r => r.team_id === "t1"));
+  // Bøden håndhæves stadig for hele afvigelsen.
+  assert.equal(result.fineAmount, 100_000);
+  assert.equal(result.penaltyPoints, 200);
 });

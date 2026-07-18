@@ -181,6 +181,7 @@ import {
   getStaffDirectoryHandler,
   getStaffPublicProfileHandler,
 } from "../lib/staffOverviewHandlers.js";
+import { getTeamPublicProfileHandler } from "../lib/teamPublicProfileHandlers.js";
 import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
@@ -3658,9 +3659,13 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     // kolonne — et select med en ikke-eksisterende kolonne fejler hele queryen og gav
     // tom roster → fladen kortsluttede til empty-state (#1840 hotfix). Surfacér fejl
     // loud i stedet for tavst tom (samme klasse som verify-før-claim).
-    const { data: riders, error: ridersErr } = await supabase
-      .from("riders").select(STRATEGY_ROSTER_COLUMNS)
-      .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (samme som PR #2610's write-/udtagelses-stier) —
+    // udelukker OGSÅ en rytter der er solgt men hvis holdskifte er parkeret
+    // (pending_team_id), så strategi-roster/a_chain/kaptajn-prioriteter er konsistente
+    // med udtagelses-flowet i stedet for at vise en allerede-solgt rytter som valgbar.
+    const { data: riders, error: ridersErr } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select(STRATEGY_ROSTER_COLUMNS).eq("team_id", req.team.id)
+    );
     if (ridersErr) throw new Error(`riders (strategy roster): ${ridersErr.message}`);
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const riderIdList = [...rosterIds];
@@ -3746,8 +3751,11 @@ router.put("/races/strategy", requireAuth, marketWriteLimiter, async (req, res) 
     if (capIn != null && (typeof capIn !== "object" || Array.isArray(capIn))) return res.status(400).json({ error: "strategy_invalid_body" });
     if (rulesIn != null && (typeof rulesIn !== "object" || Array.isArray(rulesIn))) return res.status(400).json({ error: "strategy_invalid_body" });
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET /races/strategy ovenfor + PR #2610) —
+    // en solgt-pending rytter må ikke kunne lægges i a_chain/kaptajn-prioriteter.
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     let raceIds = new Set();
@@ -3816,8 +3824,10 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     }
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
 
-    const { data: riders } = await supabase
-      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    // #2616: delt eligibility-filter (jf. GET/PUT /races/strategy ovenfor + PR #2610).
+    const { data: riders } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", req.team.id)
+    );
     const teamRiderIds = (riders || []).map((r) => r.id);
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }, { data: allEntries }] = await Promise.all([
@@ -8767,6 +8777,22 @@ router.get("/staff/:id/public", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/teams/:id/public-profile — #2601: saniteret staff + faciliteter for
+// VILKÅRLIGT hold (konkurrence-transparens på holdsiden). Ingen løn/kontrakt/
+// opgraderings-økonomi — se teamPublicProfileHandlers.js for kontrakten.
+router.get("/teams/:id/public-profile", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getTeamPublicProfileHandler(
+      { teamId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
 router.patch("/admin/loan-config", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
@@ -10592,11 +10618,22 @@ router.get("/board/status", requireAuth, async (req, res) => {
             // raceDaysLeft = absolute, planDuration/seasonsCompleted bruges
             // af 5yr/3yr-mid-cycle-guard, satisfactionDeltaPct = abs(current-50)
             // som proxy for "hvor langt er vi fra plan-start-baseline 50".
+            //
+            // #2592 · seasonsCompleted her SKAL være arbejds-sæson-indekset
+            // (weekendEvalContext.seasonsCompleted, samme min(planDuration,
+            // board.seasons_completed+1) som buildBoardEvalContext bruger) —
+            // ikke den rå lokale `seasonsCompleted`-variabel ovenfor (kun til
+            // planEntry.seasons_completed-DISPLAY-feltet). POST /board/request
+            // (linje ~11161) fodrer getBoardRequestAvailability's SAMME F6-guard
+            // via buildBoardEvalContext, altså allerede med arbejdsindekset. Før
+            // dette fix brugte GET /board/status's options-liste (denne kaldesti)
+            // det rå tal — så UI'ets "disabled: for tidligt i forløbet" kunne
+            // vise en anden lås-tilstand end den POST'en reelt ville håndhæve.
             raceDaysLeft: activeSeason
               ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
               : null,
             planDuration,
-            seasonsCompleted,
+            seasonsCompleted: weekendEvalContext.seasonsCompleted,
             satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
           },
         })

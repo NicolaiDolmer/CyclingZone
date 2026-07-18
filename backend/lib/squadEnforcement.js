@@ -42,6 +42,7 @@ import {
 } from "./economyConstants.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -184,19 +185,37 @@ async function executeAutoPurchase({
   const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
   const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
 
+  // #2617: samme #1995-guard som transfer-/swap-/auktions-flowene (#2579) —
+  // kandidaten (typisk AI-ejet, kan i sjældne tilfælde være fri agent hvis han
+  // lige er blevet frigjort midt i et løb) kan være midt i et aktivt fleretape-løb.
+  // Betalingen sker STRAKS (uændret), men selve team_id-flytningen parkeres på
+  // pending_team_id og flushes af flushDeferredTransfersForRace når løbet
+  // finaliserer — ellers ville rytteren skifte hold midt i løbet og splitte
+  // attribution af etaperesultater.
+  const deferRegistration = await shouldDeferTeamChange(supabase, [rider.id]);
+
   await expectMutation(
     supabase
       .from("riders")
-      .update({
-        team_id: team.id,
-        pending_team_id: null,
-        acquired_at: now.toISOString(),
-        ...contractPatch,
-      })
+      .update(
+        deferRegistration
+          ? { pending_team_id: team.id, ...contractPatch }
+          : {
+              team_id: team.id,
+              pending_team_id: null,
+              acquired_at: now.toISOString(),
+              ...contractPatch,
+            }
+      )
       .eq("id", rider.id)
   );
 
-  return { riderId: rider.id, riderName: `${rider.firstname} ${rider.lastname}`, price };
+  return {
+    riderId: rider.id,
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    price,
+    deferred: deferRegistration,
+  };
 }
 
 async function executeAutoSale({
@@ -355,6 +374,7 @@ export async function enforceTeamSquadCompliance({
 
   let purchases = [];
   let sales = [];
+  let salesDeferredByRacing = 0;
   let deviatingCount = 0;
 
   if (effectiveCount < limits.min) {
@@ -390,7 +410,18 @@ export async function enforceTeamSquadCompliance({
     }
   } else if (effectiveCount > limits.max) {
     deviatingCount = effectiveCount - limits.max;
-    const candidates = pickRidersToSell(ownedRiders, deviatingCount);
+    // #2617/#1995: auto-salget flipper team_id direkte (og KAN ikke parkeres —
+    // pending_team_id=null betyder "intet pending", så et salg til fri agent
+    // (ai_team_id=null) har ingen parkerings-repræsentation). Vælg derfor kun
+    // salgs-kandidater der IKKE er midt i et aktivt fleretape-løb; er hele
+    // overskuddet låst i løb, udskydes salget til næste vindues-enforcement
+    // (bøden dækker stadig hele afvigelsen — holdet slipper ikke billigere).
+    const racingIds = new Set(
+      await getRidersInActiveStageRace(supabase, ownedRiders.map(r => r.id))
+    );
+    const sellable = ownedRiders.filter(r => !racingIds.has(r.id));
+    const candidates = pickRidersToSell(sellable, deviatingCount);
+    salesDeferredByRacing = deviatingCount - candidates.length;
 
     for (const rider of candidates) {
       const result = await executeAutoSale({
@@ -421,10 +452,25 @@ export async function enforceTeamSquadCompliance({
     summaryLines.push(
       `Auto-purchased ${purchases.length} rider${purchases.length === 1 ? "" : "s"}: ${purchases.map(p => p.riderName).join(", ")}`
     );
+    // #2617/#1995: én eller flere købte ryttere var midt i et aktivt etapeløb —
+    // de er betalt for, men skifter først synligt hold når løbet er slut.
+    const deferredPurchases = purchases.filter(p => p.deferred);
+    if (deferredPurchases.length) {
+      summaryLines.push(
+        `${deferredPurchases.length} rider${deferredPurchases.length === 1 ? "" : "s"} will join the team once their ongoing stage race finishes: ${deferredPurchases.map(p => p.riderName).join(", ")}`
+      );
+    }
   }
   if (sales.length) {
     summaryLines.push(
       `Auto-sold ${sales.length} rider${sales.length === 1 ? "" : "s"}: ${sales.map(s => s.riderName).join(", ")}`
+    );
+  }
+  if (salesDeferredByRacing > 0) {
+    // #2617/#1995: overskuds-ryttere midt i et aktivt fleretape-løb sælges ikke
+    // mid-løb — de tages ved næste vindues-enforcement i stedet.
+    summaryLines.push(
+      `${salesDeferredByRacing} rider${salesDeferredByRacing === 1 ? "" : "s"} in an ongoing stage race will be sold after the race instead`
     );
   }
   summaryLines.push(
@@ -446,6 +492,7 @@ export async function enforceTeamSquadCompliance({
     deviatingCount,
     purchases,
     sales,
+    salesDeferredByRacing,
     fineAmount,
     penaltyPoints,
   };

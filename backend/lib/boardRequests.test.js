@@ -27,6 +27,7 @@ import {
   resolveBoardRequest,
   getBoardRenegotiationLock,
 } from "./boardRequests.js";
+import { buildBoardEvalContext } from "./boardGoalContext.js";
 
 // =====================================================================
 // Fixtures
@@ -304,6 +305,43 @@ test("buildBoardRequestOptions: 5yr-plan med stor tilfredsheds-delta aabner alli
   // Delta > 30% åbner re-orientering → more_youth_focus rammer ikke mid-cycle-laasen.
   const youth = options.find((o) => o.type === "more_youth_focus");
   assert.ok(!/for tidligt i forloebet/i.test(youth.disabled_reason || ""));
+});
+
+// #2592 · Guarden selv er indeks-agnostisk (tager bare context.seasonsCompleted
+// og deler med planDuration) — bugklassen sad i api.js, som fodrede den samme
+// getBoardRequestAvailability med TO forskellige indeks-konventioner afhængig
+// af kaldesti: /board/status's requestOptions-liste brugte det RÅ
+// board.seasons_completed, mens den faktiske POST /board/request-håndhævelse
+// (resolveBoardRequest) altid har fodret via buildBoardEvalContext, dvs.
+// arbejds-sæson-indekset (seasons_completed+1, cappet). For et 5yr-board med
+// board.seasons_completed=2 (holdet er i gang med sæson 3 af 5) giver de to
+// indekser modstridende svar på nøjagtig samme board-tilstand:
+//   rå:         2/5 = 40%  → under 50%-tærsklen → LÅST
+//   arbejdsindeks: 3/5 = 60% → over 50%-tærsklen  → ÅBEN
+// Testen pinner selve tærskel-krydsningen, så en fremtidig regression i
+// api.js's index-valg (tilbage til det rå tal) ville vise sig som en reel
+// UI/enforcement-uoverensstemmelse, ikke kun en kodestils-detalje.
+test("#2592: mid-cycle-guarden krydser tærsklen ved arbejdsindeks men ikke ved raa seasons_completed (samme board)", () => {
+  const board = readyBoard({ plan_type: "5yr", focus: "star_signing", seasons_completed: 2 });
+
+  const rawSeasonsCompleted = board.seasons_completed; // 2 — det gamle (buggy) api.js-input
+  const workingIndex = buildBoardEvalContext({ board }).seasonsCompleted; // 3 — arbejdsindekset
+
+  assert.equal(rawSeasonsCompleted, 2);
+  assert.equal(workingIndex, 3);
+
+  const lockedByRaw = buildBoardRequestOptions({
+    board,
+    context: openContext({ planDuration: 5, seasonsCompleted: rawSeasonsCompleted, satisfactionDeltaPct: 0 }),
+  }).find((o) => o.type === "more_youth_focus");
+  const openByWorkingIndex = buildBoardRequestOptions({
+    board,
+    context: openContext({ planDuration: 5, seasonsCompleted: workingIndex, satisfactionDeltaPct: 0 }),
+  }).find((o) => o.type === "more_youth_focus");
+
+  assert.equal(lockedByRaw.disabled, true);
+  assert.match(lockedByRaw.disabled_reason, /5-aarsplanen/i);
+  assert.equal(openByWorkingIndex.disabled, false);
 });
 
 // =====================================================================

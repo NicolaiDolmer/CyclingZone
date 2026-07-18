@@ -124,6 +124,7 @@
     "tabResults": "Results",
     "tabPalmares": "Palmarès",
     "tabTransfers": "Transfer history",
+    "tabClub": "Staff & Facilities",
     "squadTitle": "Squad ({count} riders)",
     "viewCurrent": "Current squad ({count})",
     "viewUpcoming": "Next season ({count})",
@@ -161,13 +162,13 @@
   },
   "results": {
     "title": "Race results",
-    "subtitle": "Point-scoring results for this team",
+    "subtitle": "All race results for this team",
     "seasonFilterAll": "All seasons",
     "seasonFilterCurrent": "Season {n} (current)",
     "seasonOption": "Season {n}",
     "seasonRow": "Season {n}",
     "loadError": "Could not load the results. Please try again.",
-    "emptyAll": "No point-scoring results yet",
+    "emptyAll": "No race results yet",
     "emptyFiltered": "No results in the selected season",
     "thRace": "Race",
     "thType": "Classification",
@@ -191,6 +192,13 @@
       "mountain_day": "Mountains jersey (day)",
       "young_day": "Youth jersey (day)"
     }
+  },
+  "club": {
+    "facilitiesTitle": "Facilities",
+    "staffTitle": "Staff",
+    "noStaff": "No staff hired",
+    "errorTitle": "Couldn't load this",
+    "errorDescription": "Staff and facilities couldn't be loaded right now."
   },
   "manager": {
     "back": "← Back",

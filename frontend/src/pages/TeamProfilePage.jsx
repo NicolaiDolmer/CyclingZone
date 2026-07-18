@@ -19,12 +19,15 @@ import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
 import TeamPalmaresTab from "../components/TeamPalmaresTab";
+import TeamClubTab from "../components/TeamClubTab";
 import { PageLoader } from "../components/ui";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 // #1997 holdside-slice: "palmares" tilføjet efter "results" (spejler rytterprofilens
 // fane-rækkefølge — Resultater → Palmarès).
-const TABS = ["squad", "results", "palmares", "transfers"];
+// #2601: "club" tilføjet — read-only Staff + Facilities for ETHVERT hold (eget eller
+// andres), samme fane-mønster som results/palmares/transfers (selv-hentende, teamId-prop).
+const TABS = ["squad", "results", "palmares", "transfers", "club"];
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
@@ -233,6 +236,7 @@ export default function TeamProfilePage() {
           { key: "results", label: t("profile.tabResults") },
           { key: "palmares", label: t("profile.tabPalmares") },
           { key: "transfers", label: t("profile.tabTransfers") },
+          { key: "club", label: t("profile.tabClub") },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
@@ -253,6 +257,10 @@ export default function TeamProfilePage() {
 
       {activeTab === "transfers" && (
         <TeamTransferHistoryTab teamId={id} />
+      )}
+
+      {activeTab === "club" && (
+        <TeamClubTab teamId={id} />
       )}
 
       {/* Squad with FM toggle */}

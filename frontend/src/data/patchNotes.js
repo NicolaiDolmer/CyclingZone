@@ -25,6 +25,48 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.19",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "See other teams' staff and facilities",
+          "body": "Any team's page now has a Staff & Facilities tab, so you can scout what a rival has built without opening their squad blind. It shows the same level of detail you'd see comparing hiring candidates — names, roles and tiers — never their salaries or upgrade costs."
+        },
+        "da": {
+          "title": "Se andre holds staff og faciliteter",
+          "body": "Alle holds side har nu en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser samme detaljeniveau som når du sammenligner ansættelseskandidater — navne, roller og niveauer — aldrig deres løn eller opgraderingspriser."
+        },
+        "refs": [2601]
+      }
+    ]
+  },
+  {
+    "version": "7.18",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Team results tab now shows your full race history",
+          "body": "The results tab on your team page only showed point-scoring results, which hid 92% of your team's race history — including, sometimes, the exact race the dashboard's \"How your team did\" card had just linked you to. It now shows every result, with point-scoring rows still highlighted."
+        },
+        "da": {
+          "title": "Holdets resultat-fane viser nu hele løbshistorikken",
+          "body": "Resultat-fanen på din holdside viste kun pointgivende resultater, hvilket skjulte 92% af holdets løbshistorik — herunder til tider netop det løb som dashboardets \"Sådan gik det for dit hold\"-kort lige havde linket til. Den viser nu alle resultater, med de pointgivende rækker stadig fremhævet."
+        },
+        "refs": [2593]
+      }
+    ]
+  },
+  {
     "version": "7.17",
     "date": "2026-07-18",
     "label": "Beta",
