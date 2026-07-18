@@ -333,6 +333,20 @@ export default function RaceHubBoard() {
       fetch(`${API}/api/races/distribution/regenerate?day=${day}&mode=${mode}`, { method: "POST", headers }));
   }
 
+  // #2599: "Ryd dag" / "Ryd alt" — ALTID en bekræftelses-dialog (i modsætning til
+  // "Auto-fill" ovenfor er dette destruktivt for ALLE entries i scopet, inkl. manuelt
+  // udtagne). Backend skriver en race_entry_clears-markering pr. (race,team), så den
+  // periodiske entry-generator-sweep ikke fylder ud igen — se raceEntryGenerator.js.
+  // Lokale kladder ryddes bagefter (mirror discardAll): en gammel kladde for et nu-tomt
+  // løb ville ellers vise "spøgelses-ryttere" indtil næste dag/scope-skift.
+  function clearSquad(scope) {
+    const warnKey = scope === "all" ? "racehub.clearAllWarn" : "racehub.clearDayWarn";
+    if (!window.confirm(t(warnKey))) return;
+    mutate((headers) =>
+      fetch(`${API}/api/races/distribution/clear?day=${day}&scope=${scope}`, { method: "POST", headers }))
+      .then(() => setDrafts({}));
+  }
+
   // Effektive kolonner: kladde-selection overlejret server-data + counts afledt af
   // kladden, så transiente tilstande (5/6 mangler, 7/6 for mange) vises mens man
   // redigerer. RaceColumn + puljen renderer disse, så lås/status følger kladden.
@@ -467,7 +481,7 @@ export default function RaceHubBoard() {
             </div>
           )}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
-            onAddRiderToRace={addRider} onRegenerate={regenerate} busy={busy}
+            onAddRiderToRace={addRider} onRegenerate={regenerate} onClearSquad={clearSquad} busy={busy}
             onDropRider={(raw) => handleDrop("pool", null, raw)} />
         </>
       )}

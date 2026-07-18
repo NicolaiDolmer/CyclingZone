@@ -8,6 +8,7 @@ import {
   dominantTerrain,
   lockedWindowsFromEntries,
   partitionRegenTargets,
+  partitionClearTargets,
   startListVisible,
   daysUntilStart,
   groupGrossSquads,
@@ -123,6 +124,20 @@ test("partitionRegenTargets: igangværende løb fryses i begge modes", () => {
     const { target } = partitionRegenTargets({ cols: COLS, withdrawnIds: new Set(), manualRaceIds: new Set(), mode });
     assert.ok(!target.find((r) => r.id === "started"), `started fryses i mode=${mode}`);
   }
+});
+
+// partitionClearTargets (#2599 "Ryd dag"/"Ryd alt"): en bekræftet ryd-handling rydder
+// ALT (inkl. manuelle) — kun frys (#1825) undtager et løb.
+test("partitionClearTargets: rydder både auto- og manuel-kolonner, men ALDRIG igangværende", () => {
+  const { target, skipped } = partitionClearTargets({ cols: COLS });
+  assert.deepEqual(target.map((r) => r.id).sort(), ["auto", "manual", "withdrawn"]);
+  assert.equal(skipped, 1); // kun "started" fryses
+});
+
+test("partitionClearTargets: tom kolonne-liste → intet target, intet skipped", () => {
+  const { target, skipped } = partitionClearTargets({ cols: [] });
+  assert.deepEqual(target, []);
+  assert.equal(skipped, 0);
 });
 
 // Race Hub Fase 5 (#1835 / S6): read-only "andre divisioner"-browse — bruttotrupper.

@@ -2,6 +2,10 @@
 // et af dagens (overlappende) løb er grånet + låst (én rytter/ét løb, inkl. frosne løb).
 // Klik en ledig chip → smart popover. Auto-udfyld er to-tilstands (#1823 D1): "Udfyld
 // manglende" (bevarer manuelle) eller "Genopbyg alt" (overskriver alt).
+// #2599: "Genopbyg alt" (den gamle mode=all-overskrivning der selv fyldte bredt ud med
+// nye AI-forslag) er erstattet af en eksplicit "Ryd dag"-knap — rydder til TOM i stedet
+// for at gætte for spilleren. "Ryd alt" (season-bred) er tilføjet ved siden af. Begge
+// kræver en bekræftelses-dialog (onClearSquad i RaceHubBoard).
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
@@ -9,7 +13,7 @@ import { LockIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 
-export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy, onDropRider }) {
+export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
@@ -33,8 +37,11 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
             className="text-[11px] uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
-          <button type="button" onClick={() => onRegenerate("all")} disabled={busy}
-            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.fillAll")}</button>
+          <button type="button" onClick={() => onClearSquad?.("day")} disabled={busy}
+            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearDay")}</button>
+          <span className="text-cz-border" aria-hidden="true">·</span>
+          <button type="button" onClick={() => onClearSquad?.("all")} disabled={busy}
+            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearAllSeason")}</button>
         </span>
       </div>
       {/* #1925: puljen er en drop-zone — slip en rytter her for at fjerne ham fra hans løb. */}
