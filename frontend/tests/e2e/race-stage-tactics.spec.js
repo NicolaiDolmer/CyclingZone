@@ -102,9 +102,10 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
-  // Lineup-frysningsbeskeden vises (løbet er live) — OG matrixen vises SAMTIDIG.
-  await expect(page.getByText(/trup låst/i)).toBeVisible();
-
+  // #2637 fjernede det statiske "Trup låst"-panel (skadede ryttere skal kunne
+  // fjernes under live løb — selection-panelet renderer nu selv i frozen-tilstand).
+  // Testens ærinde er matrixen; det gamle frysnings-assert var bundet til den
+  // fjernede besked og er derfor udgået (fejlede i CI efter #2653-merget).
   const matrix = page.getByTestId("stage-role-matrix");
   await expect(matrix).toBeVisible();
 
