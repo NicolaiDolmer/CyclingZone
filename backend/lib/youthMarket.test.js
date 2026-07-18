@@ -184,3 +184,30 @@ test("listRejectedAsYouthAuction: andre insert-fejl end 23505 kaster stadig", as
     /listRejectedAsYouthAuction insert/,
   );
 });
+
+// ─── #2627-hændelsen 18/7: hård ejerskabs-guard ──────────────────────────────
+// 16 hold-ejede ryttere blev sat på ungdomsauktion fordi en opstrøms kaldesti
+// (intake-expiry-sweepen) stolede på en forældet intake-status. Guarden her er
+// sidste forsvarslinje: en ejet/parkeret rytter må ALDRIG listes, uanset kaldesti.
+
+test("listRejectedAsYouthAuction: NÆGTER at auktionere en rytter med team_id sat (hændelses-guard 18/7)", async () => {
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-owned", firstname: "Ejet", lastname: "Rytter", base_value: 1, market_value: 1, prize_earnings_bonus: 0, team_id: "team-human" },
+  });
+  await assert.rejects(
+    () => listRejectedAsYouthAuction(supabase, { riderId: "rider-owned", now: new Date("2026-06-20T12:00:00Z"), auctionConfig: DEFAULT_AUCTION_CONFIG }),
+    /is OWNED by team team-human/,
+  );
+  assert.equal(supabase._auctionInserts.length, 0, "ingen insert må overhovedet forsøges");
+});
+
+test("listRejectedAsYouthAuction: NÆGTER ved parkeret holdskifte (pending_team_id)", async () => {
+  const supabase = makeYouthMarketSupabase({
+    rider: { id: "rider-parked", firstname: "Parkeret", lastname: "Rytter", base_value: 1, market_value: 1, prize_earnings_bonus: 0, team_id: null, pending_team_id: "team-z" },
+  });
+  await assert.rejects(
+    () => listRejectedAsYouthAuction(supabase, { riderId: "rider-parked", now: new Date("2026-06-20T12:00:00Z"), auctionConfig: DEFAULT_AUCTION_CONFIG }),
+    /parked team change/,
+  );
+  assert.equal(supabase._auctionInserts.length, 0);
+});
