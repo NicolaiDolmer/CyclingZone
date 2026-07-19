@@ -331,20 +331,20 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
       <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[190px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           <div className="flex flex-col gap-0.5">
-            {/* #228: autobud-knappen/-badget flyttet vandret til højre for bud-
-                knappen (side om side, ikke stablet under). flex-wrap er kun en
-                responsiv sikkerhedsventil for meget smalle bredder. */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <input
-                type="number"
-                value={bidAmount}
-                min={minBid}
-                onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
-                data-tour={isFirst ? "auctions-bid-input" : undefined}
-                aria-label={t("auctions:bid.inputAria")}
-                className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
-                  text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
-              />
+            {/* #228: input på egen linje; Byd + autobud-knap/badge SKAL stå
+                vandret side om side på rækken under (aldrig stablet — de tre
+                elementer på én linje wrappede i den smalle BYD-kolonne). */}
+            <input
+              type="number"
+              value={bidAmount}
+              min={minBid}
+              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+              data-tour={isFirst ? "auctions-bid-input" : undefined}
+              aria-label={t("auctions:bid.inputAria")}
+              className="w-full bg-cz-subtle border border-cz-border rounded px-2 py-1.5
+                text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+            />
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleBid}
                 disabled={bidStatus === "loading" || bidAmount < minBid}
