@@ -25,30 +25,28 @@ async function runAudit() {
     // kun ved forlængelse, så en formel-sammenligning mod live-værdier ville flagge
     // enhver trænet rytter. Invarianterne der SKAL holde: (a) alle ejede ryttere har
     // salary != null (#1309), (b) ingen løn over runaway-loftet (G4: sponsor 240k).
-    const { error: salaryError } = await supabase.rpc('check_salary_drift');
+    //
+    // #2674: der findes ingen check_salary_drift-RPC i databasen (aldrig oprettet
+    // post-#2594) — JS-checket nedenfor er eneste vej (billigt, intet SQL at
+    // vedligeholde). Scope: KUN menneske-ejede ryttere (owner_is_ai=false) —
+    // #1309-invarianten gælder manager-signeringer; AI-/bank-ejede har legitimt
+    // salary=null (verificeret i prod 18/7: 4.322 AI-ejede uden løn vs 1.608 med).
+    const SALARY_RUNAWAY_CEILING = 240000; // = sæson-sponsoratet (G4-loftet)
+    const { data: riders, error: queryError } = await supabase
+      .from('riders')
+      .select('id, firstname, lastname, salary')
+      .not('team_id', 'is', null)
+      .eq('owner_is_ai', false);
 
-    // Hvis RPC ikke findes, bruger vi en rå query (fallback).
-    // Scope: KUN menneske-ejede ryttere (owner_is_ai=false) — #1309-invarianten
-    // gælder manager-signeringer; AI-/bank-ejede har legitimt salary=null
-    // (verificeret i prod 18/7: 4.322 AI-ejede uden løn vs 1.608 med).
-    if (salaryError) {
-      const SALARY_RUNAWAY_CEILING = 240000; // = sæson-sponsoratet (G4-loftet)
-      const { data: riders, error: queryError } = await supabase
-        .from('riders')
-        .select('id, firstname, lastname, salary')
-        .not('team_id', 'is', null)
-        .eq('owner_is_ai', false);
-
-      if (!queryError) {
-        riders.forEach(r => {
-          const name = `${r.firstname ?? ''} ${r.lastname ?? ''}`.trim();
-          if (r.salary == null) {
-            issues.push(`Salary Drift: Rider ${name} (${r.id}) er manager-ejet men har salary=null (#1309-invariant)`);
-          } else if (Number(r.salary) > SALARY_RUNAWAY_CEILING) {
-            issues.push(`Salary Drift: Rider ${name} (${r.id}) har løn ${r.salary} > runaway-loft ${SALARY_RUNAWAY_CEILING}`);
-          }
-        });
-      }
+    if (!queryError) {
+      riders.forEach(r => {
+        const name = `${r.firstname ?? ''} ${r.lastname ?? ''}`.trim();
+        if (r.salary == null) {
+          issues.push(`Salary Drift: Rider ${name} (${r.id}) er manager-ejet men har salary=null (#1309-invariant)`);
+        } else if (Number(r.salary) > SALARY_RUNAWAY_CEILING) {
+          issues.push(`Salary Drift: Rider ${name} (${r.id}) har løn ${r.salary} > runaway-loft ${SALARY_RUNAWAY_CEILING}`);
+        }
+      });
     }
 
     // 2. Tjek Squad Limits

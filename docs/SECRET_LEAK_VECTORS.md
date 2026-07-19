@@ -48,6 +48,7 @@ Mindre instances (verificeret ved gennemgang af `settings.local.json` allow-list
 - `python3 -c "...d['SUPABASE_SERVICE_KEY']..."` — printede `len=` og `prefix=` (kun metadata, ingen full value). NO LEAK, men på grænsen.
 - `curl ... -H "apikey: sb_publishable_..."` — sb_publishable er ikke en secret per Supabase model (= anon key). NO LEAK.
 - `Bash(grep -oE 'eyJh...')` patterns på bundle-files — søger efter mønstre, ikke printer dem (no leak).
+- Supabase-MCP `get_publishable_keys` — kaldt 2026-07-18 under RLS-undersøgelsen for at reproducere et anon-kald med curl. Output indeholdt anon/publishable-nøgle i klartekst, korrekt blokeret af `sanitize-secrets.sh` (#634), incident logget i `.claude/secret-leak-incidents.log`. NO LEAK (sanitizer fangede det), men vektoren var udokumenteret — se ny række i Tabel F ([#2673](https://github.com/NicolaiDolmer/CyclingZone/issues/2673)).
 
 **Konklusion:** ≥2 store leaks bekræftet. Ingen evidens for yderligere store leaks, men sanitizer fra AC2 vil retro-fange evt. instances vi har overset.
 
@@ -132,6 +133,7 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 | Vector | Eksempel-command (FARLIG) | Sidste leak | Mitigation |
 |---|---|---|---|
 | Supabase MCP `get_logs` | Returns runtime logs der KAN inkludere accidentally-logged secret | Ingen kendt (vi har grep'et tool-results — kun stack-traces uden secrets) | Sanitizer (AC2) scanner ALLE tool_response inkl. MCP. Hook matcher er `Bash\|PowerShell\|mcp__.*`. |
+| Supabase MCP `get_publishable_keys` | Kaldt for at hente anon/publishable-nøglen til fx en curl-reproduktion af et anon-kald (`curl ... -H "apikey: <key>"`) | **2026-07-18** — kaldt under RLS-undersøgelsen for at reproducere et anon-kald med curl. Output indeholdt anon/publishable-nøgle i klartekst; korrekt blokeret af sanitizer (#634), incident logget i `.claude/secret-leak-incidents.log`. | ✅ **Kør ALDRIG `get_publishable_keys` for at reproducere rolle-adgang.** Brug i stedet `execute_sql` direkte i DB: `BEGIN; SET LOCAL role anon; <query>; ROLLBACK;` — beviser samme adgangsmønster (fx RLS-policy-adfærd for `anon`) uden at nøglen nogensinde rører transcript'en. Gælder tilsvarende for andre nøgle-returnerende MCP-tools (enhver `get_*_key`/`get_*_secret`-tool i fremtidige providers) — foretræk altid en DB/rolle-intern reproduktion frem for at hente og bruge nøglen. |
 | Vercel MCP `get_runtime_logs` | Samme | Ingen kendt | Sanitizer dækker. |
 | Railway MCP (hvis installeret) | N/A — vi har ikke Railway MCP | Ingen kendt | N/A. |
 | GitHub MCP `get_file_contents` | Returns file content — hvis fil indeholder secret | Ingen kendt | Sanitizer dækker. |
