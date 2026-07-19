@@ -94,7 +94,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.dashboard_rider_ranking(uuid, integer) FROM PUBLIC;
+-- Supabase' ALTER DEFAULT PRIVILEGES gen-granter EXECUTE til anon+authenticated
+-- ved funktions-oprettelse, og `REVOKE ... FROM PUBLIC` fjerner IKKE de eksplicitte
+-- role-grants (samme klasse som #2676/#2671). Revoke derfor eksplicit fra anon +
+-- authenticated, ellers er den nye SECURITY DEFINER-funktion anon-EXECUTE-bar
+-- (advisor 0028) trods den interne service_role-gate. Post-apply-verificeret 19/7.
+REVOKE ALL ON FUNCTION public.dashboard_rider_ranking(uuid, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.dashboard_rider_ranking(uuid, integer) TO service_role;
 
 COMMENT ON FUNCTION public.dashboard_rider_ranking(uuid, integer) IS
