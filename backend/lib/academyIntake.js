@@ -18,7 +18,7 @@ import { deriveForRiderIds } from "./backfillCores.js";
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
 // at koble akademi-intake til startholds-allokatoren. Bruges til per-hold PRNG-seed
 // så to nye hold ikke får identiske kuld, men hvert hold er reproducerbart.
-function hashStringToSeed(str) {
+export function hashStringToSeed(str) {
   let h = 0x811c9dc5;
   const s = String(str ?? "");
   for (let i = 0; i < s.length; i++) {
@@ -50,7 +50,7 @@ export async function getTeamAcademyCount(supabase, teamId) {
  * Slå den aktive sæson op. Returnerer { id, number, start_date } eller null.
  * Delt af batch- og per-hold-stien, så de altid rammer SAMME sæson-definition.
  */
-async function fetchActiveSeason(supabase) {
+export async function fetchActiveSeason(supabase) {
   const seasonRes = await supabase
     .from("seasons")
     .select("id, number, start_date")
@@ -86,7 +86,7 @@ async function setAcademyMarker(supabase, teamId, nowIso) {
  * Byg sættet af foldede navne på ALLE eksisterende ryttere (navne-unikhed).
  * Delt af batch- og per-hold-stien.
  */
-async function fetchExistingFoldedRiderNames(supabase) {
+export async function fetchExistingFoldedRiderNames(supabase) {
   const existingRiders = await fetchAllRows(() =>
     supabase.from("riders").select("firstname,lastname").order("id")
   );
@@ -103,24 +103,29 @@ async function fetchExistingFoldedRiderNames(supabase) {
  * eget kuld. Begge call-sites deler dermed nøjagtig samme generering+insert-logik,
  * så batch og signup-stien ikke kan drifte fra hinanden.
  *
+ * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (søndags-drip)
  * @returns {Promise<string[]>} de nyindsatte akademi-rytteres id'er
  */
-async function seedAcademyCohortForTeam(supabase, {
+export async function seedAcademyCohortForTeam(supabase, {
   teamId,
   season,
   referenceYear,
   existingNames,
   rng,
   identityBasis = null,
+  countOverride = null,
 }) {
   const candidates = generateAcademyCandidates({
     rng,
     referenceYear,
     existingNames,
     identityBasis: identityBasis || null,
+    countOverride,
   });
 
-  const riderPayload = candidates.map((c) => c.rider);
+  // #2064/#2493: generation_tag = 's<sæsonnummer>' på alle ungdoms-genererede ryttere.
+  const generationTag = `s${season.number}`;
+  const riderPayload = candidates.map((c) => ({ ...c.rider, generation_tag: generationTag }));
   const { data: insertedRiders, error: riderErr } = await supabase
     .from("riders")
     .insert(riderPayload)
@@ -269,8 +274,9 @@ export async function runAcademyIntake(supabase, {
  *
  * Deler kerne-generering + insert (seedAcademyCohortForTeam) med batch-stien, så
  * de to varianter ikke kan drifte. Genbruger de NØJAGTIGT samme kuld-parametre
- * (ACADEMY.INTAKE_MIN/MAX, SERIOUS_MIN/MAX + evne-bånd i generateAcademyCandidates)
- * — ingen nye parametre. Kører afled-pipelinen for kuldet (#1478-fælden: ellers mangler
+ * (ACADEMY.INTAKE_MIN/MAX + den geometriske potentiale-fordeling i
+ * generateAcademyCandidates, #2064) — ingen nye parametre. Kører afled-pipelinen
+ * for kuldet (#1478-fælden: ellers mangler
  * kandidaterne physiology/abilities/type/base_value og springes i træning).
  *
  *   • Idempotens-guard på MARKØREN academy_intake_seeded_at (#1584), IKKE

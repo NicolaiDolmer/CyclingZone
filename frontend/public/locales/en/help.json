@@ -650,7 +650,7 @@
       },
       "intakeCohort": {
         "title": "Season intake cohort",
-        "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone."
+        "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone. New academy candidates arrive every Sunday. Candidates you don't sign or reject expire after 7 days."
       },
       "signingProspects": {
         "title": "Signing prospects",
@@ -1071,7 +1071,7 @@
     },
     "academyIntakeScoutingFaq": {
       "q": "How often do I get new Academy prospects, and does scouting reset?",
-      "a": "Academy intake happens once per season: at the start of each season (or when you first set up your team) you get a small cohort of prospects to review and sign 0-2 of into your Academy. There's no extra cohort mid-season. Scouting works differently: you get 15 scouting actions per season, refilled automatically at the next season start, and you can spend them on any rider, not just your own Academy prospects, to narrow down how good they really are."
+      "a": "You get a small cohort of prospects when you first set up your team, and on top of that new Academy candidates arrive every Sunday. Review each candidate and sign or reject them at your own pace, but don't wait too long: open offers expire after 7 days. Scouting works differently: you get 15 scouting actions per season, refilled automatically at the next season start, and you can spend them on any rider, not just your own Academy prospects, to narrow down how good they really are."
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",

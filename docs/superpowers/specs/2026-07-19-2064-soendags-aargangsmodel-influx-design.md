@@ -26,15 +26,27 @@
 
 Tallene er *udgangspunkt* — endelige værdier låses af sim-scorecardet (§6). Kandidater er **tilbud** (eksisterende `academy_intake`-flow: offered → sign/afvis; 7-dages udløb via #2627-sweepen — en søndagskandidat udløber altså naturligt inden næste søndag + 1 dag). 12+ tilbud ≠ 12 ryttere: akademi-loftet (8 pladser + facilitets-ekstra-slots 0-5, `facilityConstants.js`) og signing-fee/løn gør valget reelt. Afviste → ungdomsauktion; usolgte → slettet (#2456). Kredsløbet er lukket.
 
-**Talent-odds pr. kandidat (udgangspunkt, kalibreres i sim):**
+**Potentiale-fordeling — geometrisk (ejer-valg 19/7, IMPLEMENTERET i S0):** hvert halve trin er faktor **0,55** så sandsynligt som det forrige (`POTENTIALE_DECAY`, `drawPotentiale()` i `academyGenerator.js`); gulv udvidet til 1,0. Det gamle to-bånds seriøs-lotteri er FJERNET — `is_serious` afledes nu (pot ≥ 4,5). Benchmark: FM-wonderkids/virkelige akademier (bunden enorm, toppen lotteri).
 
-| Potentiale-bånd | Niveau 0 | Niveau 5 |
-|---|---|---|
-| Lille | ~78 % | ~60 % |
-| Mellem | ~19 % | ~32 % |
-| Stort | ~3 % | ~8 % |
+| Pot | 1,0 | 1,5 | 2,0 | 2,5 | 3,0 | 3,5 | 4,0 | 4,5 | 5,0 | 5,5 | 6,0 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| P | 45,1% | 24,8% | 13,6% | 7,5% | 4,1% | 2,3% | 1,24% | 0,68% | 0,37% | 0,21% | **0,11%** |
+
+Konsekvens (12 kandidater/hold/sæson): 5+ ≈ hver 12. sæson pr. hold; **6,0 ≈ hver 73. sæson pr. hold** ≈ 1-2 pr. sæson for HELE ligaen (132 hold) — "årtiets talent". Empirisk verificeret 1M træk + fuld drip-kæde. Facilitets-skaleringen af odds (S5) modulerer decay/top og er fortsat sim-gated (I4/I5).
 
 Ovenpå lægges årgangs-kvalitetsvariationen (±10 % seeded pr. sæson, ens for alle klubber, transparent — addendum-beslutning 6/#2493). Rå `potentiale` forbliver server-hidden (#1162); spilleren ser kun scout-vurderingen (talentspejder-båndet #1543).
+
+### 2a. Startniveau — ejer-valg "−3" (19/7, låst)
+
+Det gamle rå bånd (51,5-57, #1791) gav 16-17-årige kandidater afledt bedste anlæg 14-21 ≈ **median-seniorens niveau fra dag ét** (prod-målt: senior-median core 10 / best 21). Ejer-beslutning 19/7 efter empirisk fejning (−2/−3/−4 mod fuld generator→fysiologi→evne-kæde): **bånd sænket 3 rå point** til `baseStatAt16 47,5 / floor 48,5 / ceil 54` (`YOUTH_GEN_CONFIG`, `academyGenerator.js`).
+
+| Aldersbånd | Afledt kerne (median) | Bedste anlæg (median) | Senior-reference |
+|---|---|---|---|
+| 16-17 | 3 | 6 | core 10 / best 21 |
+| 18-19 | 8 | 12 | — |
+| 20-21 (graduering) | 12 | 12 | lige under senior-median |
+
+Principper: (1) **loft/peak urørt** — `loftByPotential` (35-88) og peak 27-28 ændres ikke; kun rampen flytter, så beslutningen er ikke en "nerf der skal gentages", (2) talent-forskellen bevares (pot-6 vs pot-2 stadig scoutbar; −4 blev fravalgt fordi signalet drukner), (3) gælder kun NYSKABTE ryttere — de eksisterende 240 akademi-ryttere røres ikke (ingen retro-nerf). #1791-hul-garden omdefineret: ægte datahuller (mangler/<1) + pot-6-signal-bevarelse.
 
 ## 3. Arkitektur
 

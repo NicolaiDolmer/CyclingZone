@@ -135,6 +135,10 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academyDrip": {
+      "title": "New academy talent has arrived",
+      "message": "New candidates are waiting in your academy - sign or reject them."
+    },
     "seasonStarted": {
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead."

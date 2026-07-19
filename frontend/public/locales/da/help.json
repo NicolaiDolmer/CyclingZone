@@ -650,7 +650,7 @@
       },
       "intakeCohort": {
         "title": "Sæsonens indtagelseskuld",
-        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen."
+        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen. Nye akademi-kandidater ankommer hver søndag. Kandidater du hverken signerer eller afviser, udløber efter 7 dage."
       },
       "signingProspects": {
         "title": "Signering af talenter",
@@ -1071,7 +1071,7 @@
     },
     "academyIntakeScoutingFaq": {
       "q": "Hvor ofte får jeg nye akademi-emner, og resetter scouting?",
-      "a": "Akademi-indtag sker én gang pr. sæson: ved hver sæsons start (eller når du opretter dit hold) får du et lille kuld emner, du kan vurdere og signe 0-2 af ind i dit Akademi. Der kommer ikke et ekstra kuld midt i sæsonen. Scouting fungerer anderledes: du får 15 scouting-handlinger pr. sæson, som genopfyldes automatisk ved næste sæsonstart, og du kan bruge dem på enhver rytter, ikke kun dine egne akademi-emner, for at indsnævre hvor god han egentlig er."
+      "a": "Du får et lille kuld emner, når du opretter dit hold, og derudover ankommer der nye akademi-kandidater hver søndag. Vurdér hver kandidat og sign eller afvis i dit eget tempo, men vent ikke for længe: åbne tilbud udløber efter 7 dage. Scouting fungerer anderledes: du får 15 scouting-handlinger pr. sæson, som genopfyldes automatisk ved næste sæsonstart, og du kan bruge dem på enhver rytter, ikke kun dine egne akademi-emner, for at indsnævre hvor god han egentlig er."
     },
     "academyIntakeExpiryFaq": {
       "q": "Udløber akademi-intake-tilbud?",
