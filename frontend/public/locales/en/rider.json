@@ -216,7 +216,7 @@
       "stagesCount": "{n} stages",
       "stageRow": "Stage {n}",
       "overallRow": "Overall (GC)",
-      "expandHint": "Tap a stage race to unfold all stages.",
+      "expandHint": "Tap the chevron to unfold all stages; tap the race name to open it.",
       "emptySeason": "No results in this season.",
       "seasonShort": "S{n}",
       "loadError": "Results could not be loaded right now."

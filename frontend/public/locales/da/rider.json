@@ -216,7 +216,7 @@
       "stagesCount": "{n} etaper",
       "stageRow": "Etape {n}",
       "overallRow": "Samlet (GC)",
-      "expandHint": "Tryk på et etapeløb for at folde alle etaper ud.",
+      "expandHint": "Tryk på pilen for at folde alle etaper ud; tryk på løbsnavnet for at åbne løbet.",
       "emptySeason": "Ingen resultater i denne sæson.",
       "seasonShort": "S{n}",
       "loadError": "Resultaterne kunne ikke hentes lige nu."
