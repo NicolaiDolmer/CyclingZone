@@ -11,6 +11,7 @@ import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -42,7 +43,7 @@ import {
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import { computeBidValueDelta, getRiderSalary } from "../lib/marketValues.js";
+import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { ageBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
@@ -253,6 +254,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
         </div>
       </td>
 
+      {/* Ryttertype — #228 v2: delt komponent/mønster med ryttersiden. */}
+      <td className="px-3 py-1.5">
+        <RiderTypeBadge primaryType={r?.primary_type} secondaryType={r?.secondary_type} />
+      </td>
+
       {/* Alder — #228: prioriteret kolonne (kolonneprioritet: navn/alder/løn/
           bud/tid tilbage forrest), altid synlig. */}
       <td className="px-2 py-1.5 text-center text-cz-2 font-mono text-xs">
@@ -267,29 +273,34 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
         )}
       </td>
 
-      {/* Højeste bud */}
+      {/* Værdi — #228 v2: lige ved siden af Højeste bud (værdi først). */}
+      <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs whitespace-nowrap">
+        {formatNumber(getRiderMarketValue(r))}
+      </td>
+
+      {/* Højeste bud — #228 v2: fører-holdnavn flyttet til title-tooltip på
+          beløbet (ikke længere egen linje); vurderings-delta forbliver inline
+          ved siden af beløbet i stedet for stablet under. */}
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
-        <span className={`inline-block px-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <span className="text-cz-1 font-mono font-bold text-sm">
-            {formatNumber(auction.current_price ?? 0)}
-          </span>
-          <span className="text-cz-3 text-xs ms-1">CZ$</span>
-        </span>
-        {/* #2464: bud vs. estimeret markedsværdi — godt køb/overpris på ét blik.
-            Tooltip bærer selve vurderingen + estimat-forbeholdet. */}
-        {valueDelta && (
-          <p
-            className={`text-[10px] font-mono leading-tight ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
-            title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
+        <span className={`inline-flex items-baseline justify-end gap-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
+          <span
+            className="text-cz-1 font-mono font-bold text-sm"
+            title={getAuctionLeaderName(auction) && !imWinning ? t("auctions:table.leaderTooltip", { name: getAuctionLeaderName(auction) }) : undefined}
           >
-            {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
-          </p>
-        )}
-        {getAuctionLeaderName(auction) && !imWinning && (
-          <p className="text-cz-3 text-[10px] truncate max-w-[100px]">
-            {getAuctionLeaderName(auction)}
-          </p>
-        )}
+            {formatNumber(auction.current_price ?? 0)}
+            <span className="text-cz-3 text-xs ms-1">CZ$</span>
+          </span>
+          {/* #2464: bud vs. estimeret markedsværdi — godt køb/overpris på ét blik.
+              Tooltip bærer selve vurderingen + estimat-forbeholdet. */}
+          {valueDelta && (
+            <span
+              className={`text-[10px] font-mono whitespace-nowrap ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
+              title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
+            >
+              {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
+            </span>
+          )}
+        </span>
       </td>
 
       {/* Tid tilbage */}
@@ -328,23 +339,25 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
       ))}
 
       {/* Byd */}
-      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[190px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
+      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           <div className="flex flex-col gap-0.5">
-            {/* #228: input på egen linje; Byd + autobud-knap/badge SKAL stå
-                vandret side om side på rækken under (aldrig stablet — de tre
-                elementer på én linje wrappede i den smalle BYD-kolonne). */}
-            <input
-              type="number"
-              value={bidAmount}
-              min={minBid}
-              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
-              data-tour={isFirst ? "auctions-bid-input" : undefined}
-              aria-label={t("auctions:bid.inputAria")}
-              className="w-full bg-cz-subtle border border-cz-border rounded px-2 py-1.5
-                text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
-            />
+            {/* #228 v2: input + Byd + autobud på ÉN vandret linje. Kolonnen er
+                udvidet (260px) og input smallere (w-20) så de tre elementer
+                reelt får plads uden at wrappe. Min-bud vises som title-tooltip
+                på input i stedet for en selvstændig tekstlinje under. */}
             <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                value={bidAmount}
+                min={minBid}
+                onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+                data-tour={isFirst ? "auctions-bid-input" : undefined}
+                aria-label={t("auctions:bid.inputAria")}
+                title={t("auctions:bid.minBid", { amount: formatNumber(minBid) })}
+                className="w-20 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
+                  text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+              />
               <button
                 onClick={handleBid}
                 disabled={bidStatus === "loading" || bidAmount < minBid}
@@ -361,7 +374,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                  bidStatus === "success" ? t("common:actions.success") :
                  imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
-              {/* Proxy bid section — vandret til højre for bud-knappen */}
+              {/* Proxy bid section — vandret til højre for bud-knappen, forkortet label så den er plads til */}
               {!proxyExpanded && (myProxy ? (
                 <div className="flex items-center gap-1">
                   <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
@@ -383,7 +396,6 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                 <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
               )}
             </div>
-            <p className="text-[9px] text-cz-3 leading-none">{t("auctions:bid.minBid", { amount: formatNumber(minBid) })}</p>
             {proxyExpanded && (
               <div className="flex flex-col gap-0.5 mt-0.5">
                 <div className="flex items-center gap-1">
@@ -1578,6 +1590,10 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         <SortTh sortKey="is_u25" sort={activeSort("is_u25") ? "is_u25" : riderFiltersSort}
           sortDir={activeSortDir("is_u25")} onSort={handleSort}
           className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("table.status")}</SortTh>
+        {/* #228 v2: Ryttertype — samme komponent/mønster som ryttersiden, lige efter Status. */}
+        <SortTh sortKey="primary_type" sort={activeSort("primary_type") ? "primary_type" : riderFiltersSort}
+          sortDir={activeSortDir("primary_type")} onSort={handleSort}
+          className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("table.type")}</SortTh>
         {/* #228: kolonneprioritet — navn, alder, løn, højeste bud, tid tilbage
             forrest (altid synlige, ikke gemt bag et breakpoint). */}
         <SortTh sortKey="birthdate" sort={activeSort("birthdate") ? "birthdate" : riderFiltersSort}
@@ -1586,6 +1602,10 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         <SortTh sortKey="salary" sort={activeSort("salary") ? "salary" : riderFiltersSort}
           sortDir={activeSortDir("salary")} onSort={handleSort}
           className="px-2 py-3 text-right font-medium">{t("table.salary")}</SortTh>
+        {/* #228 v2: Værdi lige ved siden af Højeste bud (værdi først). */}
+        <SortTh sortKey="value" sort={activeSort("value") ? "value" : riderFiltersSort}
+          sortDir={activeSortDir("value")} onSort={handleSort}
+          className="px-2 py-3 text-right font-medium">{t("table.value")}</SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className="px-3 py-3 text-right font-medium uppercase tracking-wider whitespace-nowrap">
