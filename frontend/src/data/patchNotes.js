@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.31",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout reports no longer list riders you can't find",
+          "body": "Scout mission reports could point at a rider owned by an AI team, but that rider is hidden by default in the rider database, so the name led nowhere. Reports now exclude AI-team riders, the same way they already excluded riders mid-transfer or with an unresolved academy offer."
+        },
+        "da": {
+          "title": "Spejder-rapporter viser ikke længere ryttere du ikke kan finde",
+          "body": "Spejder-mission-rapporter kunne pege på en rytter ejet af et AI-hold, men den rytter er skjult som default i rytterdatabasen, så navnet førte ingen steder hen. Rapporter ekskluderer nu AI-holds ryttere, samme måde de allerede ekskluderede ryttere midt i en handel eller med et uafklaret akademi-tilbud."
+        },
+        "refs": [2581]
+      }
+    ]
+  },
+  {
     "version": "7.30",
     "date": "2026-07-19",
     "label": "Beta",
@@ -77,6 +98,20 @@ export const PATCHES = [
           "body": "Top-5-ranglisten på dit dashboard beregnes nu i ét hug i stedet for at bladre gennem hvert eneste resultat i din division. Kortet dukker mærkbart hurtigere op, og tallene er de samme."
         },
         "refs": [2692]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team classification now needs at least 3 finishers",
+          "body": "A team could win the team classification with only one or two finishing riders. The team classification now requires at least 3 finishing riders to be ranked, matching real cycling. Teams below that are no longer listed."
+        },
+        "da": {
+          "title": "Holdklassementet kræver nu mindst 3 gennemførende ryttere",
+          "body": "Et hold kunne vinde holdklassementet med kun én eller to gennemførende ryttere. Holdklassementet kræver nu mindst 3 gennemførende ryttere for at blive rangeret, som i rigtig cykling. Hold under den grænse vises ikke længere."
+        },
+        "refs": [2694]
       }
     ]
   },

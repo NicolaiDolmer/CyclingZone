@@ -7,6 +7,7 @@ import {
   accumulateStageRows,
   filterCompletedEntrants,
   classPointsForRank,
+  teamClassification,
 } from "./raceClassifications.js";
 
 // ── parseGapSeconds / formatGap roundtrip ─────────────────────────────────────
@@ -81,4 +82,54 @@ test("tomt input → tomme maps, ingen throw", () => {
   const acc = accumulateStageRows({ stageRows: [], profileTypeByStage: new Map() });
   assert.equal(acc.stageNumbers.size, 0);
   assert.deepEqual(filterCompletedEntrants([{ rider_id: "a" }], acc.stagesByRider, acc.stageNumbers), [{ rider_id: "a" }]);
+});
+
+// ── teamClassification ────────────────────────────────────────────────────────
+test("teamClassification: hold med <3 fuldførende ryttere rangeres IKKE (#2694)", () => {
+  // Hold A har kun 1 rytter, hold B kun 2 — ingen af dem kan vinde/rangeres.
+  // Hold C har 3 → eneste rangerede hold.
+  const entrants = [
+    { rider_id: "a1", team_id: "A" },
+    { rider_id: "b1", team_id: "B" },
+    { rider_id: "b2", team_id: "B" },
+    { rider_id: "c1", team_id: "C" },
+    { rider_id: "c2", team_id: "C" },
+    { rider_id: "c3", team_id: "C" },
+  ];
+  const cumTime = new Map([
+    ["a1", 10], // hurtigst, men soloryttet → udgår
+    ["b1", 20], ["b2", 30],
+    ["c1", 100], ["c2", 110], ["c3", 120],
+  ]);
+  const rows = teamClassification(entrants, cumTime);
+  assert.deepEqual(rows.map((r) => r.team_id), ["C"]);
+  assert.equal(rows[0].rank, 1);
+});
+
+test("teamClassification: bedste-3-sum + tie-break bevaret for hold med >=3", () => {
+  const entrants = [
+    { rider_id: "a1", team_id: "A" }, { rider_id: "a2", team_id: "A" },
+    { rider_id: "a3", team_id: "A" }, { rider_id: "a4", team_id: "A" },
+    { rider_id: "b1", team_id: "B" }, { rider_id: "b2", team_id: "B" },
+    { rider_id: "b3", team_id: "B" },
+  ];
+  const cumTime = new Map([
+    ["a1", 0], ["a2", 10], ["a3", 20], ["a4", 900], // 4. rytter tæller ikke: 0+10+20=30
+    ["b1", 5], ["b2", 5], ["b3", 5], // 15 → B vinder
+  ]);
+  const rows = teamClassification(entrants, cumTime);
+  assert.deepEqual(rows.map((r) => [r.rank, r.team_id, r.time]), [[1, "B", 15], [2, "A", 30]]);
+});
+
+test("teamClassification: lige tid brydes deterministisk på team_id", () => {
+  const entrants = [
+    { rider_id: "z1", team_id: "Z" }, { rider_id: "z2", team_id: "Z" }, { rider_id: "z3", team_id: "Z" },
+    { rider_id: "a1", team_id: "A" }, { rider_id: "a2", team_id: "A" }, { rider_id: "a3", team_id: "A" },
+  ];
+  const cumTime = new Map([
+    ["z1", 10], ["z2", 10], ["z3", 10],
+    ["a1", 10], ["a2", 10], ["a3", 10],
+  ]);
+  const rows = teamClassification(entrants, cumTime);
+  assert.deepEqual(rows.map((r) => r.team_id), ["A", "Z"]);
 });

@@ -126,7 +126,7 @@ const afterWindow = new Date("2026-07-10T20:30:00Z"); // 22:30 CEST → tickDate
 describe("defaultLoadCandidates (#2581)", () => {
   const riderRow = (overrides) => ({
     id: "r1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
-    team_id: null, pending_team_id: null, is_retired: false, team: null, ...overrides,
+    team_id: null, pending_team_id: null, is_retired: false, owner_is_ai: false, team: null, ...overrides,
   });
 
   it("ekskluderer ryttere med et uafklaret ('offered') akademi-intake-tilbud", async () => {
@@ -203,6 +203,31 @@ describe("defaultLoadCandidates (#2581)", () => {
     const candidates = await defaultLoadCandidates(supabase, "other_teams");
     assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
   });
+
+  // #2581 (genåbnet 19/7): AI-holds ryttere er skjulte for spillere i RidersPage
+  // (useRiderFilters.js .eq('owner_is_ai', false) uden show_ai) men var ikke
+  // udelukket fra other_teams-kandidat-poolen — samme "findes i rapport, ikke
+  // søgbar" klasse som det oprindelige offered-intake-fund.
+  it("other_teams: ekskluderer ryttere ejet af et AI-hold (owner_is_ai=true, #2581)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [
+        riderRow({ id: "r1", team_id: "team-9", owner_is_ai: true }),
+        riderRow({ id: "r2", team_id: "team-9", owner_is_ai: false }),
+      ],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase, "other_teams");
+    assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
+  });
+
+  it("free_agents: owner_is_ai=false er no-op (frie agenter er altid owner_is_ai=false)", async () => {
+    const supabase = makeMockSupabase({
+      candidates: [riderRow({ id: "r1", team_id: null, owner_is_ai: false })],
+      offeredIntake: [],
+    });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.deepEqual(candidates.map((c) => c.id), ["r1"]);
+  });
 });
 
 describe("runScoutSweep", () => {
@@ -277,11 +302,11 @@ describe("runScoutSweep", () => {
     const candidates = [
       {
         id: "free-1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
-        team_id: null, pending_team_id: null, is_retired: false, team: null,
+        team_id: null, pending_team_id: null, is_retired: false, owner_is_ai: false, team: null,
       },
       {
         id: "owned-1", potentiale: 4, birthdate: "1999-01-01", nationality_code: "DK",
-        team_id: "team-9", pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+        team_id: "team-9", pending_team_id: null, is_retired: false, owner_is_ai: false, team: { league_division_id: "div-1" },
       },
     ];
     const supabase = makeMockSupabase({
@@ -307,11 +332,11 @@ describe("runScoutSweep", () => {
     const candidates = [
       {
         id: "free-1", potentiale: 3, birthdate: "2000-01-01", nationality_code: "DK",
-        team_id: null, pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+        team_id: null, pending_team_id: null, is_retired: false, owner_is_ai: false, team: { league_division_id: "div-1" },
       },
       {
         id: "owned-1", potentiale: 4, birthdate: "1999-01-01", nationality_code: "DK",
-        team_id: "team-9", pending_team_id: null, is_retired: false, team: { league_division_id: "div-1" },
+        team_id: "team-9", pending_team_id: null, is_retired: false, owner_is_ai: false, team: { league_division_id: "div-1" },
       },
     ];
     const supabase = makeMockSupabase({
