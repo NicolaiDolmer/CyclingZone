@@ -50,11 +50,19 @@ export function shouldSweepNow(now = new Date()) {
 // genererings-tidspunkt-guard suppleres af et UAFHÆNGIGT view-tidspunkt-lag
 // (scoutReportVisibility.js) der genkontrollerer synligheden når rapporten
 // FAKTISK vises (#2623: synligheden kan ændre sig mellem de to tidspunkter).
+//
+// #2581 genåbnet 19/7: en NY klasse slap igennem samme hul — ryttere ejet af
+// AI-hold. RidersPage skjuler dem for spillere som default (useRiderFilters.js
+// .eq('owner_is_ai', false) uden show_ai), men other_teams-poolen filtrerede
+// kun på team_id IS NOT NULL, ikke owner_is_ai. Samme fix-mønster: ekskludér
+// owner_is_ai=true fra kandidat-poolen (no-op for free_agents — kontraktfrie
+// ryttere har altid owner_is_ai=false).
 export async function defaultLoadCandidates(supabase, targetPool = "free_agents") {
   let ridersQuery = supabase
     .from("riders")
     .select("id, potentiale, birthdate, nationality_code, team_id, is_retired, team:team_id(league_division_id)")
     .eq("is_retired", false)
+    .eq("owner_is_ai", false) // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
     .not("potentiale", "is", null)
     .is("pending_team_id", null); // #2644: ikke midt i et handelsflow, uanset scope
 
