@@ -4,6 +4,69 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.30",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "See your riders' live auctions on your team page",
+          "body": "When one of your own riders is up for auction, your team page now shows it directly: a badge on the rider with the current highest bid and time left, linking straight to the auction. No more finding out too late that your rider was under the hammer."
+        },
+        "da": {
+          "title": "Se dine rytteres aktive auktioner på holdsiden",
+          "body": "Når en af dine egne ryttere er på auktion, viser holdsiden det nu direkte: et badge på rytteren med det aktuelle højeste bud og tid tilbage, med link til auktionen. Du opdager ikke længere for sent at din rytter var under hammeren."
+        },
+        "refs": [2183]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "One clear message when a rider sells at auction",
+          "body": "Selling a rider at auction used to trigger several overlapping notifications. Buyer and seller now each get one clear message per sale, and duplicates are grouped away."
+        },
+        "da": {
+          "title": "Én klar besked når en rytter sælges på auktion",
+          "body": "Et auktionssalg udløste før flere overlappende beskeder. Køber og sælger får nu hver én klar besked pr. salg, og dubletter grupperes væk."
+        },
+        "refs": [2401, 2208]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Coaches show the right specialty again",
+          "body": "Coaches hired before the U23 band change could show a wrong specialty like \"senior\" instead of their actual strongest skill. The headline now only considers real skills, not age bands. Display-only fix, no coach was actually changed."
+        },
+        "da": {
+          "title": "Trænere viser det rigtige speciale igen",
+          "body": "Trænere hyret før U23-ændringen kunne vise et forkert speciale som \"senior\" i stedet for deres reelt stærkeste færdighed. Overskriften kigger nu kun på ægte færdigheder, ikke alders-bånd. Ren visningsfejl, ingen træner er reelt ændret."
+        },
+        "refs": [2695]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Staff",
+        "en": {
+          "title": "Every staff member now has a unique name",
+          "body": "Staff names are now generated from a much larger first/last name combination pool, and existing duplicates were renamed. Seeing the \"same person\" employed by several teams at once is gone."
+        },
+        "da": {
+          "title": "Alle staff-medlemmer har nu unikke navne",
+          "body": "Staff-navne genereres nu fra en langt større kombination af for- og efternavne, og eksisterende dubletter er omdøbt. Oplevelsen af \"samme person\" ansat på flere hold samtidig er væk."
+        },
+        "refs": [2657]
+      }
+    ]
+  },
+  {
     "version": "7.29",
     "date": "2026-07-19",
     "label": "Beta",
