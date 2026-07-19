@@ -23,12 +23,17 @@ export function staffColumnsFor(role) {
   cols.push({ key: "levels", axisKeys: STAFF_LEVEL_KEYS, source: "levels" });
   return cols;
 }
+// #2695: kun SKILL-akser (dimensions/roleSkills) konkurrerer om "top-specialisering"
+// til hero-headline'en. `levels` (u23/senior niveau-affinitet) er et alders-FOKUS,
+// ikke en skill — vises i sin egen "Coaching group focus"-kolonne (staffColumnsFor),
+// men skal aldrig kunne kapre "Best at X"-headline'en (spejler backend-fixet i
+// staffAbilityDerivation.topSpecialization — se dens kommentar for hvorfor #2529's
+// 3→2-bånd-kollaps gjorde niveau-akser til hyppige (forkerte) vindere her).
 export function topStaffAxis(profile) {
   const ab = profile?.abilities;
   if (!ab) return null;
   const entries = [
     ...Object.entries(ab.dimensions || {}),
-    ...Object.entries(ab.levels || {}),
     ...Object.entries(ab.roleSkills || {}),
   ].filter(([, v]) => Number.isFinite(v));
   if (!entries.length) return null;

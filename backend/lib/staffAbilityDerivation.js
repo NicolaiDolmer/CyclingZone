@@ -139,13 +139,22 @@ export function staffOverall(profile) {
   return profile?.overall ?? null;
 }
 
-// Etiket på den højest-scorende akse på tværs af dimensions/levels/roleSkills —
-// UI'ets "top-specialisering" (fx en trænings-chefs stærkeste dimension eller
-// alders-affinitet). Deterministisk: ved uafgjort vinder første akse i objekt-
-// rækkefølgen (dimensions → levels → roleSkills), som er stabil på refresh.
+// Etiket på den højest-scorende SKILL-akse (dimensions/roleSkills) — UI'ets
+// "top-specialisering" (fx en trænings-chefs stærkeste coaching-dimension).
+// #2695: `levels` (u23/senior niveau-affinitet = alders-FOKUS, ikke en skill)
+// er BEVIDST udelukket her. Før #2529's 3→2-bånd-kollaps var levels spredt
+// over 3 akser, så en enkelt niveau-affinitet sjældent slog en skill-dimension
+// i denne sammenligning; med kun 2 bånd polariserer applySpecialization ALTID
+// fuldt (den ene bånd boostes, den anden trækkes ned — ingen "midter"-akse til
+// at dæmpe det), så et niveau-bånd nu ofte vinder rå-tal-sammenligningen og
+// producerer en meningsløs headline som "Best at senior" (Discord-rapport,
+// #2695). Niveau-affiniteten vises stadig, i sin egen kolonne (staffColumnsFor)
+// — den skal bare aldrig kunne KAPRE skill-specialiserings-headline'en.
+// Deterministisk: ved uafgjort vinder første akse i objekt-rækkefølgen
+// (dimensions → roleSkills), som er stabil på refresh.
 export function topSpecialization(profile) {
   if (!profile) return null;
-  const axes = { ...profile.dimensions, ...profile.levels, ...profile.roleSkills };
+  const axes = { ...profile.dimensions, ...profile.roleSkills };
   let bestKey = null;
   let bestVal = -Infinity;
   for (const [key, val] of Object.entries(axes)) {
