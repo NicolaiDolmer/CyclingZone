@@ -106,11 +106,13 @@ test("kollisionssandsynlighed forbliver lav (nær nul) selv ved 200+ staff (issu
   assert.ok(rate < 0.15, `kollisionsrate ${(rate * 100).toFixed(1)}% (${collidingRows}/${hires.length}) — forventet < 15%`);
 });
 
-test("topSpecialization = etiket på den højest-scorende akse (dimension/niveau/rolle)", () => {
+test("topSpecialization = etiket på den højest-scorende SKILL-akse (dimension/rolle) — #2695: levels (u23/senior alders-fokus) er udelukket, kan aldrig vinde", () => {
   for (const c of generateStaffCandidates(ARGS)) {
     const p = deriveStaffAbilities({ role: c.role, tier: c.tier, name: c.name });
-    const axes = { ...p.dimensions, ...p.levels, ...p.roleSkills };
+    const axes = { ...p.dimensions, ...p.roleSkills };
     const maxVal = Math.max(...Object.values(axes));
-    assert.equal(axes[c.topSpecialization], maxVal, "top-spec skal pege på maks-aksen");
+    assert.equal(axes[c.topSpecialization], maxVal, "top-spec skal pege på maks-skill-aksen");
+    assert.ok(!["u23", "senior"].includes(c.topSpecialization),
+      "top-spec må aldrig pege på et levels-bånd (u23/senior)");
   }
 });
