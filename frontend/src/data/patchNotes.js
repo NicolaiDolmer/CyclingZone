@@ -63,6 +63,20 @@ export const PATCHES = [
           "body": "Staff-navne genereres nu fra en langt større kombination af for- og efternavne, og eksisterende dubletter er omdøbt. Oplevelsen af \"samme person\" ansat på flere hold samtidig er væk."
         },
         "refs": [2657]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard rider ranking loads faster",
+          "body": "The top-5 rider ranking on your dashboard is now calculated in one go instead of paging through every result in your division. The card appears noticeably quicker, and the numbers are unchanged."
+        },
+        "da": {
+          "title": "Rytter-ranglisten på dashboardet loader hurtigere",
+          "body": "Top-5-ranglisten på dit dashboard beregnes nu i ét hug i stedet for at bladre gennem hvert eneste resultat i din division. Kortet dukker mærkbart hurtigere op, og tallene er de samme."
+        },
+        "refs": [2692]
       }
     ]
   },
