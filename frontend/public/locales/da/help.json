@@ -919,7 +919,7 @@
     },
     "boardSatisfaction": {
       "q": "Hvad er bestyrelsestilfredshed?",
-      "a": "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Tilfredsheden lever i sæsonen: efter hver løbsweekend bevæger den sig mod det en fuld sæson-evaluering af din aktuelle placering ville give, højst 5 point pr. weekend, så en enkelt dårlig weekend kan aldrig alene udløse hårde konsekvenser. Sponsor-modifieren følger tilfredsheden live, mens hårde konsekvens-lag kun evalueres ved mid-season- og sæson-slut-checkpoints. Nye planer bliver skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. En tydelig national kerne giver også lidt identitetsværdi i bestyrelsens læsning af holdet, mens store profiler giver lidt sponsor/prestige men samtidig hæver forventningerne. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone."
+      "a": "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Tilfredsheden lever i sæsonen: efter hver løbsweekend bevæger den sig mod det en fuld sæson-evaluering af din aktuelle placering ville give, højst 5 point ned eller 8 point op pr. weekend, så en enkelt dårlig weekend kan aldrig alene udløse hårde konsekvenser. Sponsor-modifieren følger tilfredsheden live, mens hårde konsekvens-lag kun evalueres ved mid-season- og sæson-slut-checkpoints. Nye planer bliver skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. En tydelig national kerne giver også lidt identitetsværdi i bestyrelsens læsning af holdet, mens store profiler giver lidt sponsor/prestige men samtidig hæver forventningerne. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone."
     },
     "boardNegotiation": {
       "q": "Kan jeg forhandle bestyrelsens krav?",
@@ -983,7 +983,7 @@
     },
     "boardSatisfactionArrow": {
       "q": "Hvad betyder pilen/prognosen under mit tilfredsheds-tal?",
-      "a": "Den viser hvor tilfredsheden er på vej hen, ikke kun hvor den er lige nu. Hver løbsweekend kører bestyrelsen en fuld evaluering af din nuværende sæson og beregner et target ud fra din sæson-start-tilfredshed plus den evaluering. Det løbende tal bevæger sig derefter mod target med højst 5 point pr. weekend (samme clamp som beskrevet under 'Hvad er bestyrelsens tilfredshed?'), så du kan se 'på vej mod 71%' før det rent faktisk når derhen. Er tallet allerede ved target, ser du i stedet 'allerede ved target'."
+      "a": "Den viser hvor tilfredsheden er på vej hen, ikke kun hvor den er lige nu. Hver løbsweekend kører bestyrelsen en fuld evaluering af din nuværende sæson og beregner et target ud fra din sæson-start-tilfredshed plus den evaluering. Det løbende tal bevæger sig derefter mod target med højst 5 point ned eller 8 point op pr. weekend (samme clamp som beskrevet under 'Hvad er bestyrelsens tilfredshed?'), så du kan se 'på vej mod 71%' før det rent faktisk når derhen. Er tallet allerede ved target, ser du i stedet 'allerede ved target'."
     },
     "boardChairmanWarning": {
       "q": "Hvad betyder den røde advarsel om formanden?",
@@ -1055,7 +1055,7 @@
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",
-      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
+      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i ryttertabellen på Auktioner-siden. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
     },
     "raceSignupFaq": {
       "q": "Hvor tilmelder jeg mig et løb?",

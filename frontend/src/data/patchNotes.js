@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.28",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "18 written FAQ answers now actually show up on the Help page",
+          "body": "A batch of FAQ entries had been written but never wired into the Help page, so they were invisible: the overall rider rating, the Development tab's ceiling projection, day form and crashes in races, race signup and classifications, training injury risk, the new-player economy guide, seven answers about the board's transparency features, and three about the Season 1 relaunch. All 18 are now live in the FAQ. Two answers were also corrected to match the game: satisfaction moves at most 5 points down or 8 points up per race weekend, and the sortable rating column lives on the Auctions page."
+        },
+        "da": {
+          "title": "18 skrevne FAQ-svar dukker nu faktisk op på Hjælp-siden",
+          "body": "En stribe FAQ-svar var skrevet men aldrig koblet på Hjælp-siden, så de var usynlige: rytterens samlede rating, Udviklings-fanens loft-projektion, dagsform og styrt i løb, løbstilmelding og klassifikationer, skadesrisiko ved træning, økonomi-guiden til nye spillere, syv svar om bestyrelsens transparens-features og tre om Sæson 1-relanceringen. Alle 18 er nu live i FAQ'en. To svar er samtidig rettet så de matcher spillet: tilfredshed flytter sig højst 5 point ned eller 8 point op pr. løbsweekend, og den sorterbare rating-kolonne ligger på Auktioner-siden."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.27",
     "date": "2026-07-18",
     "label": "Beta",
