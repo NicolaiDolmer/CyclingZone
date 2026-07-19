@@ -86,6 +86,20 @@ export const PATCHES = [
         "refs": [2657]
       },
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rider profile",
+        "en": {
+          "title": "Stage-race results now link to the correct stage page",
+          "body": "On the rider profile Results tab, stage-race rows had dead links and the race name pointed to the wrong place. The race name now opens the race, and each stage result links straight to that stage's page. Only the chevron expands the row."
+        },
+        "da": {
+          "title": "Etapeløbs-resultater linker nu til den rigtige etapeside",
+          "body": "På rytterprofilens Resultater-fane havde etapeløbs-rækker døde links, og løbsnavnet pegede det forkerte sted hen. Løbsnavnet åbner nu løbet, og hvert etape-resultat linker direkte til den etapes side. Kun chevronen folder rækken ud."
+        },
+        "refs": [2526]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Dashboard",

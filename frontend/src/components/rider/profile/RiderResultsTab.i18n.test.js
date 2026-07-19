@@ -25,6 +25,30 @@ test("RiderResultsTab har ingen hardcoded danske strenge", () => {
   assert.doesNotMatch(stripComments(source), /[æøåÆØÅ]/);
 });
 
+// #2526: etapeløbs-resultater skal deep-linke til den rigtige etapeside
+// (?stage=N), og løbsnavnet må IKKE længere være et <a>/<Link> inde i en
+// <button> (invalid DOM-nesting → dødt link). Vi verificerer kilden statisk
+// jf. resten af denne fils readFileSync-mønster.
+test("RiderResultsTab deep-linker etape-resultater til ?stage=N (#2526)", () => {
+  const code = stripComments(source);
+  assert.match(code, /stage=\$\{|<RaceLink[\s\S]*?stage=/);
+});
+
+test("RiderResultsTab bruger RaceLink til lobsnavnet (#2526)", () => {
+  const code = stripComments(source);
+  assert.match(code, /<RaceLink\b/);
+});
+
+test("RiderResultsTab wrapper ikke lobsnavns-linket i en <button> (#2526)", () => {
+  const code = stripComments(source);
+  // Ingen <button> ... </button> må indeholde et <RaceLink>/<Link> (invalid
+  // interaktiv nesting = dødt navn-link, kun toggle virkede for etapeløb).
+  const buttonBlocks = code.match(/<button\b[\s\S]*?<\/button>/g) ?? [];
+  for (const block of buttonBlocks) {
+    assert.doesNotMatch(block, /<RaceLink\b|<Link\b/, "et navn-link ligger stadig inde i en <button>");
+  }
+});
+
 function flatKeys(obj, prefix = "") {
   return Object.entries(obj).flatMap(([k, v]) =>
     typeof v === "object" && v !== null ? flatKeys(v, `${prefix}${k}.`) : [`${prefix}${k}`],

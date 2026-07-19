@@ -1,7 +1,8 @@
 // RiderResultsTab — Resultater-fanen (#2000, PCS-stil): sæson-totaler øverst
 // (Sejre · Løb · Top 5 · Trøjer · Ranking-point · Præmiepenge) med sæsonfilter,
 // derunder resultat-tabellen. Etapeløb er udfoldelige: løbsrækken viser GC-linjen
-// med chevron; klik folder etape-underrækker + Samlet (GC) ud.
+// med en chevron-knap; klik folder etape-underrækker + Samlet (GC) ud. Løbsnavn +
+// hver underrække er egne links til løbssiden (#2526).
 //
 // Datalag: lib/riderResultsTab.js over fetchAllRiderSeasonRows-rækkerne (ALLE
 // rytterens resultater, paginerede — ikke kun de seneste 20). Terræn kommer fra
@@ -13,7 +14,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import RaceLink from "../../RaceLink.jsx";
 import { groupRiderRaces, racesForSeason, riderResultTotals, seasonsInRaces } from "../../../lib/riderResultsTab.js";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
@@ -46,10 +47,13 @@ function PrizeCell({ prize, sub = false }) {
   );
 }
 
-function SubRow({ label, rank, points, prize }) {
+// #2526: en underrække linker til den rigtige side — etape-rækker til
+// /races/:id?stage=N (via RaceLink's stage-prop), Samlet (GC) uden stage til
+// /races/:id. Mangler raceId → RaceLink degraderer selv til en ren <span>.
+function SubRow({ raceId, stage, label, rank, points, prize }) {
   return (
     <div className={`${GRID} py-1.5 bg-cz-subtle`}>
-      <span className="text-[11.5px] text-cz-2 truncate pl-5 sm:col-start-2">{label}</span>
+      <RaceLink id={raceId} stage={stage} className="text-[11.5px] text-cz-2 truncate pl-5 sm:col-start-2 hover:text-cz-accent-t transition-colors">{label}</RaceLink>
       <span className={DESKTOP_ONLY} />
       <span className={DESKTOP_ONLY} />
       <PosCell rank={rank} sub />
@@ -157,20 +161,29 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
             const row = (
               <>
                 <DateCell race={race} seasonLabel={season == null && race.season != null ? t("profile.results.seasonShort", { n: race.season }) : null} />
+                {/* #2526: kun chevronen er en <button> der toggler etape-udfoldning.
+                    Løbsnavnet er en søskende-<RaceLink> (ikke længere et <a> inde i
+                    en <button> = invalid nesting → dødt link). Endagsløb har ingen
+                    chevron; navnet linker direkte til løbssiden. */}
                 <span className="flex items-center gap-1.5 min-w-0">
                   {isStageRace && (
-                    <span className={`text-[9px] text-cz-3 flex-shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={`rider-stage-rows-${race.raceId}`}
+                      aria-label={race.name ?? t("results.fallbackDash")}
+                      onClick={() => setExpanded((prev) => ({ ...prev, [race.raceId]: !prev[race.raceId] }))}
+                      className="flex items-center justify-center min-w-[44px] min-h-[44px] -my-2.5 -ms-2 flex-shrink-0 text-cz-3 hover:text-cz-1 transition-colors motion-reduce:transition-none cursor-pointer"
+                    >
+                      <span className={`text-[9px] transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
+                    </button>
                   )}
-                  {/* #2526: løbsnavnet linker til løbssiden ("se hvem der slog mig").
-                      Etapeløbs-rækken er selv en <button> der toggler udfoldning —
-                      stopPropagation her forhindrer at et link-klik ALSO toggler den. */}
-                  <Link
-                    to={`/races/${race.raceId}`}
-                    onClick={(e) => e.stopPropagation()}
+                  <RaceLink
+                    id={race.raceId}
                     className="text-[12.5px] text-cz-1 font-semibold truncate hover:text-cz-accent-t transition-colors"
                   >
                     {race.name ?? t("results.fallbackDash")}
-                  </Link>
+                  </RaceLink>
                 </span>
                 <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-[10px] font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
                   {race.raceClass ?? "-"}
@@ -183,25 +196,14 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
             );
             return (
               <div key={race.raceId} className="border-t border-cz-border first:border-t-0">
-                {isStageRace ? (
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    onClick={() => setExpanded((prev) => ({ ...prev, [race.raceId]: !prev[race.raceId] }))}
-                    className={`${GRID} w-full min-h-[44px] py-2.5 text-left cursor-pointer hover:bg-cz-subtle/60 transition-colors motion-reduce:transition-none`}
-                  >
-                    {row}
-                  </button>
-                ) : (
-                  <div className={`${GRID} min-h-[44px] py-2.5`}>{row}</div>
-                )}
+                <div className={`${GRID} min-h-[44px] py-2.5`}>{row}</div>
                 {isStageRace && open && (
-                  <div>
+                  <div id={`rider-stage-rows-${race.raceId}`}>
                     {race.stageRows.map((s) => (
-                      <SubRow key={s.stage} label={t("profile.results.stageRow", { n: s.stage })} rank={s.rank} points={s.points} prize={s.prize} />
+                      <SubRow key={s.stage} raceId={race.raceId} stage={s.stage} label={t("profile.results.stageRow", { n: s.stage })} rank={s.rank} points={s.points} prize={s.prize} />
                     ))}
                     {race.finalRank != null && (
-                      <SubRow label={t("profile.results.overallRow")} rank={race.finalRank} points={race.gcPoints} prize={race.gcPrize} />
+                      <SubRow raceId={race.raceId} label={t("profile.results.overallRow")} rank={race.finalRank} points={race.gcPoints} prize={race.gcPrize} />
                     )}
                   </div>
                 )}
