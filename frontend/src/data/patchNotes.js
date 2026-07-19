@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.29",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Cleaner, more compact auction table",
+          "body": "The rider name in the auction list is now just the name - nationality and age badges (U23/U25/Youth) moved into their own Nation and Status columns, matching the rider database, and a new Type column (Sprinter/Climber/etc.) sits right after Status. A star now shows next to the name when a rider is on your wishlist. Rows are noticeably shorter: the bid input, Bid button and auto-bid button sit on one compact line, the minimum bid shows as a tooltip on the input instead of its own text line, and the leading team's name on Highest bid moved to a tooltip too, with the value-estimate note inline next to the amount instead of stacked under it. A new Value column sits right next to Highest bid, and the column order leads with Name, Age, Salary, Highest bid, and Time left. The stats columns are unchanged and still toggle on/off with the existing button. The 'My situation' tab is renamed 'My auctions'."
+        },
+        "da": {
+          "title": "Renere, mere kompakt auktionsliste",
+          "body": "Rytternavnet i auktionslisten er nu bare navnet - land og alders-badges (U23/U25/Ungdom) er flyttet til egne Nation- og Status-kolonner, som på rytterdatabasen, og en ny Type-kolonne (Sprinter/Klatrer/osv.) sidder lige efter Status. En stjerne vises nu ved navnet når rytteren er på din ønskeliste. Rækkerne er markant lavere: bud-input, Byd-knap og autobud-knap sidder nu på én kompakt linje, minimumsbuddet vises som en tooltip på input-feltet i stedet for sin egen tekstlinje, og det førende holds navn ved Højeste bud er også flyttet til en tooltip, mens vurderings-noten nu står inline ved beløbet i stedet for stablet under. En ny Værdi-kolonne sidder lige ved siden af Højeste bud, og kolonnerækkefølgen starter nu med Navn, Alder, Løn, Højeste bud og Tid tilbage. Stat-kolonnerne er uændrede og slås stadig til/fra med den eksisterende knap. Fanen 'Min situation' hedder nu 'Mine auktioner'."
+        },
+        "refs": [228]
+      }
+    ]
+  },
+  {
     "version": "7.28",
     "date": "2026-07-19",
     "label": "Beta",

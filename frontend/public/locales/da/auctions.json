@@ -42,7 +42,7 @@
     "outgoing": "−{count} ud"
   },
   "filter": {
-    "mySituation": "Min situation ({count})",
+    "mySituation": "Mine auktioner ({count})",
     "all": "Alle ({count})",
     "otherManagers": "Andre managers ({count})",
     "wishlistButton": "Kun ønskeliste",
@@ -87,7 +87,12 @@
   },
   "table": {
     "rider": "Rytter",
+    "nation": "Nation",
+    "status": "Status",
+    "type": "Type",
+    "value": "Værdi",
     "highestBid": "Højeste bud",
+    "leaderTooltip": "Fører: {name}",
     "timeLeft": "Tid tilbage",
     "age": "Alder",
     "salary": "Løn",
@@ -147,7 +152,7 @@
       "cancel": "Annullér autobud-redigering",
       "placeholder": "Max-loft",
       "inputAria": "Autobud-loft i CZ$",
-      "buttonAdd": "+ Autobud loft",
+      "buttonAdd": "+ Autobud",
       "buttonAddCard": "+ Sæt autobud loft",
       "editButton": "Ændr",
       "removeButton": "Fjern"
