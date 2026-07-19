@@ -26,13 +26,13 @@
 
 Tallene er *udgangspunkt* — endelige værdier låses af sim-scorecardet (§6). Kandidater er **tilbud** (eksisterende `academy_intake`-flow: offered → sign/afvis; 7-dages udløb via #2627-sweepen — en søndagskandidat udløber altså naturligt inden næste søndag + 1 dag). 12+ tilbud ≠ 12 ryttere: akademi-loftet (8 pladser + facilitets-ekstra-slots 0-5, `facilityConstants.js`) og signing-fee/løn gør valget reelt. Afviste → ungdomsauktion; usolgte → slettet (#2456). Kredsløbet er lukket.
 
-**Talent-odds pr. kandidat (udgangspunkt, kalibreres i sim):**
+**Potentiale-fordeling — geometrisk (ejer-valg 19/7, IMPLEMENTERET i S0):** hvert halve trin er faktor **0,55** så sandsynligt som det forrige (`POTENTIALE_DECAY`, `drawPotentiale()` i `academyGenerator.js`); gulv udvidet til 1,0. Det gamle to-bånds seriøs-lotteri er FJERNET — `is_serious` afledes nu (pot ≥ 4,5). Benchmark: FM-wonderkids/virkelige akademier (bunden enorm, toppen lotteri).
 
-| Potentiale-bånd | Niveau 0 | Niveau 5 |
-|---|---|---|
-| Lille | ~78 % | ~60 % |
-| Mellem | ~19 % | ~32 % |
-| Stort | ~3 % | ~8 % |
+| Pot | 1,0 | 1,5 | 2,0 | 2,5 | 3,0 | 3,5 | 4,0 | 4,5 | 5,0 | 5,5 | 6,0 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| P | 45,1% | 24,8% | 13,6% | 7,5% | 4,1% | 2,3% | 1,24% | 0,68% | 0,37% | 0,21% | **0,11%** |
+
+Konsekvens (12 kandidater/hold/sæson): 5+ ≈ hver 12. sæson pr. hold; **6,0 ≈ hver 73. sæson pr. hold** ≈ 1-2 pr. sæson for HELE ligaen (132 hold) — "årtiets talent". Empirisk verificeret 1M træk + fuld drip-kæde. Facilitets-skaleringen af odds (S5) modulerer decay/top og er fortsat sim-gated (I4/I5).
 
 Ovenpå lægges årgangs-kvalitetsvariationen (±10 % seeded pr. sæson, ens for alle klubber, transparent — addendum-beslutning 6/#2493). Rå `potentiale` forbliver server-hidden (#1162); spilleren ser kun scout-vurderingen (talentspejder-båndet #1543).
 
