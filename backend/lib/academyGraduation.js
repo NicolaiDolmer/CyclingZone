@@ -97,7 +97,7 @@ export async function resolveGraduation(supabase, {
   if (!grad || grad.status !== "pending") throw new Error("not_pending");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, market_value, salary")
+    .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, current_production_value, market_value, salary")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
@@ -107,7 +107,8 @@ export async function resolveGraduation(supabase, {
     const future = state?.future_count ?? state?.rider_count ?? 0;
     if (future + 1 > cap) throw new Error("squad_cap_violation");
 
-    const salary = computeFrozenSalary(rider); // NY senior-løn (overskriv arvet akademi-løn)
+    // NY senior-løn (overskriv arvet akademi-løn) — #2594: cpv × divisions-sats.
+    const salary = computeFrozenSalary({ ...rider, division: state?.division });
     const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
     const { error } = await supabase.from("riders").update({
       is_academy: false,

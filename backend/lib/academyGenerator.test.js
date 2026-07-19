@@ -1,18 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeRng } from "./fictionalRiderGenerator.js";
-import { generateAcademyCandidates, generateYouthStats } from "./academyGenerator.js";
+import { generateAcademyCandidates, generateYouthStats, drawPotentiale, POTENTIALE_TIERS } from "./academyGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 
 const REF_YEAR = 2026;
 
-test("generateAcademyCandidates: 3-5 kandidater, 1-3 seriøse, alder 16-21", () => {
+test("generateAcademyCandidates: 3-5 kandidater, is_serious afledt (pot>=4.5), alder 16-21", () => {
   const rng = makeRng(2026);
   const out = generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set() });
   assert.ok(out.length >= 3 && out.length <= 5, `antal ${out.length}`);
-  const serious = out.filter((c) => c.is_serious).length;
-  assert.ok(serious >= 1 && serious <= 3, `seriøse ${serious}`);
+  for (const c of out) {
+    assert.equal(c.is_serious, c.rider.potentiale >= 4.5, "is_serious afledes af potentiale");
+  }
   for (const c of out) {
     const age = REF_YEAR - Number(c.rider.birthdate.slice(0, 4));
     assert.ok(age >= 16 && age <= 21, `alder ${age}`);
@@ -28,6 +29,57 @@ test("determinisme: samme seed → samme kuld", () => {
   const a = generateAcademyCandidates({ rng: makeRng(7), referenceYear: REF_YEAR, existingNames: new Set() });
   const b = generateAcademyCandidates({ rng: makeRng(7), referenceYear: REF_YEAR, existingNames: new Set() });
   assert.deepEqual(a.map((c) => c.rider.firstname), b.map((c) => c.rider.firstname));
+});
+
+// ─── #2064 S0: count/serious-overrides (søndags-drip) ──────────────────────────
+
+test("countOverride=2 giver præcis 2 kandidater", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(42),
+    referenceYear: REF_YEAR,
+    existingNames: new Set(),
+    countOverride: 2,
+  });
+  assert.equal(out.length, 2);
+});
+
+test("drawPotentiale: geometrisk fordeling — monotont faldende og topstyret", () => {
+  const rng = makeRng(20640719);
+  const counts = new Map();
+  const N = 200000;
+  for (let i = 0; i < N; i++) {
+    const p = drawPotentiale(rng);
+    counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  // Monotont faldende over tiers
+  for (let k = 1; k < POTENTIALE_TIERS.length; k++) {
+    const prev = counts.get(POTENTIALE_TIERS[k - 1]) ?? 0;
+    const cur = counts.get(POTENTIALE_TIERS[k]) ?? 0;
+    assert.ok(cur < prev, `tier ${POTENTIALE_TIERS[k]} (${cur}) skal være sjældnere end ${POTENTIALE_TIERS[k - 1]} (${prev})`);
+  }
+  // Toppen: P(6.0) ≈ 0.114% — accepter 0.05%-0.2% ved N=200k
+  const p6 = (counts.get(6) ?? 0) / N;
+  assert.ok(p6 > 0.0005 && p6 < 0.002, `P(6.0)=${(p6 * 100).toFixed(3)}% uden for [0.05%, 0.2%]`);
+  // Bunden: P(1.0) ≈ 45%
+  const p1 = (counts.get(1) ?? 0) / N;
+  assert.ok(p1 > 0.42 && p1 < 0.48, `P(1.0)=${(p1 * 100).toFixed(1)}% uden for [42%, 48%]`);
+});
+
+test("generateAcademyCandidates: is_serious afledes af potentiale (>= 4.5)", () => {
+  const rng = makeRng(99);
+  for (let i = 0; i < 50; i++) {
+    const cands = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: 2 });
+    for (const c of cands) assert.equal(c.is_serious, c.rider.potentiale >= 4.5);
+  }
+});
+
+test("uden overrides er adfærden uændret (3-5 kandidater)", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(42),
+    referenceYear: REF_YEAR,
+    existingNames: new Set(),
+  });
+  assert.ok(out.length >= 3 && out.length <= 5, `antal ${out.length}`);
 });
 
 test("nation-bias: identityBasis vægter dominant_nationality højere", () => {
@@ -82,15 +134,28 @@ test("generateYouthStats: høj-potentiale TENDERER mod stærkere start (gns), me
   assert.ok(avgTop(6) > avgTop(2), "pot6 skal i snit starte stærkere end pot2");
 });
 
-test("generateYouthStats: 16-årig kohorte har INGEN huller (afledt evne ≤3)", () => {
+// #1791-hul-garden OMDEFINERET 2026-07-19 (ejer-valg "−3", #2064 S0): 16-årige STARTER
+// nu bevidst med afledte evner helt ned til ~1 (rå talenter langt under senior-niveau),
+// så den gamle "≤3 = hul"-grænse er ikke længere kontrakten. Det testen reelt skal
+// beskytte: ingen MANGLENDE/0/ugyldige evner (ægte datahuller), og profilen må ikke
+// kollapse totalt (bedste anlæg for et top-talent skal stadig være mærkbart > bund).
+test("generateYouthStats: 16-årig kohorte har ingen ÆGTE datahuller (evne mangler/0) og profilen bevarer signal", () => {
   const PHYS = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
   const archetypes = ["climber","sprinter","tt","gc","puncheur","brostensrytter","rouleur","baroudeur"];
-  let holes = 0;
+  let dataHoles = 0;
+  let pot6BestSum = 0;
+  let pot6N = 0;
   for (const a of archetypes) for (let s = 0; s < 40; s++) {
-    const { stats } = generateYouthStats({ rng: makeRng(s * 13 + 1), age: 16, potentiale: (s % 6) + 1, archetypeType: a });
-    const rider = { id: `c${s}`, birthdate: "2010-06-15", potentiale: (s % 6) + 1, height: 175, weight: 62, ...stats };
+    const pot = (s % 6) + 1;
+    const { stats } = generateYouthStats({ rng: makeRng(s * 13 + 1), age: 16, potentiale: pot, archetypeType: a });
+    const rider = { id: `c${s}`, birthdate: "2010-06-15", potentiale: pot, height: 175, weight: 62, ...stats };
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
-    holes += PHYS.filter((k) => (ab[k] ?? 0) <= 3).length;
+    dataHoles += PHYS.filter((k) => !Number.isFinite(ab[k]) || ab[k] < 1).length;
+    if (pot === 6) {
+      pot6BestSum += Math.max(...PHYS.map((k) => ab[k]));
+      pot6N += 1;
+    }
   }
-  assert.equal(holes, 0, `forventede 0 huller (≤3), fandt ${holes}`);
+  assert.equal(dataHoles, 0, `forventede 0 ægte datahuller (mangler/<1), fandt ${dataHoles}`);
+  assert.ok(pot6BestSum / pot6N >= 5, `pot-6-talenter skal i snit have bedste anlæg ≥5 (signal bevaret), fik ${(pot6BestSum / pot6N).toFixed(1)}`);
 });

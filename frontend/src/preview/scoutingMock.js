@@ -114,7 +114,7 @@ function startAssignment(body) {
   return { status: 200, body: { ok: true, assignment } };
 }
 
-function cancelAssignment(assignmentId) {
+function removeMockAssignment(assignmentId) {
   const idx = state.active.findIndex((a) => a.id === assignmentId);
   if (idx === -1) return { status: 404, body: { ok: false, error: "failed" } };
   state.active.splice(idx, 1);
@@ -153,7 +153,7 @@ export function scoutingMockRoute(method, pathname, body) {
   }
   if (method === "POST" && /\/api\/scouting\/assignments\/[^/]+\/cancel$/.test(pathname)) {
     const id = pathname.split("/").slice(-2)[0];
-    return cancelAssignment(id);
+    return removeMockAssignment(id);
   }
   if (method === "POST" && pathname.endsWith("/api/riders/names")) {
     return riderNames(body);

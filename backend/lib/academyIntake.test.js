@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate } from "./academyIntake.js";
+import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate, seedAcademyCohortForTeam } from "./academyIntake.js";
+import { makeRng } from "./fictionalRiderGenerator.js";
 
 // ─── Mock-supabase helpers ────────────────────────────────────────────────────
 
@@ -451,6 +452,31 @@ test("runAcademyIntakeForTeam: null identity-basis genererer stadig et kuld (pos
   assert.equal(supabase._academyIntakeInserts.length, res.candidates);
 });
 
+// ─── seedAcademyCohortForTeam (#2064 S0: overrides + generation_tag) ──────────
+
+test("seedAcademyCohortForTeam: countOverride respekteres + generation_tag stemplet 's<sæsonnummer>'", async () => {
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "s-id", number: 2, start_date: "2026-07-27" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  const newIds = await seedAcademyCohortForTeam(supabase, {
+    teamId: "team-1",
+    season: { id: "s-id", number: 2, start_date: "2026-07-27" },
+    referenceYear: 2026,
+    existingNames: new Set(),
+    rng: makeRng(7),
+    countOverride: 2,
+  });
+
+  assert.equal(newIds.length, 2, "returnerer 2 nyindsatte rider-id'er");
+  assert.equal(supabase._riderInserts.length, 2, "præcis 2 rider-inserts");
+  for (const row of supabase._riderInserts) {
+    assert.equal(row.generation_tag, "s2", "generation_tag = s<sæsonnummer>");
+  }
+});
+
 // ─── Ingen aktiv sæson ────────────────────────────────────────────────────────
 
 test("runAcademyIntake (dryRun): ingen aktiv sæson returnerer note uden kast", async () => {
@@ -568,6 +594,11 @@ function makeSignRejectSupabase({
           eq() { return teamsApi; },
           single() {
             return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+          },
+          // #2594: signAcademyCandidate slår holdets division op for at prissætte
+          // lønnen (per-division sats).
+          maybeSingle() {
+            return Promise.resolve({ data: { id: "team-A", division: 1 }, error: null });
           },
         };
         return teamsApi;

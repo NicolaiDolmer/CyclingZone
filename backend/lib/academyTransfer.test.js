@@ -52,6 +52,19 @@ function makeSupabase(cfg = {}) {
           },
         };
       }
+      if (table === "teams") {
+        // #2594: demote() slår det demoverende holds division op for at prissætte
+        // akademi-lønnen (per-division sats).
+        return {
+          select() {
+            const api = {
+              eq() { return api; },
+              maybeSingle() { return Promise.resolve({ data: cfg.team ?? { id: "t1", division: 3 }, error: null }); },
+            };
+            return api;
+          },
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
     rpc(fn, args) {
@@ -75,16 +88,18 @@ const ACADEMY_RIDER = {
 };
 const SENIOR_U23 = {
   id: "r2", team_id: "t1", firstname: "Young", lastname: "Senior",
-  is_academy: false, base_value: 50000, birthdate: "2005-06-15", salary: 3350,
+  is_academy: false, current_production_value: 50_000, birthdate: "2005-06-15", salary: 3350,
 };
 
 // ─── demoteSalary helper ──────────────────────────────────────────────────────
+// #2594: demoteSalary er nu en ren delegation til computeFrozenSalary —
+// current_production_value × per-division sats (ikke længere ACADEMY.SALARY_RATE
+// × base_value).
 
-test("demoteSalary: SALARY_RATE × base_value, gulvet på 1", () => {
-  assert.equal(demoteSalary({ base_value: 50000 }), Math.round(50000 * ACADEMY.SALARY_RATE));
-  assert.equal(demoteSalary({ base_value: 0 }), 1);
-  assert.equal(demoteSalary({ base_value: null }), 1);
-  assert.equal(demoteSalary({ base_value: 5 }), 1, "round(0.5)=0 → gulvet til 1");
+test("demoteSalary: computeFrozenSalary-delegation (current_production_value × per-division sats, gulvet på 1)", () => {
+  assert.equal(demoteSalary({ current_production_value: 50_000, division: 3 }), 7_405); // 50_000 × 0.1481
+  assert.equal(demoteSalary({ current_production_value: null }), 161); // fallback 1000 × global (0.1606)
+  assert.equal(demoteSalary({ current_production_value: 1, division: 1 }), 1, "round(1×0.3029)=0 → gulvet til 1");
 });
 
 // ─── promote ──────────────────────────────────────────────────────────────────
@@ -171,9 +186,11 @@ test("promote: kaster ved rider-update-fejl", async () => {
 // ─── demote ──────────────────────────────────────────────────────────────────
 
 test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; returnerer racesCleared", async () => {
+  // mock-teams-lookup i makeSupabase svarer med division 3 (default) → 50_000 × 0.1481 = 7_405.
+  const expectedSalary = demoteSalary({ current_production_value: 50_000, division: 3 });
   const { supabase, rec } = makeSupabase({
     rider: SENIOR_U23,
-    rpcResult: { ok: true, new_salary: 3350, rows_deleted: 3 },
+    rpcResult: { ok: true, new_salary: expectedSalary, rows_deleted: 3 },
   });
   const notify = spyNotify();
   // seasonNumber 1 → p_season_start_year = 2026 + 0 = 2026
@@ -184,14 +201,14 @@ test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; retur
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_team_id, "t1");
   assert.equal(a.p_rider_id, "r2");
-  assert.equal(a.p_new_salary, demoteSalary(SENIOR_U23));
+  assert.equal(a.p_new_salary, expectedSalary);
   assert.equal(a.p_season_start_year, 2026);
   assert.equal(a.p_contract_length, ACADEMY.CONTRACT_LENGTH);
   assert.equal(a.p_contract_end, computeContractEndSeason(1, ACADEMY.CONTRACT_LENGTH));
 
   assert.equal(res.action, "demoted");
   assert.equal(res.riderId, "r2");
-  assert.equal(res.newSalary, demoteSalary(SENIOR_U23));
+  assert.equal(res.newSalary, expectedSalary);
   assert.equal(res.racesCleared, 3);
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_demoted");

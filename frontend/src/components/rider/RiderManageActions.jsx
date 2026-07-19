@@ -3,7 +3,8 @@
 // Samler de handlinger der hidtil KUN levede i holdsidens RiderActionModal:
 //   • Senior-rytter:  forlæng kontrakt (#1720) · flyt til akademi/demote (#932,
 //     kun U23) · fyr/release (#1719, destruktiv).
-//   • Akademi-rytter: promovér til senior-truppen (#932).
+//   • Akademi-rytter: forlæng kontrakt (#2179, samme panel som senior — ingen
+//     op-/nedrykning krævet) · promovér til senior-truppen (#932).
 //
 // Auktion + transferliste + bud på andres ryttere bor allerede inline på
 // RiderStatsPage og dubleres IKKE her. Komponenten mountes kun for egne,
@@ -57,7 +58,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   function openPromote() {
     setAcademyModal({
       direction: "promote",
-      newSalary: projectSeniorSalary(rider),
+      newSalary: projectSeniorSalary(rider, { division: academy.division }),
       currentSalary: null,
       capLabel: `${academy.seniorCount} / ${academy.seniorMax}`,
       capAfterLabel: `${academy.seniorCount + 1} / ${academy.seniorMax}`,
@@ -82,7 +83,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
     const max = academy.slots?.max ?? 8;
     setAcademyModal({
       direction: "demote",
-      newSalary: projectYouthSalary(rider),
+      newSalary: projectYouthSalary(rider, { division: academy.division }),
       currentSalary: rider.salary ?? null,
       capLabel: `${used} / ${max}`,
       capAfterLabel: `${used + 1} / ${max}`,
@@ -219,6 +220,52 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     finally { setReleaseBusy(false); }
   }
 
+  // Forlæng kontrakt (#1720) — delt panel for BÅDE senior- og akademi-ryttere
+  // (#2179: akademi-ryttere kan forlænge direkte, ingen op-/nedrykning krævet).
+  // Samme knap/panel-markup begge steder, kun placeringen i rækken varierer.
+  const extendPanel = (
+    <div className="contents">
+      <button type="button" onClick={openExtend}
+        className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
+        {t("manage.extend.button")}
+      </button>
+      {extendOpen && (
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
+          <p className="text-cz-3 text-xs">{t("manage.extend.description")}</p>
+          {extendErr ? (
+            <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{extendErr}</div>
+          ) : (
+            <>
+              <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("manage.extend.currentSalary")}</span>
+                  <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("manage.extend.newSalary")}</span>
+                  <span className="text-cz-1 font-mono font-bold">
+                    {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : "..."}
+                  </span>
+                </div>
+                {extendQuote && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-cz-3 text-xs">{t("manage.extend.newContract")}</span>
+                    <span className="text-cz-2 font-mono">
+                      {t("manage.extend.newContractValue", { season: extendQuote.contract_end_season })}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button onClick={confirmExtend} disabled={extendBusy || !extendQuote} className={BTN_PRIMARY}>
+                {extendBusy ? "..." : t("manage.extend.confirm")}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     /* display:contents — knapperne bliver direkte flex-items i hero'ens
        handlingsrække; paneler/feedback tager selv fuld bredde. */
@@ -231,8 +278,10 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
       )}
 
       {isAcademyRider ? (
-        /* Akademi-rytter: promovér (egen flow) + evt. markeds-handlinger fra parent. */
+        /* Akademi-rytter: forlæng (#2179, samme sted/stil som senior) · promovér
+           (egen flow) · evt. markeds-handlinger fra parent. */
         <>
+          {extendPanel}
           <RiderAcademyActions rider={rider} isAcademyRider onResult={flashResult} onChanged={onChanged} />
           {marketActions}
         </>
@@ -240,47 +289,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         /* Senior-rytter, prototypens rækkefølge: forlæng (guld) · flyt til akademi
            (kun U23) · markeds-handlinger (salg/auktion, injiceret) · fyr (destruktiv sidst). */
         <>
-          {/* Forlæng kontrakt */}
-          <div className="contents">
-            <button type="button" onClick={openExtend}
-              className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
-              {t("manage.extend.button")}
-            </button>
-            {extendOpen && (
-              <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
-                <p className="text-cz-3 text-xs">{t("manage.extend.description")}</p>
-                {extendErr ? (
-                  <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{extendErr}</div>
-                ) : (
-                  <>
-                    <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-cz-3 text-xs">{t("manage.extend.currentSalary")}</span>
-                        <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cz-3 text-xs">{t("manage.extend.newSalary")}</span>
-                        <span className="text-cz-1 font-mono font-bold">
-                          {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : "..."}
-                        </span>
-                      </div>
-                      {extendQuote && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-cz-3 text-xs">{t("manage.extend.newContract")}</span>
-                          <span className="text-cz-2 font-mono">
-                            {t("manage.extend.newContractValue", { season: extendQuote.contract_end_season })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <button onClick={confirmExtend} disabled={extendBusy || !extendQuote} className={BTN_PRIMARY}>
-                      {extendBusy ? "..." : t("manage.extend.confirm")}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          {extendPanel}
 
           {/* Flyt til akademi (kun U23 + akademi aktivt) — mountes kun ved canDemote. */}
           {canDemote && (

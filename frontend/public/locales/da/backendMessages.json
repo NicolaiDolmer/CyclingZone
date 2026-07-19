@@ -135,6 +135,10 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "academyDrip": {
+      "title": "Nyt akademi-talent er ankommet",
+      "message": "Nye kandidater venter i dit akademi - signér eller afvis dem."
+    },
     "seasonStarted": {
       "title": "Sæson {number} er begyndt",
       "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson."

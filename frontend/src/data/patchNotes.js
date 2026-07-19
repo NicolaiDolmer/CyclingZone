@@ -4,6 +4,97 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.28",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy candidates arrive every Sunday",
+          "body": "Your academy now receives fresh candidates every Sunday. Sign the ones you believe in or reject them - unanswered offers expire after 7 days. This is the first step of the season-cohort model, where the final Sunday of each season becomes the big intake day."
+        },
+        "da": {
+          "title": "Nye akademi-kandidater ankommer hver søndag",
+          "body": "Dit akademi modtager nu friske kandidater hver søndag. Signér dem du tror på, eller afvis dem - ubesvarede tilbud udløber efter 7 dage. Det er første skridt i sæson-årgangsmodellen, hvor sæsonens sidste søndag bliver den store intake-dag."
+        },
+        "refs": [2064]
+      }
+    ]
+  },
+  {
+    "version": "7.27",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Extend an academy rider's contract without promoting them first",
+          "body": "You can now extend an academy rider's contract directly from their profile or your squad page, at the same renegotiated salary as a senior rider. Previously the only way to renew an academy rider's contract was to promote them to your senior squad, extend, and move them back down. Releasing an academy rider still goes through the academy flow."
+        },
+        "da": {
+          "title": "Forlæng en akademi-rytters kontrakt uden at rykke dem op først",
+          "body": "Du kan nu forlænge en akademi-rytters kontrakt direkte fra deres profil eller din holdside, til samme genforhandlede løn som en senior-rytter. Tidligere var den eneste måde at forny en akademi-rytters kontrakt på at rykke dem op i seniortruppen, forlænge, og flytte dem ned igen. At frigive en akademi-rytter går stadig via akademi-flowet."
+        },
+        "refs": [2179]
+      }
+    ]
+  },
+  {
+    "version": "7.26",
+    "date": "2026-07-18",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Rider values now reflect what riders actually produce",
+          "body": "Rider market values are now driven by a new valuation model. A rider's value is the production he is expected to deliver for the rest of his career, measured by simulating the game's own season calendar: prize money, race program and how his abilities will develop and decline with age. Young talents are worth more because of the seasons ahead of them, veterans are priced on what they have left, and the very best riders in the game now carry star prices far beyond any team's budget. Building or developing an elite rider is the realistic way to own one. Most riders' values change only moderately, but top riders and young talents can move a lot."
+        },
+        "da": {
+          "title": "Rytterværdier afspejler nu hvad ryttere faktisk præsterer",
+          "body": "Rytternes markedsværdier styres nu af en ny værdimodel. En rytters værdi er den produktion han forventes at levere resten af karrieren, målt ved at simulere spillets egen sæsonkalender: præmiepenge, løbsprogram og hvordan hans evner udvikler sig og falder med alderen. Unge talenter er mere værd på grund af sæsonerne foran dem, veteraner prissættes på det de har tilbage, og spillets allerbedste ryttere har nu stjernepriser langt over ethvert holds budget. At udvikle en elite-rytter selv er den realistiske vej til at eje en. De fleste rytteres værdier ændrer sig kun moderat, men topryttere og unge talenter kan flytte sig meget."
+        },
+        "refs": [2594, 2428]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "New salary system: pay for what a rider delivers now",
+          "body": "Salaries are no longer a fixed percentage of a rider's market value. A rider's salary is now based on what he is expected to produce this season, so a young talent with a bright future is cheap to keep on the payroll, while an established star earns a wage that matches his output. Salaries are still frozen when you sign a rider and only change at contract extension. Existing contracts keep their current salary, so nothing changes for riders you already own until you extend them."
+        },
+        "da": {
+          "title": "Nyt lønsystem: betal for det rytteren leverer nu",
+          "body": "Lønninger er ikke længere en fast procent af rytterens markedsværdi. En rytters løn baseres nu på hvad han forventes at producere denne sæson, så et ungt talent med en lys fremtid er billigt at have på lønningslisten, mens en etableret stjerne får en løn der matcher hans niveau. Lønnen fryses stadig når du signer en rytter og ændres kun ved kontraktforlængelse. Eksisterende kontrakter beholder deres nuværende løn, så intet ændrer sig for ryttere du allerede ejer, før du forlænger dem."
+        },
+        "refs": [2594, 2433]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Prize earnings no longer double-count in market value",
+          "body": "Previously, a rider's accumulated prize bonus was added on top of his market value. The new valuation model already prices in expected prize production, so the separate bonus was counting the same thing twice. Market value is now the model value alone. Prize statistics are still tracked and shown on the rider profile."
+        },
+        "da": {
+          "title": "Præmiepenge dobbelttæller ikke længere i markedsværdien",
+          "body": "Tidligere blev en rytters opsamlede præmiebonus lagt oven i hans markedsværdi. Den nye værdimodel prissætter allerede forventet præmieproduktion, så den separate bonus talte det samme to gange. Markedsværdien er nu modellens værdi alene. Præmiestatistik registreres og vises stadig på rytterprofilen."
+        },
+        "refs": [2594]
+      }
+    ]
+  },
+  {
     "version": "7.25",
     "date": "2026-07-18",
     "label": "Beta",

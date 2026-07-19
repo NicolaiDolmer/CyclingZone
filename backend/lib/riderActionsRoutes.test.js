@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 
 import { computeReleaseBuyoutFee, computeContractExtension } from "./contractSeed.js";
 
-// #1719 (fyrings-/opsigelsesknap med buyout-gebyr) + #1720 (kontraktforlængelse).
-// To nye rytter-handlinger på api.js der deler frontend-modal:
-//   POST /api/riders/:id/release          — fyr senior-rytter (buyout-gebyr)
-//   POST /api/riders/:id/extend-contract  — forlæng + genforhandl løn
+// #1719 (fyrings-/opsigelsesknap med buyout-gebyr) + #1720 (kontraktforlængelse)
+// + #2179 (kontraktforlængelse direkte på akademi-ryttere, ingen op-/nedrykning).
+// Rytter-handlinger på api.js der deler frontend-modal:
+//   POST /api/riders/:id/release          — fyr senior-rytter (buyout-gebyr; akademi afvist, egen flow)
+//   POST /api/riders/:id/extend-contract  — forlæng + genforhandl løn (senior OG akademi)
 //   GET  /api/riders/:id/release-quote     — preview af gebyr (frontend-bekræftelse)
 //   GET  /api/riders/:id/extend-quote      — preview af ny løn (frontend-bekræftelse)
 //
@@ -52,9 +53,10 @@ test("GET /riders/:id/extend-quote findes med requireAuth", () => {
   assert.match(block, /requireAuth/, "extend-quote skal bruge requireAuth");
 });
 
-// ── Invariant 2: den delte guard-helper håndhæver ejer/retired/akademi ───────
-// Begge routes deler guarden via loadOwnedSeniorRiderForAction(req, id) (DRY):
-// helperen er stedet hvor owner/retired/akademi-tjekkene bor.
+// ── Invariant 2: guard-helperne håndhæver de rigtige ejer/retired/akademi-regler ──
+// #2179 splittede den tidligere fælles guard i to: release beholder
+// akademi-eksklusionen (egen flow), extend gør ikke (op-/nedrykning er ikke
+// længere nødvendig for at forlænge).
 
 function helperBlock(name) {
   const marker = `async function ${name}(`;
@@ -64,14 +66,21 @@ function helperBlock(name) {
   return apiSource.slice(start, end === -1 ? start + 1500 : end);
 }
 
-test("loadOwnedSeniorRiderForAction guarder owner, retired og akademi", () => {
+test("loadOwnedSeniorRiderForAction guarder owner, retired og akademi (release-flow)", () => {
   const block = helperBlock("loadOwnedSeniorRiderForAction");
   // Owner-check: rytteren skal tilhøre req.team
   assert.match(block, /rider\.team_id !== req\.team\.id/, "guard skal owner-check'e team_id === req.team.id");
   // Retired-check
   assert.match(block, /is_retired/, "guard skal afvise pensionerede ryttere");
-  // Akademi-check (akademi har egen flow)
+  // Akademi-check (akademi har egen release-flow)
   assert.match(block, /is_academy/, "guard skal afvise akademi-ryttere (egen flow)");
+});
+
+test("loadOwnedRiderForExtension guarder owner + retired, men IKKE akademi (#2179)", () => {
+  const block = helperBlock("loadOwnedRiderForExtension");
+  assert.match(block, /rider\.team_id !== req\.team\.id/, "guard skal owner-check'e team_id === req.team.id");
+  assert.match(block, /is_retired/, "guard skal afvise pensionerede ryttere");
+  assert.doesNotMatch(block, /is_academy/, "extend-guarden må IKKE afvise akademi-ryttere");
 });
 
 test("release-routen kalder den delte owner/retired/akademi-guard", () => {
@@ -93,10 +102,15 @@ test("release-routen beregner gebyret via computeReleaseBuyoutFee + blokerer ved
 
 // ── Invariant 3: extend-routen guarder owner/retired + genberegner løn ──────
 
-test("extend-routen kalder den delte guard + bruger computeContractExtension", () => {
+test("extend-routen kalder extension-guarden (akademi tilladt) + bruger computeContractExtension", () => {
   const block = routeBlock("post", "/riders/:id/extend-contract");
-  assert.match(block, /loadOwnedSeniorRiderForAction/, "extend skal bruge den delte owner/retired/akademi-guard");
+  assert.match(block, /loadOwnedRiderForExtension/, "extend skal bruge #2179-guarden der IKKE afviser akademi-ryttere");
   assert.match(block, /computeContractExtension/, "extend skal bruge computeContractExtension-helperen");
+});
+
+test("extend-quote-routen kalder samme extension-guard som extend-contract", () => {
+  const block = routeBlock("get", "/riders/:id/extend-quote");
+  assert.match(block, /loadOwnedRiderForExtension/, "extend-quote skal bruge samme #2179-guard som POST-routen");
 });
 
 // ── Invariant 4: behaviour — genskab guard-prædikaterne ─────────────────────
@@ -114,13 +128,16 @@ test("release blokeres når balance < gebyr, tillades ellers", () => {
 });
 
 test("extend producerer en højere udløbssæson + frisk løn fra værdi", () => {
+  // #2594: lønnen kommer nu fra current_production_value × req.team.division-sats
+  // (ikke længere market_value × 0.067).
   const next = computeContractExtension({
-    market_value: 500_000,
+    current_production_value: 500_000,
+    division: 3,
     contract_end_season: 3,
     contract_length: 1,
     currentSeason: 2,
   });
   assert.equal(next.contract_end_season, 4); // 3 + 1
   assert.equal(next.contract_length, 2);
-  assert.equal(next.salary, 33_500); // 6.7% af 500_000
+  assert.equal(next.salary, 74_050); // 500_000 × 0.1481 (division 3)
 });

@@ -1061,7 +1061,7 @@ test("#1309: auto-køb af kontraktløs free agent sætter kontrakt (salary, cont
       {
         id: "fa1", firstname: "Free", lastname: "Agent", team_id: null,
         market_value: 20_000, ai_team_id: null,
-        salary: null, base_value: 5000, prize_earnings_bonus: 200,
+        salary: null, current_production_value: 10_000,
       },
     ],
     seasons: [{ id: "season-1", number: 3, status: "active" }],
@@ -1090,9 +1090,9 @@ test("#1309: auto-køb af kontraktløs free agent sætter kontrakt (salary, cont
   // Kontrakt-invarianten: salary != null efter auto-køb
   assert.ok(fa1.salary != null, "salary må ikke være null efter auto-køb");
 
-  // computeFrozenSalary({ base_value: 5000, prize_earnings_bonus: 200 })
-  // = Math.max(1, Math.round((5000 + 200) * 0.067)) = Math.max(1, 348) = 348
-  assert.equal(fa1.salary, 348, "salary = computeFrozenSalary(base_value=5000, prize_earnings_bonus=200)");
+  // computeFrozenSalary({ current_production_value: 10_000, division: 3 })
+  // = Math.max(1, Math.round(10_000 * 0.1481)) = 1_481 (t1 er division 3)
+  assert.equal(fa1.salary, 1_481, "salary = computeFrozenSalary(cpv=10_000, division=3)");
   assert.equal(fa1.contract_length, 2, "DEFAULT_ACQUIRE_LENGTH = 2");
   // contract_end_season = startSeason + length - 1 = 3 + 2 - 1 = 4
   assert.equal(fa1.contract_end_season, 4, "contract_end_season = activeSeasonNumber(3) + length(2) - 1 = 4");

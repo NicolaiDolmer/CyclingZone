@@ -217,7 +217,7 @@ Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-
 ### Hvornår SKAL du IKKE bruge ship-keyword
 
 - **Større refaktoreringer** der påvirker delt runtime — kør CI lokalt først eller manuel review
-- **Migrations** der ændrer DB-skema — verificer migration-ordre og rollback-plan først
+- **Migrations** der ændrer DB-skema — verificer migration-ordre og rollback-plan først. Post-merge applier Claude selv SQL under #2642-rammerne (merged+idempotent → apply → read-only-verify; destruktive klasser fortsat ejer-gated) — fuld tekst i `AGENTS.md` hard rule 9
 - **Kontrakt-ændringer** mellem frontend/backend — skal koordineres
 - **Nat / autonome opgaver** når du sover — eksisterende manuel-merge-pattern fra `feedback_24_7_automation` er bevidst safety-net
 

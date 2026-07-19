@@ -36,6 +36,15 @@
 --   is_admin / is_beta_tester → REVOKE anon (boolean-checks; frontend kalder authenticated)
 --   get_sprint_metrics     → ingen ændring (allerede ikke anon; behold authenticated)
 --
+-- ADDENDUM 2026-07-18: anon-revoken på is_admin + is_offered_intake_rider har en
+-- SIDEEFFEKT denne migration ikke nævnte: begge funktioner kaldes også fra
+-- riders-SELECT-policyen "Public read riders" (2026-06-22-hide-intake-riders-from-db.sql),
+-- så ALLE anon-læsninger af riders fejler nu med 42501 "permission denied for
+-- function is_admin". Audit 18/7 bekræftede at INGEN pre-login-flade læser riders
+-- (alt bag ProtectedRoute; backend = service_role) → accepteret som bevidst
+-- fail-closed, ingen re-grant. Fuldt ræsonnement + re-grant-opskrift hvis anon-
+-- læsning engang ønskes: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md
+--
 -- BEVIDST IKKE GJORT:
 -- Intern `service_role`-guard i apply_stage_result (defense-in-depth mod restore-
 -- regrant) er udeladt her: den afhænger af PostgREST-rolle-detektion og kan IKKE

@@ -1,5 +1,4 @@
 import {
-  calculateRiderMarketValue,
   closeTransferListingsForRiders,
   ensureNoError,
   expectMaybeSingle,
@@ -12,7 +11,7 @@ import {
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
-import { contractOnAcquirePatch } from "./contractSeed.js";
+import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import {
@@ -254,8 +253,13 @@ async function finalizeYouthAuctionRecord({
 
   // Placér i akademiet med ungdomskontrakt (samme løn-/kontrakt-model som
   // signAcademyCandidate; akademiryttere bypasser senior-cap + transfervindue).
-  const value = Math.max(1, calculateRiderMarketValue(rider));
-  const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
+  // #2594: løn = current_production_value × per-division-sats (vinderens division).
+  const { data: bidderTeam } = await supabase
+    .from("teams").select("id, division").eq("id", bidderId).maybeSingle();
+  const salary = computeFrozenSalary({
+    current_production_value: rider.current_production_value,
+    division: bidderTeam?.division,
+  });
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
 
   // #1558: cap-check (8-plads, hård) + balance-check + rider-update + debit sker
@@ -644,7 +648,7 @@ async function finalizeAuctionRecord({
     // Skrives både ved åbent vindue (team_id nu) og lukket vindue (pending_team_id),
     // fordi den generiske pending-flush ved vindue-åbning kun flytter team_id og
     // IKKE rører kontraktfelterne.
-    const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber);
+    const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: buyer.division });
     // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
     // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
     const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
@@ -835,7 +839,7 @@ async function finalizeAuctionRecord({
     ? await expectMaybeSingle(
         supabase
           .from("teams")
-          .select("id, balance")
+          .select("id, balance, division")
           .eq("is_bank", true)
       )
     : null;
@@ -854,7 +858,7 @@ async function finalizeAuctionRecord({
           team_id: bankTeam.id,
           pending_team_id: null,
           acquired_at: actualEnd,
-          ...contractOnAcquirePatch(auction.rider, activeSeasonNumber),
+          ...contractOnAcquirePatch(auction.rider, activeSeasonNumber, { division: bankTeam.division }),
         })
         .eq("id", auction.rider.id)
     );

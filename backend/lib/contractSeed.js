@@ -7,23 +7,29 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { SALARY_RATE } from "./economyConstants.js";
+import { SALARY_RATE, salaryRateForDivision } from "./economyConstants.js";
 
 export const CONTRACT = Object.freeze({
   FOUNDER_LENGTH: 2,          // founder-hold: stabil trup i 2 sæsoner
   DEFAULT_ACQUIRE_LENGTH: 2,  // auto-kontrakt ved erhvervelse (create-if-missing)
   MIN_LENGTH: 1,
   MAX_LENGTH: 3,
-  SALARY_RATE,                // E2 strict_fair_v1: 0.067 (delt SSOT i economyConstants)
+  SALARY_RATE,                // GAMMEL market_value-kobling (0.067) — kun reference/legacy
   BASE_VALUE_FALLBACK: 1000,  // spejler RIDER_BASE_VALUE_FALLBACK
 });
 
-// Frossen løn (#1309): GREATEST(1, ROUND((COALESCE(base_value,1000)+prize_earnings_bonus)*SALARY_RATE)).
-// SALARY_RATE = 0.067 efter E2-retunen (var 0.10 = den gamle generated-formel).
-export function computeFrozenSalary({ base_value, prize_earnings_bonus } = {}) {
-  const base = Number(base_value) > 0 ? Number(base_value) : CONTRACT.BASE_VALUE_FALLBACK;
-  const mv = base + (Number(prize_earnings_bonus) || 0);
-  return Math.max(1, Math.round(mv * CONTRACT.SALARY_RATE));
+// Frossen løn (#1309 + #2594 løn-decoupling): løn prissætter NUTIDEN —
+//   GREATEST(1, ROUND(COALESCE(current_production_value, 1000) × SALARY_RATE_PROD[division])).
+// current_production_value = forventet produktion i indeværende sæson (sæson-0-leddet
+// af v4-karriere-NPV'en, riderCareerNpv.currentProductionValue) — IKKE market_value,
+// som prissætter hele den fremtidige karriere og derfor sprængte unge talenters løn
+// (5,56M-talent → 373k løn > sponsor 240k). Division styrer satsen (ejer-valg 14/7);
+// mangler division (fx free agents) bruges den globale sats.
+export function computeFrozenSalary({ current_production_value, division } = {}) {
+  const base = Number(current_production_value) > 0
+    ? Number(current_production_value)
+    : CONTRACT.BASE_VALUE_FALLBACK;
+  return Math.max(1, Math.round(base * salaryRateForDivision(division)));
 }
 
 // ~1/3 hver af 1,2,3. rng = makeRng(seed) fra fictionalRiderGenerator.
@@ -43,11 +49,13 @@ export function computeContractEndSeason(startSeasonNumber, length) {
 // currentSeasonNumber = aktiv sæson-number (default-håndteres af kalderen).
 // NB: undefined salary behandles som kontraktløs (== null loose) — det er det
 // ønskede for free agents der aldrig har haft en kontrakt.
-export function contractOnAcquirePatch(rider, currentSeasonNumber) {
+// #2594: `division` = det ERHVERVENDE holds division (styrer løn-satsen). Udeladt
+// division → global sats (bevidst konservativt fallback, ikke en fejl).
+export function contractOnAcquirePatch(rider, currentSeasonNumber, { division } = {}) {
   if (rider && rider.salary != null) return {};
   const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
   return {
-    salary: computeFrozenSalary(rider),
+    salary: computeFrozenSalary({ ...rider, division }),
     contract_length: length,
     contract_end_season: computeContractEndSeason(currentSeasonNumber, length),
   };
@@ -73,28 +81,22 @@ export function computeReleaseBuyoutFee({ salary, contractEndSeason, currentSeas
 }
 
 // #1720 kontraktforlængelse: forlæng kontrakten 1 sæson og genforhandl lønnen
-// fra rytterens AKTUELLE markedsværdi (samme SALARY_RATE-formel som signering,
-// så lønnen følger rytterens nuværende værdi i stedet for den gamle frosne).
-// Returnerer et patch {salary, contract_length, contract_end_season}.
+// fra rytterens AKTUELLE produktion (#2594: samme current_production_value-formel
+// som signering, så lønnen re-prises mod det rytteren leverer NU — ikke mod
+// market_value, som er en fremtids-pris). Returnerer et patch
+// {salary, contract_length, contract_end_season}.
 //
 // Den nye udløbssæson forankres i max(eksisterende end, currentSeason) + 1, så
 // en udløbet eller kontraktløs (NULL end) rytter altid forlænges til en sæson i
 // fremtiden — ikke til en fortidens sæson. contract_length +1 (eller 1 hvis NULL).
 export function computeContractExtension({
-  market_value,
-  base_value,
-  prize_earnings_bonus,
+  current_production_value,
+  division,
   contract_end_season,
   contract_length,
   currentSeason = 1,
 } = {}) {
-  // Genberegn lønnen fra market_value hvis sat; ellers fra base_value+prize
-  // (samme kilde som computeFrozenSalary / calculateRiderMarketValue).
-  const mv = Number(market_value);
-  const salaryBase = Number.isFinite(mv)
-    ? { base_value: mv, prize_earnings_bonus: 0 }
-    : { base_value, prize_earnings_bonus };
-  const salary = computeFrozenSalary(salaryBase);
+  const salary = computeFrozenSalary({ current_production_value, division });
 
   const current = Number(currentSeason) || 1;
   const end = Number(contract_end_season);
@@ -143,9 +145,13 @@ export async function runContractSeed(supabase, {
 
   const owned = await fetchAllRows(() =>
     supabase.from("riders")
-      .select("id, team_id, base_value, prize_earnings_bonus")
+      .select("id, team_id, current_production_value")
       .not("team_id", "is", null)
       .order("id"));
+
+  // #2594: løn-satsen er per-division — slå ejerholdets division op.
+  const teams = await fetchAllRows(() => supabase.from("teams").select("id, division").order("id"));
+  const divisionByTeam = new Map(teams.map((t) => [t.id, t.division]));
 
   const rng = makeRng(seed);
   const patches = owned.map((r) => {
@@ -153,7 +159,7 @@ export async function runContractSeed(supabase, {
     return {
       id: r.id,
       patch: {
-        salary: computeFrozenSalary(r),
+        salary: computeFrozenSalary({ ...r, division: divisionByTeam.get(r.team_id) }),
         contract_length: length,
         contract_end_season: computeContractEndSeason(startSeason, length),
       },

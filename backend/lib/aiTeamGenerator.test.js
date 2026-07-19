@@ -59,6 +59,14 @@ function makeSupabase(initial = {}) {
       limit(n) {
         return Promise.resolve({ data: rows().filter(matches).slice(0, n), error: null });
       },
+      // #2594: backfillCores.activeSeasonNumber slår aktiv sæson op via
+      // .select("number").eq("status","active").maybeSingle() (deriveForRiderIds
+      // kaldes nu inde fra defaultAllocateSquadForTeam). Ingen seeded "seasons"-
+      // række i denne mock → fallback til sæson 1 (samme som andre __testables-tests).
+      maybeSingle() {
+        const match = rows().filter(matches)[0] ?? null;
+        return Promise.resolve({ data: match, error: null });
+      },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];
         const inserted = arr.map((r) => ({ id: `${table}-${idSeq++}`, ...r }));

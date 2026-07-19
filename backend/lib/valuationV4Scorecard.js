@@ -17,6 +17,7 @@
 // anker-sanity) rapporteres men fejler ALDRIG kørslen.
 
 import { ACADEMY } from "./academyFlag.js";
+import { SALARY_RATE_PROD } from "./economyConstants.js";
 import { percentile } from "./valuationScorecard.js";
 import { buildCaps } from "./riderProgression.js";
 // #2428: fremskrivnings-skridtet deles med predictBaseValueV4 (riderCareerNpv.js) —
@@ -166,25 +167,40 @@ export function eliteUnbuyableGate(riders = [], { ceiling, eliteOverall = ELITE_
 //       værdi mod en NUTIDIG, så en top-prospect fejler altid; det er hele pointen
 //       med at udvikle talent at det overgår nuværende ryttere). Den korrekte test:
 //       udvikl-og-sælg må ikke give et så højt garanteret afkast at det bliver den
-//       dominerende strategi. ROI ≤ maxRoi (default 50% over hele vinduet) = sundt
-//       incitament til ungdom uden at dominere. Ejer-tunbar.
-export const MAX_DEVELOP_SELL_ROI = 0.5;
+//       dominerende strategi. ROI ≤ maxRoi = sundt incitament uden dominans.
+//       Ejer-beslutning A (#2591, 18/7): udvikl-og-sælg OMFAVNES som endgame-
+//       strategi — eliten er ukøbelig i v4, så udvikling er den eneste vej til en
+//       superstjerne, og indgangsbilletten (top-talent ~4,5M) er i sig selv
+//       forbeholdt rige hold. Målt ved cutover 18/7 med den ÆGTE nye løn-cost
+//       (cpv-baseret, jf. #2433): ROI 232% over 4 sæsoner — løn-decouplingen
+//       sænkede talent-lønnen og løftede dermed ROI over de ~200% der stod i
+//       #2591-rammen. Loft sat til 250% (målt + buffer, flagget i cutover-PR'en);
+//       re-tuning forventes når v4 har været live og ægte markedsadfærd kan måles.
+export const MAX_DEVELOP_SELL_ROI = 2.5;
 
-export function developAndSellPnl({ bvStart, bvAtHorizon, seasons, academy = ACADEMY } = {}) {
+// #2594 løn-decoupling: løn er nu current_production_value × prod-sats (frossen ved
+// signering), IKKE en procent af værdien. Gaten skal måle den ÆGTE cost — med den
+// gamle værdi-koblede løn overvurderede den talent-lønnen massivt (unge talenter
+// har høj værdi men lav produktion). cpvStart medgives af scorecardet; udelades den
+// (ældre tests/harnesses) falder cost-modellen tilbage til den gamle værdi-kobling.
+export function developAndSellPnl({ bvStart, cpvStart, bvAtHorizon, seasons, academy = ACADEMY } = {}) {
   if (![bvStart, bvAtHorizon, seasons].every(finite)) return null;
-  const salaryPerSeason = academy.SALARY_RATE * bvStart;
+  const salaryPerSeason = finite(cpvStart)
+    ? Math.max(1, Math.round(cpvStart * SALARY_RATE_PROD.global))
+    : academy.SALARY_RATE * bvStart;
   const cost = academy.SIGNING_FEE_RATE * bvStart + seasons * (academy.DRIFT_PER_SEASON + salaryPerSeason);
   return { pnl: bvAtHorizon - bvStart - cost, cost };
 }
 
 export function developAndSellGate({
   bvStart,
+  cpvStart,
   bvAtHorizon,
   seasons,
   maxRoi = MAX_DEVELOP_SELL_ROI,
   academy = ACADEMY,
 } = {}) {
-  const calc = developAndSellPnl({ bvStart, bvAtHorizon, seasons, academy });
+  const calc = developAndSellPnl({ bvStart, cpvStart, bvAtHorizon, seasons, academy });
   const netPositive = calc != null && calc.pnl > 0;
   const invested = calc != null ? bvStart + calc.cost : null;
   const roi = calc != null && invested > 0 ? calc.pnl / invested : null;

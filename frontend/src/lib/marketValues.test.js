@@ -66,27 +66,29 @@ test("getRiderSalary — frossen salary vinder over estimat", () => {
   assert.equal(getRiderSalary({ salary: 12345, base_value: 1000000 }), 12345);
 });
 
-test("getRiderSalary — NULL salary → 6.7% af market_value", () => {
-  assert.equal(getRiderSalary({ salary: null, market_value: 500000 }), 33500);
-  assert.equal(getRiderSalary({ salary: null, base_value: 50000, prize_earnings_bonus: 5000 }), 3685);
+// #2594: NULL-salary-estimat = current_production_value × global prod-sats (0.1606) —
+// ikke længere market_value × 0.067 (løn prissætter nutiden, ikke fremtiden).
+test("getRiderSalary — NULL salary → current_production_value × global prod-sats", () => {
+  assert.equal(getRiderSalary({ salary: null, current_production_value: 500000 }), 80300);
+  assert.equal(getRiderSalary({ salary: null, current_production_value: 50000 }), 8030);
 });
 
 test("getRiderSalary — salary 0 bevares (gratis kontrakt)", () => {
   assert.equal(getRiderSalary({ salary: 0, base_value: 1000000 }), 0);
 });
 
-test("getRiderSalary — NULL salary + NULL base_value → fallback 1000 → 67", () => {
-  assert.equal(getRiderSalary({ salary: null, base_value: null }), 67);
-  assert.equal(getRiderSalary({}), 67);
+test("getRiderSalary — NULL salary + NULL current_production_value → fallback 1000 → 161", () => {
+  assert.equal(getRiderSalary({ salary: null, current_production_value: null }), 161);
+  assert.equal(getRiderSalary({}), 161);
 });
 
-// #1827: løn-grænse → market_value-grænse (invers af SALARY_RATE 0.067) til
-// estimat-grenen i server-filteret. Holder filteret konsistent med getRiderSalary
-// for de ~785 free agents (i prod 25/6) der har salary == NULL.
-test("salaryBoundToValueBound — invers af SALARY_RATE", () => {
-  // round(5000 / 0.067) = round(74626.86) = 74627 (matcher prod-validering #1827)
-  assert.equal(salaryBoundToValueBound(5000), 74627);
-  assert.equal(salaryBoundToValueBound("5000"), 74627);
+// #1827/#2594: løn-grænse → current_production_value-grænse (invers af den globale
+// prod-sats 0.1606) til estimat-grenen i server-filteret. Holder filteret konsistent
+// med getRiderSalary for de free agents der har salary == NULL.
+test("salaryBoundToValueBound — invers af SALARY_RATE_PROD.global", () => {
+  // round(5000 / 0.1606) = round(31133.25) = 31133
+  assert.equal(salaryBoundToValueBound(5000), 31133);
+  assert.equal(salaryBoundToValueBound("5000"), 31133);
   assert.equal(salaryBoundToValueBound(0), 0);
 });
 
@@ -156,15 +158,15 @@ test("computeBidValueDelta — bud 0 (ingen bud endnu) giver stadig delta", () =
   );
 });
 
-// En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når market_value
-// ≤ value-bound — round-trip-konsistens mellem filter og visning.
+// En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når
+// current_production_value ≤ value-bound — round-trip-konsistens mellem filter og visning.
 test("salaryBoundToValueBound — round-trip mod getRiderSalary", () => {
   const maxSalary = 5000;
-  const valueBound = salaryBoundToValueBound(maxSalary); // 74627
+  const valueBound = salaryBoundToValueBound(maxSalary); // 31133
   // En free agent lige under value-grænsen har en vist løn ≤ max (med afrunding).
-  const riderAtBound = { salary: null, market_value: valueBound };
+  const riderAtBound = { salary: null, current_production_value: valueBound };
   assert.ok(getRiderSalary(riderAtBound) <= maxSalary + 1);
   // En free agent over value-grænsen har en vist løn > max.
-  const riderAbove = { salary: null, market_value: valueBound + 20000 };
+  const riderAbove = { salary: null, current_production_value: valueBound + 20000 };
   assert.ok(getRiderSalary(riderAbove) > maxSalary);
 });

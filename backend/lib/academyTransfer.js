@@ -20,15 +20,12 @@ import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 
 /**
- * Demote-løn = ACADEMY.SALARY_RATE × base_value, gulvet på 1 (ejer-beslutning D5:
- * ignorér prize-bonus, gen-beregn ned fra base_value). #2083: ACADEMY.SALARY_RATE
- * er nu den delte senior-rate (0.067) — ét fælles løn-system, ikke længere en
- * separat ungdomssats. Adskiller sig fra computeFrozenSalary kun ved at bruge rent
- * base_value (uden prize-bonus).
+ * Demote-løn (#2594): samme delte formel som al anden løn —
+ * current_production_value × SALARY_RATE_PROD[division] (computeFrozenSalary).
+ * Ét fælles løn-system (#2083-princippet), nu på produktions-basen.
  */
-export function demoteSalary({ base_value } = {}) {
-  const base = Number(base_value) > 0 ? Number(base_value) : 0;
-  return Math.max(1, Math.round(base * ACADEMY.SALARY_RATE));
+export function demoteSalary({ current_production_value, division } = {}) {
+  return computeFrozenSalary({ current_production_value, division });
 }
 
 /**
@@ -52,7 +49,7 @@ export async function promote(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, prize_earnings_bonus, salary")
+    .select("id, team_id, firstname, lastname, is_academy, base_value, prize_earnings_bonus, current_production_value, salary")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
   if (rider.team_id !== teamId) throw new Error("not_owned");
@@ -64,7 +61,7 @@ export async function promote(supabase, {
   const future = state?.future_count ?? state?.rider_count ?? 0;
   if (future + 1 > cap) throw new Error("squad_cap_violation");
 
-  const salary = computeFrozenSalary(rider);
+  const salary = computeFrozenSalary({ ...rider, division: state?.division });
   const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
   const { error } = await supabase.from("riders").update({
     is_academy: false,
@@ -125,11 +122,13 @@ export async function demote(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: rider } = await supabase.from("riders")
-    .select("id, team_id, firstname, lastname, is_academy, base_value, birthdate")
+    .select("id, team_id, firstname, lastname, is_academy, base_value, current_production_value, birthdate")
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
-  const newSalary = demoteSalary(rider);
+  const { data: demoteTeam } = await supabase
+    .from("teams").select("id, division").eq("id", teamId).maybeSingle();
+  const newSalary = demoteSalary({ ...rider, division: demoteTeam?.division });
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
   const contractLength = ACADEMY.CONTRACT_LENGTH;
   const contractEnd = computeContractEndSeason(seasonNumber, contractLength);

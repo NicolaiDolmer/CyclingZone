@@ -844,20 +844,31 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
 
   // #1162: den sande potentiale forlader aldrig serveren for ikke-admins —
   // klienter får KUN det viewer-maskerede estimat via POST /scouting/estimates.
+  // (#2594: potentiale fanges FØR maskeringen — v4-previewet beregnes server-side
+  // med den sande potentiale, men kun det færdige TAL forlader serveren.)
+  const riderPotentiale = data.potentiale;
   if (!viewerIsAdmin) delete data.potentiale;
 
-  // #1101 SHADOW: vedhæft den data-drevne base_value som PREVIEW (beta-chip).
-  // Beregnes live fra modellen — styrer endnu intet i økonomien. null hvis model
-  // mangler eller rytter ingen abilities har.
-  if (VALUATION_MODEL) {
+  // #1101/#2594: vedhæft den live-beregnede v4 base_value som PREVIEW (beta-chip).
+  // null hvis model mangler eller rytter ingen abilities/alder har.
+  if (VALUATION_MODEL_V4) {
     const { data: ab } = await supabase
       .from("rider_derived_abilities")
       .select("*")
       .eq("rider_id", data.id)
       .maybeSingle();
-    data.base_value_preview = predictBaseValue(data, ab, VALUATION_MODEL, {
-      asOf: VALUATION_MODEL.fitted_at,
-    });
+    const seasonNumber = await getActiveSeasonNumber();
+    try {
+      data.base_value_preview = predictBaseValue(
+        { ...data, potentiale: riderPotentiale, age: ageForSeason(data.birthdate, seasonNumber) },
+        ab,
+        VALUATION_MODEL_V4,
+        { asOf: VALUATION_MODEL_V4.fitted_at }
+      );
+    } catch (err) {
+      captureException(err);
+      data.base_value_preview = null;
+    }
   }
 
   res.json(data);
@@ -999,21 +1010,23 @@ router.get("/riders/:id/development", requireAuth, async (req, res) => {
 router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }] = await Promise.all([
-      supabase.from("riders").select("base_value").eq("id", id).maybeSingle(),
+    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, seasonNumber] = await Promise.all([
+      supabase.from("riders").select("base_value, birthdate, potentiale").eq("id", id).maybeSingle(),
       supabase.from("rider_derived_ability_history")
         .select("snapshot_date, abilities")
         .eq("rider_id", id)
         .order("snapshot_date", { ascending: true }),
+      getActiveSeasonNumber(),
     ]);
     if (riderErr) throw new Error(riderErr.message);
     if (histErr) throw new Error(histErr.message);
     if (!riderRow) return res.status(404).json({ error: "rider not found" });
     const windows = computeRiderValueTrend({
       currentBaseValue: riderRow.base_value,
+      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber) },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
-      model: VALUATION_MODEL,
+      model: VALUATION_MODEL_V4,
     });
     res.json({ windows });
   } catch (err) {
@@ -1031,12 +1044,13 @@ router.post("/riders/value-trend", requireAuth, async (req, res) => {
       ? [...new Set(req.body.ids.filter((v) => typeof v === "string" && v))].slice(0, 200)
       : [];
     if (ids.length === 0) return res.json({});
-    const [{ data: riders, error: ridersErr }, { data: history, error: histErr }] = await Promise.all([
-      supabase.from("riders").select("id, base_value").in("id", ids),
+    const [{ data: riders, error: ridersErr }, { data: history, error: histErr }, seasonNumber] = await Promise.all([
+      supabase.from("riders").select("id, base_value, birthdate, potentiale").in("id", ids),
       supabase.from("rider_derived_ability_history")
         .select("rider_id, snapshot_date, abilities")
         .in("rider_id", ids)
         .order("snapshot_date", { ascending: true }),
+      getActiveSeasonNumber(),
     ]);
     if (ridersErr) throw new Error(ridersErr.message);
     if (histErr) throw new Error(histErr.message);
@@ -1046,9 +1060,10 @@ router.post("/riders/value-trend", requireAuth, async (req, res) => {
       result[r.id] = {
         windows: computeRiderValueTrend({
           currentBaseValue: r.base_value,
+          rider: { potentiale: r.potentiale, age: ageForSeason(r.birthdate, seasonNumber) },
           snapshotsAsc: snapshotsByRider.get(r.id) || [],
           baseline: RIDER_TYPES_BASELINE,
-          model: VALUATION_MODEL,
+          model: VALUATION_MODEL_V4,
         }),
       };
     }
@@ -1110,17 +1125,21 @@ router.get("/physiology/division-benchmark", requireAuth, cached({ namespace: "p
 // RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-// To manager-handlinger på en ejet senior-rytter. Begge deler RiderActionModal
-// på frontend (Min trup). De følger samme guard-mønster som POST /transfers og
-// POST /auctions: requireAuth + marketWriteLimiter + owner-check + retired-check.
-// Akademiryttere har deres EGEN release-flow (academyGraduation.js) og afvises her.
+// Manager-handlinger på en ejet rytter. Deler RiderActionModal / RiderManageActions
+// på frontend (Min trup + rytter-profilen). De følger samme guard-mønster som
+// POST /transfers og POST /auctions: requireAuth + marketWriteLimiter + owner-check
+// + retired-check. Akademiryttere har deres EGEN release-flow (academyGraduation.js)
+// og afvises af release-guarden — men #2179: kontraktforlængelse kræver IKKE
+// op-/nedrykning længere, så extend-quote/extend-contract bruger en separat guard
+// der IKKE ekskluderer akademi-ryttere.
 
 // Delt guard: hent en ejet, ikke-pensioneret SENIOR-rytter (ikke-akademi).
+// Bruges af release/release-quote — akademi har sit eget release-flow.
 // Returnerer { rider } ved succes, eller { error: { status, body } } ved guard-fejl.
 async function loadOwnedSeniorRiderForAction(req, riderId) {
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, contract_length, contract_end_season")
+    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season")
     .eq("id", riderId)
     .single();
   if (!rider || rider.team_id !== req.team.id) {
@@ -1131,6 +1150,27 @@ async function loadOwnedSeniorRiderForAction(req, riderId) {
   }
   if (rider.is_academy) {
     return { error: { status: 400, body: { error: "Academy riders use the academy release flow", errorCode: "rider_is_academy" } } };
+  }
+  return { rider };
+}
+
+// #2179: delt guard til kontrakt-FORLÆNGELSE — samme owner/retired-check som
+// loadOwnedSeniorRiderForAction, men UDEN akademi-eksklusionen. Akademi-ryttere
+// har allerede salary/contract_length/contract_end_season sat ved signing
+// (academyIntake.js), og computeContractExtension() er købt-blind for is_academy —
+// den genberegner udelukkende ud fra market_value/base_value/contract-felterne.
+async function loadOwnedRiderForExtension(req, riderId) {
+  const { data: rider } = await supabase
+    .from("riders")
+    // #2594: current_production_value er løn-basen for genforhandlingen.
+    .select("id, firstname, lastname, team_id, is_retired, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season")
+    .eq("id", riderId)
+    .single();
+  if (!rider || rider.team_id !== req.team.id) {
+    return { error: { status: 403, body: { error: "You don't own this rider", errorCode: "rider_not_owned" } } };
+  }
+  if (rider.is_retired) {
+    return { error: { status: 409, body: { error: "This rider has retired", errorCode: "rider_retired" } } };
   }
   return { rider };
 }
@@ -1156,14 +1196,15 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
 });
 
-// GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson (#1720).
+// GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson
+// (#1720; #2179 akademi-ryttere tilladt uden op-/nedrykning).
 router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason });
+  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
   res.json({
     currentSalary: rider.salary ?? 0,
     newSalary: next.salary,
@@ -1256,14 +1297,15 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
 // POST /api/riders/:id/extend-contract — forlæng kontrakten 1 sæson og genforhandl
 // lønnen fra rytterens aktuelle markedsværdi (#1720). Ingen pengebevægelse — kun
 // kontraktfelterne opdateres. Returnerer den nye løn så frontend kan vise den.
+// #2179: virker nu også direkte på akademi-ryttere — ingen op-/nedrykning krævet.
 router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  const result = await loadOwnedRiderForExtension(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
   const currentSeason = await getActiveSeasonNumber();
-  const next = computeContractExtension({ ...rider, currentSeason });
+  const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
 
   // #2237 · Lag 2 (salary cap) håndhæves nu også her — den eneste manager-initierede
   // løn-forøgelses-vej udenom transfer/auktion (som allerede er dækket af assertSigningAllowed).
@@ -1541,7 +1583,21 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
         : null;
       // Forventet værdi fra SYNLIGE evner (ingen potentiale-input → ingen lækage).
-      const expected = VALUATION_MODEL ? predictBaseValue(rider, ab, VALUATION_MODEL) : null;
+      // #2594: v4 kræver alder (sæson-forankret); potentiale strippes EKSPLICIT så
+      // det maskerede "expected"-tal ikke lækker skjult potentiale via NPV'en.
+      let expected = null;
+      if (VALUATION_MODEL_V4) {
+        try {
+          const seasonNumber = await getActiveSeasonNumber();
+          expected = predictBaseValue(
+            { ...rider, potentiale: undefined, age: ageForSeason(rider.birthdate, seasonNumber) },
+            ab,
+            VALUATION_MODEL_V4
+          );
+        } catch (err) {
+          captureException(err);
+        }
+      }
       const valueGap = expected != null && rider.market_value != null
         ? expected - rider.market_value : 0;
       verdict = buildVerdict({
@@ -4897,7 +4953,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code, birthdate, salary, primary_type, secondary_type,
+      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, birthdate, salary, primary_type, secondary_type,
         rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
       seller:seller_team_id(id, name)`)
     .eq("status", status)
@@ -5211,14 +5267,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .is("seller_archived_at", null)
@@ -5227,14 +5283,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("buyer_archived_at", "is", null)
       .order("buyer_archived_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("seller_archived_at", "is", null)
@@ -5813,14 +5869,17 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus").eq("id", rider_id).single();
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus, current_production_value").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
   // #1309: kontrakt-on-acquire — ved admin-tildeling til et hold sættes kontrakt
   // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
   let contractPatch = {};
   if (team_id) {
-    const { data: activeSeason } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
-    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
+    const [{ data: activeSeason }, { data: destTeam }] = await Promise.all([
+      supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
+      supabase.from("teams").select("division").eq("id", team_id).maybeSingle(),
+    ]);
+    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1, { division: destTeam?.division });
   }
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
