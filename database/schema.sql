@@ -544,7 +544,7 @@ CREATE TABLE notifications (
     'academy_graduation_ready','academy_graduated','contract_expiring',
     'academy_promoted','academy_demoted','watchlist_departed',
     'admin_notice','stage_result',
-    'academy_intake_expired_compensation'
+    'academy_intake_expired_compensation','academy_drip'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,

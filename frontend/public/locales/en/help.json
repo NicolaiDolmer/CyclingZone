@@ -650,7 +650,7 @@
       },
       "intakeCohort": {
         "title": "Season intake cohort",
-        "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone."
+        "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone. New academy candidates arrive every Sunday. Candidates you don't sign or reject expire after 7 days."
       },
       "signingProspects": {
         "title": "Signing prospects",
