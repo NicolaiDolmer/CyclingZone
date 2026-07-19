@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateStaffCandidates, STAFF_NAME_POOL } from "./staffCandidates.js";
+import { generateStaffCandidates, STAFF_NAME_COMBINATION_COUNT } from "./staffCandidates.js";
 import { staffSalaryFor } from "./facilityConstants.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
@@ -17,7 +17,7 @@ test("kandidat-tiers overstiger aldrig facilitets-tier og salary er rating-dreve
   for (const c of generateStaffCandidates(ARGS)) {
     assert.ok(c.tier >= 1 && c.tier <= 3);
     assert.equal(typeof c.name, "string");
-    assert.ok(STAFF_NAME_POOL.includes(c.name));
+    assert.ok(/^\S+.* \S+$/.test(c.name), `"${c.name}" ligner ikke "Fornavn Efternavn"`);
     assert.ok(c.salary > 0);
     // #2216 A4 (Q1): løn = staffSalaryFor(overall), ikke den flade tier-tabel.
     assert.equal(c.salary, staffSalaryFor(c.overall));
@@ -43,26 +43,27 @@ test("kandidater har overall (fra derivation) + topSpecialization, deterministis
   assert.deepEqual(generateStaffCandidates(ARGS), cands);
 });
 
-// ── #2643-opfølgning: navnepulje-udvidelse mod cross-team-kollisioner ──
+// ── #2657 (opfølgning på #2643/#2658): fast liste → fornavn×efternavn-kombinatorik ──
+// #2658 udvidede den faste STAFF_NAME_POOL 40→150 (stadig et hårdt loft, ~35%
+// kollisionsrate ved prod-skala). #2657 erstatter listen med kombinatorik fra
+// NAME_CLUSTERS (samme kilde som rytter-generatoren) — se kommentar i
+// staffCandidates.js for regnestykket.
 
-test("STAFF_NAME_POOL er stor nok, unik og velformet", () => {
-  // 40 navne gav ~78% kollisionsrate i prod (60 staff-rows, 40 hold). Puljen skal
-  // holde trit med en liga på ~40-60 hold — gulvet er 120 så en fremtidig trim
-  // ikke stille genindfører problemet.
-  assert.ok(STAFF_NAME_POOL.length >= 120, `pool er ${STAFF_NAME_POOL.length}, skal være >= 120`);
-  assert.equal(new Set(STAFF_NAME_POOL).size, STAFF_NAME_POOL.length, "dubletter i puljen");
-  for (const name of STAFF_NAME_POOL) {
-    assert.equal(name, name.trim());
-    assert.ok(/^\S+.* \S+/.test(name), `"${name}" ligner ikke "Fornavn Efternavn"`);
-  }
+test("kombinationsrummet er markant større end den gamle 150-navns-pulje", () => {
+  // Gulv med solid margin: en fremtidig trimning af NAME_CLUSTERS skal ikke
+  // stille genindføre birthday-paradox-problemet (regression-guard).
+  assert.ok(
+    STAFF_NAME_COMBINATION_COUNT >= 2000,
+    `kombinationsrum er ${STAFF_NAME_COMBINATION_COUNT}, skal være >= 2000`,
+  );
 });
 
-test("cross-team-kollisionsrate ved prod-skala er markant under gammel pulje", () => {
-  // Prod-lignende scenarie: 40 hold, ~60 ansættelser (alle hyrer training, hver 2.
-  // også scouting), hire = kandidat[0]. Deterministisk (faste seeds) → stabil rate.
-  // Gammel 40-navns-pulje målte 75% kolliderende rows her (sim 2026-07-18, matcher
-  // de 78% observeret i prod); 150-puljen måler 35%. Grænsen 50% er regression-guard
-  // med margin — bider hvis puljen skrumper eller trækket skævvrides.
+test("cross-team-kollisionsrate ved prod-skala (60 ansættelser) er ~0, markant under gammel pulje", () => {
+  // Samme scenarie som #2658-regressionstesten: 40 hold, ~60 ansættelser (alle
+  // hyrer training, hver 2. også scouting), hire = kandidat[0]. Deterministisk
+  // (faste seeds) → stabil rate. Gammel 40-navns-pulje: 75%; 150-pulje: 35%.
+  // Kombinatorik (7k+ kombinationer): målt 0% i sim (2026-07-19). Grænsen 10% er
+  // regression-guard med rigelig margin.
   const hires = [];
   for (let t = 0; t < 40; t++) {
     const teamId = `00000000-0000-4000-8000-${String(t).padStart(12, "0")}`;
@@ -79,7 +80,30 @@ test("cross-team-kollisionsrate ved prod-skala er markant under gammel pulje", (
   }
   const collidingRows = hires.filter((h) => teamsByName.get(h.name).size >= 2).length;
   const rate = collidingRows / hires.length;
-  assert.ok(rate < 0.5, `kollisionsrate ${(rate * 100).toFixed(1)}% (${collidingRows}/${hires.length}) — forventet < 50%`);
+  assert.ok(rate < 0.1, `kollisionsrate ${(rate * 100).toFixed(1)}% (${collidingRows}/${hires.length}) — forventet < 10%`);
+});
+
+test("kollisionssandsynlighed forbliver lav (nær nul) selv ved 200+ staff (issuets mål)", () => {
+  // 40 hold × alle 5 roller = 200 ansættelser — issuets eksplicitte skala-mål.
+  const hires = [];
+  for (let t = 0; t < 40; t++) {
+    const teamId = `00000000-0000-4000-8000-${String(t).padStart(12, "0")}`;
+    for (const role of ["training", "scouting", "medical", "academy", "commercial"]) {
+      const [first] = generateStaffCandidates({ teamId, seasonNumber: 3, role, facilityTier: 3 });
+      hires.push({ team: teamId, name: first.name });
+    }
+  }
+  assert.equal(hires.length, 200);
+  const teamsByName = new Map();
+  for (const h of hires) {
+    if (!teamsByName.has(h.name)) teamsByName.set(h.name, new Set());
+    teamsByName.get(h.name).add(h.team);
+  }
+  const collidingRows = hires.filter((h) => teamsByName.get(h.name).size >= 2).length;
+  const rate = collidingRows / hires.length;
+  // Sim (2026-07-19) målte 5% ved 200 hires (7272 kombinationer) — grænsen 15% er
+  // regression-guard med margin, langt under den gamle puljes 75-78%.
+  assert.ok(rate < 0.15, `kollisionsrate ${(rate * 100).toFixed(1)}% (${collidingRows}/${hires.length}) — forventet < 15%`);
 });
 
 test("topSpecialization = etiket på den højest-scorende akse (dimension/niveau/rolle)", () => {
