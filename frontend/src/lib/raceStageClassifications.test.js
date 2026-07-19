@@ -37,12 +37,29 @@ test("key='team' on a mid-race stage uses persisted 'team_day' rows when present
 });
 
 test("key='team' on a legacy mid-race stage (no team_day rows) derives from 'leader' gaps", () => {
+  // Begge hold har 3 fuldførende ryttere, så begge er hold-rangerbare (min-3, #2694).
   const results = [
-    { ...row("leader", 2, 1, "a", "A"), finish_time: "+0:00" },
-    { ...row("leader", 2, 2, "b", "B"), finish_time: "+0:10" },
+    { ...row("leader", 2, 1, "a1", "A"), finish_time: "+0:00" },
+    { ...row("leader", 2, 2, "b1", "B"), finish_time: "+0:10" },
+    { ...row("leader", 2, 3, "a2", "A"), finish_time: "+0:20" },
+    { ...row("leader", 2, 4, "b2", "B"), finish_time: "+0:30" },
+    { ...row("leader", 2, 5, "a3", "A"), finish_time: "+0:40" },
+    { ...row("leader", 2, 6, "b3", "B"), finish_time: "+0:50" },
   ];
   const out = classificationRowsForStage(results, 2, "team");
+  // A: 0+20+40=60 · B: 10+30+50=90 → A vinder.
   assert.deepEqual(out.map((r) => r.team_id), ["A", "B"]);
+});
+
+test("key='team' derived: hold med <3 fuldførende ryttere ekskluderes (#2694)", () => {
+  const results = [
+    { ...row("leader", 2, 1, "solo", "A"), finish_time: "+0:00" }, // 1 rytter → udgår
+    { ...row("leader", 2, 2, "c1", "C"), finish_time: "+0:10" },
+    { ...row("leader", 2, 3, "c2", "C"), finish_time: "+0:20" },
+    { ...row("leader", 2, 4, "c3", "C"), finish_time: "+0:30" }, // 3 → rangeres
+  ];
+  const out = classificationRowsForStage(results, 2, "team");
+  assert.deepEqual(out.map((r) => r.team_id), ["C"]);
 });
 
 test("no matching rows for the requested stage/key returns an empty array", () => {

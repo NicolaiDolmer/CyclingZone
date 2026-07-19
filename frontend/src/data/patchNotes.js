@@ -63,6 +63,20 @@ export const PATCHES = [
           "body": "Staff-navne genereres nu fra en langt større kombination af for- og efternavne, og eksisterende dubletter er omdøbt. Oplevelsen af \"samme person\" ansat på flere hold samtidig er væk."
         },
         "refs": [2657]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team classification now needs at least 3 finishers",
+          "body": "A team could win the team classification with only one or two finishing riders. The team classification now requires at least 3 finishing riders to be ranked, matching real cycling. Teams below that are no longer listed."
+        },
+        "da": {
+          "title": "Holdklassementet kræver nu mindst 3 gennemførende ryttere",
+          "body": "Et hold kunne vinde holdklassementet med kun én eller to gennemførende ryttere. Holdklassementet kræver nu mindst 3 gennemførende ryttere for at blive rangeret, som i rigtig cykling. Hold under den grænse vises ikke længere."
+        },
+        "refs": [2694]
       }
     ]
   },
