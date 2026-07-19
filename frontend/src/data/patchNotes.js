@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.31",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout reports no longer list riders you can't find",
+          "body": "Scout mission reports could point at a rider owned by an AI team, but that rider is hidden by default in the rider database, so the name led nowhere. Reports now exclude AI-team riders, the same way they already excluded riders mid-transfer or with an unresolved academy offer."
+        },
+        "da": {
+          "title": "Spejder-rapporter viser ikke længere ryttere du ikke kan finde",
+          "body": "Spejder-mission-rapporter kunne pege på en rytter ejet af et AI-hold, men den rytter er skjult som default i rytterdatabasen, så navnet førte ingen steder hen. Rapporter ekskluderer nu AI-holds ryttere, samme måde de allerede ekskluderede ryttere midt i en handel eller med et uafklaret akademi-tilbud."
+        },
+        "refs": [2581]
+      }
+    ]
+  },
+  {
     "version": "7.30",
     "date": "2026-07-19",
     "label": "Beta",

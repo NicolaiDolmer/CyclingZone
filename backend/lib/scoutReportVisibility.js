@@ -19,10 +19,17 @@
 //
 // #2644 beslutning 4: ryttere der IKKE er skjulte, men har fået et hold siden
 // rapporten blev genereret, forbliver i rapporten — med holdnavnet som status.
+//
+// #2581 genåbnet 19/7: NY klasse fundet — ryttere ejet af AI-hold. RidersPage
+// skjuler dem for spillere som default (useRiderFilters.js .eq('owner_is_ai',
+// false) uden show_ai), men denne view-tidspunkt-guard kendte ikke diskriminatoren
+// (kun generérings-tidspunkt-laget i scoutSweep.js gjorde). Mirror-fix: samme
+// to-lags-mønster som offered-intake — udelukkes både ved generering OG servering.
 
 // Rent predikat — testbart uden I/O.
-export function isRiderHiddenFromReport({ teamId, pendingTeamId, isAcademy, hasOpenIntakeOffer }) {
+export function isRiderHiddenFromReport({ teamId, pendingTeamId, isAcademy, hasOpenIntakeOffer, ownerIsAi }) {
   if (pendingTeamId != null) return true;
+  if (ownerIsAi === true) return true; // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
   // Spejler is_offered_intake_rider(): åbent tilbud + endnu ikke hentet af noget hold.
   if (hasOpenIntakeOffer && teamId == null && isAcademy === false) return true;
   return false;
@@ -52,7 +59,7 @@ export async function hydrateCompletedVisibility(supabaseClient, completed) {
 
   const ids = [...riderIds];
   const [{ data: riders, error: riderErr }, { data: offered, error: intakeErr }] = await Promise.all([
-    supabaseClient.from("riders").select("id, team_id, pending_team_id, is_academy, team:team_id(name)").in("id", ids),
+    supabaseClient.from("riders").select("id, team_id, pending_team_id, is_academy, owner_is_ai, team:team_id(name)").in("id", ids),
     supabaseClient.from("academy_intake").select("rider_id").eq("status", "offered").in("rider_id", ids),
   ]);
   if (riderErr) throw new Error(`hydrateCompletedVisibility: riders load failed: ${riderErr.message}`);
@@ -71,6 +78,7 @@ export async function hydrateCompletedVisibility(supabaseClient, completed) {
       pendingTeamId: r.pending_team_id,
       isAcademy: r.is_academy,
       hasOpenIntakeOffer: offeredIds.has(id),
+      ownerIsAi: r.owner_is_ai,
     });
     if (hidden) { hiddenIds.add(id); continue; }
     statusById[id] = riderReportStatus({ teamId: r.team_id, teamName: r.team?.name });
