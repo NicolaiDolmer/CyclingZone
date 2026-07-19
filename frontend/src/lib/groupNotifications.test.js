@@ -133,3 +133,58 @@ test("groupNotifications — outbid uden related_id falder igennem som single", 
 test("aggregateKey — deterministisk", () => {
   assert.equal(aggregateKey("auction_outbid", "abc"), "auction_outbid|abc");
 });
+
+// #2401/#2208 — bid_received (sælgers "nyt bud"-besked) skal aggregeres og
+// termineres på samme måde som auction_outbid, så en travl auktion ikke
+// spammer sælgeren med flere separate/dobbelte bekræftelses-beskeder.
+
+test("groupNotifications — flere bid_received på samme auktion aggregeres med tæller", () => {
+  const input = [
+    notif({ id: "3", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T12:00:00Z", message: "seneste bud" }),
+    notif({ id: "2", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T11:00:00Z" }),
+    notif({ id: "1", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T10:00:00Z", message: "første bud" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].kind, "aggregate");
+  assert.equal(result[0].count, 3);
+  assert.equal(result[0].sample_message, "seneste bud");
+  assert.equal(result[0].related_id, "auc-A");
+});
+
+test("groupNotifications — bid_received skjules helt når auktionen er solgt (auction_won)", () => {
+  const input = [
+    notif({ id: "won", type: "auction_won", related_id: "auc-A", created_at: "2026-05-15T13:00:00Z", message: "Solgt for 50000 CZ$" }),
+    notif({ id: "b2", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T12:00:00Z" }),
+    notif({ id: "b1", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T11:00:00Z" }),
+  ];
+  const result = groupNotifications(input);
+  // Kun ÉN konsolideret besked tilbage — den endelige "solgt for X CZ$".
+  assert.equal(result.length, 1);
+  assert.equal(result[0].kind, "single");
+  assert.equal(result[0].notification.type, "auction_won");
+  assert.equal(result[0].notification.message, "Solgt for 50000 CZ$");
+});
+
+test("groupNotifications — bid_received skjules når auktionen annulleres (auction_lost)", () => {
+  const input = [
+    notif({ id: "lost", type: "auction_lost", related_id: "auc-A", created_at: "2026-05-15T13:00:00Z" }),
+    notif({ id: "b1", type: "bid_received", related_id: "auc-A", created_at: "2026-05-15T11:00:00Z" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].notification.type, "auction_lost");
+});
+
+test("groupNotifications — bid_received på ANDEN, stadig aktiv auktion forbliver aggregeret", () => {
+  const input = [
+    notif({ id: "won", type: "auction_won", related_id: "auc-A", created_at: "2026-05-15T13:00:00Z" }),
+    notif({ id: "bB1", type: "bid_received", related_id: "auc-B", created_at: "2026-05-15T12:00:00Z" }),
+    notif({ id: "bB2", type: "bid_received", related_id: "auc-B", created_at: "2026-05-15T12:30:00Z" }),
+  ];
+  const result = groupNotifications(input);
+  assert.equal(result.length, 2);
+  const aggB = result.find((r) => r.kind === "aggregate");
+  assert.equal(aggB.related_id, "auc-B");
+  assert.equal(aggB.count, 2);
+});
