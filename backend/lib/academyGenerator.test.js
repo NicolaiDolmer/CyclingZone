@@ -114,15 +114,28 @@ test("generateYouthStats: høj-potentiale TENDERER mod stærkere start (gns), me
   assert.ok(avgTop(6) > avgTop(2), "pot6 skal i snit starte stærkere end pot2");
 });
 
-test("generateYouthStats: 16-årig kohorte har INGEN huller (afledt evne ≤3)", () => {
+// #1791-hul-garden OMDEFINERET 2026-07-19 (ejer-valg "−3", #2064 S0): 16-årige STARTER
+// nu bevidst med afledte evner helt ned til ~1 (rå talenter langt under senior-niveau),
+// så den gamle "≤3 = hul"-grænse er ikke længere kontrakten. Det testen reelt skal
+// beskytte: ingen MANGLENDE/0/ugyldige evner (ægte datahuller), og profilen må ikke
+// kollapse totalt (bedste anlæg for et top-talent skal stadig være mærkbart > bund).
+test("generateYouthStats: 16-årig kohorte har ingen ÆGTE datahuller (evne mangler/0) og profilen bevarer signal", () => {
   const PHYS = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
   const archetypes = ["climber","sprinter","tt","gc","puncheur","brostensrytter","rouleur","baroudeur"];
-  let holes = 0;
+  let dataHoles = 0;
+  let pot6BestSum = 0;
+  let pot6N = 0;
   for (const a of archetypes) for (let s = 0; s < 40; s++) {
-    const { stats } = generateYouthStats({ rng: makeRng(s * 13 + 1), age: 16, potentiale: (s % 6) + 1, archetypeType: a });
-    const rider = { id: `c${s}`, birthdate: "2010-06-15", potentiale: (s % 6) + 1, height: 175, weight: 62, ...stats };
+    const pot = (s % 6) + 1;
+    const { stats } = generateYouthStats({ rng: makeRng(s * 13 + 1), age: 16, potentiale: pot, archetypeType: a });
+    const rider = { id: `c${s}`, birthdate: "2010-06-15", potentiale: pot, height: 175, weight: 62, ...stats };
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
-    holes += PHYS.filter((k) => (ab[k] ?? 0) <= 3).length;
+    dataHoles += PHYS.filter((k) => !Number.isFinite(ab[k]) || ab[k] < 1).length;
+    if (pot === 6) {
+      pot6BestSum += Math.max(...PHYS.map((k) => ab[k]));
+      pot6N += 1;
+    }
   }
-  assert.equal(holes, 0, `forventede 0 huller (≤3), fandt ${holes}`);
+  assert.equal(dataHoles, 0, `forventede 0 ægte datahuller (mangler/<1), fandt ${dataHoles}`);
+  assert.ok(pot6BestSum / pot6N >= 5, `pot-6-talenter skal i snit have bedste anlæg ≥5 (signal bevaret), fik ${(pot6BestSum / pot6N).toFixed(1)}`);
 });

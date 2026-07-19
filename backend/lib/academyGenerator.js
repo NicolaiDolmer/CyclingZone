@@ -131,8 +131,14 @@ export function generateAcademyCandidates({
 }
 
 export const YOUTH_GEN_CONFIG = Object.freeze({
-  // Pot-1 anker-niveau ved 16 (lige over PCM-floor 50).
-  baseStatAt16: 50.5,
+  // Pot-1 anker-niveau ved 16. SÆNKET 3 rå point 2026-07-19 (ejer-valg "−3", #2064 S0):
+  // det gamle bånd 51.5-57 gav 16-17-årige med afledt bedste anlæg ~14-21 = på niveau
+  // med median-SENIOREN (best 21) fra dag ét ("vinder fra start"-problemet). Nyt bånd
+  // ankrer 16-årige på afledt kerne ~3 / bedste ~6 og graduerings-alder (20-21) på ~12
+  // — lige under senior-medianen. Loft/peak (loftByPotential, peak 27-28) er URØRT:
+  // kun rampen flytter. Empirisk verifikation: docs/superpowers/specs/
+  // 2026-07-19-2064-soendags-aargangsmodel-influx-design.md §2a.
+  baseStatAt16: 47.5,
   // Stat-løft pr. potentiale-trin over 1 → talent-TENDENS i starten (ikke 1:1 aflæseligt pga. startLuck).
   potStartLift: 0.5,
   // Per-rytter "start-held": ÉT seeded gaussian-træk der løfter/sænker HELE profilen, så
@@ -142,11 +148,10 @@ export const YOUTH_GEN_CONFIG = Object.freeze({
   statPerYearOver16: 1.4,
   // Arketypens signatur-stats løftes (skaleret ned fra voksen-niveau).
   signatureBoostScale: 0.20,
-  // Per-stat spredning (lille → flad profil).
+  // Hårde grænser (−3-bånd): gulv → afledt bund ~1-3; loft → afledt top mætter ~12.
   sd: 0.8,
-  // Hårde grænser: gulv → afledt bund ~7 (ingen huller); loft → afledt top mætter ~21.
-  statFloor: 51.5,
-  statCeil: 57,
+  statFloor: 48.5,
+  statCeil: 54,
 });
 
 // Generér lave, anlægs-formede, alders- OG talent-skalerede stats for én ung, med per-rytter start-held.
