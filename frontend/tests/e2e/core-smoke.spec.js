@@ -83,13 +83,14 @@ const TRANSLATED_PAGE_SMOKE = [
   },
   {
     // #1569: /auctions defaulter nu til 'All'-fanen for nye spillere (tom
-    // 'My situation'), så empty.noInvolvementMySituation-copyen er ikke længere
+    // 'My auctions'), så empty.noInvolvementMySituation-copyen er ikke længere
     // garanteret synlig. Canaries flyttet til de altid-renderede filter-tab-
-    // labels (My situation / Min situation) — stadig en ægte EN-renders +
-    // ingen-DA-leak-guard, uafhængig af hvilken fane der er aktiv.
+    // labels (My auctions / Mine auktioner, #228-omdøbt fra My situation/
+    // Min situation) — stadig en ægte EN-renders + ingen-DA-leak-guard,
+    // uafhængig af hvilken fane der er aktiv.
     path: "/auctions",
-    en: [/Auctions/i, /My situation/i],
-    da: [/Auktioner/i, /Min situation/i],
+    en: [/Auctions/i, /My auctions/i],
+    da: [/Auktioner/i, /Mine auktioner/i],
     rawKeys: ["auctions:page.title", "page.title", "filter.mySituation"],
   },
   {

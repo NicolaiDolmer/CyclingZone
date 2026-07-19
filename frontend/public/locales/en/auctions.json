@@ -42,7 +42,7 @@
     "outgoing": "−{count} out"
   },
   "filter": {
-    "mySituation": "My situation ({count})",
+    "mySituation": "My auctions ({count})",
     "all": "All ({count})",
     "otherManagers": "Other managers ({count})",
     "wishlistButton": "Wishlist only",
@@ -87,6 +87,8 @@
   },
   "table": {
     "rider": "Rider",
+    "nation": "Nation",
+    "status": "Status",
     "highestBid": "Highest bid",
     "timeLeft": "Time left",
     "age": "Age",

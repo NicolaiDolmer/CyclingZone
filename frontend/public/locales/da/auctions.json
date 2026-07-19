@@ -42,7 +42,7 @@
     "outgoing": "−{count} ud"
   },
   "filter": {
-    "mySituation": "Min situation ({count})",
+    "mySituation": "Mine auktioner ({count})",
     "all": "Alle ({count})",
     "otherManagers": "Andre managers ({count})",
     "wishlistButton": "Kun ønskeliste",
@@ -87,6 +87,8 @@
   },
   "table": {
     "rider": "Rytter",
+    "nation": "Nation",
+    "status": "Status",
     "highestBid": "Højeste bud",
     "timeLeft": "Tid tilbage",
     "age": "Alder",

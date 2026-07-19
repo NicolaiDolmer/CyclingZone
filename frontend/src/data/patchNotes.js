@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.29",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Cleaner auction table: nation and status get their own columns",
+          "body": "The rider name in the auction list is now just the name - nationality and age badges (U23/U25/Youth) moved into their own Nation and Status columns, matching the rider database. A star now shows next to the name when a rider is on your wishlist, the auto-bid button sits right next to the bid button instead of below it, and the column order now leads with Name, Age, Salary, Highest bid, and Time left. The stats columns are unchanged and still toggle on/off with the existing button. The 'My situation' tab is renamed 'My auctions'."
+        },
+        "da": {
+          "title": "Renere auktionsliste: nation og status får egne kolonner",
+          "body": "Rytternavnet i auktionslisten er nu bare navnet - land og alders-badges (U23/U25/Ungdom) er flyttet til egne Nation- og Status-kolonner, som på rytterdatabasen. En stjerne vises nu ved navnet når rytteren er på din ønskeliste, autobud-knappen sidder nu lige ved siden af bud-knappen i stedet for under, og kolonnerækkefølgen starter nu med Navn, Alder, Løn, Højeste bud og Tid tilbage. Stat-kolonnerne er uændrede og slås stadig til/fra med den eksisterende knap. Fanen 'Min situation' hedder nu 'Mine auktioner'."
+        },
+        "refs": [228]
+      }
+    ]
+  },
+  {
     "version": "7.28",
     "date": "2026-07-19",
     "label": "Beta",
