@@ -65,6 +65,8 @@ export function rankByCompDesc(entrants, compMap) {
 }
 
 // Holdklassement: sum af holdets BEDSTE 3 rytteres kumulative tid, lavest vinder.
+// Kun hold med mindst 3 fuldførende ryttere rangeres (UCI-konvention, #2694) — et
+// hold med 1-2 finishers har ikke et gyldigt holdresultat og kan ikke vinde.
 export function teamClassification(entrants, cumTime) {
   const byTeam = new Map();
   for (const e of entrants) {
@@ -74,6 +76,7 @@ export function teamClassification(entrants, cumTime) {
   }
   const rows = [];
   for (const [team_id, times] of byTeam) {
+    if (times.length < 3) continue; // <3 finishers → intet gyldigt holdresultat (#2694)
     times.sort((a, b) => a - b);
     rows.push({ team_id, time: times.slice(0, 3).reduce((s, t) => s + t, 0) });
   }

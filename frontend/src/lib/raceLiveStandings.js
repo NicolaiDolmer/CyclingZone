@@ -6,6 +6,8 @@
 // risiko under re-derivering, jf. #2072-PR'en); den deriveres her af GC-rækkernes
 // gap: sum af holdets 3 bedste gaps — samme rangorden som motorens
 // teamClassification (den fælles leder-tid forkortes ud af sammenligningen).
+// Kun hold med mindst 3 fuldførende ryttere rangeres (UCI-konvention, #2694) —
+// spejler backendens teamClassification, så et 1-2-rytters-hold ikke kan vinde.
 
 const DAY_TO_FINAL = { leader: "gc", points_day: "points", mountain_day: "mountain", young_day: "young" };
 
@@ -26,6 +28,7 @@ export function deriveTeamStandings(gcRows) {
     byTeam.get(r.team_id).gaps.push(parseGapSeconds(r.finish_time));
   }
   return [...byTeam.values()]
+    .filter(({ gaps }) => gaps.length >= 3) // <3 finishers → intet gyldigt holdresultat (#2694)
     .map(({ gaps, ...rest }) => ({ ...rest, total: gaps.sort((a, b) => a - b).slice(0, 3).reduce((s, g) => s + g, 0) }))
     .sort((a, b) => a.total - b.total || String(a.team_id).localeCompare(String(b.team_id)))
     .map((row, i) => ({
