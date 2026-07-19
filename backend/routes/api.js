@@ -8545,11 +8545,11 @@ router.get("/dashboard/recent-results", requireAuth, cached({
 
 // GET /api/dashboard/rider-ranking — sæsonens top-5 ryttere efter point, KUN i
 // managerens egen division+pulje (#2328, samme mønster som recent-results #2288 G).
-// Uden filteret hentede endpointet ALLE løb på tværs af sæsonens ~15 puljer
-// (423 løb / ~125k race_results-rækker i prod) via fetchAllRows' side-for-side
-// paginering (126 sekventielle round-trips) — det timede stille ud på Railway,
-// så frontend'ens `if (r.ok)`-guard aldrig fyrede og ranglisten forblev tom uden
-// synlig fejl. keyExtras deler cachen pr. league_division_id (ikke global).
+// Perf (#2692, Sentry CYCLINGZONE-36): aggregeringen kører nu i Postgres via
+// dashboard_rider_ranking-RPC'en. Før hentede endpointet ALLE race_results for
+// divisionen (op til ~63k rækker i prod) via fetchAllRows' SEKVENTIELLE
+// paginering og aggregerede top-5 i Node — det gav ~8s "Consecutive HTTP" på
+// dashboardet. keyExtras deler cachen pr. league_division_id (ikke global).
 router.get("/dashboard/rider-ranking", requireAuth, cached({
   namespace: "dashboard-rider-ranking",
   ttlMs: CACHE_TTL.dashboardRiderRanking,
@@ -8562,45 +8562,21 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
     if (seasonError) throw seasonError;
     if (!season) return res.json({ riders: [] });
 
-    let racesQuery = supabase
-      .from("races").select("id").eq("season_id", season.id);
-    if (req.team.league_division_id != null) {
-      racesQuery = racesQuery.eq("league_division_id", req.team.league_division_id);
-    }
-    const { data: races, error: racesError } = await racesQuery;
-    if (racesError) throw racesError;
-    if (!races?.length) return res.json({ riders: [] });
-
-    const raceIds = races.map(r => r.id);
-    const rows = await fetchAllRows(() => supabase
-      .from("race_results")
-      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_retired, team:team_id(name, is_ai))")
-      .in("race_id", raceIds)
-      .not("rider_id", "is", null)
-      .order("id", { ascending: true }));
-
-    const agg = {};
-    for (const r of rows) {
-      if (!r.rider_id || !r.rider || r.rider.is_retired) continue;
-      if (!agg[r.rider_id]) {
-        agg[r.rider_id] = {
-          rider_id: r.rider_id,
-          firstname: r.rider.firstname,
-          lastname: r.rider.lastname,
-          nationality_code: r.rider.nationality_code,
-          team_name: r.rider.team?.name || null,
-          is_ai: r.rider.team?.is_ai || false,
-          points: 0, stage_wins: 0, gc_wins: 0,
-        };
-      }
-      const a = agg[r.rider_id];
-      a.points += r.points_earned || 0;
-      if (r.rank === 1 && r.result_type === "stage") a.stage_wins++;
-      if (r.rank === 1 && r.result_type === "gc") a.gc_wins++;
-    }
-
-    const top = Object.values(agg).sort((x, y) => y.points - x.points).slice(0, 5);
-    res.json({ riders: top });
+    // Aggregeringen kører nu i Postgres via dashboard_rider_ranking-RPC'en
+    // (database/2026-07-19-dashboard-rider-ranking-rpc.sql). Før hentede vi ALLE
+    // race_results for divisionen (op til ~63k rækker) via en SEKVENTIEL
+    // side-for-side paginering og aggregerede top-5 i Node — det gav ~8s "Consecutive HTTP" i
+    // Sentry (CYCLINGZONE-36, #2692). RPC'en spejler det gamle agg-loop 1:1
+    // (points=SUM(points_earned); stage_wins/gc_wins=COUNT rank=1 pr. result_type,
+    // gc på tværs af ALLE race-typer; ekskluder retired; is_ai/team fra rytterens
+    // nuværende hold; top-5 efter points DESC). league_division_id=null → alle
+    // divisioner (samme fallback som det gamle races-filter).
+    const { data: riders, error: rankError } = await supabase.rpc("dashboard_rider_ranking", {
+      p_season_id: season.id,
+      p_league_division_id: req.team.league_division_id ?? null,
+    });
+    if (rankError) throw rankError;
+    res.json({ riders: riders || [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
