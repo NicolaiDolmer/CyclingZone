@@ -9,11 +9,13 @@
 -- authenticated ved schema-restore/rebuild.
 --
 -- Mest alvorlig: `apply_global_rank_season_rollover(uuid)` — en write-RPC der
--- ubetinget kører `UPDATE teams SET banked_points = banked_points / 2` (season-
--- rollover halverer HELE ligaens banked_points). UPDATE'et er ubetinget: selv et
--- ikke-matchende season-uuid trigger stadig halveringen. En uautoriseret
+-- kører `UPDATE public.team_global_rank_points SET banked_points = ROUND(banked_points * 0.5, 2)`
+-- (season-rollover halverer HELE ligaens global-rank-banked_points; tabellen er
+-- `team_global_rank_points`, IKKE `teams`). Den anden UPDATE-gren — hold uden en
+-- season_standings-række denne sæson — er UBETINGET: selv et ikke-matchende
+-- season-uuid halverer stadig alle inaktive holds banked_points. En uautoriseret
 -- PostgREST-kalder med den offentlige anon-apikey kunne dermed nulstille/forvride
--- alle holds banked_points. SECURITY DEFINER bypasser RLS, så row-policies
+-- alle holds global-rank-point. SECURITY DEFINER bypasser RLS, så row-policies
 -- beskytter ikke.
 --
 -- HVAD DENNE MIGRATION GØR:
