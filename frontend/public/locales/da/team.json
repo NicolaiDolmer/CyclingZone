@@ -14,7 +14,8 @@
     "division": "Division {n}",
     "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 3 er startniveauet.",
     "balance": "{value} CZ$",
-    "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge."
+    "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
+    "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
   },
   "tabs": {
     "squad": "Trup ({count})",
@@ -49,7 +50,8 @@
       "contractValue": "Udløber efter S{season}",
       "action": "Handling"
     },
-    "actionButton": "Sælg / Auktion"
+    "actionButton": "Sælg / Auktion",
+    "ownAuctionTooltip": "På auktion · højeste bud {price} CZ$ · slutter om {timeLeft}"
   },
   "actionModal": {
     "potentialLabel": "Potentiale",

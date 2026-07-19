@@ -14,7 +14,8 @@
     "division": "Division {n}",
     "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 3 the entry tier.",
     "balance": "{value} CZ$",
-    "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money."
+    "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
+    "ownAuctionsBanner": "{count, plural, one {# of your riders is up for auction} other {# of your riders are up for auction}} · view auctions"
   },
   "tabs": {
     "squad": "Squad ({count})",
@@ -49,7 +50,8 @@
       "contractValue": "Expires after S{season}",
       "action": "Action"
     },
-    "actionButton": "Sell / Auction"
+    "actionButton": "Sell / Auction",
+    "ownAuctionTooltip": "In auction · highest bid {price} CZ$ · ends in {timeLeft}"
   },
   "actionModal": {
     "potentialLabel": "Potential",

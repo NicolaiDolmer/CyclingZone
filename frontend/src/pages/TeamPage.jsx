@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -338,7 +338,46 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, valueTrends }) {
+// #2183: kompakt badge på egen holdside når en rytter er under aktiv auktion —
+// manageren skal ikke selv opdage det på /auctions. Egen live countdown (samme
+// lokaliserede enheder som AuctionsPage's Countdown-komponent) + link direkte
+// til "Min situation"-fanen, hvor rytteren står som sælger.
+function OwnAuctionBadge({ auction }) {
+  const { t } = useTranslation(["team", "auctions", "rider"]);
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    function update() {
+      const diff = new Date(auction.calculated_end) - new Date();
+      if (diff <= 0) { setTimeLeft(t("auctions:timer.expired")); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(
+        h > 0 ? t("auctions:timer.hoursMinutes", { h, m })
+        : m > 0 ? t("auctions:timer.minutesSeconds", { m, s })
+        : t("auctions:timer.seconds", { s }),
+      );
+    }
+    update();
+    const tick = setInterval(update, 1000);
+    return () => clearInterval(tick);
+  }, [auction.calculated_end, t]);
+
+  return (
+    <Link
+      to="/auctions?tab=my-situation"
+      onClick={e => e.stopPropagation()}
+      title={t("team:squad.ownAuctionTooltip", { price: formatNumber(auction.current_price), timeLeft })}
+      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+    >
+      {t("rider:badges.label.auction")}
+      <span className="font-mono normal-case tracking-normal">{formatNumber(auction.current_price)}</span>
+    </Link>
+  );
+}
+
+function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -541,6 +580,8 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends }) {
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap items-center gap-1">
                         <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
+                        {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
                       </div>
                     </td>
                     {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
@@ -596,8 +637,39 @@ export function TeamPage() {
   const [demoteError, setDemoteError] = useState(null);
   // #2499: værdi-delta pr. rytter (kompakt pil i værdi-kolonnen) — { [riderId]: { windows } }.
   const [valueTrends, setValueTrends] = useState({});
+  // #2183: egne ryttere der lige nu er under aktiv auktion — { [riderId]: auctionRow }.
+  // Genindlæses ved hver loadAll() (dvs. også efter en handling i RiderActionModal
+  // starter en ny auktion) + holdes friskt via realtime-subscription nedenfor.
+  const [ownAuctions, setOwnAuctions] = useState({});
+  // Ref'en holder ID'erne på nuværende (ikke-indgående) egne ryttere, så
+  // realtime-callbacket kan filtrere uden at skulle re-subscribe ved hver rytter-ændring.
+  const ownRiderIdsRef = useRef(new Set());
 
   useEffect(() => { loadAll(); loadDdStatus(); }, []);
+  useEffect(() => {
+    ownRiderIdsRef.current = new Set(riders.filter(r => !r._isIncoming).map(r => r.id));
+  }, [riders]);
+  // #2183: realtime — hold auktionens pris/status friske mens manageren står på
+  // holdsiden (nyt bud fra en anden manager, eller auktionen afsluttes/annulleres).
+  useEffect(() => {
+    const channel = supabase.channel("team-own-auctions")
+      .on("postgres_changes", { event: "*", schema: "public", table: "auctions" }, payload => {
+        const row = payload.eventType === "DELETE" ? payload.old : payload.new;
+        if (!row?.rider_id || !ownRiderIdsRef.current.has(row.rider_id)) return;
+        const stillActive = payload.eventType !== "DELETE" && ["active", "extended"].includes(payload.new?.status);
+        setOwnAuctions(prev => {
+          if (!stillActive) {
+            if (!(row.rider_id in prev)) return prev;
+            const next = { ...prev };
+            delete next[row.rider_id];
+            return next;
+          }
+          return { ...prev, [row.rider_id]: { ...prev[row.rider_id], ...payload.new } };
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
   // #2499: batch-hentning af værdi-deltaer NÅR truppen er kendt (ét POST-kald,
   // ingen N+1). Non-critical: fejl efterlader bare valueTrends tom → ingen pile
   // vist, resten af siden upåvirket. Genkører når truppens sammensætning ændrer sig.
@@ -686,6 +758,25 @@ export function TeamPage() {
     } catch { /* non-critical: flash-valget falder bare tilbage til skjult */ }
   }
 
+  // #2183: henter aktive/forlængede auktioner på de rytter-id'er der lige er
+  // hentet i loadAll() — kaldes med et eksplicit id-array (ikke `riders`-state)
+  // for at undgå at ramme forrige render's trup. Non-critical: fejl efterlader
+  // bare ownAuctions uændret/tom → badget forsvinder i stedet for at crashe siden.
+  async function loadOwnAuctions(riderIds) {
+    if (!riderIds.length) { setOwnAuctions({}); return; }
+    try {
+      const { data, error } = await supabase
+        .from("auctions")
+        .select("id, rider_id, current_price, calculated_end, status, is_flash")
+        .in("rider_id", riderIds)
+        .in("status", ["active", "extended"]);
+      if (error) return;
+      setOwnAuctions(Object.fromEntries((data || []).map(a => [a.rider_id, a])));
+    } catch {
+      // non-critical — badget falder bare væk
+    }
+  }
+
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -716,6 +807,7 @@ export function TeamPage() {
     const incomingRiders = (pendingRes.data || []).map(r => ({ ...flattenCondition(flattenAbilities(r)), _isIncoming: true }));
 
     setRiders([...currentRiders, ...incomingRiders]);
+    loadOwnAuctions(currentRiders.map(r => r.id));
     setLoading(false);
   }
 
@@ -765,6 +857,18 @@ export function TeamPage() {
         </div>
       </div>
 
+      {/* #2183: tydelig indikator når egne ryttere er under aktiv auktion — manageren
+          skal ikke selv skulle opdage det ved at gå til /auctions. */}
+      {Object.keys(ownAuctions).length > 0 && (
+        <Link
+          to="/auctions?tab=my-situation"
+          className="mb-5 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-4 py-3 text-sm text-cz-accent-t hover:bg-cz-accent/15 transition-colors"
+        >
+          <span className="font-medium">{t("page.ownAuctionsBanner", { count: Object.keys(ownAuctions).length })}</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
       <div className="flex gap-2 mb-5">
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -776,7 +880,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} valueTrends={valueTrends} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} valueTrends={valueTrends} ownAuctions={ownAuctions} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />
