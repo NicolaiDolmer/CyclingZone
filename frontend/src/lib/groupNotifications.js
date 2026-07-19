@@ -1,7 +1,15 @@
-const AGGREGATABLE_TYPES = new Set(["auction_outbid"]);
+// #2401/#2208: "bid_received" (sælgers besked pr. bud på egen rytter) er en
+// hyppig kilde til støjende/dobbelte bekræftelses-beskeder — en travl auktion
+// kan generere mange bid_received-rækker for samme related_id (auktions-id).
+// Samme mønster som auction_outbid: aggregér dem under auktionen ER aktiv, og
+// skjul dem HELT når auktionen er afgjort (auction_won/auction_lost findes for
+// samme related_id) — så sælgeren kun ser ÉN klar besked pr. hændelse (den
+// endelige "solgt for X CZ$"), ikke bud-støjen der førte dertil.
+const AGGREGATABLE_TYPES = new Set(["auction_outbid", "bid_received"]);
 
 const TERMINATING_TYPES = {
   auction_outbid: new Set(["auction_won", "auction_lost"]),
+  bid_received: new Set(["auction_won", "auction_lost"]),
 };
 
 export function aggregateKey(type, relatedId) {
