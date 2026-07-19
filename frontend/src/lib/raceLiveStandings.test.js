@@ -33,21 +33,40 @@ test("deriveTeamStandings: sum af holdets 3 bedste gaps, lavest vinder, stabil t
   assert.equal(teams[0].team_name, "Team B");
 });
 
+test("deriveTeamStandings: hold med <3 gaps ekskluderes fra stillingen (#2694)", () => {
+  const gc = [
+    leaderRow(2, "a1", 1, "+0:00", "A"), // soloryttet hold → udgår
+    leaderRow(2, "b1", 2, "+0:10", "B"),
+    leaderRow(2, "b2", 3, "+0:20", "B"), // kun 2 → udgår
+    leaderRow(2, "c1", 4, "+1:00", "C"),
+    leaderRow(2, "c2", 5, "+1:10", "C"),
+    leaderRow(2, "c3", 6, "+1:20", "C"), // 3 → eneste rangerede hold
+  ];
+  const teams = deriveTeamStandings(gc);
+  assert.deepEqual(teams.map((t) => t.team_id), ["C"]);
+  assert.equal(teams[0].rank, 1);
+});
+
 test("buildLiveStandings: bruger seneste etape med FULDE leader-rækker; legacy rank-1-etaper giver null", () => {
   // Etape 1 er legacy (kun rank-1-trøjerække) → ingen løbende stilling.
   assert.equal(buildLiveStandings([leaderRow(1, "x", 1, "+0:00", "A")]), null);
 
-  // Etape 1 legacy + etape 2 fuld → stilling fra etape 2.
+  // Etape 1 legacy + etape 2 fuld → stilling fra etape 2. Begge hold har 3
+  // fuldførende ryttere, så begge er hold-rangerbare (min-3, #2694).
   const results = [
     leaderRow(1, "x", 1, "+0:00", "A"),
     leaderRow(2, "x", 1, "+0:00", "A"),
     leaderRow(2, "y", 2, "+0:30", "B"),
+    leaderRow(2, "a2", 3, "+0:40", "A"),
+    leaderRow(2, "a3", 4, "+0:50", "A"),
+    leaderRow(2, "b2", 5, "+1:00", "B"),
+    leaderRow(2, "b3", 6, "+1:10", "B"),
     { result_type: "points_day", stage_number: 2, rank: 1, rider_id: "y", team_id: "B", finish_time: null },
     { result_type: "stage", stage_number: 2, rank: 1, rider_id: "x", team_id: "A", finish_time: "+0:00" },
   ];
   const live = buildLiveStandings(results);
   assert.equal(live.stage, 2);
-  assert.deepEqual(live.byType.gc.map((r) => r.rider_id), ["x", "y"]);
+  assert.deepEqual(live.byType.gc.map((r) => r.rider_id), ["x", "y", "a2", "a3", "b2", "b3"]);
   assert.deepEqual(live.byType.points.map((r) => r.rider_id), ["y"]);
   assert.equal(live.byType.team.length, 2);
   assert.equal(live.byType.mountain.length, 0);

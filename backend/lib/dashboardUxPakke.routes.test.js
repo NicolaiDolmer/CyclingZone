@@ -106,18 +106,32 @@ test("recent-results: cache-keyExtras skelner mellem divisioner (ellers deler al
   );
 });
 
-// #2328 — rider-ranking hentede FØR ALLE sæsonens løb på tværs af samtlige ~15
-// puljer (423 løb / ~125k race_results-rækker i prod) via fetchAllRows' side-
-// for-side paginering, hvilket timede stille ud på Railway og lod ranglisten
-// forblive tom uden synlig fejl. Samme division-filter som recent-results (#2288
-// G) begrænser datasættet til managerens egen pulje.
-test("rider-ranking: races-query filtrerer på req.team.league_division_id (#2328, samme mønster som recent-results #2288 G)", () => {
-  const block = routeBlock('router.get("/dashboard/rider-ranking"');
+// #2692 — rider-ranking aggregerede FØR top-5 i Node ved at hente ALLE
+// race_results for managerens division (op til ~63k rækker) via fetchAllRows'
+// SEKVENTIELLE paginering → ~8s "Consecutive HTTP" i Sentry (CYCLINGZONE-36).
+// Fixet flytter aggregeringen til Postgres via dashboard_rider_ranking-RPC'en
+// (database/2026-07-19-dashboard-rider-ranking-rpc.sql). Division-scopet lever nu
+// i RPC-argumentet (p_league_division_id), ikke i en separat races-query.
+// Skru blokken helt ind til rider-ranking-routen (til næste router.-registrering),
+// så assertions ikke lækker ind i nabo-endpointet (my-latest-result querier selv
+// race_results).
+function routeBodyBlock(marker) {
+  const start = apiSource.indexOf(marker);
+  assert.ok(start !== -1, `${marker} skal findes i api.js`);
+  const next = apiSource.indexOf("\nrouter.", start + marker.length);
+  return apiSource.slice(start, next === -1 ? undefined : next);
+}
+
+test("rider-ranking: kalder dashboard_rider_ranking-RPC'en med sæson + divisions-argument (#2692)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/rider-ranking"');
   assert.match(
     block,
-    /req\.team\.league_division_id[\s\S]*?\.eq\("league_division_id",\s*req\.team\.league_division_id\)/,
-    "rider-ranking skal betinget filtrere races på holdets league_division_id",
+    /supabase\.rpc\(\s*"dashboard_rider_ranking"\s*,\s*\{[\s\S]*?p_season_id:\s*season\.id[\s\S]*?p_league_division_id:\s*req\.team\.league_division_id[\s\S]*?\}\s*\)/,
+    "rider-ranking skal kalde dashboard_rider_ranking-RPC'en med p_season_id + p_league_division_id",
   );
+  // Den gamle sekventielle race_results-paginering må IKKE være tilbage.
+  assert.doesNotMatch(block, /fetchAllRows/, "rider-ranking skal ikke længere paginere race_results i Node");
+  assert.doesNotMatch(block, /\.from\("race_results"\)/, "aggregeringen skal ske i RPC'en, ikke via en race_results-select");
 });
 
 test("rider-ranking: cache-keyExtras skelner mellem divisioner", () => {
@@ -129,10 +143,10 @@ test("rider-ranking: cache-keyExtras skelner mellem divisioner", () => {
   );
 });
 
-test("rider-ranking: seasons/races Supabase-fejl kastes (throw), ikke tavst || []", () => {
+test("rider-ranking: season- + RPC-fejl kastes (throw), ikke tavst || []", () => {
   const block = routeBlock('router.get("/dashboard/rider-ranking"');
   assert.match(block, /seasonError/, "season-queryen skal tjekke error og kaste");
-  assert.match(block, /racesError/, "races-queryen skal tjekke error og kaste");
+  assert.match(block, /if\s*\(\s*rankError\s*\)\s*throw\s+rankError/, "RPC-kaldet skal kaste ved fejl (ikke tavst || [])");
 });
 
 // #2593 (del 2) — "Nyt"-badget på MyLatestResultCard brugte localStorage

@@ -68,6 +68,7 @@ import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
+import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -896,6 +897,28 @@ async function runBalanceDriftWatchCron() {
   });
 }
 
+// ─── Ownership-invariant-vagt (#2647) ─────────────────────────────────────────
+// Daglig READ-ONLY safety-net mod gentagelse af incidenten 2026-07-18 (16
+// hold-ejede ryttere endte på ungdomsauktioner). Tre invarianter der aldrig må
+// være sande: (A) hold-ejet rytter på aktiv/extended ungdomsauktion, (B) hold-
+// ejet rytter på en aktiv/extended sælgerløs ikke-ungdomsauktion, (C) stale
+// 'offered' academy_intake-række for en allerede-ejet rytter. Pure read +
+// Sentry-notify, ingen writes.
+
+async function runOwnershipInvariantWatchCron() {
+  const result = await runOwnershipInvariantWatch({
+    supabase,
+    captureExceptionFn: sentryCapture,
+    now: new Date(),
+  });
+  if (result.alerted) {
+    console.error(
+      `🚨 Ownership-invariant-vagt: brud fundet — youthOwned=${result.findings.youthOwned}, ` +
+      `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake} (#2647)`
+    );
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -971,6 +994,7 @@ const ALL_CRON_MONITORS = [
   ["stall-watchdog", CRON_MONITOR_30MIN],
   ["traffic-retention", CRON_MONITOR_24H],
   ["entry-generator", CRON_MONITOR_60MIN],
+  ["ownership-invariant-watch", CRON_MONITOR_24H],
 ];
 
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
@@ -1174,6 +1198,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: ownership-invariant-vagt (#2647) — daglig READ-ONLY safety-net
+  // mod gentagelse af 18/7-incidenten (hold-ejede ryttere på ungdomsauktioner).
+  setInterval(
+    trackedTick("ownership-invariant-watch", monitorCron("ownership-invariant-watch", runOwnershipInvariantWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
   // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
   // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
@@ -1221,6 +1252,9 @@ export function startCron() {
   // #2414: samme idempotens-begrundelse — upsert på metric_date, boot-run gør
   // vagten ærlig uden at risikere dubletter/dobbelt-alarmer.
   trackedTick("balance-drift-watch", runBalanceDriftWatchCron)();
+  // #2647: read-only invariant-vagt — boot-run gør den 24h-monitoren ærlig og er
+  // sikkert (ingen writes, alarmerer blot hvis en invariant allerede er brudt).
+  trackedTick("ownership-invariant-watch", runOwnershipInvariantWatchCron)();
   // #2627: samme idempotens-begrundelse (WHERE status='offered') — boot-run gør
   // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
   // rammer lige efter det normale tick.
