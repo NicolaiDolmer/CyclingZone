@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.32",
+    "date": "2026-07-19",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Active auctions extended by 24 hours",
+          "body": "Every live auction has had its end time pushed back by 24 hours. We're watching the riders currently up for auction and weighing whether it's right that they're this strong, or whether their stats should be brought down. The extra time lets us make that call before these auctions settle. Bidding stays open in the meantime."
+        },
+        "da": {
+          "title": "Aktive auktioner forlænget med 24 timer",
+          "body": "Alle igangværende auktioner har fået sluttidspunktet skubbet 24 timer frem. Vi holder øje med de ryttere der er på auktion lige nu og overvejer, om det er rigtigt at de er så stærke, eller om deres stats skal sættes ned. Den ekstra tid giver os plads til at træffe den beslutning før auktionerne afsluttes. Der kan stadig bydes imens."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
     "version": "7.31",
     "date": "2026-07-19",
     "label": "Beta",
