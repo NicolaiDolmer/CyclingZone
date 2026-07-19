@@ -1,18 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeRng } from "./fictionalRiderGenerator.js";
-import { generateAcademyCandidates, generateYouthStats } from "./academyGenerator.js";
+import { generateAcademyCandidates, generateYouthStats, drawPotentiale, POTENTIALE_TIERS } from "./academyGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 
 const REF_YEAR = 2026;
 
-test("generateAcademyCandidates: 3-5 kandidater, 1-3 seriøse, alder 16-21", () => {
+test("generateAcademyCandidates: 3-5 kandidater, is_serious afledt (pot>=4.5), alder 16-21", () => {
   const rng = makeRng(2026);
   const out = generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set() });
   assert.ok(out.length >= 3 && out.length <= 5, `antal ${out.length}`);
-  const serious = out.filter((c) => c.is_serious).length;
-  assert.ok(serious >= 1 && serious <= 3, `seriøse ${serious}`);
+  for (const c of out) {
+    assert.equal(c.is_serious, c.rider.potentiale >= 4.5, "is_serious afledes af potentiale");
+  }
   for (const c of out) {
     const age = REF_YEAR - Number(c.rider.birthdate.slice(0, 4));
     assert.ok(age >= 16 && age <= 21, `alder ${age}`);
@@ -42,15 +43,34 @@ test("countOverride=2 giver præcis 2 kandidater", () => {
   assert.equal(out.length, 2);
 });
 
-test("seriousCountOverride=0 giver ingen seriøse", () => {
-  const out = generateAcademyCandidates({
-    rng: makeRng(42),
-    referenceYear: REF_YEAR,
-    existingNames: new Set(),
-    countOverride: 2,
-    seriousCountOverride: 0,
-  });
-  assert.ok(out.every((c) => !c.is_serious), "ingen kandidat skal være seriøs");
+test("drawPotentiale: geometrisk fordeling — monotont faldende og topstyret", () => {
+  const rng = makeRng(20640719);
+  const counts = new Map();
+  const N = 200000;
+  for (let i = 0; i < N; i++) {
+    const p = drawPotentiale(rng);
+    counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  // Monotont faldende over tiers
+  for (let k = 1; k < POTENTIALE_TIERS.length; k++) {
+    const prev = counts.get(POTENTIALE_TIERS[k - 1]) ?? 0;
+    const cur = counts.get(POTENTIALE_TIERS[k]) ?? 0;
+    assert.ok(cur < prev, `tier ${POTENTIALE_TIERS[k]} (${cur}) skal være sjældnere end ${POTENTIALE_TIERS[k - 1]} (${prev})`);
+  }
+  // Toppen: P(6.0) ≈ 0.114% — accepter 0.05%-0.2% ved N=200k
+  const p6 = (counts.get(6) ?? 0) / N;
+  assert.ok(p6 > 0.0005 && p6 < 0.002, `P(6.0)=${(p6 * 100).toFixed(3)}% uden for [0.05%, 0.2%]`);
+  // Bunden: P(1.0) ≈ 45%
+  const p1 = (counts.get(1) ?? 0) / N;
+  assert.ok(p1 > 0.42 && p1 < 0.48, `P(1.0)=${(p1 * 100).toFixed(1)}% uden for [42%, 48%]`);
+});
+
+test("generateAcademyCandidates: is_serious afledes af potentiale (>= 4.5)", () => {
+  const rng = makeRng(99);
+  for (let i = 0; i < 50; i++) {
+    const cands = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: 2 });
+    for (const c of cands) assert.equal(c.is_serious, c.rider.potentiale >= 4.5);
+  }
 });
 
 test("uden overrides er adfærden uændret (3-5 kandidater)", () => {

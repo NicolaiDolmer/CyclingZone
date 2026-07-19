@@ -454,7 +454,7 @@ test("runAcademyIntakeForTeam: null identity-basis genererer stadig et kuld (pos
 
 // ─── seedAcademyCohortForTeam (#2064 S0: overrides + generation_tag) ──────────
 
-test("seedAcademyCohortForTeam: countOverride/seriousCountOverride respekteres + generation_tag stemplet 's<sæsonnummer>'", async () => {
+test("seedAcademyCohortForTeam: countOverride respekteres + generation_tag stemplet 's<sæsonnummer>'", async () => {
   const supabase = makeIntakeSupabase({
     activeSeason: { id: "s-id", number: 2, start_date: "2026-07-27" },
     academyIntakeTeamIds: [],
@@ -468,7 +468,6 @@ test("seedAcademyCohortForTeam: countOverride/seriousCountOverride respekteres +
     existingNames: new Set(),
     rng: makeRng(7),
     countOverride: 2,
-    seriousCountOverride: 1,
   });
 
   assert.equal(newIds.length, 2, "returnerer 2 nyindsatte rider-id'er");

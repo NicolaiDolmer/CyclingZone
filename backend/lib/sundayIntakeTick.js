@@ -8,9 +8,9 @@
 // claim, misser holdet denne søndag (bevidst valg: hellere miss end dobbelt-kuld);
 // fejlen surfaces i errors[] → cron-log/Sentry.
 //
-// Konservative v1-defaults (2 kandidater, ~35 % chance for 1 seriøs) — sæson-
-// budgettet (12+), talent-odds og facilitets-skalering kalibreres i S1-sim-slicen
-// (spec §2/§7) FØR de røres.
+// Konservative v1-defaults (2 kandidater; potentiale trækkes geometrisk, faktor
+// 0.55) — sæson-budgettet (12+), talent-odds og facilitets-skalering kalibreres i
+// S1-sim-slicen (spec §2/§7) FØR de røres.
 import { isAcademyEnabled } from "./academyFlag.js";
 import {
   seedAcademyCohortForTeam,
@@ -23,7 +23,6 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { notifyTeamOwner } from "./notificationService.js";
 
 export const SUNDAY_DRIP_COUNT = 2;
-export const SUNDAY_DRIP_SERIOUS_PROB = 0.35;
 const DRIP_SEED_BASE = 2064;
 
 export function copenhagenDateString(now = new Date()) {
@@ -89,7 +88,6 @@ export async function runSundayIntakeTick({
 
     try {
       const rng = makeRng(((DRIP_SEED_BASE ^ hashStringToSeed(`${team.id}:${tickDate}`)) >>> 0));
-      const seriousCount = rng() < SUNDAY_DRIP_SERIOUS_PROB ? 1 : 0;
       const newIds = await seedCohortFn(supabase, {
         teamId: team.id,
         season,
@@ -98,7 +96,6 @@ export async function runSundayIntakeTick({
         rng,
         identityBasis: team.season_1_identity_basis || null,
         countOverride: SUNDAY_DRIP_COUNT,
-        seriousCountOverride: seriousCount,
       });
       teamsSeeded += 1;
       for (const id of newIds) allNewIds.push(id);

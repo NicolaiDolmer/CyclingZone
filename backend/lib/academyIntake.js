@@ -104,7 +104,6 @@ export async function fetchExistingFoldedRiderNames(supabase) {
  * så batch og signup-stien ikke kan drifte fra hinanden.
  *
  * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (søndags-drip)
- * @param {number|null} [opts.seriousCountOverride]  #2064 S0: overstyr antal seriøse
  * @returns {Promise<string[]>} de nyindsatte akademi-rytteres id'er
  */
 export async function seedAcademyCohortForTeam(supabase, {
@@ -115,7 +114,6 @@ export async function seedAcademyCohortForTeam(supabase, {
   rng,
   identityBasis = null,
   countOverride = null,
-  seriousCountOverride = null,
 }) {
   const candidates = generateAcademyCandidates({
     rng,
@@ -123,7 +121,6 @@ export async function seedAcademyCohortForTeam(supabase, {
     existingNames,
     identityBasis: identityBasis || null,
     countOverride,
-    seriousCountOverride,
   });
 
   // #2064/#2493: generation_tag = 's<sæsonnummer>' på alle ungdoms-genererede ryttere.
@@ -277,8 +274,9 @@ export async function runAcademyIntake(supabase, {
  *
  * Deler kerne-generering + insert (seedAcademyCohortForTeam) med batch-stien, så
  * de to varianter ikke kan drifte. Genbruger de NØJAGTIGT samme kuld-parametre
- * (ACADEMY.INTAKE_MIN/MAX, SERIOUS_MIN/MAX + evne-bånd i generateAcademyCandidates)
- * — ingen nye parametre. Kører afled-pipelinen for kuldet (#1478-fælden: ellers mangler
+ * (ACADEMY.INTAKE_MIN/MAX + den geometriske potentiale-fordeling i
+ * generateAcademyCandidates, #2064) — ingen nye parametre. Kører afled-pipelinen
+ * for kuldet (#1478-fælden: ellers mangler
  * kandidaterne physiology/abilities/type/base_value og springes i træning).
  *
  *   • Idempotens-guard på MARKØREN academy_intake_seeded_at (#1584), IKKE

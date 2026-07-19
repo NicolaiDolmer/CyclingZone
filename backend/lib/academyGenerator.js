@@ -20,6 +20,24 @@ function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// #2064 (ejer-valg 19/7): geometrisk potentiale-fordeling — hvert halve trin er
+// POTENTIALE_DECAY gange så sandsynligt som det forrige. Bunden er enorm, toppen
+// er lotteri (6.0 ≈ 0,11% ≈ "årtiets talent"; jf. FM-wonderkids/virkelige akademier).
+// 'Seriøs' AFLEDES nu af trækket (pot ≥ 4.5) i stedet for at styre det.
+export const POTENTIALE_TIERS = Object.freeze([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6]);
+export const POTENTIALE_DECAY = 0.55;
+const POTENTIALE_WEIGHTS = POTENTIALE_TIERS.map((_, k) => POTENTIALE_DECAY ** k);
+const POTENTIALE_WEIGHT_SUM = POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
+
+export function drawPotentiale(rng) {
+  let roll = rng() * POTENTIALE_WEIGHT_SUM;
+  for (let k = 0; k < POTENTIALE_WEIGHTS.length; k++) {
+    roll -= POTENTIALE_WEIGHTS[k];
+    if (roll <= 0) return POTENTIALE_TIERS[k];
+  }
+  return POTENTIALE_TIERS[POTENTIALE_TIERS.length - 1];
+}
+
 // Vælg et ungdoms-anlæg (én af de 8 typer). Holdt enkelt; nation-bias rører ikke type.
 const YOUTH_ARCHETYPE_POOL = ["climber", "sprinter", "tt", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
 function pickYouthArchetype(rng) {
@@ -35,7 +53,6 @@ function pickYouthArchetype(rng) {
  * @param {Set<string>} opts.existingNames foldNameNordic-sæt af eksisterende navne (muteres)
  * @param {{ dominant_nationality?: string }} [opts.identityBasis]  nation-bias
  * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (drip-kuld-størrelse)
- * @param {number|null} [opts.seriousCountOverride]  #2064 S0: overstyr antal seriøse
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({
@@ -44,18 +61,12 @@ export function generateAcademyCandidates({
   existingNames,
   identityBasis = null,
   countOverride = null,
-  seriousCountOverride = null,
 }) {
-  // ── Antal kandidater og seriøse ─────────────────────────────────────────────
+  // ── Antal kandidater ─────────────────────────────────────────────────────────
   // #2064 S0: `??` sikrer at rng()-trækkene sker i NØJAGTIG samme rækkefølge som
-  // før når overrides er null (determinisme for eksisterende kaldere uændret).
+  // før når countOverride er null (determinisme for eksisterende kaldere uændret).
   const count = countOverride ??
     (ACADEMY.INTAKE_MIN + Math.floor(rng() * (ACADEMY.INTAKE_MAX - ACADEMY.INTAKE_MIN + 1)));
-  const seriousCount = Math.min(
-    seriousCountOverride ??
-      (ACADEMY.SERIOUS_MIN + Math.floor(rng() * (ACADEMY.SERIOUS_MAX - ACADEMY.SERIOUS_MIN + 1))),
-    count
-  );
 
   // ── Nationalitets-vægte (med evt. bias) ─────────────────────────────────────
   let natWeights = DEFAULT_NATIONALITY_WEIGHTS;
@@ -73,8 +84,6 @@ export function generateAcademyCandidates({
   // ── Byg hvert kandidat-objekt ────────────────────────────────────────────────
   const candidates = [];
   for (let i = 0; i < count; i++) {
-    const is_serious = i < seriousCount;
-
     // Nationalitet
     const nationality_code = weightedPick(rng, natWeights);
     const clusterKey = clusterForNationality(nationality_code);
@@ -89,14 +98,9 @@ export function generateAcademyCandidates({
     );
     const birthdate = `${referenceYear - age}-06-15`;
 
-    // Potentiale: 0.5-trin (flyttes FØR generateYouthStats så potentiale kan videregives)
-    let pot;
-    if (is_serious) {
-      pot = 4.5 + rng() * 1.5; // 4.5–6.0
-    } else {
-      pot = 2.0 + rng() * 2.5; // 2.0–4.5
-    }
-    const potentiale = Math.round(pot * 2) / 2;
+    // Potentiale: geometrisk træk (0.5-trin, 1.0-6.0). 'Seriøs' = pot ≥ 4.5 (afledt).
+    const potentiale = drawPotentiale(rng);
+    const is_serious = potentiale >= 4.5;
 
     // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk;
     // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.

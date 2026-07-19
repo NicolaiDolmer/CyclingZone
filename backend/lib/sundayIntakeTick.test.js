@@ -165,10 +165,6 @@ test("happy path: 2 hold, hver får SUNDAY_DRIP_COUNT kandidater, ét samlet der
   assert.equal(seedCalls.length, 2);
   for (const call of seedCalls) {
     assert.equal(call.countOverride, SUNDAY_DRIP_COUNT);
-    assert.ok(
-      call.seriousCountOverride === 0 || call.seriousCountOverride === 1,
-      `seriousCountOverride skal være 0 eller 1, fik ${call.seriousCountOverride}`,
-    );
   }
 
   assert.equal(deriveCalls.length, 1, "ét samlet derive-kald for ALLE nye ryttere");
