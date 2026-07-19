@@ -32,6 +32,14 @@ const worktreeIdPlugin = () => {
   };
 };
 
+// #2668: preview-værktøjets "autoPort" (.claude/launch.json) tildeler en fri port
+// pr. session via PORT-env i stedet for et hardcodet --port-flag, så parallelle
+// worktree-sessioner ikke kolliderer på samme dev-server-port. Vite læser ikke
+// PORT automatisk — kun eksplicit her. strictPort kun når PORT er sat eksplicit
+// (autoPort har allerede verificeret porten er fri); ellers uændret Vite-default
+// (auto-increment ved konflikt) for almindelig manuel `npm run dev`.
+const explicitPort = process.env.PORT ? Number(process.env.PORT) : undefined;
+
 export default defineConfig({
   plugins: [
     react(),
@@ -51,6 +59,10 @@ export default defineConfig({
         })
       : null,
   ].filter(Boolean),
+  server: {
+    port: explicitPort,
+    strictPort: Boolean(explicitPort),
+  },
   build: {
     sourcemap: enableSentryUpload,
   },
