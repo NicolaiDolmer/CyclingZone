@@ -298,7 +298,7 @@ export async function runTeamTrainingDay({
     }
     // #2437: season_budget_baseline/season_budget_season skrives IKKE længere —
     // sæson-loftet er fjernet (se blok-kommentaren ved tickCaps ovenfor). Kolonnerne
-    // er nu ubrugte og kan droppes i en opfølgende migration; rørt ikke her.
+    // er droppet fra skemaet (#2590, database/2026-07-19-drop-season-budget-cols.sql).
     if (Object.keys(abilityPatch).length > 0) {
       abilityUpdates.push({ riderId: rider.id, patch: abilityPatch });
     }
