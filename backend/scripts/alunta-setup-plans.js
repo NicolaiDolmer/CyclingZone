@@ -1,5 +1,7 @@
 // Engangs-opsætning af CZ Pro-planer i Alunta via API (#1903).
-// Kør: node scripts/alunta-setup-plans.js  (fra backend/; kræver ALUNTA_API_TOKEN i .env)
+// Kør: infisical run --env=dev -- node scripts/alunta-setup-plans.js  (fra backend/)
+// ALUNTA_API_TOKEN injiceres af Infisical ved runtime (source of truth, jf.
+// docs/decisions/secret-management-adr.md); .env-fallback via dotenv nedenfor.
 //
 // Idempotent: lister eksisterende planer først og springer over hvis en plan
 // med samme navn allerede findes. Printer KUN navne + UUID'er (aldrig tokenet).
