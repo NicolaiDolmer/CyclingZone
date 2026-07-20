@@ -13,8 +13,8 @@
   "alreadyPro": "You're Pro. Thank you for backing Cycling Zone.",
   "alreadyFounder": "You're a Founder. Thank you for backing Cycling Zone from the start.",
   "founderHeading": "Founder seats",
-  "founderSeatsTaken": "{{taken}} of {{cap}} Founder seats taken",
-  "founderSeatsRemaining": "{{remaining}} seats left",
+  "founderSeatsTaken": "{taken} of {cap} Founder seats taken",
+  "founderSeatsRemaining": "{remaining} seats left",
   "founderSeatsFull": "All Founder seats are taken. New subscribers still get full Pro.",
   "founderExplainer": "The first 50 paying subscribers become Founders. Founders keep a permanent Founder badge, even if the subscription later lapses.",
   "fairnessNote": "Never pay-to-win: money buys depth, comfort and cosmetics, never a competitive edge."
