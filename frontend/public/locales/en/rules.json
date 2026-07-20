@@ -128,7 +128,7 @@
         },
         "promotion": {
           "title": "Promotion & relegation",
-          "text": "Promotion and relegation start from season {firstPromotionSeason}. Seasons 1 and 2 end without division changes to let the league settle first. From then on, the top teams move up and the bottom teams move down at season end."
+          "text": "Promotion and relegation are active from season {firstPromotionSeason}. At the end of every season from then on, the top teams in each division move up and the bottom teams move down."
         },
         "transition": {
           "title": "Manual season change",

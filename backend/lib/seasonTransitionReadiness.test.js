@@ -4,12 +4,23 @@ import assert from "node:assert/strict";
 import { assessTransitionReadiness } from "./seasonTransitionReadiness.js";
 
 // ─── Mock Supabase ────────────────────────────────────────────────────────────
-// Dækker præcis de tre queries assessTransitionReadiness laver:
+// Dækker præcis de fire queries assessTransitionReadiness laver:
 //   transfer_windows: select().eq().order().limit().maybeSingle()
 //   auctions:         select(_, {count,head}).in()  → thenable {count}
 //   races:            select(_, {count,head}).eq().neq() → thenable {count}
+//   seasons:          select().eq().maybeSingle() (#2361: season_end_completed)
 
-function createMockSupabase({ win = null, activeAuctionCount = 0, unfinishedRaceCount = 0 } = {}) {
+function createMockSupabase({
+  win = null,
+  activeAuctionCount = 0,
+  unfinishedRaceCount = 0,
+  // #2361: default = sæson 1, status completed → season_end_completed er ok
+  // som default, så eksisterende tests (der ikke handler om dette check)
+  // fortsat udtrykker deres oprindelige "ready"/"blocked af X"-forventning.
+  seasonNumber = 1,
+  seasonStatus = "completed",
+  seasonMissing = false,
+} = {}) {
   const thenableCount = (count) => ({
     then: (resolve) => resolve({ data: null, count, error: null }),
   });
@@ -29,6 +40,16 @@ function createMockSupabase({ win = null, activeAuctionCount = 0, unfinishedRace
       }
       if (table === "races") {
         const chain = { eq: () => chain, neq: () => thenableCount(unfinishedRaceCount) };
+        return { select: () => chain };
+      }
+      if (table === "seasons") {
+        const chain = {
+          eq: () => chain,
+          maybeSingle: () => Promise.resolve({
+            data: seasonMissing ? null : { id: FROM_SEASON_ID, number: seasonNumber, status: seasonStatus },
+            error: null,
+          }),
+        };
         return { select: () => chain };
       }
       throw new Error(`Uventet tabel i mock: ${table}`);
@@ -57,7 +78,75 @@ test("assessTransitionReadiness — wrapped vindue + 0 auktioner + 0 uafviklede 
   }
   assert.deepEqual(
     Object.keys(result.checks).sort(),
-    ["all_races_completed", "final_whistle_sent", "no_active_auctions", "squad_enforcement_completed", "window_closed"],
+    [
+      "all_races_completed",
+      "final_whistle_sent",
+      "no_active_auctions",
+      "season_end_completed",
+      "squad_enforcement_completed",
+      "window_closed",
+    ],
+  );
+});
+
+// ============================================================
+// #2361 — season_end_completed: transition på en stadig-AKTIV sæson
+// springer op/nedrykning + divisionsbonusser irreversibelt over.
+// ============================================================
+
+test("assessTransitionReadiness — sæson 1 stadig 'active' (season-end ikke kørt) blokerer", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seasonNumber: 1, seasonStatus: "active" });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.equal(result.checks.season_end_completed.ok, false);
+  assert.ok(result.failed_critical.includes("season_end_completed"));
+  assert.match(result.checks.season_end_completed.detail, /Afslut sæson/);
+});
+
+test("assessTransitionReadiness — sæson 1 'completed' (season-end kørt) er ok", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seasonNumber: 1, seasonStatus: "completed" });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.season_end_completed.ok, true);
+  assert.equal(result.checks.season_end_completed.detail, null);
+});
+
+test("assessTransitionReadiness — sæson 0 er N/A for season_end_completed selv med status='active'", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seasonNumber: 0, seasonStatus: "active" });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.season_end_completed.ok, true, "sæson 0 har intet season-end-skridt at vente på");
+});
+
+test("assessTransitionReadiness — resume-sti (#578): completed sæson 2+ er stadig ok for season_end_completed", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seasonNumber: 2, seasonStatus: "completed" });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.season_end_completed.ok, true);
+});
+
+test("assessTransitionReadiness — manglende sæson-row kaster", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seasonMissing: true });
+  await assert.rejects(
+    () => assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID }),
+    /findes ikke/,
+  );
+});
+
+test("assessTransitionReadiness — query-fejl på sæson kaster (fail-closed)", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW });
+  const broken = {
+    from(table) {
+      if (table === "seasons") {
+        const chain = {
+          eq: () => chain,
+          maybeSingle: () => Promise.resolve({ data: null, error: { message: "boom" } }),
+        };
+        return { select: () => chain };
+      }
+      return supabase.from(table);
+    },
+  };
+  await assert.rejects(
+    () => assessTransitionReadiness({ supabase: broken, fromSeasonId: FROM_SEASON_ID }),
+    /Kunne ikke læse sæson/,
   );
 });
 

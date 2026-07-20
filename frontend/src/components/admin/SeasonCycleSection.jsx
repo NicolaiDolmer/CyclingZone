@@ -151,7 +151,6 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
             value={formatCz(preview.sponsor_base_total)}
             sub={`(${formatCz(preview.sponsor_base_total / Math.max(preview.teams_affected, 1))} pr. hold)`}
           />
-          <Row label="Sæson 1 modifier" value="×1.00 (fredet)" sub="bestyrelses-modifier først aktiv fra sæson 2" />
         </div>
 
         {preview.already_transitioned && (

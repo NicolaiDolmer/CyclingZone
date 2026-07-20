@@ -7,6 +7,10 @@
  */
 
 export const TRANSITION_CHECK_LABELS = {
+  // #2361: skal stå øverst i den viste rækkefølge (samme rækkefølge som
+  // backend-checks-objektet) — springer man season-end over, er det den
+  // vigtigste og mest irreversible fejl at fange FØR transition.
+  season_end_completed: "Season-end kørt (op/nedrykning + bonusser)",
   window_closed: "Transfervindue lukket",
   final_whistle_sent: "Final whistle sendt",
   squad_enforcement_completed: "Squad enforcement kørt",
