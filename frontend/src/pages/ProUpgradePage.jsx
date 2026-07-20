@@ -11,6 +11,7 @@ export default function ProUpgradePage() {
   const [teamId, setTeamId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [seats, setSeats] = useState(null);
 
   useDocumentHead({ title: t("metaTitle") });
 
@@ -26,7 +27,23 @@ export default function ProUpgradePage() {
     return () => { alive = false; };
   }, []);
 
+  // Live seat-counter (#1903) — offentligt, ikke-sensitivt endpoint. Fejler den
+  // stille (progressive enhancement, ikke kritisk for checkout-flowet).
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API}/api/billing/founder-seats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (alive) setSeats(data);
+      } catch { /* ignore */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const { isPro, isFounder } = useSubscription(teamId);
+  const seatsLeft = seats ? Math.max(seats.cap - seats.taken, 0) : null;
 
   async function startCheckout(interval) {
     setBusy(true);
@@ -52,9 +69,22 @@ export default function ProUpgradePage() {
       <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-none text-cz-1">{t("title")}</h1>
       <p className="text-cz-2 mt-4 leading-relaxed">{t("subtitle")}</p>
 
+      {seats && (
+        <div className="mt-6 border border-cz-border rounded-cz px-5 py-4">
+          <div className="text-cz-3 text-xs uppercase tracking-wider">{t("founderHeading")}</div>
+          <div className="font-data text-2xl text-cz-1 mt-1 tabular-nums">
+            {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
+          </div>
+          {seatsLeft > 0 && (
+            <div className="text-cz-3 text-[11px] mt-0.5">{t("founderSeatsRemaining", { remaining: seatsLeft })}</div>
+          )}
+          <p className="text-cz-2 text-sm mt-3 leading-relaxed">{t("founderExplainer")}</p>
+        </div>
+      )}
+
       {isPro ? (
         <p className="mt-8 border-l-2 border-cz-accent bg-cz-subtle rounded-cz px-5 py-4 text-cz-1">
-          {t("alreadyPro")}
+          {isFounder ? t("alreadyFounder") : t("alreadyPro")}
         </p>
       ) : (
         <>

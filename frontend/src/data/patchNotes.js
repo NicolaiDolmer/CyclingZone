@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.33",
+    "date": "2026-07-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "First 50 subscribers become permanent Founders",
+          "body": "The Pro page now shows a live seat counter. The first 50 paying subscribers get a permanent Founder badge, kept even if the subscription later lapses. Once all 50 seats are taken, new subscribers still get full Pro."
+        },
+        "da": {
+          "title": "De første 50 abonnenter bliver permanente Founders",
+          "body": "Pro-siden viser nu en live pladstæller. De første 50 betalende abonnenter får et permanent Founder-badge, som bevares selv hvis abonnementet senere udløber. Når alle 50 pladser er taget, får nye abonnenter stadig fuld Pro."
+        },
+        "refs": [1903]
+      }
+    ]
+  },
+  {
     "version": "7.32",
     "date": "2026-07-19",
     "label": "Beta",
