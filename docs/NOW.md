@@ -16,6 +16,8 @@
 
 > **Åbne pick-ups:** Klub-UX Slice 2 [#2311](https://github.com/NicolaiDolmer/CyclingZone/issues/2311) · v3-flip-forudsætninger #2376 · Palmarès-rest #1997 · #1996 del 2 (blocked) · #2436 (lav) · perf/CI-rest [#2511](https://github.com/NicolaiDolmer/CyclingZone/issues/2511). **Kendt bug:** test-konti wipes (#2245, high). Mobil = 54,9% af app-besøg.
 >
+> **🔕 Ops-hygiejne 20/7:** Discord-ops-spam stoppet ([#2730](https://github.com/NicolaiDolmer/CyclingZone/issues/2730)/PR #2733) — balance-drift-alarm var boot-kørt + dedup-løs → ét ping pr. deploy; nu edge-triggered via ny `ops_alert_state`-tabel (migration applied). Ægte balance-brud (maxRiderWinRate 0,67-0,75 vs mål 0,45) spores i [#2731](https://github.com/NicolaiDolmer/CyclingZone/issues/2731).
+>
 > **🤖 Working agent:** Ingen aktiv session.
 >
 ## Standing context (forever-relaunch)
