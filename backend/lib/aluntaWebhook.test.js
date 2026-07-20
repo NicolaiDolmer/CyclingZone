@@ -1,6 +1,7 @@
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { createHmac } from "node:crypto";
 import http from "node:http";
 import express from "express";
 import { createTestDb } from "./testdb/createTestDb.js";
@@ -94,11 +95,14 @@ async function withServer(fn) {
   finally { server.close(); await once(server, "close"); }
 }
 
-function fireWebhook(base, payload, secret = "shh") {
+// Signerer som Alunta: HMAC-SHA256 over den rå JSON-body i `Signature`-headeren.
+function fireWebhook(base, payload, secret = "shh", { signatureOverride } = {}) {
+  const body = JSON.stringify(payload);
+  const signature = signatureOverride ?? createHmac("sha256", secret).update(body, "utf8").digest("hex");
   return fetch(`${base}/api/billing/alunta-webhook`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Alunta-Secret": secret },
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json", Signature: signature },
+    body,
   });
 }
 
@@ -120,9 +124,28 @@ test("checkout.completed med korrekt secret flipper subscription til active", as
   });
 });
 
-test("forkert secret afvises 401", async () => {
+test("signatur med forkert secret afvises 401", async () => {
   await withServer(async (base) => {
     const res = await fireWebhook(base, { event: "checkout.completed", data: {} }, "wrong");
+    assert.equal(res.status, 401);
+  });
+});
+
+test("manglende Signature-header afvises 401", async () => {
+  await withServer(async (base) => {
+    const res = await fetch(`${base}/api/billing/alunta-webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "checkout.completed", data: {} }),
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
+test("manipuleret body (gyldig signatur over ANDEN payload) afvises 401", async () => {
+  await withServer(async (base) => {
+    const otherSignature = createHmac("sha256", "shh").update(JSON.stringify({ event: "x" }), "utf8").digest("hex");
+    const res = await fireWebhook(base, { event: "checkout.completed", data: {} }, "shh", { signatureOverride: otherSignature });
     assert.equal(res.status, 401);
   });
 });
