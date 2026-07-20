@@ -104,7 +104,7 @@ export default function AdminSeasonTab() {
   }
 
   async function handleSeasonAction(seasonId, action) {
-    if (action === "end" && !confirm("Afslut sæson? Dette kører divisionsbonus, op/nedrykning (fra sæson 3) og board-eval. Løn + renter trækkes IKKE her — det er flyttet til næste sæsons start (v3.78).")) return;
+    if (action === "end" && !confirm("Afslut sæson? Dette kører divisionsbonus, op/nedrykning (aktiv fra sæson 1) og board-eval. Løn + renter trækkes IKKE her — det er flyttet til næste sæsons start (v3.78).")) return;
     setLoad(`${action}_${seasonId}`, true);
     try {
       const res = await fetch(`${API}/api/admin/seasons/${seasonId}/${action}`, {

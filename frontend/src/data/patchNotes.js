@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.36",
+    "date": "2026-07-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Promotion and relegation rules corrected: active from season 1",
+          "body": "The rules page and the season-end confirmation dialog incorrectly suggested promotion and relegation didn't start until a later season. They've actually been active since season 1: at the end of each season, the top teams in each division move up and the bottom teams move down. We also added an admin safety check that stops a season change from accidentally skipping these results and the division bonus payouts."
+        },
+        "da": {
+          "title": "Op-/nedrykningsregler rettet: aktiv fra sæson 1",
+          "body": "Regel-siden og bekræftelsesteksten ved sæsonafslutning antydede fejlagtigt at op- og nedrykning først startede i en senere sæson. Det har faktisk været aktivt siden sæson 1: ved hver sæsons afslutning rykker de øverste hold i hver division op, og de nederste rykker ned. Vi har også tilføjet et admin-sikkerhedstjek der forhindrer at et sæsonskifte ved en fejl springer disse resultater og divisionsbonusserne over."
+        },
+        "refs": [2361, 1783]
+      }
+    ]
+  },
+  {
     "version": "7.35",
     "date": "2026-07-20",
     "label": "Beta",

@@ -11,6 +11,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { transitionToNextSeason } from "../lib/seasonTransition.js";
+import { FIRST_PROMOTION_RELEGATION_SEASON } from "../lib/economyConstants.js";
 
 const arg = (n, d) => {
   const hit = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -38,6 +39,26 @@ console.log(`\n${"═".repeat(72)}`);
 console.log(`SÆSON-TRANSITION ${EXECUTE ? "🔴 EXECUTE (skriver til prod)" : "🟢 DRY-RUN (read-only)"}`);
 console.log(`${"═".repeat(72)}`);
 console.log(`Fra sæson: #${from?.number} (id ${FROM}, status='${from?.status}')`);
+
+// #2361: dette script er BEVIDST ugatet (omgår seasonTransitionReadiness.js) —
+// se resume-formålet i filens topkommentar. Uden season-end (processSeasonEnd,
+// "Afslut sæson") springes board-eval + payDivisionBonuses + processDivisionEnd
+// (op/nedrykning) irreversibelt over, fordi season-end bagefter afviser en
+// allerede completed sæson. Gør konsekvensen synlig for operatøren FØR --execute.
+const seasonEndRequired = (from?.number ?? 0) >= FIRST_PROMOTION_RELEGATION_SEASON;
+const seasonEndVerified = !seasonEndRequired || from?.status === "completed";
+console.warn(
+  `⚠️  Season-end verificeret: ${seasonEndVerified ? "JA" : "NEJ"}` +
+    (seasonEndVerified
+      ? ""
+      : ` — sæson ${from?.number} har status='${from?.status}', ikke 'completed'. ` +
+        `Kør 'Afslut sæson' (POST /admin/seasons/:id/end) FØRST, ellers springes ` +
+        `op/nedrykning + divisionsbonusser IRREVERSIBELT over. Dette script omgår ` +
+        `readiness-gaten og stopper ikke automatisk.`),
+);
+if (EXECUTE && !seasonEndVerified) {
+  console.warn(`⚠️  --execute kører ALLIGEVEL (scriptet er ugatet) — Ctrl+C nu hvis dette er en fejl.`);
+}
 
 const result = await transitionToNextSeason({
   supabase,

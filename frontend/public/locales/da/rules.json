@@ -128,7 +128,7 @@
         },
         "promotion": {
           "title": "Op- og nedrykning",
-          "text": "Op- og nedrykning starter fra sæson {firstPromotionSeason}. Sæson 1 og 2 slutter uden divisionsskift, så ligaen kan finde sig til rette først. Derefter rykker de øverste hold op og de nederste hold ned ved sæsonslut."
+          "text": "Op- og nedrykning er aktiv fra sæson {firstPromotionSeason}. Ved slutningen af hver sæson derfra rykker de øverste hold i hver division op, og de nederste hold rykker ned."
         },
         "transition": {
           "title": "Manuelt sæsonskift",
