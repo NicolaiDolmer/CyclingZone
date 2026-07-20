@@ -10,6 +10,7 @@
     },
     "salary": "Season salaries · {count} riders",
     "upkeep": "Upkeep (operating costs) · Division {division}",
+    "parachute": "Relegation parachute · Division {oldDivision} → {newDivision}",
     "academyDrift": "Academy drift · {count} slots × {drift_per_slot} pts",
     "facilityUpkeep": "Facility upkeep · {tracks} tracks",
     "staffSalary": "Staff season salaries · {count} staff",

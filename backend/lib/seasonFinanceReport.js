@@ -47,6 +47,8 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin prize award",
   [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta reset",
   [FINANCE_REASON.SEASON_START_UPKEEP]: "Upkeep & maintenance",
+  // #1980 · nedrykningsfaldskærm — engangs-sponsor-kompensation ved sæson-start.
+  [FINANCE_REASON.SEASON_START_PARACHUTE]: "Relegation parachute",
   [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT]: "Academy drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP]: "Facility upkeep",

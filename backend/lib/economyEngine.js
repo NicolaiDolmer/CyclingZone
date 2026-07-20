@@ -50,7 +50,9 @@ import {
   SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
+  PARACHUTE_FACTOR,
   SPONSOR_INCOME_BASE,
+  SPONSOR_INCOME_BY_DIVISION,
   UPKEEP_BEFORE_FIRST_RACE_ENABLED,
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
@@ -239,6 +241,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const boardTestMode = await isBoardTestModeActive(supabaseClient);
 
   const results = [];
+  // #1980 · nedrykningsfaldskærm — aggregeret summary (antal + total) returneret
+  // sammen med sponsor/payroll, så transition-loggen kan surface den.
+  const parachuteSummary = { count: 0, total: 0 };
 
   for (const team of teams || []) {
     const boards = team.board_profiles || [];
@@ -306,6 +311,58 @@ export async function processSeasonStart(seasonId, deps = {}) {
       console.log(
         `  ⏭️  ${team.name}: sæson-1-sponsor sprunget over (uberørt startkapital ${INITIAL_BALANCE})`
       );
+    }
+
+    // #1980 · Nedrykningsfaldskærm — engangsudbetaling ved sæson-START efter
+    // nedrykning. gammel_div = holdets division i den NETOP AFSLUTTEDE sæsons
+    // season_standings (samme lastSeasonStanding som sponsor-beregningen ovenfor
+    // allerede har hentet — ingen ekstra query). ny_div = holdets NUVÆRENDE
+    // teams.division (sat af processDivisionEnd ved sæson-slut). Nedrykket =
+    // ny_div > gammel_div. Faldskærm KUN når gammel_div ∈ {1,2} (låst kontrakt,
+    // economyConstants.PARACHUTE_FACTOR) — D3→D4 er bevidst ekskluderet.
+    const oldDivision = lastSeasonStanding?.division ?? null;
+    const newDivision = team.division;
+    const wasRelegated =
+      Number.isInteger(oldDivision) &&
+      Number.isInteger(newDivision) &&
+      newDivision > oldDivision;
+    const parachuteEligible = wasRelegated && (oldDivision === 1 || oldDivision === 2);
+    const parachuteAmount = parachuteEligible
+      ? Math.round(
+          PARACHUTE_FACTOR *
+            ((SPONSOR_INCOME_BY_DIVISION[oldDivision] ?? 0) -
+              (SPONSOR_INCOME_BY_DIVISION[newDivision] ?? 0))
+        )
+      : 0;
+
+    if (parachuteAmount > 0) {
+      const { skipped: parachuteSkipped } = await creditTeam(
+        team.id,
+        parachuteAmount,
+        "parachute",
+        null,
+        seasonId,
+        supabaseClient,
+        {
+          idempotent: true,
+          metadata: {
+            code: "tx.parachute",
+            params: { oldDivision, newDivision },
+          },
+          audit: {
+            sourcePath: "economyEngine.processSeasonStart.parachute",
+            reasonCode: FINANCE_REASON.SEASON_START_PARACHUTE,
+            idempotencyKey: `parachute:${team.id}:${seasonId}`,
+          },
+        }
+      );
+      if (!parachuteSkipped) {
+        parachuteSummary.count += 1;
+        parachuteSummary.total += parachuteAmount;
+        console.log(
+          `  🪂 ${team.name}: +${parachuteAmount} pts nedrykningsfaldskærm (D${oldDivision}→D${newDivision})`
+        );
+      }
     }
 
     // Ensure all three plan types exist
@@ -427,6 +484,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
       summary: payrollSummary,
     },
     progression,
+    // #1980 · nedrykningsfaldskærm — { count, total } mirror'er sponsor/payroll-
+    // summary-mønstret, så transition-loggen (seasonTransition.js) kan surface den.
+    parachute: parachuteSummary,
   };
 }
 

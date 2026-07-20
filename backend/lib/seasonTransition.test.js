@@ -310,6 +310,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
               negative_balance_interest_total: 0,
             },
           },
+          // #1980: nedrykningsfaldskærm — { count, total } summary.
+          parachute: { count: 0, total: 0 },
         };
       },
       notifySeasonEvent: async () => {},
@@ -325,8 +327,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
   // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
-  // #1836: +contract_expiring_notifications; #2453: +global_rank_decay = 12
-  assert.equal(result.log.length, 12);
+  // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
+  // #1980: +season_parachute = 13
+  assert.equal(result.log.length, 13);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -344,12 +347,15 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[7].phase, "season_payroll");
   assert.equal(result.log[7].teams_processed, 1);
   assert.equal(result.log[7].salary_count, 0);
-  assert.equal(result.log[8].phase, "admin_log");
-  assert.equal(result.log[8].inserted, true);
-  assert.equal(result.log[9].phase, "discord_broadcast");
-  assert.equal(result.log[9].sent, true);
-  assert.equal(result.log[10].phase, "season_started_notifications");
-  assert.equal(result.log[11].phase, "contract_expiring_notifications");
+  assert.equal(result.log[8].phase, "season_parachute");
+  assert.equal(result.log[8].count, 0);
+  assert.equal(result.log[8].total, 0);
+  assert.equal(result.log[9].phase, "admin_log");
+  assert.equal(result.log[9].inserted, true);
+  assert.equal(result.log[10].phase, "discord_broadcast");
+  assert.equal(result.log[10].sent, true);
+  assert.equal(result.log[11].phase, "season_started_notifications");
+  assert.equal(result.log[12].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 

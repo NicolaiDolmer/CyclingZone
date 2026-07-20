@@ -674,6 +674,22 @@ export async function transitionToNextSeason({
     });
   }
 
+  // #1980 · Nedrykningsfaldskærm — { count, total } summary (mirror season_payroll
+  // ovenfor). Legacy stubs uden .parachute-felt logges som skipped, samme mønster
+  // som season_payroll's fallback.
+  if (seasonStartResult && typeof seasonStartResult === "object" && seasonStartResult.parachute) {
+    log.push({
+      phase: "season_parachute",
+      ...seasonStartResult.parachute,
+    });
+  } else {
+    log.push({
+      phase: "season_parachute",
+      skipped: true,
+      reason: "processSeasonStart returnerede ikke parachute-summary",
+    });
+  }
+
   // #1137 · Passiv rytterudvikling (kun sæson ≥ 2). processSeasonStart kører den
   // isoleret; her surfacer vi summary i transition-loggen så admin ser udvikling/
   // pensioneringer pr. transition.

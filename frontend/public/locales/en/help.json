@@ -396,7 +396,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards. Division 4 opens gradually as its pools fill with real managers, so a Division 3 pool's relegation starts once its Division 4 pools open."
+        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards. Division 4 opens gradually as its pools fill with real managers, so a Division 3 pool's relegation starts once its Division 4 pools open. If you are relegated from Division 1 or Division 2, you get a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once to soften the landing."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -458,7 +458,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season."
+        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season. Teams relegated from Division 1 or 2 get a one-season relegation parachute (half the lost sponsor income) to soften the transition."
       }
     },
     "globalRank": {
