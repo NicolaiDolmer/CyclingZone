@@ -441,7 +441,7 @@ test("transitionToNextSeason — auto_calendar ON: materialiserer kalender for d
       notifySeasonEvent: async () => {},
       expireAndRenewContracts: async () => {},
       isAutoCalendarEnabled: async () => true,
-      materializeSeasonCalendar: async (args) => { calArgs = args; return { racesInserted: 30, stageProfiles: 90, stageSchedules: 90, pools: [] }; },
+      materializeTierCalendars: async (args) => { calArgs = args; return { racesInserted: 30, stageProfiles: 90, stageSchedules: 90, tiers: [] }; },
     },
   });
 
@@ -449,7 +449,7 @@ test("transitionToNextSeason — auto_calendar ON: materialiserer kalender for d
   const calPhase = result.log.find((p) => p.phase === "season_calendar");
   assert.ok(calPhase, "season_calendar-fasen skal logges når flaget er ON");
   assert.equal(calPhase.racesInserted, 30);
-  assert.ok(calArgs, "materializeSeasonCalendar skal kaldes");
+  assert.ok(calArgs, "materializeTierCalendars skal kaldes");
   assert.equal(calArgs.seasonId, "00000000-0000-0000-0000-000000000001", "kalender for den NYE sæson (plan.to_season.id)");
   assert.equal(calArgs.dryRun, false, "forever-transition materialiserer med writes");
   // Rækkefølge: efter sponsor_payout, før admin_log.
@@ -475,13 +475,13 @@ test("transitionToNextSeason — auto_calendar OFF (fail-safe default): ingen ka
       notifySeasonEvent: async () => {},
       expireAndRenewContracts: async () => {},
       isAutoCalendarEnabled: async () => false,
-      materializeSeasonCalendar: async () => { called = true; return {}; },
+      materializeTierCalendars: async () => { called = true; return {}; },
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.log.find((p) => p.phase === "season_calendar"), undefined, "ingen kalender-fase når flaget er OFF");
-  assert.equal(called, false, "materializeSeasonCalendar må ikke kaldes når flaget er OFF");
+  assert.equal(called, false, "materializeTierCalendars må ikke kaldes når flaget er OFF");
 });
 
 // #805 · Board-test-exit: når afgående sæson kørte board_test_mode, nulstilles

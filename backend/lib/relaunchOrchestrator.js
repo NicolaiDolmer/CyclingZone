@@ -27,7 +27,7 @@ import { isAcademyEnabled } from "./academyFlag.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
 import { startSequentialNegotiation } from "./boardSequentialNegotiation.js";
-import { materializeSeasonCalendar } from "./seasonCalendarMaterializer.js";
+import { materializeTierCalendars } from "./tierCalendarMaterializer.js";
 
 const INSERT_BATCH = 500;
 export const RELAUNCH_CONFIRM_TOKEN = "RELAUNCH SEASON 1";
@@ -90,7 +90,7 @@ const DEFAULT_DEPS = {
   generateAndAllocateAiTeams,
   seedSeasonZero,
   transitionToNextSeason,
-  materializeSeasonCalendar,
+  materializeTierCalendars,
   startSequentialNegotiation,
   runAcademyIntake,
   runContractSeed,
@@ -174,7 +174,7 @@ export async function runRelaunchSeason1(supabase, {
   if (dryRun) {
     summary.calendar = { skipped: "dryRun" };
   } else {
-    summary.calendar = await d.materializeSeasonCalendar({
+    summary.calendar = await d.materializeTierCalendars({
       supabase,
       seasonId: newSeasonId,
       seasonStartDate: startDate,

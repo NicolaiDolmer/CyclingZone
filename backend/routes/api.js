@@ -338,8 +338,7 @@ import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows } from "../lib/myTeamLatestResult.js";
-import { generateDivisionCalendars } from "../lib/divisionCalendarGenerator.js";
-import { materializeSeasonCalendar } from "../lib/seasonCalendarMaterializer.js";
+import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -7533,12 +7532,37 @@ router.post("/admin/seasons/:id/generate-entries", requireAdmin, adminWriteLimit
   }
 });
 
-// GET /admin/seasons/:id/generate-calendar/preview — REPRODUCERBAR dry-run-preview
-// af per-division-kalenderen (#2449). Kalder generateDivisionCalendars DIREKTE (den
-// REN funktion seasonCalendarMaterializer også bruger) — INGEN writes, og INGEN
-// duplikeret udvælgelses-logik. Viser den fulde kalender pr. pulje (løbsnavn/klasse/
-// type) + tier-fordeling, så ejeren kan verificere prestige-kaskaden (#2276: div 4
-// må ikke arve div 1's monumenter) FØR "Generér"-knappen bruges.
+// #2449: fælles anker-parametre for kalender-preview + apply, så de ALTID producerer
+// PRÆCIS samme plan (samme materializer, from, seed, vindue). from = dagen FØR første
+// løbsdag (buildScheduleRows lægger etape 1 på from+1), så første løbsdag = firstRaceDay
+// (default sæsonens start_date, middag UTC = DST/TZ-robust). baseSeed = sæson-nummer
+// (deterministisk, varierer pr. sæson så S2 ikke bliver identisk med S1). realDays =
+// løbsdags-vindue (default 28 = som sæson 1). Alle tre kan overrides via query.
+function resolveCalendarAnchor(season, query = {}) {
+  const firstRaceDay = query.firstRaceDay && /^\d{4}-\d{2}-\d{2}$/.test(query.firstRaceDay)
+    ? query.firstRaceDay
+    : (season.start_date ? String(season.start_date).slice(0, 10) : null);
+  let from = new Date();
+  if (firstRaceDay) {
+    const [y, m, d] = firstRaceDay.split("-").map(Number);
+    from = new Date(Date.UTC(y, m - 1, d - 1, 12, 0, 0)); // dagen før, middag UTC (TZ-robust)
+  }
+  const realDaysQ = Number.parseInt(query.realDays, 10);
+  const seedQ = Number.parseInt(query.seed, 10);
+  return {
+    from,
+    firstRaceDay,
+    realDays: realDaysQ > 0 ? realDaysQ : 28,
+    baseSeed: Number.isFinite(seedQ) && seedQ >= 0 ? seedQ : (Number(season.number) || 1),
+  };
+}
+
+// #2449: REPRODUCERBAR dry-run-preview af per-division-kalenderen. Bygger den RENE
+// tier-materialiserings-plan (buildTierMaterializationPlan — INGEN writes) via SAMME
+// materializer som "Generér", så previewet matcher det der faktisk skrives. Viser den
+// fulde kalender pr. pulje (løbsnavn/klasse/type/game_day) + tier-fordeling, så ejeren
+// kan verificere prestige-kaskaden (#2276: div 4 må ikke arve div 1's monumenter) +
+// invariant-brud FØR "Generér"-knappen bruges.
 router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (req, res) => {
   try {
     const seasonId = req.params.id;
@@ -7561,26 +7585,41 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
       }
     }
     const poolsWithCounts = (pools || []).map((p) => ({ ...p, realManagerCount: realCountByPool.get(p.id) || 0 }));
+    const labelByPool = new Map(poolsWithCounts.map((p) => [p.id, p.label ?? null]));
 
     const { data: catalog, error: catErr } = await supabase
       .from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
     if (catErr) return res.status(500).json({ error: catErr.message });
 
-    const calendars = generateDivisionCalendars({ pools: poolsWithCounts, catalog: catalog || [] });
+    const { from, realDays, baseSeed, firstRaceDay } = resolveCalendarAnchor(season, req.query);
+    const { tierPlans } = buildTierMaterializationPlan({ pools: poolsWithCounts, catalog: catalog || [], from, realDays, baseSeed });
+
+    // Flad tier-planen ud til den pulje-orienterede form admin-UI'et renderer.
+    const outPools = [];
+    for (const tp of tierPlans) {
+      for (const pool of tp.pools) {
+        const races = pool.raceRows;
+        outPools.push({
+          leagueDivisionId: pool.leagueDivisionId,
+          tier: pool.tier,
+          label: labelByPool.get(pool.leagueDivisionId) ?? null,
+          totalRaceDays: races.reduce((n, r) => n + (Number(r.stages) || 1), 0),
+          stageRaceCount: races.filter((r) => (Number(r.stages) || 1) > 1 || r.race_type === "stage_race").length,
+          raceClasses: [...new Set(races.map((r) => r.race_class))].sort(),
+          races: races.map((r) => ({ id: r.pool_race_id, name: r.name, race_class: r.race_class, race_type: r.race_type, stages: r.stages, game_day_start: r.game_day_start })),
+        });
+      }
+    }
+    // "truncated" = tiers med shortfall (katalog-loft) ELLER invariant-brud (kaskade/GT).
+    const truncated = tierPlans
+      .filter((tp) => (tp.shortfall || 0) > 0 || (tp.calendarViolations?.length || 0) > 0)
+      .map((tp) => ({ tier: tp.tier, shortfall: tp.shortfall || 0, calendarViolations: tp.calendarViolations || [] }));
 
     res.json({
       dryRun: true,
-      season: { id: season.id, number: season.number },
-      truncated: calendars.truncated || [],
-      pools: calendars.map((cal) => ({
-        leagueDivisionId: cal.leagueDivisionId,
-        tier: cal.tier,
-        label: cal.label,
-        totalRaceDays: cal.totalRaceDays,
-        stageRaceCount: cal.stageRaceCount,
-        raceClasses: [...new Set(cal.races.map((r) => r.race_class))].sort(),
-        races: cal.races.map((r) => ({ id: r.id, name: r.name, race_class: r.race_class, race_type: r.race_type, stages: r.stages })),
-      })),
+      season: { id: season.id, number: season.number, firstRaceDay, realDays, baseSeed },
+      truncated,
+      pools: outPools,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -7590,9 +7629,12 @@ router.get("/admin/seasons/:id/generate-calendar/preview", requireAdmin, async (
 // POST /admin/seasons/:id/generate-calendar — materialiserer per-division-kalenderen
 // (#2449: REPRODUCERBAR generator, jf. #1125). dryRun (query, default true) = preview
 // uden writes; dryRun=false = ægte materialisering (races + stage-profiler + schedule).
-// IDEMPOTENT (seasonCalendarMaterializer): re-kørsel indsætter kun de MANGLENDE
-// (pulje, pool_race)-par. Ejer-only knap — se AGENTS.md-reglen om at agenter aldrig
-// selv trigger writes mod prod.
+// IDEMPOTENT (materializeTierCalendars): re-kørsel indsætter kun de MANGLENDE
+// (pulje, pool_race)-par, og NÆGTER at apply'e en tier med kaskade/GT-invariant-brud.
+// from-ankeret sætter kalenderdatoerne (første løbsdag = sæsonens start_date som default)
+// → en 'upcoming' S2 kan genereres synligt FØR den bliver aktiv, uden at stage-scheduleren
+// (som kun kører den AKTIVE sæsons løb) afvikler den for tidligt. Ejer-only knap — se
+// AGENTS.md-reglen om at agenter aldrig selv trigger writes mod prod.
 router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const seasonId = req.params.id;
@@ -7602,8 +7644,9 @@ router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimi
     if (seasonError) return res.status(500).json({ error: seasonError.message });
     if (!season) return res.status(404).json({ error: "Season not found" });
 
-    const summary = await materializeSeasonCalendar({
-      supabase, seasonId: season.id, seasonStartDate: season.start_date, dryRun,
+    const { from, realDays, baseSeed, firstRaceDay } = resolveCalendarAnchor(season, req.query);
+    const summary = await materializeTierCalendars({
+      supabase, seasonId: season.id, seasonStartDate: season.start_date, from, realDays, baseSeed, dryRun,
     });
 
     if (!dryRun) {
@@ -7611,10 +7654,11 @@ router.post("/admin/seasons/:id/generate-calendar", requireAdmin, adminWriteLimi
         meta: {
           season_id: season.id,
           season_number: season.number,
+          first_race_day: firstRaceDay,
           races_inserted: summary.racesInserted,
           stage_profiles: summary.stageProfiles,
           stage_schedules: summary.stageSchedules,
-          truncated_pools: (summary.truncated || []).length,
+          tiers_with_violations: (summary.tiers || []).filter((t) => (t.calendarViolations || []).length > 0).length,
         },
       });
     }

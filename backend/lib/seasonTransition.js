@@ -57,14 +57,15 @@ async function getProcessSeasonStart() {
 }
 
 // #1704 · Lazy import (samme forsigtigheds-mønster som getProcessSeasonStart):
-// seasonCalendarMaterializer trækker scripts/backfillRaceScheduledFor ind, så vi
-// undgår enhver eager-import-bivirkning ved kun at loade den når flaget er ON.
-let materializeSeasonCalendarImpl;
-async function getMaterializeSeasonCalendar() {
-  if (!materializeSeasonCalendarImpl) {
-    materializeSeasonCalendarImpl = (await import("./seasonCalendarMaterializer.js")).materializeSeasonCalendar;
+// tierCalendarMaterializer er den kanoniske generator (#2449 unify) — sætter game_day/
+// game_day_start (kalender-synlighed) + håndhæver kaskade/GT-invarianter. Lazy for at
+// undgå eager-import-bivirkninger ved kun at loade den når auto_calendar-flaget er ON.
+let materializeTierCalendarsImpl;
+async function getMaterializeTierCalendars() {
+  if (!materializeTierCalendarsImpl) {
+    materializeTierCalendarsImpl = (await import("./tierCalendarMaterializer.js")).materializeTierCalendars;
   }
-  return materializeSeasonCalendarImpl;
+  return materializeTierCalendarsImpl;
 }
 
 let runRaceEntryGeneratorImpl;
@@ -688,7 +689,7 @@ export async function transitionToNextSeason({
   // race-selection. Materializeren er idempotent + skriver kun til LIVE puljer.
   const isAutoCalendarEnabledFn = deps.isAutoCalendarEnabled ?? isAutoCalendarEnabled;
   if (await isAutoCalendarEnabledFn(supabase)) {
-    const materializeFn = deps.materializeSeasonCalendar ?? (await getMaterializeSeasonCalendar());
+    const materializeFn = deps.materializeTierCalendars ?? (await getMaterializeTierCalendars());
     log.push({
       phase: "season_calendar",
       ...(await materializeFn({
