@@ -23,11 +23,20 @@ export function createAluntaClient({
   }
 
   return {
-    ensureCustomer({ externalCustomerId, name, email }) {
-      return call("/customers", {
-        method: "POST",
-        body: { name, email, external_customer_id: String(externalCustomerId) },
-      });
+    async ensureCustomer({ externalCustomerId, name, email }) {
+      try {
+        return await call("/customers", {
+          method: "POST",
+          body: { name, email, external_customer_id: String(externalCustomerId) },
+        });
+      } catch (err) {
+        // Idempotens: Alunta 422'er hvis kunden allerede findes på external_customer_id
+        // (ramte første testkøb 20/7 — retry #2 fejlede på duplikatet). "Findes
+        // allerede" ER succes for en ensure-operation.
+        const msg = String(err?.message || "");
+        if (msg.includes("-> 422") && msg.includes("external_customer_id already exists")) return null;
+        throw err;
+      }
     },
     async createCheckoutSession({ externalCustomerId, planId, successUrl, backUrl }) {
       const session = await call("/checkout-sessions", {
