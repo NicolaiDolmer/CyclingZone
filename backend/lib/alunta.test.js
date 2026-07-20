@@ -6,10 +6,11 @@ function fakeFetch(captured) {
   return async (url, opts) => {
     captured.url = url;
     captured.opts = opts;
+    // Aluntas faktiske svar-form: 201 med data-envelope (OpenAPI-spec, verificeret 20/7).
     return {
       ok: true,
-      status: 200,
-      text: async () => JSON.stringify({ checkout_url: "https://app.alunta.com/checkout/abc", uuid: "cus_1" }),
+      status: 201,
+      text: async () => JSON.stringify({ data: { id: "cs_1", checkout_url: "https://app.alunta.com/checkout/abc" } }),
     };
   };
 }
@@ -56,4 +57,12 @@ test("ensureCustomer: andre 422-fejl (validation) kaster stadig", async () => {
   const valBody = JSON.stringify({ message: "The email field must be a valid email address.", errors: { email: ["invalid"] } });
   const client = createAluntaClient({ token: "t", baseUrl: "https://x/api/v1", fetchImpl: async () => ({ ok: false, status: 422, text: async () => valBody }) });
   await assert.rejects(() => client.ensureCustomer({ externalCustomerId: "t", name: "n" }), /422.*email/);
+});
+
+test("createCheckoutSession kaster hoejt hvis svaret mangler checkout_url", async () => {
+  const client = createAluntaClient({ token: "t", baseUrl: "https://x/api/v1", fetchImpl: async () => ({ ok: true, status: 201, text: async () => JSON.stringify({ data: { id: "cs_2" } }) }) });
+  await assert.rejects(
+    () => client.createCheckoutSession({ externalCustomerId: "t", planId: "p", successUrl: "https://cz/ok", backUrl: "https://cz/pro" }),
+    /uden checkout_url/,
+  );
 });

@@ -57,6 +57,9 @@ export default function ProUpgradePage() {
       });
       if (!res.ok) throw new Error("checkout failed");
       const { checkout_url } = await res.json();
+      // Navigér ALDRIG til en tom/undefined URL — det bliver en relativ SPA-route
+      // (/undefined -> dashboard-redirect) og ligner "der skete ingenting" (#1903).
+      if (!checkout_url || !/^https:\/\//.test(checkout_url)) throw new Error("missing checkout_url");
       window.location.href = checkout_url; // redirect til Aluntas hostede betalingsside
     } catch {
       setErr(t("error"));
