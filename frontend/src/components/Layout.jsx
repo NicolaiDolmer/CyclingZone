@@ -201,7 +201,9 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           <Wordmark forceDark className="h-5 w-auto" alt="" />
           <div className="flex items-center gap-1.5 mt-1">
             <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
-            {isPro && <ProBadge isFounder={isFounder} />}
+            {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
+                plain Pro-badge kræver stadig aktiv Pro. */}
+            {(isPro || isFounder) && <ProBadge isFounder={isFounder} />}
           </div>
         </div>
       </button>

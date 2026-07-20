@@ -10,6 +10,12 @@
   "cta": "Videre til betaling",
   "loginFirst": "Log ind for at opgradere",
   "error": "Kunne ikke starte betaling. Prøv igen.",
-  "alreadyPro": "Du er Founder. Tak fordi du støtter Cycling Zone.",
+  "alreadyPro": "Du er Pro. Tak fordi du støtter Cycling Zone.",
+  "alreadyFounder": "Du er Founder. Tak fordi du støtter Cycling Zone fra starten.",
+  "founderHeading": "Founder-pladser",
+  "founderSeatsTaken": "{{taken}} af {{cap}} Founder-pladser taget",
+  "founderSeatsRemaining": "{{remaining}} pladser tilbage",
+  "founderSeatsFull": "Alle Founder-pladser er taget. Nye abonnenter får stadig fuld Pro.",
+  "founderExplainer": "De første 50 betalende abonnenter bliver Founders. Founders bevarer et permanent Founder-badge, selv hvis abonnementet senere udløber.",
   "fairnessNote": "Aldrig pay-to-win: penge køber dybde, komfort og kosmetik, aldrig en konkurrencefordel."
 }

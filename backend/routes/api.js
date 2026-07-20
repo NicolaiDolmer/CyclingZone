@@ -26,6 +26,7 @@ import {
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
+import { getFounderSeats } from "../lib/founderSeats.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -603,6 +604,14 @@ async function requireAdmin(req, res, next) {
 const billingCheckout = createCheckoutHandler();
 router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
 router.post("/billing/checkout", requireAuth, (req, res) => billingCheckout(req, res));
+// Offentligt (ikke-sensitivt) — live seat-counter til /pro-siden (#1903).
+router.get("/billing/founder-seats", async (req, res) => {
+  try {
+    res.json(await getFounderSeats(supabase));
+  } catch {
+    res.sendStatus(500);
+  }
+});
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
 // (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere
