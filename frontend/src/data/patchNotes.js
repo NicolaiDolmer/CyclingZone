@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.34",
+    "date": "2026-07-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Plan ahead: the Season 2 race calendar is now visible",
+          "body": "The full Season 2 programme is now available across all four divisions, so you can see every race before the season begins and build your squad around it. Open the Calendar and use the season selector to switch to Season 2."
+        },
+        "da": {
+          "title": "Planlæg forud: Sæson 2's løbskalender er nu synlig",
+          "body": "Hele Sæson 2-programmet er nu tilgængeligt for alle fire divisioner, så du kan se hvert løb før sæsonen begynder og bygge dit hold efter det. Åbn Kalenderen og brug sæson-vælgeren til at skifte til Sæson 2."
+        },
+        "refs": [2449]
+      }
+    ]
+  },
+  {
     "version": "7.33",
     "date": "2026-07-20",
     "label": "Beta",
