@@ -18,11 +18,12 @@
 // (samme mønster som stallWatchdog.js's evaluateStallFindings/fetchWatchdogState-split).
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { computeDayMetrics, classifyDay, findConsecutiveBreaches } from "./balanceDriftMetrics.js";
+import { computeDayMetrics, classifyDay, findConsecutiveBreaches, evaluateBreachAlert } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
 
 const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er den DB-interne værdi for "race v3" (flippet 12/7 — se seneste engine_version-skift i prod).
 const ROLLING_WINDOW_DAYS = 14;
+const BALANCE_DRIFT_ALERT_KEY = "balance-drift-breach"; // #2730: nøgle i ops_alert_state for edge-triggered dedup
 
 function dayBoundsUtc(dateStr) {
   const start = `${dateStr}T00:00:00.000Z`;
@@ -264,7 +265,28 @@ export async function runBalanceDriftWatch({
   const rows = (recentRows || []).map((r) => ({ date: r.metric_date, statuses: r.statuses }));
   const breaches = findConsecutiveBreaches(rows, { minConsecutiveDays: 3 });
 
-  if (breaches.length > 0) {
+  // #2730: edge-triggered dedup — alarmér KUN når brud-sættet ÆNDRER sig, så en
+  // boot-/restart-kørsel (24h-timeren nulstilles ved hver deploy) ikke re-spammer
+  // Discord med et uændret vedvarende brud. Sidst-alarmerede signatur ligger i
+  // ops_alert_state (persisteret, restart-robust), ikke in-memory (rod-årsagen).
+  const { data: stateRow, error: stateErr } = await supabase
+    .from("ops_alert_state")
+    .select("signature")
+    .eq("alert_key", BALANCE_DRIFT_ALERT_KEY)
+    .maybeSingle();
+  if (stateErr) {
+    captureExceptionFn?.(new Error(`ops_alert_state read (balance-drift): ${stateErr.message}`), {
+      tags: { cron: "balance-drift-watch" },
+    });
+    // Fail-safe: uden dedup-state kan vi ikke afgøre om bruddet er nyt. Vær STILLE
+    // frem for at risikere gen-spam — et ægte nyt brud fanges ved næste tick når
+    // læsningen virker igen (idempotent: den persisterede daglige række er skrevet).
+    return { date: targetDate, metrics, statuses, breaches };
+  }
+
+  const { shouldAlert, signature, changed } = evaluateBreachAlert(breaches, stateRow?.signature ?? "");
+
+  if (shouldAlert) {
     const url = getOpsWebhookFn ? await getOpsWebhookFn() : null;
     if (url && sendWebhookFn) {
       const payload = withOpsMention({
@@ -282,6 +304,25 @@ export async function runBalanceDriftWatch({
         ],
       });
       await sendWebhookFn(url, payload);
+    }
+  }
+
+  // Persistér den nye signatur når den ændrede sig — BÅDE ved ny/ændret alarm og
+  // når bruddet RYDDES (signature=""), så et fremtidigt identisk brud alarmerer igen.
+  if (changed) {
+    const { error: upsertStateErr } = await supabase.from("ops_alert_state").upsert(
+      {
+        alert_key: BALANCE_DRIFT_ALERT_KEY,
+        signature,
+        ...(shouldAlert ? { last_alerted_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "alert_key" }
+    );
+    if (upsertStateErr) {
+      captureExceptionFn?.(new Error(`ops_alert_state upsert (balance-drift): ${upsertStateErr.message}`), {
+        tags: { cron: "balance-drift-watch" },
+      });
     }
   }
 
