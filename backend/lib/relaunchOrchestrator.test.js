@@ -33,8 +33,8 @@ function makeDeps(order) {
     // transitionToNextSeason returnerer { ok, plan, log }; orchestrator udvinder den nye
     // sæson-id fra plan.to_season.id til kalender-materialiseringen.
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true, plan: { to_season: { id: computeSeasonUuid(1), number: 1 } } }; },
-    // #1704: per-division-kalender materialiseres EFTER transitionen (ét options-objekt-kald).
-    materializeSeasonCalendar: async (opts = {}) => { order.push({ name: "calendar", seasonId: opts.seasonId, dryRun: opts.dryRun }); return { racesInserted: 42, stageProfiles: 100, stageSchedules: 100, pools: [] }; },
+    // #1704/#2449: per-division-kalender materialiseres EFTER transitionen (ét options-objekt-kald).
+    materializeTierCalendars: async (opts = {}) => { order.push({ name: "calendar", seasonId: opts.seasonId, dryRun: opts.dryRun }); return { racesInserted: 42, stageProfiles: 100, stageSchedules: 100, tiers: [] }; },
     // #1680: bestyrelse låst OP fra start i sæson 1 (startSequentialNegotiation-primitiv).
     startSequentialNegotiation: async () => { order.push({ name: "unlockBoard" }); return { window_state: "pending_5yr", baseline_rows_deleted: 2 }; },
     runAcademyIntake: rec("academy", { teams: 2, candidates: 8 }),
