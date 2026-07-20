@@ -4,10 +4,22 @@
 // rider_derived_abilities (current ability) mod et uforanderligt loft, re-beregner
 // base_value, ældes ryttere (is_u25), og pensionerer semi-auto med notifikation.
 //
-// Idempotent: rider_development_log(rider_id, season_id) er UNIQUE og fungerer som
-// både guard (skip allerede-udviklede) OG #918-snapshot. Re-run efter delvis fejl
-// er sikker. Deterministisk: al variation seedes pr. (rider_id, sæson) i
-// riderProgression.js, så samme transition kørt 2× giver samme resultat.
+// Idempotent + ATOMISK PR. RYTTER (#2361): dev-log-insert + ability-update +
+// rider-update sker i ÉN Postgres-transaktion pr. rytter via RPC'en
+// apply_rider_development (database/2026-07-20-rider-development-atomic-rpc.sql).
+// rider_development_log(rider_id, season_id) er UNIQUE og fungerer som RPC'ens
+// interne idempotens-guard (INSERT ... ON CONFLICT DO NOTHING → returnerer false
+// hvis rækken allerede fandtes, UDEN at røre evner/rytter). Før #2361 blev
+// dev-loggen skrevet FØRST for ALLE ryttere, dernæst evner/rytter i separate
+// batch-loops — en fejl midtvejs i den sidste update-loop efterlod loggen skrevet
+// men evnerne/pensionering aldrig anvendt for de resterende ryttere, og en re-run
+// ville springe dem over (uoprettelig inkonsistens — loggen sagde "udviklet", men
+// var det ikke). RPC'en gør "logget" og "anvendt" atomisk: fejler ét RPC-kald, er
+// alle FORUDGÅENDE ryttere i loopet allerede committet korrekt, og en re-run
+// behandler kun de reelt uafsluttede. Deterministisk: al variation seedes pr.
+// (rider_id, sæson) i riderProgression.js — men KUN ift. INPUT (nuværende evner);
+// da RPC'en forhindrer dobbelt-anvendelse rammes determinismen aldrig af en
+// re-run (en allerede-committet rytter genudvikles aldrig fra sin NYE evne).
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -131,10 +143,8 @@ export async function developRidersForSeason({
   ]);
   const abilityByRider = new Map(abilityRows.map((a) => [a.rider_id, a]));
 
-  const abilityUpdates = [];  // { id, patch } → rider_derived_abilities
-  const riderUpdates = [];    // { id, patch } → riders
-  const logRows = [];         // rider_development_log
-  const notifications = [];   // { teamId, riderId, name }
+  const perRider = [];         // { id, abilityPatch, riderPatch, logPayload } → apply_rider_development RPC
+  const notifications = [];    // { teamId, riderId, name }
   const summary = {
     season_id: seasonId, season_number: seasonNumber,
     candidates: 0, skipped_already_done: 0, developed: 0,
@@ -196,18 +206,17 @@ export async function developRidersForSeason({
 
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;
-    abilityUpdates.push({ id: r.id, patch: abilityPatch });
 
     const riderPatch = { is_u25: age < 25 };
     if (newBaseValue != null) riderPatch.base_value = newBaseValue;
     if (newCpv != null) riderPatch.current_production_value = newCpv;
     if (retirement.retire) { riderPatch.is_retired = true; summary.retired++; }
-    riderUpdates.push({ id: r.id, patch: riderPatch });
 
-    logRows.push({
-      rider_id: r.id, season_id: seasonId, season_number: seasonNumber ?? null,
-      age, abilities: next, base_value: newBaseValue ?? null,
-      retired_this_season: retirement.retire,
+    perRider.push({
+      id: r.id,
+      abilityPatch,
+      riderPatch,
+      logPayload: { age, abilities: next, base_value: newBaseValue ?? null, retired_this_season: retirement.retire },
     });
 
     if (retirement.retire && r.team_id) {
@@ -216,30 +225,51 @@ export async function developRidersForSeason({
     summary.developed++;
   }
 
-  // ── Skriv (idempotent): log-rows upsertes med onConflict-ignore som backup-guard ─
-  if (logRows.length) {
-    for (let i = 0; i < logRows.length; i += 500) {
-      const { error } = await supabase
-        .from("rider_development_log")
-        .upsert(logRows.slice(i, i + 500), { onConflict: "rider_id,season_id", ignoreDuplicates: true });
-      if (error) throw new Error(`dev-log upsert: ${error.message}`);
+  // ── Skriv (ATOMISK PR. RYTTER, #2361) ─────────────────────────────────────────
+  // apply_rider_development committer dev-log-insert + ability-update + rider-update
+  // i ÉN transaktion pr. rytter. RPC returnerer false hvis dev-log-rækken allerede
+  // fandtes (INSERT ... ON CONFLICT (rider_id,season_id) DO NOTHING) — i så fald har
+  // RPC'en GARANTERET ikke rørt evner/rytter, så det tælles som allerede-udviklet i
+  // stedet for developed. Dette er kun en race (fx en samtidig anden kørsel) — det
+  // indledende alreadyDeveloped-filter fanger den almindelige re-run-sti. Fejler et
+  // RPC-kald, kaster vi straks: alle FORUDGÅENDE ryttere i dette loop er allerede
+  // committet atomisk (logget OG anvendt sammen), så en re-run kun genoptager de
+  // reelt uafsluttede — ingen dobbelt-udvikling, ingen "logget men ikke anvendt".
+  const appliedForHistory = [];
+  await runBatched(perRider, 25, async ({ id, abilityPatch, riderPatch, logPayload }) => {
+    const { data, error } = await supabase.rpc("apply_rider_development", {
+      p_rider_id: id,
+      p_season_id: seasonId,
+      p_season_number: seasonNumber ?? null,
+      p_ability_patch: abilityPatch,
+      p_rider_patch: riderPatch,
+      p_log: logPayload,
+    });
+    if (error) throw new Error(`apply_rider_development ${id}: ${error.message}`);
+    if (data === false) {
+      summary.skipped_already_done++;
+      summary.developed--;
+      return;
     }
-  }
+    appliedForHistory.push({ rider_id: id, abilities: logPayload.abilities });
+  });
 
-  // #2000 Udvikling-fane: season-snapshot af evnevektoren for ALLE udviklede ryttere
-  // (dækker AI/free-agents + giver ejede ryttere et rent sæson-grænsepunkt). Best-
-  // effort: en historik-fejl må ALDRIG kaste her (season-transition er kritisk spil-
-  // state; historik er afledt visning). Idempotent via UNIQUE(rider_id,snapshot_date,source).
-  if (logRows.length) {
+  // #2000 Udvikling-fane: season-snapshot af evnevektoren for ALLE FAKTISK udviklede
+  // ryttere (dækker AI/free-agents + giver ejede ryttere et rent sæson-grænsepunkt).
+  // Kører EFTER RPC-loopet og KUN for appliedForHistory (ikke race-skippede — deres
+  // evner blev aldrig anvendt, et snapshot ville være vildledende). Best-effort: en
+  // historik-fejl må ALDRIG kaste her (season-transition er kritisk spil-state;
+  // historik er afledt visning). Idempotent via UNIQUE(rider_id,snapshot_date,source).
+  if (appliedForHistory.length) {
     const snapshotDate = copenhagenDateString(now);
-    const historyRows = logRows.map((lr) => {
+    const historyRows = appliedForHistory.map((lr) => {
       const abilities = {};
       for (const k of VISIBLE_ABILITIES) abilities[k] = lr.abilities?.[k];
       return {
         rider_id: lr.rider_id,
         snapshot_date: snapshotDate,
         source: "season_transition",
-        season_number: lr.season_number,
+        season_number: seasonNumber ?? null,
         abilities,
       };
     });
@@ -254,14 +284,6 @@ export async function developRidersForSeason({
       console.error(`  ⚠️ ability-history snapshot (season) fejlede:`, histErr.message);
     }
   }
-  await runBatched(abilityUpdates, 25, ({ id, patch }) =>
-    supabase.from("rider_derived_abilities").update(patch).eq("rider_id", id).then(({ error }) => {
-      if (error) throw new Error(`abilities update ${id}: ${error.message}`);
-    }));
-  await runBatched(riderUpdates, 25, ({ id, patch }) =>
-    supabase.from("riders").update(patch).eq("id", id).then(({ error }) => {
-      if (error) throw new Error(`riders update ${id}: ${error.message}`);
-    }));
 
   // ── Retirement-notifikationer (fire-and-forget pr. ejer) ──────────────────────
   if (notify && notifications.length) {
