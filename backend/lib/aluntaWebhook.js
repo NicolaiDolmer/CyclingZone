@@ -1,19 +1,32 @@
 // Alunta webhook-handler. Svar 2xx < 3 sek. (Aluntas grænse); minimal DB-arbejde.
-// Interim-auth: delt hemmelig header over HTTPS. TODO: skift til Aluntas rigtige
-// signatur-mekanisme når den er bekræftet i test_mode (spec §9 åbne afklaringer).
+// Auth (bekræftet i Aluntas OpenAPI-spec 20/7, lukker spec §9-TODO'en): Alunta
+// sender en `Signature`-header = HMAC-SHA256 over den RÅ JSON-body, keyet med
+// webhook-secret'en fra dashboardet (ALUNTA_WEBHOOK_SECRET). Verifikation SKAL
+// ske på rå bytes før parsing (express.raw er wired på pathen i server.js) og
+// med constant-time-sammenligning.
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { FOUNDER_SEAT_CAP, getFounderSeats } from "./founderSeats.js";
 
-export function verifyWebhookSecret(req, secret) {
-  const provided = req.get("X-Alunta-Secret");
-  return Boolean(secret) && provided === secret;
+export function verifyWebhookSignature(req, secret) {
+  if (!secret) return false;
+  const provided = req.get("Signature");
+  if (!provided) return false;
+  const raw = Buffer.isBuffer(req.body)
+    ? req.body
+    : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {}), "utf8");
+  const expected = createHmac("sha256", secret).update(raw).digest("hex");
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(provided, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return timingSafeEqual(expectedBuf, providedBuf);
 }
 
 const ACTIVATING = new Set(["checkout.completed", "invoice.paid", "subscription.created"]);
 const CANCELLING = new Set(["subscription.cancelled"]);
 
 export async function handleAluntaWebhook({ req, res, supabase, secret = process.env.ALUNTA_WEBHOOK_SECRET }) {
-  if (!verifyWebhookSecret(req, secret)) return res.sendStatus(401);
+  if (!verifyWebhookSignature(req, secret)) return res.sendStatus(401);
 
   let payload;
   try {
