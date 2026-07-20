@@ -37,7 +37,38 @@ function createMockSupabase(state) {
       },
     };
   }
-  return { from: (table) => { state[table] ??= []; return builder(table); } };
+  // Letvægts-fake af apply_rider_development (#2361): emulerer RPC'ens
+  // ON-CONFLICT-DO-NOTHING-adfærd — INSERT i rider_development_log (guard på
+  // rider_id+season_id, samme UNIQUE som den ægte migration), og KUN hvis
+  // rækken faktisk blev indsat, mutation af rider_derived_abilities + riders.
+  // Allerede-logget (samme rider_id+season_id) → { data: false, error: null }
+  // UDEN at røre evner/rytter — spejler RPC'ens atomicitets-garanti 1:1.
+  function rpc(fnName, args) {
+    if (fnName !== "apply_rider_development") {
+      return Promise.resolve({ data: null, error: { message: `unmocked rpc: ${fnName}` } });
+    }
+    const { p_rider_id, p_season_id, p_season_number, p_ability_patch, p_rider_patch, p_log } = args;
+    state.rider_development_log ??= [];
+    const alreadyLogged = state.rider_development_log.some(
+      (l) => l.rider_id === p_rider_id && l.season_id === p_season_id
+    );
+    if (alreadyLogged) return Promise.resolve({ data: false, error: null });
+
+    state.rider_development_log.push({
+      rider_id: p_rider_id, season_id: p_season_id, season_number: p_season_number,
+      age: p_log?.age ?? null, abilities: p_log?.abilities ?? {}, base_value: p_log?.base_value ?? null,
+      retired_this_season: !!p_log?.retired_this_season,
+    });
+
+    const abRow = (state.rider_derived_abilities ?? []).find((a) => a.rider_id === p_rider_id);
+    if (abRow) for (const [k, v] of Object.entries(p_ability_patch ?? {})) if (v != null) abRow[k] = v;
+
+    const riderRow = (state.riders ?? []).find((r) => r.id === p_rider_id);
+    if (riderRow) for (const [k, v] of Object.entries(p_rider_patch ?? {})) if (v != null) riderRow[k] = v;
+
+    return Promise.resolve({ data: true, error: null });
+  }
+  return { from: (table) => { state[table] ??= []; return builder(table); }, rpc };
 }
 
 const ABILITY_DEFAULTS = { climbing: 55, time_trial: 55, prolog: 50, flat: 55, tempo: 55, sprint: 55, acceleration: 55, punch: 55, endurance: 55, recovery: 55, durability: 55, descending: 55, cobblestone: 55, positioning: 55, aggression: 55 };
@@ -323,4 +354,71 @@ test("træningsfokus (#1163) biaser udvikling når trainingSeasonId er sat", asy
   const climbTrained = trained.rider_derived_abilities[0].climbing;
   assert.ok(climbTrained > climbPlain, "vo2max-fokus (climbing) vokser mere end uden træning");
   assert.ok(climbTrained <= trained.rider_derived_abilities[0].ability_caps.climbing, "stadig under loftet");
+});
+
+// ── Re-run-sikkerhed efter delvis fejl (#2361) ──────────────────────────────────
+// Beviser den atomiske pr.-rytter-RPC løser den præcise bug: dev-log-skrivning og
+// evne/rytter-mutation kan IKKE længere komme ud af trit med hinanden. Simulerer
+// et RPC-kald der fejler for én rytter (r2) midt i en batch af tre; assertér at
+// r1+r3 er committet atomisk (log OG evner), r2 er urørt, og at en re-run udvikler
+// r2 PRÆCIS én gang uden at r1/r3 genudvikles.
+test("re-run-sikkerhed: RPC-fejl for én rytter → rytteren udvikles præcis 1× ved re-run, forudgående ryttere forbliver committet (#2361)", async () => {
+  const state = seedState({
+    riders: [
+      { id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2000-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "A", lastname: "One" },
+      { id: "r2", primary_type: "climber", potentiale: 5, birthdate: "2000-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "B", lastname: "Two" },
+      { id: "r3", primary_type: "climber", potentiale: 5, birthdate: "2000-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "C", lastname: "Three" },
+    ],
+    abilities: [
+      { rider_id: "r1", climbing: 55, tempo: 55, endurance: 55, ability_caps: null },
+      { rider_id: "r2", climbing: 55, tempo: 55, endurance: 55, ability_caps: null },
+      { rider_id: "r3", climbing: 55, tempo: 55, endurance: 55, ability_caps: null },
+    ],
+  });
+  const supabase = createMockSupabase(state);
+
+  // Wrapper: r2's FØRSTE RPC-kald fejler (simulerer fx en netværks-timeout midt i
+  // batchen); alle andre kald (r1, r3, og r2 ved re-run) går til den ægte mock-rpc.
+  let r2Failed = false;
+  const flakySupabase = {
+    from: supabase.from,
+    rpc: (fn, args) => {
+      if (args.p_rider_id === "r2" && !r2Failed) {
+        r2Failed = true;
+        return Promise.resolve({ data: null, error: { message: "simulated rpc failure for r2" } });
+      }
+      return supabase.rpc(fn, args);
+    },
+  };
+
+  await assert.rejects(
+    () => developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2, model: MODEL }),
+    /simulated rpc failure/,
+    "fejlende RPC-kald propagerer (season-transition må ikke sluge det)"
+  );
+
+  // r1 + r3 committet ATOMISK (log OG abilities OG riders sammen); r2 slet ikke rørt.
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r1").length, 1, "r1 logget");
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r3").length, 1, "r3 logget");
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r2").length, 0, "r2 IKKE logget ved fejl (atomicitet — ikke 'logget men ikke anvendt')");
+  assert.equal(state.rider_derived_abilities.find((a) => a.rider_id === "r2").climbing, 55, "r2 abilities urørt efter fejl");
+  assert.equal(state.riders.find((r) => r.id === "r2").base_value, 100000, "r2 base_value urørt efter fejl");
+
+  const r1ClimbAfterRun1 = state.rider_derived_abilities.find((a) => a.rider_id === "r1").climbing;
+  const r3ClimbAfterRun1 = state.rider_derived_abilities.find((a) => a.rider_id === "r3").climbing;
+  assert.ok(r1ClimbAfterRun1 > 55, "r1 udviklet i første kørsel");
+  assert.ok(r3ClimbAfterRun1 > 55, "r3 udviklet i første kørsel");
+
+  // Re-run (nu uden injiceret fejl): r1+r3 skippes (alreadyDeveloped-filter), kun r2 udvikles.
+  const summary2 = await developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+
+  assert.equal(summary2.developed, 1, "kun r2 udvikles ved re-run");
+  assert.equal(summary2.skipped_already_done, 2, "r1+r3 skippes ved re-run (allerede committet)");
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r2").length, 1, "r2 udviklet præcis 1× — ikke nul, ikke to gange");
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r1").length, 1, "r1 IKKE genudviklet ved re-run");
+  assert.equal(state.rider_development_log.filter((l) => l.rider_id === "r3").length, 1, "r3 IKKE genudviklet ved re-run");
+  assert.equal(state.rider_derived_abilities.find((a) => a.rider_id === "r1").climbing, r1ClimbAfterRun1, "r1 abilities uændret ved re-run (allerede committede ryttere rører intet)");
+  assert.equal(state.rider_derived_abilities.find((a) => a.rider_id === "r3").climbing, r3ClimbAfterRun1, "r3 abilities uændret ved re-run");
+  assert.ok(state.rider_derived_abilities.find((a) => a.rider_id === "r2").climbing > 55, "r2 endelig korrekt udviklet efter re-run");
+  assert.ok(state.riders.find((r) => r.id === "r2").base_value > 100000, "r2 base_value endelig anvendt efter re-run");
 });
