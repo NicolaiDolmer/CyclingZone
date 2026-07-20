@@ -188,3 +188,33 @@ export function findConsecutiveBreaches(rows = [], { minConsecutiveDays = 3 } = 
   }
   return breaches;
 }
+
+/**
+ * #2730 — edge-triggered dedup for balance-drift-Discord-alarmen.
+ *
+ * Byg en STABIL signatur af det aktuelle brud-sæt (metric + streak-start,
+ * sorteret) og sammenlign med den sidst-persisterede signatur. Formålet: en
+ * boot-/restart-kørsel (24h-timeren nulstilles ved hver deploy) må ikke
+ * re-alarmere et UÆNDRET vedvarende brud på hver deploy (Discord-spam, #2730).
+ *
+ * Signaturen bruger `since` (streak-start), ikke `days`, så et brud der bare
+ * bliver ÆLDRE ikke tæller som en ændring — kun et NYT brud, et brud der
+ * FORSVINDER, eller et brud hvis streak er brudt og genstartet (ny `since`)
+ * udløser en ny alarm.
+ *
+ * @param {Array<{metric:string, since:string}>} breaches  findConsecutiveBreaches()-output
+ * @param {string} [prevSignature]  sidst-persisterede signatur ("" hvis aldrig alarmeret)
+ * @returns {{ shouldAlert: boolean, signature: string, changed: boolean }}
+ *   shouldAlert: send Discord-alarm nu (signaturen ændrede sig OG er ikke-tom).
+ *   signature:   den nye signatur der skal persisteres.
+ *   changed:     signaturen afviger fra prev (persistér også når brud RYDDES,
+ *                så et fremtidigt identisk brud alarmerer igen).
+ */
+export function evaluateBreachAlert(breaches, prevSignature = "") {
+  const signature = (breaches || [])
+    .map((b) => `${b.metric}@${b.since}`)
+    .sort()
+    .join("|");
+  const changed = signature !== (prevSignature || "");
+  return { shouldAlert: changed && signature !== "", signature, changed };
+}

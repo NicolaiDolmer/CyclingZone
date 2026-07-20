@@ -8,6 +8,7 @@ import {
   classifyMetric,
   classifyDay,
   findConsecutiveBreaches,
+  evaluateBreachAlert,
 } from "./balanceDriftMetrics.js";
 
 // ── classifyMetric ───────────────────────────────────────────────────────────
@@ -186,4 +187,74 @@ test("findConsecutiveBreaches: flere metrikker kan alarmere samtidig, uafhængig
 
 test("findConsecutiveBreaches: tom rows-liste giver tom liste, ikke crash", () => {
   assert.deepEqual(findConsecutiveBreaches([]), []);
+});
+
+// ── evaluateBreachAlert (#2730 — edge-triggered dedup) ────────────────────────
+
+test("evaluateBreachAlert: nyt brud uden tidligere signatur → alarmér", () => {
+  const breaches = [{ metric: "maxRiderWinRate", since: "2026-07-16" }];
+  const r = evaluateBreachAlert(breaches, "");
+  assert.equal(r.shouldAlert, true);
+  assert.equal(r.changed, true);
+  assert.equal(r.signature, "maxRiderWinRate@2026-07-16");
+});
+
+test("evaluateBreachAlert: SAMME brud igen (uændret signatur) → tavs (spam-fixet)", () => {
+  // Rod-scenariet: boot-kørsel efter deploy ser det uændrede vedvarende brud.
+  const breaches = [{ metric: "maxRiderWinRate", since: "2026-07-16" }];
+  const prev = "maxRiderWinRate@2026-07-16";
+  const r = evaluateBreachAlert(breaches, prev);
+  assert.equal(r.shouldAlert, false);
+  assert.equal(r.changed, false);
+});
+
+test("evaluateBreachAlert: brud der bare bliver ÆLDRE (samme since) → tavs", () => {
+  // findConsecutiveBreaches øger `days`, men `since` er uændret → ingen ny alarm.
+  const r = evaluateBreachAlert([{ metric: "maxRiderWinRate", since: "2026-07-16", days: 8 }], "maxRiderWinRate@2026-07-16");
+  assert.equal(r.shouldAlert, false);
+});
+
+test("evaluateBreachAlert: NYT brud oveni et eksisterende → alarmér (signatur ændret)", () => {
+  const breaches = [
+    { metric: "maxRiderWinRate", since: "2026-07-16" },
+    { metric: "favoriteWinRate", since: "2026-07-18" },
+  ];
+  const r = evaluateBreachAlert(breaches, "maxRiderWinRate@2026-07-16");
+  assert.equal(r.shouldAlert, true);
+  assert.equal(r.changed, true);
+  assert.equal(r.signature, "favoriteWinRate@2026-07-18|maxRiderWinRate@2026-07-16"); // sorteret
+});
+
+test("evaluateBreachAlert: streak brudt og genstartet (ny since) → alarmér igen", () => {
+  const r = evaluateBreachAlert([{ metric: "maxRiderWinRate", since: "2026-07-20" }], "maxRiderWinRate@2026-07-16");
+  assert.equal(r.shouldAlert, true);
+  assert.equal(r.signature, "maxRiderWinRate@2026-07-20");
+});
+
+test("evaluateBreachAlert: brud RYDDET (tom liste) efter tidligere brud → tavs men changed=true", () => {
+  // changed=true så caller persisterer den tomme signatur; et fremtidigt identisk
+  // brud alarmerer så igen i stedet for at blive fejlagtigt undertrykt.
+  const r = evaluateBreachAlert([], "maxRiderWinRate@2026-07-16");
+  assert.equal(r.shouldAlert, false);
+  assert.equal(r.changed, true);
+  assert.equal(r.signature, "");
+});
+
+test("evaluateBreachAlert: ingen brud og ingen tidligere signatur → tavs, changed=false", () => {
+  const r = evaluateBreachAlert([], "");
+  assert.equal(r.shouldAlert, false);
+  assert.equal(r.changed, false);
+  assert.equal(r.signature, "");
+});
+
+test("evaluateBreachAlert: signatur er rækkefølge-uafhængig (deterministisk sort)", () => {
+  const a = evaluateBreachAlert([
+    { metric: "favoriteWinRate", since: "2026-07-18" },
+    { metric: "maxRiderWinRate", since: "2026-07-16" },
+  ], "").signature;
+  const b = evaluateBreachAlert([
+    { metric: "maxRiderWinRate", since: "2026-07-16" },
+    { metric: "favoriteWinRate", since: "2026-07-18" },
+  ], "").signature;
+  assert.equal(a, b);
 });
