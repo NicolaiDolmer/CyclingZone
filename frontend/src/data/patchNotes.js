@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.35",
+    "date": "2026-07-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Relegation parachute softens the drop from Division 1 or 2",
+          "body": "Get relegated from Division 1 or Division 2, and your team now receives a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once. Division 3 to 4 is unaffected — Division 4 has no upkeep costs, so there's nothing to cushion there."
+        },
+        "da": {
+          "title": "Nedrykningsfaldskærm dæmper faldet fra Division 1 eller 2",
+          "body": "Bliver dit hold nedrykket fra Division 1 eller Division 2, får du nu en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang. Division 3 til 4 er upåvirket — Division 4 har ingen driftsomkostninger, så der er intet at dæmpe der."
+        },
+        "refs": [1980]
+      }
+    ]
+  },
+  {
     "version": "7.34",
     "date": "2026-07-20",
     "label": "Beta",

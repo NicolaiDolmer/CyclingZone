@@ -234,6 +234,7 @@
     "reasonCode": {
       "season_start_sponsor": "Sponsor",
       "season_start_upkeep": "Drift og vedligehold",
+      "season_start_parachute": "Nedrykningsfaldskærm",
       "season_start_academy_drift": "Akademi-drift",
       "season_end_salary": "Løn",
       "season_end_division_bonus": "Divisionsbonus",

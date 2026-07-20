@@ -35,6 +35,8 @@ const RAW_KEYS = new Set([
   "seasonFrom", "seasonTo",
   // #2523 · etape-nummer + placering (stage_result) er små heltal, ikke beløb.
   "stage", "position",
+  // #1980 · nedrykningsfaldskærm — division-numre, ikke beløb.
+  "oldDivision", "newDivision",
 ]);
 
 /**

@@ -23,6 +23,8 @@ const {
   INITIAL_BALANCE,
   UPKEEP_BY_DIVISION,
   FINANCE_REASON,
+  PARACHUTE_FACTOR,
+  SPONSOR_INCOME_BY_DIVISION,
 } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 const { getTotalDebt: realGetTotalDebt, repayLoansFromForcedSale: realRepayLoansFromForcedSale } =
@@ -2633,12 +2635,23 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
  *
  * runSeasonPayroll injiceres som no-op stub.
  */
-function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [], activeContract = null } = {}) {
+function createSeasonStartSupabase({
+  season,
+  team,
+  prevSeasonId = null,
+  prevStandings = [],
+  activeContract = null,
+  // #1980 · simulerer DB'ens uniq_finance_idempotency_key/uniq_*_per_team_season:
+  // 2. forsøg med samme idempotency_key rammer 23505 og rulles tilbage (opt-in,
+  // default false så eksisterende tests' adfærd ikke ændres).
+  simulateIdempotency = false,
+} = {}) {
   const state = {
     season: clone(season),
     team: clone(team),
     activeContract: clone(activeContract),
     financeRows: [],
+    usedIdempotencyKeys: new Set(),
   };
 
   // Embed board_profiles direkte på holdet (som processSeasonStart forventer)
@@ -2648,6 +2661,11 @@ function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStan
     state,
     rpc(name, params) {
       assert.equal(name, "increment_balance_with_audit");
+      const key = params.p_finance_payload.idempotency_key;
+      if (simulateIdempotency && key && state.usedIdempotencyKeys.has(key)) {
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+      }
+      if (simulateIdempotency && key) state.usedIdempotencyKeys.add(key);
       state.financeRows.push({ ...params.p_finance_payload, team_id: params.p_team_id });
       return Promise.resolve({ data: (state.team.balance ?? 0) + params.p_delta, error: null });
     },
@@ -2870,6 +2888,219 @@ test("processSeasonStart clamper FINAL sponsor-payout til gross_sponsor × MAX_B
     expectedCeiling,
     `Sponsor payout skal clampes til round(gross_sponsor ${gross} × MAX_BOARD_MODIFIER ${MAX_BOARD_MODIFIER}) = ${expectedCeiling} — fik ${sponsorRow.amount}`
   );
+});
+
+// ─── #1980 Nedrykningsfaldskærm ───────────────────────────────────────────────
+// gammel_div udledes af lastSeasonStanding (season_standings for den netop
+// afsluttede sæson — samme kilde sponsor-beregningen allerede læser), ny_div =
+// team.division (mock-holdets aktuelle division, som processDivisionEnd allerede
+// har sat ved sæson-slut i den ægte prod-flow).
+
+test("#1980: processSeasonStart betaler 100000 parachute ved D1→D2-nedrykning", async () => {
+  const seasonId = "season-parachute-d1d2";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      { team_id: "team-d1d2", division: 1, rank_in_division: 18, total_points: 40 },
+    ],
+    team: {
+      id: "team-d1d2",
+      name: "Relegated D1 CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 2, // ny_div — allerede sat af processDivisionEnd i den ægte flow
+      balance: 500_000,
+      sponsor_income: 600_000,
+      board_profiles: [],
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const expected = Math.round(PARACHUTE_FACTOR * (SPONSOR_INCOME_BY_DIVISION[1] - SPONSOR_INCOME_BY_DIVISION[2]));
+  assert.equal(expected, 100000, "sanity: låst kontrakt-beløb");
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  assert.ok(parachuteRow, "Ingen parachute finance-row fundet");
+  assert.equal(parachuteRow.amount, expected);
+  assert.equal(parachuteRow.metadata.code, "tx.parachute");
+  assert.deepEqual(parachuteRow.metadata.params, { oldDivision: 1, newDivision: 2 });
+  assert.equal(parachuteRow.reason_code, FINANCE_REASON.SEASON_START_PARACHUTE);
+  assert.equal(parachuteRow.idempotency_key, `parachute:team-d1d2:${seasonId}`);
+
+  assert.equal(outcome.parachute.count, 1);
+  assert.equal(outcome.parachute.total, expected);
+});
+
+test("#1980: processSeasonStart betaler 30000 parachute ved D2→D3-nedrykning", async () => {
+  const seasonId = "season-parachute-d2d3";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      { team_id: "team-d2d3", division: 2, rank_in_division: 19, total_points: 20 },
+    ],
+    team: {
+      id: "team-d2d3",
+      name: "Relegated D2 CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 3,
+      balance: 400_000,
+      sponsor_income: 400_000,
+      board_profiles: [],
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const expected = Math.round(PARACHUTE_FACTOR * (SPONSOR_INCOME_BY_DIVISION[2] - SPONSOR_INCOME_BY_DIVISION[3]));
+  assert.equal(expected, 30000, "sanity: låst kontrakt-beløb");
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  assert.ok(parachuteRow, "Ingen parachute finance-row fundet");
+  assert.equal(parachuteRow.amount, expected);
+  assert.equal(outcome.parachute.count, 1);
+  assert.equal(outcome.parachute.total, expected);
+});
+
+test("#1980: processSeasonStart betaler INGEN parachute ved D3→D4-nedrykning (bevidst ekskluderet — D4-upkeep=0)", async () => {
+  const seasonId = "season-parachute-d3d4";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      { team_id: "team-d3d4", division: 3, rank_in_division: 22, total_points: 5 },
+    ],
+    team: {
+      id: "team-d3d4",
+      name: "Relegated D3 CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 4,
+      balance: 300_000,
+      sponsor_income: 340_000,
+      board_profiles: [],
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  assert.equal(parachuteRow, undefined, "D3→D4 skal IKKE udløse en parachute-row");
+  assert.equal(outcome.parachute.count, 0);
+  assert.equal(outcome.parachute.total, 0);
+});
+
+test("#1980: processSeasonStart betaler INGEN parachute ved oprykning (promotion)", async () => {
+  const seasonId = "season-parachute-promotion";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      { team_id: "team-promoted", division: 2, rank_in_division: 1, total_points: 900 },
+    ],
+    team: {
+      id: "team-promoted",
+      name: "Promoted CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 1, // oprykket — ny_div < gammel_div
+      balance: 600_000,
+      sponsor_income: 600_000,
+      board_profiles: [],
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  assert.equal(parachuteRow, undefined, "Oprykning skal IKKE udløse en parachute-row");
+  assert.equal(outcome.parachute.count, 0);
+  assert.equal(outcome.parachute.total, 0);
+});
+
+test("#1980: processSeasonStart betaler INGEN parachute uden forrige-sæson-standing (sæson 1, intet at sammenligne med)", async () => {
+  const seasonId = "season-parachute-s1";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    prevSeasonId: null,
+    prevStandings: [],
+    team: {
+      id: "team-s1",
+      name: "Launch CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 3,
+      balance: 500_000, // = INITIAL_BALANCE → sponsor skippes også (uafhængigt af parachute)
+      sponsor_income: 340_000,
+      board_profiles: [],
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  assert.equal(parachuteRow, undefined);
+  assert.equal(outcome.parachute.count, 0);
+  assert.equal(outcome.parachute.total, 0);
+});
+
+test("#1980: processSeasonStart kørt to gange giver præcis ÉN parachute-post (idempotent, cron-genkørsel)", async () => {
+  const seasonId = "season-parachute-rerun";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      { team_id: "team-rerun", division: 1, rank_in_division: 18, total_points: 40 },
+    ],
+    team: {
+      id: "team-rerun",
+      name: "Rerun Relegated CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 2,
+      balance: 500_000,
+      sponsor_income: 600_000,
+      board_profiles: [],
+    },
+    simulateIdempotency: true,
+  });
+
+  const outcome1 = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+  const outcome2 = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const parachuteRows = supabase.state.financeRows.filter((r) => r.type === "parachute");
+  assert.equal(parachuteRows.length, 1, "kun 1. kørsel skal skrive en parachute-row — 2. kørsel skal skippe");
+
+  assert.equal(outcome1.parachute.count, 1);
+  assert.equal(outcome1.parachute.total, 100000);
+  // 2. kørsel: incrementBalanceWithAudit returnerer skipped:true (23505) →
+  // parachuteSummary tælles IKKE op igen for denne kørsel.
+  assert.equal(outcome2.parachute.count, 0);
+  assert.equal(outcome2.parachute.total, 0);
 });
 
 // ─── Løbende upkeep-debit (#1441) ────────────────────────────────────────────

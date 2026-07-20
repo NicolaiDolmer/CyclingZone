@@ -27,6 +27,16 @@ export const SPONSOR_INCOME_BASE = 240000;
 // rammer net break-even ved upkeep=0. Tier 1-3-tallene er granit fra #1441 A6 og urørt.
 export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 340000, 4: 315000 };
 
+// #1980 Nedrykningsfaldskærm (ejer-låst kontrakt 5/7 — MÅ IKKE ÆNDRES uden ejer-go).
+// Engangsudbetaling ved sæson-START efter nedrykning, dækker halvdelen af det tabte
+// sponsor-spring: parachute = PARACHUTE_FACTOR × (SPONSOR_INCOME_BY_DIVISION[gammel_div]
+// − SPONSOR_INCOME_BY_DIVISION[ny_div]). Varer 1 sæson (ingen fortsat effekt år 2).
+// KUN D1→D2 og D2→D3 (gammel_div ∈ {1,2}) — D3→D4 er BEVIDST ekskluderet: D4-upkeep=0
+// (§ UPKEEP_BY_DIVISION[4]), så et D4-hold ikke spiraler uden faldskærm; en faldskærm
+// dertil ville være et rent gratis tilskud uden anti-spiral-formål.
+// Konkrete beløb (låst): D1→D2 = 0.5×(600000−400000) = 100000 · D2→D3 = 0.5×(400000−340000) = 30000.
+export const PARACHUTE_FACTOR = 0.5;
+
 // #1441 Fase 1 — løbende upkeep (gold sink). Division-tier-skaleret, IKKE live
 // roster-værdi (undgår auto-eskalerende feedback-loop).
 //
@@ -275,6 +285,8 @@ export const FINANCE_REASON = Object.freeze({
   // Sæson-baserede payouts (cron)
   SEASON_START_SPONSOR: "season_start_sponsor",
   SEASON_START_UPKEEP: "season_start_upkeep",
+  // #1980 · nedrykningsfaldskærm — engangsudbetaling ved sæson-start efter nedrykning.
+  SEASON_START_PARACHUTE: "season_start_parachute",
   SEASON_START_ACADEMY_DRIFT: "season_start_academy_drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   SEASON_START_FACILITY_UPKEEP: "season_start_facility_upkeep",
