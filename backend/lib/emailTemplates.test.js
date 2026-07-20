@@ -42,13 +42,26 @@ test("welcome email falls back gracefully when teamName is missing", () => {
   assert.ok(!t.html.includes("null"));
 });
 
-test("day1 email: subject, dashboard link, unsubscribe link, no em-dash", () => {
-  const t = buildDay1Email({ teamName: "Team Velodrome", unsubscribeUrl: UNSUB_URL });
+test("day1 email (hasResults=true): subject, dashboard link, unsubscribe link, no em-dash", () => {
+  const t = buildDay1Email({ teamName: "Team Velodrome", hasResults: true, unsubscribeUrl: UNSUB_URL });
   assert.equal(t.subject, "Day 1: your first results are in");
   assert.ok(t.html.includes("Team Velodrome"));
+  assert.ok(t.html.includes("already on the board"));
   assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
   assertHasUnsubscribeLink(t);
-  assertNoEmDash(t, "day1");
+  assertNoEmDash(t, "day1 hasResults=true");
+});
+
+test("day1 email (hasResults=false): truthful variant, no invented results claim, no em-dash", () => {
+  const t = buildDay1Email({ teamName: "Team Velodrome", hasResults: false, unsubscribeUrl: UNSUB_URL });
+  assert.equal(t.subject, "Day 1: your first race is coming up");
+  assert.ok(t.html.includes("Team Velodrome"));
+  assert.ok(!t.html.includes("already on the board"), "must not claim results exist when they don't");
+  assert.ok(!t.text.includes("already on the board"));
+  assert.ok(t.html.includes("on the calendar"));
+  assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
+  assertHasUnsubscribeLink(t);
+  assertNoEmDash(t, "day1 hasResults=false");
 });
 
 test("race_digest email: subject, results link, unsubscribe link, no em-dash", () => {
@@ -89,7 +102,7 @@ test("race_digest email escapes rider/race names (no HTML injection from race_re
 test("buildLoopEmail dispatches by type", () => {
   const welcome = buildLoopEmail("welcome", { teamName: "T", unsubscribeUrl: UNSUB_URL });
   assert.equal(welcome.subject, "Your team is on the start line");
-  const day1 = buildLoopEmail("day1", { teamName: "T", unsubscribeUrl: UNSUB_URL });
+  const day1 = buildLoopEmail("day1", { teamName: "T", hasResults: true, unsubscribeUrl: UNSUB_URL });
   assert.equal(day1.subject, "Day 1: your first results are in");
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL });
   assert.equal(digest.subject, "Race day: how your team did today");

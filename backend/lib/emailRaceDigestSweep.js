@@ -17,15 +17,11 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { buildRaceDigestEmail } from "./emailTemplates.js";
-import { signUnsubToken } from "./emailUnsubToken.js";
+import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
 import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 
 export const DIGEST_HOUR_COPENHAGEN = 19;
-
-function unsubscribeUrlFor(userId, secret) {
-  return `https://cyclingzone.org/api/email/unsubscribe?token=${signUnsubToken(userId, secret)}`;
-}
 
 // #2725: a single race day can produce >1000 race_results rows once every
 // division races the same day (stage races × many teams), so this MUST

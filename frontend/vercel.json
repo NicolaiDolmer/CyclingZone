@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/api/email/unsubscribe", "destination": "https://cyclingzone-production.up.railway.app/api/email/unsubscribe" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [

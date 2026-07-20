@@ -5,20 +5,29 @@
 // window is ever widened later).
 //
 // Same human-team filter as emailWelcomeSweep.js.
+//
+// Review fix (PR #2728): production data shows only ~1/3 of new teams have
+// any race_results within 24h, so the D1 copy cannot unconditionally claim
+// "your results are already on the board" — that would be an invented claim
+// for up to 2/3 of recipients (house hard rule: no invented content in
+// player-facing copy). Per team we check race_results existence (same
+// exists-style .select("id").eq("team_id", teamId).limit(1) pattern as
+// achievementEngine.js's loadRaceResultStats — race_results.team_id points
+// directly at teams, no riders-join needed) and pass hasResults into
+// buildDay1Email so it renders one of two truthful variants. The check sits
+// inside the existing per-team try/catch, so a failed results lookup for one
+// team is isolated exactly like any other per-team failure (counts as
+// `failed`, does not block the rest of the sweep).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { buildDay1Email } from "./emailTemplates.js";
-import { signUnsubToken } from "./emailUnsubToken.js";
+import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
 import { captureException } from "./sentry.js";
 
 export const DAY1_WINDOW_MIN_MS = 20 * 60 * 60 * 1000;
 export const DAY1_WINDOW_MAX_MS = 30 * 60 * 60 * 1000;
-
-function unsubscribeUrlFor(userId, secret) {
-  return `https://cyclingzone.org/api/email/unsubscribe?token=${signUnsubToken(userId, secret)}`;
-}
 
 export async function runEmailDay1Sweep({
   supabase,
@@ -59,8 +68,13 @@ export async function runEmailDay1Sweep({
       if (error) throw new Error(`users lookup: ${error.message}`);
       if (!userRow?.email) { skipped += 1; continue; }
 
+      const { data: resultRows, error: resultsError } = await supabase
+        .from("race_results").select("id").eq("team_id", team.id).limit(1);
+      if (resultsError) throw new Error(`race_results lookup: ${resultsError.message}`);
+      const hasResults = (resultRows || []).length > 0;
+
       const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
-      const { subject, html, text } = buildDay1Email({ teamName: team.name, unsubscribeUrl });
+      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, unsubscribeUrl });
       const result = await send({
         supabase,
         userId: team.user_id,

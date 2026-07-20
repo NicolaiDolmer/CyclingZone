@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runEmailDay1Sweep, DAY1_WINDOW_MIN_MS, DAY1_WINDOW_MAX_MS } from "./emailDay1Sweep.js";
 
-function makeSupabase(teamRows, userEmails = {}) {
+// resultTeamIds: team ids that have >=1 race_results row (drives hasResults).
+// resultsErrorForTeamIds: team ids where the race_results lookup itself
+// throws, to exercise the per-team try/catch isolation.
+function makeSupabase(teamRows, userEmails = {}, { resultTeamIds = [], resultsErrorForTeamIds = [] } = {}) {
   return {
     from(table) {
       if (table === "teams") {
@@ -34,6 +37,19 @@ function makeSupabase(teamRows, userEmails = {}) {
           select() { return this; },
           eq(_col, id) { userId = id; return this; },
           maybeSingle: async () => ({ data: userEmails[userId] ? { email: userEmails[userId] } : null, error: null }),
+        };
+      }
+      if (table === "race_results") {
+        let teamId = null;
+        return {
+          select() { return this; },
+          eq(_col, id) { teamId = id; return this; },
+          limit: async () => {
+            if (resultsErrorForTeamIds.includes(teamId)) {
+              return { data: null, error: { message: "connection reset" } };
+            }
+            return { data: resultTeamIds.includes(teamId) ? [{ id: `result-${teamId}` }] : [], error: null };
+          },
         };
       }
       throw new Error(`unexpected table: ${table}`);
@@ -100,6 +116,34 @@ test("dedupeKey is deterministic (day1:<userId>)", async () => {
   assert.equal(sendCalls[0].type, "day1");
 });
 
+test("hasResults=true renders the results-in copy for a team with a race_results row", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(rows, { "user-42": "player@example.com" }, { resultTeamIds: ["t1"] });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(sendCalls[0].subject, "Day 1: your first results are in");
+  assert.ok(sendCalls[0].html.includes("already on the board"));
+});
+
+test("hasResults=false renders the truthful no-results-yet copy, never the invented results claim", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(rows, { "user-42": "player@example.com" }, { resultTeamIds: [] });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(sendCalls[0].subject, "Day 1: your first race is coming up");
+  assert.ok(!sendCalls[0].html.includes("already on the board"));
+});
+
 test("is a no-op when the flag is not active", async () => {
   const now = new Date("2026-07-20T12:00:00Z");
   const supabase = makeSupabase([{ id: "should-not-be-queried" }]);
@@ -126,4 +170,30 @@ test("per-team failures are isolated", async () => {
   assert.equal(result.candidates, 2);
   assert.equal(result.sent, 1);
   assert.equal(result.failed, 1);
+});
+
+test("a failed race_results lookup for one team is isolated (per-team try/catch), other teams still get sent", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("a", { created_at: inWindow }), mk("b", { created_at: inWindow })];
+  const supabase = makeSupabase(
+    rows,
+    { "user-a": "a@example.com", "user-b": "b@example.com" },
+    { resultsErrorForTeamIds: ["a"] }
+  );
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+  const capturedErrors = [];
+
+  const result = await runEmailDay1Sweep({
+    supabase, now, isActive: async () => true, send, unsubSecret: "test-secret",
+    captureExceptionFn: (err, ctx) => capturedErrors.push({ err, ctx }),
+  });
+
+  assert.equal(result.candidates, 2);
+  assert.equal(result.sent, 1);
+  assert.equal(result.failed, 1);
+  assert.deepEqual(sendCalls.map((c) => c.teamId), ["b"]);
+  assert.equal(capturedErrors.length, 1);
+  assert.match(capturedErrors[0].err.message, /race_results lookup/);
 });

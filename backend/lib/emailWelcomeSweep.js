@@ -11,14 +11,10 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
 import { buildWelcomeEmail } from "./emailTemplates.js";
-import { signUnsubToken } from "./emailUnsubToken.js";
+import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
 import { captureException } from "./sentry.js";
 
 export const WELCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
-
-function unsubscribeUrlFor(userId, secret) {
-  return `https://cyclingzone.org/api/email/unsubscribe?token=${signUnsubToken(userId, secret)}`;
-}
 
 export async function runEmailWelcomeSweep({
   supabase,

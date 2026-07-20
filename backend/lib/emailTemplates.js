@@ -99,24 +99,57 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
 
 /**
  * D1 nudge email, sent 20-30h after signup for accounts that have not come back.
- * @param {{teamName: string, unsubscribeUrl: string}} args
+ *
+ * Two truthful variants gated on hasResults (review fix, PR #2728):
+ * production data shows only ~1/3 of new teams have race_results within
+ * 24h, so claiming "your results are already on the board" for everyone
+ * would be an invented claim for the other ~2/3 — the caller
+ * (emailDay1Sweep.js) checks race_results per team and passes the real
+ * answer in.
+ * @param {{teamName: string, hasResults: boolean, unsubscribeUrl: string}} args
  */
-export function buildDay1Email({ teamName, unsubscribeUrl }) {
+export function buildDay1Email({ teamName, hasResults, unsubscribeUrl }) {
   const name = escapeHtml(teamName) || "Your team";
-  const subject = "Day 1: your first results are in";
+  const plainName = teamName || "Your team";
+
+  if (hasResults) {
+    const subject = "Day 1: your first results are in";
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;">Hi,</p>
+      <p style="margin:0 0 16px;">${name} raced while you were away. Your results are already on the board.</p>
+      <p style="margin:0 0 16px;">Worth checking today: your race results, and any auctions ending today that you might still want to bid on.</p>
+      <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">See your results and auctions</a></p>
+    `.trim();
+
+    const bodyText = [
+      "Hi,",
+      `${plainName} raced while you were away. Your results are already on the board.`,
+      "Worth checking today: your race results, and any auctions ending today that you might still want to bid on.",
+      `See your results and auctions: ${DASHBOARD_URL}`,
+    ].join("\n\n");
+
+    return {
+      subject,
+      html: wrapHtml({ bodyHtml, unsubscribeUrl }),
+      text: wrapText({ bodyText, unsubscribeUrl }),
+    };
+  }
+
+  const subject = "Day 1: your first race is coming up";
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">Hi,</p>
-    <p style="margin:0 0 16px;">${name} raced while you were away. Your results are already on the board.</p>
-    <p style="margin:0 0 16px;">Worth checking today: your race results, and any auctions ending today that you might still want to bid on.</p>
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">See your results and auctions</a></p>
+    <p style="margin:0 0 16px;">${name}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.</p>
+    <p style="margin:0 0 16px;">Worth doing today: check any auctions ending today, and pick your race lineup.</p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
   `.trim();
 
   const bodyText = [
     "Hi,",
-    `${teamName || "Your team"} raced while you were away. Your results are already on the board.`,
-    "Worth checking today: your race results, and any auctions ending today that you might still want to bid on.",
-    `See your results and auctions: ${DASHBOARD_URL}`,
+    `${plainName}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.`,
+    "Worth doing today: check any auctions ending today, and pick your race lineup.",
+    `Go to your dashboard: ${DASHBOARD_URL}`,
   ].join("\n\n");
 
   return {
