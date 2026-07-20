@@ -99,6 +99,19 @@ test("race_digest email escapes rider/race names (no HTML injection from race_re
   assert.ok(t.html.includes("&lt;b&gt;Rider&lt;/b&gt;"));
 });
 
+test("unsubscribe URL is quote-escaped so a value cannot break out of the href attribute", () => {
+  // The unsubscribe URL is the one caller-provided value that lands inside an
+  // href="..." attribute. A double quote in it must be entity-encoded, or the
+  // value could close the attribute and inject markup (CodeQL js/incomplete-
+  // html-attribute-sanitization).
+  const t = buildWelcomeEmail({
+    teamName: "T",
+    unsubscribeUrl: 'https://cyclingzone.org/u?token="><script>alert(1)</script>',
+  });
+  assert.ok(!t.html.includes('"><script>'), "attribute-breaking sequence must not survive");
+  assert.ok(t.html.includes("&quot;&gt;&lt;script&gt;"), "quote and angle brackets are entity-encoded");
+});
+
 test("buildLoopEmail dispatches by type", () => {
   const welcome = buildLoopEmail("welcome", { teamName: "T", unsubscribeUrl: UNSUB_URL });
   assert.equal(welcome.subject, "Your team is on the start line");

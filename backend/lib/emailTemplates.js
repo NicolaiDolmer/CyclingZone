@@ -16,11 +16,19 @@ export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
 const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
 const RESULTS_URL = "https://cyclingzone.org/resultater";
 
+// Escapes the five HTML-significant characters. The double- and single-quote
+// replacements are required because escapeHtml output is interpolated into
+// double-quoted attribute values (e.g. href="..."), where an unescaped quote
+// would let a value break out of the attribute (CodeQL js/incomplete-html-
+// attribute-sanitization). &#39; is used for the apostrophe because the older
+// &apos; entity is not reliably supported by all mail clients.
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // Shared layout: max ~600px column, system font stack, minimal inline CSS
