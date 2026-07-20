@@ -15,6 +15,7 @@
 // for ikke at lække noget til en ikke-autentificeret kalder).
 
 import { verifyUnsubToken } from "./emailUnsubToken.js";
+import { captureException } from "./sentry.js";
 
 const UNSUB_INVALID_HTML = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:48px auto;padding:0 16px;color:#1a1a1a;">
 <p>This unsubscribe link is invalid or has expired.</p>
@@ -26,7 +27,7 @@ const UNSUB_CONFIRMATION_HTML = `<!doctype html><html><body style="font-family:-
 <p style="color:#767676;font-size:14px;">Du er nu afmeldt Cycling Zone e-mails.</p>
 </body></html>`;
 
-export async function handleEmailUnsubscribe({ req, res, supabase, secret = process.env.EMAIL_UNSUB_SECRET }) {
+export async function handleEmailUnsubscribe({ req, res, supabase, secret = process.env.EMAIL_UNSUB_SECRET, captureExceptionFn = captureException }) {
   const isPost = req.method === "POST";
   const token = req.query?.token;
   const userId = verifyUnsubToken(token, secret);
@@ -44,9 +45,11 @@ export async function handleEmailUnsubscribe({ req, res, supabase, secret = proc
       .from("users").update({ email_prefs: mergedPrefs }).eq("id", userId);
     if (updateErr) throw updateErr;
   } catch (err) {
+    // En fejlet unsubscribe er et compliance-problem — SKAL til Sentry, ikke
+    // kun console (brugeren tror de er afmeldt). Aldrig DB-detaljer til en
+    // uautentificeret kalder; mailklienten retry'er en non-2xx selv.
     console.error("[email-unsubscribe] update failed:", err.message);
-    // Never leak DB details to an unauthenticated caller; the mail client
-    // retries a non-2xx per its own retry policy.
+    captureExceptionFn(err, { tags: { flow: "email-loop", route: "unsubscribe" }, extra: { userId } });
     return res.sendStatus(500);
   }
 

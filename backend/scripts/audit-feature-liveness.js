@@ -195,6 +195,11 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // CZ Pro billing: Alunta-webhook er EKSTERN (kaldes af Alunta efter betaling,
   // ikke af frontend). Intentional orphaned, ikke drift (#1903).
   "POST /billing/alunta-webhook",
+  // E-mail-loop (#2725): unsubscribe kaldes fra LINKS I E-MAILS (List-Unsubscribe
+  // one-click POST + footer-link GET via Vercel-rewrite), aldrig fra frontend-
+  // koden. Intentional orphaned, ikke drift.
+  "GET /email/unsubscribe",
+  "POST /email/unsubscribe",
   // Faciliteter/staff (#1441 Fase 3 A1): backend-fundament shippet FØR UI'en —
   // alt er dødt bag FACILITIES_ENABLED=false; Klub-UI'en lander i bølge A3 og
   // fjerner disse fra whitelisten. Intentional orphaned indtil da, ikke drift.
