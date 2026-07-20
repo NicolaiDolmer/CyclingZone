@@ -48,7 +48,12 @@ export function createAluntaClient({
           back_url: backUrl,
         },
       });
-      return session.checkout_url;
+      // Alunta wrapper 201-svaret i en data-envelope: { data: { id, checkout_url } }
+      // (verificeret i OpenAPI-spec 20/7 — udokumenteret envelope bed første testkøb:
+      // undefined checkout_url -> frontend navigerede til /undefined -> dashboard).
+      const url = session?.data?.checkout_url ?? session?.checkout_url;
+      if (!url) throw new Error(`Alunta checkout-session uden checkout_url: ${JSON.stringify(session)?.slice(0, 200)}`);
+      return url;
     },
   };
 }
