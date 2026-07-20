@@ -25,6 +25,7 @@ import {
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
+import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import { getFounderSeats } from "../lib/founderSeats.js";
 import {
@@ -612,6 +613,13 @@ router.get("/billing/founder-seats", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+// ── Email unsubscribe (#2725) — one-click opt-out, INGEN requireAuth (link
+// lever i selve e-mailen, læses af mailklienter der aldrig er logget ind).
+// Handler-logikken bor i lib/emailUnsubRoute.js (samme udtræk-mønster som
+// aluntaWebhook.js) for at kunne unit-testes uden api.js's fulde router.
+router.get("/email/unsubscribe", (req, res) => handleEmailUnsubscribe({ req, res, supabase }));
+router.post("/email/unsubscribe", (req, res) => handleEmailUnsubscribe({ req, res, supabase }));
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
 // (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere

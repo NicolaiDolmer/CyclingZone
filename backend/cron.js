@@ -69,6 +69,9 @@ import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
+import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
+import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
+import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -919,6 +922,27 @@ async function runOwnershipInvariantWatchCron() {
   }
 }
 
+// ─── Email retention-loop (#2725) ─────────────────────────────────────────────
+// Ships DORMANT: alle tre sweeps no-op'er internt (isEmailLoopActive/
+// isEmailLoopEnabled fail-safe OFF) indtil ejeren har godkendt e-mail-teksterne
+// og flipper app_config.email_loop_enabled off → dry_run → on. Ingen af
+// nedenstående funktioner sender en rigtig e-mail før flaget er "on".
+
+async function runEmailWelcomeSweepCron() {
+  const r = await runEmailWelcomeSweep({ supabase, now: new Date() });
+  if (r.sent) console.log(`✉️  Email-welcome: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
+}
+
+async function runEmailDay1SweepCron() {
+  const r = await runEmailDay1Sweep({ supabase, now: new Date() });
+  if (r.sent) console.log(`✉️  Email-day1: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
+}
+
+async function runEmailRaceDigestSweepCron() {
+  const r = await runEmailRaceDigestSweep({ supabase, now: new Date() });
+  if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -995,6 +1019,9 @@ const ALL_CRON_MONITORS = [
   ["traffic-retention", CRON_MONITOR_24H],
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
+  ["email-welcome", CRON_MONITOR_5MIN],
+  ["email-day1", CRON_MONITOR_60MIN],
+  ["email-race-digest", CRON_MONITOR_60MIN],
 ];
 
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
@@ -1228,6 +1255,21 @@ export function startCron() {
   // med det samme i stedet for at vente op til en time.
   setInterval(
     trackedTick("entry-generator sweep", monitorCron("entry-generator", runRaceEntryGeneratorSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+
+  // #2725 — email retention-loop. Dormant (flag off) until the owner
+  // approves the copy; all three sweeps are cheap no-ops while off.
+  setInterval(
+    trackedTick("email-welcome sweep", monitorCron("email-welcome", runEmailWelcomeSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+  setInterval(
+    trackedTick("email-day1 sweep", monitorCron("email-day1", runEmailDay1SweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+  setInterval(
+    trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
 
