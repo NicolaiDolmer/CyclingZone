@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.37",
+    "date": "2026-07-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Won a youth rider with a full academy? He now joins your senior squad",
+          "body": "Previously, winning a youth auction while your academy was full (8 places) cancelled the sale and you lost the rider. Now the rider joins your senior squad instead whenever it has room, so a won auction is never cancelled while your team still has space somewhere. The auction is only cancelled if both your academy and your senior squad are full (or you can't afford the winning bid)."
+        },
+        "da": {
+          "title": "Vandt en ungdomsrytter med fyldt akademi? Han ryger nu på senior-truppen",
+          "body": "Før blev en vundet ungdomsauktion annulleret hvis dit akademi var fuldt (8 pladser), og du mistede rytteren. Nu ryger rytteren i stedet på din senior-trup hvis der er plads, så en vundet auktion aldrig annulleres mens dit hold stadig har plads et sted. Auktionen annulleres kun hvis både dit akademi og din senior-trup er fulde (eller du ikke har råd til det vindende bud)."
+        },
+        "refs": [2754, 2701]
+      }
+    ]
+  },
+  {
     "version": "7.36",
     "date": "2026-07-20",
     "label": "Beta",

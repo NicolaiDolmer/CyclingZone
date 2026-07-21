@@ -200,6 +200,180 @@ async function deleteUnsoldYouthRider({ supabase, rider }) {
   return wasDeleted;
 }
 
+// #2648 (intake-udløb v2, ejer-beslutning 18/7): stammer en vundet ungdomsauktion
+// fra et UDLØBET intake-tilbud (auction.expired_intake_team_id sat — kun stemplet
+// af academyIntakeExpirySweep for kandidater der bestod ejerskabs-guarden #2646),
+// krediteres bud-summen den manager i stedet for at forblive et rent sink.
+// Udtrukket (#2754) så BÅDE akademi-placeringen OG senior-fallbacken krediterer
+// ens — kompensationen afhænger af HVEM der mistede rytteren, ikke af hvor han
+// endte. idempotency_key gør cron-retries sikre (23505 no-op'er, ingen dobbelt-credit).
+async function creditIntakeExpiryCompensationIfNeeded({
+  supabase,
+  auction,
+  rider,
+  price,
+  activeSeasonId,
+  notifyTeamOwner,
+}) {
+  if (!auction.expired_intake_team_id) return;
+  const compensation = await incrementBalanceWithAudit(
+    supabase,
+    {
+      teamId: auction.expired_intake_team_id,
+      delta: price,
+      payload: {
+        type: "transfer_in",
+        amount: price,
+        description: `Kompensation: udløbet intake-tilbud for ${rider.firstname} ${rider.lastname} solgt på auktion`,
+        metadata: {
+          code: "tx.intakeExpiryCompensation",
+          params: { riderName: `${rider.firstname} ${rider.lastname}` },
+        },
+        season_id: activeSeasonId,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "auctionFinalization.finalizeYouthAuctionRecord.intakeExpiryCompensation",
+        reason_code: FINANCE_REASON.INTAKE_EXPIRY_AUCTION_COMPENSATION,
+        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+        related_entity_id: auction.id,
+        idempotency_key: `intake_expiry_compensation:${auction.id}`,
+      },
+    },
+    { allowDuplicate: true }
+  );
+
+  if (!compensation.skipped) {
+    await notifyTeamOwner(
+      auction.expired_intake_team_id,
+      "academy_intake_expired_compensation",
+      "Academy intake offer expired: rider sold",
+      `Your academy intake offer for ${rider.firstname} ${rider.lastname} expired, and he was sold at auction. You received ${price} CZ$.`,
+      auction.id,
+      {
+        riderId: rider.id,
+        titleCode: "notif.intakeExpiryCompensation.title",
+        titleParams: {},
+        messageCode: "notif.intakeExpiryCompensation.message",
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}`, amount: price },
+      }
+    );
+  }
+}
+
+// #2754/#2701: en vundet ungdomsauktion må IKKE annulleres hvis holdet samlet set
+// har plads (ejer-regel 19/7). Denne fallback kaldes KUN når finalize_academy_-
+// acquisition returnerede academy_full (akademi-cap nået, INGEN debit sket — cap
+// tjekkes før balance i RPC'en). Den forsøger at placere vinderen på SENIOR-truppen
+// med senior-semantik (senior-kontrakt + løn + tæller mod 30-cap), IKKE akademi-
+// semantik. Kapacitet + balance læses via de SAMME helpers som senior-auktions-
+// stien (getTeamMarketState/getIncomingSquadViolation) → samme filter som UI'et
+// og RLS-neutralt (jf. [[feedback_match_ui_filter_for_capacity_logic]]).
+//
+// Retry-sikkerhed: ved success lukkes auktionen 'completed' af kalderen, så en
+// cron-retry ser not_finalizable og stopper. Skulle en retry alligevel nå hertil
+// (crash mellem debit og closeAuction), no-op'er idempotency_key debiten (23505).
+async function tryPlaceYouthWinnerOnSenior({
+  supabase,
+  auction,
+  rider,
+  bidderId,
+  price,
+  actualEnd,
+  activeSeasonNumber,
+  activeSeasonId,
+  notifyTeamOwner,
+  logActivity,
+  awardXP,
+  squadLimits = AUCTION_SQUAD_LIMITS,
+}) {
+  const baseBuyerState = await getTeamMarketState(supabase, bidderId);
+  const buyer = {
+    ...baseBuyerState,
+    squad_limits: squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
+  };
+
+  if (!buyer || buyer.balance < price) {
+    return { placed: false, reason: "insufficient_balance" };
+  }
+  // #16 altid-åben handel: intet transfervindue → hard cap ved handlen (buffer 0).
+  const squadViolation = getIncomingSquadViolation(buyer, { softCapBuffer: 0 });
+  if (squadViolation) {
+    return { placed: false, reason: "squad_full" };
+  }
+
+  // Placér på senior: team_id + is_academy=false (så han tæller mod 30-cap og
+  // behandles som senior), senior-kontrakt (kontraktløs free agent → standard-
+  // kontrakt via contractOnAcquirePatch). Ingen defer-logik: en fri ungdomsrytter
+  // kan ikke være i et aktivt løb for en sælger (der er ingen sælger).
+  const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, {
+    division: buyer.division,
+  });
+  await expectMutation(
+    supabase
+      .from("riders")
+      .update({
+        team_id: bidderId,
+        pending_team_id: null,
+        acquired_at: actualEnd,
+        is_academy: false,
+        ...winnerContractPatch,
+      })
+      .eq("id", rider.id)
+  );
+
+  await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "youth_auction_senior_win" });
+  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
+
+  // Debit: bud-summen er et sink (ingen sælger), præcis som akademi-placeringen.
+  // SAMME idempotency_key som akademi-vinder-debiten (`youth_auction_winner:<id>`):
+  // højst én af de to stier debiterer nogensinde for en given auktion (RPC'en
+  // debiterede IKKE, siden den returnerede academy_full), og nøglen gør en
+  // cron-retry sikker uanset hvilken sti der kørte.
+  await incrementBalanceWithAudit(
+    supabase,
+    {
+      teamId: bidderId,
+      delta: -price,
+      payload: {
+        type: "academy_signing",
+        amount: -price,
+        description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion (placeret på senior — akademi fuldt)`,
+        metadata: {
+          code: "tx.youthAuctionWin",
+          params: { riderName: `${rider.firstname} ${rider.lastname}` },
+        },
+        season_id: activeSeasonId,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "auctionFinalization.finalizeYouthAuctionRecord.seniorFallback",
+        reason_code: FINANCE_REASON.AUCTION_WINNER_PAYMENT,
+        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+        related_entity_id: auction.id,
+        idempotency_key: `youth_auction_winner:${auction.id}`,
+      },
+    },
+    { allowDuplicate: true }
+  );
+
+  await awardXP(bidderId, "auction_won");
+  await notifyTeamOwner(
+    bidderId,
+    "auction_won",
+    "Du vandt ungdomsauktionen! 🎉",
+    `${rider.firstname} ${rider.lastname} er nu på dit hold for ${price} CZ$. Dit akademi var fuldt, så han blev tilføjet senior-truppen.`,
+    auction.id,
+    { riderId: rider.id }
+  );
+  await logActivity("auction_won", {
+    team_id: bidderId,
+    rider_id: rider.id,
+    rider_name: `${rider.firstname} ${rider.lastname}`,
+    amount: price,
+  });
+
+  return { placed: true };
+}
+
 // #1308 Fase B: finalisér en ungdomsauktion. Ingen sælger (seller_team_id=NULL),
 // rytteren er fri (team_id=NULL). Vinder → placeres i akademiet (is_academy=true)
 // med 8-plads-cap og ungdomskontrakt; betaler sit bud som academy_signing (sink —
@@ -306,21 +480,67 @@ async function finalizeYouthAuctionRecord({
     throw acqErr;
   }
 
-  // Akademi fuldt (cap nået inde i låsen) → annullér. Rytteren blev ikke optaget
-  // → han slettes (#2456; fri-agent-listen findes ikke længere, og en holdløs
-  // ungdomsrytter ville være en usynlig spøgelsesrytter).
+  // Akademi fuldt (cap nået inde i låsen). #2754/#2701 (ejer-regel 19/7): en
+  // vundet auktion må IKKE annulleres hvis holdet samlet set har plads → forsøg
+  // senior-fallback FØR annullering. Kun hvis senior OGSÅ er fuldt (eller vinderen
+  // ikke har råd) falder vi tilbage til det gamle backstop (annullér + slet).
   if (acq?.code === "academy_full") {
+    const senior = await tryPlaceYouthWinnerOnSenior({
+      supabase,
+      auction,
+      rider,
+      bidderId,
+      price,
+      actualEnd,
+      activeSeasonNumber,
+      activeSeasonId,
+      notifyTeamOwner,
+      logActivity,
+      awardXP,
+    });
+    if (senior.placed) {
+      await creditIntakeExpiryCompensationIfNeeded({
+        supabase,
+        auction,
+        rider,
+        price,
+        activeSeasonId,
+        notifyTeamOwner,
+      });
+      await closeAuction({
+        supabase,
+        auction,
+        status: "completed",
+        actualEnd,
+        sellerOwned: false,
+        currentBidderId: auction.current_bidder_id ? null : bidderId,
+      });
+      return { ok: true, code: "youth_completed_senior", auction_id: auction.id, academy: false, senior: true };
+    }
+
+    // Senior også fuldt / ingen råd → annullér. Rytteren blev ikke optaget
+    // → han slettes (#2456; en holdløs ungdomsrytter ville være en spøgelsesrytter).
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    const cancelMessage =
+      senior.reason === "insufficient_balance"
+        ? `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser), og du havde ikke råd til at tilføje ${rider.firstname} ${rider.lastname} til senior-truppen.`
+        : `Både dit akademi (${ACADEMY.SLOTS} pladser) og din senior-trup er fulde. ${rider.firstname} ${rider.lastname} kunne ikke optages.`;
     await notifyTeamOwner(
       bidderId,
       "auction_lost",
-      "Auktion annulleret — akademi fuldt",
-      `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser). ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
+      "Auktion annulleret — ingen plads",
+      cancelMessage,
       auction.id,
       { riderId: rider.id }
     );
     const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
-    return { ok: true, code: "academy_full", auction_id: auction.id, rider_deleted: riderDeleted };
+    return {
+      ok: true,
+      code: "academy_full",
+      senior_reason: senior.reason,
+      auction_id: auction.id,
+      rider_deleted: riderDeleted,
+    };
   }
 
   // Utilstrækkelig balance (verificeret inde i låsen) → annullér; rytteren blev
@@ -395,46 +615,14 @@ async function finalizeYouthAuctionRecord({
   // stedet for at dobbelt-betale). Lukkede vi auktionen FØRST, ville en
   // retry stoppe ved "already_completed" og kompensationen aldrig blive
   // forsøgt igen.
-  if (auction.expired_intake_team_id) {
-    const compensation = await incrementBalanceWithAudit(supabase, {
-      teamId: auction.expired_intake_team_id,
-      delta: price,
-      payload: {
-        type: "transfer_in",
-        amount: price,
-        description: `Kompensation: udløbet intake-tilbud for ${rider.firstname} ${rider.lastname} solgt på auktion`,
-        metadata: {
-          code: "tx.intakeExpiryCompensation",
-          params: { riderName: `${rider.firstname} ${rider.lastname}` },
-        },
-        season_id: activeSeasonId,
-        actor_type: FINANCE_ACTOR_TYPE.CRON,
-        actor_id: null,
-        source_path: "auctionFinalization.finalizeYouthAuctionRecord.intakeExpiryCompensation",
-        reason_code: FINANCE_REASON.INTAKE_EXPIRY_AUCTION_COMPENSATION,
-        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
-        related_entity_id: auction.id,
-        idempotency_key: `intake_expiry_compensation:${auction.id}`,
-      },
-    }, { allowDuplicate: true });
-
-    if (!compensation.skipped) {
-      await notifyTeamOwner(
-        auction.expired_intake_team_id,
-        "academy_intake_expired_compensation",
-        "Academy intake offer expired: rider sold",
-        `Your academy intake offer for ${rider.firstname} ${rider.lastname} expired, and he was sold at auction. You received ${price} CZ$.`,
-        auction.id,
-        {
-          riderId: rider.id,
-          titleCode: "notif.intakeExpiryCompensation.title",
-          titleParams: {},
-          messageCode: "notif.intakeExpiryCompensation.message",
-          messageParams: { rider: `${rider.firstname} ${rider.lastname}`, amount: price },
-        }
-      );
-    }
-  }
+  await creditIntakeExpiryCompensationIfNeeded({
+    supabase,
+    auction,
+    rider,
+    price,
+    activeSeasonId,
+    notifyTeamOwner,
+  });
 
   await closeAuction({
     supabase,

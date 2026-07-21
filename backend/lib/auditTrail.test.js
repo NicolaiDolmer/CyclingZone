@@ -470,6 +470,10 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
   // #2648: kreditering af den manager hvis intake-tilbud udløb — en cron-retry
   // af en allerede-krediteret intake-udløbs-auktion må ikke dobbelt-betale.
   "auctionFinalization.finalizeYouthAuctionRecord.intakeExpiryCompensation",
+  // #2754: senior-fallback debiterer vinderen når akademiet er fuldt men senior
+  // har plads. Deler idempotency_key (youth_auction_winner:<id>) med akademi-
+  // vinder-debiten → højst én af de to stier betaler, og cron-retries no-op'er.
+  "auctionFinalization.finalizeYouthAuctionRecord.seniorFallback",
 ]);
 
 const CALLSITE_FILES = [
@@ -491,7 +495,9 @@ const CALLSITE_FILES = [
   // + guaranteedBankSale). #2648: en 4. callsite tilføjet — kreditering af den
   // manager hvis intake-tilbud udløb, når en intake-udløbs-ungdomsauktion
   // sælges (finalizeYouthAuctionRecord's intakeExpiryCompensation-gren).
-  { rel: "./auctionFinalization.js", expectedCalls: 4 },
+  // #2754: en 5. callsite — senior-fallback-debiten når akademiet er fuldt men
+  // senior har plads (finalizeYouthAuctionRecord's seniorFallback-gren).
+  { rel: "./auctionFinalization.js", expectedCalls: 5 },
 ];
 
 function extractIncrementCalls(source) {

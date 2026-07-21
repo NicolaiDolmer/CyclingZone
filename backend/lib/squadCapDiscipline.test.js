@@ -34,7 +34,9 @@ test("TRANSFER_WINDOW_SOFT_CAP_BUFFER er stadig 2 (gameplay-spec match)", () => 
 const CALLSITE_FILES = [
   // #1994: rider-loan agreement accept/buyout routes removed — dropped from 4 to 2.
   { rel: "../routes/api.js", expectedCalls: 2 },
-  { rel: "./auctionFinalization.js", expectedCalls: 1 },
+  // #2754: 2. callsite — senior-fallback for en vundet ungdomsauktion når
+  // akademiet er fuldt (hard-cap, softCapBuffer: 0 — ingen transfervindue).
+  { rel: "./auctionFinalization.js", expectedCalls: 2 },
   { rel: "./transferExecution.js", expectedCalls: 1 },
 ];
 
