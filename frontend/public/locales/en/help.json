@@ -671,7 +671,7 @@
       },
       "youthAuctions": {
         "title": "Youth auctions",
-        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. The winning club takes the prospect into its Academy, paying the winning bid and using one of its 8 places. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (one of the 8 places) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",

@@ -671,7 +671,7 @@
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
-        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Det vindende hold optager prospektet i sit Akademi, betaler det vindende bud og bruger en af sine 8 pladser. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
+        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en af de 8 pladser), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
