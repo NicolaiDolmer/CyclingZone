@@ -9,6 +9,7 @@ import { usePlanner } from "../lib/usePlanner";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
 import PlannerDrawer from "../components/planner/PlannerDrawer";
+import PlannerRaceList from "../components/planner/PlannerRaceList";
 
 function LegendItem({ children }) {
   return <span className="flex items-center gap-1.5">{children}</span>;
@@ -182,6 +183,14 @@ export default function SeasonPlannerPage() {
             <LegendItem><span className="w-2 h-2 rounded-full" style={{ background: "rgb(var(--accent))", border: "1px solid rgb(var(--accent-t))" }} />{t("legend.token")}</LegendItem>
             <LegendItem><i className="ti ti-grip-vertical text-[13px] text-cz-accent-t" aria-hidden="true" />{t("legend.drag")}</LegendItem>
           </div>
+
+          {/* #2568: scannbar sæson-løbs-liste — den kanoniske "hvilke løb, hvornår"-
+              flade (tidslinjen er for tæt til løbs-navne). Vist på begge viewports. */}
+          <PlannerRaceList
+            riders={riders} races={races} filter={filter} today={today}
+            selectedRaceId={selected?.mode === "race" ? selected.id : null}
+            onSelectRace={(id) => setSelected({ mode: "race", id })}
+          />
 
           {/* Kontekst-skuffe */}
           {(selectedRace || selectedRider) && (

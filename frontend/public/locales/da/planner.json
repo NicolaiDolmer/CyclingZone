@@ -29,6 +29,16 @@
   },
   "filter": { "mine": "Mine løb", "all": "Alle løb" },
   "planningTowards": { "label": "Planlægger mod: {race} · {date}" },
+  "raceList": {
+    "title": "Sæsonens løb",
+    "subtitle": "Alle løb denne sæson: hvornår de køres, og hvad de kræver. Åbn et for at planlægge en peak, eller hop til den fulde løbsside.",
+    "count": "{count, plural, one {# løb} other {# løb}}",
+    "viewPage": "Åbn løbsside for {race}",
+    "mine": "I din kalender",
+    "peaksHere": "{count, plural, one {# rytter topper her} other {# ryttere topper her}}",
+    "empty": "Ingen løb matcher dette filter endnu.",
+    "past": "Kørt"
+  },
   "legend": {
     "potential": "Potentiel top",
     "realized": "Realiseret (trænet)",
@@ -60,7 +70,8 @@
       "setPeak": "Sæt peak",
       "demands": "Dette løb kræver",
       "alreadyPeaking": "Topper her",
-      "suggestedHere": "Assistenten foreslår her"
+      "suggestedHere": "Assistenten foreslår her",
+      "viewPage": "Se løbsside"
     },
     "rider": {
       "abilities": "Evner",
