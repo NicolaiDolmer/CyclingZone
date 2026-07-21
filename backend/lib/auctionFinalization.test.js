@@ -1783,6 +1783,10 @@ function makeYouthFinalizeSupabase({
   auction,
   buyerBalance = 1_000_000,
   academyCount = 0,
+  // #2754: vinderens senior-trup-størrelse (ikke-akademi-ryttere). Bruges KUN når
+  // akademiet er fuldt og senior-fallbacken forsøges. Cap er 30 for alle divisioner.
+  seniorCount = 0,
+  buyerDivision = 3,
   // #2456-testknobs:
   claimRaced = false,      // simulér at et bud lander mellem read og atomisk claim → claim rammer 0 rækker
   riderRaceResults = [],   // race_results-rækker for rytteren (#1847-guard)
@@ -1806,16 +1810,22 @@ function makeYouthFinalizeSupabase({
     // betinget debit, og returnerer JSONB-resultatet.
     rpc(name, params) {
       if (name === "increment_balance_with_audit") {
-        // #2648: kompensations-kreditering til den manager hvis intake-tilbud
-        // udløb (auction.expired_intake_team_id). Separat RPC fra
-        // finalize_academy_acquisition — brugt af incrementBalanceWithAudit.
+        // #2754: negativ delta = vinder-debit fra senior-fallbacken (bud-sink,
+        // ingen sælger). Positiv delta = #2648-kompensation til den manager hvis
+        // intake-tilbud udløb (auction.expired_intake_team_id).
+        const delta = Number(params.p_delta);
+        if (delta < 0) {
+          financeInserts.push({ team_id: params.p_team_id, delta, ...params.p_finance_payload });
+          buyer.balance += delta;
+          return Promise.resolve({ data: buyer.balance, error: null });
+        }
         if (compensationDuplicate) {
           return Promise.resolve({
             data: null,
             error: { code: "23505", message: "duplicate key value violates unique constraint" },
           });
         }
-        compensationInserts.push({ team_id: params.p_team_id, delta: params.p_delta, ...params.p_finance_payload });
+        compensationInserts.push({ team_id: params.p_team_id, delta, ...params.p_finance_payload });
         return Promise.resolve({ data: 999999, error: null });
       }
       assert.equal(name, "finalize_academy_acquisition");
@@ -1896,6 +1906,51 @@ function makeYouthFinalizeSupabase({
       }
       if (table === "riders") {
         return {
+          // #2754: getTeamMarketState's count-queries til senior-fallbacken.
+          //   riderCount:   .eq("team_id",X).eq("is_academy",false)  → seniorCount
+          //   pendingCount: .eq("pending_team_id",X).eq("is_academy",false) → 0
+          //   outgoing:     .eq("team_id",X).eq("is_academy",false).not(...).neq(...) → 0
+          select(cols, options) {
+            assert.equal(cols, "id");
+            assert.deepEqual(options, { count: "exact", head: true });
+            return {
+              eq(column, _value) {
+                if (column === "team_id") {
+                  const b = {
+                    eq() { return b; },
+                    not() {
+                      return { neq: () => Promise.resolve({ count: 0, error: null }) };
+                    },
+                    then(resolve, reject) {
+                      return Promise.resolve({ count: seniorCount, error: null }).then(resolve, reject);
+                    },
+                  };
+                  return b;
+                }
+                if (column === "pending_team_id") {
+                  const b = {
+                    eq() { return b; },
+                    then(resolve, reject) {
+                      return Promise.resolve({ count: 0, error: null }).then(resolve, reject);
+                    },
+                  };
+                  return b;
+                }
+                throw new Error(`Unexpected riders count column: ${column}`);
+              },
+            };
+          },
+          // #2754: senior-placeringen (expectMutation på .update().eq()).
+          update(payload) {
+            return {
+              eq(column, value) {
+                assert.equal(column, "id");
+                assert.equal(value, auction.rider.id);
+                riderUpdates.push(payload);
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
           delete() {
             const api = {
               eq() { return api; },
@@ -1941,11 +1996,18 @@ function makeYouthFinalizeSupabase({
       }
       if (table === "teams") {
         // #2594: finalizeYouthAuctionRecord slår vinderens division op for at
-        // prissætte akademi-lønnen (per-division sats). Fast division 3 for de
-        // ovenstående (deterministiske) salary-forventninger i testene.
+        // prissætte akademi-lønnen (per-division sats) via .maybeSingle().
+        // #2754: getTeamMarketState (senior-fallback) læser balance/division via
+        // expectSingle → .single(). Begge understøttes på samme eq()-resultat.
         return {
           select: () => ({
-            eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: buyer.id, division: 3 }, error: null }) }),
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { id: buyer.id, division: buyerDivision }, error: null }),
+              single: () => Promise.resolve({
+                data: { id: buyer.id, name: "Buyer FC", balance: buyer.balance, division: buyerDivision, user_id: "user-1" },
+                error: null,
+              }),
+            }),
           }),
         };
       }
@@ -2020,7 +2082,50 @@ test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet 
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
 });
 
-test("youth-auktion MED bud men akademi fyldt (8): annulleres, ingen placering, ingen debit", async () => {
+test("youth-auktion MED bud, akademi fyldt (8) MEN senior har plads: placeres på senior (is_academy=false, senior-kontrakt), betaler bud, IKKE annulleret (#2754)", async () => {
+  const auction = {
+    id: "youth-auc-2b",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  // Akademi fuldt (8) men senior har rigelig plads (20/30) + råd.
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8, seniorCount: 20 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "youth_completed_senior");
+  assert.equal(result.senior, true);
+
+  // Rytter placeret på SENIOR (is_academy=false), ikke slettet.
+  assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (senior-placering)");
+  const upd = supabase._riderUpdates[0];
+  assert.equal(upd.is_academy, false, "placeret på senior, ikke akademi");
+  assert.equal(upd.team_id, "buyer-team");
+  assert.equal(upd.pending_team_id, null);
+  assert.ok(upd.acquired_at, "acquired_at sat");
+  assert.equal(supabase._riderDeletions.length, 0, "rytteren slettes IKKE når han placeres");
+
+  // Finance: vinder debiteret sit bud (sink, ingen seller-payout).
+  assert.equal(supabase._financeInserts.length, 1, "kun vinder-debit");
+  const fin = supabase._financeInserts[0];
+  assert.equal(fin.team_id, "buyer-team");
+  assert.equal(fin.delta, -25000, "betaler sit bud");
+  assert.equal(fin.idempotency_key, `youth_auction_winner:${auction.id}`, "samme nøgle som akademi-vinder → cron-retry-sikker");
+
+  // Auktion lukket completed (IKKE cancelled).
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+  assert.ok(!supabase._auctionUpdates.some((u) => u.status === "cancelled"), "ingen annullering");
+});
+
+test("youth-auktion MED bud men akademi (8) OG senior (30) fyldt: annulleres + slettes (#2456-backstop bevaret)", async () => {
   const auction = {
     id: "youth-auc-2",
     status: "active",
@@ -2030,7 +2135,8 @@ test("youth-auktion MED bud men akademi fyldt (8): annulleres, ingen placering, 
     current_price: 25000,
     rider: { ...YOUTH_RIDER },
   };
-  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8 });
+  // Både akademi (8) og senior (30) fyldt → ingen plads nogen steder.
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8, seniorCount: 30 });
   const result = await finalizeAuctionById({
     supabase,
     notifyTeamOwner: async (...args) => supabase._notifications.push(args),
@@ -2038,12 +2144,39 @@ test("youth-auktion MED bud men akademi fyldt (8): annulleres, ingen placering, 
   });
 
   assert.equal(result.code, "academy_full");
-  assert.equal(supabase._riderUpdates.length, 0, "ingen placering når fyldt");
-  assert.equal(supabase._financeInserts.length, 0, "ingen debit når fyldt");
+  assert.equal(result.senior_reason, "squad_full");
+  assert.equal(supabase._riderUpdates.length, 0, "ingen placering når alt er fyldt");
+  assert.equal(supabase._financeInserts.length, 0, "ingen debit når alt er fyldt");
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
   // #2456: rytteren blev ikke optaget → han slettes (ingen fri-liste at falde på).
   assert.equal(result.rider_deleted, true);
   assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "usolgt rytter slettet");
+});
+
+test("youth-auktion MED bud, akademi fyldt (8), senior har plads men vinderen har ikke råd: annulleres + slettes", async () => {
+  const auction = {
+    id: "youth-auc-2c",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  // Senior har plads (10/30) men balance < bud → kan ikke placeres.
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 1000, academyCount: 8, seniorCount: 10 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "academy_full");
+  assert.equal(result.senior_reason, "insufficient_balance");
+  assert.equal(supabase._riderUpdates.length, 0, "ingen placering uden råd");
+  assert.equal(supabase._financeInserts.length, 0, "ingen debit uden råd");
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
+  assert.equal(result.rider_deleted, true);
 });
 
 test("youth-auktion MED bud men utilstrækkelig balance: annulleres, ingen placering, ingen debit", async () => {
@@ -2317,7 +2450,7 @@ test("intake-udløbs-auktion UDEN bud (#2648): rytteren bliver fri agent som i d
   assert.equal(supabase._compensationInserts.length, 0, "usolgt = ingen provenu at kreditere");
 });
 
-test("intake-udløbs-auktion MED salg men akademi fyldt (#2648): annulleret salg krediterer IKKE — ingen reelt salg gennemført", async () => {
+test("intake-udløbs-auktion MED salg men akademi OG senior fyldt (#2648/#2754): annulleret salg krediterer IKKE — ingen reelt salg gennemført", async () => {
   const auction = {
     id: "youth-auc-comp-4",
     status: "active",
@@ -2328,7 +2461,9 @@ test("intake-udløbs-auktion MED salg men akademi fyldt (#2648): annulleret salg
     expired_intake_team_id: "losing-team",
     rider: { ...YOUTH_RIDER },
   };
-  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8 });
+  // #2754: akademi (8) OG senior (30) fyldt → auktionen annulleres reelt → ingen
+  // kompensation (kompensation følger et gennemført salg, ikke en annullering).
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8, seniorCount: 30 });
   const result = await finalizeAuctionById({
     supabase,
     notifyTeamOwner: async (...args) => supabase._notifications.push(args),
@@ -2336,7 +2471,33 @@ test("intake-udløbs-auktion MED salg men akademi fyldt (#2648): annulleret salg
   });
 
   assert.equal(result.code, "academy_full");
-  assert.equal(supabase._compensationInserts.length, 0, "annulleret salg (akademi fuldt) krediterer aldrig");
+  assert.equal(supabase._compensationInserts.length, 0, "annulleret salg (ingen plads) krediterer aldrig");
+});
+
+test("intake-udløbs-auktion MED salg, akademi fyldt men senior har plads (#2648/#2754): senior-salg → kompensation krediteres den tabende manager", async () => {
+  const auction = {
+    id: "youth-auc-comp-4b",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 30000,
+    expired_intake_team_id: "losing-team",
+    rider: { ...YOUTH_RIDER },
+  };
+  // Akademi fuldt (8) men senior har plads (5/30) → reelt salg via senior →
+  // kompensationen skal følge med (afhænger af salget, ikke af placeringen).
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8, seniorCount: 5 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "youth_completed_senior");
+  assert.equal(supabase._compensationInserts.length, 1, "gennemført senior-salg krediterer den tabende manager");
+  assert.equal(supabase._compensationInserts[0].team_id, "losing-team");
+  assert.equal(supabase._compensationInserts[0].delta, 30000);
 });
 
 test("intake-udløbs-auktion (#2648): cron-retry af allerede-krediteret auktion no-op'er (23505), ingen dobbelt-notifikation", async () => {

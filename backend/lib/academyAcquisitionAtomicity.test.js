@@ -178,7 +178,16 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
         return { select: () => ({ eq: () => ({ order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "season-1", number: 1 }, error: null }) }) }) }) }) };
       }
       if (table === "teams") {
-        return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: teamId, name: "Buyer", balance: state.balance }, error: null }) }) }) };
+        // #2754: getTeamMarketState (senior-fallback) læser via expectSingle → .single();
+        // akademi-lønnen slår division op via .maybeSingle(). Begge understøttes.
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { id: teamId, name: "Buyer", balance: state.balance, division: 3 }, error: null }),
+              single: () => Promise.resolve({ data: { id: teamId, name: "Buyer", balance: state.balance, division: 3, user_id: "u" }, error: null }),
+            }),
+          }),
+        };
       }
       if (table === "transfer_listings") {
         return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
@@ -191,6 +200,30 @@ test("RACE: N parallelle akademi-auktion-finalize, count=7 — præcis ÉN lykke
       }
       if (table === "riders") {
         return {
+          // #2754: getTeamMarketState's senior-count-queries. Senior sat FULDT (30)
+          // så senior-fallbacken afvises (squad_full) og taberne cancel+deleter som
+          // før — denne test isolerer AKADEMI-cap-atomicitet, ikke senior-overflow.
+          select(cols, options) {
+            assert.equal(cols, "id");
+            assert.deepEqual(options, { count: "exact", head: true });
+            return {
+              eq(column) {
+                if (column === "team_id") {
+                  const b = {
+                    eq() { return b; },
+                    not() { return { neq: () => Promise.resolve({ count: 0, error: null }) }; },
+                    then(resolve, reject) { return Promise.resolve({ count: 30, error: null }).then(resolve, reject); },
+                  };
+                  return b;
+                }
+                const pb = {
+                  eq() { return pb; },
+                  then(resolve, reject) { return Promise.resolve({ count: 0, error: null }).then(resolve, reject); },
+                };
+                return pb;
+              },
+            };
+          },
           delete() {
             const filters = {};
             const api = {
