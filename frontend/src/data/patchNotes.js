@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.39",
+    "date": "2026-07-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season Planner",
+        "en": {
+          "title": "The Season Planner is now live for everyone",
+          "body": "Plan form peaks for your whole squad in one place. Target a key race for a rider and the planner builds a lead-up that lifts their form for that day, and the assistant drafts a starting plan you can accept or reshape. Each rider can peak for up to two races a season, and form is earned through training in the lead-up. A new season race list shows every race in your calendar with its date and terrain at a glance and links straight to the race page, so it is easy to see which races you are planning toward. Open it from Season Planner in the Clubhouse menu."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren er nu live for alle",
+          "body": "Planlæg form-peaks for hele dit hold ét sted. Sigt en rytter mod et vigtigt løb, så bygger planlæggeren en optakt der løfter formen til den dag, og assistenten udkaster et start-program du kan acceptere eller lave om. Hver rytter kan peake mod op til to løb pr. sæson, og formen tjenes gennem træning i optakten. En ny liste over sæsonens løb viser hvert løb i din kalender med dato og terræn i overblik og linker direkte til løbssiden, så det er nemt at se hvilke løb du planlægger mod. Åbn den under Sæsonplanlægger i Klubhus-menuen."
+        },
+        "refs": [2568, 2426]
+      }
+    ]
+  },
+  {
     "version": "7.38",
     "date": "2026-07-21",
     "label": "Beta",
