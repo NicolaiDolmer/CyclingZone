@@ -351,6 +351,45 @@ export function getAuctionBidSquadBlock({
   return null;
 }
 
+// #2701 bud-gate: respekterer at en ung rytter (ungdomsauktion) er egnet til BÅDE
+// senior-truppen OG akademiet. Wrapper getAuctionBidSquadBlock (senior 30-cap) og
+// tilføjer akademi-cap-grenen. Ren funktion → unit-testbar; api.js mapper resultatet
+// til HTTP-svar.
+//   - Ikke-youth (senior-auktion): blokér når senior er fuld (uændret 30-cap-adfærd).
+//   - Youth-auktion: blokér KUN når BEGGE er fulde. Har mindst én plads, går rytteren
+//     dertil ved gevinst (senior-først, akademi-fallback), så buddet tillades.
+// Et forsvars-bud på en auktion man allerede fører blokeres aldrig (arves fra
+// senior-gaten, som returnerer null når alreadyLeadingThisAuction).
+export function getAuctionBidRoomBlock({
+  isYouth = false,
+  teamState,
+  academyCount = 0,
+  academySlots,
+  activeLeadingCount = 0,
+  alreadyLeadingThisAuction = false,
+} = {}) {
+  const seniorBlock = getAuctionBidSquadBlock({
+    teamState,
+    activeLeadingCount,
+    alreadyLeadingThisAuction,
+  });
+
+  if (!isYouth) {
+    return seniorBlock;
+  }
+
+  // Youth: en fuld senior-trup blokerer kun hvis akademiet OGSÅ er fuldt.
+  const academyFull = Number.isFinite(academySlots) && academyCount >= academySlots;
+  if (seniorBlock && academyFull) {
+    return {
+      code: "no_eligible_room_bid",
+      maxRiders: seniorBlock.maxRiders,
+      maxAcademy: academySlots,
+    };
+  }
+  return null;
+}
+
 // Non-blocking advarsler: manager må stadig byde, men UI viser konsekvensen.
 export function getAuctionBidWarnings({
   teamState,

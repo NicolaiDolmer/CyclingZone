@@ -35,6 +35,7 @@ import {
   computeReservedBalance,
   computeWorstCaseCommitment,
   getAuctionBidIssue,
+  getAuctionBidRoomBlock,
   getAuctionBidSquadBlock,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
@@ -4484,12 +4485,28 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   // #1694: HARD block når truppen er fuld — efter #16 (vinduet afskaffet) afviser
   // finalize over-cap-vindere hardt, så bud-gaten skal matche (reservér én plads pr.
   // ført auktion). Et forsvars-bud på en auktion man allerede fører blokeres aldrig.
-  const squadBlock = getAuctionBidSquadBlock({
+  // #2701: youth-auktioner blokeres kun hvis BÅDE akademi og senior er fulde (ung
+  // rytter er egnet til begge). Akademi-tælling kun hentet for youth (undgå ekstra
+  // query på senior-auktioner). Samme is_academy=true-filter som finalize/UI.
+  const academyCount = auction.is_youth
+    ? await getTeamAcademyCount(supabase, req.team.id)
+    : 0;
+  const squadBlock = getAuctionBidRoomBlock({
+    isYouth: auction.is_youth,
     teamState,
+    academyCount,
+    academySlots: ACADEMY.SLOTS,
     activeLeadingCount: activeLeadingExceptCurrent.length,
     alreadyLeadingThisAuction,
   });
-  if (squadBlock) {
+  if (squadBlock?.code === "no_eligible_room_bid") {
+    return res.status(400).json({
+      error: `No room in your academy (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
+      errorCode: "no_eligible_room_bid",
+      errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders },
+    });
+  }
+  if (squadBlock?.code === "squad_full_bid") {
     return res.status(400).json({
       error: `Your squad is full (${squadBlock.maxRiders} riders). Sell a rider before you bid on a new one.`,
       errorCode: "squad_full_bid",

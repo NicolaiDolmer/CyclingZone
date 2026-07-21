@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.38",
+    "date": "2026-07-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Bidding now tells you upfront when you have no room",
+          "body": "If you have no space for a rider, the bid button is now disabled with a short explanation, instead of letting you bid and cancelling the sale afterwards. For a youth rider you can still bid as long as either your senior squad or your academy has room. Winning youth riders now join your senior squad first when there's space (and only go to your academy when the senior squad is full), so a won rider is race-ready right away. Each auction shows where the rider will land."
+        },
+        "da": {
+          "title": "Bud fortæller dig nu på forhånd, når du ikke har plads",
+          "body": "Har du ikke plads til en rytter, er bud-knappen nu deaktiveret med en kort forklaring, i stedet for at lade dig byde og annullere salget bagefter. For en ungdomsrytter kan du stadig byde, så længe enten din senior-trup eller dit akademi har plads. Vundne ungdomsryttere ryger nu på din senior-trup først, når der er plads (og først i akademiet, når senior-truppen er fuld), så en vundet rytter er klar til løb med det samme. Hver auktion viser, hvor rytteren lander."
+        },
+        "refs": [2701]
+      }
+    ]
+  },
+  {
     "version": "7.37",
     "date": "2026-07-21",
     "label": "Beta",

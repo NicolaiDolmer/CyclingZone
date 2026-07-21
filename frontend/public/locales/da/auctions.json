@@ -131,6 +131,12 @@
     "u25": "U25",
     "youth": "Ungdom"
   },
+  "bidGate": {
+    "bothFull": "Ingen plads i dit akademi (8/8) eller din senior-trup (30/30). Sælg en rytter for at byde.",
+    "seniorFull": "Din senior-trup er fuld (30/30). Sælg en rytter for at byde.",
+    "toSenior": "→ ryger på din senior-trup",
+    "toAcademy": "→ ryger i dit akademi"
+  },
   "bid": {
     "minBid": "Min. {amount} CZ$",
     "minBidCard": "Min. bud: {amount} CZ$",
