@@ -331,7 +331,35 @@ test("KRYDS: finalize + signAcademyCandidate samtidig (samme team, samme rytter)
         return { select: () => ({ eq: () => ({ order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "season-1", number: 1 }, error: null }) }) }) }) }) };
       }
       if (table === "teams") {
-        return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: teamId, name: "T", balance: state.balance }, error: null }) }) }) };
+        // #2701: getTeamMarketState (senior-først) læser via .single(); akademi-løn via .maybeSingle().
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { id: teamId, name: "T", balance: state.balance, division: 3 }, error: null }),
+              single: () => Promise.resolve({ data: { id: teamId, name: "T", balance: state.balance, division: 3, user_id: "u" }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "riders") {
+        // #2701: getTeamMarketState count-queries. Senior sat FULDT (30) → finalize
+        // falder til AKADEMI og racer med signAcademyCandidate (testens pointe bevaret).
+        return {
+          select(cols, options) {
+            assert.equal(cols, "id");
+            assert.deepEqual(options, { count: "exact", head: true });
+            return {
+              eq(column) {
+                if (column === "team_id") {
+                  const b = { eq() { return b; }, not() { return { neq: () => Promise.resolve({ count: 0, error: null }) }; }, then(res, rej) { return Promise.resolve({ count: 30, error: null }).then(res, rej); } };
+                  return b;
+                }
+                const pb = { eq() { return pb; }, then(res, rej) { return Promise.resolve({ count: 0, error: null }).then(res, rej); } };
+                return pb;
+              },
+            };
+          },
+        };
       }
       if (table === "transfer_listings") {
         return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };

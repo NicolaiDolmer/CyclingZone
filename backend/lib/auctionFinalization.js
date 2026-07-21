@@ -260,14 +260,15 @@ async function creditIntakeExpiryCompensationIfNeeded({
   }
 }
 
-// #2754/#2701: en vundet ungdomsauktion må IKKE annulleres hvis holdet samlet set
-// har plads (ejer-regel 19/7). Denne fallback kaldes KUN når finalize_academy_-
-// acquisition returnerede academy_full (akademi-cap nået, INGEN debit sket — cap
-// tjekkes før balance i RPC'en). Den forsøger at placere vinderen på SENIOR-truppen
-// med senior-semantik (senior-kontrakt + løn + tæller mod 30-cap), IKKE akademi-
-// semantik. Kapacitet + balance læses via de SAMME helpers som senior-auktions-
-// stien (getTeamMarketState/getIncomingSquadViolation) → samme filter som UI'et
-// og RLS-neutralt (jf. [[feedback_match_ui_filter_for_capacity_logic]]).
+// #2701 (ejer-regel 19/7): SENIOR-FØRST. En ung auktions-vinder placeres på
+// senior-truppen når holdet har plads dér (+ råd) — akademiet er KUN fallback når
+// senior er fuldt. Returnerer {placed:true} ved succes; ellers {placed:false,
+// reason:"insufficient_balance"|"squad_full"}. squad_full → kalderen prøver akademi-
+// fallback; insufficient_balance → auktionen kan ikke gennemføres (samme pris begge
+// steder) → annulleres. Placerer med senior-semantik (senior-kontrakt + løn + tæller
+// mod 30-cap), IKKE akademi-semantik. Kapacitet + balance læses via de SAMME helpers
+// som senior-auktions-stien (getTeamMarketState/getIncomingSquadViolation) → samme
+// filter som UI'et og RLS-neutralt (jf. [[feedback_match_ui_filter_for_capacity_logic]]).
 //
 // Retry-sikkerhed: ved success lukkes auktionen 'completed' af kalderen, så en
 // cron-retry ser not_finalizable og stopper. Skulle en retry alligevel nå hertil
@@ -326,9 +327,10 @@ async function tryPlaceYouthWinnerOnSenior({
 
   // Debit: bud-summen er et sink (ingen sælger), præcis som akademi-placeringen.
   // SAMME idempotency_key som akademi-vinder-debiten (`youth_auction_winner:<id>`):
-  // højst én af de to stier debiterer nogensinde for en given auktion (RPC'en
-  // debiterede IKKE, siden den returnerede academy_full), og nøglen gør en
-  // cron-retry sikker uanset hvilken sti der kørte.
+  // højst én af de to stier debiterer nogensinde for en given auktion (senior-først:
+  // akademi-RPC'en køres kun som fallback når denne sti afviste på squad_full, og
+  // den bruger samme nøgle), og nøglen gør en cron-retry sikker uanset hvilken sti
+  // der kørte.
   await incrementBalanceWithAudit(
     supabase,
     {
@@ -337,7 +339,7 @@ async function tryPlaceYouthWinnerOnSenior({
       payload: {
         type: "academy_signing",
         amount: -price,
-        description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion (placeret på senior — akademi fuldt)`,
+        description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion (placeret på senior-truppen)`,
         metadata: {
           code: "tx.youthAuctionWin",
           params: { riderName: `${rider.firstname} ${rider.lastname}` },
@@ -360,7 +362,7 @@ async function tryPlaceYouthWinnerOnSenior({
     bidderId,
     "auction_won",
     "Du vandt ungdomsauktionen! 🎉",
-    `${rider.firstname} ${rider.lastname} er nu på dit hold for ${price} CZ$. Dit akademi var fuldt, så han blev tilføjet senior-truppen.`,
+    `${rider.firstname} ${rider.lastname} er nu på dit hold (senior-truppen) for ${price} CZ$`,
     auction.id,
     { riderId: rider.id }
   );
@@ -374,17 +376,18 @@ async function tryPlaceYouthWinnerOnSenior({
   return { placed: true };
 }
 
-// #1308 Fase B: finalisér en ungdomsauktion. Ingen sælger (seller_team_id=NULL),
-// rytteren er fri (team_id=NULL). Vinder → placeres i akademiet (is_academy=true)
-// med 8-plads-cap og ungdomskontrakt; betaler sit bud som academy_signing (sink —
-// der er ingen sælger at betale ud til). Ingen bud → rytteren slettes (#2456,
-// "usolgt = væk" — se deleteUnsoldYouthRider ovenfor).
-// Akademiryttere bypasser senior-30-cap'en og transfervindue-pending (de tæller
-// ikke mod senior-truppen), så ingen squad-violation-/pending-logik her.
+// #1308 Fase B / #2701: finalisér en ungdomsauktion. Ingen sælger
+// (seller_team_id=NULL), rytteren er fri (team_id=NULL).
+// SENIOR-FØRST placering (ejer-regel 19/7): har vinderen plads på senior-truppen
+// (+ råd), placeres rytteren dér med senior-kontrakt (tæller mod 30-cap). Er senior
+// fuldt, falder vi tilbage til AKADEMIET (is_academy=true, 8-plads-cap, ungdoms-
+// kontrakt, betalt som academy_signing-sink). Er BEGGE fulde → auktionen annulleres
+// og rytteren slettes (#2456 "usolgt = væk"). Ingen råd → annulleres uanset (samme
+// pris begge steder). Ingen bud → rytteren slettes.
 // #2648 (intake-udløb v2): er auction.expired_intake_team_id sat (kun for
 // intake-udløbs-auktioner, jf. academyIntakeExpirySweep), krediteres bud-
 // summen den manager i stedet for at forblive et rent sink — kompensation
-// for det udløbne intake-tilbud (ejer-beslutning 18/7).
+// for det udløbne intake-tilbud (ejer-beslutning 18/7). Gælder BEGGE placeringer.
 async function finalizeYouthAuctionRecord({
   supabase,
   auction,
@@ -425,8 +428,60 @@ async function finalizeYouthAuctionRecord({
 
   const price = auction.current_price;
 
-  // Placér i akademiet med ungdomskontrakt (samme løn-/kontrakt-model som
-  // signAcademyCandidate; akademiryttere bypasser senior-cap + transfervindue).
+  // #2701 SENIOR-FØRST: forsøg senior-placering før akademiet. Har vinderen plads
+  // på senior (+ råd), lander rytteren dér med senior-kontrakt.
+  const senior = await tryPlaceYouthWinnerOnSenior({
+    supabase,
+    auction,
+    rider,
+    bidderId,
+    price,
+    actualEnd,
+    activeSeasonNumber,
+    activeSeasonId,
+    notifyTeamOwner,
+    logActivity,
+    awardXP,
+  });
+  if (senior.placed) {
+    await creditIntakeExpiryCompensationIfNeeded({
+      supabase,
+      auction,
+      rider,
+      price,
+      activeSeasonId,
+      notifyTeamOwner,
+    });
+    await closeAuction({
+      supabase,
+      auction,
+      status: "completed",
+      actualEnd,
+      sellerOwned: false,
+      currentBidderId: auction.current_bidder_id ? null : bidderId,
+    });
+    return { ok: true, code: "youth_completed_senior", auction_id: auction.id, academy: false, senior: true };
+  }
+
+  // Ingen råd → hverken senior eller akademi kan gennemføres (samme pris begge
+  // steder) → annullér + slet (#2456; en holdløs ungdomsrytter = spøgelsesrytter).
+  if (senior.reason === "insufficient_balance") {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret",
+      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}.`,
+      auction.id,
+      { riderId: rider.id }
+    );
+    const riderDeleted = await deleteUnsoldYouthRider({ supabase, rider });
+    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id, rider_deleted: riderDeleted };
+  }
+
+  // senior.reason === "squad_full" → senior fuldt. AKADEMI-fallback: placér i
+  // akademiet med ungdomskontrakt (samme løn-/kontrakt-model som signAcademyCandidate;
+  // akademiryttere bypasser senior-cap + transfervindue).
   // #2594: løn = current_production_value × per-division-sats (vinderens division).
   const { data: bidderTeam } = await supabase
     .from("teams").select("id, division").eq("id", bidderId).maybeSingle();
@@ -437,11 +492,11 @@ async function finalizeYouthAuctionRecord({
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
 
   // #1558: cap-check (8-plads, hård) + balance-check + rider-update + debit sker
-  // nu ATOMISK i én RPC under pg_advisory_xact_lock(team_id) — samme lock-nøgle
+  // ATOMISK i én RPC under pg_advisory_xact_lock(team_id) — samme lock-nøgle
   // som increment_balance_with_audit, så de serialiserer på samme team. Det
   // lukker BÅDE finalize-vs-finalize OG finalize-vs-signAcademyCandidate-racen,
   // som tidligere kunne give to debiteringer (forskellige idempotency-keys). RPC'en
-  // er nu den autoritative gate; idempotency_key gør cron-retries sikre.
+  // er den autoritative akademi-gate; idempotency_key gør cron-retries sikre.
   const { data: acq, error: acqErr } = await supabase.rpc("finalize_academy_acquisition", {
     p_team_id: bidderId,
     p_rider_id: rider.id,
@@ -480,56 +535,18 @@ async function finalizeYouthAuctionRecord({
     throw acqErr;
   }
 
-  // Akademi fuldt (cap nået inde i låsen). #2754/#2701 (ejer-regel 19/7): en
-  // vundet auktion må IKKE annulleres hvis holdet samlet set har plads → forsøg
-  // senior-fallback FØR annullering. Kun hvis senior OGSÅ er fuldt (eller vinderen
-  // ikke har råd) falder vi tilbage til det gamle backstop (annullér + slet).
+  // Akademi fuldt (cap nået inde i låsen). Senior blev allerede forsøgt FØRST
+  // (senior-først, #2701) og afviste på squad_full → BEGGE trupper er fulde →
+  // annullér + slet (#2456; en holdløs ungdomsrytter ville være en spøgelsesrytter).
+  // Bemærk: bud-gaten (#2701, api.js) blokerer normalt bud når begge er fulde, så
+  // dette er nu primært en race-backstop (plads fyldt efter buddet blev afgivet).
   if (acq?.code === "academy_full") {
-    const senior = await tryPlaceYouthWinnerOnSenior({
-      supabase,
-      auction,
-      rider,
-      bidderId,
-      price,
-      actualEnd,
-      activeSeasonNumber,
-      activeSeasonId,
-      notifyTeamOwner,
-      logActivity,
-      awardXP,
-    });
-    if (senior.placed) {
-      await creditIntakeExpiryCompensationIfNeeded({
-        supabase,
-        auction,
-        rider,
-        price,
-        activeSeasonId,
-        notifyTeamOwner,
-      });
-      await closeAuction({
-        supabase,
-        auction,
-        status: "completed",
-        actualEnd,
-        sellerOwned: false,
-        currentBidderId: auction.current_bidder_id ? null : bidderId,
-      });
-      return { ok: true, code: "youth_completed_senior", auction_id: auction.id, academy: false, senior: true };
-    }
-
-    // Senior også fuldt / ingen råd → annullér. Rytteren blev ikke optaget
-    // → han slettes (#2456; en holdløs ungdomsrytter ville være en spøgelsesrytter).
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    const cancelMessage =
-      senior.reason === "insufficient_balance"
-        ? `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser), og du havde ikke råd til at tilføje ${rider.firstname} ${rider.lastname} til senior-truppen.`
-        : `Både dit akademi (${ACADEMY.SLOTS} pladser) og din senior-trup er fulde. ${rider.firstname} ${rider.lastname} kunne ikke optages.`;
     await notifyTeamOwner(
       bidderId,
       "auction_lost",
       "Auktion annulleret — ingen plads",
-      cancelMessage,
+      `Både din senior-trup og dit akademi (${ACADEMY.SLOTS} pladser) er fulde. ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
       auction.id,
       { riderId: rider.id }
     );
@@ -537,7 +554,6 @@ async function finalizeYouthAuctionRecord({
     return {
       ok: true,
       code: "academy_full",
-      senior_reason: senior.reason,
       auction_id: auction.id,
       rider_deleted: riderDeleted,
     };

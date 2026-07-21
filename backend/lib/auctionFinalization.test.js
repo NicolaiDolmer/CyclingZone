@@ -2034,7 +2034,7 @@ const YOUTH_RIDER = {
   team_id: null,
 };
 
-test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet (is_academy=true, kontrakt), betaler academy_signing, ingen seller-payout", async () => {
+test("youth-auktion MED bud + senior-plads + balance: vinder placeres på SENIOR (#2701 senior-først, is_academy=false), betaler bud, ingen seller-payout", async () => {
   const auction = {
     id: "youth-auc-1",
     status: "active",
@@ -2044,7 +2044,54 @@ test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet 
     current_price: 25000,
     rider: { ...YOUTH_RIDER },
   };
-  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 0 });
+  // #2701: senior har plads (0/30) → default-placering er SENIOR, ikke akademi.
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 0, seniorCount: 0 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "youth_completed_senior");
+  assert.equal(result.senior, true);
+
+  // Rytter placeret på SENIOR (is_academy=false)
+  assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (placering)");
+  const upd = supabase._riderUpdates[0];
+  assert.equal(upd.is_academy, false, "senior-først: placeret på senior, ikke akademi");
+  assert.equal(upd.team_id, "buyer-team");
+  assert.equal(upd.pending_team_id, null);
+  assert.ok(upd.acquired_at, "acquired_at sat");
+
+  // Finance: vinder debiteret = -bud, INGEN seller-credit
+  assert.equal(supabase._financeInserts.length, 1, "kun vinder-debit, ingen seller-payout");
+  const fin = supabase._financeInserts[0];
+  assert.equal(fin.team_id, "buyer-team");
+  assert.equal(fin.delta, -25000, "betaler sit bud");
+  assert.equal(fin.idempotency_key, `youth_auction_winner:${auction.id}`, "cron-retry-sikker nøgle");
+  // #1483: struktureret metadata med rytternavn til Historik-fanen.
+  assert.deepEqual(fin.metadata, {
+    code: "tx.youthAuctionWin",
+    params: { riderName: "Tadej Ungdom" },
+  });
+
+  // Auktion lukket completed
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+});
+
+test("youth-auktion MED bud, senior fyldt (30) MEN akademi har plads: AKADEMI-fallback (is_academy=true, ungdomskontrakt), betaler academy_signing", async () => {
+  const auction = {
+    id: "youth-auc-1b",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  // #2701: senior fuldt (30) → falder tilbage til akademiet (0/8 plads).
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 0, seniorCount: 30 });
   const result = await finalizeAuctionById({
     supabase,
     notifyTeamOwner: async (...args) => supabase._notifications.push(args),
@@ -2053,32 +2100,24 @@ test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet 
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "youth_completed");
+  assert.equal(result.academy, true);
 
-  // Rytter placeret i akademiet med kontrakt
-  assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (placering)");
+  // Rytter placeret i AKADEMIET med ungdomskontrakt
+  assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (akademi-placering)");
   const upd = supabase._riderUpdates[0];
-  assert.equal(upd.is_academy, true);
+  assert.equal(upd.is_academy, true, "senior fuldt → akademi-fallback");
   assert.equal(upd.team_id, "buyer-team");
-  assert.equal(upd.pending_team_id, null, "akademiryttere bypasser transfervindue-pending");
   assert.equal(upd.contract_length, 3);
   assert.equal(upd.contract_end_season, 3, "1 + 3 - 1");
   assert.ok(typeof upd.salary === "number" && upd.salary >= 1);
-  assert.ok(upd.acquired_at, "acquired_at sat");
 
-  // Finance: vinder debiteret academy_signing = -bud, INGEN seller-credit
-  assert.equal(supabase._financeInserts.length, 1, "kun vinder-debit, ingen seller-payout");
+  // Finance: academy_signing = -bud
+  assert.equal(supabase._financeInserts.length, 1, "kun vinder-debit");
   const fin = supabase._financeInserts[0];
-  assert.equal(fin.team_id, "buyer-team");
   assert.equal(fin.type, "academy_signing");
-  assert.equal(fin.delta, -25000, "betaler sit bud");
-  assert.ok(fin.idempotency_key, "idempotency_key sat (cron-sikkerhed)");
-  // #1483: struktureret metadata med rytternavn til Historik-fanen.
-  assert.deepEqual(fin.metadata, {
-    code: "tx.youthAuctionWin",
-    params: { riderName: "Tadej Ungdom" },
-  });
+  assert.equal(fin.delta, -25000);
+  assert.ok(fin.idempotency_key);
 
-  // Auktion lukket completed
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
 });
 
@@ -2144,7 +2183,6 @@ test("youth-auktion MED bud men akademi (8) OG senior (30) fyldt: annulleres + s
   });
 
   assert.equal(result.code, "academy_full");
-  assert.equal(result.senior_reason, "squad_full");
   assert.equal(supabase._riderUpdates.length, 0, "ingen placering når alt er fyldt");
   assert.equal(supabase._financeInserts.length, 0, "ingen debit når alt er fyldt");
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
@@ -2153,7 +2191,7 @@ test("youth-auktion MED bud men akademi (8) OG senior (30) fyldt: annulleres + s
   assert.deepEqual(supabase._riderDeletions, ["youth-rider"], "usolgt rytter slettet");
 });
 
-test("youth-auktion MED bud, akademi fyldt (8), senior har plads men vinderen har ikke råd: annulleres + slettes", async () => {
+test("youth-auktion MED bud, senior har plads men vinderen har ikke råd: annulleres + slettes (samme pris begge steder → ingen akademi-forsøg)", async () => {
   const auction = {
     id: "youth-auc-2c",
     status: "active",
@@ -2163,16 +2201,16 @@ test("youth-auktion MED bud, akademi fyldt (8), senior har plads men vinderen ha
     current_price: 25000,
     rider: { ...YOUTH_RIDER },
   };
-  // Senior har plads (10/30) men balance < bud → kan ikke placeres.
-  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 1000, academyCount: 8, seniorCount: 10 });
+  // Senior har plads (10/30) men balance < bud → senior-først afviser på balance,
+  // og akademiet ville koste det samme → auktionen annulleres uden akademi-forsøg.
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 1000, academyCount: 0, seniorCount: 10 });
   const result = await finalizeAuctionById({
     supabase,
     notifyTeamOwner: async (...args) => supabase._notifications.push(args),
     now: new Date("2026-06-20T12:00:00Z"),
   });
 
-  assert.equal(result.code, "academy_full");
-  assert.equal(result.senior_reason, "insufficient_balance");
+  assert.equal(result.code, "cancelled_insufficient_balance");
   assert.equal(supabase._riderUpdates.length, 0, "ingen placering uden råd");
   assert.equal(supabase._financeInserts.length, 0, "ingen debit uden råd");
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
@@ -2365,7 +2403,9 @@ test("intake-udløbs-auktion MED salg (#2648): salgssummen krediteres den manage
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.code, "youth_completed");
+  // #2701 senior-først: default-placering er senior (kompensationen følger salget,
+  // ikke placeringen).
+  assert.equal(result.code, "youth_completed_senior");
 
   assert.equal(supabase._compensationInserts.length, 1, "præcis én kompensations-kreditering");
   const comp = supabase._compensationInserts[0];
@@ -2416,7 +2456,7 @@ test("almindelig ungdomsauktion UDEN expired_intake_team_id (#2648): INGEN kredi
     now: new Date("2026-06-20T12:00:00Z"),
   });
 
-  assert.equal(result.code, "youth_completed");
+  assert.equal(result.code, "youth_completed_senior");
   assert.equal(supabase._compensationInserts.length, 0, "ingen kreditering uden verificeret intake-udløbs-herkomst");
   assert.equal(
     supabase._notifications.some((n) => n[1] === "academy_intake_expired_compensation"),
@@ -2520,7 +2560,7 @@ test("intake-udløbs-auktion (#2648): cron-retry af allerede-krediteret auktion 
     now: new Date("2026-06-20T12:00:00Z"),
   });
 
-  assert.equal(result.code, "youth_completed", "finalisering fortsætter (idempotent skip, ikke fejl)");
+  assert.equal(result.code, "youth_completed_senior", "finalisering fortsætter (idempotent skip, ikke fejl)");
   assert.equal(
     supabase._notifications.some((n) => n[1] === "academy_intake_expired_compensation"),
     false,

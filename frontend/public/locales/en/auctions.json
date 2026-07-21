@@ -131,6 +131,12 @@
     "u25": "U25",
     "youth": "Youth"
   },
+  "bidGate": {
+    "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",
+    "seniorFull": "Your senior squad is full (30/30). Sell a rider to bid.",
+    "toSenior": "→ joins your senior squad",
+    "toAcademy": "→ joins your academy"
+  },
   "bid": {
     "minBid": "Min. {amount} CZ$",
     "minBidCard": "Min. bid: {amount} CZ$",

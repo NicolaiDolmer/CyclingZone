@@ -26,6 +26,7 @@ import { BidConfirmModal } from "../components/BidConfirmModal";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { logEvent } from "../lib/logEvent";
+import { computeBidRoom } from "../lib/auctionBidRoom";
 import {
   isOverbidEvent,
   shouldFlashPrice,
@@ -162,13 +163,35 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+// #2701 bud-gate: forklaring når truppen ingen egnet plads har (bud deaktiveret).
+function BidRoomBlockNotice({ reason, t }) {
+  return (
+    <div className="text-[11px] text-cz-warning bg-cz-warning-bg rounded px-2 py-1 leading-snug">
+      {t(reason === "both_full" ? "auctions:bidGate.bothFull" : "auctions:bidGate.seniorFull")}
+    </div>
+  );
+}
+
+// #2701: hint på ungdomsauktioner om hvor rytteren lander (senior-først).
+function BidDestinationHint({ destination, t }) {
+  return (
+    <span className="text-[10px] text-cz-accent-t whitespace-nowrap">
+      {t(destination === "academy" ? "auctions:bidGate.toAcademy" : "auctions:bidGate.toSenior")}
+    </span>
+  );
+}
+
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
+  // #2701 bud-gate: ung rytter egnet til både senior og akademi. Et forsvars-bud
+  // (imWinning) blokeres aldrig — du fører allerede.
+  const bidRoom   = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const roomBlocked = canBid && !imWinning && bidRoom.blocked;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const riderName = r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider");
@@ -341,7 +364,13 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
       {/* Byd */}
       <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
+          roomBlocked ? (
+            <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
+          ) : (
           <div className="flex flex-col gap-0.5">
+            {auction.is_youth && bidRoom.destination && (
+              <BidDestinationHint destination={bidRoom.destination} t={t} />
+            )}
             {/* #228 v2: input + Byd + autobud på ÉN vandret linje. Kolonnen er
                 udvidet (260px) og input smallere (w-20) så de tre elementer
                 reelt får plads uden at wrappe. Min-bud vises som title-tooltip
@@ -428,6 +457,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
               </div>
             )}
           </div>
+          )
         ) : isSeller ? (
           <span className="text-cz-3 text-xs">{t("auctions:bid.sellerLabel")}</span>
         ) : (
@@ -441,13 +471,16 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
+  // #2701 bud-gate (samme logik som AuctionRow).
+  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const roomBlocked = canBid && !imWinning && bidRoom.blocked;
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
   // #2464: ét-blik-vurdering — OVR (1-99, type-vægtet #2000) + bud-vs-vurdering.
   const ovr = riderOverallRating(r);
@@ -583,7 +616,13 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
 
       <div className="mt-4">
         {canBid ? (
+          roomBlocked ? (
+            <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
+          ) : (
           <div className="flex flex-col gap-1">
+            {auction.is_youth && bidRoom.destination && (
+              <BidDestinationHint destination={bidRoom.destination} t={t} />
+            )}
             {/* #228: autobud-knappen/-badget flyttet vandret til højre for bud-
                 knappen (side om side, ikke stablet under). flex-wrap er kun en
                 responsiv sikkerhedsventil for meget smalle bredder. */}
@@ -682,6 +721,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
               </div>
             )}
           </div>
+          )
         ) : (
           <p className="text-cz-3 text-xs text-center py-1">{isSeller ? t("auctions:bid.sellerLabel") : "—"}</p>
         )}
@@ -703,6 +743,8 @@ export default function AuctionsPage() {
   const [watchlist, setWatchlist] = useState(() => new Set());
   const [myBalance, setMyBalance] = useState(0);
   const [currentRiderCount, setCurrentRiderCount] = useState(null);
+  // #2701: akademi-tal til bud-gaten (ung rytter egnet til både senior og akademi).
+  const [academyCount, setAcademyCount] = useState(null);
   const [loading, setLoading] = useState(true);
   // #1350: terminal load-fejl-state — uden den kunne en rejected request efterlade
   // en evig spinner, og en Supabase-fejl ligne et tomt auktionsmarked.
@@ -893,7 +935,7 @@ export default function AuctionsPage() {
       if (wl) setWatchlist(new Set(wl.map(w => w.rider_id)));
     }
 
-    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes] = await Promise.all([
+    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes, academyCountRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
@@ -910,6 +952,9 @@ export default function AuctionsPage() {
            : Promise.resolve({ count: 0 }),
       team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),
+      // #2701: akademi-tal (is_academy=true) til youth-bud-gaten.
+      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id).eq("is_academy", true)
+           : Promise.resolve({ count: 0 }),
     ]);
 
     // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
@@ -921,6 +966,7 @@ export default function AuctionsPage() {
     }
 
     if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
+    if (academyCountRes?.count !== null && academyCountRes?.count !== undefined) setAcademyCount(academyCountRes.count);
 
     if (auctionsRes.data) {
       const myBidMap = {};
@@ -1537,6 +1583,8 @@ export default function AuctionsPage() {
           myTeamId={myTeamId}
           myBalance={myBalance}
           reservedBalance={reservedBalance}
+          seniorCount={currentRiderCount}
+          academyCount={academyCount}
           watchlist={watchlist}
           toggleWatchlist={toggleWatchlist}
           handleBid={handleBid}
@@ -1652,6 +1700,8 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             myTeamId={sharedProps.myTeamId}
             myBalance={sharedProps.myBalance}
             reservedBalance={sharedProps.reservedBalance}
+            seniorCount={sharedProps.seniorCount}
+            academyCount={sharedProps.academyCount}
             watchlist={sharedProps.watchlist}
             onToggleWatchlist={sharedProps.toggleWatchlist}
             onBid={sharedProps.handleBid}
@@ -1684,6 +1734,8 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   myTeamId={sharedProps.myTeamId}
                   myBalance={sharedProps.myBalance}
                   reservedBalance={sharedProps.reservedBalance}
+                  seniorCount={sharedProps.seniorCount}
+                  academyCount={sharedProps.academyCount}
                   watchlist={sharedProps.watchlist}
                   onToggleWatchlist={sharedProps.toggleWatchlist}
                   onBid={sharedProps.handleBid}

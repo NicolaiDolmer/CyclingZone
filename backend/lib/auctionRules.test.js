@@ -9,6 +9,7 @@ import {
   computeWorstCaseCommitment,
   getAuctionInitialBidderId,
   getAuctionBidIssue,
+  getAuctionBidRoomBlock,
   getAuctionBidSquadBlock,
   getAuctionBidWarnings,
   getAuctionStartIssue,
@@ -351,6 +352,46 @@ test("getAuctionBidSquadBlock never blocks a defensive bid on an auction you alr
   const block = getAuctionBidSquadBlock({
     teamState: { future_count: 30, squad_limits: { max: 30 } },
     activeLeadingCount: 0,
+    alreadyLeadingThisAuction: true,
+  });
+  assert.equal(block, null);
+});
+
+// ── #2701 bud-gate: youth-auktioner egnet til BÅDE senior og akademi ──────────
+const FULL_SENIOR = { future_count: 30, squad_limits: { max: 30 } };
+const ROOM_SENIOR = { future_count: 20, squad_limits: { max: 30 } };
+
+test("getAuctionBidRoomBlock (senior-auktion): blokerer når senior er fuld (uændret 30-cap-adfærd)", () => {
+  const block = getAuctionBidRoomBlock({ isYouth: false, teamState: FULL_SENIOR, academyCount: 0, academySlots: 8 });
+  assert.equal(block?.code, "squad_full_bid");
+  assert.equal(block?.maxRiders, 30);
+});
+
+test("getAuctionBidRoomBlock (senior-auktion): tillader når senior har plads", () => {
+  const block = getAuctionBidRoomBlock({ isYouth: false, teamState: ROOM_SENIOR, academyCount: 8, academySlots: 8 });
+  assert.equal(block, null);
+});
+
+test("getAuctionBidRoomBlock (youth): blokerer KUN når BÅDE akademi (8/8) og senior (30/30) er fulde", () => {
+  const block = getAuctionBidRoomBlock({ isYouth: true, teamState: FULL_SENIOR, academyCount: 8, academySlots: 8 });
+  assert.equal(block?.code, "no_eligible_room_bid");
+  assert.equal(block?.maxAcademy, 8);
+  assert.equal(block?.maxRiders, 30);
+});
+
+test("getAuctionBidRoomBlock (youth): senior fuld men akademi har plads → tilladt (rytteren går i akademiet)", () => {
+  const block = getAuctionBidRoomBlock({ isYouth: true, teamState: FULL_SENIOR, academyCount: 5, academySlots: 8 });
+  assert.equal(block, null);
+});
+
+test("getAuctionBidRoomBlock (youth): akademi fuldt men senior har plads → tilladt (senior-først)", () => {
+  const block = getAuctionBidRoomBlock({ isYouth: true, teamState: ROOM_SENIOR, academyCount: 8, academySlots: 8 });
+  assert.equal(block, null);
+});
+
+test("getAuctionBidRoomBlock (youth): forsvars-bud man allerede fører blokeres aldrig, selv med begge fulde", () => {
+  const block = getAuctionBidRoomBlock({
+    isYouth: true, teamState: FULL_SENIOR, academyCount: 8, academySlots: 8,
     alreadyLeadingThisAuction: true,
   });
   assert.equal(block, null);
