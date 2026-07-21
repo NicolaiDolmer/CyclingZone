@@ -6,13 +6,14 @@
 // evner). Rytter-fokus: evne-barer + foreslået build/taper-blok pr. peak m.
 // "Auto-plan training" (accept-endpoint) + fjern-peak + vælg-mål-løb.
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { riderSuitability } from "../../lib/suitability";
 import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
-import { formatOrdinalShort, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
+import { formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
 
 function StageMini({ terrain, summit }) {
   const ink = "var(--text-1)", gold = "rgb(var(--accent-t))";
@@ -31,6 +32,7 @@ function StageMini({ terrain, summit }) {
 
 function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
   const { t } = useTranslation("planner");
+  const months = t("months", { returnObjects: true });
   const [showProfiles, setShowProfiles] = useState(false);
   const summary = race.profileSummary || { stages: race.stages ?? 1, summitFinishes: 0 };
 
@@ -56,7 +58,19 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
           <svg width="30" height="18" viewBox="0 0 30 18" aria-hidden="true" className="mt-0.5 shrink-0"><path d="M0 17 L7 5 L12 12 L18 2 L24 10 L30 6 L30 17 Z" fill="var(--text-1)" opacity="0.82" /></svg>
           <div className="min-w-0">
             <div className="font-display text-[20px] leading-none text-cz-1 truncate">{race.name}</div>
-            <div className="text-[11px] text-cz-2 mt-0.5">{t("drawer.race.summary", { stages: summary.stages, summits: summary.summitFinishes })} · {t(`terrain.${race.terrain}`)}</div>
+            {/* #2568: dato var slet ikke i skuffe-headeren — "hvornår køres løbet"
+                skal stå direkte hos navnet, ikke kun som en chip på tidslinjen. */}
+            <div className="text-[11px] text-cz-2 mt-0.5">
+              <span className="text-cz-1">{formatRaceDateLabel(race, months)}</span>
+              {" · "}{t("drawer.race.summary", { stages: summary.stages, summits: summary.summitFinishes })}
+              {" · "}{t(`terrain.${race.terrain}`)}
+            </div>
+            <Link
+              to={`/races/${race.id}`}
+              className="inline-flex items-center gap-1 text-[11px] text-cz-accent-t hover:underline mt-1"
+            >
+              {t("drawer.race.viewPage")}<i className="ti ti-arrow-up-right text-[13px]" aria-hidden="true" />
+            </Link>
           </div>
         </div>
         <div className="text-right text-[10.5px] text-cz-2 shrink-0">

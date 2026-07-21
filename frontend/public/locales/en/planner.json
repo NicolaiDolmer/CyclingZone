@@ -29,6 +29,16 @@
   },
   "filter": { "mine": "My races", "all": "All races" },
   "planningTowards": { "label": "Planning towards: {race} · {date}" },
+  "raceList": {
+    "title": "Season races",
+    "subtitle": "Every race this season: when it runs and what it demands. Open one to plan a peak, or jump to its full page.",
+    "count": "{count, plural, one {# race} other {# races}}",
+    "viewPage": "Open {race} race page",
+    "mine": "In your calendar",
+    "peaksHere": "{count, plural, one {# rider peaks here} other {# riders peak here}}",
+    "empty": "No races match this filter yet.",
+    "past": "Done"
+  },
   "legend": {
     "potential": "Potential top",
     "realized": "Realized (trained)",
@@ -60,7 +70,8 @@
       "setPeak": "Set peak",
       "demands": "This race demands",
       "alreadyPeaking": "Peaking here",
-      "suggestedHere": "Assistant suggests here"
+      "suggestedHere": "Assistant suggests here",
+      "viewPage": "View race page"
     },
     "rider": {
       "abilities": "Abilities",
