@@ -12,6 +12,16 @@ import {
   FATIGUE_RACE_WEIGHT,
   DURABILITY_FATIGUE_DAMPING,
   DESCENDING_FINALE_WEIGHT,
+  stageGapModel,
+  distanceFactor,
+  DISTANCE_BAND_MIDPOINTS,
+  LONG_DAY_ENDURANCE_WEIGHT,
+  isTechnicalFinale,
+  routeBreakawayFactor,
+  SPRINTER_DENSITY_PROFILES,
+  SPRINTER_DENSITY_RANGE,
+  breakawayMaxBonus,
+  BREAKAWAY_BONUS,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -483,4 +493,209 @@ test("#1122 finalScore inkluderer finale-komponenten (forklarlighed)", () => {
   const c = ranked[0].components;
   const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
   assert.ok(Math.abs(sum - ranked[0].finalScore) < 1e-12);
+});
+
+// ── Sub-3 (#2771) Task 1: stageGapModel — ankret rute-modifier-model ──────────
+test("stageGapModel uden rutedata = anker-værdier (identitet)", () => {
+  assert.deepEqual(stageGapModel({ profile_type: "mountain" }), { bunch: 0.0, spread: 600 });
+  assert.deepEqual(stageGapModel({ profile_type: "flat" }), { bunch: 0.06, spread: 40 });
+  assert.deepEqual(stageGapModel({ profile_type: "ukendt" }), { bunch: 0.03, spread: 150 });
+});
+
+test("summit-finish åbner gab: spread ×1.3, bunch 0", () => {
+  const m = stageGapModel({
+    profile_type: "mountain", distance_km: 160,
+    climbs: [{ category: "1", crest_km: 160, summit_finish: true }],
+  });
+  // kategori-faktor 1 (×1.10) · summit (×1.3): 600·1.1·1.3 = 858
+  assert.equal(m.spread, Math.round(600 * 1.1 * 1.3));
+  assert.equal(m.bunch, 0);
+});
+
+test("dal-finish komprimerer: ≥10 km efter sidste top → ×0.6", () => {
+  const m = stageGapModel({
+    profile_type: "mountain", distance_km: 170,
+    climbs: [{ category: "2", crest_km: 150, summit_finish: false }],
+  });
+  assert.equal(m.spread, Math.round(600 * 1.0 * 0.6)); // cat2 ×1.0 · dal ×0.6
+});
+
+test("HC-kategori skalerer hårdest", () => {
+  const hc = stageGapModel({ profile_type: "high_mountain", distance_km: 150, climbs: [{ category: "HC", crest_km: 150, summit_finish: true }] });
+  const c3 = stageGapModel({ profile_type: "high_mountain", distance_km: 150, climbs: [{ category: "3", crest_km: 150, summit_finish: true }] });
+  assert.ok(hc.spread > c3.spread);
+});
+
+// kalibrerings-revision (arkitekt 22/7): eksponent 1.3 + clamp [60,900] i stedet
+// for lineær skalering + clamp [150,1000] — se ITT_DISTANCE_EXPONENT-kommentaren
+// i raceSimulator.js (empiri: Herning 2012/Utrecht 2015-prologer komprimerer
+// mere end lineært på korte distancer).
+test("ITT skalerer med distance (eksponent 1.3); prolog-distance giver små gab", () => {
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 30 }).spread, 700); // anker uændret
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 6 }).spread, Math.round(700 * (6 / 30) ** 1.3)); // 86 — ikke længere det lineære gulv
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 40 }).spread, 900); // loft
+});
+
+test("samlet spread-clamp [40, 1000]", () => {
+  const m = stageGapModel({ profile_type: "high_mountain", distance_km: 140, climbs: [{ category: "HC", crest_km: 140, summit_finish: true }] });
+  assert.ok(m.spread <= 1000);
+});
+
+// ── Sub-3 (#2771) Task 2: distance→fatigue + endurance-term (long_day) ────────
+test("distanceFactor: kendt profil + distance skalerer om bandMid, clamp [0.85, 1.2]; ellers identitet (1)", () => {
+  assert.equal(DISTANCE_BAND_MIDPOINTS.mountain, 170);
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 204 }), 1.2); // 204/170=1.2 (loft)
+  assert.equal(distanceFactor({ profile_type: "mountain" }), 1); // ingen distance
+  assert.equal(distanceFactor({ profile_type: "ukendt", distance_km: 200 }), 1); // ukendt profil
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 10 }), 0.85); // gulv
+});
+
+test("distFactor skalerer fatigue-straf på lange dage; ingen distance → identitet", () => {
+  const base = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain };
+  const long = { ...base, distance_km: 204 }; // bandMid mountain = 170 → factor 1.2
+  const entrantA = { ...rider("a", { climbing: 50, durability: 0 }), fatigue: 60 };
+  const r1 = simulateStage({ entrants: [entrantA], stageProfile: base, seed: 1 });
+  const r2 = simulateStage({ entrants: [entrantA], stageProfile: long, seed: 1 });
+  assert.ok(r2.ranked[0].components.fatigue > r1.ranked[0].components.fatigue);
+});
+
+test("endurance-term: lang dag favoriserer endurance; kort dag straffer; components.long_day sat", () => {
+  const long = { profile_type: "mountain", distance_km: 204, demand_vector: DEMAND_VECTORS.mountain };
+  const hi = simulateStage({ entrants: [rider("a", { climbing: 50, endurance: 99 })], stageProfile: long, seed: 1 });
+  const lo = simulateStage({ entrants: [rider("a", { climbing: 50, endurance: 0 })], stageProfile: long, seed: 1 });
+  assert.ok(hi.ranked[0].components.long_day > 0);
+  assert.ok(lo.ranked[0].components.long_day < 0);
+});
+
+test("flag-off-ækvivalent: uden distance_km er components.long_day 0 og alt uændret", () => {
+  const bare = { profile_type: "mountain", demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0.5 } };
+  const entrants = [ELITE_SPRINTER, PURE_CLIMBER, rider("avg1"), rider("avg2")];
+  const r = simulateStage({ entrants, stageProfile: bare, seed: 7 });
+  assert.ok(r.ranked.every((x) => x.components.long_day === 0));
+});
+
+// Task 7 (#2771) re-kalibrering: 0.05 (Task 2-launch-værdi) gav et umåleligt
+// longDayEnduranceLift (+0.3pp af 3 seeds' ~300-løbs-batches, se KALIBRERINGS-LOG
+// i simulateSeasonDryRun.js) — hævet til 0.65 (N=600-løbs-batches, margin +4.0
+// til +4.8pp på alle 3 gate-seeds, uden regression på cobbles/itt-TARGETS).
+test("LONG_DAY_ENDURANCE_WEIGHT er den forventede kalibrerings-konstant (0.65, #2771 Task 7)", () => {
+  assert.equal(LONG_DAY_ENDURANCE_WEIGHT, 0.65);
+});
+
+// ── Sub-3 (#2771) Task 3: tekniske finaler (afledt af rute) ───────────────────
+test("teknisk finale afledes af rutedata", () => {
+  assert.equal(isTechnicalFinale({ finale_type: "descent" }), true);
+  assert.equal(isTechnicalFinale({ distance_km: 170, climbs: [{ crest_km: 162, category: "2" }] }), true);  // 8 km efter top
+  assert.equal(isTechnicalFinale({ distance_km: 170, climbs: [{ crest_km: 140, category: "2" }] }), false); // 30 km — for langt
+  assert.equal(isTechnicalFinale({ distance_km: 160, sectors: [{ start_km: 152, length_km: 2 }] }), true);  // brosten i finalen
+  assert.equal(isTechnicalFinale({ profile_type: "flat" }), false);
+});
+
+test("teknisk finale vægter descending+positioning (±, centreret om 50)", () => {
+  const sp = {
+    profile_type: "mountain", finale_type: "reduced_sprint", distance_km: 170, demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0 },
+    climbs: [{ crest_km: 165, category: "1", summit_finish: false }],
+  };
+  const good = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 99, positioning: 99 })], stageProfile: sp, seed: 1 });
+  const bad = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 0, positioning: 0 })], stageProfile: sp, seed: 1 });
+  assert.ok(good.ranked[0].components.finale > bad.ranked[0].components.finale);
+});
+
+test("uden rutedata: finaleModifier er PRÆCIS gammel adfærd (kun descent, kun descending, vægt 0.04)", () => {
+  const sp = { profile_type: "mountain", finale_type: "descent", demand_vector: DEMAND_VECTORS.mountain };
+  const r = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 99, positioning: 0 })], stageProfile: sp, seed: 1 });
+  assert.equal(r.ranked[0].components.finale, ((99 - 50) / 49) * DESCENDING_FINALE_WEIGHT);
+});
+
+// ── Sub-3 (#2771) Task 4: udbruds-forfining (distance + sprinter-tæthed) ──────
+test("routeBreakawayFactor: uden distance → 1 (identitet); lang etape → let forhøjet", () => {
+  assert.equal(routeBreakawayFactor({ profile_type: "mountain" }, []), 1);
+  const long = routeBreakawayFactor({ profile_type: "mountain", distance_km: 204 }, []);
+  assert.ok(long > 1 && long < 1.15); // sqrt(1.2) ≈ 1.0954
+  assert.ok(Math.abs(long - Math.sqrt(1.2)) < 1e-9);
+});
+
+test("sprinter-tæthed dæmper på flat: mange sprint_captains → faktor < 1, få → > 1", () => {
+  const mkE = (n, withSC) => Array.from({ length: n }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`,
+    race_role: withSC && i < 8 ? "sprint_captain" : "helper", abilities: {},
+  }));
+  const dense = routeBreakawayFactor({ profile_type: "flat", distance_km: 175 }, mkE(60, true));
+  const sparse = routeBreakawayFactor({ profile_type: "flat", distance_km: 175 }, mkE(60, false));
+  assert.ok(dense < 1);
+  assert.ok(sparse > 1);
+  assert.ok(sparse > dense);
+});
+
+test("data-gating: bare profil (uden distance_km) + entrants med sprint_captains → faktor === 1 nøjagtigt (legacy-løb bit-identiske)", () => {
+  const mkE = (n) => Array.from({ length: n }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`,
+    race_role: i < 8 ? "sprint_captain" : "helper", abilities: {},
+  }));
+  assert.equal(routeBreakawayFactor({ profile_type: "flat" }, mkE(60)), 1);
+});
+
+// #2771 Task 7 wiring-fix (arkitekt 22/7): INGEN entrant har en race_role
+// overhovedet (dryrun-uden-roller, ikke "alle er helper") → tætheds-termen skal
+// IKKE aktiveres (density=0 ville ellers unconditionelt klippe til
+// SPRINTER_DENSITY_RANGE[1]=1.15 uden noget rigtigt tætheds-signal). Faktoren
+// skal være PRÆCIS sqrt(distanceFactor(...)) — ingen spuriøs ×1.15-boost.
+test("routeBreakawayFactor: entrants UDEN race_role overhovedet → ingen tætheds-boost (faktor === sqrt(distanceFactor))", () => {
+  const sp = { profile_type: "flat", distance_km: 175 };
+  const entrants = Array.from({ length: 60 }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`, abilities: {}, // ingen race_role-felt
+  }));
+  const factor = routeBreakawayFactor(sp, entrants);
+  assert.equal(factor, Math.sqrt(distanceFactor(sp)));
+});
+
+test("SPRINTER_DENSITY_PROFILES/RANGE er de forventede konstanter", () => {
+  assert.deepEqual([...SPRINTER_DENSITY_PROFILES].sort(), ["flat", "rolling"]);
+  assert.deepEqual(SPRINTER_DENSITY_RANGE, [0.85, 1.15]);
+});
+
+test("clamp: effektiv maxBonus overskrider ALDRIG profilens kalibrerede loft (flat ≤ 0.30) selv med faktor > 1", () => {
+  // Lang flad etape (distanceFactor-loft) + sparse sprinter-tæthed (ingen sprint_captains)
+  // → routeBreakawayFactor > 1 (kombineret sqrt(1.2)·1.15 ≈ 1.259). Uden clamp ville
+  // effektiv maxBonus (0.30 · 1.259 ≈ 0.378) overskride kalibrerings-loftet.
+  const sp = {
+    profile_type: "flat", finale_type: "bunch_sprint", distance_km: 210,
+    demand_vector: { ...DEMAND_VECTORS.flat, randomness: 0 },
+  };
+  const ceiling = Math.max(...Object.values(BREAKAWAY_BONUS.flat));
+  assert.equal(ceiling, 0.30);
+  const entrants = Array.from({ length: 30 }, (_, i) => rider(`r${i}`, {
+    aggression: 50 + (i % 40), acceleration: 50,
+  })).map((e, i) => ({ ...e, team_id: `t${i % 10}`, race_role: "helper" }));
+  // Sparse sprinter-tæthed (kun "helper"-roller) → densitetstermen ×1.15 oveni
+  // distance-faktoren (sqrt(1.2) ≈ 1.095) — kombineret > 1.2, beviser at
+  // clampen faktisk bliver aktiveret af testen.
+  const factor = routeBreakawayFactor(sp, entrants);
+  assert.ok(factor > 1.2);
+  for (let seed = 1; seed <= 15; seed++) {
+    const { ranked } = simulateStage({ entrants, stageProfile: sp, seed });
+    for (const r of ranked) {
+      assert.ok(r.components.breakaway <= breakawayMaxBonus("flat", "bunch_sprint") + 1e-9);
+    }
+  }
+});
+
+test("rng-invariant: routeBreakawayFactor forbruger ingen rng — samme seed → IDENTISK udvælgelse (samme ryttere, samme antal) med og uden rutedata; kun bonus-STØRRELSEN skalerer", () => {
+  // finale_type "long_climb" har maxBonus 0.06 (langt under mountain-loftet 0.50)
+  // så skalering via faktoren er synlig og IKKE spist af clamp-loftet.
+  const bare = { profile_type: "mountain", finale_type: "long_climb", demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0 } };
+  const routed = { ...bare, distance_km: 204 }; // mountain bandMid = 170 → distanceFactor = 1.2 → faktor = sqrt(1.2) ≠ 1
+  const entrants = Array.from({ length: 20 }, (_, i) => ({
+    ...rider(`r${i}`, { aggression: 40 + (i % 50) }), team_id: `t${i % 6}`, race_role: "helper",
+  }));
+  const a = simulateStage({ entrants, stageProfile: bare, seed: 99 });
+  const b = simulateStage({ entrants, stageProfile: routed, seed: 99 });
+  const idsA = a.ranked.filter((r) => r.components.breakaway > 0).map((r) => r.rider_id).sort();
+  const idsB = b.ranked.filter((r) => r.components.breakaway > 0).map((r) => r.rider_id).sort();
+  assert.ok(idsA.length > 0);
+  assert.deepEqual(idsA, idsB); // selektionen (HVEM + hvor mange) er uændret
+  // bonus-størrelsen skalerer med faktoren (sqrt(1.2)), IKKE identisk
+  const bonusA = a.ranked.find((r) => r.rider_id === idsA[0]).components.breakaway;
+  const bonusB = b.ranked.find((r) => r.rider_id === idsA[0]).components.breakaway;
+  assert.ok(Math.abs(bonusB - bonusA * Math.sqrt(1.2)) < 1e-9);
 });

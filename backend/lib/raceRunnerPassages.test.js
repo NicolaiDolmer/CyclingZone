@@ -95,10 +95,18 @@ test("passageRows returneres og matcher perRider-aggregaterne", () => {
   }
 });
 
-test("motorens rangering er BIT-IDENTISK med/uden passage-lag (deep-equal på ranked-ordenen)", () => {
+test("motorens rangorden er BIT-IDENTISK med/uden passage-lag (deep-equal på rank-rækkefølgen, IKKE finish_time)", () => {
+  // Sub-3 (#2771) gør rutedata (stageGapModel: summit/dal/kategori/distance)
+  // BEVIDST med til at ændre gab-størrelsen (finish_time) — det er selve
+  // formålet med den rute-bevidste motor. Invarianten fra Sub-2 der stadig
+  // ufravigeligt skal holde er derfor rank-ORDENEN: passage-laget (sprint-
+  // point/KOM-point/bonussekunder) er et lag OVEN PÅ motorens rangering og må
+  // ALDRIG selv omrokere den. finish_time-lighed er ikke længere en gyldig
+  // proxy for det siden Sub-3 (jf. golden-gate i raceRunnerRouteAware.test.js,
+  // der stadig håndhæver bit-identiske SCORES for etaper uden rutedata).
   const withRoutes = buildRaceResults({ race: RACE, stages: STAGES_WITH_ROUTES, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
   const bare = buildRaceResults({ race: RACE, stages: STAGES_BARE, entrants: ENTRANTS, pointsLookup: POINTS, v3: false });
-  const key = (rows) => rows.filter((r) => r.result_type === "stage").map((r) => `${r.stage_number}:${r.rank}:${r.rider_id}:${r.finish_time}`);
+  const key = (rows) => rows.filter((r) => r.result_type === "stage").map((r) => `${r.stage_number}:${r.rank}:${r.rider_id}`);
   assert.deepEqual(key(withRoutes.resultRows), key(bare.resultRows));
 });
 

@@ -1069,6 +1069,10 @@
       "q": "How do the green jersey and mountains jersey work?",
       "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first, with double points on a summit finish. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Applies to races from season 2 onward."
     },
+    "raceRouteRealismFaq": {
+      "q": "Why do time gaps differ so much between mountain stages?",
+      "a": "The route shapes the race. A summit finish opens real gaps because the strongest climbers keep attacking all the way to the line, while a valley or downhill finish lets the field regroup on the descent so gaps often close back up. The difficulty of the final climb and the overall length of the stage also matter: a harder last climb and a longer stage wear riders down and widen the gaps. Technical, twisty finales instead reward bike handling and positioning over raw climbing strength."
+    },
     "newPlayerEconomyFaq": {
       "q": "How much money do I start with, and when should I take a loan?",
       "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries, upkeep and loan interest are deducted automatically at the start of each season. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."

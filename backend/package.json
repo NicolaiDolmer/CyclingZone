@@ -17,6 +17,7 @@
     "gates:mutation-audit": "node scripts/gateMutationAudit.js",
     "audit:reset-fk": "node scripts/audit-reset-fk-coverage.js",
     "race:gate": "node scripts/raceGate.js --seeds=2026,7,42",
+    "race:gate:routes": "node scripts/raceGate.js --seeds=2026,7,42 --routes",
     "race:competitions": "node scripts/raceCompetitionScorecard.js --seeds=2026,7,42 --enforce",
     "race:gate:condition": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --condition=random",
     "race:gate:roles": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --roles",

@@ -109,14 +109,45 @@ function formComponent(entrant, weight = FORM_RACE_WEIGHT) {
   return ((form - 50) / 50) * weight;
 }
 
-function fatigueComponent(entrant /* , stageProfile */) {
+// Sub-3 (#2771): bandMid = midtpunkt af Sub-1's DISTANCE_BANDS (dupliceret her
+// som frossen tabel for at undgå import-cyklus; kontrakt-test i
+// raceRouteGenerator.test.js holder dem i sync).
+export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
+  flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
+  cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
+});
+export const LONG_DAY_ENDURANCE_WEIGHT = 0.65;
+
+// distFactor: forholdet mellem etapens faktiske distance og profilens
+// bandMid-anker, clampet [0.85, 1.2]. Ingen distance / ukendt profil → 1
+// (identitet — bit-identisk med main uden rutedata).
+export function distanceFactor(stageProfile) {
+  const d = Number(stageProfile?.distance_km);
+  const mid = DISTANCE_BAND_MIDPOINTS[stageProfile?.profile_type];
+  if (!Number.isFinite(d) || !mid) return 1;
+  return clamp(d / mid, 0.85, 1.2);
+}
+
+function fatigueComponent(entrant, stageProfile) {
   const raw = entrant?.fatigue;
   if (raw == null || !Number.isFinite(Number(raw))) return 0;
   const fatigue = clamp(Number(raw), 0, 100);
   // Plan 1 (#1122): durability dæmper straffen (fade sent). Manglende durability → fuld straf.
   const dur = Number(entrant?.abilities?.durability);
   const damp = Number.isFinite(dur) ? 1 - (clamp(dur, 0, 99) / 99) * DURABILITY_FATIGUE_DAMPING : 1;
-  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp;
+  // Sub-3 (#2771): distance skalerer straffen — lange dage trætter mere, korte
+  // mindre. Uden distance/ukendt profil er distFactor 1 → identitet.
+  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp * distanceFactor(stageProfile);
+}
+
+// Sub-3 (#2771): endurance-term for lange dage — favoriserer høj endurance,
+// straffer lav endurance, centreret om 50. Inaktiv (0) uden distance-signal
+// (distFactor === 1), så flag-off/uden-rutedata er identitet.
+function longDayComponent(entrant, distFactor) {
+  if (distFactor === 1) return 0;
+  const end = Number(entrant?.abilities?.endurance);
+  if (!Number.isFinite(end)) return 0;
+  return (distFactor - 1) * LONG_DAY_ENDURANCE_WEIGHT * ((clamp(end, 0, 99) - 50) / 49);
 }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
@@ -142,7 +173,34 @@ const SPRINT_PROFILES = new Set(["flat"]);
 export const DESCENDING_FINALE_WEIGHT = 0.04;
 const DESCENT_FINALES = new Set(["descent"]);
 
+// Sub-3 (#2771): teknisk finale AFLEDES af rutedata — persisteres ikke.
+export const TECHNICAL_DESCENT_WINDOW_KM = [3, 12];
+export const TECHNICAL_FINALE_WEIGHT = 0.06; // samlet ±, fordeles 60/40 descending/positioning
+export function isTechnicalFinale(sp = {}) {
+  if (DESCENT_FINALES.has(sp.finale_type)) return true;
+  const d = Number(sp.distance_km);
+  const climbs = Array.isArray(sp.climbs) ? sp.climbs : [];
+  const last = climbs.length ? climbs[climbs.length - 1] : null;
+  if (last && Number.isFinite(d)) {
+    const gap = d - Number(last.crest_km);
+    if (gap >= TECHNICAL_DESCENT_WINDOW_KM[0] && gap <= TECHNICAL_DESCENT_WINDOW_KM[1]) return true;
+  }
+  const sectors = Array.isArray(sp.sectors) ? sp.sectors : [];
+  if (Number.isFinite(d) && sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= d - 10)) return true;
+  return false;
+}
+
 function finaleModifier(entrant, stageProfile) {
+  const hasRouteData = (Array.isArray(stageProfile?.climbs) && stageProfile.climbs.length > 0)
+    || (Array.isArray(stageProfile?.sectors) && stageProfile.sectors.length > 0)
+    || Number.isFinite(Number(stageProfile?.distance_km));
+  if (hasRouteData && isTechnicalFinale(stageProfile)) {
+    const desc = clamp(Number(entrant?.abilities?.descending) || 0, 0, 99);
+    const pos = clamp(Number(entrant?.abilities?.positioning) || 0, 0, 99);
+    const blend = 0.6 * ((desc - 50) / 49) + 0.4 * ((pos - 50) / 49);
+    return blend * TECHNICAL_FINALE_WEIGHT;
+  }
+  // Uden rutedata: PRÆCIS gammel adfærd (kun descent, kun descending, vægt 0.04).
   if (!DESCENT_FINALES.has(stageProfile?.finale_type)) return 0;
   const d = Number(entrant?.abilities?.descending);
   if (!Number.isFinite(d)) return 0;
@@ -277,11 +335,64 @@ export function aggressionScore(abilities) {
   return 0.5 * a("tactics") + 0.3 * a("endurance") + 0.2 * a("acceleration");
 }
 
+// Sub-3 (#2771): rute/felt-faktorer på udbruds-bonus. Bounded: produktet
+// clampes i selectBreakawayBonuses til profilens kalibrerede loft (max af
+// BREAKAWAY_BONUS[profileType]'s værdier), så gate-bånd-lofterne fra
+// kalibrerings-loggen (fx flat ≤0.30) ALDRIG kan overskrides.
+//
+// INGEN rng-forbrug her — kun deterministisk aritmetik på stageProfile +
+// entrants. selectBreakawayBonuses' udvælgelses-sekvens (HVEM + hvor mange
+// escapees) er derfor uændret; kun bonus-STØRRELSEN (maxBonus-skalaren)
+// påvirkes.
+//
+// data-gating (VIGTIGT): sprinter-tætheds-termen bruger entrants' race_role,
+// som findes ALLERED for etaper uden rutedata (legacy-løb har sprint_captains
+// uden distance_km). Uden gaten ville tæthedstermen ændre bonus-størrelsen på
+// bit-identitets-gatens bare profiler. Derfor: densitetstermen aktiveres KUN
+// når etapen rent faktisk har rutedata (Number.isFinite(distance_km)) — uden
+// distance_km er faktoren ALTID nøjagtig 1 (distanceFactor giver også 1 for
+// ukendt/manglende profil), bit-identisk med main.
+export const SPRINTER_DENSITY_PROFILES = new Set(["flat", "rolling"]);
+export const SPRINTER_DENSITY_RANGE = [0.85, 1.15]; // faktor ved høj hhv. lav sprinter-tæthed
+export function routeBreakawayFactor(stageProfile, entrants = []) {
+  let f = Math.sqrt(distanceFactor(stageProfile));
+  const hasRouteData = Number.isFinite(Number(stageProfile?.distance_km));
+  // #2771 Task 7 wiring-fix (arkitekt 22/7, ikke kalibrering): tætheds-termen
+  // kræver AT MINDST ét entrant med en sat race_role — uden rolle-data er
+  // "andel hold med sprint_captain" meningsløst (scTeams er altid tomt →
+  // density=0 → faktor klipper unconditionelt til SPRINTER_DENSITY_RANGE[1]).
+  // Harnessets non-roles-mode ramte netop dette: hvert flat/rolling-løb fik en
+  // spuriøs ×1.15-boost uden nogen rigtig tætheds-signal. Dryrun-uden-roller må
+  // ikke få tætheds-boost.
+  const hasRoleData = entrants.some((e) => e.race_role != null);
+  if (hasRouteData && hasRoleData && SPRINTER_DENSITY_PROFILES.has(stageProfile?.profile_type) && entrants.length) {
+    const teams = new Set(entrants.map((e) => e.team_id).filter(Boolean));
+    const scTeams = new Set(
+      entrants.filter((e) => e.race_role === "sprint_captain").map((e) => e.team_id)
+    );
+    if (teams.size > 0) {
+      const density = scTeams.size / teams.size; // 0..1: andel af hold med sprint_captain
+      f *= SPRINTER_DENSITY_RANGE[1] - (SPRINTER_DENSITY_RANGE[1] - SPRINTER_DENSITY_RANGE[0]) * density;
+    }
+  }
+  return f;
+}
+
 // → Map(rider_id → bonus) for de udvalgte escapees (tom Map hvis profil uegnet).
-function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, seed }) {
+function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, stageProfile, seed }) {
   const bonuses = new Map();
-  const maxBonus = breakawayMaxBonus(profileType, finaleType);
-  if (!maxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
+  const anchorMaxBonus = breakawayMaxBonus(profileType, finaleType);
+  if (!anchorMaxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
+
+  // Sub-3 (#2771): faktoren skalerer anchorMaxBonus, men clampes ALTID til
+  // profilens kalibrerede loft (den STØRSTE finale-værdi i BREAKAWAY_BONUS for
+  // profilen, inkl. _default) — så kalibrerings-loggens gate-bånd (fx flat
+  // ≤0.30) aldrig kan overskrides, uanset hvor høj faktoren bliver.
+  const profileCeiling = BREAKAWAY_BONUS[profileType]
+    ? Math.max(...Object.values(BREAKAWAY_BONUS[profileType]))
+    : 0;
+  const factor = routeBreakawayFactor(stageProfile, ordered);
+  const maxBonus = Math.min(anchorMaxBonus * factor, profileCeiling);
 
   const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
 
@@ -344,8 +455,57 @@ export function terrainScore(abilities, demandVector) {
   return s;
 }
 
-function gapFor(profileType, deficit) {
-  const m = GAP_MODEL[profileType] || GAP_MODEL_DEFAULT;
+// Sub-3 (#2771): rute-bevidst gap-model — ankret modifier-model (ejer-valgt 22/7).
+// GAP_MODEL-tabellen er ANKERET (gate-kalibreret); rute-signaler ganger faktorer
+// på spread. Uden rutedata er alle faktorer 1.0 → bit-identisk med main.
+// En fuld kontinuerlig model er senere drop-in bag SAMME grænseflade.
+export const SUMMIT_SPREAD_FACTOR = 1.3;        // bånd 1.2-1.4 (kalibrering)
+export const VALLEY_SPREAD_FACTOR = 0.6;        // bånd 0.5-0.75
+export const VALLEY_MIN_DESCENT_KM = 10;
+export const LAST_CLIMB_CATEGORY_FACTORS = Object.freeze({ HC: 1.25, "1": 1.10, "2": 1.0, "3": 0.85, "4": 0.7 });
+export const ITT_REFERENCE_KM = 30;
+// #2771 Task 7 kalibrerings-revision (arkitekt 22/7): korte kronometre
+// komprimerer tidsforskellene mere end lineært (empiri: Giro-prolog Herning
+// 2012, 8,7 km, vinder→p90 ≈ 50 s; Utrecht 2015, 13,8 km ≈ 100 s). En ren
+// lineær distance-skala (spredning ∝ distance) undervurderer denne kompression
+// på korte distancer — eksponenten retter det: 6 km → spread ≈ 86, 8 km ≈ 125,
+// 15 km ≈ 284, 30 km → 700 (uændret anker), 40 km → clamp 900.
+export const ITT_DISTANCE_EXPONENT = 1.3;
+const CLIMB_GAP_PROFILES = new Set(["mountain", "high_mountain", "hilly"]);
+const SPREAD_CLAMP = [40, 1000];
+
+export function stageGapModel(stageProfile = {}) {
+  const anchor = GAP_MODEL[stageProfile.profile_type] || GAP_MODEL_DEFAULT;
+  let { bunch, spread } = anchor;
+  const climbs = Array.isArray(stageProfile.climbs) ? stageProfile.climbs : [];
+  const distance = Number(stageProfile.distance_km);
+  const pt = stageProfile.profile_type;
+
+  if (pt === "itt" || pt === "ttt") {
+    if (Number.isFinite(distance) && distance > 0) {
+      // #2771 Task 7 kalibrerings-revision (arkitekt 22/7): eksponent 1.3 i
+      // stedet for lineær skalering (se ITT_DISTANCE_EXPONENT ovenfor) + clamp-
+      // gulv sænket 150→60 (en 5-6 km prolog skal kunne komprimere friskt uden
+      // at ramme det gamle lineære gulv).
+      spread = clamp(Math.round(anchor.spread * Math.pow(distance / ITT_REFERENCE_KM, ITT_DISTANCE_EXPONENT)), 60, 900);
+    }
+    return { bunch, spread };
+  }
+  const last = climbs.length ? climbs[climbs.length - 1] : null;
+  if (last && CLIMB_GAP_PROFILES.has(pt)) {
+    spread *= LAST_CLIMB_CATEGORY_FACTORS[last.category] ?? 1.0;
+    if (last.summit_finish) {
+      spread *= SUMMIT_SPREAD_FACTOR;
+      bunch = 0;
+    } else if (Number.isFinite(distance) && distance - Number(last.crest_km) >= VALLEY_MIN_DESCENT_KM) {
+      spread *= VALLEY_SPREAD_FACTOR;
+    }
+  }
+  return { bunch, spread: Math.round(clamp(spread, SPREAD_CLAMP[0], SPREAD_CLAMP[1])) };
+}
+
+function gapFor(stageProfile, deficit) {
+  const m = stageGapModel(stageProfile);
   if (deficit <= m.bunch) return 0;
   return Math.round(clamp((deficit - m.bunch) * m.spread, 0, MAX_STAGE_GAP_SECONDS));
 }
@@ -404,7 +564,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   const terrainById = new Map(
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
-  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
+  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, stageProfile, seed });
   const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile, v3 });
 
   // Probe B (EKSPLORATIV, default τ=1.0 = identitet): terrain-komponenten i
@@ -412,6 +572,10 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   // terrain (invariant: parcours-/udbruds-mekanik urørt; monotone map ændrer
   // hverken kandidat-cut eller rækkefølge).
   const scoreTerrainById = v3 ? compressTopTerrain(terrainById, topCompressionTau()) : terrainById;
+
+  // Sub-3 (#2771): distFactor beregnes ÉN gang for hele etapen (samme for alle
+  // ryttere) — bruges både i fatigueComponent (via stageProfile) og longDayComponent.
+  const dFactor = distanceFactor(stageProfile);
 
   const scored = ordered.map((e) => {
     const terrain = scoreTerrainById.get(e.rider_id);
@@ -443,7 +607,11 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     const peak = v3
       ? peakComponentForStage({ stageDay: stageProfile.peakDay, windows: e.peakWindows, trainingQuality: e.peakTrainingQuality })
       : 0;
-    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans + peak;
+    // Sub-3 (#2771): long_day — endurance-term for lange etaper (0 uden distance-
+    // signal, dFactor === 1). Nøglen er ALTID til stede i components (som
+    // 'incident') så flag-off-deepEqual-testen forbliver grøn.
+    const longDay = longDayComponent(e, dFactor);
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans + peak + longDay;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
@@ -455,7 +623,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
       // Unconditionelt til stede (også v3=false) → flag-off-deepEqual-testen
       // (raceEngineV3FlagOff.test.js) forbliver grøn, da BEGGE sider af den
       // sammenligning får samme nøgle=0.
-      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, peak, incident: 0 },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, peak, long_day: longDay, incident: 0 },
     };
   });
 
@@ -471,7 +639,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     team_id: r.team_id,
     rank: i + 1,
     finalScore: r.finalScore,
-    stageGap: gapFor(profileType, winnerScore - r.finalScore),
+    stageGap: gapFor(stageProfile, winnerScore - r.finalScore),
     components: r.components,
   }));
 

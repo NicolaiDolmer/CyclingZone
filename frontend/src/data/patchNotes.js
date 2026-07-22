@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.41",
+    "date": "2026-07-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race engine",
+        "en": {
+          "title": "Routes now drive the racing",
+          "body": "Summit finishes now open real time gaps while valley finishes let the field regroup on the descent. Long stages wear riders down and reward endurance, technical finales reward bike handling and positioning, and big stage races can open with a short prologue time trial. Time gaps in time trials now scale with the distance. Applies to races with route data from season 2."
+        },
+        "da": {
+          "title": "Ruter styrer nu løbet",
+          "body": "Topmål åbner nu ægte tidsforskelle, mens dalmål lader feltet samle sig igen på nedkørslen. Lange etaper slider på rytterne og belønner udholdenhed, tekniske finaler belønner cykelhåndtering og positionering, og store etapeløb kan åbne med en kort prolog-enkeltstart. Tidsforskelle i enkeltstarter skalerer nu med distancen. Gælder løb med rutedata fra sæson 2."
+        },
+        "refs": [2771]
+      }
+    ]
+  },
+  {
     "version": "7.40",
     "date": "2026-07-22",
     "label": "Beta",
