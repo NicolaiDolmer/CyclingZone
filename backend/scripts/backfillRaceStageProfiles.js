@@ -101,6 +101,11 @@ async function main() {
         profile_type: p.profile_type,
         finale_type: p.finale_type,
         demand_vector: p.demand_vector,
+        distance_km: p.distance_km,
+        elevation_gain_m: p.elevation_gain_m,
+        climbs: p.climbs,
+        sprints: p.sprints,
+        sectors: p.sectors,
         generator_version: GENERATOR_VERSION,
         is_manual: false,
       }));

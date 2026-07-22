@@ -1,5 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+const __dir = dirname(fileURLToPath(import.meta.url));
 
 import {
   generateRaceStageProfiles,
@@ -29,8 +33,8 @@ function stageRace(stages, id = `race-stage-${stages}`) {
   return { id, race_type: "stage_race", stages };
 }
 
-test("GENERATOR_VERSION er 3 (arketype-seedet + sæson-akse)", () => {
-  assert.equal(GENERATOR_VERSION, 3);
+test("GENERATOR_VERSION er 4 (pass 2: rute-berigelse wired ind, #2769)", () => {
+  assert.equal(GENERATOR_VERSION, 4);
 });
 
 // ── v2 seed-identitet (#fix): samme rigtige løb → samme parcours i alle puljer ──
@@ -379,4 +383,60 @@ test("#1021 high_mountain kan slutte på descent (ikke-summit dag), ikke kun lon
 
 test("#1021 finaleFor er eksporteret og deterministisk", () => {
   assert.equal(finaleFor(makeRng(42), "flat"), finaleFor(makeRng(42), "flat"));
+});
+
+// ── #2769 Sub-1 Task 3: pass 2 (rute) wired ind — pass 1 skal forblive bit-identisk ──
+test("pass 1 (profile/finale/demand) er bit-identisk efter pass 2 (golden)", () => {
+  const golden = JSON.parse(readFileSync(join(__dir, "__fixtures__/pass1-golden.json"), "utf8"));
+  const cases = {
+    r1: { id: "r1", external_id: "8fe98b9f788c3b06", season_id: "s2", race_type: "stage_race", stages: 4, terrain_archetype: "mountain_tour" },
+    r2: { id: "r2", external_id: "241b2846959aa1c7", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "balanced_week" },
+    r3: { id: "r3", external_id: "50c62405df6384e4", season_id: "s2", race_type: "single", stages: 1, terrain_archetype: "puncheur" },
+    r4: { id: "r4", external_id: "37e566b5829adb99", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "sprinters_week" },
+  };
+  for (const [key, race] of Object.entries(cases)) {
+    const got = generateRaceStageProfiles(race).map((p) => ({
+      stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, demand_vector: p.demand_vector,
+    }));
+    assert.deepEqual(got, golden[key], `pass 1 ændret for ${key}`);
+  }
+});
+
+test("pass 2 er additivt: rute-felter er til stede på hver etape", () => {
+  const ps = generateRaceStageProfiles({ id: "r1", external_id: "8fe98b9f788c3b06", season_id: "s2", race_type: "stage_race", stages: 4, terrain_archetype: "mountain_tour" });
+  for (const p of ps) {
+    assert.equal(typeof p.distance_km, "number");
+    assert.ok(Array.isArray(p.climbs) && Array.isArray(p.sprints) && Array.isArray(p.sectors));
+    assert.equal(typeof p.elevation_gain_m, "number");
+  }
+});
+
+// ── #2769 Task 4: nye arketyper — summit_tour, itt_classic, cobbled_tour ──
+
+test("summit_tour garanterer mindst én high_mountain-etape", () => {
+  const cfg = ARCHETYPE_PROFILES.summit_tour;
+  assert.equal(cfg.kind, "stage");
+  assert.ok(cfg.guarantees.includes("high_mountain"));
+});
+
+test("summit_tour producerer ≥1 long_climb-summit over etaperne", () => {
+  const race = { id: "st", external_id: "summit-x", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "summit_tour" };
+  const ps = generateRaceStageProfiles(race);
+  const summits = ps.filter((p) => p.finale_type === "long_climb" && (p.profile_type === "high_mountain" || p.profile_type === "mountain"));
+  assert.ok(summits.length >= 1, `forventede ≥1 summit, fik ${summits.length}`);
+});
+
+test("itt_classic er en single der giver netop én itt-etape", () => {
+  const race = { id: "ic", external_id: "itt-x", season_id: "s2", race_type: "single", stages: 1, terrain_archetype: "itt_classic" };
+  const ps = generateRaceStageProfiles(race);
+  assert.equal(ps.length, 1);
+  assert.equal(ps[0].profile_type, "itt");
+});
+
+test("cobbled_tour garanterer en cobbles-etape inde i etapeløbet", () => {
+  const race = { id: "ct", external_id: "cobbles-x", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "cobbled_tour" };
+  const ps = generateRaceStageProfiles(race);
+  assert.ok(ps.some((p) => p.profile_type === "cobbles"), "manglede cobbles-etape");
+  const cobbleStage = ps.find((p) => p.profile_type === "cobbles");
+  assert.ok(cobbleStage.sectors.length >= 3, "cobbles-etape uden brosten-sektorer");
 });

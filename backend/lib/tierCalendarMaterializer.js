@@ -322,7 +322,13 @@ export async function materializeTierCalendars({
         // + season_id (variation pr. sæson) fra konteksten.
         const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId };
         for (const p of generateRaceStageProfiles(seedRace)) {
-          profileRows.push({ race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, demand_vector: p.demand_vector, generator_version: GENERATOR_VERSION, is_manual: false });
+          profileRows.push({
+            race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type,
+            finale_type: p.finale_type, demand_vector: p.demand_vector,
+            distance_km: p.distance_km, elevation_gain_m: p.elevation_gain_m,
+            climbs: p.climbs, sprints: p.sprints, sectors: p.sectors,
+            generator_version: GENERATOR_VERSION, is_manual: false,
+          });
         }
       }
       for (let i = 0; i < profileRows.length; i += INSERT_BATCH) {
