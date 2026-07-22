@@ -116,7 +116,7 @@ export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
   flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
   cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
 });
-export const LONG_DAY_ENDURANCE_WEIGHT = 0.05;
+export const LONG_DAY_ENDURANCE_WEIGHT = 0.65;
 
 // distFactor: forholdet mellem etapens faktiske distance og profilens
 // bandMid-anker, clampet [0.85, 1.2]. Ingen distance / ukendt profil → 1

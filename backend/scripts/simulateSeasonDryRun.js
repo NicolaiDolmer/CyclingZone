@@ -37,7 +37,10 @@ import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
 import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
-import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS, FORM_RACE_WEIGHT, FATIGUE_RACE_WEIGHT } from "../lib/raceSimulator.js";
+import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS, FORM_RACE_WEIGHT, FATIGUE_RACE_WEIGHT, DISTANCE_BAND_MIDPOINTS } from "../lib/raceSimulator.js";
+// Sub-3 (#2771) Task 7: --routes berigelse (pass 2) af harnessets inline-byggede
+// stageProfiles — SAMME rene funktion som prod-generatoren bruger.
+import { attachRoute } from "../lib/raceRouteGenerator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle, evaluateIncidentBoundsOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
@@ -112,6 +115,18 @@ const POPULATION_MODE = !!POPULATION_PATH;
 // #2224: --enforce-dominance gør sektion F (dominans/varians-scorecard) til en
 // hard gate (exit 1). Default off (rapport-only), ligesom de øvrige --enforce-*.
 const ENFORCE_DOMINANCE = !!arg("enforce-dominance", false);
+// Sub-3 (#2771) Task 7: --routes beriger hvert inline-bygget stageProfile med
+// rutefelter (distance_km/climbs/sprints/sectors) via attachRoute — SAMME rene
+// funktion som prod-generatoren (raceStageProfileGenerator.js) bruger i pass 2.
+// Uden flaget er scriptet BIT-IDENTISK med før #2771 (determinisme-guard, som
+// POPULATION_MODE/V3_MODE før det). --enforce-route-bands gør sektion G
+// (rute-realisme-bånd) til en hard gate (exit 1); kræver --routes.
+const ROUTES_MODE = !!arg("routes", false);
+const ENFORCE_ROUTE_BANDS = !!arg("enforce-route-bands", false);
+if (ENFORCE_ROUTE_BANDS && !ROUTES_MODE) {
+  console.error("❌ --enforce-route-bands kræver --routes (der er intet rute-realisme-bånd at håndhæve uden ruter).");
+  process.exit(1);
+}
 const conditionArg = arg("condition", null);
 if (conditionArg === "snapshot" && !POPULATION_MODE) {
   console.error("❌ --condition=snapshot kræver --population=<fil>");
@@ -260,6 +275,55 @@ const TARGETS = {
 //   klipper cobbles-halen, positioning-dæmpning klipper resten) — en
 //   fremtidig re-kalibrering der vil have MERE margin fra 0,3 %-gulvet skal
 //   forvente at skulle skrue markant mere end proportionalt op.
+//
+// ── KALIBRERINGS-LOG (2026-07-22, #2771 Task 7) — sektion G rute-realisme-bånd ──
+// --routes/--enforce-route-bands wired ind (attachRoute beriger terrain-loopets
+// + GT's inline stageProfiles; A/B-tvilling isolerer rute-effekten pr. terræn,
+// samme entrants+raceSeed). Tunables rørt: KUN LONG_DAY_ENDURANCE_WEIGHT (jf.
+// task-mandat — SUMMIT/VALLEY/LAST_CLIMB/TECHNICAL_FINALE/SPRINTER_DENSITY var
+// alle allerede grønne fra Task 1/3/4's kalibrering, ingen ændring nødvendig).
+// RUN 1 (default 0.05, N=300/bånd): longDayEnduranceLift +0.3pp (seed 2026) —
+//   umåleligt, langt under +3pp-kravet (longDayComponent-magnituden ved
+//   distFactor=1.15 var ~0.0075 score-point, under halvdelen af mountains
+//   noise-sd ~0.016 — druknede i støj).
+// RUN 2 (0.50-0.80, N=300): +3.0pp/+3.3pp/+5.0pp (seed 2026/7/42-mønster) — men
+//   AFVIST ved 0.80+: cobbles-TARGETS-båndet (≥80 %) knækkede på seed 2026
+//   (distanceFactor/longDayComponent er GENERISK pr. profil-type med et
+//   DISTANCE_BAND_MIDPOINTS-opslag, ikke mountain-specifikt — cobbles-ruters
+//   egen distance-varians nød samme term). Desuden var seed 7 FASTLÅST på
+//   nøjagtigt +3.0pp for 0.65-0.75 — N=300 giver kun 0,33pp opløsning pr.
+//   vundet løb, for groft til pålideligt at skelne "+3,0" fra "+3,3" på
+//   grænsen (kvantiseringsstøj, ikke et ægte plateau).
+// RUN 3 (VALGT): ROUTE_LIFT_N 300→600 (halverer kvantiseringsstøjen) +
+//   LONG_DAY_ENDURANCE_WEIGHT 0.05→0.65. Alle 3 seeds, komfortabel margin:
+//   longDayEnduranceLift seed 2026 +4.0pp · seed 7 +4.3pp · seed 42 +4.0pp
+//   (krav >+3pp). INGEN regression: cobbles/itt-TARGETS ✓ på alle 3 seeds
+//   (itt var faktisk MARGINALT rødt allerede ved 0.05 under --routes — 0.65
+//   løftede den tilbage over 60 %-gulvet som en BIVIRKNING, ikke målet).
+// Øvrige sektion G-bånd (ingen tuning nødvendig, grønne fra Task 1/3/4):
+//   summitValleyGapRatio 2.16-2.20 (krav ≥1.5) · ittDistanceGapRatio 2.75-4.13
+//   (krav ≥2.0) · technicalFinaleLift +2.0pp til +8.3pp (krav >0pp, alle 3 seeds).
+// LOOP-GUARD UDLØST (2 uændrede bånd på tværs af iterationer, ARKITEKT-EJET —
+// se rapport for fuld mekanisme-analyse, IKKE rettet her):
+//   1) prologP90Gap (krav ≤25s, målt 84-101s på alle 3 seeds): stageGapModels
+//      itt-gren (Task 1, FROSSEN) skalerer KUN spread med distance
+//      (ITT_REFERENCE_KM=30) — bunch forbliver 0 unconditionelt, så en 6 km
+//      prolog stadig omsætter feltets FULDE evne-baserede score-deficit
+//      (uændret af distance) gennem et spread-gulv på 150 (clampet). Ingen af
+//      Task 7's tunables rører itt-grenen — kræver en Task-1-revision (fx et
+//      prolog-specifikt bunch-vindue) for at lukke.
+//   2) BREAKAWAY_TARGETS hilly/flat (--enforce-breakaway): PRÆ-EKSISTERENDE —
+//      BARE seed 42 (ingen --routes, ingen Sub-3-kode i spil) fejlede hilly
+//      allerede (17,3 % < 18,0 %-gulvet), fordi race:gate ALDRIG har kørt med
+//      --enforce-breakaway (baseFlags mangler den). routeBreakawayFactor's
+//      sqrt(distanceFactor)-led (Task 4, FROSSEN) tilføjer en let systematisk
+//      NEDAD-bias under --routes (Jensens ulighed: E[√X] < √E[X]=1 for en
+//      distance-faktor der varierer symmetrisk om 1) — nok til at skubbe
+//      hilly/flat den sidste smule under/over de allerede stram-kalibrerede
+//      grænser på alle 3 seeds. SPRINTER_DENSITY_RANGE (min tunable) er UDEN
+//      effekt her (kræver --roles, som denne kørsel ikke bruger). Kræver enten
+//      en BREAKAWAY_TARGETS-rekalibrering (#1021-ejet, låst her) eller en
+//      justering af routeBreakawayFactor's distance-led (Task 4, ikke Task 7).
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
@@ -310,6 +374,25 @@ const top3 = (hist, total) => Object.entries(hist).sort((a, b) => b[1] - a[1]).s
   .map(([t, n]) => `${t} ${pctS(n, total)}`).join(", ");
 function keyAbilityOf(demand) {
   return Object.entries(demand).filter(([k]) => k !== "randomness").sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// Sub-3 (#2771) Task 7: beriger en terrain-sektionens inline stageProfile med
+// rutefelter — samme rene attachRoute() som prod-generatoren. Synthetisk
+// race-identitet PR. LØB (raceIndex = løbets loop-index) — IKKE konstant pr.
+// terræn — så de 300 løb pr. terræn trækker 300 FORSKELLIGE ruter (en
+// konstant race-id ville give samme rute hver gang, jf. attachRoute's
+// seed = f(race-identitet, stage_number)). isStageRace=true unconditionelt
+// (harnessets terrain-sektioner er enkelt-dags, men rutens sprint/klatre-
+// generering skal opføre sig som en etape i et etapeløb, jf. Task 7 spec).
+// itt-sektionen tvinges til stage_number=2 (ikke 1): stage_number===1 + itt +
+// isStageRace=true ville trække en PROLOG (5-8 km) i attachRoute — det ville
+// forurene itt-bandets [15,40] km-forudsætning (ittDistanceGapRatio,
+// prologP90Gap måles separat med hånd-byggede distancer, se sektion G).
+function attachRouteToProfile(baseProfile, terrain, raceIndex) {
+  const stage_number = terrain === "itt" ? 2 : 1;
+  const syntheticRace = { id: `dryrun-${terrain}-${raceIndex}`, name: `Dryrun ${terrain}` };
+  const route = attachRoute({ stage_number, profile_type: terrain, finale_type: baseProfile.finale_type }, syntheticRace, true);
+  return { ...baseProfile, stage_number, ...route };
 }
 
 // #1307 --roles: snake-draft prøven ind i hold af 8 efter overall (spejler GT'ens
@@ -568,6 +651,9 @@ if (POPULATION_MODE) {
     let breakawayWinCount = 0;
     const finaleSplit = {};
     let racesRun = 0;
+    // Sub-3 (#2771) A/B: favorit-vinder-rate MED ruter vs BARE (samme entrants +
+    // samme raceSeed — kun stageProfilens rutefelter varierer). Kun --routes.
+    let abFavoriteWithRoutes = 0, abFavoriteBare = 0, abRaces = 0;
 
     for (let i = 0; i < RACES; i++) {
       const pool = populationPools[Math.floor(poolRng() * populationPools.length)];
@@ -595,7 +681,12 @@ if (POPULATION_MODE) {
       }
       if (entrants.length < 2) continue; // degenereret pulje/felt — spring løbet over
       const raceSeed = stableSeed(`${terrain}:${i}`);
-      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+      const bareStageProfile = { profile_type: terrain, finale_type: finaleType, demand_vector: demand };
+      // Sub-3 (#2771): stageProfile beriges med rutefelter KUN under --routes —
+      // uden flaget er bareStageProfile === stageProfile (identitet, bit-for-bit
+      // som før #2771).
+      const stageProfile = ROUTES_MODE ? attachRouteToProfile(bareStageProfile, terrain, i) : bareStageProfile;
+      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile, seed: raceSeed, v3: V3_MODE });
       racesRun++;
       const w = byId.get(ranked[0].rider_id);
       bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
@@ -619,13 +710,23 @@ if (POPULATION_MODE) {
       // abandon-arv), så entrants.length er altid den korrekte nævner.
       if (V3_MODE) incidentObservations.push(observeIncidents({ incidents: stageIncidents, fieldSize: entrants.length, profileType: terrain }));
 
+      // Sub-3 (#2771) A/B: ÉN ekstra sim med den BARE (rute-fri) profil, SAMME
+      // entrants + raceSeed — isolerer rute-effekten på favorit-vinder-raten.
+      if (ROUTES_MODE) {
+        const bare = simulateStage({ entrants, stageProfile: bareStageProfile, seed: raceSeed, v3: V3_MODE });
+        abRaces++;
+        if (rank === 1) abFavoriteWithRoutes++; // 'rank' er allerede vinderens overall-rang MED ruter
+        if (byOverall[0].id === bare.ranked[0].rider_id) abFavoriteBare++;
+      }
+
       if (ROLES_MODE) {
         const neutralEntrants = entrants.map(({ race_role: _race_role, ...rest }) => rest);
         // #2353: tvillingen kører med SAMME v3-tilstand som hovedkørslen — S2's
         // dagsform/jour-sans er per-rytter-hashet på (seed, rider_id) og derfor
         // IDENTISK i begge kørsler; de parrede deltaer isolerer stadig KUN
         // rolle-effekterne (work-cost + boost). V3_MODE=false → uændret S0-sti.
-        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+        // Rute-effekten holdes ligeledes konstant (SAMME stageProfile som hovedkørslen).
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile, seed: raceSeed, v3: V3_MODE });
         if (GC_RELEVANT_PROFILES.has(terrain)) {
           const roleByRider = new Map(entrants.map((e) => [e.rider_id, e.race_role]));
           helperDeltasAll.push(...helperPlacementDeltas({ rankedRoles: ranked, rankedNeutral: neutral.ranked, roleByRider }));
@@ -641,6 +742,7 @@ if (POPULATION_MODE) {
       avgStrengthRank: racesRun ? overallRankSum / racesRun : 0, strongestWonPct: pct1(strongestWon, racesRun || 1),
       breakawayWinShare: racesRun ? breakawayWinCount / racesRun : 0,
       finaleSplit,
+      ...(ROUTES_MODE ? { abFavoriteWithRoutes, abFavoriteBare, abRaces } : {}),
     });
   }
 } else {
@@ -658,6 +760,9 @@ if (POPULATION_MODE) {
     const finaleSplit = {}; // #1021: escapee-share pr. finale (bimodale terræner)
     let captainWinsRoles = 0, captainWinsNeutral = 0;
     let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
+    // Sub-3 (#2771) A/B: favorit-vinder-rate MED ruter vs BARE (samme entrants +
+    // samme raceSeed — kun stageProfilens rutefelter varierer). Kun --routes.
+    let abFavoriteWithRoutes = 0, abFavoriteBare = 0, abRaces = 0;
 
     for (let i = 0; i < RACES; i++) {
       const sample = sampleField(rng, field, FIELD);
@@ -672,7 +777,12 @@ if (POPULATION_MODE) {
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+      const bareStageProfile = { profile_type: terrain, finale_type: finaleType, demand_vector: demand };
+      // Sub-3 (#2771): stageProfile beriges med rutefelter KUN under --routes —
+      // uden flaget er bareStageProfile === stageProfile (identitet, bit-for-bit
+      // som før #2771).
+      const stageProfile = ROUTES_MODE ? attachRouteToProfile(bareStageProfile, terrain, i) : bareStageProfile;
+      const { ranked, incidents: stageIncidents } = simulateStage({ entrants, stageProfile, seed: raceSeed, v3: V3_MODE });
 
       // #2224 Section F: ren post-hoc bogføring — INGEN rng-forbrug, ingen ændring
       // af rækkefølgen af eksisterende kald ovenfor/nedenfor.
@@ -697,6 +807,15 @@ if (POPULATION_MODE) {
       finaleSplit[fkey].races++;
       if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
 
+      // Sub-3 (#2771) A/B: ÉN ekstra sim med den BARE (rute-fri) profil, SAMME
+      // entrants + raceSeed — isolerer rute-effekten på favorit-vinder-raten.
+      if (ROUTES_MODE) {
+        const bare = simulateStage({ entrants, stageProfile: bareStageProfile, seed: raceSeed, v3: V3_MODE });
+        abRaces++;
+        if (rank === 1) abFavoriteWithRoutes++; // 'rank' er allerede vinderens overall-rang MED ruter
+        if (byOverall[0].id === bare.ranked[0].rider_id) abFavoriteBare++;
+      }
+
       if (ROLES_MODE) {
         if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
         // Neutral tvilling: SAMME prøve + seed, men uden roller/hold (som neutral-
@@ -708,7 +827,8 @@ if (POPULATION_MODE) {
         }));
         // #2353: v3: V3_MODE — se population-grenens tvilling-kommentar (S2-varians
         // er per-rytter-hashet og identisk i begge kørsler; V3_MODE=false = uændret).
-        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed, v3: V3_MODE });
+        // Rute-effekten holdes ligeledes konstant (SAMME stageProfile som hovedkørslen).
+        const neutral = simulateStage({ entrants: neutralEntrants, stageProfile, seed: raceSeed, v3: V3_MODE });
         if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
         // #2224 Section F: hjælper-placeringstab (kun GC-relevante profiler).
         if (GC_RELEVANT_PROFILES.has(terrain)) {
@@ -739,6 +859,7 @@ if (POPULATION_MODE) {
       breakawayWinShare: breakawayWinCount / RACES,
       finaleSplit,
       ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
+      ...(ROUTES_MODE ? { abFavoriteWithRoutes, abFavoriteBare, abRaces } : {}),
     });
   }
 }
@@ -836,7 +957,17 @@ const GT_TEMPLATE = [
   "mountain", "high_mountain", "mountain", "high_mountain", "hilly",
   "flat",
 ];
-const gtStages = GT_TEMPLATE.map((profile_type, i) => ({ stage_number: i + 1, profile_type, demand_vector: DEMAND_VECTORS[profile_type] }));
+// Sub-3 (#2771): GT-sektionen beriges ALTID med ruter når --routes er sat (jf.
+// Task 7 spec — "GT-sektionens stages beriges altid"). Én synthetisk race-
+// identitet for HELE GT'en (ikke pr. etape) — attachRoute's rng-strøm er
+// alligevel pr. stage_number, så hver af de 21 etaper får sin egen rute.
+const gtStages = GT_TEMPLATE.map((profile_type, i) => {
+  const stage_number = i + 1;
+  const base = { stage_number, profile_type, demand_vector: DEMAND_VECTORS[profile_type] };
+  if (!ROUTES_MODE) return base;
+  const route = attachRoute({ stage_number, profile_type, finale_type: undefined }, { id: "dryrun-gt", name: "Dryrun Grand Tour" }, true);
+  return { ...base, ...route };
+});
 
 // #2224: POPULATION_MODE bygger GT-feltet fra ALLE tier-1-hold (fallback:
 // største pulje) via prod-autopick; den genererede gren (else) er UÆNDRET.
@@ -1292,6 +1423,151 @@ if (dominanceFailures.length) {
   }
 } else {
   console.log(`   ✓ alle dominans-mål inden for bånd`);
+}
+
+// ── G. RUTE-REALISME-BÅND + A/B (Sub-3 #2771, Task 7) — kun med --routes ─────
+// Målt kun under --routes; håndhævet (exit 1) kun med --enforce-route-bands.
+// Sektion B/D/udbruds-bånd OVENFOR er allerede kørt mod rute-berigede
+// stageProfiles når --routes er sat (samme stageProfile-konstruktion i terrain-
+// loopet ovenfor) — de er derfor IMPLICIT re-verificeret under --routes uden
+// en separat kørsel her (spec-krav "eksisterende bånd skal ALSO holde under
+// --routes" er opfyldt strukturelt, ikke ved dobbelt-udførelse).
+let routeBandRows = [];
+let routeBandFailures = [];
+if (ROUTES_MODE) {
+  // Synthesized batches: hånd-byggede climbs/distance (INGEN rng i selve
+  // ruten) — kun felt-sampling + score-støj bruger rng, seedet deterministisk
+  // pr. bånd-navn (reproducerbart pr. seed, uafhængigt af terrain-loopets
+  // egne rng-strømme ovenfor).
+  const ROUTE_BATCH_N = 100;
+  // #2771 kalibrering: spec-minimum er 300; 600 valgt for at reducere kvantiserings-
+  // støj på grænsen (300 løb → 0,33pp pr. vundet løb — for groft til at skelne
+  // "+3,0pp" fra "+3,3pp" pålideligt på tværs af seeds, se KALIBRERINGS-LOG).
+  const ROUTE_LIFT_N = 600;
+  const ROUTE_FIELD = Math.min(FIELD, field.length);
+  const mountainMid = DISTANCE_BAND_MIDPOINTS.mountain; // 170 (jf. raceSimulator.js)
+
+  function runRouteBatch(stageProfile, n, seedKey, fieldSize = ROUTE_FIELD) {
+    const rng = makeRng(stableSeed(`dryrun:${SEED}:routebands:${seedKey}`));
+    const races = [];
+    for (let i = 0; i < n; i++) {
+      const sample = sampleField(rng, field, fieldSize);
+      const raceSeed = stableSeed(`routebands:${seedKey}:${i}`);
+      const entrants = sample.map((r) => ({ rider_id: r.id, team_id: r.id, abilities: r.abilities }));
+      const { ranked } = simulateStage({ entrants, stageProfile, seed: raceSeed });
+      races.push({ ranked, sample });
+    }
+    return races;
+  }
+  // p90-gab pr. løb, derefter MEDIAN over løbene i batchet (samme konvention
+  // som prologP90Gap-definitionen: "median over stages").
+  function p90GapMedian(races) {
+    return median(races.map(({ ranked }) => quantile(ranked.map((r) => r.stageGap), 0.9)));
+  }
+  function winnerShareTopQuartile(races, abilityFn, threshold) {
+    let hits = 0;
+    for (const { ranked, sample } of races) {
+      const winner = sample.find((r) => r.id === ranked[0].rider_id);
+      if (winner && abilityFn(winner) >= threshold) hits++;
+    }
+    return races.length ? hits / races.length : 0;
+  }
+
+  // -- summitValleyGapRatio (≥1.5): summit- vs dal-finish, samme kategori/distance --
+  const summitProfile = {
+    profile_type: "mountain", distance_km: mountainMid, demand_vector: DEMAND_VECTORS.mountain,
+    climbs: [{ category: "1", crest_km: mountainMid, summit_finish: true }],
+  };
+  const valleyProfile = {
+    profile_type: "mountain", distance_km: mountainMid, demand_vector: DEMAND_VECTORS.mountain,
+    climbs: [{ category: "1", crest_km: mountainMid - 15, summit_finish: false }], // 15 km ≥ VALLEY_MIN_DESCENT_KM
+  };
+  const summitP90 = p90GapMedian(runRouteBatch(summitProfile, ROUTE_BATCH_N, "summit"));
+  const valleyP90 = p90GapMedian(runRouteBatch(valleyProfile, ROUTE_BATCH_N, "valley"));
+  const summitValleyGapRatio = valleyP90 > 0 ? summitP90 / valleyP90 : Infinity;
+
+  // -- prologP90Gap (≤25s): hånd-sat itt-distance i prolog-båndet [5,8] km --
+  const prologProfile = { profile_type: "itt", distance_km: 6, demand_vector: DEMAND_VECTORS.itt };
+  const prologP90Gap = p90GapMedian(runRouteBatch(prologProfile, ROUTE_BATCH_N, "prolog"));
+
+  // -- ittDistanceGapRatio (≥2): 40 km vs 15 km itt --
+  const itt40P90 = p90GapMedian(runRouteBatch({ profile_type: "itt", distance_km: 40, demand_vector: DEMAND_VECTORS.itt }, ROUTE_BATCH_N, "itt40"));
+  const itt15P90 = p90GapMedian(runRouteBatch({ profile_type: "itt", distance_km: 15, demand_vector: DEMAND_VECTORS.itt }, ROUTE_BATCH_N, "itt15"));
+  const ittDistanceGapRatio = itt15P90 > 0 ? itt40P90 / itt15P90 : Infinity;
+
+  // -- longDayEnduranceLift (>+3pp): endurance-top-kvartil vinder-andel, lang vs kort dag --
+  const longProfile = { profile_type: "mountain", distance_km: Math.round(mountainMid * 1.15), demand_vector: DEMAND_VECTORS.mountain };
+  const shortProfile = { profile_type: "mountain", distance_km: Math.round(mountainMid * 0.9), demand_vector: DEMAND_VECTORS.mountain };
+  const longBatch = runRouteBatch(longProfile, ROUTE_LIFT_N, "long-day");
+  const shortBatch = runRouteBatch(shortProfile, ROUTE_LIFT_N, "short-day");
+  const enduranceThreshold = quantile(field.map((r) => r.abilities.endurance), 0.75);
+  const longDayEnduranceLift = 100 * (
+    winnerShareTopQuartile(longBatch, (r) => r.abilities.endurance, enduranceThreshold) -
+    winnerShareTopQuartile(shortBatch, (r) => r.abilities.endurance, enduranceThreshold)
+  );
+
+  // -- technicalFinaleLift (>0pp): descending+positioning-top-kvartil vinder-andel, teknisk vs ikke --
+  const techProfile = {
+    profile_type: "mountain", distance_km: mountainMid, demand_vector: DEMAND_VECTORS.mountain, finale_type: "reduced_sprint",
+    climbs: [{ category: "1", crest_km: mountainMid - 8, summit_finish: false }], // 8 km efter top → teknisk (descent-vindue [3,12])
+  };
+  const nonTechProfile = {
+    profile_type: "mountain", distance_km: mountainMid, demand_vector: DEMAND_VECTORS.mountain, finale_type: "reduced_sprint",
+    climbs: [{ category: "1", crest_km: mountainMid - 30, summit_finish: false }], // 30 km efter top → IKKE teknisk
+  };
+  const techBatch = runRouteBatch(techProfile, ROUTE_LIFT_N, "tech-finale");
+  const nonTechBatch = runRouteBatch(nonTechProfile, ROUTE_LIFT_N, "nontech-finale");
+  const technicalComposite = (r) => (r.abilities.descending + r.abilities.positioning) / 2;
+  const technicalThreshold = quantile(field.map(technicalComposite), 0.75);
+  const technicalFinaleLift = 100 * (
+    winnerShareTopQuartile(techBatch, technicalComposite, technicalThreshold) -
+    winnerShareTopQuartile(nonTechBatch, technicalComposite, technicalThreshold)
+  );
+
+  routeBandRows = [
+    { key: "summitValleyGapRatio", value: summitValleyGapRatio, pass: summitValleyGapRatio >= 1.5, band: "≥1.50", fmt: (v) => v.toFixed(2) },
+    { key: "prologP90Gap", value: prologP90Gap, pass: prologP90Gap <= 25, band: "≤25s", fmt: (v) => `${v.toFixed(1)}s` },
+    { key: "ittDistanceGapRatio", value: ittDistanceGapRatio, pass: ittDistanceGapRatio >= 2, band: "≥2.00", fmt: (v) => v.toFixed(2) },
+    { key: "longDayEnduranceLift", value: longDayEnduranceLift, pass: longDayEnduranceLift > 3, band: ">+3pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
+    { key: "technicalFinaleLift", value: technicalFinaleLift, pass: technicalFinaleLift > 0, band: ">0pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
+  ];
+  routeBandFailures = routeBandRows.filter((r) => !r.pass);
+
+  console.log(`\n${"─".repeat(80)}`);
+  console.log(`G. RUTE-REALISME-BÅND (#2771; håndhæves med --enforce-route-bands)\n`);
+  console.log(`   ${padE("metrik", 24)}${padE("målt", 12)}${padE("bånd", 10)}status`);
+  console.log(`   ${"-".repeat(60)}`);
+  for (const r of routeBandRows) {
+    console.log(`   ${padE(r.key, 24)}${padE(r.fmt(r.value), 12)}${padE(r.band, 10)}${r.pass ? "✓" : "✗"}`);
+  }
+  console.log(`   (summit/valley/prolog/itt-distance: N=${ROUTE_BATCH_N} synth. løb/bånd, felt=${ROUTE_FIELD} · long-day/teknisk-finale: N=${ROUTE_LIFT_N}/bånd)`);
+  console.log(`   Eksisterende TARGETS/BREAKAWAY_TARGETS/strukturelle oracles ovenfor (B/D) er KØRT MED rute-berigede profiler i denne kørsel (ikke gentaget her).`);
+  if (routeBandFailures.length) {
+    if (ENFORCE_ROUTE_BANDS) {
+      console.log(`   ❌ ${routeBandFailures.length} rute-bånd udenfor (--enforce-route-bands aktiv → exit 1): ${routeBandFailures.map((r) => r.key).join(", ")}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`   ⚠ ${routeBandFailures.length} rute-bånd udenfor (rapport-only; håndhæv med --enforce-route-bands): ${routeBandFailures.map((r) => r.key).join(", ")}`);
+    }
+  } else {
+    console.log(`   ✓ alle rute-realisme-bånd inden for mål`);
+  }
+
+  // -- A/B: favorit-vinder-rate MED ruter vs BARE, samme seeds (jf. Task 7 §3) --
+  if (!POPULATION_MODE) {
+    console.log(`\n   A/B — favorit-vinder-rate MED ruter vs BARE (samme entrants + raceSeed pr. løb, kun stageProfilens rutefelter varierer):`);
+    console.log(`   ${padE("terræn", 14)}${padE("med ruter", 12)}${padE("bare", 10)}delta`);
+    console.log(`   ${"-".repeat(50)}`);
+    for (const tr of terrainResults) {
+      if (!tr.abRaces) continue;
+      const withPct = pct1(tr.abFavoriteWithRoutes, tr.abRaces);
+      const barePct = pct1(tr.abFavoriteBare, tr.abRaces);
+      const delta = withPct - barePct;
+      console.log(`   ${padE(tr.terrain, 14)}${padE(`${withPct}%`, 12)}${padE(`${barePct}%`, 10)}${delta >= 0 ? "+" : ""}${delta}pp`);
+    }
+  } else {
+    console.log(`\n   A/B: n/a i population-mode (kun implementeret for den genererede sti — se Task 7-rapport).`);
+  }
 }
 
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────

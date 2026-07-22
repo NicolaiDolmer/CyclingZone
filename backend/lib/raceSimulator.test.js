@@ -570,8 +570,12 @@ test("flag-off-ækvivalent: uden distance_km er components.long_day 0 og alt uæ
   assert.ok(r.ranked.every((x) => x.components.long_day === 0));
 });
 
-test("LONG_DAY_ENDURANCE_WEIGHT er den forventede kalibrerings-konstant (0.05)", () => {
-  assert.equal(LONG_DAY_ENDURANCE_WEIGHT, 0.05);
+// Task 7 (#2771) re-kalibrering: 0.05 (Task 2-launch-værdi) gav et umåleligt
+// longDayEnduranceLift (+0.3pp af 3 seeds' ~300-løbs-batches, se KALIBRERINGS-LOG
+// i simulateSeasonDryRun.js) — hævet til 0.65 (N=600-løbs-batches, margin +4.0
+// til +4.8pp på alle 3 gate-seeds, uden regression på cobbles/itt-TARGETS).
+test("LONG_DAY_ENDURANCE_WEIGHT er den forventede kalibrerings-konstant (0.65, #2771 Task 7)", () => {
+  assert.equal(LONG_DAY_ENDURANCE_WEIGHT, 0.65);
 });
 
 // ── Sub-3 (#2771) Task 3: tekniske finaler (afledt af rute) ───────────────────
