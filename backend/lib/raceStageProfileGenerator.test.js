@@ -440,3 +440,38 @@ test("cobbled_tour garanterer en cobbles-etape inde i etapeløbet", () => {
   const cobbleStage = ps.find((p) => p.profile_type === "cobbles");
   assert.ok(cobbleStage.sectors.length >= 3, "cobbles-etape uden brosten-sektorer");
 });
+
+// ── #2771: GT-åbnings-ITT (openingItt) ────────────────────────────────────────
+test("grand_tour: etape 1 er ALTID itt (openingItt)", () => {
+  for (const seed of [1, 42, 2026, 777]) {
+    const stages = generateRaceStageProfiles(
+      { id: `gt-${seed}`, race_type: "stage_race", stages: 21, pool_race_id: `pool-gt-${seed}`, terrain_archetype: "grand_tour" },
+      { seed }
+    );
+    assert.equal(stages[0].profile_type, "itt", `seed ${seed}: etape 1 skal være itt`);
+    assert.equal(stages.length, 21);
+  }
+});
+
+test("openingItt ændrer ikke etapetype-multisettet (kun rækkefølgen af garantier)", () => {
+  const stages = generateRaceStageProfiles(
+    { id: "gt-ms", race_type: "stage_race", stages: 21, pool_race_id: "pool-gt-ms", terrain_archetype: "grand_tour" },
+    { seed: 2026 }
+  );
+  const counts = {};
+  for (const s of stages) counts[s.profile_type] = (counts[s.profile_type] || 0) + 1;
+  // Garantierne (3 flat, 1 itt, 1 mountain, 2 high_mountain) skal minimum være til stede.
+  assert.ok(counts.flat >= 3 && counts.itt >= 1 && counts.mountain >= 1 && counts.high_mountain >= 2);
+});
+
+test("andre stage-arketyper er upåvirkede af openingItt (summit_tour etape 1 er ikke tvunget itt)", () => {
+  let sawNonItt = false;
+  for (const seed of [1, 42, 2026, 777, 9]) {
+    const stages = generateRaceStageProfiles(
+      { id: `st-${seed}`, race_type: "stage_race", stages: 5, pool_race_id: `pool-st-${seed}`, terrain_archetype: "summit_tour" },
+      { seed }
+    );
+    if (stages[0].profile_type !== "itt") sawNonItt = true;
+  }
+  assert.ok(sawNonItt, "summit_tour må ikke systematisk åbne med itt");
+});

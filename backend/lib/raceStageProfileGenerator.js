@@ -130,7 +130,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // motoren kan simulere ægte hold-TTT (separat fremtidigt issue): "ttt"-filleren
   // (var weight 2) er fjernet — kun ITT genereres for fremtidige parcours. Eksisterende
   // persisterede etaper med ttt RØRES IKKE (kun fremtidige genereringer påvirkes).
-  grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }] },
+  // openingItt (#2771): GT'er åbner med enkeltstart (etape 1) — Sub-3's prolog-træk
+  // i attachRoute gør den 5-8 km i ~60 % af tilfældene. Multisettet af etapetyper
+  // er uændret (kun rækkefølgen), så tier-/realisme-bånd påvirkes ikke.
+  grand_tour:     { kind: "stage", openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }] },
   mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
   hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
   sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
@@ -275,12 +278,23 @@ function buildSingle(rng, cfg, race) {
 }
 
 // Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Delt af begge stier.
-function orderAndBuild(rng, types, stages, race) {
+function orderAndBuild(rng, types, stages, race, openingType = null) {
   types.length = stages; // defensiv trim
+  // openingType (#2771): træk ÉN forekomst ud af sorteringen og sæt den som etape 1
+  // (GT-åbnings-ITT). null → præcis hidtidig adfærd, bit-identisk rng-forbrug.
+  let opening = null;
+  if (openingType) {
+    const idx = types.indexOf(openingType);
+    if (idx >= 0) {
+      types.splice(idx, 1);
+      opening = openingType;
+    }
+  }
   const ordered = types
     .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
     .sort((a, b) => a.key - b.key)
     .map((x) => x.t);
+  if (opening) ordered.unshift(opening);
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
 }
 
@@ -304,7 +318,7 @@ function buildStageRaceArchetype(rng, stages, cfg, race) {
   const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
   capTimeTrials(rng, types, protectedCount, cfg.filler);
-  return orderAndBuild(rng, types, stages, race);
+  return orderAndBuild(rng, types, stages, race, cfg.openingItt ? "itt" : null);
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
