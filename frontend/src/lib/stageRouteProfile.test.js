@@ -243,6 +243,36 @@ test("waypointsFor: uden rutedata → tom liste", () => {
   assert.deepEqual(waypointsFor({ profile_type: "flat" }), []);
 });
 
+test("waypointsFor: index følger climbs' RÅ array-position, ikke km-sorteringen", () => {
+  const rawClimbs = [...PICOS_S4.climbs];
+  [rawClimbs[0], rawClimbs[1]] = [rawClimbs[1], rawClimbs[0]]; // byt Peña Blanca (62) og Ancares (84) om
+  const stage = { ...PICOS_S4, climbs: rawClimbs };
+  const wps = waypointsFor(stage);
+  const komWps = wps.filter((w) => w.kind === "kom");
+  // Visningen er stadig sorteret på km...
+  assert.deepEqual(komWps.map((w) => w.km), [62, 84, 106, 140]);
+  // ...men index matcher positionen i det RÅ array (racePassages.js:88), ikke
+  // km-rækkefølgen — ellers slår et klik på grafen op i en forkert stignings
+  // passage-resultat i race_stage_passages.
+  for (const w of komWps) {
+    const rawIndex = rawClimbs.findIndex((c) => c.name === w.name);
+    assert.equal(w.index, rawIndex, `${w.name}: index ${w.index} matcher ikke rå position ${rawIndex}`);
+  }
+  const ancares = komWps.find((w) => w.name === "Alto de Ancares");
+  const penaBlanca = komWps.find((w) => w.name === "Alto de Peña Blanca");
+  assert.equal(ancares.index, 0, "Ancares står først i det rå (ombyttede) array");
+  assert.equal(penaBlanca.index, 1, "Peña Blanca står som nummer to i det rå array");
+});
+
+test("waypointsFor: ukendt profile_type falder tilbage til mountain-skalaen på finish (samme som racePassages.scaleFor)", () => {
+  const stage = {
+    profile_type: "some_future_type", distance_km: 100, elevation_gain_m: 1000,
+    climbs: [], sprints: [{ name: "Finish", km: 100, kind: "finish" }], sectors: [],
+  };
+  const finish = waypointsFor(stage).find((w) => w.kind === "finish");
+  assert.equal(finish.points, GREEN_FINISH_SCALES.mountain[0]);
+});
+
 test("DRIFT-GUARD: passage-konstanter i frontend matcher backend/lib/racePassages.js 1:1", async () => {
   const backend = await import("../../../backend/lib/racePassages.js");
   assert.deepEqual(KOM_SCALES, backend.KOM_SCALES, "KOM_SCALES afveget fra motoren");

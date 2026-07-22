@@ -301,9 +301,14 @@ export function routeReadKeys(profile) {
 export function waypointsFor(profile) {
   if (!hasRouteData(profile)) return [];
   const D = Number(profile.distance_km);
-  const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
-    .slice()
-    .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
+  // VIGTIGT: index kommer fra det RÅ array, IKKE en km-sorteret kopi.
+  // racePassages.js:88 gør `climbs.map((c, i) => ({..., index: i}))` på
+  // stageProfile.climbs UDEN at sortere først — waypoint_index i
+  // race_stage_passages er altså positionen i rækkens rå rækkefølge. Sorterer
+  // vi HER før vi tildeler index, kan et klik på grafen ramme en forkert
+  // stignings passage-resultat, hvis climbs nogensinde står i ikke-km-orden.
+  // Sortering til VISNING sker bagefter, på det færdige waypoint-array.
+  const climbs = Array.isArray(profile.climbs) ? profile.climbs : [];
   const sprints = Array.isArray(profile.sprints) ? profile.sprints : [];
   const intermediates = sprints.filter((s) => s.kind === "intermediate");
 
@@ -327,11 +332,12 @@ export function waypointsFor(profile) {
     points: INTERMEDIATE_SPRINT_SCALE[0] || 0,
     bonus: INTERMEDIATE_BONUS_SECONDS[0] || 0,
   }));
-  // Grøn målskala pr. profile_type — ukendt type falder tilbage til flat (Sub-4-
-  // visningsbeslutning; motorens EGEN fallback er "mountain", se scaleFor, men
-  // profile_type er en CHECK-constraint-enum i praksis, så denne gren rammes
-  // reelt aldrig af ægte data).
-  const finishScale = GREEN_FINISH_SCALES[profile.profile_type] || GREEN_FINISH_SCALES.flat;
+  // Grøn målskala pr. profile_type — ukendt type falder tilbage til "mountain",
+  // SAMME fallback som racePassages.scaleFor() (`GREEN_FINISH_SCALES[profileType]
+  // || GREEN_FINISH_SCALES.mountain`). Grafen skal vise det tal motoren rent
+  // faktisk ville uddele, ikke et andet — profile_type er en CHECK-constraint-
+  // enum i praksis, så denne gren rammes reelt aldrig af ægte data.
+  const finishScale = GREEN_FINISH_SCALES[profile.profile_type] || GREEN_FINISH_SCALES.mountain;
   const isTimeTrial = profile.profile_type === "itt" || profile.profile_type === "ttt";
   const finishWp = {
     kind: "finish",
@@ -343,5 +349,8 @@ export function waypointsFor(profile) {
     bonus: isTimeTrial ? 0 : (FINISH_BONUS_SECONDS[0] || 0),
   };
 
-  return [...komWps, ...sprintWps, finishWp].sort((a, b) => a.km - b.km);
+  // Visnings-sortering: km, og ved samme km kommer "kom" før "sprint" (samme
+  // tiebreak som racePassages.js:90's `.sort((a,b) => a.km-b.km || (a.kind==="kom"?-1:1))`).
+  return [...komWps, ...sprintWps, finishWp]
+    .sort((a, b) => a.km - b.km || (a.kind === "kom" ? -1 : 1));
 }
