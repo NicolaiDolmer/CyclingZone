@@ -1,7 +1,11 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey } from "../../lib/stageProfileConfig.js";
+import { hasRouteData, sharedYMax } from "../../lib/stageRouteProfile.js";
+import StageProfileGraph from "./StageProfileGraph.jsx";
 
-function MiniSilhouette({ profileType }) {
+// #1484-piktogrammet — bevares for etaper UDEN rutedata (S1/PCM-løb).
+function LegacyMiniSilhouette({ profileType }) {
   const { points } = profileShape(profileType);
   return (
     <svg viewBox="0 0 100 24" className="w-full h-4 block" preserveAspectRatio="none" aria-hidden="true">
@@ -14,6 +18,10 @@ function MiniSilhouette({ profileType }) {
 // stages.length < 2 og ingen overall → null (one-day: parent viser panelet direkte).
 export default function StageStripe({ stages = [], activeStage, onSelect, times = null, showOverall = false }) {
   const { t } = useTranslation("races");
+  // Sub-4 (#2448): FÆLLES y-loft over hele løbet — ellers ville en flad etape
+  // fylde lodret præcis lige så meget som en HC-dag, og striben ville lyve om
+  // løbets form. Hooks skal kaldes før det tidlige return herunder.
+  const yMax = useMemo(() => sharedYMax(stages), [stages]);
   if (stages.length < 2 && !showOverall) return null;
 
   return (
@@ -49,7 +57,9 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
               ${active ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
           >
             <span className={active ? "text-cz-accent-t" : "text-cz-2"}>
-              <MiniSilhouette profileType={s.profile_type} />
+              {hasRouteData(s) && yMax
+                ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} yMax={yMax} uid={`ms-${n}`} />
+                : <LegacyMiniSilhouette profileType={s.profile_type} />}
               <span className="block text-[10px] font-mono mt-0.5">{n}</span>
               {times?.[n]?.timeLabel && (
                 <span className="block text-[9px] font-mono text-cz-3 leading-none">{times[n].timeLabel}</span>
