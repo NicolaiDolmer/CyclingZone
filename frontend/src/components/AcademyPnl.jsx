@@ -20,7 +20,7 @@ export default function AcademyPnl() {
   if (loading) {
     return (
       <section>
-        <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("pnl.heading")}</h2>
+        <h2 className="font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("pnl.heading")}</h2>
         <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-8 text-center">
           <p className="text-cz-3 text-sm">{t("pnl.loadingNote")}</p>
         </div>
@@ -35,7 +35,7 @@ export default function AcademyPnl() {
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-1">{t("pnl.heading")}</h2>
+      <h2 className="font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{t("pnl.heading")}</h2>
       <p className="text-xs text-cz-3 mb-3">{t("pnl.subtitle")}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

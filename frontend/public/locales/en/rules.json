@@ -152,7 +152,7 @@
           "text": "Academy riders are paid {academySalaryPct}% of their market value and sign {academyContractLength}-season youth contracts."
         },
         "drift": {
-          "title": "Upkeep (drift)",
+          "title": "Upkeep",
           "text": "Each filled academy place costs {academyDrift} CZ$ per season, charged at season start. A small academy (3–4 places) is comfortably affordable in every division; a full 8-place academy is a deliberate, heavier investment."
         }
       }

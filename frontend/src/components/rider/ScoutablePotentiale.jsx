@@ -28,7 +28,10 @@ import PotentialeStars from "../PotentialeStars";
 import { SearchIcon } from "../ui";
 import { potentialLabelKey } from "../../lib/scouting";
 
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false }) {
+// #2796: `labelAsTitle` videresendes til PotentialeStars — tætte tabel-celler
+// (akademi-rosteret) viser stjernerne alene og lægger den kvalitative label i
+// tooltip'en. Default false, så alle eksisterende kald-sites er uændrede.
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -131,12 +134,12 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   // vis som eksakte stjerner. `exact`-feltet findes ikke længere i det maskerede
   // estimat (#2244 A3) — dette er REN clamping-defensiv, ikke en "kendt eksakt"-gren.
   if (estimate.lo === estimate.hi) {
-    return <PotentialeStars value={estimate.lo} label={label} birthdate={rider.birthdate} large={large} />;
+    return <PotentialeStars value={estimate.lo} label={label} birthdate={rider.birthdate} large={large} labelAsTitle={labelAsTitle} />;
   }
 
   return (
     <span className="inline-flex items-center gap-2 flex-wrap">
-      <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} large={large} />
+      <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} large={large} labelAsTitle={labelAsTitle} />
       {level > 0 && (
         <span className="text-[10px] font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
           {level}/{maxLevel}

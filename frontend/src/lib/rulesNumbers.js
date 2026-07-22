@@ -63,6 +63,7 @@ export const RULES_NUMBERS = {
   academySalaryPct: 6.7, // ACADEMY.SALARY_RATE × 100 (#2083: ensrettet til den delte SALARY_RATE = salaryRatePct)
   academyContractLength: 3, // ACADEMY.CONTRACT_LENGTH
   academyDrift: 5000, // ACADEMY.DRIFT_PER_SEASON
+  academySigningFeePct: 25, // ACADEMY.SIGNING_FEE_RATE × 100 (#2796: prisen vises nu på kandidatkortet, så hjælpen skal kunne forklare tallet)
 
   // --- Admin-configurable display defaults (NOT pinned; from DB config) ---
   minBidStep: 1, // +1 CZ$ minimum step (auctionRules mirror)

@@ -494,6 +494,14 @@ export const SEED_STRATEGY = {
   ],
 };
 
+// #2796: intake-tilbud udløber 7 dage efter created_at, og kortet viser nu
+// nedtællingen. Med en fast dato i seed'et ville preview altid vise "udløbet",
+// så tilbuds-datoerne er relative til nu: ét friskt, ét midt i, ét der brænder
+// (så begge badge-toner — neutral og "haster" — er synlige i preview).
+const daysAgoIso = (days) => new Date(Date.now() - days * 86_400_000).toISOString();
+const expiryFor = (createdIso) => new Date(new Date(createdIso).getTime() + 7 * 86_400_000).toISOString();
+const INTAKE_CREATED = { fresh: daysAgoIso(1), mid: daysAgoIso(3), urgent: daysAgoIso(6) };
+
 // GET /api/academy/me — eneste kilde for academy-payloaden. Konsumeres af
 // mockHandlers.apiResponse("/api/academy/me") (return SEED_ACADEMY) → academy-
 // specs afhænger af præcis denne form (3 intakes, 2 roster-ryttere).
@@ -518,6 +526,10 @@ export const SEED_ACADEMY = {
       base_value: 180000,
       market_value: 180000,
       prize_earnings_bonus: 0,
+      // #2796: type-kolonnen + promote-dialogens løn-projektion.
+      primary_type: "climber",
+      secondary_type: "gc",
+      current_production_value: 74000,
     },
     {
       id: "acad-r2",
@@ -533,6 +545,25 @@ export const SEED_ACADEMY = {
       base_value: 150000,
       market_value: 150000,
       prize_earnings_bonus: 0,
+      primary_type: "sprinter",
+      secondary_type: null,
+      current_production_value: 61000,
+    },
+  ],
+  // #2796: gradueringskortene bærer nu type/værdi/løn, så promovér/sælg/slip
+  // ikke er et blindt valg. Seed'et har én pending graduate, så sektionen kan
+  // ses i preview (den var før usynlig — payloaden havde ingen).
+  graduations: [
+    {
+      riderId: "acad-r3",
+      name: "Tobias Lindqvist",
+      age: 21,
+      deadline: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+      nationality_code: "no",
+      primary_type: "brostensrytter",
+      secondary_type: "rouleur",
+      salary: 18000,
+      market_value: 240000,
     },
   ],
   intake: [
@@ -541,7 +572,9 @@ export const SEED_ACADEMY = {
       riderId: "prospect-1",
       is_serious: true,
       status: "offered",
-      created_at: "2026-06-13T10:00:00.000Z",
+      created_at: INTAKE_CREATED.fresh,
+      expiresAt: expiryFor(INTAKE_CREATED.fresh),
+      signingFee: 50000, // 25% af market_value (ACADEMY.SIGNING_FEE_RATE)
       rider: {
         id: "prospect-1",
         firstname: "Emil",
@@ -552,6 +585,8 @@ export const SEED_ACADEMY = {
         market_value: 200000,
         prize_earnings_bonus: 0,
         team_id: null,
+        primary_type: "puncheur",
+        secondary_type: "climber",
       },
       potentialEstimate: { lo: 3.5, hi: 5.0, exact: false, scoutLevel: 1 },
     },
@@ -560,7 +595,9 @@ export const SEED_ACADEMY = {
       riderId: "prospect-2",
       is_serious: false,
       status: "offered",
-      created_at: "2026-06-13T10:00:00.000Z",
+      created_at: INTAKE_CREATED.mid,
+      expiresAt: expiryFor(INTAKE_CREATED.mid),
+      signingFee: 37500,
       rider: {
         id: "prospect-2",
         firstname: "Axel",
@@ -571,6 +608,8 @@ export const SEED_ACADEMY = {
         market_value: 150000,
         prize_earnings_bonus: 0,
         team_id: null,
+        primary_type: "tt",
+        secondary_type: "rouleur",
       },
       potentialEstimate: { lo: 2.0, hi: 4.0, exact: false, scoutLevel: 0 },
     },
@@ -579,7 +618,9 @@ export const SEED_ACADEMY = {
       riderId: "prospect-3",
       is_serious: false,
       status: "offered",
-      created_at: "2026-06-13T10:00:00.000Z",
+      created_at: INTAKE_CREATED.urgent,
+      expiresAt: expiryFor(INTAKE_CREATED.urgent),
+      signingFee: 45000,
       rider: {
         id: "prospect-3",
         firstname: "Marco",
@@ -590,6 +631,8 @@ export const SEED_ACADEMY = {
         market_value: 180000,
         prize_earnings_bonus: 0,
         team_id: null,
+        primary_type: "baroudeur",
+        secondary_type: null,
       },
       potentialEstimate: { lo: 3.0, hi: 3.0, exact: true, scoutLevel: 3 },
     },
