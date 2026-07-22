@@ -69,6 +69,38 @@ test("summit-finale → sidste climb er summit_finish med crest = distance", () 
   assert.equal(last.crest_km, r.distance_km);
 });
 
+// ── HC-garanti på high_mountain (GT-bånd 3-8 HC) ─────────────────────────────
+test("high_mountain: HVER etape har mindst én HC, og HC'en er klimakset (sidste stigning)", () => {
+  for (let i = 0; i < 60; i++) {
+    for (const finale of ["long_climb", "descent"]) {
+      const r = attachRoute(stage("high_mountain", finale, 3), { external_id: `hm-${i}`, name: "Grand Tour" }, true);
+      const hc = r.climbs.filter((c) => c.category === "HC");
+      assert.ok(hc.length >= 1, `hm-${i}/${finale}: 0 HC på en high_mountain-etape`);
+      // climbs er sorteret på crest_km → sidste er den afgørende stigning.
+      assert.equal(r.climbs[r.climbs.length - 1].category, "HC", `hm-${i}/${finale}: klimakset var ikke HC`);
+    }
+  }
+});
+
+test("high_mountain: PRÆCIS én HC pr. etape → en GT's HC-total = antallet af high_mountain-etaper", () => {
+  for (let i = 0; i < 60; i++) {
+    for (const finale of ["long_climb", "descent"]) {
+      const r = attachRoute(stage("high_mountain", finale, 3), { external_id: `hm-cap-${i}`, name: "Grand Tour" }, true);
+      const hc = r.climbs.filter((c) => c.category === "HC").length;
+      assert.equal(hc, 1, `hm-cap-${i}/${finale}: ${hc} HC, forventede præcis 1`);
+    }
+  }
+});
+
+test("HC forbliver eksklusiv for high_mountain — mountain/hilly/classic får aldrig HC", () => {
+  for (const pt of ["mountain", "hilly", "classic", "rolling", "flat", "cobbles"]) {
+    for (let i = 0; i < 40; i++) {
+      const r = attachRoute(stage(pt, null, 3), { external_id: `nohc-${pt}-${i}`, name: "Grand Tour" }, true);
+      assert.ok(r.climbs.every((c) => c.category !== "HC"), `${pt} fik en HC-stigning`);
+    }
+  }
+});
+
 test("descent-finale → ingen summit_finish", () => {
   const r = attachRoute(stage("mountain", "descent"), race, true);
   assert.ok(r.climbs.every((c) => c.summit_finish === false));

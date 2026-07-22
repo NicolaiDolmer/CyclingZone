@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.42",
+    "date": "2026-07-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "High mountain stages always have an hors categorie climb",
+          "body": "Every high mountain stage now finishes over an hors categorie climb, the hardest category there is. Previously the category of each climb was drawn at random, so a high mountain stage could end up without a single hors categorie climb while another stacked four of them. One grand tour in season 2 had just one hors categorie climb across all 21 stages. Applies to newly generated race routes."
+        },
+        "da": {
+          "title": "Høj-bjergsetaper har altid en hors categorie-stigning",
+          "body": "Hver høj-bjergsetape slutter nu over en hors categorie-stigning, den hårdeste kategori der findes. Før blev kategorien for hver stigning trukket tilfældigt, så en høj-bjergsetape kunne ende helt uden hors categorie-stigninger, mens en anden stablede fire oven på hinanden. Et grand tour i sæson 2 havde kun én hors categorie-stigning på tværs af alle 21 etaper. Gælder nygenererede løbsruter."
+        },
+        "refs": [2781]
+      }
+    ]
+  },
+  {
     "version": "7.41",
     "date": "2026-07-22",
     "label": "Beta",
