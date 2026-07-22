@@ -36,6 +36,12 @@ export const DISTANCE_BANDS = Object.freeze({
   cobbles: [150, 170], classic: [200, 260],
   itt: [15, 40], ttt: [25, 45],
 });
+// Sub-3 (#2771) Task 6: prolog-arketype. profile_type FORBLIVER "itt" (design-
+// beslutning låst i spec §6 + plan Task 6 self-review) — prolog er en DISTANCE-
+// egenskab afgjort her i pass 2, ikke en ny arketype i pass 1 (som forbliver
+// urørt/bit-identisk). KUN etape 1 i et etapeløb kan trække en prolog.
+export const PROLOGUE_PROBABILITY = 0.6;
+export const PROLOGUE_DISTANCE_BAND = [5, 8];
 // Climb-antal + kategori-pool pr. profil (spec §4.1).
 const CLIMB_SPEC = Object.freeze({
   flat: { count: [0, 1], cats: ["4"] },
@@ -188,7 +194,14 @@ export function attachRoute(stage, race, isStageRace) {
   const rng = makeRng(stableSeed(routeSeedKey(race, stage.stage_number)));
   const namer = makeRegionNamer(rng, regionOf(race?.name));
 
-  const [lo, hi] = DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat;
+  // Sub-3 (#2771): prolog-draw FØR distance-draw'et, fra den SAMME dedikerede
+  // rute-rng-strøm (ordering veldefineret). Kun stage 1 i et etapeløb med
+  // profile_type "itt" kan blive en prolog — alt andet (senere itt-etaper,
+  // enkeltstående itt-løb, ikke-itt-profiler) trækker INGEN ekstra rng her og
+  // falder uændret gennem det normale bånd (pass 1 forbliver bit-identisk;
+  // determinisme: samme race-identitet + etape → samme afgørelse hver gang).
+  const isProlog = pt === "itt" && stage.stage_number === 1 && isStageRace && rng() < PROLOGUE_PROBABILITY;
+  const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
   let distance_km = pt === "itt" || pt === "ttt" ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;
