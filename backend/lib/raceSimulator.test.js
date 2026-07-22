@@ -526,10 +526,14 @@ test("HC-kategori skalerer hårdest", () => {
   assert.ok(hc.spread > c3.spread);
 });
 
-test("ITT skalerer med distance; prolog-distance giver små gab", () => {
-  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 30 }).spread, 700);
-  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 6 }).spread, 150);  // clamp-gulv
-  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 40 }).spread, Math.round(700 * 40 / 30));
+// kalibrerings-revision (arkitekt 22/7): eksponent 1.3 + clamp [60,900] i stedet
+// for lineær skalering + clamp [150,1000] — se ITT_DISTANCE_EXPONENT-kommentaren
+// i raceSimulator.js (empiri: Herning 2012/Utrecht 2015-prologer komprimerer
+// mere end lineært på korte distancer).
+test("ITT skalerer med distance (eksponent 1.3); prolog-distance giver små gab", () => {
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 30 }).spread, 700); // anker uændret
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 6 }).spread, Math.round(700 * (6 / 30) ** 1.3)); // 86 — ikke længere det lineære gulv
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 40 }).spread, 900); // loft
 });
 
 test("samlet spread-clamp [40, 1000]", () => {
@@ -629,6 +633,20 @@ test("data-gating: bare profil (uden distance_km) + entrants med sprint_captains
     race_role: i < 8 ? "sprint_captain" : "helper", abilities: {},
   }));
   assert.equal(routeBreakawayFactor({ profile_type: "flat" }, mkE(60)), 1);
+});
+
+// #2771 Task 7 wiring-fix (arkitekt 22/7): INGEN entrant har en race_role
+// overhovedet (dryrun-uden-roller, ikke "alle er helper") → tætheds-termen skal
+// IKKE aktiveres (density=0 ville ellers unconditionelt klippe til
+// SPRINTER_DENSITY_RANGE[1]=1.15 uden noget rigtigt tætheds-signal). Faktoren
+// skal være PRÆCIS sqrt(distanceFactor(...)) — ingen spuriøs ×1.15-boost.
+test("routeBreakawayFactor: entrants UDEN race_role overhovedet → ingen tætheds-boost (faktor === sqrt(distanceFactor))", () => {
+  const sp = { profile_type: "flat", distance_km: 175 };
+  const entrants = Array.from({ length: 60 }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`, abilities: {}, // ingen race_role-felt
+  }));
+  const factor = routeBreakawayFactor(sp, entrants);
+  assert.equal(factor, Math.sqrt(distanceFactor(sp)));
 });
 
 test("SPRINTER_DENSITY_PROFILES/RANGE er de forventede konstanter", () => {

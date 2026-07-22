@@ -357,7 +357,15 @@ export const SPRINTER_DENSITY_RANGE = [0.85, 1.15]; // faktor ved høj hhv. lav 
 export function routeBreakawayFactor(stageProfile, entrants = []) {
   let f = Math.sqrt(distanceFactor(stageProfile));
   const hasRouteData = Number.isFinite(Number(stageProfile?.distance_km));
-  if (hasRouteData && SPRINTER_DENSITY_PROFILES.has(stageProfile?.profile_type) && entrants.length) {
+  // #2771 Task 7 wiring-fix (arkitekt 22/7, ikke kalibrering): tætheds-termen
+  // kræver AT MINDST ét entrant med en sat race_role — uden rolle-data er
+  // "andel hold med sprint_captain" meningsløst (scTeams er altid tomt →
+  // density=0 → faktor klipper unconditionelt til SPRINTER_DENSITY_RANGE[1]).
+  // Harnessets non-roles-mode ramte netop dette: hvert flat/rolling-løb fik en
+  // spuriøs ×1.15-boost uden nogen rigtig tætheds-signal. Dryrun-uden-roller må
+  // ikke få tætheds-boost.
+  const hasRoleData = entrants.some((e) => e.race_role != null);
+  if (hasRouteData && hasRoleData && SPRINTER_DENSITY_PROFILES.has(stageProfile?.profile_type) && entrants.length) {
     const teams = new Set(entrants.map((e) => e.team_id).filter(Boolean));
     const scTeams = new Set(
       entrants.filter((e) => e.race_role === "sprint_captain").map((e) => e.team_id)
@@ -456,6 +464,13 @@ export const VALLEY_SPREAD_FACTOR = 0.6;        // bånd 0.5-0.75
 export const VALLEY_MIN_DESCENT_KM = 10;
 export const LAST_CLIMB_CATEGORY_FACTORS = Object.freeze({ HC: 1.25, "1": 1.10, "2": 1.0, "3": 0.85, "4": 0.7 });
 export const ITT_REFERENCE_KM = 30;
+// #2771 Task 7 kalibrerings-revision (arkitekt 22/7): korte kronometre
+// komprimerer tidsforskellene mere end lineært (empiri: Giro-prolog Herning
+// 2012, 8,7 km, vinder→p90 ≈ 50 s; Utrecht 2015, 13,8 km ≈ 100 s). En ren
+// lineær distance-skala (spredning ∝ distance) undervurderer denne kompression
+// på korte distancer — eksponenten retter det: 6 km → spread ≈ 86, 8 km ≈ 125,
+// 15 km ≈ 284, 30 km → 700 (uændret anker), 40 km → clamp 900.
+export const ITT_DISTANCE_EXPONENT = 1.3;
 const CLIMB_GAP_PROFILES = new Set(["mountain", "high_mountain", "hilly"]);
 const SPREAD_CLAMP = [40, 1000];
 
@@ -468,9 +483,11 @@ export function stageGapModel(stageProfile = {}) {
 
   if (pt === "itt" || pt === "ttt") {
     if (Number.isFinite(distance) && distance > 0) {
-      // Loft = SPREAD_CLAMP[1] (1000), ikke 900: en 40 km ITT (700·40/30≈933)
-      // skal skalere frit under det generelle loft, ikke klippes af et separat.
-      spread = clamp(Math.round(anchor.spread * (distance / ITT_REFERENCE_KM)), 150, SPREAD_CLAMP[1]);
+      // #2771 Task 7 kalibrerings-revision (arkitekt 22/7): eksponent 1.3 i
+      // stedet for lineær skalering (se ITT_DISTANCE_EXPONENT ovenfor) + clamp-
+      // gulv sænket 150→60 (en 5-6 km prolog skal kunne komprimere friskt uden
+      // at ramme det gamle lineære gulv).
+      spread = clamp(Math.round(anchor.spread * Math.pow(distance / ITT_REFERENCE_KM, ITT_DISTANCE_EXPONENT)), 60, 900);
     }
     return { bunch, spread };
   }

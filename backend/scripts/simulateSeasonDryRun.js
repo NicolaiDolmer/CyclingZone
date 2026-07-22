@@ -303,27 +303,35 @@ const TARGETS = {
 // Øvrige sektion G-bånd (ingen tuning nødvendig, grønne fra Task 1/3/4):
 //   summitValleyGapRatio 2.16-2.20 (krav ≥1.5) · ittDistanceGapRatio 2.75-4.13
 //   (krav ≥2.0) · technicalFinaleLift +2.0pp til +8.3pp (krav >0pp, alle 3 seeds).
-// LOOP-GUARD UDLØST (2 uændrede bånd på tværs af iterationer, ARKITEKT-EJET —
-// se rapport for fuld mekanisme-analyse, IKKE rettet her):
-//   1) prologP90Gap (krav ≤25s, målt 84-101s på alle 3 seeds): stageGapModels
-//      itt-gren (Task 1, FROSSEN) skalerer KUN spread med distance
-//      (ITT_REFERENCE_KM=30) — bunch forbliver 0 unconditionelt, så en 6 km
-//      prolog stadig omsætter feltets FULDE evne-baserede score-deficit
-//      (uændret af distance) gennem et spread-gulv på 150 (clampet). Ingen af
-//      Task 7's tunables rører itt-grenen — kræver en Task-1-revision (fx et
-//      prolog-specifikt bunch-vindue) for at lukke.
-//   2) BREAKAWAY_TARGETS hilly/flat (--enforce-breakaway): PRÆ-EKSISTERENDE —
-//      BARE seed 42 (ingen --routes, ingen Sub-3-kode i spil) fejlede hilly
-//      allerede (17,3 % < 18,0 %-gulvet), fordi race:gate ALDRIG har kørt med
-//      --enforce-breakaway (baseFlags mangler den). routeBreakawayFactor's
-//      sqrt(distanceFactor)-led (Task 4, FROSSEN) tilføjer en let systematisk
-//      NEDAD-bias under --routes (Jensens ulighed: E[√X] < √E[X]=1 for en
-//      distance-faktor der varierer symmetrisk om 1) — nok til at skubbe
-//      hilly/flat den sidste smule under/over de allerede stram-kalibrerede
-//      grænser på alle 3 seeds. SPRINTER_DENSITY_RANGE (min tunable) er UDEN
-//      effekt her (kræver --roles, som denne kørsel ikke bruger). Kræver enten
-//      en BREAKAWAY_TARGETS-rekalibrering (#1021-ejet, låst her) eller en
-//      justering af routeBreakawayFactor's distance-led (Task 4, ikke Task 7).
+// ── ITERATION 2 (2026-07-22, arkitekt-beslutninger på de 2 eskalerede bånd) ───
+// Fix 1 (Task-1 model-revision, arkitekt-godkendt): stageGapModels itt/ttt-gren
+//   skifter fra lineær distance-skala til ITT_DISTANCE_EXPONENT=1.3 (empiri:
+//   Herning 2012-prolog 8,7 km ≈50s, Utrecht 2015 13,8 km ≈100s — korte
+//   kronometre komprimerer mere end lineært) + clamp-gulv 150→60. prologP90Gap-
+//   båndet sænket fra det oprindelige (uholdbare) ≤25s til ≤60s (samme empiri).
+//   Resultat: prologP90Gap 48-49s på alle 3 seeds (var 84-101s) — RUIM margin.
+//   ittDistanceGapRatio steg som forventet: 4.81-4.92 (var 2.75-4.13, krav ≥2.0).
+// Fix 2 (wiring-fix, IKKE tuning): routeBreakawayFactor's sprinter-tætheds-term
+//   krævede kun SPRINTER_DENSITY_PROFILES+distance_km — manglede en gate på at
+//   entrants faktisk HAR race_role-data. Harnessets non-roles-terrain-loop (ingen
+//   --roles) fik derfor en spuriøs ×1.15-boost på HVERT flat/rolling-løb under
+//   --routes (density=0 uden roller → klippede unconditionelt til
+//   SPRINTER_DENSITY_RANGE[1]). Rettet: kræver entrants.some(e=>e.race_role!=null).
+// Fix 3 (band-definition, arkitekt-ejet): BREAKAWAY_TARGETS hilly-gulv 0.18→0.15
+//   (bare-mode seed 42 målte allerede 17,3 % FØR Sub-3 — gulvet lå inde i
+//   sampling-støjen ±2,2pp @ 300 løb).
+// RESULTAT (--routes --enforce-targets --enforce-breakaway --enforce-route-bands):
+//   seed 2026 ✓ · seed 42 ✓ · seed 7 ✗ (se nedenfor).
+// LOOP-GUARD (1 resterende bånd, IKKE en af de 3 arkitekt-fixede — IKKE rørt,
+// jf. "Do NOT touch any other band"):
+//   BREAKAWAY_TARGETS.flat LOFT (0.07) på seed 7: bare-mode (ingen --routes,
+//   ingen Sub-3-kode) måler 8,7 % > 7,0 %-loftet — PRÆ-EKSISTERENDE, upåvirket
+//   af Fix 1/2/3 (Fix 2 sænkede den faktisk fra 8,7 % til 7,7 % under --routes,
+//   ved at fjerne den spuriøse ×1.15-boost — routes gør det altså MARGINALT
+//   bedre her, ikke værre). Samme rodårsag-klasse som hilly-gulvet (race:gate
+//   har aldrig kørt med --enforce-breakaway før denne PR) men et ANDET bånd/
+//   anden retning (loft, ikke gulv) — uden for de 3 eksplicit godkendte fixes.
+//   Kræver en separat #1021-rekalibrering af BREAKAWAY_TARGETS.flat (arkitekt-ejet).
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
@@ -340,10 +348,13 @@ const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"
 // fejler 18/20 seeds mod den NYE population (#1428 ability v3 + #1434 leadout-cut
 // flyttede fordelingen: flat ~+2pp, hilly under gulvet). Re-fit hører til #1021
 // post-launch-kalibrering — IKKE en launch-blocker (win-rate-dominans uændret).
+// hilly-gulv 0.18→0.15 (arkitekt 22/7, #2771): bare-mode seed 42 målte 17.3% FØR
+// Sub-3 — gulvet lå inde i sampling-støjen (±2.2pp @ 300 løb); 15% er stadig
+// utvetydigt udbruds-terræn. Ingen andre bånd rørt.
 const BREAKAWAY_TARGETS = {
   flat:          { min: 0.01, max: 0.07 },
   rolling:       { min: 0.04, max: 0.15 },
-  hilly:         { min: 0.18, max: 0.45 },
+  hilly:         { min: 0.15, max: 0.45 },
   mountain:      { min: 0.15, max: 0.50 },
   high_mountain: { min: 0.00, max: 0.15 },
   cobbles:       { min: 0.02, max: 0.15 },
@@ -1486,7 +1497,9 @@ if (ROUTES_MODE) {
   const valleyP90 = p90GapMedian(runRouteBatch(valleyProfile, ROUTE_BATCH_N, "valley"));
   const summitValleyGapRatio = valleyP90 > 0 ? summitP90 / valleyP90 : Infinity;
 
-  // -- prologP90Gap (≤25s): hånd-sat itt-distance i prolog-båndet [5,8] km --
+  // -- prologP90Gap (≤60s, arkitekt-revideret 22/7 — empiri: Giro-prolog Herning
+  // 2012, 8,7 km, vinder→p90 ≈ 50 s; Utrecht 2015, 13,8 km ≈ 100 s): hånd-sat
+  // itt-distance i prolog-båndet [5,8] km --
   const prologProfile = { profile_type: "itt", distance_km: 6, demand_vector: DEMAND_VECTORS.itt };
   const prologP90Gap = p90GapMedian(runRouteBatch(prologProfile, ROUTE_BATCH_N, "prolog"));
 
@@ -1526,7 +1539,7 @@ if (ROUTES_MODE) {
 
   routeBandRows = [
     { key: "summitValleyGapRatio", value: summitValleyGapRatio, pass: summitValleyGapRatio >= 1.5, band: "≥1.50", fmt: (v) => v.toFixed(2) },
-    { key: "prologP90Gap", value: prologP90Gap, pass: prologP90Gap <= 25, band: "≤25s", fmt: (v) => `${v.toFixed(1)}s` },
+    { key: "prologP90Gap", value: prologP90Gap, pass: prologP90Gap <= 60, band: "≤60s", fmt: (v) => `${v.toFixed(1)}s` },
     { key: "ittDistanceGapRatio", value: ittDistanceGapRatio, pass: ittDistanceGapRatio >= 2, band: "≥2.00", fmt: (v) => v.toFixed(2) },
     { key: "longDayEnduranceLift", value: longDayEnduranceLift, pass: longDayEnduranceLift > 3, band: ">+3pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
     { key: "technicalFinaleLift", value: technicalFinaleLift, pass: technicalFinaleLift > 0, band: ">0pp", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` },
