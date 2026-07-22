@@ -410,3 +410,33 @@ test("pass 2 er additivt: rute-felter er til stede på hver etape", () => {
     assert.equal(typeof p.elevation_gain_m, "number");
   }
 });
+
+// ── #2769 Task 4: nye arketyper — summit_tour, itt_classic, cobbled_tour ──
+
+test("summit_tour garanterer mindst én high_mountain-etape", () => {
+  const cfg = ARCHETYPE_PROFILES.summit_tour;
+  assert.equal(cfg.kind, "stage");
+  assert.ok(cfg.guarantees.includes("high_mountain"));
+});
+
+test("summit_tour producerer ≥1 long_climb-summit over etaperne", () => {
+  const race = { id: "st", external_id: "summit-x", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "summit_tour" };
+  const ps = generateRaceStageProfiles(race);
+  const summits = ps.filter((p) => p.finale_type === "long_climb" && (p.profile_type === "high_mountain" || p.profile_type === "mountain"));
+  assert.ok(summits.length >= 1, `forventede ≥1 summit, fik ${summits.length}`);
+});
+
+test("itt_classic er en single der giver netop én itt-etape", () => {
+  const race = { id: "ic", external_id: "itt-x", season_id: "s2", race_type: "single", stages: 1, terrain_archetype: "itt_classic" };
+  const ps = generateRaceStageProfiles(race);
+  assert.equal(ps.length, 1);
+  assert.equal(ps[0].profile_type, "itt");
+});
+
+test("cobbled_tour garanterer en cobbles-etape inde i etapeløbet", () => {
+  const race = { id: "ct", external_id: "cobbles-x", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "cobbled_tour" };
+  const ps = generateRaceStageProfiles(race);
+  assert.ok(ps.some((p) => p.profile_type === "cobbles"), "manglede cobbles-etape");
+  const cobbleStage = ps.find((p) => p.profile_type === "cobbles");
+  assert.ok(cobbleStage.sectors.length >= 3, "cobbles-etape uden brosten-sektorer");
+});

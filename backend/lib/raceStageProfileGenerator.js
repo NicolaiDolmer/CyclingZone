@@ -138,6 +138,18 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
   // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
   sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 78 }, { value: "rolling", weight: 22 }] },
+
+  // #2769 (Sub-1): fritstående enkeltstart-endagsløb (#2177 — 0 fritstående ITT i dag).
+  itt_classic: { kind: "single", weights: [{ value: "itt", weight: 1 }] },
+
+  // #2769: etapeløb med GARANTERET high_mountain-summit (hæver tier 3/4 summit-finishes,
+  // sænker M-Down-andelen — mountain_tour garanterer kun mellembjerg/descent). high_mountain
+  // sidst via STAGE_ORDER_HINT (7) → dronningeetape/top-finish. En itt-garanti giver samtidig
+  // en enkeltstart i løbet.
+  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 14 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 26 }, { value: "itt", weight: 8 }] },
+
+  // #2769: etapeløb med GARANTERET brosten-etape (#2527/#2755 — 0 brosten i etapeløb i dag).
+  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 20 }, { value: "cobbles", weight: 16 }, { value: "hilly", weight: 16 }, { value: "mountain", weight: 12 }, { value: "itt", weight: 6 }] },
 });
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
