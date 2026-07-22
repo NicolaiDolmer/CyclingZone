@@ -1,0 +1,229 @@
+[
+  {
+    "key": "cobble-calendar-icon",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2791"
+  },
+  {
+    "key": "salary-sort-bug",
+    "action": "comment",
+    "target": "#2403",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2403#issuecomment-5052526562"
+  },
+  {
+    "key": "old-rider-warning",
+    "action": "comment",
+    "target": "#2700",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2700#issuecomment-5052526718"
+  },
+  {
+    "key": "div3-no-timetrials",
+    "action": "comment",
+    "target": "#2755",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2755#issuecomment-5052526870"
+  },
+  {
+    "key": "global-rank-humans-only",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2792"
+  },
+  {
+    "key": "renown-visibility",
+    "action": "comment",
+    "target": "#2723",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2723#issuecomment-5052527191"
+  },
+  {
+    "key": "scout-mission-result-feedback",
+    "action": "comment",
+    "target": "#2721",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2721#issuecomment-5052527291"
+  },
+  {
+    "key": "youth-auction-full-academy-inconsistent",
+    "action": "comment",
+    "target": "#2701",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2701#issuecomment-5052527394"
+  },
+  {
+    "key": "academy-sold-rider-profit-unknown",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "priority:med",
+      "type:bug",
+      "cat:bug",
+      "epic:progression"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2793"
+  },
+  {
+    "key": "scout-confidence-contradiction",
+    "action": "comment",
+    "target": "#2720",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2720#issuecomment-5052527627"
+  },
+  {
+    "key": "rider-type-distribution-skew",
+    "action": "comment",
+    "target": "#2722",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2722#issuecomment-5052527728"
+  },
+  {
+    "key": "stage-page-information-overload",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "cat:user-feature",
+      "needs-design"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2794"
+  },
+  {
+    "key": "highlight-own-riders-in-lists",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2795"
+  },
+  {
+    "key": "academy-page-needs-love",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "priority:high",
+      "type:feature",
+      "enhancement",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2796"
+  },
+  {
+    "key": "div2-calendar-not-inspectable",
+    "action": "comment",
+    "target": "#2756",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2756#issuecomment-5052528339"
+  },
+  {
+    "key": "rider-swap-academy-overflow",
+    "action": "create",
+    "labels": [
+      "bug",
+      "claude:todo",
+      "priority:med",
+      "type:bug",
+      "cat:bug"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2797"
+  },
+  {
+    "key": "owner-training-log-curve",
+    "action": "skip",
+    "target": "#2698"
+  },
+  {
+    "key": "sprint-vs-mountain-points-and-bunch-gaps",
+    "action": "comment",
+    "target": "#2757",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2757#issuecomment-5052528724"
+  },
+  {
+    "key": "owner-expired-academy-talent-normalisation",
+    "action": "skip",
+    "target": "#2699"
+  },
+  {
+    "key": "value-reveals-talent-kills-scouting",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "priority:high",
+      "type:feature",
+      "needs-decision",
+      "cat:balance",
+      "epic:progression",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2798"
+  },
+  {
+    "key": "owner-faq-categories",
+    "action": "comment",
+    "target": "#2762",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2762#issuecomment-5052529020"
+  },
+  {
+    "key": "owner-discord-to-issues-routine",
+    "action": "comment",
+    "target": "#2758",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2758#issuecomment-5052529138"
+  },
+  {
+    "key": "owner-website-discord-connection",
+    "action": "comment",
+    "target": "#2161",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2161#issuecomment-5052529258"
+  },
+  {
+    "key": "owner-facebook-tiktok-marketing",
+    "action": "skip",
+    "target": "#2759"
+  },
+  {
+    "key": "owner-onboarding-discord-invite",
+    "action": "skip",
+    "target": "#2761"
+  },
+  {
+    "key": "owner-reactivation-email",
+    "action": "comment",
+    "target": "#2760",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2760#issuecomment-5052529412"
+  },
+  {
+    "key": "market-value-explosion",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "priority:high",
+      "type:bug",
+      "cat:balance",
+      "needs-decision",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2799"
+  },
+  {
+    "key": "owner-inapp-feedback-inbox",
+    "action": "create",
+    "labels": [
+      "claude:todo",
+      "priority:high",
+      "type:feature",
+      "cat:community"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2800"
+  }
+]
