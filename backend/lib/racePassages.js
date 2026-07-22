@@ -56,8 +56,17 @@ export function computePassages({ ranked = [], stageProfile = {}, entrants = [],
   if (!isStageRace || !ranked.length) return empty;
   const climbs = Array.isArray(stageProfile.climbs) ? stageProfile.climbs : [];
   const sprints = Array.isArray(stageProfile.sprints) ? stageProfile.sprints : [];
-  const distance = Number(stageProfile.distance_km);
-  if (!Number.isFinite(distance) && climbs.length === 0 && sprints.length === 0) return empty;
+  // Data-gating (#2784): distance_km SKAL læses gennem en null-guard. `Number(null)`
+  // er 0 — et endeligt tal — så den oprindelige `!Number.isFinite(Number(x))`-gate
+  // lækkede for legacy-rækker med distance_km NULL (hele sæson 1): etapen slap
+  // igennem uden ruteindhold og fik et fantom-"finish"-waypoint ved km 0, der
+  // uddelte grøn-point på Tour-skalaen + 10/6/4 bonussekunder midt i en aktiv
+  // sæson. Positiv distance kræves nu eksplicit; en etape uden BÅDE distance,
+  // stigninger og sprints er legacy og skal returnere tomt.
+  const rawDistance = stageProfile.distance_km;
+  const distance = rawDistance == null ? NaN : Number(rawDistance);
+  const hasDistance = Number.isFinite(distance) && distance > 0;
+  if (!hasDistance && climbs.length === 0 && sprints.length === 0) return empty;
 
   const abilitiesById = new Map(entrants.map((e) => [e.rider_id, e.abilities || {}]));
   const roleById = new Map(entrants.map((e) => [e.rider_id, e.race_role || null]));
@@ -65,7 +74,7 @@ export function computePassages({ ranked = [], stageProfile = {}, entrants = [],
 
   // Catch-punkt: dedikeret strøm — indhentede escapees er i front FØR dette km.
   const catchRng = makeRng(stableSeed(`${seed}:catch`));
-  const dist = Number.isFinite(distance) ? distance : 200;
+  const dist = hasDistance ? distance : 200;
   const catchKm = dist * (CATCH_KM_RANGE[0] + (CATCH_KM_RANGE[1] - CATCH_KM_RANGE[0]) * catchRng());
 
   const inFront = (riderId, km) => {

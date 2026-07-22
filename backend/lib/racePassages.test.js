@@ -185,3 +185,53 @@ test("3-rytter felt (mindre end skala) uddeler kun 3", () => {
   const finish = out.passages.find((p) => p.kind === "finish");
   assert.equal(finish.results.length, 3);
 });
+
+// ── #2784: data-gaten må ikke lække på legacy-rækker (distance_km NULL) ───────
+// Regression: `Number(null)` er 0 (endeligt), så den oprindelige gate slap
+// sæson-1-etaper igennem og uddelte fantom-mål-point/bonussekunder ved km 0.
+const LEGACY_RANKED = [
+  { rider_id: "a", rank: 1, components: { breakaway: 0 } },
+  { rider_id: "b", rank: 2, components: { breakaway: 0 } },
+  { rider_id: "c", rank: 3, components: { breakaway: 0 } },
+  { rider_id: "d", rank: 4, components: { breakaway: 0 } },
+];
+const LEGACY_ENTRANTS = ["a", "b", "c", "d"].map((id) => ({
+  rider_id: id, team_id: `t${id}`, abilities: { sprint: 70, climbing: 60, acceleration: 60, positioning: 60, endurance: 60, punch: 60 },
+}));
+
+test("#2784: legacy-etape (distance_km NULL, ingen climbs/sprints) → tomt, INGEN fantom-finish", () => {
+  for (const legacyDistance of [null, undefined, 0]) {
+    const out = computePassages({
+      ranked: LEGACY_RANKED,
+      stageProfile: { stage_number: 2, profile_type: "flat", finale_type: "bunch_sprint", distance_km: legacyDistance, climbs: [], sprints: [], sectors: [] },
+      entrants: LEGACY_ENTRANTS,
+      seed: 4242,
+      isStageRace: true,
+    });
+    assert.deepEqual(out.passages, [], `distance_km=${String(legacyDistance)} skal give tomt passage-sæt`);
+    assert.equal(out.perRider.size, 0, `distance_km=${String(legacyDistance)} må ikke uddele point/bonus`);
+  }
+});
+
+test("#2784: legacy-etape uden distance_km-nøgle overhovedet → tomt", () => {
+  const out = computePassages({
+    ranked: LEGACY_RANKED,
+    stageProfile: { stage_number: 1, profile_type: "mountain", finale_type: "long_climb" },
+    entrants: LEGACY_ENTRANTS, seed: 7, isStageRace: true,
+  });
+  assert.deepEqual(out.passages, []);
+  assert.equal(out.perRider.size, 0);
+});
+
+test("#2784: en etape MED rutedata er upåvirket af gate-stramningen", () => {
+  const out = computePassages({
+    ranked: LEGACY_RANKED,
+    stageProfile: {
+      stage_number: 3, profile_type: "flat", finale_type: "bunch_sprint", distance_km: 180,
+      climbs: [], sprints: [{ name: "Intermediate Sprint", km: 90, kind: "intermediate" }, { name: "Finish", km: 180, kind: "finish" }], sectors: [],
+    },
+    entrants: LEGACY_ENTRANTS, seed: 11, isStageRace: true,
+  });
+  assert.ok(out.passages.length >= 2, "rute-etape skal stadig producere waypoints");
+  assert.ok(out.passages.some((p) => p.kind === "finish" && p.km === 180));
+});
