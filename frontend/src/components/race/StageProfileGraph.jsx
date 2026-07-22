@@ -117,6 +117,19 @@ export default function StageProfileGraph({
         const cy = Y(series.ys[crestIdx]);
         const labelY = (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
         const w = c.category === "HC" ? 20 : 13;
+        // Label-ankeret trækkes ind ved kanterne. En summit-finish har
+        // crest_km === distance_km, så dens navn ville ellers centreres PÅ
+        // grafens højre kant og løbe ~40 px udenfor — og det er præcis de
+        // etaper hvor stigningen er dagens historie.
+        const EDGE = 64;
+        const nearEnd = cx > width - p.r - EDGE;
+        const nearStart = cx < p.l + EDGE;
+        const textAnchor = nearEnd ? "end" : nearStart ? "start" : "middle";
+        const textX = nearEnd ? width - p.r : nearStart ? p.l : cx;
+        // Point-mærkatet sidder normalt til højre for chippen; ved højre kant
+        // flyttes det til venstre for den, så det ikke skydes ud over stregen.
+        const ptsX = nearEnd ? cx - w / 2 - 4 : cx + w / 2 + 4;
+        const ptsAnchor = nearEnd ? "end" : "start";
         return (
           <g key={`lbl${i}`}>
             <line x1={cx} y1={cy} x2={cx} y2={labelY + (full ? 30 : 14)}
@@ -127,15 +140,15 @@ export default function StageProfileGraph({
             </text>
             {full && (
               <>
-                <text x={cx + w / 2 + 4} y={labelY + 9} fontSize="7.5" className="font-mono"
+                <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="7.5" className="font-mono"
                   fill="rgb(var(--jersey-mountain-bg))">
                   {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
                 </text>
-                <text x={cx} y={labelY + 22} textAnchor="middle" fontSize="8.5" fontWeight="600"
+                <text x={textX} y={labelY + 22} textAnchor={textAnchor} fontSize="8.5" fontWeight="600"
                   className="fill-cz-1" style={{ letterSpacing: "0.05em" }}>
                   {(c.name || "").toUpperCase()}
                 </text>
-                <text x={cx} y={labelY + 31} textAnchor="middle" fontSize="8" className="fill-cz-2 font-mono">
+                <text x={textX} y={labelY + 31} textAnchor={textAnchor} fontSize="8" className="fill-cz-2 font-mono">
                   {t("detail.route.waypoint.gradient", {
                     length: c.length_km.toFixed(1), gradient: c.avg_gradient.toFixed(1),
                   })}
