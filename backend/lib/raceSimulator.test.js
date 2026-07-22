@@ -12,6 +12,7 @@ import {
   FATIGUE_RACE_WEIGHT,
   DURABILITY_FATIGUE_DAMPING,
   DESCENDING_FINALE_WEIGHT,
+  stageGapModel,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -483,4 +484,46 @@ test("#1122 finalScore inkluderer finale-komponenten (forklarlighed)", () => {
   const c = ranked[0].components;
   const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
   assert.ok(Math.abs(sum - ranked[0].finalScore) < 1e-12);
+});
+
+// ── Sub-3 (#2771) Task 1: stageGapModel — ankret rute-modifier-model ──────────
+test("stageGapModel uden rutedata = anker-værdier (identitet)", () => {
+  assert.deepEqual(stageGapModel({ profile_type: "mountain" }), { bunch: 0.0, spread: 600 });
+  assert.deepEqual(stageGapModel({ profile_type: "flat" }), { bunch: 0.06, spread: 40 });
+  assert.deepEqual(stageGapModel({ profile_type: "ukendt" }), { bunch: 0.03, spread: 150 });
+});
+
+test("summit-finish åbner gab: spread ×1.3, bunch 0", () => {
+  const m = stageGapModel({
+    profile_type: "mountain", distance_km: 160,
+    climbs: [{ category: "1", crest_km: 160, summit_finish: true }],
+  });
+  // kategori-faktor 1 (×1.10) · summit (×1.3): 600·1.1·1.3 = 858
+  assert.equal(m.spread, Math.round(600 * 1.1 * 1.3));
+  assert.equal(m.bunch, 0);
+});
+
+test("dal-finish komprimerer: ≥10 km efter sidste top → ×0.6", () => {
+  const m = stageGapModel({
+    profile_type: "mountain", distance_km: 170,
+    climbs: [{ category: "2", crest_km: 150, summit_finish: false }],
+  });
+  assert.equal(m.spread, Math.round(600 * 1.0 * 0.6)); // cat2 ×1.0 · dal ×0.6
+});
+
+test("HC-kategori skalerer hårdest", () => {
+  const hc = stageGapModel({ profile_type: "high_mountain", distance_km: 150, climbs: [{ category: "HC", crest_km: 150, summit_finish: true }] });
+  const c3 = stageGapModel({ profile_type: "high_mountain", distance_km: 150, climbs: [{ category: "3", crest_km: 150, summit_finish: true }] });
+  assert.ok(hc.spread > c3.spread);
+});
+
+test("ITT skalerer med distance; prolog-distance giver små gab", () => {
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 30 }).spread, 700);
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 6 }).spread, 150);  // clamp-gulv
+  assert.equal(stageGapModel({ profile_type: "itt", distance_km: 40 }).spread, Math.round(700 * 40 / 30));
+});
+
+test("samlet spread-clamp [40, 1000]", () => {
+  const m = stageGapModel({ profile_type: "high_mountain", distance_km: 140, climbs: [{ category: "HC", crest_km: 140, summit_finish: true }] });
+  assert.ok(m.spread <= 1000);
 });

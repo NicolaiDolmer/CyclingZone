@@ -344,8 +344,48 @@ export function terrainScore(abilities, demandVector) {
   return s;
 }
 
-function gapFor(profileType, deficit) {
-  const m = GAP_MODEL[profileType] || GAP_MODEL_DEFAULT;
+// Sub-3 (#2771): rute-bevidst gap-model — ankret modifier-model (ejer-valgt 22/7).
+// GAP_MODEL-tabellen er ANKERET (gate-kalibreret); rute-signaler ganger faktorer
+// på spread. Uden rutedata er alle faktorer 1.0 → bit-identisk med main.
+// En fuld kontinuerlig model er senere drop-in bag SAMME grænseflade.
+export const SUMMIT_SPREAD_FACTOR = 1.3;        // bånd 1.2-1.4 (kalibrering)
+export const VALLEY_SPREAD_FACTOR = 0.6;        // bånd 0.5-0.75
+export const VALLEY_MIN_DESCENT_KM = 10;
+export const LAST_CLIMB_CATEGORY_FACTORS = Object.freeze({ HC: 1.25, "1": 1.10, "2": 1.0, "3": 0.85, "4": 0.7 });
+export const ITT_REFERENCE_KM = 30;
+const CLIMB_GAP_PROFILES = new Set(["mountain", "high_mountain", "hilly"]);
+const SPREAD_CLAMP = [40, 1000];
+
+export function stageGapModel(stageProfile = {}) {
+  const anchor = GAP_MODEL[stageProfile.profile_type] || GAP_MODEL_DEFAULT;
+  let { bunch, spread } = anchor;
+  const climbs = Array.isArray(stageProfile.climbs) ? stageProfile.climbs : [];
+  const distance = Number(stageProfile.distance_km);
+  const pt = stageProfile.profile_type;
+
+  if (pt === "itt" || pt === "ttt") {
+    if (Number.isFinite(distance) && distance > 0) {
+      // Loft = SPREAD_CLAMP[1] (1000), ikke 900: en 40 km ITT (700·40/30≈933)
+      // skal skalere frit under det generelle loft, ikke klippes af et separat.
+      spread = clamp(Math.round(anchor.spread * (distance / ITT_REFERENCE_KM)), 150, SPREAD_CLAMP[1]);
+    }
+    return { bunch, spread };
+  }
+  const last = climbs.length ? climbs[climbs.length - 1] : null;
+  if (last && CLIMB_GAP_PROFILES.has(pt)) {
+    spread *= LAST_CLIMB_CATEGORY_FACTORS[last.category] ?? 1.0;
+    if (last.summit_finish) {
+      spread *= SUMMIT_SPREAD_FACTOR;
+      bunch = 0;
+    } else if (Number.isFinite(distance) && distance - Number(last.crest_km) >= VALLEY_MIN_DESCENT_KM) {
+      spread *= VALLEY_SPREAD_FACTOR;
+    }
+  }
+  return { bunch, spread: Math.round(clamp(spread, SPREAD_CLAMP[0], SPREAD_CLAMP[1])) };
+}
+
+function gapFor(stageProfile, deficit) {
+  const m = stageGapModel(stageProfile);
   if (deficit <= m.bunch) return 0;
   return Math.round(clamp((deficit - m.bunch) * m.spread, 0, MAX_STAGE_GAP_SECONDS));
 }
@@ -471,7 +511,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     team_id: r.team_id,
     rank: i + 1,
     finalScore: r.finalScore,
-    stageGap: gapFor(profileType, winnerScore - r.finalScore),
+    stageGap: gapFor(stageProfile, winnerScore - r.finalScore),
     components: r.components,
   }));
 
