@@ -24,7 +24,7 @@
   "signingFee": "Signeringspris",
   "expiryDays": "{days}d tilbage",
   "expiryToday": "Udløber i dag",
-  "expiryTooltip": "Et kandidat-tilbud løber i 7 dage. Når det udløber, ryger rytteren på 24-timers ungdomsauktion — og du får salgssummen, hvis nogen køber ham.",
+  "expiryTooltip": "Et kandidat-tilbud løber i 7 dage. Når det udløber, ryger rytteren på 24-timers ungdomsauktion, og du får salgssummen, hvis nogen køber ham.",
   "loading": "...",
   "fullTooltip": "Akademiet er fuldt ({max}/{max}). Frigør en plads først.",
   "fullNote": "Akademiet er fuldt. Signér først når en plads bliver ledig.",
