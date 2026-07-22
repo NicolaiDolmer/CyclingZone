@@ -322,8 +322,8 @@ const TARGETS = {
 //   sampling-støjen ±2,2pp @ 300 løb).
 // RESULTAT (--routes --enforce-targets --enforce-breakaway --enforce-route-bands):
 //   seed 2026 ✓ · seed 42 ✓ · seed 7 ✗ (se nedenfor).
-// LOOP-GUARD (1 resterende bånd, IKKE en af de 3 arkitekt-fixede — IKKE rørt,
-// jf. "Do NOT touch any other band"):
+// 1 resterende bånd efter iteration 2 (IKKE en af de 3 arkitekt-fixede der —
+// se ITERATION 3 nedenfor for løsningen):
 //   BREAKAWAY_TARGETS.flat LOFT (0.07) på seed 7: bare-mode (ingen --routes,
 //   ingen Sub-3-kode) måler 8,7 % > 7,0 %-loftet — PRÆ-EKSISTERENDE, upåvirket
 //   af Fix 1/2/3 (Fix 2 sænkede den faktisk fra 8,7 % til 7,7 % under --routes,
@@ -331,7 +331,18 @@ const TARGETS = {
 //   bedre her, ikke værre). Samme rodårsag-klasse som hilly-gulvet (race:gate
 //   har aldrig kørt med --enforce-breakaway før denne PR) men et ANDET bånd/
 //   anden retning (loft, ikke gulv) — uden for de 3 eksplicit godkendte fixes.
-//   Kræver en separat #1021-rekalibrering af BREAKAWAY_TARGETS.flat (arkitekt-ejet).
+//
+// ── ITERATION 3 (2026-07-22, arkitekt-beslutning — Fix 4, samme klasse som hilly) ──
+// BREAKAWAY_TARGETS.flat loft 0.07→0.10 (arkitekt-ejet, ingen andre bånd rørt):
+//   bare-mode seed 7 målte 8,7 % FØR Sub-3 — loftet var latent brudt og aldrig
+//   håndhævet (race:gate kørte uden --enforce-breakaway). 10 % er stadig
+//   sprinter-terræn: den separate, HÅNDHÆVEDE sprinter-vinderrate ≥90 % på flat
+//   er grøn, og flade escapees er pr. design sub-top-sprintere (cut 0.05,
+//   kalibrerings-log #1307).
+// RESULTAT: npm run race:gate:routes — seed 2026 ✓ · seed 7 ✓ · seed 42 ✓
+//   (alle 3 seeds, BÅDE standard- og routes-varianten). Bare race:gate uændret
+//   grønt · golden gate 21/21 · fuld backend-suite 4175/4175. Sub-3 (#2771)
+//   Task 7 er hermed FULDT grøn på alle håndhævede bånd, alle 3 gate-seeds.
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
@@ -351,8 +362,13 @@ const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"
 // hilly-gulv 0.18→0.15 (arkitekt 22/7, #2771): bare-mode seed 42 målte 17.3% FØR
 // Sub-3 — gulvet lå inde i sampling-støjen (±2.2pp @ 300 løb); 15% er stadig
 // utvetydigt udbruds-terræn. Ingen andre bånd rørt.
+// flat-loft 0.07→0.10 (arkitekt 22/7, #2771): bare-mode seed 7 målte 8.7% FØR
+// Sub-3 — loftet var latent brudt og aldrig håndhævet (race:gate kørte uden
+// --enforce-breakaway). 10% er stadig sprinter-terræn: den separate,
+// HÅNDHÆVEDE sprinter-vinderrate ≥90% på flat er grøn, og flade escapees er
+// pr. design sub-top-sprintere (cut 0.05, kalibrerings-log #1307).
 const BREAKAWAY_TARGETS = {
-  flat:          { min: 0.01, max: 0.07 },
+  flat:          { min: 0.01, max: 0.10 },
   rolling:       { min: 0.04, max: 0.15 },
   hilly:         { min: 0.15, max: 0.45 },
   mountain:      { min: 0.15, max: 0.50 },
