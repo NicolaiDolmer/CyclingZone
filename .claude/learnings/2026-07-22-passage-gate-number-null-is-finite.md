@@ -46,3 +46,14 @@ Fixturer blev skrevet ud fra **koden**, ikke ud fra **datalaget**. `null` vs `un
 ## Hvad der gik rigtigt
 
 Den adversariske verifikations-workflow mod **live data** (ikke kun tests) fandt fejlen samme dag, før nogen slut-klassementer blev skrevet. Uden den ville de 25 løb have afsluttet med skala-inkonsistente trøjer.
+
+## Bagud-tjek (udført 22/7)
+
+`grep -rn "Number.isFinite(Number(" backend/lib backend/routes` gav 19 forekomster uden for testfiler. Gennemgået én for én:
+
+- **Korrekt guardet** (parret med eksplicit `!= null`/`!== null`): `abilityDerivation.js:160-161`, `balanceSnapshot.js:61,73`, `boardEvaluation.js:202`, `boardWeekendUpdate.js:205`, `racePeaks.js:158`, `economyEngine.js:1255,1355`, `boardWeekendFinalization.js:356`. De tre sidste er de mest kritiske (sæson-start-anker for bestyrelsens tilfredshed, hvor **25 af 420 board_profiles faktisk har `season_start_satisfaction` NULL** i prod) — alle tre har `&& board.season_start_satisfaction !== null` ved siden af, så ankeret falder korrekt tilbage til den løbende værdi.
+- **Ufarlig**, fordi fallback-værdien er 0 uanset: `raceIncidents.js:55` (positioning), `raceFatigue.js:57` (startFatigue).
+- **Skrøbeligt mønster uden live-effekt**: `boardTransparency.js:44-45` bruger `Number.isFinite(Number(board?.satisfaction)) ? ... : 50` — en NULL ville give 0 i stedet for default 50, men `satisfaction`/`budget_modifier` er NOT NULL i praksis (0 af 420 rækker). Værd at stramme ved næste berøring, ikke et issue værd nu.
+- `raceRunner.js:1259,1871` regner på en beregnet værdi, ikke en DB-kolonne.
+
+**Konklusion: ingen søskende-fejl med live-effekt.** Fælden opstår kun når `Number.isFinite(Number(x))` bruges som *eksistens-tjek* på en nullable DB-kolonne uden null-guard — hvilket kun passage-gaten gjorde.
