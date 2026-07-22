@@ -54,7 +54,7 @@ async function main() {
     const meta = metaByPool.get(race.pool_race_id) || {};
     const seedRace = { ...race, external_id: meta.external_id ?? null, name: meta.name ?? race.name, season_id: race.season_id };
     const route = attachRoute(
-      { stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, is_prolog: p.stage_number === 1 && p.profile_type === "itt" },
+      { stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type },
       seedRace, race.race_type === "stage_race",
     );
     if (!DRY_RUN) {

@@ -256,7 +256,7 @@ export function finaleFor(rng, profileType) {
   return pick(rng, options.slice(1));
 }
 
-function toStage(rng, profileType, stageNumber, race, isStageRace, isProlog = false) {
+function toStage(rng, profileType, stageNumber, race, isStageRace) {
   const base = {
     stage_number: stageNumber,
     profile_type: profileType,
@@ -264,7 +264,7 @@ function toStage(rng, profileType, stageNumber, race, isStageRace, isProlog = fa
     demand_vector: demandVectorFor(profileType),
   };
   // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke `rng` ovenfor).
-  const route = attachRoute({ ...base, is_prolog: isProlog }, race, isStageRace);
+  const route = attachRoute(base, race, isStageRace);
   return { ...base, ...route };
 }
 
@@ -281,8 +281,7 @@ function orderAndBuild(rng, types, stages, race) {
     .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
     .sort((a, b) => a.key - b.key)
     .map((x) => x.t);
-  // Prolog: en åbnings-itt på stage 1 markeres som prolog (kort 5–8 km ITT). Kun etapeløb.
-  return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true, i === 0 && profileType === "itt"));
+  return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true));
 }
 
 // Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.

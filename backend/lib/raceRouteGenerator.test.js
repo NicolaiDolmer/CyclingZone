@@ -52,11 +52,6 @@ test("etapeløbs-etape → mellemsprint + målspurt; endagsløb → kun målspur
   assert.ok(oneDay.sprints.every((s) => s.kind === "finish"));
 });
 
-test("prolog-flag → itt-distance i 5–8 km", () => {
-  const r = attachRoute({ ...stage("itt", "solo_tt"), is_prolog: true }, race, true);
-  assert.ok(r.distance_km >= 5 && r.distance_km <= 8);
-});
-
 test("climb-navne er region-flavoured + ikke-tomme", () => {
   const es = attachRoute(stage("high_mountain", "long_climb"), { ...race, name: "Vuelta Burgalesa" }, true);
   assert.ok(es.climbs.every((c) => typeof c.name === "string" && c.name.length > 0));

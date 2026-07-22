@@ -36,8 +36,6 @@ export const DISTANCE_BANDS = Object.freeze({
   cobbles: [150, 170], classic: [200, 260],
   itt: [15, 40], ttt: [25, 45],
 });
-export const PROLOG_BAND = Object.freeze([5, 8]);
-
 // Climb-antal + kategori-pool pr. profil (spec §4.1).
 const CLIMB_SPEC = Object.freeze({
   flat: { count: [0, 1], cats: ["4"] },
@@ -180,7 +178,7 @@ function elevationGain(climbs, profileType) {
 
 /**
  * Berig én etape med en rute (pass 2). Ren funktion — muterer ikke input.
- * @param {{stage_number:number, profile_type:string, finale_type:(string|null), is_prolog?:boolean}} stage
+ * @param {{stage_number:number, profile_type:string, finale_type:(string|null)}} stage
  * @param {{external_id?:string, pool_race_id?:string, id?:string, season_id?:string, name?:string}} race
  * @param {boolean} isStageRace  true = etape i et etapeløb; false = endagsløb (kun målspurt)
  * @returns {{distance_km,elevation_gain_m,climbs,sprints,sectors}}
@@ -190,14 +188,10 @@ export function attachRoute(stage, race, isStageRace) {
   const rng = makeRng(stableSeed(routeSeedKey(race, stage.stage_number)));
   const namer = makeRegionNamer(rng, regionOf(race?.name));
 
-  let distance_km;
-  if (pt === "itt" && stage.is_prolog) distance_km = randInt(rng, PROLOG_BAND[0], PROLOG_BAND[1]);
-  else {
-    const [lo, hi] = DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat;
-    distance_km = pt === "itt" || pt === "ttt" ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
-    if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
-    if (distance_km > hi) distance_km = hi;
-  }
+  const [lo, hi] = DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat;
+  let distance_km = pt === "itt" || pt === "ttt" ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
+  if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
+  if (distance_km > hi) distance_km = hi;
 
   const climbs = buildClimbs(rng, pt, stage.finale_type, distance_km, namer);
   const sprints = buildSprints(rng, pt, stage.finale_type, distance_km, isStageRace);
