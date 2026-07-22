@@ -12,7 +12,7 @@
 
 > **🎓 Træning/ungdom-addendum (ejer-låst 16/7):** [spec](superpowers/specs/2026-07-16-traening-ungdom-verdensklasse-addendum-design.md), epic [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492). Fase 0 (uge 30-31): #2484 · #2485 · #2486. Ejer-rest fra tidligere: #2645B + #2650 fatigue (simulér-før-ship) · #2461 Discord-udkast. **Peak-planner LIVE for alle 21/7:** #2568 del 2 (scannbar løbs-liste + løbsside-link) merged (PR #2773) + `peak_planner_enabled` on. Opfølgning: #2772 (per-rytter belastning).
 
-> **🏁 Løbsmotor-epic:** [#2768](https://github.com/NicolaiDolmer/CyclingZone/issues/2768) verdensklasse løbsmotor. **Sub-1 (rute-datamodel + generator) LIVE 22/7** (PR #2775, [#2769](https://github.com/NicolaiDolmer/CyclingZone/issues/2769) done): additiv rute-model + pass-2-generator, motoren bit-identisk; nye arketyper + 13 katalog-re-tags + S2-regen løser #2755/#2177/#2527 (tier 3+4 rammer alle bånd, LIVE-verificeret). Rute-data persisteret men ikke vist endnu (UI = Sub-4 #2448). **Næste: Sub-2 (#2770) + Sub-3 (#2771) = dedikeret Fable-arkitekt-session** (matematisk tunge: dybe konkurrencer, gap-model). Absorberer #2448/#2476.
+> **🏁 Løbsmotor-epic:** [#2768](https://github.com/NicolaiDolmer/CyclingZone/issues/2768). Sub-1 LIVE 22/7 (#2769 done). **Sub-2 (#2770) LIVE 22/7** (PR #2777, migration applied+verificeret): KOM/grøn-passager (Tour-skalaer, udbryder kan tage bjergtrøjen) + bonussekunder 10/6/4+3/2/1 → GC + passage-liste på etapesiden; alle 5 balance-bånd grønne (race:competitions-gate). **Sub-3 (#2771) LIVE 22/7** (PR #2778 + #2780): rute-bevidst gap-model (stageGapModel, summit/dal/kategori/ITT-eksponent 1,3), distance→fatigue+long_day, udbruds-forfining, tekniske finaler, GT-åbnings-ITT+prolog; golden-gate beviser S1/legacy bit-identisk; race:gate:routes grøn 3 seeds. **⏳ ENESTE REST: S2-profil-regen (ejer kører kommando — classifier-blokeret for agenten; dry-run 455 løb/1148 etaper OK + scorecard GO).** Derefter S2 = fuld pakke fra dag 1. UI-graf = Sub-4 #2448; sidevind = Sub-5 #2476. HC-minimum pr. GT = opgave-chip.
 
 > **Ejer-klikliste (øvrig):** #2588 /training-klik-test · Sentry alert 559456 regression-condition · #2357 flip-bølge-verify · TdF-dag (#2080) · #2276/#2288/#2100 · #2076/#2085/#1784.
 
@@ -20,7 +20,7 @@
 >
 > **🔕 Ops-hygiejne 20/7:** Discord-ops-spam stoppet ([#2730](https://github.com/NicolaiDolmer/CyclingZone/issues/2730)/PR #2733) — balance-drift-alarm var boot-kørt + dedup-løs → ét ping pr. deploy; nu edge-triggered via ny `ops_alert_state`-tabel (migration applied). Ægte balance-brud (maxRiderWinRate 0,67-0,75 vs mål 0,45) spores i [#2731](https://github.com/NicolaiDolmer/CyclingZone/issues/2731).
 >
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Fable-arkitekt-session 22/7 (Sub-2+Sub-3) — afventer KUN ejer-kørsel af S2-regen-kommando, ellers afsluttet.
 >
 ## Standing context (forever-relaunch)
 
