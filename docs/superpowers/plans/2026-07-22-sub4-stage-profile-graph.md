@@ -627,15 +627,19 @@ export function routeReadKeys(profile) {
 }
 
 /**
- * Waypoints i køre-rækkefølge. `index` matcher race_stage_passages.waypoint_index
- * (positionen i climbs[] hhv. i mellemsprint-listen), så et klik på grafen kan slå
- * Sub-2's passage-resultat op uden ekstra opslag.
+ * Waypoints i køre-rækkefølge. `index` matcher race_stage_passages.waypoint_index,
+ * så et klik på grafen kan slå Sub-2's passage-resultat op uden ekstra opslag.
+ *
+ * VIGTIGT: index er positionen i det RÅ climbs-array. backend/lib/racePassages.js:88
+ * indekserer `climbs.map((c, i) => ...)` UDEN at sortere først, så en sorteret
+ * frontend-indeksering ville pege på den forkerte stigning hvis en række nogensinde
+ * får climbs i ikke-km-orden. Kun waypoint-LISTEN sorteres — til visning.
  */
 export function waypointsFor(profile) {
   if (!hasRouteData(profile)) return [];
   const D = Number(profile.distance_km);
   const out = [];
-  sortedClimbs(profile).forEach((c, i) => {
+  (Array.isArray(profile.climbs) ? profile.climbs : []).forEach((c, i) => {
     out.push({
       kind: "kom", index: i, name: c.name, km: Number(c.crest_km),
       category: c.category, length_km: Number(c.length_km),
@@ -650,17 +654,22 @@ export function waypointsFor(profile) {
       points: INTERMEDIATE_SPRINT_SCALE[0], bonus: INTERMEDIATE_BONUS_SECONDS[0],
     });
   });
-  const green = GREEN_FINISH_SCALES[profile.profile_type] || GREEN_FINISH_SCALES.flat;
+  // Fallback = mountain, ikke flat: spejler scaleFor() i racePassages.js:51.
+  // Grafen skal vise det tal motoren FAKTISK ville uddele.
+  const green = GREEN_FINISH_SCALES[profile.profile_type] || GREEN_FINISH_SCALES.mountain;
   const soloStart = profile.profile_type === "itt" || profile.profile_type === "ttt";
   out.push({
     kind: "finish", index: 0, name: null, km: D,
     points: green[0], bonus: soloStart ? 0 : FINISH_BONUS_SECONDS[0],
   });
-  return out.sort((a, b) => a.km - b.km);
+  // Samme tiebreak som backend (racePassages.js:90): kom før sprint ved samme km.
+  return out.sort((a, b) => a.km - b.km || (a.kind === "kom" ? -1 : 1));
 }
 ```
 
-**Bemærk til den udførende:** `GREEN_FINISH_SCALES` skal matche backendens eksport nøjagtigt. Åbn `backend/lib/racePassages.js` og kopiér den faktiske form (nøgler og værdier) — hvis backendens objekt har en anden struktur end skitsen ovenfor (fx bånd-nøgler i stedet for profil-nøgler), så ret frontend-konstanten til at spejle backend og tilpas drift-guard-testen tilsvarende. Testen er sandheden; skitsen er ikke.
+**Bemærk til den udførende:** `GREEN_FINISH_SCALES` skal matche backendens eksport nøjagtigt. Åbn `backend/lib/racePassages.js` og kopiér den faktiske form (nøgler og værdier) — hvis backendens objekt har en anden struktur end skitsen ovenfor, så ret frontend-konstanten til at spejle backend og tilpas drift-guard-testen tilsvarende. Testen er sandheden; skitsen er ikke.
+
+`routeReadKeys` sorterer derimod FORTSAT på `crest_km` for at finde "sidste stigning" — det er en anden operation, og motoren gør præcis det samme i `stageGapModel`.
 
 - [ ] **Step 4: Kør testene**
 
@@ -1599,17 +1608,16 @@ git commit -m "docs: #2448 patch note + hjaelp for etapeprofil-grafen"
 
 **Gate:** denne task bygges KUN hvis målingen i Step 1 holder sig inden for budgettet. Gør den ikke, **droppes fladen** og boardet beholder sin nuværende visning. Rapportér målingen ærligt i PR-beskrivelsen uanset udfald.
 
-- [ ] **Step 1: Mål omkostningen FØR du bygger**
+- [x] **Step 1: Mål omkostningen FØR du bygger — MÅLT 2026-07-22, GATEN PASSERER**
 
-Kør mod prod (læs-only) og noter tid + svar-størrelse for et realistisk board-udsnit (~40 synlige løb):
+Målt mod prod for et realistisk board-udsnit (40 løb → 208 etape-rækker):
 
-```sql
-SELECT stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors
-FROM race_stage_profiles
-WHERE race_id IN (SELECT id FROM races WHERE season_id = (SELECT id FROM seasons WHERE number = 2) LIMIT 40);
-```
+| Metrik | Målt | Budget | Status |
+|---|---|---|---|
+| Eksekveringstid | **60 ms** (index-scan på `idx_race_stage_profiles_race`, 159 shared buffer hits) | ≤150 ms | ✅ |
+| JSON-payload | **89 kB** (27 kB uden `climbs`-kolonnen) | ≤250 kB | ✅ |
 
-Budget: **≤150 ms og ≤250 KB**. Overskrides det, spring Task 12 over, noter det i PR'en og luk fladen som "målt for dyr" i issue-tråden.
+Fladen bygges. `climbs`-jsonb'en tredobler payloaden, men 89 kB er langt under budgettet, og uden `climbs` kan silhuetten ikke tegnes med samme geometri som etapesiden — en billigere, anderledes kurve ville være inkonsistent, ikke bare mindre.
 
 - [ ] **Step 2: Hent profiler for de synlige løb**
 
