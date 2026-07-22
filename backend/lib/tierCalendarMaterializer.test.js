@@ -215,8 +215,8 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
   const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
   assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
 
-  // generator_version stemplet 3 på hver profil.
-  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, 3);
+  // generator_version stemplet 4 på hver profil (#2769: pass 2 rute-berigelse wired ind).
+  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, 4);
 
   const profByRaceId = new Map();
   for (const p of sb.state.race_stage_profiles) {

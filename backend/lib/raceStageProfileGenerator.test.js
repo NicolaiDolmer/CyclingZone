@@ -1,5 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+const __dir = dirname(fileURLToPath(import.meta.url));
 
 import {
   generateRaceStageProfiles,
@@ -29,8 +33,8 @@ function stageRace(stages, id = `race-stage-${stages}`) {
   return { id, race_type: "stage_race", stages };
 }
 
-test("GENERATOR_VERSION er 3 (arketype-seedet + sæson-akse)", () => {
-  assert.equal(GENERATOR_VERSION, 3);
+test("GENERATOR_VERSION er 4 (pass 2: rute-berigelse wired ind, #2769)", () => {
+  assert.equal(GENERATOR_VERSION, 4);
 });
 
 // ── v2 seed-identitet (#fix): samme rigtige løb → samme parcours i alle puljer ──
@@ -379,4 +383,30 @@ test("#1021 high_mountain kan slutte på descent (ikke-summit dag), ikke kun lon
 
 test("#1021 finaleFor er eksporteret og deterministisk", () => {
   assert.equal(finaleFor(makeRng(42), "flat"), finaleFor(makeRng(42), "flat"));
+});
+
+// ── #2769 Sub-1 Task 3: pass 2 (rute) wired ind — pass 1 skal forblive bit-identisk ──
+test("pass 1 (profile/finale/demand) er bit-identisk efter pass 2 (golden)", () => {
+  const golden = JSON.parse(readFileSync(join(__dir, "__fixtures__/pass1-golden.json"), "utf8"));
+  const cases = {
+    r1: { id: "r1", external_id: "8fe98b9f788c3b06", season_id: "s2", race_type: "stage_race", stages: 4, terrain_archetype: "mountain_tour" },
+    r2: { id: "r2", external_id: "241b2846959aa1c7", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "balanced_week" },
+    r3: { id: "r3", external_id: "50c62405df6384e4", season_id: "s2", race_type: "single", stages: 1, terrain_archetype: "puncheur" },
+    r4: { id: "r4", external_id: "37e566b5829adb99", season_id: "s2", race_type: "stage_race", stages: 5, terrain_archetype: "sprinters_week" },
+  };
+  for (const [key, race] of Object.entries(cases)) {
+    const got = generateRaceStageProfiles(race).map((p) => ({
+      stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, demand_vector: p.demand_vector,
+    }));
+    assert.deepEqual(got, golden[key], `pass 1 ændret for ${key}`);
+  }
+});
+
+test("pass 2 er additivt: rute-felter er til stede på hver etape", () => {
+  const ps = generateRaceStageProfiles({ id: "r1", external_id: "8fe98b9f788c3b06", season_id: "s2", race_type: "stage_race", stages: 4, terrain_archetype: "mountain_tour" });
+  for (const p of ps) {
+    assert.equal(typeof p.distance_km, "number");
+    assert.ok(Array.isArray(p.climbs) && Array.isArray(p.sprints) && Array.isArray(p.sectors));
+    assert.equal(typeof p.elevation_gain_m, "number");
+  }
 });

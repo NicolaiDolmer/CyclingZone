@@ -20,13 +20,16 @@
 // launch-defaults — centraliseret her, så de er ÉT sted at tune.
 
 import { makeRng } from "./fictionalRiderGenerator.js";
+import { attachRoute } from "./raceRouteGenerator.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
 // terrænfordeling (ARCHETYPE_PROFILES) + sæson-akse i seed'en (variation pr. sæson).
 // Bump'et stempler regenererede rækker, så de kan skelnes fra ældre (intet
 // runtime-guard afhænger af tallet — kun et persisteret stempel).
-export const GENERATOR_VERSION = 3;
+// v4 (2026-07-21, #2769): pass 2 (attachRoute) beriger hver etape med en rute
+// (distance/climbs/sprints/sektorer) via en dedikeret rng-strøm. Pass 1 bit-identisk.
+export const GENERATOR_VERSION = 4;
 
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
@@ -241,57 +244,61 @@ export function finaleFor(rng, profileType) {
   return pick(rng, options.slice(1));
 }
 
-function toStage(rng, profileType, stageNumber) {
-  return {
+function toStage(rng, profileType, stageNumber, race, isStageRace, isProlog = false) {
+  const base = {
     stage_number: stageNumber,
     profile_type: profileType,
     finale_type: finaleFor(rng, profileType),
     demand_vector: demandVectorFor(profileType),
   };
+  // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke `rng` ovenfor).
+  const route = attachRoute({ ...base, is_prolog: isProlog }, race, isStageRace);
+  return { ...base, ...route };
 }
 
 // Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
-function buildSingle(rng, cfg) {
+function buildSingle(rng, cfg, race) {
   const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
-  return [toStage(rng, weightedPick(rng, weights), 1)];
+  return [toStage(rng, weightedPick(rng, weights), 1, race, false)];
 }
 
 // Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Delt af begge stier.
-function orderAndBuild(rng, types, stages) {
+function orderAndBuild(rng, types, stages, race) {
   types.length = stages; // defensiv trim
   const ordered = types
     .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
     .sort((a, b) => a.key - b.key)
     .map((x) => x.t);
-  return ordered.map((profileType, i) => toStage(rng, profileType, i + 1));
+  // Prolog: en åbnings-itt på stage 1 markeres som prolog (kort 5–8 km ITT). Kun etapeløb.
+  return ordered.map((profileType, i) => toStage(rng, profileType, i + 1, race, true, i === 0 && profileType === "itt"));
 }
 
 // Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.
 // STAGE_FILLER_WEIGHTS har ingen TT, så generisk kan ikke akkumulere TT fra filler;
 // TT-loftet håndhæves alligevel defensivt (guaranteed TT ⊆ de 2 første pladser).
-function buildStageRaceGeneric(rng, stages) {
+function buildStageRaceGeneric(rng, stages, race) {
   const types = ["flat", "mountain"];
   if (stages >= 5 && rng() < 0.7) types.push("itt");
   const protectedCount = types.length; // flad+bjerg(+evt. itt) = garantier
   while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
   capTimeTrials(rng, types, protectedCount, STAGE_FILLER_WEIGHTS);
-  return orderAndBuild(rng, types, stages);
+  return orderAndBuild(rng, types, stages, race);
 }
 
 // Arketype-drevet: garantier (force-include, trimmet til stages) + filler-vægte.
 // TT-loftet (#2029) håndhæves EFTER filler er lagt på: filler-tilføjede TT ud over
 // loftet re-rulles til ikke-TT-terræn, mens arketypens garanterede TT bevares.
-function buildStageRaceArchetype(rng, stages, cfg) {
+function buildStageRaceArchetype(rng, stages, cfg, race) {
   const types = cfg.guarantees.slice(0, stages);
   const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
   capTimeTrials(rng, types, protectedCount, cfg.filler);
-  return orderAndBuild(rng, types, stages);
+  return orderAndBuild(rng, types, stages, race);
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
-function buildStageRace(rng, stages, cfg) {
-  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg) : buildStageRaceGeneric(rng, stages);
+function buildStageRace(rng, stages, cfg, race) {
+  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg, race) : buildStageRaceGeneric(rng, stages, race);
 }
 
 /**
@@ -308,5 +315,5 @@ export function generateRaceStageProfiles(race, { seed } = {}) {
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
   const cfg = archetypeFor(race);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
-  return isStageRace ? buildStageRace(rng, stages, cfg) : buildSingle(rng, cfg);
+  return isStageRace ? buildStageRace(rng, stages, cfg, race) : buildSingle(rng, cfg, race);
 }
