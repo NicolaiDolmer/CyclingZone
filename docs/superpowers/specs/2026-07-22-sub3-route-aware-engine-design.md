@@ -113,7 +113,7 @@ Protokol (simulér-før-ship, ejer-accepteret arbejdsform):
 4. **Determinisme:** etaper UDEN rutedata deep-equal bit-identiske med main (testen der beviser data-gatingen).
 5. Scorecard-resultater i PR-beskrivelsen; merge først når ejeren har set dem.
 
-**Rollout-note:** Sub-3 ændrer adfærd for S2-løb midt i sæsonen fra merge-dagen (balance-patch, ikke re-run af kørte løb — kørte resultater er persisterede og urørlige). Patch notes forklarer. Prolog-arketypen kræver regen af kommende løbs profiler (ejer ser dry-run-tal først, jf. destruktiv-ops-reglen).
+**Rollout-note (ejer-besluttet 22/7):** Sub-2 + Sub-3 landes NU, i S1 — hele S2 kører med de nye ændringer fra sæsonstart (~27/7). S1-løb har ingen rutedata og kører legacy-stien uændret, så der er intet mid-sæson-adfærdsskifte. Prolog-arketypen kræver regen af S2-profiler før cutover (ejer ser dry-run-tal først, jf. destruktiv-ops-reglen).
 
 ---
 
