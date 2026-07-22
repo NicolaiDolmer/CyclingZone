@@ -562,7 +562,7 @@
     "route": {
       "stats": { "km": "KM", "elevation": "M", "climbs": "CLIMBS" },
       "read": {
-        "summit": { "label": "Summit finish", "note": "the climb is the line — no bunch finish" },
+        "summit": { "label": "Summit finish", "note": "the climb is the line, no bunch finish" },
         "valley": { "label": "{km} km descent to the line", "note": "chasers can come back" },
         "technical": { "label": "Technical finale", "note": "descending & positioning decide it" },
         "long": { "label": "Long day", "note": "endurance & fatigue amplified" },

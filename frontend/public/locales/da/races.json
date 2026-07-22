@@ -562,7 +562,7 @@
     "route": {
       "stats": { "km": "KM", "elevation": "M", "climbs": "STIGNINGER" },
       "read": {
-        "summit": { "label": "Målgang på toppen", "note": "stigningen er målstregen — ingen massespurt" },
+        "summit": { "label": "Målgang på toppen", "note": "stigningen er målstregen, ingen massespurt" },
         "valley": { "label": "{km} km nedkørsel til mål", "note": "forfølgerne kan nå tilbage" },
         "technical": { "label": "Teknisk finale", "note": "nedkørsel og positionering afgør det" },
         "long": { "label": "Lang dag", "note": "udholdenhed og træthed forstærkes" },
