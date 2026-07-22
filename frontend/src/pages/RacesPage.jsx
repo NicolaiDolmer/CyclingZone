@@ -11,6 +11,8 @@ import { racesForPool } from "../lib/racesByPool";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
+import { hasRouteData, sharedYMax } from "../lib/stageRouteProfile.js";
+import StageProfileGraph from "../components/race/StageProfileGraph.jsx";
 import {
   Card,
   Input,
@@ -76,6 +78,47 @@ const WORLD_ACCESSORS = {
   stages: (r) => r.stages ?? 0,
 };
 const WORLD_DESC_FIRST = new Set(["stages"]);
+
+// Sub-4 (#2448 Task 12): profil-thumbnail på de afsluttede løbskort. Rutedata
+// findes kun for løb der er migreret til Sub-1's race_stage_profiles — mangler
+// den, viser vi INTET (ikke et piktogram-gæt). Kortet er lille nok til at
+// tomhed er bedre end en form der lover noget den ikke har.
+const CARD_THUMB_W = 120;
+const CARD_THUMB_H = 34;
+
+function RaceCardRouteThumbnail({ race, profiles }) {
+  const withRoute = (profiles || [])
+    .filter(hasRouteData)
+    .sort((a, b) => (a.stage_number ?? 1) - (b.stage_number ?? 1));
+  if (withRoute.length === 0) return null;
+
+  // Endagsløb (eller et etapeløb hvor kun én etape har rutedata): én enkelt graf.
+  if (race.race_type !== "stage_race" || withRoute.length === 1) {
+    const p = withRoute[0];
+    return (
+      <div className="mt-2" style={{ width: CARD_THUMB_W, height: CARD_THUMB_H }}>
+        <StageProfileGraph profile={p} tier="mini" width={CARD_THUMB_W} height={CARD_THUMB_H}
+          uid={`cal-${race.id}-${p.stage_number ?? 1}`} />
+      </div>
+    );
+  }
+
+  // Etapeløb: komprimeret mini-stribe med ALLE etaper på FÆLLES y-skala — en
+  // enkelt etape ville give et falsk indtryk af hele løbets form. yMax er
+  // løbets EGET loft, ikke boardets — det ville gøre alle løb lige høje.
+  const yMax = sharedYMax(withRoute);
+  const perW = CARD_THUMB_W / withRoute.length;
+  return (
+    <div className="mt-2 flex" style={{ width: CARD_THUMB_W, height: CARD_THUMB_H }}>
+      {withRoute.map((p) => (
+        <div key={p.stage_number} style={{ width: perW }}>
+          <StageProfileGraph profile={p} tier="mini" width={perW} height={CARD_THUMB_H} yMax={yMax}
+            uid={`cal-${race.id}-${p.stage_number}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function RacesPage() {
   const { t } = useTranslation("races");
@@ -235,14 +278,59 @@ export default function RacesPage() {
   // spilleren ikke har en pulje (myPoolId === null).
   const myRaces = useMemo(() => racesForPool(races, myPoolId), [races, myPoolId]);
 
+  // #1930: afsluttede løb vises nyeste-først (spejler kommende-sorteringen men DESC).
+  // Memoized separat (#2448 Task 12) så profil-fetch-effekten herunder kun
+  // genkører når selve løbslisten ændrer sig — ikke ved hvert render (fx et klik
+  // der sætter selectedRace).
+  const completedRaces = useMemo(
+    () => sortRacesByDateDesc(myRaces.filter(r => r.results?.length > 0 || r.status === "completed")),
+    [myRaces],
+  );
+  const completedRaceIds = useMemo(() => completedRaces.map(r => r.id), [completedRaces]);
+
+  // #2448 (Task 12): rutedata KUN for de løb der faktisk renderes som kort
+  // (racesByStatus.completed) — ét .in()-kald, ikke hele kataloget. Gaten er målt
+  // mod prod (40 løb → 60 ms / 89 kB, budget 150 ms / 250 kB) og PASSERER.
+  const [stageProfilesByRace, setStageProfilesByRace] = useState({});
+
+  useEffect(() => {
+    if (completedRaceIds.length === 0) {
+      setStageProfilesByRace({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let rows;
+      try {
+        const { data, error } = await supabase
+          .from("race_stage_profiles")
+          .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
+          .in("race_id", completedRaceIds);
+        if (error) throw error;
+        rows = data || [];
+      } catch (err) {
+        // Thumbnailen er en ren visnings-bonus — en fejl her må ALDRIG vælte
+        // boardet. Samme degradér-ærligt-mønster som passagesPromise i
+        // RaceDetailPage.jsx: warn + tom liste, ingen kastet fejl.
+        console.warn("race_stage_profiles fetch failed (thumbnails degraderer til ingen):", err.message);
+        rows = [];
+      }
+      if (cancelled) return;
+      const byRace = {};
+      for (const row of rows) {
+        if (!byRace[row.race_id]) byRace[row.race_id] = [];
+        byRace[row.race_id].push(row);
+      }
+      setStageProfilesByRace(byRace);
+    })();
+    return () => { cancelled = true; };
+  }, [completedRaceIds]);
+
   const racesByStatus = {
     upcoming: myRaces
       .filter(r => !r.results?.length && r.status !== "completed")
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text)),
-    // #1930: afsluttede løb vises nyeste-først (spejler kommende-sorteringen men DESC).
-    completed: sortRacesByDateDesc(
-      myRaces.filter(r => r.results?.length > 0 || r.status === "completed"),
-    ),
+    completed: completedRaces,
   };
 
   if (loading) return (
@@ -308,6 +396,7 @@ export default function RacesPage() {
                           {t("status.completed")}
                         </span>
                       </div>
+                      <RaceCardRouteThumbnail race={race} profiles={stageProfilesByRace[race.id]} />
                     </Card>
                   ))}
                 </div>
