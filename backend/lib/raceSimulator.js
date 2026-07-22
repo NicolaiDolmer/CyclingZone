@@ -335,11 +335,56 @@ export function aggressionScore(abilities) {
   return 0.5 * a("tactics") + 0.3 * a("endurance") + 0.2 * a("acceleration");
 }
 
+// Sub-3 (#2771): rute/felt-faktorer på udbruds-bonus. Bounded: produktet
+// clampes i selectBreakawayBonuses til profilens kalibrerede loft (max af
+// BREAKAWAY_BONUS[profileType]'s værdier), så gate-bånd-lofterne fra
+// kalibrerings-loggen (fx flat ≤0.30) ALDRIG kan overskrides.
+//
+// INGEN rng-forbrug her — kun deterministisk aritmetik på stageProfile +
+// entrants. selectBreakawayBonuses' udvælgelses-sekvens (HVEM + hvor mange
+// escapees) er derfor uændret; kun bonus-STØRRELSEN (maxBonus-skalaren)
+// påvirkes.
+//
+// data-gating (VIGTIGT): sprinter-tætheds-termen bruger entrants' race_role,
+// som findes ALLERED for etaper uden rutedata (legacy-løb har sprint_captains
+// uden distance_km). Uden gaten ville tæthedstermen ændre bonus-størrelsen på
+// bit-identitets-gatens bare profiler. Derfor: densitetstermen aktiveres KUN
+// når etapen rent faktisk har rutedata (Number.isFinite(distance_km)) — uden
+// distance_km er faktoren ALTID nøjagtig 1 (distanceFactor giver også 1 for
+// ukendt/manglende profil), bit-identisk med main.
+export const SPRINTER_DENSITY_PROFILES = new Set(["flat", "rolling"]);
+export const SPRINTER_DENSITY_RANGE = [0.85, 1.15]; // faktor ved høj hhv. lav sprinter-tæthed
+export function routeBreakawayFactor(stageProfile, entrants = []) {
+  let f = Math.sqrt(distanceFactor(stageProfile));
+  const hasRouteData = Number.isFinite(Number(stageProfile?.distance_km));
+  if (hasRouteData && SPRINTER_DENSITY_PROFILES.has(stageProfile?.profile_type) && entrants.length) {
+    const teams = new Set(entrants.map((e) => e.team_id).filter(Boolean));
+    const scTeams = new Set(
+      entrants.filter((e) => e.race_role === "sprint_captain").map((e) => e.team_id)
+    );
+    if (teams.size > 0) {
+      const density = scTeams.size / teams.size; // 0..1: andel af hold med sprint_captain
+      f *= SPRINTER_DENSITY_RANGE[1] - (SPRINTER_DENSITY_RANGE[1] - SPRINTER_DENSITY_RANGE[0]) * density;
+    }
+  }
+  return f;
+}
+
 // → Map(rider_id → bonus) for de udvalgte escapees (tom Map hvis profil uegnet).
-function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, seed }) {
+function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, stageProfile, seed }) {
   const bonuses = new Map();
-  const maxBonus = breakawayMaxBonus(profileType, finaleType);
-  if (!maxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
+  const anchorMaxBonus = breakawayMaxBonus(profileType, finaleType);
+  if (!anchorMaxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
+
+  // Sub-3 (#2771): faktoren skalerer anchorMaxBonus, men clampes ALTID til
+  // profilens kalibrerede loft (den STØRSTE finale-værdi i BREAKAWAY_BONUS for
+  // profilen, inkl. _default) — så kalibrerings-loggens gate-bånd (fx flat
+  // ≤0.30) aldrig kan overskrides, uanset hvor høj faktoren bliver.
+  const profileCeiling = BREAKAWAY_BONUS[profileType]
+    ? Math.max(...Object.values(BREAKAWAY_BONUS[profileType]))
+    : 0;
+  const factor = routeBreakawayFactor(stageProfile, ordered);
+  const maxBonus = Math.min(anchorMaxBonus * factor, profileCeiling);
 
   const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
 
@@ -502,7 +547,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   const terrainById = new Map(
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
-  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
+  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, stageProfile, seed });
   const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile, v3 });
 
   // Probe B (EKSPLORATIV, default τ=1.0 = identitet): terrain-komponenten i

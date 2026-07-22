@@ -17,6 +17,11 @@ import {
   DISTANCE_BAND_MIDPOINTS,
   LONG_DAY_ENDURANCE_WEIGHT,
   isTechnicalFinale,
+  routeBreakawayFactor,
+  SPRINTER_DENSITY_PROFILES,
+  SPRINTER_DENSITY_RANGE,
+  breakawayMaxBonus,
+  BREAKAWAY_BONUS,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -592,4 +597,83 @@ test("uden rutedata: finaleModifier er PRÆCIS gammel adfærd (kun descent, kun 
   const sp = { profile_type: "mountain", finale_type: "descent", demand_vector: DEMAND_VECTORS.mountain };
   const r = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 99, positioning: 0 })], stageProfile: sp, seed: 1 });
   assert.equal(r.ranked[0].components.finale, ((99 - 50) / 49) * DESCENDING_FINALE_WEIGHT);
+});
+
+// ── Sub-3 (#2771) Task 4: udbruds-forfining (distance + sprinter-tæthed) ──────
+test("routeBreakawayFactor: uden distance → 1 (identitet); lang etape → let forhøjet", () => {
+  assert.equal(routeBreakawayFactor({ profile_type: "mountain" }, []), 1);
+  const long = routeBreakawayFactor({ profile_type: "mountain", distance_km: 204 }, []);
+  assert.ok(long > 1 && long < 1.15); // sqrt(1.2) ≈ 1.0954
+  assert.ok(Math.abs(long - Math.sqrt(1.2)) < 1e-9);
+});
+
+test("sprinter-tæthed dæmper på flat: mange sprint_captains → faktor < 1, få → > 1", () => {
+  const mkE = (n, withSC) => Array.from({ length: n }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`,
+    race_role: withSC && i < 8 ? "sprint_captain" : "helper", abilities: {},
+  }));
+  const dense = routeBreakawayFactor({ profile_type: "flat", distance_km: 175 }, mkE(60, true));
+  const sparse = routeBreakawayFactor({ profile_type: "flat", distance_km: 175 }, mkE(60, false));
+  assert.ok(dense < 1);
+  assert.ok(sparse > 1);
+  assert.ok(sparse > dense);
+});
+
+test("data-gating: bare profil (uden distance_km) + entrants med sprint_captains → faktor === 1 nøjagtigt (legacy-løb bit-identiske)", () => {
+  const mkE = (n) => Array.from({ length: n }, (_, i) => ({
+    rider_id: `r${i}`, team_id: `t${i % 10}`,
+    race_role: i < 8 ? "sprint_captain" : "helper", abilities: {},
+  }));
+  assert.equal(routeBreakawayFactor({ profile_type: "flat" }, mkE(60)), 1);
+});
+
+test("SPRINTER_DENSITY_PROFILES/RANGE er de forventede konstanter", () => {
+  assert.deepEqual([...SPRINTER_DENSITY_PROFILES].sort(), ["flat", "rolling"]);
+  assert.deepEqual(SPRINTER_DENSITY_RANGE, [0.85, 1.15]);
+});
+
+test("clamp: effektiv maxBonus overskrider ALDRIG profilens kalibrerede loft (flat ≤ 0.30) selv med faktor > 1", () => {
+  // Lang flad etape (distanceFactor-loft) + sparse sprinter-tæthed (ingen sprint_captains)
+  // → routeBreakawayFactor > 1 (kombineret sqrt(1.2)·1.15 ≈ 1.259). Uden clamp ville
+  // effektiv maxBonus (0.30 · 1.259 ≈ 0.378) overskride kalibrerings-loftet.
+  const sp = {
+    profile_type: "flat", finale_type: "bunch_sprint", distance_km: 210,
+    demand_vector: { ...DEMAND_VECTORS.flat, randomness: 0 },
+  };
+  const ceiling = Math.max(...Object.values(BREAKAWAY_BONUS.flat));
+  assert.equal(ceiling, 0.30);
+  const entrants = Array.from({ length: 30 }, (_, i) => rider(`r${i}`, {
+    aggression: 50 + (i % 40), acceleration: 50,
+  })).map((e, i) => ({ ...e, team_id: `t${i % 10}`, race_role: "helper" }));
+  // Sparse sprinter-tæthed (kun "helper"-roller) → densitetstermen ×1.15 oveni
+  // distance-faktoren (sqrt(1.2) ≈ 1.095) — kombineret > 1.2, beviser at
+  // clampen faktisk bliver aktiveret af testen.
+  const factor = routeBreakawayFactor(sp, entrants);
+  assert.ok(factor > 1.2);
+  for (let seed = 1; seed <= 15; seed++) {
+    const { ranked } = simulateStage({ entrants, stageProfile: sp, seed });
+    for (const r of ranked) {
+      assert.ok(r.components.breakaway <= breakawayMaxBonus("flat", "bunch_sprint") + 1e-9);
+    }
+  }
+});
+
+test("rng-invariant: routeBreakawayFactor forbruger ingen rng — samme seed → IDENTISK udvælgelse (samme ryttere, samme antal) med og uden rutedata; kun bonus-STØRRELSEN skalerer", () => {
+  // finale_type "long_climb" har maxBonus 0.06 (langt under mountain-loftet 0.50)
+  // så skalering via faktoren er synlig og IKKE spist af clamp-loftet.
+  const bare = { profile_type: "mountain", finale_type: "long_climb", demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0 } };
+  const routed = { ...bare, distance_km: 204 }; // mountain bandMid = 170 → distanceFactor = 1.2 → faktor = sqrt(1.2) ≠ 1
+  const entrants = Array.from({ length: 20 }, (_, i) => ({
+    ...rider(`r${i}`, { aggression: 40 + (i % 50) }), team_id: `t${i % 6}`, race_role: "helper",
+  }));
+  const a = simulateStage({ entrants, stageProfile: bare, seed: 99 });
+  const b = simulateStage({ entrants, stageProfile: routed, seed: 99 });
+  const idsA = a.ranked.filter((r) => r.components.breakaway > 0).map((r) => r.rider_id).sort();
+  const idsB = b.ranked.filter((r) => r.components.breakaway > 0).map((r) => r.rider_id).sort();
+  assert.ok(idsA.length > 0);
+  assert.deepEqual(idsA, idsB); // selektionen (HVEM + hvor mange) er uændret
+  // bonus-størrelsen skalerer med faktoren (sqrt(1.2)), IKKE identisk
+  const bonusA = a.ranked.find((r) => r.rider_id === idsA[0]).components.breakaway;
+  const bonusB = b.ranked.find((r) => r.rider_id === idsA[0]).components.breakaway;
+  assert.ok(Math.abs(bonusB - bonusA * Math.sqrt(1.2)) < 1e-9);
 });
