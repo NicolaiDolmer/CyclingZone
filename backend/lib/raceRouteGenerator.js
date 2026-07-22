@@ -48,7 +48,9 @@ const CLIMB_SPEC = Object.freeze({
   rolling: { count: [1, 3], cats: ["3", "4"] },
   hilly: { count: [2, 4], cats: ["2", "3"] },
   mountain: { count: [3, 5], cats: ["1", "2", "3"] },
-  high_mountain: { count: [2, 4], cats: ["HC", "1", "2"] },
+  // high_mountain trækker KUN "1"/"2" her — HC'en tildeles deterministisk til
+  // etapens klimaks i buildClimbs() nedenfor.
+  high_mountain: { count: [2, 4], cats: ["1", "2"] },
   cobbles: { count: [0, 2], cats: ["3", "4"] },
   classic: { count: [2, 5], cats: ["1", "2", "3"] },
   itt: { count: [0, 0], cats: [] },
@@ -129,6 +131,17 @@ function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
   // "Bygger mod klimaks": easiest først, hårdest sidst (descending CAT_ORDER-værdi).
   cats.sort((a, b) => CAT_ORDER[b] - CAT_ORDER[a]);
   const summit = SUMMIT_FINALE.has(finaleType);
+  // En high_mountain-etape UDEN HC er ikke høj-bjerg. Kategorien blev tidligere
+  // trukket uniformt fra ["HC","1","2"], så en etape kunne lande på 0 HC — eller
+  // fire i træk. Over en grand tour gav lotteriet 1-6 HC mod realisme-båndet 3-8
+  // (S2's Tour de l'Hexagone ramte 1). HC'en tildeles nu deterministisk til
+  // etapens klimaks, præcis én pr. high_mountain-etape: en GT's HC-total bliver
+  // dermed lig antallet af high_mountain-etaper — legibelt og uden hale. (Dobbelt
+  // HC på "queen stages" blev målt og fravalgt: det gav flere bånd-brud, 10,8%
+  // mod 9,7%, med en hale til 16 HC.) Puljetrækket ovenfor beholder sit antal
+  // rng-kald, så længde-, gradient- og sprint-trækkene nedenfor bevarer deres
+  // strøm-offset — distance og antal stigninger er bit-identiske med før.
+  if (profileType === "high_mountain") cats[n - 1] = "HC";
   const climbs = [];
   for (let i = 0; i < n; i++) {
     const cp = CAT_PROFILE[cats[i]];
