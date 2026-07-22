@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.44",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage profiles",
+          "body": "Every stage now shows its real route: the climbs with their length and gradient, the categorised summits and what they are worth in the mountains classification, the intermediate sprint, cobbled sectors, and whether the finish comes at the top of a climb or after a descent. Tap any marker to see what is at stake there, or who took it once the stage has been ridden."
+        },
+        "da": {
+          "title": "Etapeprofiler",
+          "body": "Hver etape viser nu sin rigtige rute: stigningerne med deres længde og hældning, de kategoriserede toppe og hvad de er værd i bjergklassementet, mellemsprinten, brostenssektorer, og om målstregen ligger på toppen af en stigning eller efter en nedkørsel. Tryk på en markør for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt."
+        },
+        "refs": [2448]
+      }
+    ]
+  },
+  {
     "version": "7.43",
     "date": "2026-07-22",
     "label": "Beta",

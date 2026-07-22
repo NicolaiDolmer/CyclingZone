@@ -366,12 +366,12 @@
         "text": "After a race with your riders is finalized, your dashboard shows a 'How your team did' card with your placements, prize money and a short recap of the race. Follow the link on the card to the full result with every stage and classification."
       },
       "stageProfile": {
-        "title": "Terrain on a result",
-        "text": "When you open a result, each stage shows a small terrain badge with a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. This is an indicative terrain category based on the stage's difficulty, not a measured elevation profile with distance and climbing metres."
+        "title": "Terrain and stage profiles",
+        "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile."
       },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",
-        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile. On a stage's result tab you can switch between Stage, Overall, Points, Mountain, Youth and Teams to see the standings after that stage, and a team filter lets you narrow the tables to all teams, your own team, or one specific team."
+        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. Races with route data show the exact profile the engine runs; older races without it still show an indicative terrain category. On a stage's result tab you can switch between Stage, Overall, Points, Mountain, Youth and Teams to see the standings after that stage, and a team filter lets you narrow the tables to all teams, your own team, or one specific team."
       },
       "teamSelection": {
         "title": "Pick your team and move riders between races",
