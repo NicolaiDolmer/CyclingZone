@@ -61,9 +61,11 @@ Der findes ingen punkt-for-punkt-højdedata. Silhuetten syntetiseres determinist
 
 **Trin:**
 
-1. **Knuder.** Start i dal-referencen (180 m). For hver stigning sorteret på `crest_km`: en fod ved `crest_km − length_km` (aldrig bag forrige top; minimum 0,5 km bred) i dal-højde, og en top ved `crest_km` i `dal + gain`, hvor `gain = round(length_km × 1000 × avg_gradient / 100)` — nøjagtig samme formel som generatorens `elevationGain()`. Slutter ruten ikke på en top, føres en knude til dal-højde ved `distance_km`.
-2. **Bølgeterræn.** Mellem stigningerne lægges en sum af tre sinus-led. Bølgelængderne skalerer med distancen (`D/14`, `D/6`, `D/26`, clampet), så en 6 km-prolog ikke arver en 160 km-etapes bølger. Faserne kommer fra en FNV-1a-hash af løbsidentitet + etapenummer — ingen `Math.random`, ingen `Date`. Bølgen maskeres til 0 inde i en stignings-rampe (ramperne skal være rene) med en 3 km blød indfasning, og nulstilles ved x = 0 så ruten altid starter i dal-højde.
+1. **Knuder + begrænset nedkørsel.** Start i dal-referencen (180 m). For hver stigning sorteret på `crest_km`: en fod ved `crest_km − length_km` (aldrig bag forrige top; minimum 0,5 km bred) og en top ved `fod + gain`, hvor `gain = round(length_km × 1000 × avg_gradient / 100)` — nøjagtig samme formel som generatorens `elevationGain()`. **Fodens højde er ikke dalen, men den højde en nedkørsel på 65 m/km (≈7 %) når ned til fra forrige top, med dal-referencen som gulv.** Ligger næste stigning tæt, når ruten aldrig ned i dalen, og den næste stigning starter højere — sådan ser et bjergmassiv faktisk ud. Uden begrænsningen bliver nedkørslerne absurde (Picos etape 4: 915 hm på 6,6 km = 14 % nedad i seks kilometer).
+2. **Bølgeterræn.** Mellem stigningerne lægges tre sinus-led med bølgelængder `D/40`, `D/15` og `D/80` (clampet til [0,8; 5,0], [2; 14] og [0,4; 2,5] km), så en 6 km-prolog ikke arver en 160 km-etapes bølger. Faserne kommer fra en FNV-1a-hash af løbsidentitet + etapenummer — ingen `Math.random`, ingen `Date`. Bølgen maskeres til 0 inde i en stignings-rampe (ramperne skal være rene) med en 3 km blød indfasning, og nulstilles ved x = 0 så ruten altid starter i dal-højde.
 3. **Amplitude-bisektion (invarianten).** Bølgens amplitude findes ved bisektion, så **kurvens samlede positive stigning er nøjagtig `elevation_gain_m`**. Da stigningernes ramper allerede bidrager med deres egen sum, absorberer bølgen præcis det generatoren lagde oveni som `BASE_ELEVATION[profile_type]`.
+
+**Kalibrering (målt på de fem fixtures):** bølgeamplituden lander på 8–9 m for flade etaper og prologer, 27 m for klassikeren og 60–68 m for de to bjergetaper — altså fint, ikke-kategoriseret terræn, præcis hvad `BASE_ELEVATION` repræsenterer. Kalibreringen er ikke frit valgt: både nedkørsels-loftet og bølgelængderne er nødvendige for at holde amplituden dernede. Med for lange bølger (få perioder) eller ubegrænsede nedkørsler må bisektionen skrue amplituden op i flere hundrede meter for at nå `elevation_gain_m`, og profilen får falske bjerge der rager højere end etapens HC-stigning. **Test-krav:** bølgeamplituden skal forblive under 120 m på alle fixtures — bryder den grænsen, er en af de to mekanismer gået i stykker.
 
 **Invariant (test-krav):** `Σ max(0, y[i] − y[i−1]) == elevation_gain_m` inden for 0,5 m for enhver profil-række.
 **Determinisme (test-krav):** samme række → bit-identisk `points`-streng.
@@ -195,6 +197,7 @@ Visning: endagsløb → én mini-profil. Etapeløb → komprimeret mini-stribe (
 | Risiko | Mitigering |
 |---|---|
 | Silhuetten opfattes som en påstand om ægte højdedata | Metoden dokumenteres (§4) + invarianten gør hver aflæselig størrelse sand; ingen højdemeter-tal pr. stigning |
+| Bølgeamplituden eksploderer og laver falske bjerge | Nedkørsels-loft + korte bølgelængder (§4) holder den på 8–68 m; test-krav på <120 m fanger regression |
 | Label-kollision ved mange stigninger tæt sammen | To-niveau-labels på desktop; på mobil falder navne væk og readout bærer detaljen ved tap |
 | Fælles y-skala gør flade etaper til streger i striben | Det er sandheden og pointen — men mini-silhuetten beholder en synlig minimums-amplitude så etapen ikke ser tom ud |
 | Kalenderkort-query for tung | Målt gate (§9), fladen droppes hellere end at gøre boardet langsomt |
