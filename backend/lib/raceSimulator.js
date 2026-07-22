@@ -109,14 +109,45 @@ function formComponent(entrant, weight = FORM_RACE_WEIGHT) {
   return ((form - 50) / 50) * weight;
 }
 
-function fatigueComponent(entrant /* , stageProfile */) {
+// Sub-3 (#2771): bandMid = midtpunkt af Sub-1's DISTANCE_BANDS (dupliceret her
+// som frossen tabel for at undgå import-cyklus; kontrakt-test i
+// raceRouteGenerator.test.js holder dem i sync).
+export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
+  flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
+  cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
+});
+export const LONG_DAY_ENDURANCE_WEIGHT = 0.05;
+
+// distFactor: forholdet mellem etapens faktiske distance og profilens
+// bandMid-anker, clampet [0.85, 1.2]. Ingen distance / ukendt profil → 1
+// (identitet — bit-identisk med main uden rutedata).
+export function distanceFactor(stageProfile) {
+  const d = Number(stageProfile?.distance_km);
+  const mid = DISTANCE_BAND_MIDPOINTS[stageProfile?.profile_type];
+  if (!Number.isFinite(d) || !mid) return 1;
+  return clamp(d / mid, 0.85, 1.2);
+}
+
+function fatigueComponent(entrant, stageProfile) {
   const raw = entrant?.fatigue;
   if (raw == null || !Number.isFinite(Number(raw))) return 0;
   const fatigue = clamp(Number(raw), 0, 100);
   // Plan 1 (#1122): durability dæmper straffen (fade sent). Manglende durability → fuld straf.
   const dur = Number(entrant?.abilities?.durability);
   const damp = Number.isFinite(dur) ? 1 - (clamp(dur, 0, 99) / 99) * DURABILITY_FATIGUE_DAMPING : 1;
-  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp;
+  // Sub-3 (#2771): distance skalerer straffen — lange dage trætter mere, korte
+  // mindre. Uden distance/ukendt profil er distFactor 1 → identitet.
+  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp * distanceFactor(stageProfile);
+}
+
+// Sub-3 (#2771): endurance-term for lange dage — favoriserer høj endurance,
+// straffer lav endurance, centreret om 50. Inaktiv (0) uden distance-signal
+// (distFactor === 1), så flag-off/uden-rutedata er identitet.
+function longDayComponent(entrant, distFactor) {
+  if (distFactor === 1) return 0;
+  const end = Number(entrant?.abilities?.endurance);
+  if (!Number.isFinite(end)) return 0;
+  return (distFactor - 1) * LONG_DAY_ENDURANCE_WEIGHT * ((clamp(end, 0, 99) - 50) / 49);
 }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
@@ -453,6 +484,10 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   // hverken kandidat-cut eller rækkefølge).
   const scoreTerrainById = v3 ? compressTopTerrain(terrainById, topCompressionTau()) : terrainById;
 
+  // Sub-3 (#2771): distFactor beregnes ÉN gang for hele etapen (samme for alle
+  // ryttere) — bruges både i fatigueComponent (via stageProfile) og longDayComponent.
+  const dFactor = distanceFactor(stageProfile);
+
   const scored = ordered.map((e) => {
     const terrain = scoreTerrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
@@ -483,7 +518,11 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
     const peak = v3
       ? peakComponentForStage({ stageDay: stageProfile.peakDay, windows: e.peakWindows, trainingQuality: e.peakTrainingQuality })
       : 0;
-    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans + peak;
+    // Sub-3 (#2771): long_day — endurance-term for lange etaper (0 uden distance-
+    // signal, dFactor === 1). Nøglen er ALTID til stede i components (som
+    // 'incident') så flag-off-deepEqual-testen forbliver grøn.
+    const longDay = longDayComponent(e, dFactor);
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale + workCostDelta + dayform + jourSans + peak + longDay;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
@@ -495,7 +534,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
       // Unconditionelt til stede (også v3=false) → flag-off-deepEqual-testen
       // (raceEngineV3FlagOff.test.js) forbliver grøn, da BEGGE sider af den
       // sammenligning får samme nøgle=0.
-      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, peak, incident: 0 },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale, work_cost: workCostDelta, dayform, jour_sans: jourSans, peak, long_day: longDay, incident: 0 },
     };
   });
 

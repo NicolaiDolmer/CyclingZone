@@ -13,6 +13,9 @@ import {
   DURABILITY_FATIGUE_DAMPING,
   DESCENDING_FINALE_WEIGHT,
   stageGapModel,
+  distanceFactor,
+  DISTANCE_BAND_MIDPOINTS,
+  LONG_DAY_ENDURANCE_WEIGHT,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -526,4 +529,41 @@ test("ITT skalerer med distance; prolog-distance giver små gab", () => {
 test("samlet spread-clamp [40, 1000]", () => {
   const m = stageGapModel({ profile_type: "high_mountain", distance_km: 140, climbs: [{ category: "HC", crest_km: 140, summit_finish: true }] });
   assert.ok(m.spread <= 1000);
+});
+
+// ── Sub-3 (#2771) Task 2: distance→fatigue + endurance-term (long_day) ────────
+test("distanceFactor: kendt profil + distance skalerer om bandMid, clamp [0.85, 1.2]; ellers identitet (1)", () => {
+  assert.equal(DISTANCE_BAND_MIDPOINTS.mountain, 170);
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 204 }), 1.2); // 204/170=1.2 (loft)
+  assert.equal(distanceFactor({ profile_type: "mountain" }), 1); // ingen distance
+  assert.equal(distanceFactor({ profile_type: "ukendt", distance_km: 200 }), 1); // ukendt profil
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 10 }), 0.85); // gulv
+});
+
+test("distFactor skalerer fatigue-straf på lange dage; ingen distance → identitet", () => {
+  const base = { profile_type: "mountain", demand_vector: DEMAND_VECTORS.mountain };
+  const long = { ...base, distance_km: 204 }; // bandMid mountain = 170 → factor 1.2
+  const entrantA = { ...rider("a", { climbing: 50, durability: 0 }), fatigue: 60 };
+  const r1 = simulateStage({ entrants: [entrantA], stageProfile: base, seed: 1 });
+  const r2 = simulateStage({ entrants: [entrantA], stageProfile: long, seed: 1 });
+  assert.ok(r2.ranked[0].components.fatigue > r1.ranked[0].components.fatigue);
+});
+
+test("endurance-term: lang dag favoriserer endurance; kort dag straffer; components.long_day sat", () => {
+  const long = { profile_type: "mountain", distance_km: 204, demand_vector: DEMAND_VECTORS.mountain };
+  const hi = simulateStage({ entrants: [rider("a", { climbing: 50, endurance: 99 })], stageProfile: long, seed: 1 });
+  const lo = simulateStage({ entrants: [rider("a", { climbing: 50, endurance: 0 })], stageProfile: long, seed: 1 });
+  assert.ok(hi.ranked[0].components.long_day > 0);
+  assert.ok(lo.ranked[0].components.long_day < 0);
+});
+
+test("flag-off-ækvivalent: uden distance_km er components.long_day 0 og alt uændret", () => {
+  const bare = { profile_type: "mountain", demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0.5 } };
+  const entrants = [ELITE_SPRINTER, PURE_CLIMBER, rider("avg1"), rider("avg2")];
+  const r = simulateStage({ entrants, stageProfile: bare, seed: 7 });
+  assert.ok(r.ranked.every((x) => x.components.long_day === 0));
+});
+
+test("LONG_DAY_ENDURANCE_WEIGHT er den forventede kalibrerings-konstant (0.05)", () => {
+  assert.equal(LONG_DAY_ENDURANCE_WEIGHT, 0.05);
 });

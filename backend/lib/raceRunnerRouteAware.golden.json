@@ -231,6 +231,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -252,6 +253,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -273,6 +275,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -294,6 +297,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -315,6 +319,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -336,6 +341,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -357,6 +363,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -378,6 +385,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -640,6 +648,7 @@
               "dayform": 0.02666770745960216,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -661,6 +670,7 @@
               "dayform": 0.006772046071121026,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -682,6 +692,7 @@
               "dayform": -0.015380429288051986,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -703,6 +714,7 @@
               "dayform": -0.042858987454656085,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -724,6 +736,7 @@
               "dayform": 0.040181957792386945,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -745,6 +758,7 @@
               "dayform": -0.015469279258166976,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -766,6 +780,7 @@
               "dayform": 0.005085847755410489,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -787,6 +802,7 @@
               "dayform": -0.00040948665690819643,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -808,6 +824,7 @@
               "dayform": 0.04012276540412718,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -1098,6 +1115,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1119,6 +1137,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1140,6 +1159,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1161,6 +1181,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1182,6 +1203,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1203,6 +1225,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1224,6 +1247,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1245,6 +1269,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1266,6 +1291,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1287,6 +1313,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -1601,6 +1628,7 @@
               "dayform": -0.004291218029556989,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1622,6 +1650,7 @@
               "dayform": 0.00706789914000686,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1643,6 +1672,7 @@
               "dayform": 0.011195013071277448,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1664,6 +1694,7 @@
               "dayform": 0.04619571667457944,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1685,6 +1716,7 @@
               "dayform": -0.00641591206250204,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1706,6 +1738,7 @@
               "dayform": -0.0040571943143108535,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1727,6 +1760,7 @@
               "dayform": -0.01953756180410059,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1748,6 +1782,7 @@
               "dayform": 0.003670439319044364,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1769,6 +1804,7 @@
               "dayform": 0.022033379797180334,
               "jour_sans": -0.09167157729389147,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1790,6 +1826,7 @@
               "dayform": -0.014182190423227492,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -1811,6 +1848,7 @@
               "dayform": -0.04296043904377935,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -2147,6 +2185,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2168,6 +2207,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2189,6 +2229,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2210,6 +2251,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2231,6 +2273,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2252,6 +2295,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2273,6 +2317,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2294,6 +2339,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2315,6 +2361,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2336,6 +2383,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2357,6 +2405,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2378,6 +2427,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -2618,6 +2668,7 @@
               "dayform": 0.04108252518294784,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2639,6 +2690,7 @@
               "dayform": -0.011530718298707016,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2660,6 +2712,7 @@
               "dayform": -0.013461344136321343,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2681,6 +2734,7 @@
               "dayform": 0.033492171241998304,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2702,6 +2756,7 @@
               "dayform": 0.03535327653697447,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2723,6 +2778,7 @@
               "dayform": 0.010294399589953453,
               "jour_sans": -0.05360518966335803,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2744,6 +2800,7 @@
               "dayform": -0.025986683680372803,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -2765,6 +2822,7 @@
               "dayform": -0.017332013966112173,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -3029,6 +3087,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3050,6 +3109,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3071,6 +3131,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3092,6 +3153,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3113,6 +3175,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3134,6 +3197,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3155,6 +3219,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3176,6 +3241,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3197,6 +3263,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -3485,6 +3552,7 @@
               "dayform": 0.007413502318964663,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3506,6 +3574,7 @@
               "dayform": -0.026148015621575385,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3527,6 +3596,7 @@
               "dayform": -0.02030644050188591,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3548,6 +3618,7 @@
               "dayform": -0.0009579183830431692,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3569,6 +3640,7 @@
               "dayform": -0.006552734392286689,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3590,6 +3662,7 @@
               "dayform": 0.024505763250989868,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3611,6 +3684,7 @@
               "dayform": -0.013684076154394957,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3632,6 +3706,7 @@
               "dayform": -0.006866255605084192,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3653,6 +3728,7 @@
               "dayform": -0.010643884004297577,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -3674,6 +3750,7 @@
               "dayform": -0.006008439866725947,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -3985,6 +4062,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4006,6 +4084,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4027,6 +4106,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4048,6 +4128,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4069,6 +4150,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4090,6 +4172,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4111,6 +4194,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4132,6 +4216,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4153,6 +4238,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4174,6 +4260,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4195,6 +4282,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -4530,6 +4618,7 @@
               "dayform": 0.04201060514295182,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4551,6 +4640,7 @@
               "dayform": -0.009530400214621208,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4572,6 +4662,7 @@
               "dayform": -0.015589211199414404,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4593,6 +4684,7 @@
               "dayform": 0.002732292328829673,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4614,6 +4706,7 @@
               "dayform": -0.017265034213093087,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4635,6 +4728,7 @@
               "dayform": 0.027639968761720937,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4656,6 +4750,7 @@
               "dayform": 0.01765705843859175,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4677,6 +4772,7 @@
               "dayform": 0.008054881539962649,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4698,6 +4794,7 @@
               "dayform": -0.016457766639850227,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4719,6 +4816,7 @@
               "dayform": 0.0008139667572953971,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4740,6 +4838,7 @@
               "dayform": 0.015805073586822427,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -4761,6 +4860,7 @@
               "dayform": 0.005571456448218638,
               "jour_sans": -0.08552204475272447,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -4997,6 +5097,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5018,6 +5119,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5039,6 +5141,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5060,6 +5163,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5081,6 +5185,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5102,6 +5207,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5123,6 +5229,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5144,6 +5251,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -5404,6 +5512,7 @@
               "dayform": 0.03467780862858528,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5425,6 +5534,7 @@
               "dayform": -0.0005220048740803183,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5446,6 +5556,7 @@
               "dayform": 0.020349336945508938,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5467,6 +5578,7 @@
               "dayform": 0.008391384545675706,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5488,6 +5600,7 @@
               "dayform": 0.010709880623900905,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5509,6 +5622,7 @@
               "dayform": -0.009675499309160758,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5530,6 +5644,7 @@
               "dayform": -0.0026358744540880582,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5551,6 +5666,7 @@
               "dayform": -0.01819999983660511,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5572,6 +5688,7 @@
               "dayform": -0.013402889750375851,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -5857,6 +5974,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5878,6 +5996,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5899,6 +6018,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5920,6 +6040,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5941,6 +6062,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5962,6 +6084,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -5983,6 +6106,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6004,6 +6128,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6025,6 +6150,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6046,6 +6172,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -6355,6 +6482,7 @@
               "dayform": -0.0006617985785577526,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6376,6 +6504,7 @@
               "dayform": 0.0013636228671005729,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6397,6 +6526,7 @@
               "dayform": -0.010748093423072787,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6418,6 +6548,7 @@
               "dayform": 0.007144887183583513,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6439,6 +6570,7 @@
               "dayform": -0.013017831871869149,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6460,6 +6592,7 @@
               "dayform": -0.008948933440876768,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6481,6 +6614,7 @@
               "dayform": -0.00920212720849484,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6502,6 +6636,7 @@
               "dayform": -0.01052309575460108,
               "jour_sans": -0.0779680397710763,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6523,6 +6658,7 @@
               "dayform": -0.01788905400054649,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6544,6 +6680,7 @@
               "dayform": -0.009839863078650904,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6565,6 +6702,7 @@
               "dayform": -0.019044099491969016,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -6899,6 +7037,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6920,6 +7059,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6941,6 +7081,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6962,6 +7103,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -6983,6 +7125,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7004,6 +7147,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7025,6 +7169,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7046,6 +7191,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7067,6 +7213,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7088,6 +7235,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7109,6 +7257,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7130,6 +7279,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -7368,6 +7518,7 @@
               "dayform": 0.03817950102425831,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7389,6 +7540,7 @@
               "dayform": -0.0022453056812957992,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7410,6 +7562,7 @@
               "dayform": 0.00785641103688347,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7431,6 +7584,7 @@
               "dayform": 0.02620566654733653,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7452,6 +7606,7 @@
               "dayform": 0.01844091156602658,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7473,6 +7628,7 @@
               "dayform": -0.004196789949759341,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7494,6 +7650,7 @@
               "dayform": 0.0294311036305228,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7515,6 +7672,7 @@
               "dayform": -0.018334418508699917,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -7781,6 +7939,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7802,6 +7961,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7823,6 +7983,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7844,6 +8005,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7865,6 +8027,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7886,6 +8049,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7907,6 +8071,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7928,6 +8093,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -7949,6 +8115,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -8239,6 +8406,7 @@
               "dayform": -0.007100637630841903,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8260,6 +8428,7 @@
               "dayform": 0.02410794369610308,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8281,6 +8450,7 @@
               "dayform": 0.02006552945854857,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8302,6 +8472,7 @@
               "dayform": 0.017532406517312495,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8323,6 +8494,7 @@
               "dayform": -0.013940995050494134,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8344,6 +8516,7 @@
               "dayform": -0.01355363016474699,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8365,6 +8538,7 @@
               "dayform": 0.00045553579099297047,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8386,6 +8560,7 @@
               "dayform": 0.013388667510749176,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8407,6 +8582,7 @@
               "dayform": -0.010778421955437252,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8428,6 +8604,7 @@
               "dayform": 0.005779438925394785,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -8740,6 +8917,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8761,6 +8939,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8782,6 +8961,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8803,6 +8983,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8824,6 +9005,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8845,6 +9027,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8866,6 +9049,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8887,6 +9071,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8908,6 +9093,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8929,6 +9115,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -8950,6 +9137,7 @@
               "dayform": 0,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
@@ -9284,6 +9472,7 @@
               "dayform": -0.02377455598165126,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9305,6 +9494,7 @@
               "dayform": -0.008803166438810179,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9326,6 +9516,7 @@
               "dayform": 0.004778910871071604,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9347,6 +9538,7 @@
               "dayform": -0.008305151515853834,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9368,6 +9560,7 @@
               "dayform": 0.000040988422140159784,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9389,6 +9582,7 @@
               "dayform": -0.013112262285387335,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9410,6 +9604,7 @@
               "dayform": -0.03639890208679573,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9431,6 +9626,7 @@
               "dayform": -0.039630570451407256,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9452,6 +9648,7 @@
               "dayform": 0.005024060127177108,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9473,6 +9670,7 @@
               "dayform": 0.003541669992379137,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9494,6 +9692,7 @@
               "dayform": 0.01657982976577315,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           },
@@ -9515,6 +9714,7 @@
               "dayform": -0.028810965754114976,
               "jour_sans": 0,
               "peak": 0,
+              "long_day": 0,
               "incident": 0
             }
           }
