@@ -440,6 +440,14 @@
     },
     "stageFinishOrder": "Etape {number} · målrækkefølge",
     "noResults": "Ingen resultater",
+    "passages": {
+      "title": "Mellemresultater",
+      "kom": "Bjergspurt",
+      "sprint": "Mellemsprint",
+      "category": "kat. {cat}",
+      "points": "{count} point",
+      "bonus": "+{count}s"
+    },
     "classification": {
       "gc": "Samlet (GC)",
       "points": "Pointkonkurrence",

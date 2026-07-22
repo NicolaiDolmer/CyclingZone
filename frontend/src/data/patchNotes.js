@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.40",
+    "date": "2026-07-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Deep race competitions: KOM, sprints and bonus seconds",
+          "body": "Categorized climbs now award KOM points using real-world scales, with double points on summit finishes, and intermediate sprints award green-jersey points plus 3/2/1 bonus seconds. Stage finishes also award 10/6/4 bonus seconds toward GC. Riders in the breakaway can lead over climbs and sprints, so a breakaway rider can win the mountains jersey. Applies to races from season 2."
+        },
+        "da": {
+          "title": "Dybere løbskonkurrencer: KOM, spurter og bonussekunder",
+          "body": "Kategoriserede stigninger giver nu KOM-point efter virkelighedens skalaer, med dobbelt point på topmål, og mellemsprinter giver point til det grønne trøje-regnskab plus 3/2/1 bonussekunder. Etapemål giver også 10/6/4 bonussekunder til GC-regnskabet. Ryttere i udbruddet kan føre over stigninger og spurter, så en udbrudsrytter kan vinde bjergtrøjen. Gælder løb fra sæson 2."
+        },
+        "refs": [2770]
+      }
+    ]
+  },
+  {
     "version": "7.39",
     "date": "2026-07-21",
     "label": "Beta",

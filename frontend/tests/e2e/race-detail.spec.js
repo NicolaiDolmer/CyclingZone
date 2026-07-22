@@ -64,6 +64,14 @@ const RESULTS = [
   row("t1", 2, "team", 1, MIK, 0),
 ];
 
+// Sub-2 (#2770): passage-detaljer (KOM/mellemsprint-krydsninger) for etape 1 —
+// én kom-gruppe + én sprint-gruppe, hver med 2 rangerede ryttere.
+const PASSAGES = [
+  { id: "pass-kom-1", stage_number: 1, waypoint_kind: "kom", waypoint_index: 0, waypoint_name: "Col E2E", waypoint_km: 60, climb_category: "2", rider_id: MIK.id, rider_name: "Mikkel Hansen", team_id: "team-x", passage_rank: 1, points: 5, bonus_seconds: 0 },
+  { id: "pass-kom-2", stage_number: 1, waypoint_kind: "kom", waypoint_index: 0, waypoint_name: "Col E2E", waypoint_km: 60, climb_category: "2", rider_id: ADA.id, rider_name: "Ada Pedersen", team_id: "team-x", passage_rank: 2, points: 3, bonus_seconds: 0 },
+  { id: "pass-sprint-1", stage_number: 1, waypoint_kind: "sprint", waypoint_index: 0, waypoint_name: "Sprint E2E", waypoint_km: 85, climb_category: null, rider_id: ADA.id, rider_name: "Ada Pedersen", team_id: "team-x", passage_rank: 1, points: 20, bonus_seconds: 3 },
+];
+
 test("race detail page renders stage tabs, jerseys and overall classifications", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -75,6 +83,9 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   });
   await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
+  // Sub-2 (#2770): tom passage-liste for denne test — ingen passage-sektion
+  // skal rendere (etape 1 og 2 har ingen KOM/mellemsprint-data i dette fixture).
+  await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
 
   await login(page);
   await page.goto("/races/race-e2e-1");
@@ -119,4 +130,36 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await page.getByRole("button", { name: "Etape 2" }).click();
   await expect(page.getByText("Bjerge")).toBeVisible();
   await expect(page.getByText("Bjergfinale")).toBeVisible();
+
+  // Sub-2 (#2770): ingen passage-data mocket → ingen passage-sektion nogen steder.
+  await expect(page.getByText("Mellemresultater")).toHaveCount(0);
+});
+
+// Sub-2 (#2770): passage-liste — KOM + mellemsprint vises UNDER etape-
+// måltavlen når race_stage_passages har rækker for etapen.
+test("race detail page renders KOM and intermediate sprint passages under stage results", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", route => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? RACE : [RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
+  await page.route("**/rest/v1/race_stage_passages**", route => json(route, PASSAGES));
+
+  await login(page);
+  await page.goto("/races/race-e2e-1");
+
+  await page.getByRole("button", { name: "Etape 1" }).click();
+
+  await expect(page.getByText("Mellemresultater")).toBeVisible();
+  await expect(page.getByText("Col E2E (kat. 2) — km 60")).toBeVisible();
+  await expect(page.getByText("Sprint E2E — km 85")).toBeVisible();
+  // "Mikkel Hansen" optræder også i etape-måltavlen/trøje-badges — brug .first().
+  await expect(page.getByText("Mikkel Hansen").first()).toBeVisible();
+  // Etape 2 har ingen passage-data for dette fixture → ingen sektion.
+  await page.getByRole("button", { name: "Etape 2" }).click();
+  await expect(page.getByText("Mellemresultater")).toHaveCount(0);
 });

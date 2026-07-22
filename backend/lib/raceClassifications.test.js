@@ -63,6 +63,29 @@ test("rækker uden rider_id ignoreres (team-rækker o.l. kan aldrig forurene)", 
   assert.equal(acc.cumTime.size, 0);
 });
 
+// ── Sub-2 (#2770): passage-kolonner m. legacy-fallback ────────────────────────
+test("accumulateStageRows: nye kolonner driver point/kom/bonus", () => {
+  const rows = [
+    { stage_number: 1, rider_id: "a", rank: 1, finish_time: "+0:00", sprint_points: 50, kom_points: 0, bonus_seconds: 13 },
+    { stage_number: 1, rider_id: "b", rank: 2, finish_time: "+0:10", sprint_points: 30, kom_points: 5, bonus_seconds: 6 },
+  ];
+  const acc = accumulateStageRows({ stageRows: rows, profileTypeByStage: new Map([[1, "flat"]]) });
+  assert.equal(acc.pointsComp.get("a"), 50);
+  assert.equal(acc.komComp.get("b"), 5);
+  assert.equal(acc.cumTime.get("a"), -13); // 0 gap − 13 bonus
+  assert.equal(acc.cumTime.get("b"), 4);   // 10 − 6
+});
+
+test("accumulateStageRows: null-kolonner → legacy-adfærd (classPointsForRank + CLIMB_PROFILES)", () => {
+  const rows = [
+    { stage_number: 1, rider_id: "a", rank: 1, finish_time: "+0:00", sprint_points: null, kom_points: null, bonus_seconds: null },
+  ];
+  const acc = accumulateStageRows({ stageRows: rows, profileTypeByStage: new Map([[1, "mountain"]]) });
+  assert.equal(acc.pointsComp.get("a"), 25); // legacy classPointsForRank(1)
+  assert.equal(acc.komComp.get("a"), 25);    // legacy: mountain ∈ CLIMB_PROFILES
+  assert.equal(acc.cumTime.get("a"), 0);
+});
+
 // ── filterCompletedEntrants ───────────────────────────────────────────────────
 test("kun ryttere med ALLE etaper er klassements-berettigede (solgt/slettet udgår)", () => {
   const entrants = [{ rider_id: "full" }, { rider_id: "leaver" }, { rider_id: "late" }];

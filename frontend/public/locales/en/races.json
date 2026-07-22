@@ -440,6 +440,14 @@
     },
     "stageFinishOrder": "Stage {number} · finish order",
     "noResults": "No results",
+    "passages": {
+      "title": "Intermediate results",
+      "kom": "KOM",
+      "sprint": "Intermediate sprint",
+      "category": "cat. {cat}",
+      "points": "{count} pts",
+      "bonus": "+{count}s"
+    },
     "classification": {
       "gc": "Overall (GC)",
       "points": "Points classification",

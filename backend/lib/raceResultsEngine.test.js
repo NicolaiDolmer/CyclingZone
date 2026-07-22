@@ -276,6 +276,42 @@ test("applyRaceResults inserts results and recalculates standings without touchi
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
 });
 
+// Sub-2 (#2770): applyRaceResults' normalizedRows enumererer race_results-
+// kolonnerne eksplicit — passage-lagets aggregater (sprint_points/kom_points/
+// bonus_seconds) SKAL med her, ellers dropper whole-race-stien (simulateRace)
+// dem stille ved persistering (den atomære apply_stage_result-RPC-sti er
+// upåvirket, den serialiserer resultRows 1:1 via jsonb). NULL-passthrough for
+// legacy-rækker (ingen passage-data) er lige så vigtig som selve gennemløbet.
+test("applyRaceResults gennemløber passage-aggregaterne (sprint_points/kom_points/bonus_seconds), NULL for legacy-rækker", async () => {
+  const { supabase, state } = createSupabaseDouble({ "team-1": 1000 });
+  await applyRaceResults({
+    supabase,
+    race: { id: "race-1", season_id: "season-1" },
+    resultRows: [
+      {
+        rider_id: "rider-1", team_id: "team-1", result_type: "stage", rank: 1, stage_number: 1,
+        prize_money: 50, points_earned: 8,
+        sprint_points: 6, kom_points: 0, bonus_seconds: 10,
+      },
+      {
+        rider_id: "rider-2", team_id: "team-1", result_type: "stage", rank: 2, stage_number: 1,
+        prize_money: 0, points_earned: 0,
+        // ingen passage-felter (legacy/PCM-mønster) → skal blive NULL, ikke 0/undefined.
+      },
+    ],
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+  });
+
+  const [withPassage, legacy] = state.raceResults;
+  assert.equal(withPassage.sprint_points, 6);
+  assert.equal(withPassage.kom_points, 0);
+  assert.equal(withPassage.bonus_seconds, 10);
+  assert.equal(legacy.sprint_points, null);
+  assert.equal(legacy.kom_points, null);
+  assert.equal(legacy.bonus_seconds, null);
+});
+
 test("applyRaceResults re-import does not touch existing prize finance", async () => {
   const existingTx = {
     team_id: "team-1",

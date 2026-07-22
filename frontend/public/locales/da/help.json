@@ -1065,6 +1065,10 @@
       "q": "Hvad er forskellen på GC, Klassiker/Monument og etapesejre?",
       "a": "Hvert løb har en klasse (fx ProSeries, Monumenter eller en Grand Tour) og en type: etapeløb eller endagsløb. Etapeløb (fx Grand Tours) kører flere etaper og tæller to separate resultater: en etapesejr for at føre en enkelt etape, og en GC-sejr for at føre den samlede stilling når løbet slutter. Endagsløb (Klassikere og Monumenter) giver kun ét resultat når de slutter, så en sejr her tæller altid som en GC-sejr, aldrig som en etapesejr, selvom der ikke findes nogen flerdages-samlet-stilling. Din holdstatistik og achievements tæller etapesejre og GC-sejre hver for sig."
     },
+    "raceJerseysFaq": {
+      "q": "Hvordan virker den grønne trøje og bjergtrøjen?",
+      "a": "Den grønne trøje tæller spurtpoint, som optjenes ved mellemsprinter og ved etapemål, vægtet efter hvor spurtvenlig etapen er, så flade mål giver flere point end bjergetaper. Bjergtrøjen tæller KOM-point, som optjenes ved at være først over en kategoriseret stigning, med dobbelt point på et topmål. Bonussekunder tæller også med til GC: 10/6/4 sekunder til de tre første ryttere ved et etapemål, og 3/2/1 sekunder ved hver mellemsprint. Ryttere i et udbrud kan føre over en stigning eller sprint før feltet ankommer, så et udbrud kan vinde bjergtrøjen selv uden at være med i GC-kampen. Gælder løb fra sæson 2 og frem."
+    },
     "newPlayerEconomyFaq": {
       "q": "Hvor mange penge starter jeg med, og hvornår skal jeg tage et lån?",
       "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger, drift og lånerenter trækkes automatisk ved hver sæsons start. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."

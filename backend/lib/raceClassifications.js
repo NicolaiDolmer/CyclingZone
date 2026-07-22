@@ -108,11 +108,20 @@ export function accumulateStageRows({ stageRows = [], profileTypeByStage = new M
     if (!r?.rider_id) continue;
     const stageNo = r.stage_number || 1;
     stageNumbers.add(stageNo);
-    add(cumTime, r.rider_id, parseGapSeconds(r.finish_time));
+    // Sub-2 (#2770): passage-lag persisterer sprint_points/kom_points/bonus_seconds
+    // pr. etaperække. Findes de (mindst én non-null) → brug dem; ellers legacy
+    // (classPointsForRank + CLIMB_PROFILES-heuristik), bit-identisk med før Sub-2.
+    const hasPassageCols = r.sprint_points != null || r.kom_points != null || r.bonus_seconds != null;
+    add(cumTime, r.rider_id, parseGapSeconds(r.finish_time) - (Number(r.bonus_seconds) || 0));
     add(posSum, r.rider_id, Number(r.rank) || 0);
-    add(pointsComp, r.rider_id, classPointsForRank(r.rank));
-    if (CLIMB_PROFILES.has(profileTypeByStage.get(stageNo))) {
-      add(komComp, r.rider_id, classPointsForRank(r.rank));
+    if (hasPassageCols) {
+      add(pointsComp, r.rider_id, Number(r.sprint_points) || 0);
+      add(komComp, r.rider_id, Number(r.kom_points) || 0);
+    } else {
+      add(pointsComp, r.rider_id, classPointsForRank(r.rank));
+      if (CLIMB_PROFILES.has(profileTypeByStage.get(stageNo))) {
+        add(komComp, r.rider_id, classPointsForRank(r.rank));
+      }
     }
     if (!stagesByRider.has(r.rider_id)) stagesByRider.set(r.rider_id, new Set());
     stagesByRider.get(r.rider_id).add(stageNo);

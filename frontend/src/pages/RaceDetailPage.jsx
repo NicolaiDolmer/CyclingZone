@@ -22,6 +22,7 @@ import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
+import { groupPassagesForStage } from "../lib/raceStagePassages.js";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -135,6 +136,7 @@ export default function RaceDetailPage() {
   const [schedule, setSchedule] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [moments, setMoments] = useState([]);
+  const [passages, setPassages] = useState([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -229,8 +231,25 @@ export default function RaceDetailPage() {
       .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
       .eq("race_id", raceId);
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }] = await Promise.all([
-      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise,
+    // Sub-2 (#2770): passage-detaljer (KOM/mellemsprint-krydsninger) pr. etape.
+    // Samme degradér-ærligt-mønster som incidents/moments ovenfor — tabellen
+    // committes som .sql men anvendes først af ejeren POST-merge. fetchAllRows
+    // bruges (som race_results) fordi et langt etapeløb kan overstige 1000
+    // passage-rækker; fejl fanges lokalt så den ALDRIG vælter race-siden.
+    const passagesPromise = fetchAllRows(() =>
+      supabase
+        .from("race_stage_passages")
+        .select("*")
+        .eq("race_id", raceId)
+        .order("stage_number")
+        .order("waypoint_km")
+    ).catch((err) => {
+      console.warn("race_stage_passages fetch failed (table may not be migrated yet):", err.message);
+      return [];
+    });
+
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }, passageRows] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise, passagesPromise,
     ]);
     if (incidentsError) {
       console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
@@ -246,6 +265,7 @@ export default function RaceDetailPage() {
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
     setMoments(momentRows ?? []);
+    setPassages(passageRows ?? []);
     setLoading(false);
   }, [raceId]);
 
@@ -548,7 +568,7 @@ export default function RaceDetailPage() {
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
             <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
               filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
-              moments={moments} riderNameById={riderNameById} t={t} />
+              moments={moments} riderNameById={riderNameById} passages={passages} t={t} />
           ))}
         </>
       )}
@@ -759,10 +779,18 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
   );
 }
 
-function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, t }) {
+function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
 
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
+
+  // Sub-2 (#2770): passage-grupper (KOM/mellemsprint) for DENNE etape — kun
+  // relevante i "stage"-sub-fanen (måltavlen), ikke under de øvrige klassement-
+  // linser (gc/points/mountain/young/team ser samme etape gennem et andet filter).
+  const passageGroups = useMemo(
+    () => (classTab === "stage" ? groupPassagesForStage(passages, stage) : []),
+    [passages, stage, classTab],
+  );
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
   // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
@@ -817,6 +845,51 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
       </div>
 
       <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
+      {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
+    </div>
+  );
+}
+
+// Sub-2 (#2770): passage-liste — KOM/mellemsprint-krydsninger UNDER etapens
+// måltavle. Kompakt blok pr. waypoint (samme kort-stil som DnfSection/WhyPanel
+// ovenfor), ikke en ny tabel — waypoints har typisk 3-6 pointerende ryttere,
+// en fuld tabel ville være overkill. Top-3 pr. waypoint (matcher hvor mange
+// der reelt scorer i racePassages.js's skalaer for de fleste kategorier).
+const PASSAGE_TOP_N = 3;
+function PassageList({ groups, t }) {
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+      <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.passages.title")}</p>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={`${g.waypoint_kind}:${g.waypoint_index}`}>
+            <p className="text-cz-3 text-[11px] mb-1">
+              <span className="uppercase tracking-wide font-semibold text-cz-2">
+                {t(`detail.passages.${g.waypoint_kind}`)}
+              </span>
+              {" · "}
+              {g.waypoint_kind === "kom" && g.climb_category
+                ? `${g.waypoint_name} (${t("detail.passages.category", { cat: g.climb_category })}) — km ${formatNumber(g.waypoint_km)}`
+                : `${g.waypoint_name} — km ${formatNumber(g.waypoint_km)}`}
+            </p>
+            <ul className="space-y-0.5">
+              {g.results.slice(0, PASSAGE_TOP_N).map((r) => (
+                <li key={`${r.rider_id}-${r.passage_rank}`} className="text-cz-1 text-sm flex items-baseline gap-2">
+                  <span className="text-cz-3 font-mono text-xs w-4 shrink-0">{r.passage_rank}.</span>
+                  <RiderLink id={r.rider_id} className="hover:text-cz-accent-t transition-colors truncate">
+                    {r.rider_name || "—"}
+                  </RiderLink>
+                  <span className="text-cz-3 text-xs shrink-0 ms-auto font-mono">
+                    {r.points > 0 && t("detail.passages.points", { count: r.points })}
+                    {r.points > 0 && r.bonus_seconds > 0 && " "}
+                    {r.bonus_seconds > 0 && t("detail.passages.bonus", { count: r.bonus_seconds })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
