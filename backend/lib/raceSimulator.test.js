@@ -16,6 +16,7 @@ import {
   distanceFactor,
   DISTANCE_BAND_MIDPOINTS,
   LONG_DAY_ENDURANCE_WEIGHT,
+  isTechnicalFinale,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -566,4 +567,29 @@ test("flag-off-ækvivalent: uden distance_km er components.long_day 0 og alt uæ
 
 test("LONG_DAY_ENDURANCE_WEIGHT er den forventede kalibrerings-konstant (0.05)", () => {
   assert.equal(LONG_DAY_ENDURANCE_WEIGHT, 0.05);
+});
+
+// ── Sub-3 (#2771) Task 3: tekniske finaler (afledt af rute) ───────────────────
+test("teknisk finale afledes af rutedata", () => {
+  assert.equal(isTechnicalFinale({ finale_type: "descent" }), true);
+  assert.equal(isTechnicalFinale({ distance_km: 170, climbs: [{ crest_km: 162, category: "2" }] }), true);  // 8 km efter top
+  assert.equal(isTechnicalFinale({ distance_km: 170, climbs: [{ crest_km: 140, category: "2" }] }), false); // 30 km — for langt
+  assert.equal(isTechnicalFinale({ distance_km: 160, sectors: [{ start_km: 152, length_km: 2 }] }), true);  // brosten i finalen
+  assert.equal(isTechnicalFinale({ profile_type: "flat" }), false);
+});
+
+test("teknisk finale vægter descending+positioning (±, centreret om 50)", () => {
+  const sp = {
+    profile_type: "mountain", finale_type: "reduced_sprint", distance_km: 170, demand_vector: { ...DEMAND_VECTORS.mountain, randomness: 0 },
+    climbs: [{ crest_km: 165, category: "1", summit_finish: false }],
+  };
+  const good = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 99, positioning: 99 })], stageProfile: sp, seed: 1 });
+  const bad = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 0, positioning: 0 })], stageProfile: sp, seed: 1 });
+  assert.ok(good.ranked[0].components.finale > bad.ranked[0].components.finale);
+});
+
+test("uden rutedata: finaleModifier er PRÆCIS gammel adfærd (kun descent, kun descending, vægt 0.04)", () => {
+  const sp = { profile_type: "mountain", finale_type: "descent", demand_vector: DEMAND_VECTORS.mountain };
+  const r = simulateStage({ entrants: [rider("a", { climbing: 50, descending: 99, positioning: 0 })], stageProfile: sp, seed: 1 });
+  assert.equal(r.ranked[0].components.finale, ((99 - 50) / 49) * DESCENDING_FINALE_WEIGHT);
 });

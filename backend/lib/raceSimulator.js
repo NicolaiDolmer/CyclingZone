@@ -173,7 +173,34 @@ const SPRINT_PROFILES = new Set(["flat"]);
 export const DESCENDING_FINALE_WEIGHT = 0.04;
 const DESCENT_FINALES = new Set(["descent"]);
 
+// Sub-3 (#2771): teknisk finale AFLEDES af rutedata — persisteres ikke.
+export const TECHNICAL_DESCENT_WINDOW_KM = [3, 12];
+export const TECHNICAL_FINALE_WEIGHT = 0.06; // samlet ±, fordeles 60/40 descending/positioning
+export function isTechnicalFinale(sp = {}) {
+  if (DESCENT_FINALES.has(sp.finale_type)) return true;
+  const d = Number(sp.distance_km);
+  const climbs = Array.isArray(sp.climbs) ? sp.climbs : [];
+  const last = climbs.length ? climbs[climbs.length - 1] : null;
+  if (last && Number.isFinite(d)) {
+    const gap = d - Number(last.crest_km);
+    if (gap >= TECHNICAL_DESCENT_WINDOW_KM[0] && gap <= TECHNICAL_DESCENT_WINDOW_KM[1]) return true;
+  }
+  const sectors = Array.isArray(sp.sectors) ? sp.sectors : [];
+  if (Number.isFinite(d) && sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= d - 10)) return true;
+  return false;
+}
+
 function finaleModifier(entrant, stageProfile) {
+  const hasRouteData = (Array.isArray(stageProfile?.climbs) && stageProfile.climbs.length > 0)
+    || (Array.isArray(stageProfile?.sectors) && stageProfile.sectors.length > 0)
+    || Number.isFinite(Number(stageProfile?.distance_km));
+  if (hasRouteData && isTechnicalFinale(stageProfile)) {
+    const desc = clamp(Number(entrant?.abilities?.descending) || 0, 0, 99);
+    const pos = clamp(Number(entrant?.abilities?.positioning) || 0, 0, 99);
+    const blend = 0.6 * ((desc - 50) / 49) + 0.4 * ((pos - 50) / 49);
+    return blend * TECHNICAL_FINALE_WEIGHT;
+  }
+  // Uden rutedata: PRÆCIS gammel adfærd (kun descent, kun descending, vægt 0.04).
   if (!DESCENT_FINALES.has(stageProfile?.finale_type)) return 0;
   const d = Number(entrant?.abilities?.descending);
   if (!Number.isFinite(d)) return 0;
