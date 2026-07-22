@@ -20,7 +20,7 @@
 >
 > **🔕 Ops-hygiejne 20/7:** Discord-ops-spam stoppet ([#2730](https://github.com/NicolaiDolmer/CyclingZone/issues/2730)/PR #2733) — balance-drift-alarm var boot-kørt + dedup-løs → ét ping pr. deploy; nu edge-triggered via ny `ops_alert_state`-tabel (migration applied). Ægte balance-brud (maxRiderWinRate 0,67-0,75 vs mål 0,45) spores i [#2731](https://github.com/NicolaiDolmer/CyclingZone/issues/2731).
 >
-> **🤖 Working agent:** Claude Code (Opus) — Sub-4 (#2448) etapeprofil-graf. Spec ejer-godkendt 22/7 ([design](superpowers/specs/2026-07-22-sub4-stage-profile-graph-design.md)); implementering i worktree m. sonnet-workers.
+> **🤖 Working agent:** Ingen aktiv session.
 >
 ## Standing context (forever-relaunch)
 
