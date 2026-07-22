@@ -558,6 +558,33 @@
       "descent": "Downhill finish",
       "solo_tt": "Solo time trial",
       "breakaway": "Breakaway"
+    },
+    "route": {
+      "stats": { "km": "KM", "elevation": "M", "climbs": "CLIMBS" },
+      "read": {
+        "summit": { "label": "Summit finish", "note": "the climb is the line — no bunch finish" },
+        "valley": { "label": "{{km}} km descent to the line", "note": "chasers can come back" },
+        "technical": { "label": "Technical finale", "note": "descending & positioning decide it" },
+        "long": { "label": "Long day", "note": "endurance & fatigue amplified" },
+        "short": { "label": "Short day", "note": "fatigue damped" },
+        "cobbles": { "label": "{{count}} cobbled sectors", "note": "positioning & power over pavé" }
+      },
+      "waypoint": {
+        "climb": "Category {{cat}} climb",
+        "sprint": "Intermediate sprint",
+        "finish": "Finish",
+        "kmMark": "km {{km}}",
+        "gradient": "{{length}} km @ {{gradient}}%",
+        "afterCrest": "{{km}} km after the last crest"
+      },
+      "atStake": "AT STAKE",
+      "result": "RESULT",
+      "komPoints": "{{count}} KOM pts",
+      "greenPoints": "{{count}} green pts",
+      "bonusSeconds": "+{{count}}s",
+      "sprintMarker": "SPRINT · {{points}}p · +{{bonus}}s",
+      "finishNote": "FINISH {{first}} / {{second}} / {{third}} s",
+      "a11y": { "graph": "Elevation profile for stage {{number}}: {{distance}} km, {{elevation}} m of climbing, {{climbs}} categorised climbs" }
     }
   },
   "history": {
