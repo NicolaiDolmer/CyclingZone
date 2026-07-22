@@ -1069,6 +1069,10 @@
       "q": "Hvordan virker den grønne trøje og bjergtrøjen?",
       "a": "Den grønne trøje tæller spurtpoint, som optjenes ved mellemsprinter og ved etapemål, vægtet efter hvor spurtvenlig etapen er, så flade mål giver flere point end bjergetaper. Bjergtrøjen tæller KOM-point, som optjenes ved at være først over en kategoriseret stigning, med dobbelt point på et topmål. Bonussekunder tæller også med til GC: 10/6/4 sekunder til de tre første ryttere ved et etapemål, og 3/2/1 sekunder ved hver mellemsprint. Ryttere i et udbrud kan føre over en stigning eller sprint før feltet ankommer, så et udbrud kan vinde bjergtrøjen selv uden at være med i GC-kampen. Gælder løb fra sæson 2 og frem."
     },
+    "raceRouteRealismFaq": {
+      "q": "Hvorfor er tidsforskellene så forskellige mellem bjergetaper?",
+      "a": "Ruten former løbet. Et topmål åbner ægte tidsforskelle, fordi de stærkeste klatrere bliver ved med at angribe helt til stregen, mens et dal- eller nedkørselsmål lader feltet samle sig igen på vej ned, så forskellene ofte lukker sig igen. Sværhedsgraden på den sidste stigning og etapens samlede længde spiller også ind: en hårdere sidste stigning og en længere etape slider på rytterne og udvider forskellene. Tekniske, snoede finaler belønner i stedet cykelhåndtering og positionering frem for ren klatrestyrke."
+    },
     "newPlayerEconomyFaq": {
       "q": "Hvor mange penge starter jeg med, og hvornår skal jeg tage et lån?",
       "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger, drift og lånerenter trækkes automatisk ved hver sæsons start. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
