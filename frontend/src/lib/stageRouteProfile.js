@@ -1,0 +1,182 @@
+// Sub-4 (#2448): etapeprofil-geometri + motor-aflæsning. Ren .js uden React/DOM,
+// så `node --test` kan loade modulet direkte (samme mønster som stageProfileConfig.js).
+//
+// SANDHEDSPRINCIP (ejer 2026-07-22): alt på grafen kommer 1:1 fra race_stage_profiles,
+// og alt motoren konsumerer skal kunne aflæses på grafen. Der findes INGEN punkt-for-
+// punkt-højdedata; silhuetten SYNTETISERES herunder — men bundet af en invariant:
+// kurvens samlede positive stigning er nøjagtig elevation_gain_m. En stignings
+// placering, længde, stejlhed og højde er derfor sande; kun bølgeterrænet mellem
+// stigningerne er fri form, og selv dens samlede stigning er bundet.
+
+/** Dal-reference i meter. Rent visuelt nulpunkt — ikke en påstand om havhøjde. */
+export const VALLEY_M = 180;
+/**
+ * Loft på hvor stejlt ruten falder fra en top (m/km ≈ 6,5 %). Ligger næste stigning
+ * tæt, når ruten ALDRIG ned i dalen — den næste starter fra den højde nedkørslen
+ * nåede, sådan som et bjergmassiv faktisk ser ud. Uden loftet bliver faldene absurde
+ * (Picos etape 4: 915 hm på 6,6 km = 14 % nedad i seks kilometer), og bølgen kan
+ * kun bidrage positivt hvis dens amplitude er flere hundrede meter.
+ */
+export const DESCENT_M_PER_KM = 65;
+/** Blødt bånd (km) hvor bølgen fades ud mod en stignings-rampe, så ramperne er rene. */
+const FADE_KM = 3;
+/** Antal samplede punkter på kurven. Fast → determinisme. */
+const SAMPLES = 420;
+const TAU = 6.283185307179586;
+
+/** Højdemeter for én stigning — SAMME formel som backend raceRouteGenerator.elevationGain(). */
+export function climbGainM(climb) {
+  return Math.round((Number(climb.length_km) * 1000 * Number(climb.avg_gradient)) / 100);
+}
+
+/** FNV-1a 32-bit — lokal kopi af backendens stableSeed (ingen backend-import i browser-kode). */
+export function stableSeed(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+
+/**
+ * Gaten for hele Sub-4-fladen. distance_km er det ENESTE påkrævede felt: en flad
+ * ITT uden climbs har stadig en ægte rute, mens et S1/PCM-løb uden rutedata skal
+ * falde tilbage til #1484-piktogrammet (ingen syntetisk kurve).
+ */
+export function hasRouteData(profile) {
+  return Number.isFinite(Number(profile?.distance_km)) && Number(profile.distance_km) > 0;
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/**
+ * Syntetisér etapens højdekurve.
+ * @param {object} profile  race_stage_profiles-række
+ * @param {{yMax?:number}} [opts]  yMax = fælles y-loft (etape-striben); ændrer IKKE kurven
+ * @returns {{xs:number[], ys:number[], spans:[number,number][], climbs:object[],
+ *            maxY:number, ascent:number, waveAmplitude:number}|null}
+ */
+export function buildProfileSeries(profile, opts = {}) {
+  if (!hasRouteData(profile)) return null;
+  const D = Number(profile.distance_km);
+  const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
+    .slice()
+    .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
+
+  // 1) Knuder: fod → top → begrænset nedkørsel → fod …
+  const knots = [[0, VALLEY_M]];
+  const spans = [];
+  let prevKm = 0, prevAlt = VALLEY_M;
+  for (const c of climbs) {
+    const crest = Number(c.crest_km);
+    const foot = Math.max(prevKm + 0.5, Math.min(crest - Number(c.length_km), crest - 0.5));
+    const footAlt = Math.max(VALLEY_M, prevAlt - DESCENT_M_PER_KM * (foot - prevKm));
+    if (foot > knots[knots.length - 1][0]) knots.push([foot, footAlt]);
+    const crestAlt = footAlt + climbGainM(c);
+    knots.push([crest, crestAlt]);
+    spans.push([foot, crest]);
+    prevKm = crest; prevAlt = crestAlt;
+  }
+  if (prevKm < D) {
+    knots.push([D, Math.max(VALLEY_M, prevAlt - DESCENT_M_PER_KM * (D - prevKm))]);
+  }
+
+  const at = (x) => {
+    for (let i = 1; i < knots.length; i++) {
+      if (x <= knots[i][0]) {
+        const [x0, y0] = knots[i - 1];
+        const [x1, y1] = knots[i];
+        return x1 === x0 ? y1 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+      }
+    }
+    return knots[knots.length - 1][1];
+  };
+  const mask = (x) => {
+    let m = 1;
+    for (const [a, b] of spans) {
+      if (x >= a && x <= b) return 0;
+      const d = x < a ? a - x : x - b;
+      if (d < FADE_KM) m = Math.min(m, d / FADE_KM);
+    }
+    return m;
+  };
+
+  // 2) Bølgeterræn. Faser fra en stabil hash (aldrig Math.random/Date).
+  // Bølgelængderne er KORTE med vilje: bølgen repræsenterer ikke-kategoriseret
+  // terræn (BASE_ELEVATION), altså mange små bump. Med lange bølger skal de få
+  // perioder bære hele restbeløbet, og amplituden ryger op i flere hundrede meter.
+  const seed = stableSeed(`${profile.race_id ?? ""}#${profile.stage_number ?? 1}#${D}`);
+  const p1 = ((seed % 1000) / 1000) * TAU;
+  const p2 = (((seed >>> 10) % 1000) / 1000) * TAU;
+  const L1 = clamp(D / 40, 0.8, 5.0), L2 = clamp(D / 15, 2.0, 14.0), L3 = clamp(D / 80, 0.4, 2.5);
+
+  // Samplepunkter = jævn opløsning UNION alle knude-positioner. Uden knuderne
+  // rammer rasteret sjældent en top præcist, og en HC-spids kan blive skåret
+  // 30 m af (målt) — både geometrisk forkert og visuelt afrundet.
+  const xs = [];
+  for (let i = 0; i <= SAMPLES; i++) xs.push((D * i) / SAMPLES);
+  for (const [kx] of knots) xs.push(kx);
+  xs.sort((a, b) => a - b);
+  for (let i = xs.length - 1; i > 0; i--) if (xs[i] - xs[i - 1] < 1e-9) xs.splice(i, 1);
+  const N = xs.length - 1;
+
+  const base = [], wav = [];
+  for (let i = 0; i <= N; i++) {
+    const x = xs[i];
+    base.push(at(x));
+    wav.push(mask(x) * (
+      Math.sin((TAU * x) / L1 + p1)
+      + 0.55 * Math.sin((TAU * x) / L2 + p2)
+      + 0.3 * Math.sin((TAU * x) / L3 + p1 * 2)
+    ));
+  }
+  // Nulstil bølgen ved start (rent konstant offset → invarianten er uændret),
+  // så ruten altid begynder i dal-højde i stedet for på en tilfældig bølgetop.
+  const w0 = wav[0];
+  for (let i = 0; i <= N; i++) wav[i] -= w0;
+
+  const ascentAt = (s) => {
+    let a = 0;
+    for (let i = 1; i <= N; i++) {
+      const d = base[i] + s * wav[i] - (base[i - 1] + s * wav[i - 1]);
+      if (d > 0) a += d;
+    }
+    return a;
+  };
+
+  // 3) INVARIANTEN: bisektér bølgens amplitude, så samlet stigning == elevation_gain_m.
+  // Ramperne bidrager allerede med deres egen sum; bølgen absorberer præcis det
+  // generatoren lagde oveni som BASE_ELEVATION[profile_type].
+  const target = Number(profile.elevation_gain_m);
+  let s = 0;
+  if (Number.isFinite(target) && target > ascentAt(0)) {
+    let lo = 0, hi = 8;
+    while (ascentAt(hi) < target && hi < 4096) hi *= 2;
+    for (let k = 0; k < 55; k++) {
+      const mid = (lo + hi) / 2;
+      if (ascentAt(mid) < target) lo = mid; else hi = mid;
+    }
+    s = (lo + hi) / 2;
+  }
+  const ys = xs.map((x, i) => Math.max(20, base[i] + s * wav[i]));
+  const peak = Math.max(...ys);
+  return {
+    xs, ys, spans, climbs,
+    maxY: Number.isFinite(opts.yMax) ? opts.yMax : peak,
+    ascent: ascentAt(s),
+    // Bølgens top-til-bund-udsving. Kalibreringens kanariefugl — se testen.
+    waveAmplitude: s * 1.85,
+  };
+}
+
+/**
+ * Fælles y-loft for et løbs etaper. Uden det ville hver mini-profil skalere til
+ * sin egen top, og en flad etape ville se lige så bjergrig ud som en HC-dag.
+ * @returns {number|null} null hvis ingen af etaperne har rutedata
+ */
+export function sharedYMax(profiles) {
+  let max = null;
+  for (const p of profiles || []) {
+    const s = buildProfileSeries(p);
+    if (s && (max === null || s.maxY > max)) max = s.maxY;
+  }
+  return max;
+}
