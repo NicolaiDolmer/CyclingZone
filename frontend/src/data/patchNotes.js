@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.43",
+    "date": "2026-07-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season 1 standings restored after a short-lived scoring error",
+          "body": "For a few hours today, the new intermediate sprint and mountain points system was applied to season 1 stage races by mistake. It should only run from season 2, where routes carry real climbs and sprints. Points and bonus seconds were handed out on stages that have no route data, which shifted general classification times and daily jersey standings in 25 ongoing stage races. The error is fixed and those standings have been restored to their correct values. Stage placings and finishing times were never affected, and prizes already paid out have been left with the riders who received them."
+        },
+        "da": {
+          "title": "Sæson 1-stillinger genoprettet efter en kortvarig pointfejl",
+          "body": "I nogle timer i dag blev det nye system med mellemsprints og bjergpoint ved en fejl brugt på sæson 1's etapeløb. Det skal først køre fra sæson 2, hvor ruterne har rigtige stigninger og spurter. Der blev uddelt point og bonussekunder på etaper uden rutedata, hvilket flyttede tider i klassementet og stillingerne i dagstrøjerne i 25 igangværende etapeløb. Fejlen er rettet, og stillingerne er genoprettet til de korrekte værdier. Etapeplaceringer og sluttider var aldrig påvirket, og allerede udbetalte præmier bliver hos de ryttere der modtog dem."
+        },
+        "refs": [2786]
+      }
+    ]
+  },
+  {
     "version": "7.42",
     "date": "2026-07-22",
     "label": "Beta",
