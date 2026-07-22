@@ -563,28 +563,28 @@
       "stats": { "km": "KM", "elevation": "M", "climbs": "STIGNINGER" },
       "read": {
         "summit": { "label": "Målgang på toppen", "note": "stigningen er målstregen — ingen massespurt" },
-        "valley": { "label": "{{km}} km nedkørsel til mål", "note": "forfølgerne kan nå tilbage" },
+        "valley": { "label": "{km} km nedkørsel til mål", "note": "forfølgerne kan nå tilbage" },
         "technical": { "label": "Teknisk finale", "note": "nedkørsel og positionering afgør det" },
         "long": { "label": "Lang dag", "note": "udholdenhed og træthed forstærkes" },
         "short": { "label": "Kort dag", "note": "træthed dæmpes" },
-        "cobbles": { "label": "{{count}} brostenssektorer", "note": "positionering og styrke over brostenene" }
+        "cobbles": { "label": "{count} brostenssektorer", "note": "positionering og styrke over brostenene" }
       },
       "waypoint": {
-        "climb": "Kategori {{cat}}-stigning",
+        "climb": "Kategori {cat}-stigning",
         "sprint": "Mellemsprint",
         "finish": "Mål",
-        "kmMark": "km {{km}}",
-        "gradient": "{{length}} km @ {{gradient}} %",
-        "afterCrest": "{{km}} km efter sidste top"
+        "kmMark": "km {km}",
+        "gradient": "{length} km @ {gradient} %",
+        "afterCrest": "{km} km efter sidste top"
       },
       "atStake": "PÅ SPIL",
       "result": "RESULTAT",
-      "komPoints": "{{count}} bjergpoint",
-      "greenPoints": "{{count}} pointtrøje-point",
-      "bonusSeconds": "+{{count}} s",
-      "sprintMarker": "SPRINT · {{points}}p · +{{bonus}}s",
-      "finishNote": "MÅL {{first}} / {{second}} / {{third}} s",
-      "a11y": { "graph": "Højdeprofil for etape {{number}}: {{distance}} km, {{elevation}} højdemeter, {{climbs}} kategoriserede stigninger" }
+      "komPoints": "{count} bjergpoint",
+      "greenPoints": "{count} pointtrøje-point",
+      "bonusSeconds": "+{count} s",
+      "sprintMarker": "SPRINT · {points}p · +{bonus}s",
+      "finishNote": "MÅL {first} / {second} / {third} s",
+      "a11y": { "graph": "Højdeprofil for etape {number}: {distance} km, {elevation} højdemeter, {climbs} kategoriserede stigninger" }
     }
   },
   "history": {
