@@ -180,3 +180,168 @@ export function sharedYMax(profiles) {
   }
   return max;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 2 (#2448): motor-aflæsning. Grafen skal fortælle hvad ruten GØR ved
+// løbet med PRÆCIS de samme betingelser og tal som motoren selv bruger — ellers
+// lyver chippen over for spilleren. Konstanterne herunder er derfor dupliceret
+// (ikke gættet) fra backend/lib/racePassages.js og backend/lib/raceSimulator.js;
+// drift-guard-testene deepEqual'er dem mod de ægte backend-eksporter. Fejler en
+// guard, ret DENNE fil — backend er motoren og er frossen for denne opgave.
+
+// Fra backend/lib/racePassages.js (Sub-2, ejer-låste Tour-skalaer, spec §4 22/7).
+export const GREEN_FINISH_SCALES = Object.freeze({
+  flat:          Object.freeze([50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2]),
+  cobbles:       Object.freeze([50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2]),
+  rolling:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
+  hilly:         Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
+  classic:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
+  mountain:      Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+  high_mountain: Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+  itt:           Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+  ttt:           Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+});
+export const INTERMEDIATE_SPRINT_SCALE = Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+export const KOM_SCALES = Object.freeze({
+  HC:  Object.freeze([20, 15, 12, 10, 8, 6, 4, 2]),
+  "1": Object.freeze([10, 8, 6, 4, 2, 1]),
+  "2": Object.freeze([5, 3, 2, 1]),
+  "3": Object.freeze([2, 1]),
+  "4": Object.freeze([1]),
+});
+export const FINISH_BONUS_SECONDS = Object.freeze([10, 6, 4]);
+export const INTERMEDIATE_BONUS_SECONDS = Object.freeze([3, 2, 1]);
+
+// Fra backend/lib/raceSimulator.js (Sub-3, #2771 rute-bevidst gap-model).
+export const TECHNICAL_DESCENT_WINDOW_KM = Object.freeze([3, 12]);
+export const VALLEY_MIN_DESCENT_KM = 10;
+export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
+  flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
+  cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
+});
+
+// Sub-4s EGNE præsentations-tærskler — findes IKKE i backend. Motoren clamper
+// distanceFactor blødt ([0.85, 1.2], se raceSimulator.distanceFactor); grafen
+// har derimod brug for en diskret ja/nej-chip ("lang dag"/"kort dag"), så disse
+// er en visningsbeslutning oven på motorens kontinuerlige model, ikke en kopi.
+export const LONG_DAY_RATIO = 1.06;
+export const SHORT_DAY_RATIO = 0.94;
+
+/**
+ * Point til førstepladsen på en stigning — SAMME regel som racePassages.scaleFor:
+ * summit-finish på HC eller kategori 1 giver DOBBELT point (toppen ER stregen).
+ * Ukendt/manglende kategori → 0, aldrig en kastet fejl.
+ */
+export function komPointsForClimb(climb) {
+  const scale = KOM_SCALES[climb?.category];
+  if (!scale || !scale.length) return 0;
+  const points = scale[0];
+  const doubles = climb?.summit_finish && (climb.category === "HC" || climb.category === "1");
+  return doubles ? points * 2 : points;
+}
+
+/**
+ * Etapens "hvad betyder ruten"-nøgler til i18n. Betingelserne er IDENTISKE med
+ * motorens (stageGapModel + isTechnicalFinale i raceSimulator.js) — chippen må
+ * aldrig påstå noget motoren ikke selv handler efter. Uden rutedata: tom liste
+ * (samme gate som resten af Sub-4-fladen).
+ * @returns {{key:string, params?:object}[]}
+ */
+export function routeReadKeys(profile) {
+  if (!hasRouteData(profile)) return [];
+  const D = Number(profile.distance_km);
+  // Samme sortering som buildProfileSeries — "sidste stigning" skal være
+  // geografisk sidst, ikke sidst i en vilkårlig DB-rækkefølge.
+  const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
+    .slice()
+    .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
+  const lastClimb = climbs.length ? climbs[climbs.length - 1] : null;
+  const gapFromLastCrest = lastClimb ? D - Number(lastClimb.crest_km) : null;
+  const keys = [];
+
+  // summit/valley er gensidigt udelukkende (jf. stageGapModel: en summit-finish
+  // har INGEN nedkørsel at måle — bunch nulstilles i stedet).
+  if (lastClimb?.summit_finish) {
+    keys.push({ key: "summit" });
+  } else if (gapFromLastCrest !== null && gapFromLastCrest >= VALLEY_MIN_DESCENT_KM) {
+    keys.push({ key: "valley", params: { km: Math.round(gapFromLastCrest) } });
+  }
+
+  // Teknisk finale — kopi af raceSimulator.isTechnicalFinale's tre betingelser.
+  const sectors = Array.isArray(profile.sectors) ? profile.sectors : [];
+  const isTechnical = profile.finale_type === "descent"
+    || (gapFromLastCrest !== null
+        && gapFromLastCrest >= TECHNICAL_DESCENT_WINDOW_KM[0]
+        && gapFromLastCrest <= TECHNICAL_DESCENT_WINDOW_KM[1])
+    || sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= D - 10);
+  if (isTechnical) keys.push({ key: "technical" });
+
+  const mid = DISTANCE_BAND_MIDPOINTS[profile.profile_type];
+  if (mid) {
+    const ratio = D / mid;
+    if (ratio >= LONG_DAY_RATIO) keys.push({ key: "long" });
+    else if (ratio <= SHORT_DAY_RATIO) keys.push({ key: "short" });
+  }
+
+  if (sectors.length > 0) keys.push({ key: "cobbles", params: { count: sectors.length } });
+
+  return keys;
+}
+
+/**
+ * Alle motorens waypoints for etapen, sorteret på km, til visning + klik-opslag
+ * på grafen. `index` beregnes FØR den fælles km-sortering — positionen i
+ * climbs[]/mellemsprint-listen, samme konvention som racePassages.computePassages
+ * — så den matcher race_stage_passages.waypoint_index, og et klik kan slå det
+ * ægte passage-resultat op fremfor at gætte ud fra rækkefølgen på grafen.
+ * @returns {Array<{kind:"kom"|"sprint"|"finish", index:number, name:string|null,
+ *   km:number, points:number, bonus:number, category?:string, length_km?:number,
+ *   avg_gradient?:number, summit_finish?:boolean}>}
+ */
+export function waypointsFor(profile) {
+  if (!hasRouteData(profile)) return [];
+  const D = Number(profile.distance_km);
+  const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
+    .slice()
+    .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
+  const sprints = Array.isArray(profile.sprints) ? profile.sprints : [];
+  const intermediates = sprints.filter((s) => s.kind === "intermediate");
+
+  const komWps = climbs.map((c, i) => ({
+    kind: "kom",
+    index: i,
+    name: c.name ?? null,
+    km: Number(c.crest_km),
+    points: komPointsForClimb(c),
+    bonus: 0,
+    category: c.category,
+    length_km: c.length_km,
+    avg_gradient: c.avg_gradient,
+    summit_finish: !!c.summit_finish,
+  }));
+  const sprintWps = intermediates.map((s, i) => ({
+    kind: "sprint",
+    index: i,
+    name: s.name ?? null,
+    km: Number(s.km),
+    points: INTERMEDIATE_SPRINT_SCALE[0] || 0,
+    bonus: INTERMEDIATE_BONUS_SECONDS[0] || 0,
+  }));
+  // Grøn målskala pr. profile_type — ukendt type falder tilbage til flat (Sub-4-
+  // visningsbeslutning; motorens EGEN fallback er "mountain", se scaleFor, men
+  // profile_type er en CHECK-constraint-enum i praksis, så denne gren rammes
+  // reelt aldrig af ægte data).
+  const finishScale = GREEN_FINISH_SCALES[profile.profile_type] || GREEN_FINISH_SCALES.flat;
+  const isTimeTrial = profile.profile_type === "itt" || profile.profile_type === "ttt";
+  const finishWp = {
+    kind: "finish",
+    index: 0,
+    name: null,
+    km: D,
+    points: finishScale[0] || 0,
+    // Ingen bonussekunder på en enkeltstart — der er ingen gruppe at tage tid fra.
+    bonus: isTimeTrial ? 0 : (FINISH_BONUS_SECONDS[0] || 0),
+  };
+
+  return [...komWps, ...sprintWps, finishWp].sort((a, b) => a.km - b.km);
+}

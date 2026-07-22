@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasRouteData, buildProfileSeries, sharedYMax } from "./stageRouteProfile.js";
+import {
+  hasRouteData, buildProfileSeries, sharedYMax,
+  komPointsForClimb, routeReadKeys, waypointsFor,
+  KOM_SCALES, GREEN_FINISH_SCALES, INTERMEDIATE_SPRINT_SCALE,
+  FINISH_BONUS_SECONDS, INTERMEDIATE_BONUS_SECONDS,
+  TECHNICAL_DESCENT_WINDOW_KM, VALLEY_MIN_DESCENT_KM, DISTANCE_BAND_MIDPOINTS,
+} from "./stageRouteProfile.js";
 
 const PICOS_S4 = {
   race_id: "picos", stage_number: 4, profile_type: "high_mountain", finale_type: "descent",
@@ -164,4 +170,91 @@ test("sharedYMax: etaper uden rutedata ignoreres; ingen rutedata → null", () =
   assert.equal(sharedYMax([{ profile_type: "flat" }]), null);
   assert.equal(sharedYMax([]), null);
   assert.equal(sharedYMax([{ profile_type: "flat" }, PROLOG]), buildProfileSeries(PROLOG).maxY);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 2 (#2448): motor-aflæsning — routeReadKeys, komPointsForClimb, waypointsFor.
+
+test("routeReadKeys(PICOS_S4): valley km=20 + technical, men IKKE summit", () => {
+  const keys = routeReadKeys(PICOS_S4);
+  const byKey = Object.fromEntries(keys.map((k) => [k.key, k]));
+  assert.equal(byKey.valley?.params.km, 20);
+  assert.ok(byKey.technical, "descent-finale skal give technical");
+  assert.equal(byKey.summit, undefined, "sidste stigning er ikke summit_finish");
+});
+
+test("routeReadKeys(IBERICA_S20): summit, IKKE valley", () => {
+  const keys = routeReadKeys(IBERICA_S20);
+  const byKey = Object.fromEntries(keys.map((k) => [k.key, k]));
+  assert.ok(byKey.summit, "sidste stigning har summit_finish: true");
+  assert.equal(byKey.valley, undefined, "summit-finish har ingen nedkørsel at måle");
+});
+
+test("routeReadKeys: brosten-etape hvor sidste sektor slutter <10 km fra mål giver technical", () => {
+  const stage = { ...VLAAMSE_S1, distance_km: 120 }; // sidste sektor slutter km 115,7
+  const keys = routeReadKeys(stage);
+  assert.ok(keys.some((k) => k.key === "technical"));
+});
+
+test("routeReadKeys(VLAAMSE_S1): cobbles-chip bærer params.count === 5", () => {
+  const keys = routeReadKeys(VLAAMSE_S1);
+  const cobbles = keys.find((k) => k.key === "cobbles");
+  assert.equal(cobbles?.params.count, 5);
+});
+
+test("routeReadKeys: lang/kort dag omkring DISTANCE_BAND_MIDPOINTS.flat (175 km)", () => {
+  const long = routeReadKeys({ profile_type: "flat", distance_km: 200, climbs: [], sprints: [], sectors: [] });
+  const short = routeReadKeys({ profile_type: "flat", distance_km: 150, climbs: [], sprints: [], sectors: [] });
+  const neither = routeReadKeys({ profile_type: "flat", distance_km: 175, climbs: [], sprints: [], sectors: [] });
+  assert.ok(long.some((k) => k.key === "long"));
+  assert.ok(short.some((k) => k.key === "short"));
+  assert.ok(!neither.some((k) => k.key === "long" || k.key === "short"));
+});
+
+test("routeReadKeys: uden rutedata → tom liste", () => {
+  assert.deepEqual(routeReadKeys({ profile_type: "flat" }), []);
+  assert.deepEqual(routeReadKeys(null), []);
+});
+
+test("komPointsForClimb: HC/kat.1 fordobles på summit_finish, kat.2+ gør ikke", () => {
+  assert.equal(komPointsForClimb({ category: "HC", summit_finish: false }), 20);
+  assert.equal(komPointsForClimb({ category: "HC", summit_finish: true }), 40);
+  assert.equal(komPointsForClimb({ category: "1", summit_finish: true }), 20);
+  assert.equal(komPointsForClimb({ category: "2", summit_finish: true }), 5, "kun HC/1 fordobles");
+  assert.equal(komPointsForClimb({ category: "4", summit_finish: false }), 1);
+});
+
+test("komPointsForClimb: ukendt kategori → 0, ingen kastet fejl", () => {
+  assert.equal(komPointsForClimb({ category: "ukendt" }), 0);
+  assert.equal(komPointsForClimb({}), 0);
+});
+
+test("waypointsFor(PICOS_S4): 6 waypoints sorteret på km, HC har index 3 og 20 point", () => {
+  const wps = waypointsFor(PICOS_S4);
+  assert.equal(wps.length, 6);
+  assert.deepEqual(wps.map((w) => w.km), [62, 70, 84, 106, 140, 160]);
+  assert.deepEqual(wps.map((w) => w.kind), ["kom", "sprint", "kom", "kom", "kom", "finish"]);
+  const hc = wps.find((w) => w.category === "HC");
+  assert.equal(hc.index, 3);
+  assert.equal(hc.points, 20);
+});
+
+test("waypointsFor: uden rutedata → tom liste", () => {
+  assert.deepEqual(waypointsFor({ profile_type: "flat" }), []);
+});
+
+test("DRIFT-GUARD: passage-konstanter i frontend matcher backend/lib/racePassages.js 1:1", async () => {
+  const backend = await import("../../../backend/lib/racePassages.js");
+  assert.deepEqual(KOM_SCALES, backend.KOM_SCALES, "KOM_SCALES afveget fra motoren");
+  assert.deepEqual(GREEN_FINISH_SCALES, backend.GREEN_FINISH_SCALES, "GREEN_FINISH_SCALES afveget fra motoren");
+  assert.deepEqual(INTERMEDIATE_SPRINT_SCALE, backend.INTERMEDIATE_SPRINT_SCALE, "INTERMEDIATE_SPRINT_SCALE afveget fra motoren");
+  assert.deepEqual(FINISH_BONUS_SECONDS, backend.FINISH_BONUS_SECONDS, "FINISH_BONUS_SECONDS afveget fra motoren");
+  assert.deepEqual(INTERMEDIATE_BONUS_SECONDS, backend.INTERMEDIATE_BONUS_SECONDS, "INTERMEDIATE_BONUS_SECONDS afveget fra motoren");
+});
+
+test("DRIFT-GUARD: rute-konstanter i frontend matcher backend/lib/raceSimulator.js 1:1", async () => {
+  const backend = await import("../../../backend/lib/raceSimulator.js");
+  assert.deepEqual(TECHNICAL_DESCENT_WINDOW_KM, backend.TECHNICAL_DESCENT_WINDOW_KM, "TECHNICAL_DESCENT_WINDOW_KM afveget fra motoren");
+  assert.equal(VALLEY_MIN_DESCENT_KM, backend.VALLEY_MIN_DESCENT_KM, "VALLEY_MIN_DESCENT_KM afveget fra motoren");
+  assert.deepEqual(DISTANCE_BAND_MIDPOINTS, backend.DISTANCE_BAND_MIDPOINTS, "DISTANCE_BAND_MIDPOINTS afveget fra motoren");
 });
