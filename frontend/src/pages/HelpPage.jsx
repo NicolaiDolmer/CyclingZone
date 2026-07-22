@@ -303,6 +303,7 @@ const FAQ_KEYS = [
   "peakTraining",
   "raceSignupFaq",
   "raceClassificationsFaq",
+  "raceJerseysFaq",
   "dayFormFaq",
   "crashesFaq",
   "newPlayerEconomyFaq",
