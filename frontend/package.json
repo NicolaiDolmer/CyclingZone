@@ -20,8 +20,8 @@
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
     "@microsoft/clarity": "^1.0.2",
-    "@sentry/react": "^10.66.0",
-    "@supabase/supabase-js": "^2.110.7",
+    "@sentry/react": "^10.67.0",
+    "@supabase/supabase-js": "^2.110.8",
     "@vercel/analytics": "^2.0.1",
     "flag-icons": "^7.5.0",
     "i18next": "^26.3.6",
@@ -31,10 +31,10 @@
     "intl-messageformat": "^11.2.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.10",
-    "react-is": "^19.2.7",
+    "react-i18next": "^17.0.11",
+    "react-is": "^19.2.8",
     "react-router-dom": "^6.30.4",
-    "recharts": "^3.9.2",
+    "recharts": "^3.10.0",
     "web-vitals": "^5.3.0"
   },
   "devDependencies": {
@@ -47,8 +47,8 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
-    "postcss": "^8.5.19",
-    "prettier": "^3.9.5",
+    "postcss": "^8.5.22",
+    "prettier": "^3.9.6",
     "tailwindcss": "^3.4.14",
     "vite": "^8.1.5"
   }
