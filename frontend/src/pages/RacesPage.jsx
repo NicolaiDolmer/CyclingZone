@@ -17,17 +17,17 @@ import {
   Card,
   Input,
   Select,
-  Table,
-  Tr,
-  Th,
-  Td,
   Tabs,
   TabList,
   Tab,
   EmptyState,
-  Spinner,
   FlagIcon,
   PageLoader,
+  PageHeader,
+  Section,
+  SectionHeader,
+  DataTable,
+  SkeletonLines,
 } from "../components/ui";
 import { labelClass } from "../components/ui/fieldStyles.js";
 
@@ -341,21 +341,19 @@ export default function RacesPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-          <p className="text-cz-3 text-sm">
-            {tab === "library"
-              ? t("subtitle.library", { count: libRaces.length })
-              : tab === "points"
-              ? t("subtitle.points")
-              : season
-              ? t("subtitle.withSeason", { number: season.number, count: myRaces.length })
-              : t("subtitle.noSeasonWithCount", { count: myRaces.length })}
-          </p>
-        </div>
-      </div>
+    <div className="max-w-[1600px] mx-auto">
+      <PageHeader
+        title={t("title")}
+        subtitle={
+          tab === "library"
+            ? t("subtitle.library", { count: libRaces.length })
+            : tab === "points"
+            ? t("subtitle.points")
+            : season
+            ? t("subtitle.withSeason", { number: season.number, count: myRaces.length })
+            : t("subtitle.noSeasonWithCount", { count: myRaces.length })
+        }
+      />
 
       {/* Tabs */}
       <Tabs value={tab} onChange={changeTab} className="mb-5">
@@ -381,8 +379,8 @@ export default function RacesPage() {
           <div>
             {/* Completed */}
             {racesByStatus.completed.length > 0 && (
-              <div>
-                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("calendar.completed")}</h2>
+              <Section>
+                <SectionHeader title={t("calendar.completed")} />
                 <div className="flex flex-col gap-2">
                   {racesByStatus.completed.map(race => (
                     <Card key={race.id} interactive
@@ -403,7 +401,7 @@ export default function RacesPage() {
                     </Card>
                   ))}
                 </div>
-              </div>
+              </Section>
             )}
 
             {myRaces.length === 0 && (
@@ -418,7 +416,7 @@ export default function RacesPage() {
           {/* Race detail panel */}
           <div>
             {selectedRace ? (
-              <Card className="p-5 sticky top-4">
+              <Section className="sticky top-4">
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
                 <p className="text-cz-3 text-xs mb-1">
                   {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
@@ -437,16 +435,10 @@ export default function RacesPage() {
                   ) : <div className="mb-4" />;
                 })()}
 
-                {selectedRace.loading && (
-                  <div className="flex justify-center py-8">
-                    <Spinner size={20} />
-                  </div>
-                )}
+                {selectedRace.loading && <SkeletonLines lines={4} className="py-4" />}
 
                 {!selectedRace.loading && selectedRace.results?.length === 0 && (
-                  <div className="text-center py-8 text-cz-3 text-sm">
-                    <p>{t("calendar.noResultsYet")}</p>
-                  </div>
+                  <EmptyState title={t("calendar.noResultsYet")} />
                 )}
 
                 {!selectedRace.loading && selectedRace.results?.length > 0 && (
@@ -485,12 +477,13 @@ export default function RacesPage() {
                     })}
                   </div>
                 )}
-              </Card>
+              </Section>
             ) : (
-              <Card className="p-8 text-center text-cz-3 sticky top-4">
-                <FlagIcon size={24} className="mx-auto mb-2 text-cz-3" />
-                <p className="text-sm">{t("calendar.selectPrompt")}</p>
-              </Card>
+              <EmptyState
+                className="sticky top-4"
+                icon={<FlagIcon size={26} aria-hidden="true" />}
+                title={t("calendar.selectPrompt")}
+              />
             )}
           </div>
         </div>
@@ -565,60 +558,91 @@ export default function RacesPage() {
           )}
 
           {libLoading ? (
-            <PageLoader />
+            <Section><SkeletonLines lines={5} /></Section>
           ) : filteredLibRaces.length === 0 ? (
             <EmptyState icon={<FlagIcon size={28} />} title={t("empty.noRacesMatch")} />
           ) : (
-            <Card className="overflow-hidden">
-              <Table className="text-sm" data-sortable>
-                <thead>
-                  <Tr className="hover:bg-transparent">
-                    <Th sortKey="name" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thRace")}</Th>
-                    <Th sortKey="season" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thSeason")}</Th>
-                    <Th sortKey="race_class" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thClass")}</Th>
-                    <Th sortKey="race_type" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thType")}</Th>
-                    <Th sortKey="status" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thStatus")}</Th>
-                  </Tr>
-                </thead>
-                <tbody>
-                  {sortRows(filteredLibRaces, librarySort.sort ? LIBRARY_ACCESSORS[librarySort.sort] : null, librarySort.sortDir).map(r => {
+            <DataTable
+              label={t("tabs.library")}
+              rowKey={(r) => r.id}
+              sort={librarySort.sort}
+              sortDir={librarySort.sortDir}
+              onSort={librarySort.handleSort}
+              rows={sortRows(filteredLibRaces, librarySort.sort ? LIBRARY_ACCESSORS[librarySort.sort] : null, librarySort.sortDir)}
+              columns={[
+                {
+                  key: "name",
+                  header: t("library.thRace"),
+                  sticky: true,
+                  sortKey: "name",
+                  // Kun navnet er klik-mål (DataTable understøtter ikke helrække-klik) —
+                  // bevidst afvigelse fra den tidligere hel-rækkes klikbare Tr.
+                  render: (r) => (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
+                      className="text-left hover:text-cz-accent-t transition-colors"
+                    >
+                      {r.name}
+                    </button>
+                  ),
+                },
+                {
+                  key: "season",
+                  header: t("library.thSeason"),
+                  sortKey: "season",
+                  fold: true,
+                  foldValue: (r) => (r.season ? t("library.seasonLink", { number: r.season.number }) : "—"),
+                  render: (r) =>
+                    r.season ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
+                        className="text-cz-accent-t hover:underline">
+                        {t("library.seasonLink", { number: r.season.number })}
+                      </button>
+                    ) : "—",
+                },
+                {
+                  key: "race_class",
+                  header: t("library.thClass"),
+                  sortKey: "race_class",
+                  fold: true,
+                  foldValue: (r) => {
                     const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
+                    return classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—");
+                  },
+                  render: (r) => {
+                    const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
+                    return classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—");
+                  },
+                },
+                {
+                  key: "race_type",
+                  header: t("library.thType"),
+                  sortKey: "race_type",
+                  fold: true,
+                  foldValue: (r) => (r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")),
+                  render: (r) => (r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")),
+                },
+                {
+                  key: "status",
+                  header: t("library.thStatus"),
+                  sortKey: "status",
+                  render: (r) => {
                     // Afled visnings-status (#1828): igangværende etapeløb vises "Live", ikke "Kommende".
                     const derivedStatus = deriveRaceStatus(r.status, r.stages_completed, r.stages);
                     return (
-                      <Tr key={r.id}
-                        onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
-                        className="cursor-pointer">
-                        <Td className="text-cz-1 font-medium">{r.name}</Td>
-                        <Td className="text-cz-2 text-xs">
-                          {r.season ? (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
-                              className="text-cz-accent-t hover:underline">
-                              {t("library.seasonLink", { number: r.season.number })}
-                            </button>
-                          ) : "—"}
-                        </Td>
-                        <Td className="text-cz-2 text-xs">
-                          {classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—")}
-                        </Td>
-                        <Td className="text-cz-2 text-xs">
-                          {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
-                        </Td>
-                        <Td className="text-xs">
-                          <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
-                            ${derivedStatus === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                              : derivedStatus === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                              : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                            {t(`status.${derivedStatus}`)}
-                          </span>
-                        </Td>
-                      </Tr>
+                      <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
+                        ${derivedStatus === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                          : derivedStatus === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                          : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                        {t(`status.${derivedStatus}`)}
+                      </span>
                     );
-                  })}
-                </tbody>
-              </Table>
-            </Card>
+                  },
+                },
+              ]}
+            />
           )}
         </div>
       )}
@@ -629,10 +653,8 @@ export default function RacesPage() {
           {worldLoading && <p className="text-cz-3 text-sm">{t("world.loading")}</p>}
           {!worldLoading && (
             <>
-              <Card className="p-4 mb-4">
-                <p className="text-cz-2 font-medium text-sm mb-3">
-                  {t("world.totalRaces", { count: worldPool.length })}
-                </p>
+              <Section className="mb-4">
+                <SectionHeader title={t("world.totalRaces", { count: worldPool.length })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
                   {RACE_CLASS_OPTIONS.map(opt => {
                     const s = worldSummary[opt.value];
@@ -662,34 +684,33 @@ export default function RacesPage() {
                     </button>
                   </p>
                 )}
-              </Card>
+              </Section>
 
-              <Card className="overflow-hidden">
-                <Table className="text-sm" data-sortable>
-                  <thead>
-                    <Tr className="hover:bg-transparent">
-                      <Th sortKey="name" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thRace")}</Th>
-                      <Th sortKey="race_class" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thClass")}</Th>
-                      <Th sortKey="race_type" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thType")}</Th>
-                      <Th numeric sortKey="stages" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thStages")}</Th>
-                    </Tr>
-                  </thead>
-                  <tbody>
-                    {sortRows(
-                      worldPool.filter(r => !worldFilterClass || r.race_class === worldFilterClass),
-                      worldSort.sort ? WORLD_ACCESSORS[worldSort.sort] : null,
-                      worldSort.sortDir,
-                    ).map(r => (
-                        <Tr key={r.id}>
-                          <Td className="text-cz-1">{r.name}</Td>
-                          <Td className="text-cz-2">{r.race_class}</Td>
-                          <Td className="text-cz-2">{r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")}</Td>
-                          <Td numeric className="text-cz-2">{r.stages}</Td>
-                        </Tr>
-                      ))}
-                  </tbody>
-                </Table>
-              </Card>
+              <DataTable
+                label={t("tabs.world")}
+                rowKey={(r) => r.id}
+                sort={worldSort.sort}
+                sortDir={worldSort.sortDir}
+                onSort={worldSort.handleSort}
+                rows={sortRows(
+                  worldPool.filter(r => !worldFilterClass || r.race_class === worldFilterClass),
+                  worldSort.sort ? WORLD_ACCESSORS[worldSort.sort] : null,
+                  worldSort.sortDir,
+                )}
+                columns={[
+                  { key: "name", header: t("world.thRace"), sticky: true, sortKey: "name" },
+                  { key: "race_class", header: t("world.thClass"), sortKey: "race_class", fold: true },
+                  {
+                    key: "race_type",
+                    header: t("world.thType"),
+                    sortKey: "race_type",
+                    fold: true,
+                    render: (r) => (r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")),
+                    foldValue: (r) => (r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")),
+                  },
+                  { key: "stages", header: t("world.thStages"), numeric: true, sortKey: "stages" },
+                ]}
+              />
             </>
           )}
         </div>
