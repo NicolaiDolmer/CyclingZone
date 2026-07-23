@@ -8,6 +8,7 @@ import {
   getOffers,
   acceptOffer,
   expireAndRenewContracts,
+  recomputeActivationRate,
 } from "./sponsorContractsService.js";
 import { renownTarget } from "./renownEngine.js";
 import { generateOffers } from "./sponsorOffers.js";
@@ -689,4 +690,65 @@ test("expireAndRenewContracts ignorerer pending der ikke matcher newSeasonNumber
   assert.equal(supabase.state.inserts.length, 1);
   assert.equal(supabase.state.inserts[0].status, "active");
   assert.equal(supabase.state.inserts[0].start_season, 3);
+});
+
+// ─── #2589: per_race_day_rate genberegnes ved AKTIVERING ─────────────────────
+
+test("recomputeActivationRate: bruger den NYE sæsons kalenderlængde som divisor, ikke pick-tidens", () => {
+  // "activity"-variant (length_seasons=2 → guaranteedFraction=0.55). guaranteed_base
+  // = 220000 → original renownTargetValue = 220000/0.55 = 400000. Ved pick var
+  // kalenderen 60 dage (den daværende default); ved aktivering er den nye sæsons
+  // reelle kalender 28 dage — raten SKAL låses til 28, ikke 60.
+  const pending = { length_seasons: 2, guaranteed_base: 220000, per_race_day_rate: 3000 };
+  const rate28 = recomputeActivationRate(pending, 28);
+  const rate60 = recomputeActivationRate(pending, 60);
+  assert.equal(rate60, 3000); // uændret hvis kalenderen (fejlagtigt) stadig var 60
+  assert.equal(rate28, Math.round((400000 - 220000) / 28));
+  assert.notEqual(rate28, rate60, "en anden kalenderlængde SKAL give en anden rate");
+});
+
+test("recomputeActivationRate: robust mod season_standings-drift (matcher IKKE på guaranteed_base)", () => {
+  // Reproducerer prod-eksemplet fra issue #2589-kommentaren (team 0a4ed517):
+  // "long"-variant (length_seasons=3 → guaranteedFraction=0.73), guaranteed_base
+  // 248200 svarer til en original renownTargetValue på 340000 — IKKE den ~339109
+  // en frisk regenerering ville give i dag (season_standings har flyttet sig siden
+  // pick). Den gamle tilgang (match mod et regenereret tilbud) ville fejle her og
+  // stille tavst raten urørt; baglæns-udledningen rammer korrekt uanset drift.
+  const pending = { length_seasons: 3, guaranteed_base: 248200, per_race_day_rate: 1530 };
+  const rate = recomputeActivationRate(pending, 28);
+  assert.equal(rate, Math.round((340000 - 248200) / 28)); // = 3279
+});
+
+test("recomputeActivationRate: ukendt length_seasons → behold den lagrede rate (ingen gætning)", () => {
+  const pending = { length_seasons: 7, guaranteed_base: 100000, per_race_day_rate: 999 };
+  assert.equal(recomputeActivationRate(pending, 28), 999);
+});
+
+test("expireAndRenewContracts: aktivering af en pending genberegner per_race_day_rate ud fra sæson-2-kalenderen (28 dage)", async () => {
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const pending = {
+    id: "p-choice",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: 2, // guaranteedFraction 0.55
+    guaranteed_base: 220000,
+    per_race_day_rate: 3000, // frosset ved pick med den daværende (60-dages) kalender
+    expires_after_season: 4,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    activeSeason: { race_days_total: 28 }, // den NYE sæsons faktiske kalenderlængde
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  const activatedFlip = supabase.state.updates.find((u) => u.id === "p-choice");
+  assert.ok(activatedFlip, "forventede en aktiverings-update på p-choice");
+  assert.equal(activatedFlip.payload.status, "active");
+  // 400000 = 220000 / 0.55 (original renownTargetValue); (400000-220000)/28 = 6429.
+  assert.equal(activatedFlip.payload.per_race_day_rate, 6429);
+  assert.notEqual(activatedFlip.payload.per_race_day_rate, pending.per_race_day_rate);
 });

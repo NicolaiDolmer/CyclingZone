@@ -16,7 +16,7 @@
 //   seasons.number er sæson-heltallet; season_standings keyer på season_id (UUID FK
 //     til seasons.id), IKKE et nummer → resolv forrige sæsons id først.
 import { renownTarget } from "./renownEngine.js";
-import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
+import { generateOffers, FULL_CALENDAR_DAYS, guaranteedFractionForLength } from "./sponsorOffers.js";
 
 const DEFAULT_RENEW_VARIANT = "long";
 
@@ -33,6 +33,37 @@ async function loadCalendarDays({ supabase }) {
   if (error) throw error;
   const days = Number(data?.race_days_total);
   return Number.isFinite(days) && days > 0 ? days : FULL_CALENDAR_DAYS;
+}
+
+// #2589 forward-guard: genberegn per_race_day_rate ved AKTIVERING (pending→active)
+// ud fra den NYE sæsons faktiske kalenderlængde. Pick-tidspunktet kan aldrig kende
+// den kommende kalender (pick sker midt i den INDEVÆRENDE sæson), og et forsøg på
+// at matche den pending-række mod et FRISK regenereret tilbud (PR #2606, afvist
+// 17/7) er ustabilt: guaranteed_base blev fastfrosset fra renownTargetValue på
+// pick-tidspunktet, og renownTargetValue afhænger af season_standings — som
+// opdateres LIVE gennem sæsonen (recompute_season_standings efter hvert løb). Et
+// forsøg på at genberegne renownTargetValue i dag ville derfor ikke matche den
+// værdi der faktisk lå til grund for guaranteed_base (~36% mismatch målt i prod
+// 17/7, se issue #2589-kommentar).
+//
+// I stedet baglæns-udleder vi den ORIGINALE renownTargetValue direkte fra den
+// lagrede guaranteed_base: guaranteedFraction er kendt fra length_seasons (stabilt,
+// sat ved pick og ændres aldrig siden) → originalRenownTarget = guaranteed_base /
+// guaranteedFraction. Det retter KUN divisor-fejlen (60 vs. den reelle kalender),
+// uafhængigt af om renownTargetValue har driftet siden pick.
+export function recomputeActivationRate(pending, calendarDays) {
+  const fraction = guaranteedFractionForLength(pending?.length_seasons);
+  const guaranteedBase = Number(pending?.guaranteed_base);
+  if (!fraction || !Number.isFinite(guaranteedBase)) {
+    // Ukendt/legacy variant-længde (length_seasons matcher ingen VARIANT) → kan
+    // ikke baglæns-udlede sikkert. Behold den lagrede rate frem for at gætte
+    // forkert; ingen kendte prod-rækker rammer denne gren (alle 70 pending har
+    // length_seasons ∈ {1,2,3}, verificeret 23/7).
+    return pending?.per_race_day_rate ?? 0;
+  }
+  const originalRenownTarget = guaranteedBase / fraction;
+  const divisor = Number(calendarDays) > 0 ? Number(calendarDays) : FULL_CALENDAR_DAYS;
+  return Math.round((originalRenownTarget - guaranteedBase) / divisor);
 }
 
 export async function getActiveContract({ supabase, teamId }) {
@@ -206,10 +237,13 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
 
     const pending = await getPendingContract({ supabase, teamId });
     if (pending && pending.start_season === newSeasonNumber) {
-      // Aktivér managerens valg: pending -> active.
+      // Aktivér managerens valg: pending -> active, MED genberegnet
+      // per_race_day_rate ud fra den NYE sæsons faktiske kalenderlængde (#2589).
+      const calendarDays = await loadCalendarDays({ supabase });
+      const perRaceDayRate = recomputeActivationRate(pending, calendarDays);
       const { error } = await supabase
         .from("sponsor_contracts")
-        .update({ status: "active" })
+        .update({ status: "active", per_race_day_rate: perRaceDayRate })
         .eq("id", pending.id);
       if (error) throw error;
       continue;

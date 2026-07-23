@@ -32,6 +32,14 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
   // Batch-fetch all relevant race_results. Paginér (PostgREST capper ved 1000) —
   // ellers underberegnes præmie-previewet stille for sæsoner med >1000 præmie-
   // rækker, og udbetalingen ville mangle nogle hold. .order("id") for stabile sider.
+  // #2764: denne query var rod-årsagen til statement-timeout'et (Sentry
+  // CYCLINGZONE-3B, 20/7). Uden en index der understøtter `prize_money > 0`
+  // faldt planlæggeren tilbage til Seq Scan af HELE race_results (kun 4,7% af
+  // rækkerne matcher prædikatet) — gentaget for hver paginerings-side, og
+  // omkostningen vokser ubegrænset med tabellens totale størrelse på tværs af
+  // ALLE sæsoner. Fixet er en covering partial index, ikke en kodeændring her —
+  // se database/2026-07-23-2764-prize-preview-index.sql for rod-årsags-analysen
+  // (EXPLAIN ANALYZE + hypopg mod prod).
   const allResults = await fetchAllRows(() => supabase
     .from("race_results")
     .select("race_id, team_id, prize_money")
