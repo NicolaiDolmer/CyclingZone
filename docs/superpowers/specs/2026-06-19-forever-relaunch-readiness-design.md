@@ -2,7 +2,7 @@
 
 > **Status:** Godkendt design (2026-06-19, ejer-godkendt forks + a/b). Næste: writing-plans → implementeringsplan.
 > **⚠️ Erratum 2026-06-20 (#1595):** WS2-beslutning **a (PCM "slet helt")** er nedjusteret til **Option B** (ejer-godkendt). `stat_*`-kolonnerne BEVARES — `abilityDerivation.js:213-217` læser dem ubetinget for 5 evner. Den permanente, gate-styrede udfasning af PCM/`uci_points` lever i `plans/2026-06-20-pcm-uci-permanent-retirement-plan.md`. Se opdateret WS2 §4 + Appendix A nedenfor.
-> **Relateret:** [`docs/PLAN.md`](../../PLAN.md) (SSOT for sekvensering), [`2026-06-17-relaunch-hybrid-engine-1307-design.md`](2026-06-17-relaunch-hybrid-engine-1307-design.md) (18/6-relaunch-stien), epic #1105.
+> **Relateret:** [`docs/PLAN.md`](../../PLAN.md) (dengang sekvenserings-plan; superseded 23/7 af [`docs/MASTERPLAN.md`](../../MASTERPLAN.md)), [`2026-06-17-relaunch-hybrid-engine-1307-design.md`](2026-06-17-relaunch-hybrid-engine-1307-design.md) (18/6-relaunch-stien), epic #1105.
 > **Skelnen:** Dette er IKKE 18/6-relaunchen (frisk beta-sæson 1, allerede live). Dette er **forever-relaunch** = ét sidste destruktivt reset, hvorefter vi committer til ALDRIG at nulstille igen.
 
 ## 1. Mål & definition
