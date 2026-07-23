@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.47",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Counter-offers on a swap sent the money the wrong way",
+          "body": "If someone offered you a swap and you replied with a counter-offer, the cash amount was reversed on its way out. The field says positive means you receive, but the offer that reached the other manager said you would pay that amount instead. Only counter-offers from the side that received the original offer were affected, and only the direction, never the amount. It now sends exactly what the field says. Thank you to the manager who reported this through the in-game feedback button and spotted it before the deal went through."
+        },
+        "da": {
+          "title": "Modtilbud på en byttehandel sendte pengene den forkerte vej",
+          "body": "Hvis nogen tilbød dig en byttehandel, og du svarede med et modtilbud, blev kontantbeløbet vendt om på vej ud. Feltet siger at positivt betyder at du modtager, men tilbuddet der nåede frem til den anden manager sagde at du ville betale beløbet i stedet. Det ramte kun modtilbud fra den part der havde modtaget det oprindelige tilbud, og kun retningen, aldrig beløbet. Nu sendes præcis det feltet siger. Tak til den manager der rapporterede det gennem feedback-knappen i spillet og opdagede det, før handlen blev gennemført."
+        },
+        "refs": [2843]
+      }
+    ]
+  },
+  {
     "version": "7.46",
     "date": "2026-07-23",
     "label": "Beta",

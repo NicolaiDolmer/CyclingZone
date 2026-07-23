@@ -545,7 +545,14 @@ function SwapCard({ swap, myTeamId, onAction }) {
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
                   className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
-                <button onClick={() => doAction("counter", { counter_cash: -counterCash })}
+                {/* #2843: counter_cash gemmes i SAMME konvention som cash_adjustment
+                    (schema: positiv = proposing betaler receiving; transferExecution
+                    vælger payer med `cash > 0 ? proposing : receiving`). Feltet
+                    prefilles på linje ~450 med den RÅ lagrede værdi, så input'et ER
+                    i rå konvention. For den modtagende part betyder positiv altså
+                    "jeg modtager", præcis som cashReceiveLabel lover — værdien må
+                    derfor IKKE negeres på vej ud. */}
+                <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
                   className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
                   {t("swapCard.buttons.send")}
