@@ -1,5 +1,7 @@
 # Sæsonskifte-drejebog (S1 → S2, 26.–27. juli 2026)
 
+> **⚠️ EJER-BESLUTNING 23/7 AFTEN (efter generalprøven): pyramide-komprimering, [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851).** Global rank (kun managerhold) fylder D2 (48) + D3 (96) i DETTE skifte; motorens op/nedrykning springes over og genoptages S2→S3. Skridt 2/3 nedenfor ændres når #2851 er bygget og ejer-godkendt (deadline lørdag aften). **Hård fallback:** er #2851 ikke bevist lørdag, gælder denne drejebog uændret (motorens regler). Alt andet — spærren, window-wrap, auktions-politik, transition, entries — gælder i begge tilfælde.
+
 > **Omskrevet fra bunden 23/7 (S8 cutover-generalprøve, #2361).** Den gamle checkliste var bygget om deadline-day-cyklussen (transfervindue med `closes_at`, auto-close, squad-enforcement-kæde) — den verden findes ikke længere: markedet er altid åbent (#1996), auto-transition er slået fra (`SEASON_AUTO_TRANSITION_ENABLED=false`), og den nævnte aldrig **"Afslut sæson"** (`processSeasonEnd`), som er det skridt der afgør op/nedrykning. Denne version er verificeret mod koden og prod-data 23/7 og dækker S1→S2 konkret; generalisér først efter cutoveren har bevist den.
 >
 > **Historisk kontekst der stadig gælder:** cron-loop-incidenten 2026-05-21 (flere transitions samme dag) — safety-nets fra dengang består: daglig season-count-vagt, admin_log pr. transition, Discord-broadcast pr. transition, DB-CHECK på racing-windows. Postmortem: `.claude/learnings/2026-05-22-season-transition-cron-loop-racing-window-leakage.md`.
