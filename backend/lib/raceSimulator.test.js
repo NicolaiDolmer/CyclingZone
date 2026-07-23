@@ -14,6 +14,7 @@ import {
   DESCENDING_FINALE_WEIGHT,
   stageGapModel,
   distanceFactor,
+  finiteDistanceKm,
   DISTANCE_BAND_MIDPOINTS,
   LONG_DAY_ENDURANCE_WEIGHT,
   isTechnicalFinale,
@@ -548,6 +549,55 @@ test("distanceFactor: kendt profil + distance skalerer om bandMid, clamp [0.85, 
   assert.equal(distanceFactor({ profile_type: "mountain" }), 1); // ingen distance
   assert.equal(distanceFactor({ profile_type: "ukendt", distance_km: 200 }), 1); // ukendt profil
   assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 10 }), 0.85); // gulv
+});
+
+// #2804: Number(null) === 0 og 0 ER finit → den gamle guard læste NULL-distance
+// som "0 km" og returnerede gulvet 0.85 i stedet for identiteten 1. Alle 1060
+// sæson-1-profiler i prod har profile_type sat og distance_km = NULL.
+test("distanceFactor: NULL/tom distance er identitet (1), ikke gulvet (#2804)", () => {
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: null }), 1);
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: undefined }), 1);
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: "" }), 1);
+  assert.equal(distanceFactor({ profile_type: "flat", distance_km: null }), 1);
+  // 0 km er stadig et ægte 0-tal hvis nogen sætter det bevidst → gulvet gælder.
+  assert.equal(distanceFactor({ profile_type: "mountain", distance_km: 0 }), 0.85);
+});
+
+test("finiteDistanceKm: NULL/undefined/tom/NaN → null; ægte tal → tallet (#2804)", () => {
+  assert.equal(finiteDistanceKm({ distance_km: null }), null);
+  assert.equal(finiteDistanceKm({ distance_km: undefined }), null);
+  assert.equal(finiteDistanceKm({ distance_km: "" }), null);
+  assert.equal(finiteDistanceKm({ distance_km: "abc" }), null);
+  assert.equal(finiteDistanceKm({}), null);
+  assert.equal(finiteDistanceKm(null), null);
+  assert.equal(finiteDistanceKm({ distance_km: 0 }), 0);
+  assert.equal(finiteDistanceKm({ distance_km: 195 }), 195);
+  assert.equal(finiteDistanceKm({ distance_km: "195" }), 195);
+});
+
+// Konsekvensen af bug'en: longDayComponent er gated på distFactor === 1, så
+// 0.85 tændte leddet med et falsk "kort dag"-signal → høj endurance fik minus,
+// lav endurance fik plus. Inverteret på hver eneste legacy-etape.
+test("NULL-distance giver ingen long_day-effekt: høj og lav endurance rangerer som uden rutedata (#2804)", () => {
+  const mk = (id, endurance) => ({
+    rider_id: id, team_id: `t${id}`, fatigue: 40,
+    abilities: { endurance, durability: 50, climbing: 60, sprinting: 60, positioning: 50, descending: 50, timetrial: 50 },
+  });
+  const entrants = [mk("a", 95), mk("b", 10), mk("c", 50)];
+  const bare = {
+    profile_type: "mountain",
+    finale_type: "long_climb",
+    stage_number: 1,
+    demand_vector: {
+      climbing: 0.5, tempo: 0.12, endurance: 0.14, recovery: 0.06,
+      punch: 0.04, tactics: 0.02, positioning: 0.02, randomness: 0.1,
+    },
+  };
+  const nulled = { ...bare, distance_km: null, climbs: null, sectors: null };
+
+  const r1 = simulateStage({ entrants, stageProfile: bare, seed: 4242, v3: false });
+  const r2 = simulateStage({ entrants, stageProfile: nulled, seed: 4242, v3: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(r2)), JSON.parse(JSON.stringify(r1)));
 });
 
 test("distFactor skalerer fatigue-straf på lange dage; ingen distance → identitet", () => {
