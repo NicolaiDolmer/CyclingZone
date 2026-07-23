@@ -109,7 +109,7 @@ test("emit: tom humanTeams-liste giver nul-stats uden at hente fra DB", async ()
   assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
 });
 
-test("emit: henter selv menneske-managere (is_ai=false, is_frozen=false, select user_id) når humanTeams ikke gives", async () => {
+test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false, select user_id) når humanTeams ikke gives", async () => {
   const queryLog = [];
   const supabase = {
     from(table) {
@@ -128,12 +128,17 @@ test("emit: henter selv menneske-managere (is_ai=false, is_frozen=false, select 
 
   const stats = await emitSeasonEndedNotifications({ supabase, endedSeason: ENDED_SEASON, notify });
 
-  // Diskriminatoren SKAL matche resten af motoren — AI/frosne hold udelukkes.
+  // #2832-review (fund 4) · diskriminatoren SKAL matche motorens FULDE
+  // kanoniske filter (fx boardWeekendFinalization.js) — AI/bank/frosne/
+  // test-konti udelukkes. Den forkortede is_ai/is_frozen-udgave lod
+  // test-kontiene ("Test A"/"Test B"/"Test Seller") tælle som eligible.
   assert.deepEqual(queryLog, [
     ["from", "teams"],
     ["select", "user_id"],
     ["eq", "is_ai", false],
+    ["eq", "is_bank", false],
     ["eq", "is_frozen", false],
+    ["eq", "is_test_account", false],
   ]);
   assert.equal(calls.length, 2);
   assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0 });

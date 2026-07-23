@@ -7445,6 +7445,10 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       });
     } catch (notifErr) {
       console.error("season_ended in-app notifications failed:", notifErr?.message || notifErr);
+      captureException(notifErr, {
+        tags: { phase: "season_ended_notifications" },
+        extra: { season_id: endedSeason.id, season_number: endedSeason.number },
+      });
     }
 
     res.json({

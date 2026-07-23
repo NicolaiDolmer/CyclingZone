@@ -80,7 +80,10 @@ test("season_ended-notifikationen renderes med ikon, titel, besked og deep-link 
     page.getByText(/moves up to Division 2|rykker op til Division 2/)
   ).toBeVisible();
 
-  // Deep-link: klik på season_ended-rækken navigerer til /seasons (#2745 AC).
+  // Deep-link (#2832-review, ejer-merge-krav): klik på season_ended-rækken
+  // navigerer til DEN AFSLUTTEDE sæsons opsamling (/seasons/<related_id>),
+  // IKKE det generiske /seasons (som defaulter til den aktive/nye — tomme —
+  // sæson lige efter en transition, hvilket underminerer beskedens formål).
   await page.getByText(/^Season 3 has ended$|^Sæson 3 er afsluttet$/).click();
-  await expect(page).toHaveURL(/\/seasons/);
+  await expect(page).toHaveURL(new RegExp(`/seasons/${SEASON_ENDED_ROW.related_id}$`));
 });
