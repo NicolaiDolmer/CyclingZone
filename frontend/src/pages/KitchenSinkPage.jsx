@@ -115,7 +115,7 @@ export default function KitchenSinkPage() {
               }
             />
             <p className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
-              PageHeader: 20px/700 + 13px subtitle + maks 1 Select sm og 1 primary sm
+              PageHeader: 20px/700 + 13px subtitle + max 1 Select sm and 1 primary Button sm
             </p>
           </div>
 
@@ -126,11 +126,11 @@ export default function KitchenSinkPage() {
                 title="Squad status"
                 action={<SectionAction>View squad</SectionAction>}
               />
-              <p className="text-sm text-cz-2">Quiet action i højre slot (12px/500 accent-t + chevron 13px).</p>
+              <p className="text-sm text-cz-2">Quiet action in the right slot (12px/500 accent-t + chevron 13px).</p>
             </PageSection>
             <PageSection>
               <SectionHeader title="Payroll" meta="Updated 09:14" />
-              <p className="text-sm text-cz-2">Uppercase meta-label i højre slot — aldrig sammen med en action.</p>
+              <p className="text-sm text-cz-2">Uppercase meta label in the right slot, never together with an action.</p>
             </PageSection>
           </SectionStack>
 
@@ -164,12 +164,12 @@ export default function KitchenSinkPage() {
               { key: "bid", header: "", render: () => <Button variant="secondary" size="sm">Bid</Button> },
             ]}
             rows={[
-              { name: "Ineke van Dijk", nation: "NED", team: "Vélo Rosso", dot: "#e8c547", age: 27, type: "GC", form: 84, value: "1,720,000", zone: "success", pill: "New" },
-              { name: "Aoife Brennan", nation: "IRL", team: "Free agent", dot: "#a78bfa", age: 23, type: "Climber", form: 78, value: "1,140,000", zone: "success", pill: "New" },
-              { name: "Tomas Reyes", nation: "ESP", team: "Team Helios", dot: "#38bdf8", age: 29, type: "Sprinter", form: 71, value: "960,000", zone: null, pill: null },
-              { name: "Émile Rousseau", nation: "FRA", team: "Granfondo Racing", dot: "#34d399", age: 26, type: "Puncheur", form: 66, value: "830,000", zone: null, pill: null },
-              { name: "Květa Horák", nation: "CZE", team: "Granfondo Racing", dot: "#a78bfa", age: 31, type: "Climber", form: 58, value: "640,000", zone: "danger", pill: "Closing" },
-              { name: "Magnus Lie", nation: "NOR", team: "Free agent", dot: "#f472b6", age: 33, type: "Rouleur", form: 52, value: "410,000", zone: "danger", pill: "Closing" },
+              { name: "Ineke van Dijk", nation: "NED", team: "Vélo Rosso", dot: "rgb(var(--accent))", age: 27, type: "GC", form: 84, value: "1,720,000", zone: "success", pill: "New" },
+              { name: "Aoife Brennan", nation: "IRL", team: "Free agent", dot: "rgb(var(--info))", age: 23, type: "Climber", form: 78, value: "1,140,000", zone: "success", pill: "New" },
+              { name: "Tomas Reyes", nation: "ESP", team: "Team Helios", dot: "rgb(var(--success))", age: 29, type: "Sprinter", form: 71, value: "960,000", zone: null, pill: null },
+              { name: "Émile Rousseau", nation: "FRA", team: "Granfondo Racing", dot: "rgb(var(--warning))", age: 26, type: "Puncheur", form: 66, value: "830,000", zone: null, pill: null },
+              { name: "Květa Horák", nation: "CZE", team: "Granfondo Racing", dot: "rgb(var(--info))", age: 31, type: "Climber", form: 58, value: "640,000", zone: "danger", pill: "Closing" },
+              { name: "Magnus Lie", nation: "NOR", team: "Free agent", dot: "var(--text-3)", age: 33, type: "Rouleur", form: 52, value: "410,000", zone: "danger", pill: "Closing" },
             ]}
           />
 
@@ -184,7 +184,7 @@ export default function KitchenSinkPage() {
               <EmptyState
                 title="No riders yet"
                 description="Draft your first rider in the live auction."
-                action={<Button size="sm">Open auction</Button>}
+                action={<Button size="sm">Go to auction</Button>}
               />
             </PageSection>
             <PageSection>
