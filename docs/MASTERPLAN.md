@@ -4,6 +4,8 @@
 
 **Målt i prod 23/7:** 161 brugere · 134 nye på 30 dage, hvoraf **98 (73 %) aldrig kommer igen** · 41 WAU, 8 DAU · **0 abonnementer** · S2 har 455 løb og **0 startlister**. Konsekvens for prioriteringen: anskaffelsen virker, fastholdelsen gør ikke. Første session + grund-til-at-vende-tilbage slår outreach.
 
+> **Rettelse 23/7 (2. audit-runde):** tre fund fra første runde holdt IKKE ved genverifikation og er fjernet herfra — (a) "D4 har 13 løbsløse dage" var falsk (alle 8 D4-puljer har præcis 2 løb hver af de 28 dage; forveksling af `league_division_id=4` med tier 4), (b) "auktionsmarkedet tomt 21 % af tiden" var en engangsepisode 16.-18/7, ingen tomme timer siden, gns. 37 aktive auktioner/time, og "918 utilgængelige free agents" var forkert, (c) "36,7 t til første notifikation" var et gennemsnit trukket af outliers — medianen er **22 minutter**. Det reelle restsignal er at **18 af 134 nye brugere aldrig får en notifikation overhovedet**.
+
 ## Stående spor (viger aldrig): stabilitet + fastholdelse
 Sentry er stille (1 uløst/7 dage). Det der brænder er balance: #2731 maxRiderWinRate 0,67-0,75 vs mål 0,45 (rød siden 16/7) · #2557 hold-dominans · udbruds-andel 22-53 % vs bånd 1-7 % og sat `reportOnly` → alarmerer aldrig.
 
@@ -19,13 +21,13 @@ Sentry er stille (1 uløst/7 dage). Det der brænder er balance: #2731 maxRiderW
 
 ## 2 · NÆSTE UGE (28/7-3/8) — luk hullet i bunden af spanden
 9. ⚪ **Pro kan faktisk købes og beholdes:** [#2806](https://github.com/NicolaiDolmer/CyclingZone/issues/2806) `/pro` linket 0 steder + `isPro()` gater intet i backend · #2736 fornyelse lytter på `invoice.paid` som ikke findes hos Alunta · ToS/opsigelse/fortrydelsesret mangler · mindst 2 ægte perks (#27 gemte filtre, synligt Founder-badge).
-10. ⚪ **Første session:** auktionsmarkedet tomt **21 % af tiden** (blokke på 8-10 t) mens 918 free agents er urørlige → drip-listing m. gulv på 8 · D4 har 13 løbsløse dage i S2, 3 i træk 28.-30/7, og ALLE nye managere lander der · #2718/#2719/#2254 klikbarhed (kontrakt-knap klikket 15x uden svar).
-11. ⚪ **#2752 sæson-recap/årbog** (data findes, kun fladen mangler) · **#2042 riv login-væggen ned** (/races 3.304, /riders 2.606, /auctions 1.110 sessioner — alle bag ProtectedRoute; største målte lækage).
+10. ⚪ **Første session:** #2718/#2719/#2254 klikbarhed (kontrakt-knap klikket 15x uden svar) · **18 af 134 nye brugere får ALDRIG en notifikation** (målt 23/7) · #2819 onboarding-guiden mangler på 2 af 4 trin.
+11. ⚪ **#2752 sæson-recap/årbog** (data findes, kun fladen mangler). **#2042 login-væggen: ejer-udskudt 23/7 til efter 27/7** — ikke denne sæson.
 12. ⚪ **Balance:** #2731 + #2557 + udbruds-alarm ud af `reportOnly` · #2650 fatigue-mætning · #2789/#2757 motor-huller (virker fremad → efter cutover).
 13. ⚪ **#2760/#2761** win-back + Discord-invite · **#2226** fair-play-detektor (funnel-sag fundet manuelt 22/7; 42 nye brugere/14 dage) · **#2270** natlig gennemkørsel af en løbsdag.
 
 ## 3 · AUGUST — vækst oven på et tæt spand
-14. ⚪ Onboarding: #1569 + #2045 + velkomstbesked (første grund til at komme igen lander i snit **36,7 t** efter signup; kun 19 % ser nogensinde et løbsresultat).
+14. ⚪ Onboarding: #1569 + #2045 (kun 19 % ser nogensinde et løbsresultat). Velkomstmailen ER bygget (#2725) — den venter kun på `email_loop_enabled`.
 15. ⚪ #2161/#2441 Discord-login · #1173 referral + #2236 outreach-bølge 2 + #2759 ads (Hattrick-kanalen verificeret varm).
 16. ⚪ #62/#91/#2180 daglig rytme (Today/inbox, live-ticker, "mangler holdudtagelse").
 17. ⚪ #2443/#1602/#2445 menu + mobil-P0'er (mobil = 54,9 %) · #2009/#2448 hover-kort + etapeprofil-graf (**flyttet fra uge 30**).
