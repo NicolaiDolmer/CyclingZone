@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { emitSeasonStartedNotifications } from "./seasonTransition.js";
+import { emitSeasonEndedNotifications } from "./seasonTransition.js";
 
-// #1357 · in-app season_started-notifikationer ved sæsonskifte.
-// `notify` injiceres så vi tester emit-logikken uden DB.
+// #2745 · in-app season_ended-notifikationer ved sæson-slut.
+// `notify` injiceres så vi tester emit-logikken uden DB. Mirror af
+// seasonStartedNotifications.test.js (modstykke-funktion, samme kontrakt).
 
-const TO_SEASON = { id: "season-uuid-3", number: 3 };
+const ENDED_SEASON = { id: "season-uuid-3", number: 3 };
 
 function makeNotifyRecorder(behavior = () => ({ delivered: true })) {
   const calls = [];
@@ -25,10 +26,10 @@ test("emit: sender til menneske-managers med user_id, springer rows uden user_id
     { id: "t3", user_id: null }, // fx hold uden ejer — skal springes over
   ];
 
-  const stats = await emitSeasonStartedNotifications({
+  const stats = await emitSeasonEndedNotifications({
     supabase: {},
     humanTeams,
-    toSeason: TO_SEASON,
+    endedSeason: ENDED_SEASON,
     notify,
   });
 
@@ -39,19 +40,19 @@ test("emit: sender til menneske-managers med user_id, springer rows uden user_id
 test("emit: korrekt type, related_id og locale-aware metadata-koder", async () => {
   const { notify, calls } = makeNotifyRecorder();
 
-  await emitSeasonStartedNotifications({
+  await emitSeasonEndedNotifications({
     supabase: {},
     humanTeams: [{ id: "t1", user_id: "u1" }],
-    toSeason: TO_SEASON,
+    endedSeason: ENDED_SEASON,
     notify,
   });
 
   const call = calls[0];
-  assert.equal(call.type, "season_started");
+  assert.equal(call.type, "season_ended");
   assert.equal(call.userId, "u1");
-  assert.equal(call.relatedId, "season-uuid-3", "related_id = toSeason.id → idempotent per sæson");
-  assert.equal(call.metadata.titleCode, "notif.seasonStarted.title");
-  assert.equal(call.metadata.messageCode, "notif.seasonStarted.message");
+  assert.equal(call.relatedId, "season-uuid-3", "related_id = endedSeason.id → idempotent per sæson");
+  assert.equal(call.metadata.titleCode, "notif.seasonEnded.title");
+  assert.equal(call.metadata.messageCode, "notif.seasonEnded.message");
   assert.deepEqual(call.metadata.titleParams, { number: 3 });
   assert.deepEqual(call.metadata.messageParams, { number: 3 });
   assert.match(call.title, /Season 3/, "EN-first fallback-title indeholder sæson-nummeret");
@@ -64,13 +65,13 @@ test("emit: deduped-svar tælles separat fra delivered (idempotens)", async () =
     args.userId === "u1" ? { delivered: false, deduped: true } : { delivered: true },
   );
 
-  const stats = await emitSeasonStartedNotifications({
+  const stats = await emitSeasonEndedNotifications({
     supabase: {},
     humanTeams: [
       { id: "t1", user_id: "u1" },
       { id: "t2", user_id: "u2" },
     ],
-    toSeason: TO_SEASON,
+    endedSeason: ENDED_SEASON,
     notify,
   });
 
@@ -83,13 +84,13 @@ test("emit: en fejl pr. manager isoleres og stopper ikke resten", async () => {
     return { delivered: true };
   });
 
-  const stats = await emitSeasonStartedNotifications({
+  const stats = await emitSeasonEndedNotifications({
     supabase: {},
     humanTeams: [
       { id: "t1", user_id: "u1" },
       { id: "t2", user_id: "u2" },
     ],
-    toSeason: TO_SEASON,
+    endedSeason: ENDED_SEASON,
     notify,
   });
 
@@ -98,10 +99,10 @@ test("emit: en fejl pr. manager isoleres og stopper ikke resten", async () => {
 
 test("emit: tom humanTeams-liste giver nul-stats uden at hente fra DB", async () => {
   const { notify, calls } = makeNotifyRecorder();
-  const stats = await emitSeasonStartedNotifications({
+  const stats = await emitSeasonEndedNotifications({
     supabase: {}, // ville kaste hvis emit forsøgte en fetch
     humanTeams: [],
-    toSeason: TO_SEASON,
+    endedSeason: ENDED_SEASON,
     notify,
   });
   assert.equal(calls.length, 0);
@@ -125,7 +126,7 @@ test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen
   };
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await emitSeasonStartedNotifications({ supabase, toSeason: TO_SEASON, notify });
+  const stats = await emitSeasonEndedNotifications({ supabase, endedSeason: ENDED_SEASON, notify });
 
   // #2832-review (fund 4) · diskriminatoren SKAL matche motorens FULDE
   // kanoniske filter (fx boardWeekendFinalization.js) — AI/bank/frosne/
@@ -156,9 +157,9 @@ test("emit: kaster hvis manager-fetch fejler (fejl må ikke svales til tom liste
   };
   await assert.rejects(
     () =>
-      emitSeasonStartedNotifications({
+      emitSeasonEndedNotifications({
         supabase,
-        toSeason: TO_SEASON,
+        endedSeason: ENDED_SEASON,
         notify: async () => ({ delivered: true }),
       }),
     /Could not load managers/,

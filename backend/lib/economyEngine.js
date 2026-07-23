@@ -1882,9 +1882,19 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
             .update({ division: division - 1, league_division_id: parentPoolId })
             .eq("id", s.team_id);
           throwIfSupabaseError(error, `Could not promote team ${s.team_id}`);
+          // #2164: var hardkodet dansk (ingen metadata) mens relegation nedenfor
+          // allerede havde titleCode/messageCode — EN-first fallback + i18n-koder
+          // så EN-brugere ikke længere får rå dansk tekst (frontend-nøglerne
+          // notif.divisionPromoted.* fandtes allerede, ubrugte, i backendMessages.json).
           await notifyManager(
-            s.team_id, "board_update", "Oprykket! 🎉",
-            `Tillykke! Dit hold rykker op til Division ${division - 1}`, notificationDeps
+            s.team_id, "board_update", "Promoted! 🎉",
+            `Congratulations! Your team moves up to Division ${division - 1}.`, notificationDeps,
+            {
+              titleCode: "notif.divisionPromoted.title",
+              titleParams: {},
+              messageCode: "notif.divisionPromoted.message",
+              messageParams: { division: division - 1 },
+            }
           );
           promoted++;
         }

@@ -58,6 +58,7 @@ import {
   closePrevTransferWindow,
   computeSeasonUuid,
   computeTransferWindowUuid,
+  emitSeasonEndedNotifications,
   insertTransferWindowIfMissing,
   resolveTransitionSourceSeason,
   transitionToNextSeason,
@@ -7470,10 +7471,31 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
 
     notifySeasonEvent({ type: "season_ended", seasonNumber: season.number }).catch(() => {});
 
+    // #2745 · in-app season_ended-notifikationer til menneske-managers. Tidligere
+    // fik managers KUN Discord-broadcast; frontend havde fuld rendering for typen
+    // (NotificationsPage), men ingen kode indsatte nogensinde en season_ended-row
+    // (prod-audit 23/7: 0 rækker nogensinde). Additiv + isoleret: en fejl her må
+    // ikke vælte selve sæson-afslutningen (samme disciplin som Discord-broadcast
+    // ovenfor og season_started-notifikationerne i seasonTransition.js).
+    let seasonEndedNotifications = { skipped: true, reason: "failed" };
+    try {
+      seasonEndedNotifications = await emitSeasonEndedNotifications({
+        supabase,
+        endedSeason: { id: endedSeason.id, number: endedSeason.number },
+      });
+    } catch (notifErr) {
+      console.error("season_ended in-app notifications failed:", notifErr?.message || notifErr);
+      captureException(notifErr, {
+        tags: { phase: "season_ended_notifications" },
+        extra: { season_id: endedSeason.id, season_number: endedSeason.number },
+      });
+    }
+
     res.json({
       success: true,
       season_id: endedSeason.id,
       number: endedSeason.number,
+      season_ended_notifications: seasonEndedNotifications,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
