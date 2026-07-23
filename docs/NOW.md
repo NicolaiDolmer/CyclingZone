@@ -26,7 +26,7 @@
 
 > **Åbne ejer-beslutninger:** #2699 akademi-overflow (sim klar) · #2589 sponsor-divisor · #2744 kontraktudløb · #2748 pension · #2697 scout-slot · #2670 ROI-loft · #2452/#2176 når v4-adfærd kan måles. **Ejer-klik:** #929+#2258 OTP+leaked-pw (2 dashboard-klik) · #2588 /training-klik-test · #2680 connectors.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Fable (arkitekt) kører S1-S5 fra #2825 som parallel worker-bølge i worktrees — startet 23/7. S6/S7/S8 er IKKE claimet.
 
 ## Standing context (forever-relaunch)
 
