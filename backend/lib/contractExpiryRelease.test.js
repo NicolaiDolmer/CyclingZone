@@ -20,7 +20,7 @@ import {
 //    faktisk rammer via de IKKE-injicerede side-effekt-helpers (getRidersInActiveStageRace,
 //    clearFutureRaceEntriesSafe, closeTransferListingsForRiders). ─────────────────
 
-function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds = [] } = {}) {
+function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds = [], erroringRiderIds = [] } = {}) {
   const listingUpdates = [];
   const riderUpdates = [];
 
@@ -62,6 +62,7 @@ function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds =
       if (table === "riders" && b.__op === "update") {
         const riderId = b.__filters.id;
         riderUpdates.push({ riderId, patch: { ...b.__patch } });
+        if (erroringRiderIds.includes(riderId)) return { data: null, error: { message: "simulated transient DB error" } };
         if (unreleasableRiderIds.includes(riderId)) return { data: [], error: null };
         return { data: [{ id: riderId }], error: null };
       }
@@ -118,7 +119,7 @@ test("frigiver PRÆCIS de kandidater fetchExpiredContractRiders returnerer — t
     fetchExpiredContractRiders: async () => candidates,
   });
 
-  assert.deepEqual(stats, { candidates: 2, released: 2, deferredByRacing: 0, notified: 1, notifyFailed: 0 });
+  assert.deepEqual(stats, { candidates: 2, released: 2, deferredByRacing: 0, notified: 1, notifyFailed: 0, failed: 0 });
   assert.equal(riderUpdates.length, 2, "begge kandidater fik en update-kald");
   for (const u of riderUpdates) {
     assert.deepEqual(u.patch, {
@@ -213,7 +214,7 @@ test("ingen kandidater → nul-stats, ingen writes", async () => {
     fetchExpiredContractRiders: async () => [],
   });
 
-  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 });
+  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
   assert.equal(riderUpdates.length, 0);
   assert.equal(calls.length, 0);
 });
@@ -225,7 +226,7 @@ test("ugyldigt seasonNumber → nul-stats uden at røre DB'en", async () => {
     supabase, seasonNumber: NaN,
     fetchExpiredContractRiders: async () => { fetchCalled = true; return []; },
   });
-  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 });
+  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
   assert.equal(fetchCalled, false, "guard-clause skal returnere FØR fetch — ingen unødig DB-tur");
 });
 
@@ -250,4 +251,74 @@ test("en fejlende notifikation isoleres og tælles separat (resten af releasen f
   assert.equal(stats.notified, 1);
   assert.equal(stats.notifyFailed, 1);
   assert.equal(riderUpdates.length, 2);
+});
+
+// ─── Partial-failure-observability (coordinator-review-fund) ──────────────────
+// En rytters EGEN frigivelse (ikke kun hans notifikation) kan fejle midt i et
+// 196-rækkers loop den 27/7. Testene her beviser at (a) andre riders' allerede-
+// committede frigivelser IKKE tabes, og (b) et før-loop-throw eksponerer de
+// akkumulerede stats til kalderen via err.partialStats.
+
+test("én rytters DB-fejl midt i loopet isoleres — resten frigives stadig, fejlen tælles i stats.failed", async () => {
+  const { supabase, riderUpdates } = makeMockSupabase({ erroringRiderIds: ["r2"] });
+  const { notify, calls } = makeNotifyRecorder();
+
+  const stats = await releaseExpiredContractRiders({
+    supabase, seasonNumber: 1, notify,
+    fetchExpiredContractRiders: async () => [
+      { id: "r1", firstname: "A", lastname: "A", team_id: "t1", contract_end_season: 1,
+        team: { user_id: "u1", is_ai: false, is_frozen: false } },
+      { id: "r2", firstname: "B", lastname: "B", team_id: "t2", contract_end_season: 1,
+        team: { user_id: "u2", is_ai: false, is_frozen: false } },
+      { id: "r3", firstname: "C", lastname: "C", team_id: "t3", contract_end_season: 1,
+        team: { user_id: "u3", is_ai: false, is_frozen: false } },
+    ],
+  });
+
+  assert.equal(stats.candidates, 3);
+  assert.equal(stats.released, 2, "r1 + r3 frigives — r2's fejl taber IKKE de andre");
+  assert.equal(stats.failed, 1, "r2 tælles som fejlet, ikke stille tabt");
+  assert.equal(riderUpdates.length, 3, "alle tre update-kald blev forsøgt (loopet fortsætter forbi r2)");
+  assert.equal(calls.length, 2, "kun r1 + r3's ejere notificeres — r2 nåede aldrig til notifikations-trinnet");
+});
+
+test("fetchExpiredContractRiders-fejl hænger tomme partialStats på errors (intet nået endnu)", async () => {
+  const { supabase } = makeMockSupabase();
+  const err = await releaseExpiredContractRiders({
+    supabase, seasonNumber: 1,
+    fetchExpiredContractRiders: async () => { throw new Error("season lookup boom"); },
+  }).then(
+    () => { throw new Error("skulle have kastet"); },
+    (e) => e,
+  );
+
+  assert.match(err.message, /season lookup boom/);
+  assert.deepEqual(err.partialStats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
+});
+
+test("getRidersInActiveStageRace-fejl hænger partialStats med kendt candidates-tal på errors", async () => {
+  // races-tabellen kaster (simuleret via en supabase der fejler på races-select).
+  const supabase = {
+    from(table) {
+      if (table === "races") {
+        return { select: () => ({ eq: () => ({ neq: () => ({ gt: () => ({ then: (resolve) => resolve({ data: null, error: { message: "races lookup boom" } }) }) }) }) }) };
+      }
+      return { select: () => ({ eq: () => ({ then: (resolve) => resolve({ data: [], error: null }) }) }) };
+    },
+  };
+
+  const err = await releaseExpiredContractRiders({
+    supabase, seasonNumber: 1,
+    fetchExpiredContractRiders: async () => [
+      { id: "r1", firstname: "A", lastname: "A", team_id: "t1", contract_end_season: 1,
+        team: { user_id: "u1", is_ai: false, is_frozen: false } },
+    ],
+  }).then(
+    () => { throw new Error("skulle have kastet"); },
+    (e) => e,
+  );
+
+  assert.match(err.message, /races lookup boom/);
+  assert.equal(err.partialStats.candidates, 1, "candidates var allerede kendt da fejlen indtraf");
+  assert.equal(err.partialStats.released, 0);
 });

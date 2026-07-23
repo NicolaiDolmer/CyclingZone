@@ -92,17 +92,27 @@ export function countAtRiskRiders(riders, activeSeasonNumber, cfg = PROGRESSION_
 
 // DB-fetch: holdets ejede, løbs-relevante ryttere (samme diskriminator som
 // getSquadSnapshot i squadEnforcement.js — #1308 akademi tæller ikke mod cap).
-// is_retired ekskluderes IKKE eksplicit her, fordi der pt. (23/7) er 0 pensionerede
-// ryttere i prod (mekanikken har aldrig kørt) — men feltet hentes med, så en
-// fremtidig caller kan filtrere hvis det bliver relevant.
+// Ekskluderer eksplicit:
+//   - is_retired=true (allerede væk — ingen NY risiko at varsle om; der er pt.
+//     23/7 0 pensionerede ryttere i prod, mekanikken har aldrig kørt, men filteret
+//     står klar til når den gør).
+//   - ryttere med pending_team_id sat til et ANDET hold end teamId (dobbelt-
+//     tælling-fund, coordinator-review 23/7): disse tælles ALLEREDE som "outgoing"
+//     i getTeamMarketState.future_count (future_count = riderCount − outgoingCount
+//     + pendingCount), som er BASE-tallet getSquadRiskViolation trækker at_risk_count
+//     fra. Havde vi talt dem med her OGSÅ, ville de blive fratrukket to gange for
+//     samme afgang — en unødigt streng spærre. En rytter der allerede er på vej ud
+//     via en anden handel er ikke en NY, uforudset risiko.
 export async function fetchTeamRiskRows(supabase, teamId) {
   const { data, error } = await supabase
     .from("riders")
-    .select("id, birthdate, contract_end_season, is_retired")
+    .select("id, birthdate, contract_end_season, is_retired, pending_team_id")
     .eq("team_id", teamId)
     .eq("is_academy", false);
   if (error) throw new Error(`fetchTeamRiskRows(${teamId}): ${error.message}`);
-  return (data || []).filter((r) => r.is_retired !== true);
+  return (data || [])
+    .filter((r) => r.is_retired !== true)
+    .filter((r) => !(r.pending_team_id != null && r.pending_team_id !== teamId));
 }
 
 // Kombineret fetch + tælling for ÉT hold, ekskluderer eksplicit angivne rytter-id'er

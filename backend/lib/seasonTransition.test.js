@@ -457,6 +457,42 @@ test("transitionToNextSeason — en fejl i contract_expiry_release isoleres og v
   assert.ok(result.log.find((p) => p.phase === "admin_log"), "admin_log-fasen når stadig at køre");
 });
 
+// #2700/#2748-review-fund: en fejl MIDT i frigivelsen (fx efter 150 af 196
+// ryttere) må ikke kun logge fejlbeskeden — operatøren skal kunne se hvor langt
+// den nåede FØR fejlen (releaseExpiredContractRiders hænger dette på
+// err.partialStats, se contractExpiryRelease.js).
+test("transitionToNextSeason — en fejl i contract_expiry_release logger de PARTIELLE stats (ikke kun fejlbeskeden)", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      releaseExpiredContractRiders: async () => {
+        const err = new Error("crashed after 150/196 riders (simuleret)");
+        err.partialStats = { candidates: 196, released: 150, deferredByRacing: 2, notified: 148, notifyFailed: 1, failed: 0 };
+        throw err;
+      },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const releasePhase = result.log.find((p) => p.phase === "contract_expiry_release");
+  assert.ok(releasePhase, "fasen logges selv ved fejl");
+  assert.match(releasePhase.error, /crashed after 150\/196/);
+  assert.equal(releasePhase.candidates, 196, "partial-tal er synlige i loggen, ikke kun fejlbeskeden");
+  assert.equal(releasePhase.released, 150, "operatøren kan se AT 150 rent faktisk blev frigivet før krasjet");
+  assert.equal(releasePhase.notified, 148);
+});
+
 // #1663 · Sponsor-kontrakter fornyes FØR sponsor-payout: hvert menneske-hold
 // (is_ai=false, is_bank=false, is_frozen=false) får expireAndRenewContracts kaldt
 // med den nye sæsons nummer + holdets id, og fasen kører før processSeasonStart.

@@ -20,6 +20,7 @@ import {
   isRetirementRiskAtTransition,
 } from "./squadRiskGuard.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
+import { captureException } from "./sentry.js";
 
 export const SEASON_TRANSITION_RISK_TYPE = "season_transition_risk";
 
@@ -157,6 +158,7 @@ export async function emitSeasonTransitionRiskNotice({
     } catch (err) {
       stats.failed += 1;
       console.error(`  ❌ season-transition-risk-varsel fejlede (hold ${row.teamId}):`, err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "season-transition-risk" }, teamId: row.teamId });
     }
   }
 

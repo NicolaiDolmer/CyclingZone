@@ -652,10 +652,14 @@ export async function transitionToNextSeason({
       })),
     });
   } catch (err) {
-    log.push({ phase: "contract_expiry_release", error: err.message });
+    // Partial-failure-observability: releaseExpiredContractRiders hænger sine
+    // hidtil-akkumulerede stats på err.partialStats FØR den kaster (se dens egen
+    // JSDoc) — uden dette ville operatøren kun se fejlbeskeden, ikke hvor langt
+    // frigivelsen nåede (kritisk 27/7, hvor dette er 196 rækker i ét kørsel).
+    log.push({ phase: "contract_expiry_release", error: err.message, ...(err.partialStats || {}) });
     captureException(err, {
       tags: { phase: "contract_expiry_release" },
-      extra: { fromSeasonId, fromSeasonNumber: plan.from_season.number },
+      extra: { fromSeasonId, fromSeasonNumber: plan.from_season.number, partialStats: err.partialStats ?? null },
     });
   }
 

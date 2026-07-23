@@ -31,6 +31,7 @@ import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
+import { captureException } from "./sentry.js";
 
 export const CONTRACT_EXPIRED_RELEASE_TYPE = "contract_expired_release";
 
@@ -82,7 +83,16 @@ async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
  * @param {number} args.seasonNumber — den AFSLUTTEDE sæsons nummer (fromSeason.number)
  * @param {Function} [args.notify] — injicerbar (test)
  * @param {Function} [args.fetchExpiredContractRiders] — injicerbar (test)
- * @returns {Promise<{candidates:number, released:number, deferredByRacing:number, notified:number, notifyFailed:number}>}
+ * @returns {Promise<{candidates:number, released:number, deferredByRacing:number, notified:number, notifyFailed:number, failed:number}>}
+ *
+ * Partial-failure-observability: hver rytters frigivelse er isoleret i sit eget
+ * try/catch (samme disciplin som notifikations-loopet nedenfor) — én rytters
+ * DB-fejl (fx transient netværks-hikke midt i 196 rækker) stopper IKKE resten af
+ * loopet og taber IKKE de allerede-committede frigivelser. Hvis funktionen alligevel
+ * kaster (før-loop-fejl: manglende supabase, fetchExpiredContractRiders eller
+ * getRidersInActiveStageRace), hænges de INDTIL DA akkumulerede stats på
+ * `err.partialStats`, så kalderen (seasonTransition.js) kan logge hvor langt
+ * kørslen nåede FØR den fejlede — ikke kun fejlbeskeden.
  */
 export async function releaseExpiredContractRiders({
   supabase,
@@ -90,58 +100,78 @@ export async function releaseExpiredContractRiders({
   notify = defaultNotifyUser,
   fetchExpiredContractRiders = defaultFetchExpiredContractRiders,
 }) {
-  const stats = { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 };
+  const stats = { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 };
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!Number.isFinite(seasonNumber)) return stats;
 
-  const candidates = await fetchExpiredContractRiders({ supabase, seasonNumber });
+  let candidates;
+  try {
+    candidates = await fetchExpiredContractRiders({ supabase, seasonNumber });
+  } catch (err) {
+    err.partialStats = { ...stats };
+    throw err;
+  }
   stats.candidates = candidates.length;
   if (!candidates.length) return stats;
 
-  const racingIds = new Set(
-    await getRidersInActiveStageRace(supabase, candidates.map((r) => r.id))
-  );
+  let racingIds;
+  try {
+    racingIds = new Set(await getRidersInActiveStageRace(supabase, candidates.map((r) => r.id)));
+  } catch (err) {
+    err.partialStats = { ...stats };
+    throw err;
+  }
   const toRelease = candidates.filter((r) => !racingIds.has(r.id));
   stats.deferredByRacing = candidates.length - toRelease.length;
 
   for (const rider of toRelease) {
-    // Concurrency-guard: kun frigør hvis rytteren stadig er på det hold vi læste
-    // (en parallel handel kan i teorien have flyttet ham imellem).
-    const { data: released, error } = await supabase
-      .from("riders")
-      .update({
-        team_id: null,
-        pending_team_id: null,
-        salary: null,
-        contract_length: null,
-        contract_end_season: null,
-        acquired_at: null,
-      })
-      .eq("id", rider.id)
-      .eq("team_id", rider.team_id)
-      .select("id");
-    if (error) throw new Error(`releaseExpiredContractRiders(${rider.id}): ${error.message}`);
-    if (!released || released.length === 0) continue;
+    try {
+      // Concurrency-guard: kun frigør hvis rytteren stadig er på det hold vi læste
+      // (en parallel handel kan i teorien have flyttet ham imellem).
+      const { data: released, error } = await supabase
+        .from("riders")
+        .update({
+          team_id: null,
+          pending_team_id: null,
+          salary: null,
+          contract_length: null,
+          contract_end_season: null,
+          acquired_at: null,
+        })
+        .eq("id", rider.id)
+        .eq("team_id", rider.team_id)
+        .select("id");
+      if (error) throw new Error(`releaseExpiredContractRiders(${rider.id}): ${error.message}`);
+      if (!released || released.length === 0) continue;
 
-    // #1906/#776/#822 forward-guards — samme mønster som squadEnforcement.executeAutoSale.
-    await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "contract_expiry_release" });
-    await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
-    stats.released += 1;
+      // #1906/#776/#822 forward-guards — samme mønster som squadEnforcement.executeAutoSale.
+      await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "contract_expiry_release" });
+      await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
+      stats.released += 1;
 
-    const ownerUserId = rider.team?.user_id;
-    const isHumanOwned = Boolean(ownerUserId) && rider.team?.is_ai === false && rider.team?.is_frozen === false;
-    if (isHumanOwned) {
-      const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-      const payload = buildContractExpiredReleaseNotification({
-        riderName, riderId: rider.id, seasonNumber,
-      });
-      try {
-        const res = await notify({ supabase, userId: ownerUserId, ...payload });
-        if (res?.delivered) stats.notified += 1;
-      } catch (err) {
-        stats.notifyFailed += 1;
-        console.error(`  ❌ contract-expired-release-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      const ownerUserId = rider.team?.user_id;
+      const isHumanOwned = Boolean(ownerUserId) && rider.team?.is_ai === false && rider.team?.is_frozen === false;
+      if (isHumanOwned) {
+        const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
+        const payload = buildContractExpiredReleaseNotification({
+          riderName, riderId: rider.id, seasonNumber,
+        });
+        try {
+          const res = await notify({ supabase, userId: ownerUserId, ...payload });
+          if (res?.delivered) stats.notified += 1;
+        } catch (err) {
+          stats.notifyFailed += 1;
+          console.error(`  ❌ contract-expired-release-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+          captureException(err, { tags: { flow: "notifications", stage: "contract-expired-release" }, riderId: rider.id });
+        }
       }
+    } catch (err) {
+      // Rytterens EGEN frigivelse fejlede (DB-update/race-entry-oprydning/listing-luk).
+      // Isoleret: resten af loopet (og de allerede-frigivne foran den) fortsætter
+      // uændret — samme disciplin som notifikations-catchen ovenfor.
+      stats.failed += 1;
+      console.error(`  ❌ contract-expiry-release fejlede for rytter ${rider.id}:`, err?.message || err);
+      captureException(err, { tags: { flow: "season-transition", stage: "contract-expiry-release" }, riderId: rider.id });
     }
   }
 
