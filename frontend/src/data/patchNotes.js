@@ -35,6 +35,20 @@ export const PATCHES = [
           "body": "Oprykningsbeskeden var låst til dansk for alle; nu følger den dit sprog, ligesom nedrykningsbeskeden altid har gjort. Vi har også fjernet et efterladt 'Sæson 0' fra tre sæson-vælgere."
         },
         "refs": [2833, 2763]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Every rider now shows a salary in the squad view",
+          "body": "Around half of all riders on manager teams had no salary stored, so the squad view showed a blank and payday deducted too little. Their salaries are now set with the same formula the game uses when a rider is signed, and the upcoming season's payroll will deduct the right amounts."
+        },
+        "da": {
+          "title": "Alle ryttere viser nu en løn i truppen",
+          "body": "Omkring halvdelen af alle ryttere på managerhold havde ingen løn gemt, så truppen viste et tomt felt, og lønningsdagen trak for lidt. Deres løn er nu sat med samme formel som spillet bruger, når en rytter signeres, og den kommende sæsons payroll trækker de rigtige beløb."
+        },
+        "refs": [2746]
       }
     ]
   },
