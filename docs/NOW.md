@@ -26,6 +26,8 @@
 
 > **Åbne ejer-beslutninger:** #2699 akademi-overflow (sim klar) · #2697 scout-slot · #2670 ROI-loft · #2452/#2176 når v4-adfærd kan måles. **Ejer-klik:** #929+#2258 OTP+leaked-pw (2 dashboard-klik) · #2588 /training-klik-test · #2680 connectors.
 
+> **🎨 Design-spor (#2849):** Komposition-audit af alle 52 sider FÆRDIG 23/7 (`docs/audits/design-composition-audit-2026-07-23.md`). Rod-årsag: ingen side-skabeloner; 9 header-varianter, ErrorState 1/52. Venter på ejer: Gen1/Gen2-header-valg + skabelon-godkendelse i Claude Design ("Cycling Zone Design System"-projektet). Implementering i bølger DEREFTER — genbruges i #2443/#2445/#1602.
+
 > **🤖 Working agent:** **3 spor startet 23/7, 1 bevidst gated.** Princip: parallelisér udførelse, serialisér dømmekraft — kun ét ejer-gated spor ad gangen. **S8 cutover (Fable, ALENE)** = kritisk sti; ejer-gate: godkend 8 op-/16 nedrykkere før kørsel · **S6 #2161 Discord-login** (sonnet, worktree) · **#1602 mobil-P0'er** (sonnet, worktree) — issue-checklisten er forældet: `min-h-11` findes 0 steder (koden bruger `min-h-[44px]`, 104×), FinancePage-hullet er lukket, 40 filer har overflow-mønsteret og der findes ingen delt tabel-komponent · **#2443/#2445 IA+layout** (Fable) venter til EFTER S8's ejer-godkendelse. Workers rører ikke NOW.md/MASTERPLAN.md — orkestrator samler close-out. S1-S5-bølgen afsluttet 23/7, log: `docs/audits/wave-2026-07-23.md`.
 
 ## Standing context (forever-relaunch)
