@@ -28,7 +28,10 @@ import {
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import GlobalRankWidget from "../components/GlobalRankWidget";
-import { Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader } from "../components/ui";
+import {
+  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
+  PageHeader, Section, SectionHeader, SectionAction,
+} from "../components/ui";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -584,39 +587,44 @@ export default function DashboardPage() {
     // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
     // race-data, countdowns); browser-oversættere muterede dem og udløste
     // NotFoundError-crashes (Sentry-events med url=/dashboard). Se PR #2272.
-    <div translate="no" className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{team?.name}</h1>
-          <p className="text-cz-3 text-sm">
+    <div translate="no" className="max-w-5xl mx-auto">
+      {/* Header — #2849 bølge 1: kanonisk PageHeader (docs/design/PAGE_TEMPLATES.md).
+          actions-slotten bærer saldo-linket + customize-menuen uændret (features
+          bevares; action-cluster-kontrakten på maks 1 select + 1 primary håndhæves
+          ikke retroaktivt her). */}
+      <PageHeader
+        title={team?.name}
+        subtitle={
+          <>
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
             {pendingIncomingCount > 0 && <span className="text-cz-success"> {t("dashboard:header.incoming", { count: pendingIncomingCount })}</span>}
             {outgoingCount > 0 && <span className="text-cz-danger"> {t("dashboard:header.outgoing", { count: outgoingCount })}</span>}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* #2288 E — synlig klikbar affordance: hover-underline + chevron, så
-              saldoblokken læses som et link (den linker allerede til /finance). */}
-          <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
-            <div>
-              <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
-              <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
-            </div>
-            <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
-          </Link>
-          {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
-              placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
-          <DashboardCustomizeMenu
-            open={customizeOpen}
-            onToggleOpen={() => setCustomizeOpen(o => !o)}
-            isVisible={isVisible}
-            toggleModule={toggleModule}
-            resetToDefault={resetToDefault}
-            t={t}
-          />
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            {/* #2288 E — synlig klikbar affordance: hover-underline + chevron, så
+                saldoblokken læses som et link (den linker allerede til /finance). */}
+            <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
+              <div>
+                <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
+                <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+              </div>
+              <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
+            </Link>
+            {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
+                placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
+            <DashboardCustomizeMenu
+              open={customizeOpen}
+              onToggleOpen={() => setCustomizeOpen(o => !o)}
+              isVisible={isVisible}
+              toggleModule={toggleModule}
+              resetToDefault={resetToDefault}
+              t={t}
+            />
+          </>
+        }
+      />
 
       {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
           træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
@@ -759,16 +767,16 @@ export default function DashboardPage() {
           starter som null), empty state når holdet endnu ingen løb har kørt. */}
       {myLatestResultVisible && <MyLatestResultCard data={myLatestResult} />}
 
-      {/* Main grid */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
+      <div className="grid lg:grid-cols-2 gap-[14px]">
 
         {/* My auctions + winning */}
         {isVisible("auctions") && (
-        <Card className="p-5">
-          <Link to="/auctions" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.auctions.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.auctions.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.auctions.title")}
+            action={<SectionAction as={Link} to="/auctions">{t("dashboard:cards.auctions.linkAll")}</SectionAction>}
+          />
           {myActiveAuctions.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.auctions.empty")}</p>
@@ -808,7 +816,7 @@ export default function DashboardPage() {
                 })}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
         {/* Global Rank widget (#2453) — "#N ▲x · point", linker til /global-rank. */}
@@ -816,11 +824,11 @@ export default function DashboardPage() {
 
         {/* Pending transfers + offers */}
         {isVisible("transfers") && (
-        <Card className="p-5">
-          <Link to="/transfers" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.transfers.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.transfers.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.transfers.title")}
+            action={<SectionAction as={Link} to="/transfers">{t("dashboard:cards.transfers.linkAll")}</SectionAction>}
+          />
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.transfers.empty")}</p>
@@ -860,16 +868,16 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
         {/* Upcoming races */}
         {isVisible("races") && (
-        <Card className="p-5">
-          <Link to="/races" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.races.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.races.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.races.title")}
+            action={<SectionAction as={Link} to="/races">{t("dashboard:cards.races.linkAll")}</SectionAction>}
+          />
           {displayedRaces.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
@@ -910,16 +918,16 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
         {/* My division standings */}
         {isVisible("divStandings") && (
-        <Card className="p-5">
-          <Link to="/standings" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.standings.title", { division: team?.division })}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.standings.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.standings.title", { division: team?.division })}
+            action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
+          />
           {divStandings.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.standings.empty")}</p>
@@ -953,18 +961,18 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
         {/* Board status — skjul kortet helt indtil bestyrelsen er etableret (#1488).
             board er kun non-null naar en 1yr/3yr/5yr-plan findes; under saeson-1
             baseline-fasen er alle plans=null, saa kortet skal ikke vises endnu. */}
         {isVisible("board") && board && (
-        <Card className="p-5 lg:col-span-2">
-          <Link to="/board" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.board.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.board.linkAll")}</span>
-          </Link>
+        <Section className="lg:col-span-2">
+          <SectionHeader
+            title={t("dashboard:cards.board.title")}
+            action={<SectionAction as={Link} to="/board">{t("dashboard:cards.board.linkAll")}</SectionAction>}
+          />
           <div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
@@ -1022,16 +1030,16 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-        </Card>
+        </Section>
         )}
 
         {/* Recent results (#1005) */}
         {isVisible("recentResults") && (
-        <Card className="p-5">
-          <Link to="/resultater" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.recentResults.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.recentResults.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.recentResults.title")}
+            action={<SectionAction as={Link} to="/resultater">{t("dashboard:cards.recentResults.linkAll")}</SectionAction>}
+          />
           {recentResults.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
@@ -1066,16 +1074,16 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
         {/* Rider ranking (#1005) */}
         {isVisible("riderRanking") && (
-        <Card className="p-5">
-          <Link to="/rider-rankings" className="flex items-center justify-between mb-4 group">
-            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.riderRanking.title")}</h2>
-            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</span>
-          </Link>
+        <Section>
+          <SectionHeader
+            title={t("dashboard:cards.riderRanking.title")}
+            action={<SectionAction as={Link} to="/rider-rankings">{t("dashboard:cards.riderRanking.linkAll")}</SectionAction>}
+          />
           {riderRanking.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
@@ -1103,7 +1111,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Card>
+        </Section>
         )}
 
       </div>
