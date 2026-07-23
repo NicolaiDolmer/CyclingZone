@@ -790,14 +790,20 @@ export function TeamPage() {
     if (!myTeam) { setLoading(false); return; }
     setTeam(myTeam);
 
+    // #2748: pensionerede ryttere vises ikke i truppen — de frigives ved
+    // sæsonskiftet (retirementRelease.js) og kan hverken køre løb eller sælges.
+    // Uden filteret ville de stå i listen og tælle med i trup-/løn-/værditotalerne
+    // i vinduet mellem pensionering og frigivelse.
     const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
+        .eq("is_retired", false)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
+        .eq("is_retired", false)
         .order("market_value", { ascending: false }),
     ]);
 

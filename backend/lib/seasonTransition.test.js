@@ -324,6 +324,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       // #2744-B: kontraktudløb-frigivelse stubbet — egen unit-test (contractExpiryRelease.test.js)
       // dækker release-logikken; dedikerede wiring-tests nedenfor dækker fase-placeringen.
       releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
+      // #2748: pensions-frigivelse stubbet — egen unit-test (retirementRelease.test.js)
+      // dækker release-logikken; wiring-testen nedenfor dækker fase-placeringen.
+      releaseRetiredRiders: async () => ({ candidates: 0, released: 0, failed: 0 }),
     },
   });
 
@@ -331,8 +334,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.dryRun, false);
   // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
   // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
-  // #1980: +season_parachute; #2744-B: +contract_expiry_release = 14
-  assert.equal(result.log.length, 14);
+  // #1980: +season_parachute; #2744-B: +contract_expiry_release;
+  // #2748: +retirement_release = 15
+  assert.equal(result.log.length, 15);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -355,12 +359,14 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[9].phase, "season_parachute");
   assert.equal(result.log[9].count, 0);
   assert.equal(result.log[9].total, 0);
-  assert.equal(result.log[10].phase, "admin_log");
-  assert.equal(result.log[10].inserted, true);
-  assert.equal(result.log[11].phase, "discord_broadcast");
-  assert.equal(result.log[11].sent, true);
-  assert.equal(result.log[12].phase, "season_started_notifications");
-  assert.equal(result.log[13].phase, "contract_expiring_notifications");
+  assert.equal(result.log[10].phase, "retirement_release");
+  assert.equal(result.log[10].candidates, 0);
+  assert.equal(result.log[11].phase, "admin_log");
+  assert.equal(result.log[11].inserted, true);
+  assert.equal(result.log[12].phase, "discord_broadcast");
+  assert.equal(result.log[12].sent, true);
+  assert.equal(result.log[13].phase, "season_started_notifications");
+  assert.equal(result.log[14].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -424,6 +430,76 @@ test("transitionToNextSeason — kalder releaseExpiredContractRiders med den AFS
   assert.equal(releasePhase.candidates, 196);
   assert.equal(releasePhase.released, 195);
   assert.equal(releasePhase.deferredByRacing, 1);
+});
+
+// #2748 · Pensions-frigivelse. Modsat kontraktudløb (som kører FØR sæson-start, så
+// de frigivne ikke betaler den nye sæsons løn) skal denne fase køre EFTER
+// processSeasonStart — det er DÉR rytterudviklingen sætter is_retired. Kører den
+// før, er der ingen nypensionerede at frigive, og de ville hænge en hel sæson.
+test("transitionToNextSeason — releaseRetiredRiders kaldes EFTER sæson-start (hvor pensioneringen sættes)", async () => {
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      releaseExpiredContractRiders: async () => { order.push("contractRelease"); return { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }; },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      releaseRetiredRiders: async () => { order.push("retirementRelease"); return { candidates: 12, released: 12, failed: 0 }; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    order,
+    ["contractRelease", "seasonStart", "retirementRelease"],
+    "pensions-frigivelsen skal ligge EFTER sæson-start (rytterudviklingen), ikke sammen med kontraktudløbet"
+  );
+
+  const phase = result.log.find((p) => p.phase === "retirement_release");
+  assert.ok(phase, "retirement_release-fasen skal logges");
+  assert.equal(phase.candidates, 12);
+  assert.equal(phase.released, 12);
+  assert.equal(phase.failed, 0);
+});
+
+test("transitionToNextSeason — en fejl i retirement_release isoleres og logger de PARTIELLE stats", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const boom = new Error("release eksploderede efter 7 ryttere");
+  boom.partialStats = { candidates: 12, released: 7, failed: 1 };
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      releaseRetiredRiders: async () => { throw boom; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true, "en fejlet pensions-frigivelse må ALDRIG vælte resten af sæson-transitionen");
+  const phase = result.log.find((p) => p.phase === "retirement_release");
+  assert.ok(phase.error, "fejlen er synlig i loggen");
+  assert.equal(phase.released, 7, "operatøren skal kunne se hvor langt kørslen nåede");
+  assert.equal(phase.candidates, 12);
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "transitionen fortsætter efter den isolerede fejl");
 });
 
 test("transitionToNextSeason — en fejl i contract_expiry_release isoleres og vælter ALDRIG resten af transitionen", async () => {

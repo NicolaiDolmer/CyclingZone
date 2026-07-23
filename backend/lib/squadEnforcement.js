@@ -73,11 +73,16 @@ async function getSquadSnapshot(supabase, teamId) {
   );
 
   // #1308: akademiryttere tæller ikke mod senior-cap og må aldrig auto-sælges
+  // #2748: pensionerede ryttere tæller heller ikke — de frigives ved sæsonskiftet
+  // (retirementRelease.js) og skal aldrig kunne udløse en bøde eller blive valgt
+  // som tvangssalg. Uden filteret ville en pensioneret rytter kunne skubbe et hold
+  // over max og koste manageren en ÆGTE rytter i pickRidersToSell.
   const { data: ownedRiders, error: ownedError } = await supabase
     .from("riders")
     .select("id, firstname, lastname, ai_team_id, market_value, acquired_at, created_at")
     .eq("team_id", teamId)
-    .eq("is_academy", false);
+    .eq("is_academy", false)
+    .eq("is_retired", false);
   ensureNoError(ownedError);
 
   return {
@@ -99,6 +104,11 @@ function pickRidersToSell(ownedRiders, count) {
 
 async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   // Tilgængelige = ingen team_id, eller ejet af AI-team. Begge kategorier kan auto-købes.
+  // #2748 forward-guard: pensionerede ryttere er IKKE tilgængelige. Fra og med
+  // retirementRelease.js lander de i fri-agent-poolen (team_id=null) — uden dette
+  // filter ville auto-købet kunne betale for en rytter der aldrig kan køre et løb.
+  // (Grenen er inert i prod i dag, min=0 for alle divisioner, men den er stadig
+  // kaldbar via limitsOverride og ville være en fælde hvis floor'et genindføres.)
   const { data: aiTeams, error: aiError } = await supabase
     .from("teams")
     .select("id")
@@ -117,6 +127,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
     .from("riders")
     .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
     .is("team_id", null)
+    .eq("is_retired", false)
     .order("market_value", { ascending: true })
     .limit(limit);
   ensureNoError(faError);
@@ -128,6 +139,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
       .from("riders")
       .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus, current_production_value")
       .in("team_id", [...aiTeamIds])
+      .eq("is_retired", false)
       .order("market_value", { ascending: true })
       .limit(limit);
     ensureNoError(aiOwnedError);

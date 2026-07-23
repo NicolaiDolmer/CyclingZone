@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.46",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Riders who retire now leave your squad",
+          "body": "When a rider retires at the season change, his place in your squad is freed the same moment. Until now retirement only marked him as retired: he could never race again, but he still filled one of your 30 places and still counted in your squad size. From this season change he is released properly, and the notification tells you the place is free so you can go and replace him. Riders in their late thirties are the ones at risk, and the risk grows every year until it is a certainty. Nothing about a retirement can be prevented, so plan the replacement rather than the rescue."
+        },
+        "da": {
+          "title": "Ryttere der stopper karrieren forlader nu truppen",
+          "body": "Når en rytter indstiller karrieren ved sæsonskiftet, bliver hans plads i truppen fri med det samme. Indtil nu blev han kun markeret som pensioneret: han kunne aldrig køre løb igen, men han optog stadig en af dine 30 pladser og talte stadig med i din trupstørrelse. Fra dette sæsonskifte bliver han frigivet ordentligt, og beskeden fortæller dig at pladsen er fri, så du kan hente en afløser. Det er rytterne sidst i trediverne der er i risiko, og risikoen vokser hvert år, indtil den er en sikkerhed. Et karrierestop kan ikke forhindres, så planlæg afløseren i stedet for redningen."
+        },
+        "refs": [2748]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Expired contracts release the rider at the season change",
+          "body": "A rider whose contract has run out now leaves your squad as a free agent when the season changes, instead of staying on with a contract nobody enforced. You get a warning before the change, and you can extend a contract from the rider's profile right up until then. After the change he is in the free agent pool like anyone else, and you are welcome to sign him back."
+        },
+        "da": {
+          "title": "Udløbne kontrakter frigiver rytteren ved sæsonskiftet",
+          "body": "En rytter hvis kontrakt er løbet ud, forlader nu din trup som fri agent når sæsonen skifter, i stedet for at blive hængende på en kontrakt ingen håndhævede. Du får et varsel før skiftet, og du kan forlænge en kontrakt fra rytterens profil helt frem til det. Efter skiftet ligger han i fri-agent-puljen som alle andre, og du er velkommen til at hente ham tilbage."
+        },
+        "refs": [2744]
+      }
+    ]
+  },
+  {
     "version": "7.45",
     "date": "2026-07-23",
     "label": "Beta",

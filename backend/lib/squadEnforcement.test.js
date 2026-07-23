@@ -18,7 +18,11 @@ import {
 function createMockSupabase(initialState) {
   const state = {
     teams: [...(initialState.teams || [])],
-    riders: [...(initialState.riders || [])],
+    // #2748: riders.is_retired er NOT NULL DEFAULT false i skemaet (verificeret mod
+    // prod 23/7: 0 NULL-rækker ud af 7.034). Fixtures udelader feltet, så defaulten
+    // spejles her — ellers ville en ægte `.eq("is_retired", false)`-filtrering i
+    // produktionskoden ikke matche nogen mock-rytter og teste noget andet end prod.
+    riders: (initialState.riders || []).map((r) => ({ is_retired: false, ...r })),
     seasonStandings: [...(initialState.seasonStandings || [])],
     transferWindows: [...(initialState.transferWindows || [])],
     transferListings: [...(initialState.transferListings || [])],

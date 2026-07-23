@@ -291,11 +291,18 @@ export async function developRidersForSeason({
       notifyTeamOwnerFn({
         supabase, teamId, type: "rider_retired", relatedId: riderId, now,
         title: `${name} has retired`,
-        message: `${name} has retired from professional cycling at age ${age}.`,
+        // #2748: pensionen frigiver nu OGSÅ trup-pladsen (retirementRelease.js kører
+        // som egen fase lige efter denne motor) — beskeden skal sige det, ellers
+        // gætter manageren på om han selv skal rydde op.
+        message: `${name} has retired from professional cycling at age ${age}. His place in your squad is now free.`,
         metadata: {
-          titleCode: "notification.rider_retired.title",
+          // Koderne hed før `notification.rider_retired.*`, som IKKE følger
+          // `notif.`-konventionen i backendMessages-namespacet — de fandtes derfor
+          // ikke som nøgler, og renderBackendMessage faldt altid tilbage til den
+          // engelske råtekst. Danske managere fik aldrig en oversat besked.
+          titleCode: "notif.riderRetired.title",
           titleParams: { name },
-          messageCode: "notification.rider_retired.message",
+          messageCode: "notif.riderRetired.message",
           messageParams: { name, age },
         },
       }).catch(() => { /* notifikation må aldrig vælte transitionen */ }));

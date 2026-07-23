@@ -161,6 +161,10 @@
       "title": "Rider released: contract expired",
       "message": "{rider}'s contract expired at the end of season {season}. He is now a free agent."
     },
+    "riderRetired": {
+      "title": "{name} has retired",
+      "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."
+    },
     "seasonTransitionRisk": {
       "title": "Season change: contract and retirement risk",
       "messageBoth": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires, and {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend a rider's contract from his profile before the change to prevent release; retirement can't be prevented, but you can bid for replacements once the season changes.",
