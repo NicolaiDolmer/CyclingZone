@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.49",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Cleaner empty, error and loading states",
+          "body": "Empty and error messages across the app now share one calmer look, and error messages tell you what is safe. This is the first step of a visual pass that will make every page feel like one game."
+        },
+        "da": {
+          "title": "Pænere tomme-, fejl- og loading-tilstande",
+          "body": "Tomme- og fejlbeskeder i hele appen deler nu ét roligere udtryk, og fejlbeskeder fortæller dig hvad der er sikkert. Det er første skridt i en visuel gennemgang, der får alle sider til at føles som ét spil."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.48",
     "date": "2026-07-23",
     "label": "Beta",
