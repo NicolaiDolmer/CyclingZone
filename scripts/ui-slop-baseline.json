@@ -169,6 +169,12 @@
       "colour": 0,
       "emoji": 5
     },
+    "frontend/src/components/admin/shared/seasonEndedToast.js": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 5
+    },
     "frontend/src/components/rider/TrainingFocus.jsx": {
       "hex": 0,
       "slop": 0,
