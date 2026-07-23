@@ -23,6 +23,48 @@ export const PATCHES = [
         "refs": [2448]
       },
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "The Academy page tells you what you are deciding",
+          "body": "Candidate cards now show the rider type, the market value and the signing fee before you sign, plus how many days are left on the offer. Offers run for seven days, and when one lapses the rider goes to a 24 hour youth auction. Graduating riders show their type, value and salary, so promote, sell or release is no longer a blind choice. The academy roster is now a proper sortable table with Nation, Type and Value columns, and you can sort by potential, value, salary, age or contract. The qualitative potential wording moved into a tooltip so the stars stand on their own."
+        },
+        "da": {
+          "title": "Akademi-siden fortæller dig hvad du beslutter",
+          "body": "Kandidatkortene viser nu ryttertype, markedsværdi og signeringspris før du signerer, plus hvor mange dage der er tilbage af tilbuddet. Et tilbud løber i syv dage, og når det udløber, ryger rytteren på 24-timers ungdomsauktion. Ryttere der forlader akademiet, viser type, værdi og løn, så ryk op, sælg eller fyr ikke længere er et blindt valg. Akademiholdet er nu en rigtig sorterbar tabel med kolonnerne Nation, Type og Værdi, og du kan sortere på potentiale, værdi, løn, alder eller kontrakt. Den kvalitative potentiale-tekst er flyttet til et tooltip, så stjernerne står alene."
+        },
+        "refs": [2796]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promotion dialog showed the same salary for every rider",
+          "body": "The confirmation box for promoting an academy rider to your senior squad always showed 161 CZ$ as the new senior salary, no matter who you promoted. It now shows the real projected salary for that rider in your division. Signing a candidate you cannot afford also says so plainly instead of a generic error, and a failed page load no longer reads as \"the Academy is coming soon\"."
+        },
+        "da": {
+          "title": "Ryk op-dialogen viste den samme løn for alle ryttere",
+          "body": "Bekræftelsesboksen for at rykke en akademirytter op i senior-truppen viste altid 161 CZ$ som ny senior-løn, uanset hvem du rykkede op. Den viser nu den rigtige projicerede løn for netop den rytter i din division. Hvis du ikke har råd til signeringsprisen, står der nu det i stedet for en generisk fejl, og en fejlet sideindlæsning læses ikke længere som \"Akademiet kommer snart\"."
+        },
+        "refs": [2796]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Danish word left in the English interface",
+          "body": "The academy running cost showed as \"Drift paid\" in English, using the Danish word for upkeep, and the finance log called the same charge \"Academy drift\". Both now say upkeep, matching the Rules and Help pages."
+        },
+        "da": {
+          "title": "Dansk ord tilbage i den engelske grænseflade",
+          "body": "Akademiets driftsomkostning stod som \"Drift paid\" på engelsk, med det danske ord for upkeep, og finanslogget kaldte samme postering \"Academy drift\". Begge siger nu upkeep, ligesom Regler- og Hjælp-siderne."
+        },
+        "refs": [2796]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Races",

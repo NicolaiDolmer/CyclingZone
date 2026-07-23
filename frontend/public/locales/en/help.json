@@ -657,7 +657,7 @@
         "steps": [
           "Go to Academy in the navigation.",
           "Review your intake cohort for the season.",
-          "Sign 0-2 prospects. Each signing costs a one-time signing fee and commits you to a youth salary.",
+          "Sign 0-2 prospects. Each signing costs a one-time fee of {academySigningFeePct}% of the rider market value, shown on the candidate card before you sign, and commits you to a youth salary.",
           "Prospects you do not sign are put up for auction as youth prospects (see Youth auctions below)."
         ]
       },
