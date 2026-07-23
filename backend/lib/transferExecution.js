@@ -7,8 +7,10 @@ import {
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
+  getSquadRiskViolation,
   getTeamMarketState,
 } from "./marketUtils.js";
+import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -119,6 +121,14 @@ export function getTransferExecutionIssue({
   const sellerViolation = getOutgoingSquadViolation(sellerState);
   if (sellerViolation) {
     return { code: "seller_squad_too_small", ...sellerViolation };
+  }
+
+  // #2748 · sælgeren må ikke handle sig under løbs-minimummet (8) når kontrakt-
+  // udløb + pensionsrisiko ved næste sæsonskifte tælles med. sellerState.at_risk_count
+  // sættes af kalderen (executeTransferOffer) via squadRiskGuard.fetchAtRiskCount.
+  const sellerRiskViolation = getSquadRiskViolation(sellerState, { outgoingCount: 1 });
+  if (sellerRiskViolation) {
+    return { code: "seller_squad_risk_too_small", ...sellerRiskViolation };
   }
 
   const buyerViolation = getIncomingSquadViolation(buyerState, {
@@ -284,6 +294,17 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
     };
   }
 
+  if (issue.code === "seller_squad_risk_too_small") {
+    return {
+      error: `The seller can't drop below ${issue.minRiders} riders once contract expiry and retirement risk are counted. The deal was cancelled`,
+      errorParams: { minRiders: issue.minRiders },
+      ...cancelTitle,
+      notificationMessage: `${riderName} could not be sold because the seller would otherwise drop below ${issue.minRiders} riders once riders leaving at the next season change (contract expiry or retirement risk) are counted.`,
+      notificationMessageCode: "notif.transfer.issue.sellerSquadRiskTooSmall",
+      notificationParams: { riderName, minRiders: issue.minRiders },
+    };
+  }
+
   if (issue.code === "buyer_squad_full") {
     return {
       error: `The buyer's team can hold at most ${issue.maxRiders} riders in Division ${buyerState.division}. The deal was cancelled`,
@@ -380,11 +401,18 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season")
       .eq("id", offer.rider_id)
   );
-  const [buyerState, sellerState, buyerCommitment] = await Promise.all([
+  const [buyerState, sellerState, buyerCommitment, activeSeasonNumber] = await Promise.all([
     getTeamMarketState(supabase, offer.buyer_team_id),
     getTeamMarketState(supabase, offer.seller_team_id),
     fetchTeamAuctionCommitment(supabase, offer.buyer_team_id),
+    fetchActiveSeasonNumber(supabase),
   ]);
+  // #2748 · sælgerens kombinerede risiko (kontraktudløb + pensionsvindue ved næste
+  // transition) — ekskluder DENNE rytter selv, han er allerede talt som "outgoing"
+  // af getTransferExecutionIssue/getSquadRiskViolation.
+  sellerState.at_risk_count = await fetchAtRiskCount(supabase, offer.seller_team_id, activeSeasonNumber, {
+    excludeRiderIds: [offer.rider_id],
+  });
 
   // #1748 (a) TOCTOU-guard: hvis rytteren er kommet på en aktiv auktion EFTER
   // tilbuddet blev oprettet (oprettelses-gaten i api.js fanger det ikke), må
@@ -426,7 +454,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // hvis kontraktløs (salary == null); ellers arves den uændret. Skrives både ved
   // parkering (lukket vindue) og direkte registrering (åbent vindue), fordi den
   // generiske pending-flush ved vindue-åbning kun flytter team_id.
-  const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
+  // activeSeasonNumber er allerede hentet ovenfor (delt med #2748-risikotjekket).
   const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber, { division: buyerState.division });
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er

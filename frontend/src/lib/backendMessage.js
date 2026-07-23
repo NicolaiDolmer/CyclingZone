@@ -37,6 +37,8 @@ const RAW_KEYS = new Set([
   "stage", "position",
   // #1980 · nedrykningsfaldskærm — division-numre, ikke beløb.
   "oldDivision", "newDivision",
+  // #2700 · sæsonskifte-risiko-varsel — antal ryttere, ikke beløb.
+  "expiringCount", "retirementRiskCount",
 ]);
 
 /**

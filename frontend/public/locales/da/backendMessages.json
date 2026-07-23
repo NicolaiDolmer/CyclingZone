@@ -157,6 +157,16 @@
       "title": "Kontrakt udløber",
       "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."
     },
+    "contractExpiredRelease": {
+      "title": "Rytter frigivet: kontrakt udløbet",
+      "message": "{rider}s kontrakt udløb ved udgangen af sæson {season}. Han er nu fri agent."
+    },
+    "seasonTransitionRisk": {
+      "title": "Sæsonskifte: kontrakt- og pensionsrisiko",
+      "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng en rytters kontrakt fra hans profil før skiftet for at undgå frigivelse. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
+      "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng deres kontrakt fra rytterens profil før skiftet for at beholde dem.",
+      "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter."
+    },
     "watchlistDeparted": {
       "title": "Rytter har forladt spillet",
       "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
@@ -266,6 +276,7 @@
         "swapTitle": "Byttehandel annulleret",
         "sellerNoLongerOwns": "{riderName} kunne ikke gennemføres, fordi rytteren ikke længere står på sælgers hold.",
         "sellerSquadTooSmall": "{riderName} kunne ikke sælges, fordi sælgeren ellers ville komme under {minRiders} ryttere i Division {division}.",
+        "sellerSquadRiskTooSmall": "{riderName} kunne ikke sælges, fordi sælgeren ellers ville komme under {minRiders} ryttere, når ryttere der forlader holdet ved næste sæsonskifte (kontraktudløb eller pensionsrisiko) tælles med.",
         "buyerSquadFull": "{riderName} kunne ikke overdrages, fordi købers hold allerede er fuldt.",
         "buyerCannotAfford": "Handlen på {riderName} kunne ikke gennemføres, fordi køber mangler midler.",
         "offeredMoved": "{offeredName} er ikke længere tilgængelig til byttehandlen.",

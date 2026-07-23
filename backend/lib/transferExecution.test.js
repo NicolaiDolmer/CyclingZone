@@ -59,6 +59,59 @@ test("getTransferExecutionIssue rejects a seller that would fall below the squad
   assert.equal(issue?.minRiders, 20);
 });
 
+// #2748 · sælgeren må ikke handle sig under løbs-minimummet (8) når kontraktudløb
+// + pensionsrisiko ved næste sæsonskifte tælles med (sellerState.at_risk_count).
+test("getTransferExecutionIssue rejects a seller that would drop below MIN_RIDERS_FOR_RACE once combined risk (contract expiry + retirement) is counted", () => {
+  const issue = getTransferExecutionIssue({
+    rider: { team_id: "seller-team" },
+    sellerState: {
+      id: "seller-team",
+      division: 3,
+      future_count: 9,
+      at_risk_count: 1,
+      squad_limits: { min: 0, max: 30 },
+    },
+    buyerState: {
+      id: "buyer-team",
+      balance: 500,
+      division: 3,
+      total_count: 5,
+      squad_limits: { min: 0, max: 30 },
+    },
+    price: 50,
+  });
+
+  // 9 (future_count) - 1 (denne handel) - 1 (risiko) = 7 < 8 → blokeret, selvom
+  // division-min (0) i sig selv ikke ville blokere (dækket af testen ovenfor).
+  assert.equal(issue?.code, "seller_squad_risk_too_small");
+  assert.equal(issue?.minRiders, 8);
+  assert.equal(issue?.projected, 7);
+});
+
+test("getTransferExecutionIssue tillader et salg der PRÆCIST rammer MIN_RIDERS_FOR_RACE efter kombineret risiko", () => {
+  const issue = getTransferExecutionIssue({
+    rider: { team_id: "seller-team" },
+    sellerState: {
+      id: "seller-team",
+      division: 3,
+      future_count: 10,
+      at_risk_count: 1,
+      squad_limits: { min: 0, max: 30 },
+    },
+    buyerState: {
+      id: "buyer-team",
+      balance: 500,
+      division: 3,
+      total_count: 5,
+      squad_limits: { min: 0, max: 30 },
+    },
+    price: 50,
+  });
+
+  // 10 - 1 - 1 = 8 = MIN_RIDERS_FOR_RACE → OK, ingen violation ved selve grænsen.
+  assert.equal(issue, null);
+});
+
 test("getTransferExecutionIssue rejects when the seller no longer owns the rider", () => {
   const issue = getTransferExecutionIssue({
     rider: { team_id: "other-team" },
