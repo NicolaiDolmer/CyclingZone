@@ -63,11 +63,15 @@ Samme rodårsagsklasse som #2671/#2676 (afdækket 19/7): brede grants der
    subscribe; alle mutationer går gennem backend/service_role-ruter).
 3. Forward-guard: `BEFORE UPDATE`-trigger `guard_users_role_change_trigger`
    på `public.users` der raiser `role_change_forbidden` hvis `NEW.role`
-   ændres og kaldet ikke kommer fra `service_role` (`auth.role() =
-   'service_role'`). Dette er et UAFHÆNGIGT lag af kolonne-grantet — hvis en
+   ændres og der REELT er en JWT-rolle (`auth.role()`) forskellig fra
+   `service_role`. Dette er et UAFHÆNGIGT lag af kolonne-grantet — hvis en
    fremtidig migration/schema-restore ved et uheld genopretter
    `UPDATE(role)`-grantet (samme mekanisme som ramte #2676), stopper
    triggeren stadig selve mutationen.
+4. `REVOKE ... REFERENCES, TRIGGER` tilføjet på alle fire tabeller (lav-severity
+   fund fra adversarielt review, se "Eftervirkning" nedenfor for det kritiske
+   fund fra samme review) — ikke exploitable via PostgREST, men hørte med til
+   en fuldstændig lockdown.
 
 Backend er upåvirket: `backend/routes/api.js:542-544` instantierer
 `supabase`-klienten med `SUPABASE_SERVICE_KEY` (service_role, BYPASSRLS) — al
@@ -80,6 +84,52 @@ ikke signup-flowet.
 Verificeret lokalt: `pwsh -File scripts/verify-local.ps1` — backend 4210/4210
 pass, frontend 1251/1251 pass, build OK (ingen af de tre lag rammer
 service_role-baserede tests, som forventet).
+
+### Eftervirkning: triggeren låste ejeren selv ude (fanget ved adversarielt review, samme dag)
+
+Første udkast af `guard_users_role_change()` brugte betingelsen
+`auth.role() IS DISTINCT FROM 'service_role'`. Det ser rigtigt ud, men
+`auth.role()`s egen definition (Supabase-standard) er:
+
+```sql
+select coalesce(
+  nullif(current_setting('request.jwt.claim.role', true), ''),
+  (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')
+)::text
+```
+
+— dvs. den returnerer **NULL** når der slet ikke er en JWT-kontekst sat,
+hvilket er PRÆCIS situationen ved en direkte Postgres-forbindelse: MCP
+(`execute_sql`/`apply_migration`), Supabase Dashboard SQL Editor, og
+migrationer der kører som `postgres`/superuser — altså den kanal repoet selv
+bruger til at applye migrationer (hard rule 9) og til manuelt at rette
+`users.role` ("sat ved seed" historisk).
+
+`NULL IS DISTINCT FROM 'service_role'` evaluerer til **TRUE** i SQL (`IS
+DISTINCT FROM` behandler NULL som en almindelig, sammenlignelig værdi — modsat
+`=`/`<>` som begge giver NULL ved NULL-input). Så første udkast blokerede
+ALLE role-ændringer uden JWT-kontekst, inklusive ejerens/operatørens egne
+direkte SQL-ændringer — den nøjagtige kanal triggeren skulle skåne. Kun
+PostgREST-kald (som altid har en JWT, også for `anon`) skulle rammes.
+
+**Fix:** betinget kun på at der REELT er en JWT-rolle, og at den ikke er
+`service_role`:
+
+```sql
+DECLARE v_jwt_role text := auth.role();
+...
+IF NEW.role IS DISTINCT FROM OLD.role
+   AND v_jwt_role IS NOT NULL
+   AND v_jwt_role <> 'service_role' THEN
+  RAISE EXCEPTION ...
+```
+
+Tre cases, alle verificeret: (1) `v_jwt_role IS NULL` → ingen JWT-kontekst
+(direkte SQL) → tilladt; (2) `v_jwt_role = 'service_role'` → backend-admin-rute
+→ tilladt; (3) `v_jwt_role IN ('anon','authenticated')` → PostgREST-kald fra
+klienten selv → blokeret. Post-verify-blokken i migrationen har nu et
+kørbart (BEGIN/ROLLBACK) test-eksempel for alle tre cases via
+`SET LOCAL request.jwt.claims = '{"role":"..."}'`.
 
 ## Forhindret-fremover
 
@@ -101,6 +151,12 @@ service_role-baserede tests, som forventet).
   `role_table_grants`-auditten (samme query som denne migrations
   post-verify-blok) FØR merge — default privileges kan gen-granteres uden at
   nogen rørte migrationsfilerne (samme mekanisme som #2676).
+- **Enhver fremtidig `auth.role()`/`auth.uid()`-baseret trigger/guard skal
+  eksplicit teste NULL-casen** (ingen JWT-kontekst = direkte Postgres-adgang)
+  FØR den skrives til en migration, ikke opdages ved adversarielt review. Det
+  billigste sted at teste: `SET LOCAL request.jwt.claims = '{"role":"..."}'`
+  i en rullet-tilbage transaktion (se post-verify-blokken i denne migration)
+  — kør alle tre cases (ingen JWT / service_role / anon-authenticated) FØR PR.
 
 ## Læring
 
@@ -115,3 +171,13 @@ verificere alle tre mod `information_schema.role_table_grants` +
 `column_privileges`, ikke kun læse policy-teksten. Backlog-audits der kun
 kigger på `pg_policies` uden også at joine grants overser præcis denne
 klasse af hul.
+
+En anden takeaway, uafhængig af selve RLS-hullet: `auth.role()`/`auth.uid()`
+er NULL — ikke `'anon'` eller fejl — uden for PostgREST-kontekst. Enhver
+kode der skriver `x() IS DISTINCT FROM '<forventet-værdi>'` som en gate,
+blokerer stiltiende ALLE NULL-kontekster, inklusive dem man ville undtage
+(her: superuser/direkte SQL). `IS DISTINCT FROM` er "NULL-safe" i den forstand
+at den ALDRIG selv returnerer NULL — men det betyder også at den ALDRIG
+"fejler åbent" på NULL, den tager stilling. Rigtig mønster for en gate der
+skal springes over uden JWT-kontekst: eksplicit `x IS NOT NULL AND x <>
+'<forventet>'`, aldrig `x IS DISTINCT FROM '<forventet>'` alene.
