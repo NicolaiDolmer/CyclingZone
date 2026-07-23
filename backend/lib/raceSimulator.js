@@ -118,13 +118,30 @@ export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
 });
 export const LONG_DAY_ENDURANCE_WEIGHT = 0.65;
 
+// #2804: ÉN sandhed for "har etapen en brugbar distance?".
+//
+// FÆLDEN: Number(null) === 0, og 0 ER finit. Et bart `Number.isFinite(Number(x))`
+// behandler derfor NULL-distance som "rutedata findes, længden er 0 km".
+// Legacy-etaper (sæson 1) har præcis den form: profile_type sat, distance_km NULL.
+// Golden-fixturerne UDELADER feltet (undefined → NaN → korrekt identitet), så
+// bit-identitets-gaten kunne ikke se forskel. Samme klasse som #2786.
+//
+// Returnerer et endeligt tal, ellers null. Brug ALTID denne — aldrig
+// Number.isFinite(Number(...)) direkte på et DB-felt der kan være NULL.
+export function finiteDistanceKm(stageProfile) {
+  const raw = stageProfile?.distance_km;
+  if (raw == null || raw === "") return null;
+  const d = Number(raw);
+  return Number.isFinite(d) ? d : null;
+}
+
 // distFactor: forholdet mellem etapens faktiske distance og profilens
 // bandMid-anker, clampet [0.85, 1.2]. Ingen distance / ukendt profil → 1
 // (identitet — bit-identisk med main uden rutedata).
 export function distanceFactor(stageProfile) {
-  const d = Number(stageProfile?.distance_km);
+  const d = finiteDistanceKm(stageProfile);
   const mid = DISTANCE_BAND_MIDPOINTS[stageProfile?.profile_type];
-  if (!Number.isFinite(d) || !mid) return 1;
+  if (d === null || !mid) return 1;
   return clamp(d / mid, 0.85, 1.2);
 }
 
@@ -178,22 +195,22 @@ export const TECHNICAL_DESCENT_WINDOW_KM = [3, 12];
 export const TECHNICAL_FINALE_WEIGHT = 0.06; // samlet ±, fordeles 60/40 descending/positioning
 export function isTechnicalFinale(sp = {}) {
   if (DESCENT_FINALES.has(sp.finale_type)) return true;
-  const d = Number(sp.distance_km);
+  const d = finiteDistanceKm(sp); // #2804: NULL-distance er ikke "0 km"
   const climbs = Array.isArray(sp.climbs) ? sp.climbs : [];
   const last = climbs.length ? climbs[climbs.length - 1] : null;
-  if (last && Number.isFinite(d)) {
+  if (last && d !== null) {
     const gap = d - Number(last.crest_km);
     if (gap >= TECHNICAL_DESCENT_WINDOW_KM[0] && gap <= TECHNICAL_DESCENT_WINDOW_KM[1]) return true;
   }
   const sectors = Array.isArray(sp.sectors) ? sp.sectors : [];
-  if (Number.isFinite(d) && sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= d - 10)) return true;
+  if (d !== null && sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= d - 10)) return true;
   return false;
 }
 
 function finaleModifier(entrant, stageProfile) {
   const hasRouteData = (Array.isArray(stageProfile?.climbs) && stageProfile.climbs.length > 0)
     || (Array.isArray(stageProfile?.sectors) && stageProfile.sectors.length > 0)
-    || Number.isFinite(Number(stageProfile?.distance_km));
+    || finiteDistanceKm(stageProfile) !== null; // #2804: NULL ≠ rutedata
   if (hasRouteData && isTechnicalFinale(stageProfile)) {
     const desc = clamp(Number(entrant?.abilities?.descending) || 0, 0, 99);
     const pos = clamp(Number(entrant?.abilities?.positioning) || 0, 0, 99);
@@ -356,7 +373,7 @@ export const SPRINTER_DENSITY_PROFILES = new Set(["flat", "rolling"]);
 export const SPRINTER_DENSITY_RANGE = [0.85, 1.15]; // faktor ved høj hhv. lav sprinter-tæthed
 export function routeBreakawayFactor(stageProfile, entrants = []) {
   let f = Math.sqrt(distanceFactor(stageProfile));
-  const hasRouteData = Number.isFinite(Number(stageProfile?.distance_km));
+  const hasRouteData = finiteDistanceKm(stageProfile) !== null; // #2804: NULL ≠ rutedata
   // #2771 Task 7 wiring-fix (arkitekt 22/7, ikke kalibrering): tætheds-termen
   // kræver AT MINDST ét entrant med en sat race_role — uden rolle-data er
   // "andel hold med sprint_captain" meningsløst (scTeams er altid tomt →

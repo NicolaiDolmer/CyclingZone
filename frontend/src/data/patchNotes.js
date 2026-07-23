@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Hver etape viser nu sin rigtige rute: stigningerne med deres længde og hældning, de kategoriserede toppe og hvad de er værd i bjergklassementet, mellemsprinten, brostenssektorer, og om målstregen ligger på toppen af en stigning eller efter en nedkørsel. Tryk på en markør for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt."
         },
         "refs": [2448]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Endurance now counts the right way in season 1 races",
+          "body": "A bug in the race engine made season 1 stages behave as if they were extremely short. That switched the long-day effect on with the wrong sign, so riders with high endurance were quietly penalised and riders with low endurance were rewarded. Fatigue also weighed about 15 percent too little. Season 2 races were never affected, because they carry real route data. The fix restores the intended behaviour for the remaining season 1 stages, which are the ones that decide promotion and relegation."
+        },
+        "da": {
+          "title": "Udholdenhed tæller nu den rigtige vej i sæson 1's løb",
+          "body": "En fejl i løbsmotoren fik sæson 1's etaper til at opføre sig som om de var ekstremt korte. Det tændte lange-dage-effekten med det forkerte fortegn, så ryttere med høj udholdenhed i det stille blev straffet, mens ryttere med lav udholdenhed blev belønnet. Træthed vejede samtidig omkring 15 procent for lidt. Sæson 2's løb var aldrig påvirket, fordi de har rigtige rutedata. Rettelsen genopretter den tilsigtede adfærd på de resterende sæson 1-etaper — dem der afgør op- og nedrykning."
+        },
+        "refs": [2804]
       }
     ]
   },
