@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.48",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "You now get a notification when the season ends",
+          "body": "When the season wraps up, you get an inbox notification that links straight to the final standings, promotions and relegations of the season that just ended. The first one arrives when season 1 closes."
+        },
+        "da": {
+          "title": "Du får nu en besked når sæsonen slutter",
+          "body": "Når sæsonen er slut, får du en besked i indbakken med direkte link til den endelige stilling, oprykning og nedrykning for den netop afsluttede sæson. Den første kommer når sæson 1 lukkes."
+        },
+        "refs": [2745]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Promotion message in your own language, and Season 0 cleaned up",
+          "body": "The promotion notification was stuck in Danish for everyone; it now follows your language, like the relegation message always did. We also removed a leftover 'Season 0' from three season pickers."
+        },
+        "da": {
+          "title": "Oprykningsbeskeden på dit eget sprog, og Sæson 0 ryddet op",
+          "body": "Oprykningsbeskeden var låst til dansk for alle; nu følger den dit sprog, ligesom nedrykningsbeskeden altid har gjort. Vi har også fjernet et efterladt 'Sæson 0' fra tre sæson-vælgere."
+        },
+        "refs": [2833, 2763]
+      }
+    ]
+  },
+  {
     "version": "7.47",
     "date": "2026-07-23",
     "label": "Beta",
