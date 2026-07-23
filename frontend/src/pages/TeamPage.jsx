@@ -320,7 +320,11 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-cz-3 text-xs">{t("actionModal.demote.youthSalaryLabel")}</span>
-                  <span className="text-cz-1 font-mono font-bold">{formatNumber(projectYouthSalary(rider))} CZ$</span>
+                  {/* #2796: division SKAL med — uden den falder salaryFromProduction
+                      tilbage på den globale sats (0,1606) i stedet for holdets
+                      (fx 0,3029 i D1), så den viste ungdomsløn er systematisk forkert.
+                      Samme fejl som promote-dialogen på akademi-siden havde. */}
+                  <span className="text-cz-1 font-mono font-bold">{formatNumber(projectYouthSalary(rider, { division: team?.division }))} CZ$</span>
                 </div>
               </div>
               <p className="text-cz-3 text-xs mb-3">{t("actionModal.demote.hint")}</p>
@@ -891,12 +895,14 @@ export function TeamPage() {
       )}
 
       {/* #932 S7: Demote-bekræftelse (senior → akademi) — løn-delta + akademi-cap +
-          fremtidige løb der ryddes. Genbruger den delte AcademyTransferConfirmModal. */}
+          fremtidige løb der ryddes. Genbruger den delte AcademyTransferConfirmModal.
+          #2796: division SKAL med til projectYouthSalary — uden den bruges den
+          globale sats i stedet for holdets, så den viste ungdomsløn er forkert. */}
       <AcademyTransferConfirmModal
         show={!!demoteConfirm}
         direction="demote"
         riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
-        newSalary={demoteConfirm ? projectYouthSalary(demoteConfirm.rider) : 0}
+        newSalary={demoteConfirm ? projectYouthSalary(demoteConfirm.rider, { division: team?.division }) : 0}
         currentSalary={demoteConfirm?.rider?.salary ?? 0}
         capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
         capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
