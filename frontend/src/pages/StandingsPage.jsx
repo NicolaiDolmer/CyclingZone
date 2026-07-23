@@ -656,10 +656,13 @@ export default function StandingsPage() {
           <option value={LENS_STANDINGS}>{t("lens.standings")}</option>
           <option value={LENS_STRENGTH}>{t("lens.strength")}</option>
         </Select>
-        <Input
-          type="text" size="sm" value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("searchPlaceholder")} className="w-60"
-        />
+        {/* controlClass er w-full — bredden styres af wrapperen (T2: search ~240px) */}
+        <div className="w-60">
+          <Input
+            type="text" size="sm" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+          />
+        </div>
         <Button
           variant="secondary" size="sm" className="ms-auto"
           onClick={openCompare} disabled={selected.length !== 2}
