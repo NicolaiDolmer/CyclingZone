@@ -114,17 +114,30 @@ test("planOne: race_pool.terrain_archetype røres aldrig — kun race_stage_prof
   );
 });
 
-test("CANDIDATES: præcis 16 rækker, ingen dubletter, matcher CANDIDATE_RACE_IDS", () => {
-  assert.equal(CANDIDATES.length, 16);
-  assert.equal(new Set(CANDIDATE_RACE_IDS).size, 16, "ingen dublet-race_id'er");
+test("CANDIDATES: præcis 14 rækker, ingen dubletter, matcher CANDIDATE_RACE_IDS", () => {
+  assert.equal(CANDIDATES.length, 14);
+  assert.equal(new Set(CANDIDATE_RACE_IDS).size, 14, "ingen dublet-race_id'er");
   assert.deepEqual(CANDIDATE_RACE_IDS, Object.freeze(CANDIDATES.map((c) => c.race_id)));
 });
 
-test("CANDIDATES: 4 rækker i tier 2 (2 rigtige løb × 2 puljer), 12 i tier 3 (3 rigtige løb × 4 puljer)", () => {
+test("CANDIDATES: 2 rækker i tier 2 (1 rigtigt løb × 2 puljer — per-pulje-paritet), 12 i tier 3 (3 rigtige løb × 4 puljer)", () => {
   const byTier = { 2: 0, 3: 0 };
   for (const c of CANDIDATES) byTier[c.tier] = (byTier[c.tier] || 0) + 1;
-  assert.equal(byTier[2], 4);
+  assert.equal(byTier[2], 2);
   assert.equal(byTier[3], 12);
+});
+
+test("CANDIDATES: D2 får præcis 1 bjergklassiker pr. pulje (paritet med D1's 1) — D3 beholder bevidst 3 pr. pulje", () => {
+  const byTierPool = new Map();
+  for (const c of CANDIDATES) {
+    const key = `${c.tier}::${c.pool_index}`;
+    byTierPool.set(key, (byTierPool.get(key) || 0) + 1);
+  }
+  const expectedPerPool = { 2: 1, 3: 3 };
+  for (const [key, n] of byTierPool) {
+    const tier = Number(key.split("::")[0]);
+    assert.equal(n, expectedPerPool[tier], `${key} skal have ${expectedPerPool[tier]} bjergklassiker(e), fik ${n}`);
+  }
 });
 
 test("CANDIDATES: hver rigtig løb (navn) optræder i ALLE puljer i sin tier — bevarer cross-pulje-konsistens", () => {
@@ -141,13 +154,13 @@ test("CANDIDATES: hver rigtig løb (navn) optræder i ALLE puljer i sin tier —
   }
 });
 
-test("buildConversionPlan: bygger convert-status for alle 16 kandidater når data findes", () => {
+test("buildConversionPlan: bygger convert-status for alle 14 kandidater når data findes", () => {
   const races = CANDIDATES.map((c) => makeRace({ id: c.race_id, name: c.name, pool_race_id: `pool-${c.race_id}` }));
   const profiles = CANDIDATES.map((c) => makeProfileRow({ race_id: c.race_id }));
   const catalogMeta = new Map(CANDIDATES.map((c) => [`pool-${c.race_id}`, { external_id: `ext-${c.race_id}` }]));
   const plan = buildConversionPlan({ candidates: CANDIDATES, races, profiles, catalogMeta, expectedSeasonId: SEASON_ID });
-  assert.equal(plan.length, 16);
-  assert.ok(plan.every((p) => p.status === "convert"), "alle 16 skal kunne konverteres med gyldig data");
+  assert.equal(plan.length, 14);
+  assert.ok(plan.every((p) => p.status === "convert"), "alle 14 skal kunne konverteres med gyldig data");
 });
 
 test("buildConversionPlan: manglende race -> error-status uden at kaste", () => {

@@ -16,14 +16,21 @@
 // den garanti. D2 har 2 puljer, D3 har 4 puljer (IKKE 8 — verificeret 23/7 mod
 // league_divisions; briefen der nævnte "D3's 8 puljer" tog fejl, se PR-body).
 //
-// D2 (2 rigtige løb × 2 puljer = 4 rækker):
+// PER-PULJE-PARITET (ejer-justering 23/7, efter første udkast med 2 D2-løb):
+// D2 har kun 3 hilly-endagsløb PR. PULJE i dag. At konvertere 2 af dem ville
+// efterlade puncheur-feltet med ét eneste hilly-endagsløb pr. D2-pulje, mens D1
+// beholder 3 og D3 beholder 10 — en skævvridning i den forkerte retning (D2 ville
+// miste FLERE hilly-løb end D1/D3 mister forholdsmæssigt). Løsning: KUN Limburgse
+// Klassieker (højest hm af de to, midt-sæson dag 17) konverteres i D2 — D2 beholder
+// 2 hilly pr. pulje, alle tiers får nu netop 1 bjergklassiker pr. pulje.
+//
+// D2 (1 rigtigt løb × 2 puljer = 2 rækker):
 //   Limburgse Klassieker        (f1c33846c869ff29) dag 17, 1803 hm, puncheur
-//   Grand Prix du Saint-Laurent (64a2a18688621713) dag 4,  1673 hm, puncheur
 // D3 (3 rigtige løb × 4 puljer = 12 rækker — 12/140 = 8.6%, tæt på T4's 8.3%):
 //   Brabantse Klassieker   (50c62405df6384e4) dag 24, 2291 hm, puncheur
 //   Trofeo Ligure          (b2eb3c7fe98f5f5c) dag 5,  2200 hm, hilly_classic
 //   Classique de la Drôme  (f56c0f3f0a8995b7) dag 2,  2023 hm, hilly_classic
-// Total: 16 race_stage_profiles-rækker (5 rigtige løb).
+// Total: 14 race_stage_profiles-rækker (4 rigtige løb).
 //
 // Metode: INGEN håndskrevne demand_vector/climbs/elevation. For hver kandidat
 // bygges en SKYGGE-race (kun i hukommelsen — race_pool.terrain_archetype
@@ -41,7 +48,7 @@
 // Idempotent: en allerede-konverteret række (is_manual=true + profile_type i
 // {mountain, high_mountain}) springes over ved gentagne kørsler.
 //
-// Rører KUN race_stage_profiles-rækker for de 16 hardkodede race_id'er herunder.
+// Rører KUN race_stage_profiles-rækker for de 14 hardkodede race_id'er herunder.
 // Ingen andre løb, ingen andre sæsoner, ingen races/scheduling/season-felter.
 //
 //   node scripts/convertHillyToMountainClassics.js --season 2 [--dry-run|--apply]
@@ -67,11 +74,9 @@ const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);
 // Kandidat-race_id'er (jf. kommentar-blok ovenfor). Navn/pulje/dag kun til log —
 // selve selektionen er den hardkodede id-liste, ikke et query mod DB.
 export const CANDIDATES = Object.freeze([
-  // --- Division 2 (tier 2) — 2 rigtige løb × 2 puljer ---
+  // --- Division 2 (tier 2) — 1 rigtigt løb × 2 puljer (per-pulje-paritet, se kommentar ovenfor) ---
   { race_id: "a3651e9c-8637-4bb2-ad6b-04edbee591db", name: "Limburgse Klassieker", tier: 2, pool_index: 0, game_day_start: 17 },
   { race_id: "939489fb-fe6a-4d3f-bb1a-ad9a58cc9e37", name: "Limburgse Klassieker", tier: 2, pool_index: 1, game_day_start: 17 },
-  { race_id: "3e80936f-c213-4cc9-9d33-fd7b0766eab6", name: "Grand Prix du Saint-Laurent", tier: 2, pool_index: 0, game_day_start: 4 },
-  { race_id: "d7fe055f-5432-4905-833e-1e38b0405e31", name: "Grand Prix du Saint-Laurent", tier: 2, pool_index: 1, game_day_start: 4 },
 
   // --- Division 3 (tier 3) — 3 rigtige løb × 4 puljer ---
   { race_id: "cbc95f00-6d17-4c10-ac6c-bc672e300749", name: "Brabantse Klassieker", tier: 3, pool_index: 0, game_day_start: 24 },
