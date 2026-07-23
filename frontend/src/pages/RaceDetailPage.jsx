@@ -67,9 +67,16 @@ const JERSEYS = [
 
 // Sub-4 (#2448): ét sted der afgør om en etape får den ægte rute-graf eller
 // #1484-piktogrammet. Ingen rutedata → ingen syntetisk kurve (ejer-princip).
-function StageProfileSlot({ profile, stageLabel, passages, tier }) {
+// #2818: hasClassifications = findes bjerg-/pointkonkurrencen overhovedet i
+// dette løb? I virkelig cykelsport gør den KUN det i etapeløb — de er per
+// definition akkumulerende konkurrencer over flere dage. Paris-Roubaix og
+// Milano-Sanremo har ingen prikket trøje, kun én vinder. Ruten må gerne vise
+// kategoriserede stigninger (det gør ægte klassikere også — Koppenberg, Poggio),
+// men der må ikke stå point på spil. Backendens racePassages.js gater allerede
+// korrekt på isStageRace; det var kun fladen der lovede noget den ikke indfrier.
+function StageProfileSlot({ profile, stageLabel, passages, tier, hasClassifications = true }) {
   if (hasRouteData(profile)) {
-    return <StageProfileCard profile={profile} stageLabel={stageLabel} passages={passages} tier={tier} />;
+    return <StageProfileCard profile={profile} stageLabel={stageLabel} passages={passages} tier={tier} hasClassifications={hasClassifications} />;
   }
   return <LegacyStageProfileCard profile={profile} stageLabel={stageLabel} />;
 }
@@ -604,7 +611,7 @@ export default function RaceDetailPage() {
       {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
       {hasAnyResults && !isStageRace && (
         <div className="space-y-5">
-          <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" />
+          <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
           <RaceRecap results={results} scopeType="overall" incidents={incidents} />
           <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="overall" t={t} />
