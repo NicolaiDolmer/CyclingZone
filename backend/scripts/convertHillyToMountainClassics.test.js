@@ -7,7 +7,7 @@ import {
   planOne,
   buildConversionPlan,
 } from "./convertHillyToMountainClassics.js";
-import { GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
+import { GENERATOR_VERSION, generateRaceStageProfiles } from "../lib/raceStageProfileGenerator.js";
 
 const SEASON_ID = "season-2-uuid";
 
@@ -70,13 +70,59 @@ test("planOne: allerede konverteret (is_manual + mountain-profil) -> skip, ingen
   assert.equal(p.update, undefined);
 });
 
-test("planOne: is_manual men IKKE et bjerg-profil (håndkurateret til noget andet) -> konverteres alligevel", () => {
+test("planOne: is_manual men IKKE et bjerg-profil (håndkurateret til noget andet) -> IKKE 'allerede konverteret', men blokeres nu af hilly-guarden", () => {
   // Et håndredigeret løb der (usandsynligt, men muligt) blev sat manuelt til fx 'flat'
-  // skal IKKE regnes som "allerede konverteret" bare fordi is_manual=true.
+  // skal IKKE regnes som "allerede konverteret" bare fordi is_manual=true — MEN skal
+  // heller ikke stille konverteres til bjerg (hærdning #2837 pkt.2: kun hilly er en
+  // gyldig kandidat). Adfærden ændrede sig fra v1 (som konverterede den) til v2
+  // (som blokerer HELE kørslen) efter adversarielt review.
   const race = makeRace();
   const profileRow = makeProfileRow({ profile_type: "flat", is_manual: true });
   const p = planOne({ race, profileRow, externalId: "ext-1", expectedSeasonId: SEASON_ID });
+  assert.equal(p.status, "error");
+  assert.match(p.reason, /profile_type/);
+});
+
+test("planOne: hærdning (#2837 pkt.2) — profile_type != 'hilly' (og ikke allerede korrekt konverteret) -> error, blokerer ALT før første write", () => {
+  // Beskytter mod en fremtidig fejlskrevet race_id i CANDIDATES der peger på et
+  // flat/itt/etc.-løb: scriptet må ALDRIG stille konvertere noget der ikke var hilly.
+  for (const badProfileType of ["flat", "itt", "cobbles", "rolling", "classic"]) {
+    const race = makeRace();
+    const profileRow = makeProfileRow({ profile_type: badProfileType, is_manual: false });
+    const p = planOne({ race, profileRow, externalId: "ext-1", expectedSeasonId: SEASON_ID });
+    assert.equal(p.status, "error", `profile_type=${badProfileType} skulle blokere, ikke konvertere`);
+    assert.match(p.reason, /profile_type/);
+    assert.equal(p.update, undefined);
+  }
+});
+
+test("planOne: shadowRace inkluderer race.name (fix #2837 pkt.1) — Trofeo Ligure får italienske region-stigningsnavne, ikke default-fallback", () => {
+  const race = makeRace({ name: "Trofeo Ligure" });
+  const profileRow = makeProfileRow();
+  const p = planOne({ race, profileRow, externalId: "ext-trofeo-ligure", expectedSeasonId: SEASON_ID });
   assert.equal(p.status, "convert");
+  assert.ok(p.update.climbs.length > 0, "high_mountain/mountain skal have mindst 2 stigninger");
+  const ITALIAN_PREFIX = /^(Passo di|Salita di|Cima)\s/;
+  const DEFAULT_PREFIX = /^(Climb of|Ascent of|Hill of)\s/;
+  for (const c of p.update.climbs) {
+    assert.match(c.name, ITALIAN_PREFIX, `forventede italiensk region-navn for "Trofeo Ligure", fik "${c.name}"`);
+    assert.doesNotMatch(c.name, DEFAULT_PREFIX, `"${c.name}" er default-fallback — race.name blev ikke videresendt korrekt`);
+  }
+});
+
+test("regressionstest #2837 pkt.1: UDEN race.name i shadowRace falder climb-navne tilbage til default — bekræfter hvorfor fixet er nødvendigt", () => {
+  // Direkte på generatoren (ikke planOne), for at isolere PRÆCIS effekten af name-feltet.
+  const base = { id: "race-x", race_type: "single", external_id: "ext-trofeo-ligure-2", terrain_archetype: "mountain_classic", season_id: SEASON_ID };
+  const [withName] = generateRaceStageProfiles({ ...base, name: "Trofeo Ligure" });
+  const [withoutName] = generateRaceStageProfiles({ ...base, name: undefined });
+  // Samme seed (external_id+season) -> profile_type/distance/elevation upåvirket af name.
+  assert.equal(withName.profile_type, withoutName.profile_type);
+  assert.equal(withName.distance_km, withoutName.distance_km);
+  assert.equal(withName.elevation_gain_m, withoutName.elevation_gain_m);
+  const ITALIAN_PREFIX = /^(Passo di|Salita di|Cima)\s/;
+  const DEFAULT_PREFIX = /^(Climb of|Ascent of|Hill of)\s/;
+  assert.ok(withName.climbs.every((c) => ITALIAN_PREFIX.test(c.name)), "MED name skal klatrenavne være italienske");
+  assert.ok(withoutName.climbs.every((c) => DEFAULT_PREFIX.test(c.name)), "UDEN name falder klatrenavne tilbage til default — det var #2837-fundet");
 });
 
 test("planOne: normal hilly-endagsløb -> convert, profile_type er mountain/high_mountain, is_manual=true", () => {

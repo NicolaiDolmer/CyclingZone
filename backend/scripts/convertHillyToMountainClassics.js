@@ -122,10 +122,27 @@ export function planOne({ race, profileRow, externalId, expectedSeasonId }) {
     return { ...meta, name: race.name, status: "skip_already_converted", before };
   }
 
+  // Hærdning (adversarielt review #2837): CANDIDATES er hardkodet, men en fremtidig
+  // fejlskrevet UUID (kopieret forkert race_id) må ALDRIG stille konvertere et
+  // flat/itt/etc.-løb bare fordi det ikke allerede var is_manual+bjerg. Kun
+  // hilly-endagsløb er gyldige kandidater for denne konvertering — alt andet
+  // blokerer HELE kørslen (samme all-or-nothing-mønster som de andre guards:
+  // main() afbryder ALT ved errors.length, ingen delvis apply).
+  if (before.profile_type !== "hilly") {
+    return { ...meta, name: race.name, status: "error", reason: `profile_type=${before.profile_type} (kun hilly-endagsløb er gyldige kandidater — forventet en fejlskrevet race_id)` };
+  }
+
   // Skygge-race: KUN i hukommelsen. race_pool.terrain_archetype røres aldrig —
   // andre tiers' kopier af samme rigtige løb (fx D1/D4) er derfor upåvirkede.
+  // `name` medsendes: raceRouteGenerator.regionOf() bruger race.name til at vælge
+  // regions-flavourede stigningsnavne (fx "Passo di ..." for et italiensk løb) —
+  // uden den falder klatrenavnene tilbage til det generiske "default"-sæt
+  // ("Ascent of Eldertop" osv.). Alle øvrige felter (profile_type/elevation/km/
+  // finale_type) er upåvirkede af name — kun climb-navnene ændres (verificeret
+  // ved genkørsel, se PR-body).
   const shadowRace = {
     id: race.id,
+    name: race.name,
     race_type: "single",
     external_id: externalId ?? null,
     terrain_archetype: "mountain_classic",
