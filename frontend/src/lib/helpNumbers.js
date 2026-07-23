@@ -25,6 +25,7 @@ export const HELP_NUMBER_KEYS = Object.freeze([
   "squadCap",
   "initialSquad",
   "academySlots",
+  "academySigningFeePct",
 ]);
 
 // Build the interpolation map for a given UI language. Thousands-separated values
@@ -39,6 +40,7 @@ export function buildHelpNumbers(lang) {
     squadCap: String(RULES_NUMBERS.squadCap),
     initialSquad: String(RULES_NUMBERS.initialSquadSize),
     academySlots: String(RULES_NUMBERS.academySlots),
+    academySigningFeePct: String(RULES_NUMBERS.academySigningFeePct),
   };
 }
 

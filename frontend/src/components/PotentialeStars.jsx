@@ -40,7 +40,16 @@ function Star({ fillFraction = 0, softFraction = 0, tone, softTone, emptyTone, i
 
 const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
-export default function PotentialeStars({ value, range, label, birthdate, large = false }) {
+// #2796 (Discord 22/7): "potentiale behøver ikke både være stjerner OG
+// beskrivelsen — kunne være en mouseover". `labelAsTitle` flytter den
+// kvalitative label fra en synlig, whitespace-nowrap-span til wrapperens
+// title/aria-label. Stjernerne bærer stadig informationen; labelen er der for
+// den der vil have den. Opt-in, så eksisterende kald-sites er uændrede — og
+// den fjerner samtidig den nowrap-span der presser tætte containere ud i
+// vandret overløb (samme mønster som #2720 rapporterer for "Verdensklasse-emne").
+export default function PotentialeStars({ value, range, label, birthdate, large = false, labelAsTitle = false }) {
+  const showLabel = label && !labelAsTitle;
+  const titleAttrs = label && labelAsTitle ? { title: label, "aria-label": label } : {};
   // Unik pr. instans, så clipPath-id'er ikke kolliderer mellem flere stjerne-rækker
   // på samme side (SVG-id'er er dokument-globale). Sanitér useId's koloner.
   const uid = useId().replace(/:/g, "");
@@ -62,12 +71,12 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
       stars.push({ certain, uncertain });
     }
     return (
-      <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`}>
+      <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`} {...titleAttrs}>
         {stars.map((s, i) => (
           <Star key={i} idSuffix={`${uid}r${i}`} fillFraction={s.certain} softFraction={s.uncertain}
             tone={tone} softTone={softTone} emptyTone={emptyTone} />
         ))}
-        {label && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
+        {showLabel && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
       </span>
     );
   }
@@ -85,12 +94,12 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
   }
 
   return (
-    <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`}>
+    <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`} {...titleAttrs}>
       {stars.map((fillFraction, i) => (
         <Star key={i} idSuffix={`${uid}e${i}`} fillFraction={fillFraction}
           tone={tone} emptyTone={emptyTone} />
       ))}
-      {label && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
+      {showLabel && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
     </span>
   );
 }

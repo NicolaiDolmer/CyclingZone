@@ -657,7 +657,7 @@
         "steps": [
           "Gå til Akademi i navigationen.",
           "Gennemse dit indtagelseskuld for sæsonen.",
-          "Signér 0-2 talenter. Hver signering koster et éngangs-signeringsgebyr og forpligter dig til en ungdomsløn.",
+          "Signér 0-2 talenter. Hver signering koster en éngangspris på {academySigningFeePct}% af rytterens markedsværdi, som vises på kandidatkortet før du signerer, og forpligter dig til en ungdomsløn.",
           "Talenter du ikke signerer kommer på auktion som ungdomsprospekter (se Ungdomsauktioner nedenfor)."
         ]
       },

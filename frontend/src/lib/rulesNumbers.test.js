@@ -107,6 +107,7 @@ test("academy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.academySalaryPct, ACADEMY.SALARY_RATE * 100);
   assert.equal(RULES_NUMBERS.academyContractLength, ACADEMY.CONTRACT_LENGTH);
   assert.equal(RULES_NUMBERS.academyDrift, ACADEMY.DRIFT_PER_SEASON);
+  assert.equal(RULES_NUMBERS.academySigningFeePct, ACADEMY.SIGNING_FEE_RATE * 100);
 });
 
 test("runtime-configurable keys are excluded from the pinned guard", () => {

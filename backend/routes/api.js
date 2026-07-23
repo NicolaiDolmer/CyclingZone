@@ -148,6 +148,7 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider } from "../lib/academyTransfer.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
@@ -11955,7 +11956,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Akademi-ryttere (ejede, is_academy=true)
     const { data: rosterRaw, error: rosterErr } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus")
+      // #2796: primary_type/secondary_type + current_production_value tilføjet.
+      // Typerne driver ryttertype-kolonnen på akademi-rosteret (samme badge som
+      // rytter-/auktions-/holdsiden); current_production_value er det felt
+      // computeFrozenSalary/projectSeniorSalary regner senior-lønnen ud fra —
+      // uden det viste promote-dialogen fallback-lønnen 161 CZ$ for ALLE ryttere.
+      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type, current_production_value")
       .eq("team_id", teamId)
       .eq("is_academy", true);
     if (rosterErr) throw new Error(rosterErr.message);
@@ -11963,7 +11969,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Tilbudte intake-kandidater for dette hold (display-safe felter, INGEN potentiale i join).
     const { data: intakeRows, error: intakeErr } = await supabase
       .from("academy_intake")
-      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id)")
+      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type)")
       .eq("team_id", teamId)
       .eq("status", "offered");
     if (intakeErr) throw new Error(intakeErr.message);
@@ -12018,34 +12024,63 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         teamId,
         SCOUTING_CONFIG.maxLevel,
       );
+      // #2796: kandidat-kortet bad om et irreversibelt valg (Signér/Afvis) uden
+      // at vise hverken pris eller frist. Begge dele kan udledes af data vi
+      // allerede har — de beregnes her, så UI'et ikke skal spejle backend-regler:
+      //   • signingFee — SAMME udtryk som signAcademyCandidate bruger ved
+      //     debiteringen (academyIntake.js: round(markedsværdi × SIGNING_FEE_RATE)).
+      //     Vises på kortet, så prisen er kendt FØR klikket.
+      //   • expiresAt — akademi-intake-tilbud udløber efter INTAKE_OFFER_EXPIRY_DAYS
+      //     målt fra created_at (academyIntakeExpirySweep.js). Hjælpeteksten har
+      //     lovet de 7 dage siden #2627, men fladen har aldrig vist nedtællingen.
+      //     Sweepet har en dagskvote, så et tilbud kan overleve en dag eller to
+      //     ekstra ved kø — datoen er "tidligst", ikke en garanti (copy afspejler det).
+      const signingFee = Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE);
+      const expiresAt = row.created_at
+        ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()
+        : null;
       return {
         intakeId: row.id,
         riderId: row.rider_id,
         is_serious: row.is_serious,
         status: row.status,
         created_at: row.created_at,
+        expiresAt,
+        signingFee,
         rider, // display-safe, ingen potentiale
         potentialEstimate,
       };
     });
 
     // Roster: defensivt strip af eventuel potentiale.
-    const roster = (rosterRaw ?? []).map((r) => {
-      const safe = { ...r };
-      delete safe.potentiale;
-      return safe;
-    });
+    // #2796: rækkefølgen var tidligere ikke-deterministisk (ingen .order() i
+    // queryen, ingen sort i UI'et), så de 8 pladser kunne bytte plads mellem to
+    // loads. Sorteres nu yngste først som stabil default — akademiets pointe er
+    // udvikling, og den yngste har flest sæsoner tilbage. Brugeren kan sortere om.
+    const roster = (rosterRaw ?? [])
+      .map((r) => {
+        const safe = { ...r };
+        delete safe.potentiale;
+        return safe;
+      })
+      .sort((a, b) => String(b.birthdate ?? "").localeCompare(String(a.birthdate ?? "")));
 
     // #2456: fri-agent-butikken ("frie ungdoms-free-agents") er fjernet — talenter
     // kommer via eget intake eller ungdomsauktionen; usolgte slettes ved finalisering.
 
     // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
     // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
+    // #2796: kortet bad om promovér/sælg/slip på navn + alder alene. Payloaden
+    // bærer nu også type, markedsværdi og løn (samme felter rosteret allerede
+    // viser), så de tre knapper ikke længere er konsekvensblinde. Potentiale
+    // udelades bevidst: en graduate er 21+ og dermed færdig med ungdomskurven —
+    // markedsværdien er det beslutningsrelevante tal her.
     const { data: gradRows } = await supabase
       .from("academy_graduation")
-      .select("rider_id, deadline, status, riders(firstname, lastname, birthdate)")
+      .select("rider_id, deadline, status, riders(firstname, lastname, birthdate, nationality_code, salary, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type)")
       .eq("team_id", teamId)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .order("deadline", { ascending: true });
     const graduations = (gradRows ?? []).map((g) => {
       const r = g.riders ?? {};
       const age = r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null;
@@ -12054,6 +12089,11 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
         age,
         deadline: g.deadline,
+        nationality_code: r.nationality_code ?? null,
+        primary_type: r.primary_type ?? null,
+        secondary_type: r.secondary_type ?? null,
+        salary: r.salary ?? null,
+        market_value: calculateRiderMarketValue(r),
       };
     });
 
@@ -12186,6 +12226,12 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     const msg = err?.message ?? "";
     if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
+    // #2796: signAcademyCandidate kaster også insufficient_balance og
+    // already_assigned. De faldt tidligere igennem til captureException + 500,
+    // så en spiller uden penge nok fik "Noget gik galt" — og hver forsøg
+    // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
+    if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
     captureException(err);
     res.status(500).json({ error: msg });
   }
