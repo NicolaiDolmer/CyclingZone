@@ -356,6 +356,7 @@ const FAQ_KEYS = [
   "relaunchRiderNames",
   "relaunchFounderBadge",
   "relaunchNextSeasonBuys",
+  "contractExpiryRetirementFaq",
   "staffReleaseFaq",
 ];
 
