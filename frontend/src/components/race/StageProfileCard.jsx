@@ -18,7 +18,7 @@ const MOUNTAIN_TONE = { borderColor: "rgb(var(--jersey-mountain-bg) / 0.45)", co
 const READ_TONE_STYLE = { summit: MOUNTAIN_TONE, valley: MOUNTAIN_TONE };
 const READ_TONE_CLASS = { technical: "border-cz-accent/50 text-cz-accent-t" };
 
-export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full" }) {
+export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true }) {
   const { t } = useTranslation("races");
   const waypoints = useMemo(() => waypointsFor(profile), [profile]);
   const reads = useMemo(() => routeReadKeys(profile), [profile]);
@@ -82,9 +82,10 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         uid={`sp-${stageNumber}`}
         activeWaypoint={selected}
         onWaypointSelect={setSelected}
+        hasClassifications={hasClassifications}
       />
 
-      <StageWaypointReadout waypoint={selected} passages={passages} stageNumber={stageNumber} />
+      <StageWaypointReadout waypoint={selected} passages={passages} stageNumber={stageNumber} hasClassifications={hasClassifications} />
     </div>
   );
 }

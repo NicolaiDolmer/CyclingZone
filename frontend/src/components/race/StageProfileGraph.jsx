@@ -19,9 +19,13 @@ const PAD = {
   mini:    { l: 0,  r: 0,  t: 2,  b: 2 },
 };
 
+// #2818: hasClassifications=false på endagsløb — stigningerne og mellemsprinten
+// tegnes stadig (kategori, navn, km-mærke: ægte klassikere annoncerer også
+// Koppenberg og Poggio), men uden point-/bonus-tallene. Bjerg- og point-
+// konkurrencer findes kun i etapeløb, hvor de akkumulerer over flere dage.
 export default function StageProfileGraph({
   profile, tier = "full", width = 900, height = 340, yMax,
-  activeWaypoint = null, onWaypointSelect = null, uid = "sp",
+  activeWaypoint = null, onWaypointSelect = null, uid = "sp", hasClassifications = true,
 }) {
   const { t } = useTranslation("races");
   const series = useMemo(() => buildProfileSeries(profile, yMax ? { yMax } : {}), [profile, yMax]);
@@ -140,10 +144,12 @@ export default function StageProfileGraph({
             </text>
             {full && (
               <>
-                <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="7.5" className="font-mono"
-                  fill="rgb(var(--jersey-mountain-bg))">
-                  {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
-                </text>
+                {hasClassifications && (
+                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="7.5" className="font-mono"
+                    fill="rgb(var(--jersey-mountain-bg))">
+                    {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
+                  </text>
+                )}
                 <text x={textX} y={labelY + 22} textAnchor={textAnchor} fontSize="8.5" fontWeight="600"
                   className="fill-cz-1" style={{ letterSpacing: "0.05em" }}>
                   {(c.name || "").toUpperCase()}
@@ -187,7 +193,7 @@ export default function StageProfileGraph({
                     stroke={isActive(w) ? "var(--text-1)" : "none"} strokeWidth="1.2"
                     className={onWaypointSelect ? "cursor-pointer" : undefined}
                     onClick={pick(w)} onMouseEnter={pick(w)} />
-                  {full && (
+                  {full && hasClassifications && (
                     <text x={X(w.km) + 8} y={axisY - 8} fontSize="8" className="font-mono"
                       fill="rgb(var(--jersey-points-bg))">
                       {t("detail.route.sprintMarker", { points: w.points, bonus: w.bonus })}

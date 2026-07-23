@@ -9,21 +9,39 @@ import { passageResultsForWaypoint } from "../../lib/raceStagePassages.js";
 // RaceDetailPage.jsx).
 const TOP_N = 3;
 
-export default function StageWaypointReadout({ waypoint, passages, stageNumber }) {
+function waypointTitle(waypoint, t) {
+  if (waypoint.kind === "kom") return waypoint.name || t("detail.route.waypoint.climb", { cat: waypoint.category });
+  if (waypoint.kind === "sprint") return t("detail.route.waypoint.sprint");
+  return t("detail.route.waypoint.finish");
+}
+
+function waypointMeta(waypoint, t) {
+  if (waypoint.kind !== "kom") return t("detail.route.waypoint.kmMark", { km: waypoint.km });
+  return `${t("detail.route.waypoint.climb", { cat: waypoint.category })} · ${t("detail.route.waypoint.kmMark", { km: waypoint.km })} · ${t("detail.route.waypoint.gradient", { length: Number(waypoint.length_km).toFixed(1), gradient: Number(waypoint.avg_gradient).toFixed(1) })}`;
+}
+
+// #2818: hasClassifications=false på endagsløb. Bjerg- og pointkonkurrencer
+// findes kun i etapeløb i virkelig cykelsport — de akkumulerer over flere dage,
+// og et endagsløb har én vinder, ingen trøjer. Stigningen vises stadig (navn,
+// kategori, km-mærke, gradient — præcis som en klassiker annoncerer Poggio),
+// men uden "AT STAKE"-kolonnen, der lovede point backenden aldrig uddeler.
+export default function StageWaypointReadout({ waypoint, passages, stageNumber, hasClassifications = true }) {
   const { t } = useTranslation("races");
   if (!waypoint) return null;
 
+  if (!hasClassifications) {
+    return (
+      <div className="border-t border-cz-border mt-2 pt-2">
+        <p className="text-cz-1 text-sm font-semibold truncate">{waypointTitle(waypoint, t)}</p>
+        <p className="text-cz-2 text-[11px] font-mono">{waypointMeta(waypoint, t)}</p>
+      </div>
+    );
+  }
+
   const results = passageResultsForWaypoint(passages, stageNumber, waypoint.kind, waypoint.index).slice(0, TOP_N);
 
-  const title = waypoint.kind === "kom"
-    ? waypoint.name || t("detail.route.waypoint.climb", { cat: waypoint.category })
-    : waypoint.kind === "sprint"
-      ? t("detail.route.waypoint.sprint")
-      : t("detail.route.waypoint.finish");
-
-  const meta = waypoint.kind === "kom"
-    ? `${t("detail.route.waypoint.climb", { cat: waypoint.category })} · ${t("detail.route.waypoint.kmMark", { km: waypoint.km })} · ${t("detail.route.waypoint.gradient", { length: Number(waypoint.length_km).toFixed(1), gradient: Number(waypoint.avg_gradient).toFixed(1) })}`
-    : t("detail.route.waypoint.kmMark", { km: waypoint.km });
+  const title = waypointTitle(waypoint, t);
+  const meta = waypointMeta(waypoint, t);
 
   return (
     <div className="border-t border-cz-border mt-2 pt-2 flex justify-between gap-4 flex-wrap">

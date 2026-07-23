@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.45",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "One-day races no longer show points that are never awarded",
+          "body": "Route profiles for one-day races were showing mountain and sprint points next to the climbs, but those points were never handed out. That was correct behaviour dressed up wrong: mountain and points competitions only exist in stage races, where they build up across several days. A one-day race has a winner, not a jersey. The climbs and intermediate sprints still appear on the profile, just without a points promise attached. Stage races are unchanged."
+        },
+        "da": {
+          "title": "Endagsløb viser ikke længere point der aldrig blev uddelt",
+          "body": "Ruteprofilerne for endagsløb viste bjerg- og sprintpoint ved stigningerne, men de point blev aldrig uddelt. Adfærden var rigtig — det var visningen der var forkert: bjerg- og pointkonkurrencer findes kun i etapeløb, hvor de bygges op over flere dage. Et endagsløb har en vinder, ikke en trøje. Stigningerne og mellemsprinten står der stadig på profilen, bare uden et pointløfte hæftet på. Etapeløb er uændrede."
+        },
+        "refs": [2818]
+      }
+    ]
+  },
+  {
     "version": "7.44",
     "date": "2026-07-23",
     "label": "Beta",
