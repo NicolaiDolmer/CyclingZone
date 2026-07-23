@@ -66,6 +66,18 @@ export function trClass(zone = null) {
   return zone ? "" : "group transition-colors duration-150 hover:bg-cz-subtle";
 }
 
+// #2849 bølge 1 — rowProps-hook (DataTable): merger caller-leverede <tr>-props
+// (ref/onClick/className/…) OVEN PÅ den zone-afledte trClass(zone). className
+// KONKATENERES EFTER trClass(zone), så en caller-klasse (fx en selektions-ring)
+// kan style oven på zone-tint/hover uden selv at kende zone-klassen. Øvrige
+// props (onClick, ref, style, data-*, …) spredes uændret.
+export function mergeRowProps(zone, rowProps) {
+  const base = trClass(zone);
+  if (!rowProps) return { className: base };
+  const { className: extra, ...rest } = rowProps;
+  return { ...rest, className: [base, extra].filter(Boolean).join(" ") };
+}
+
 // 9px uppercase zone-/status-pill (radius 4px, tone-bg + tone-tekst).
 export function zonePillClass(tone = "neutral") {
   const toneCls = ZONES[tone]?.pill ?? "bg-cz-subtle text-cz-2";
