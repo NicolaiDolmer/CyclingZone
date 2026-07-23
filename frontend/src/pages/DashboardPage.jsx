@@ -181,9 +181,13 @@ export default function DashboardPage() {
         .order("division")
         .order("name"),
       // #1308: akademiryttere tæller ikke mod senior-cap
+      // #2748: pensionerede ryttere tæller ikke med i trup-størrelsen — de
+      // frigives ved sæsonskiftet og kan ikke køre løb. Spejler backend
+      // getTeamMarketState (marketUtils.js).
       supabase.from("riders").select("id, salary, is_u25, pending_team_id")
         .eq("team_id", teamData.id)
-        .eq("is_academy", false),
+        .eq("is_academy", false)
+        .eq("is_retired", false),
       // #1090: pending-in + indgående lån (inkl. window_pending) hentes med
       // samme diskriminatorer som backend getTeamMarketState — se
       // fetchSquadCountInputs i lib/dashboardSquadStats.js.

@@ -161,6 +161,10 @@
       "title": "Rytter frigivet: kontrakt udløbet",
       "message": "{rider}s kontrakt udløb ved udgangen af sæson {season}. Han er nu fri agent."
     },
+    "riderRetired": {
+      "title": "{name} har indstillet karrieren",
+      "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."
+    },
     "seasonTransitionRisk": {
       "title": "Sæsonskifte: kontrakt- og pensionsrisiko",
       "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng en rytters kontrakt fra hans profil før skiftet for at undgå frigivelse. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",

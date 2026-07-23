@@ -1431,11 +1431,13 @@ export default function RiderStatsPage() {
 
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
+      {/* #2748: en pensioneret rytter frigives til team_id=null ved sæsonskiftet, men
+          han er ikke en fri agent man kan hente — hero'en skal sige "Pensioneret". */}
       {roster.length > 1 && rosterIdx >= 0 && (
         <RiderSwitcherBar
           prevRider={prevRider}
           nextRider={nextRider}
-          teamName={rider.team?.name ?? t("header.freeAgent")}
+          teamName={rider.team?.name ?? t(isRetired ? "header.retired" : "header.freeAgent")}
           index={rosterIdx + 1}
           total={roster.length}
           onNavigate={(rid) => navigate(`/riders/${rid}`)}

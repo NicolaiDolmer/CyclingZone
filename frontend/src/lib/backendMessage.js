@@ -39,6 +39,8 @@ const RAW_KEYS = new Set([
   "oldDivision", "newDivision",
   // #2700 · sæsonskifte-risiko-varsel — antal ryttere, ikke beløb.
   "expiringCount", "retirementRiskCount",
+  // #2748 · pensionsbeskedens alder er et lille heltal, ikke et beløb.
+  "age",
 ]);
 
 /**

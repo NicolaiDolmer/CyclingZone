@@ -45,6 +45,7 @@ import {
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
+import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
@@ -724,6 +725,28 @@ export async function transitionToNextSeason({
   // pensioneringer pr. transition.
   if (seasonStartResult && typeof seasonStartResult === "object" && seasonStartResult.progression) {
     log.push({ phase: "rider_progression", ...seasonStartResult.progression });
+  }
+
+  // Phase 6e (#2748, ejer-beslutning 23/7): pension → fri trup-plads. Ryttere som
+  // rytterudviklingen netop har sat is_retired på beholdt indtil nu deres team_id og
+  // ville optage en plads af MAX_SQUAD_SIZE for evigt uden nogensinde at kunne køre
+  // et løb. Kører EFTER rider_progression (som er der pensioneringen sættes) og er
+  // tilstands-baseret/selv-helende, ikke sæson-baseret — se retirementRelease.js.
+  // Additivt + isoleret: en fejl her må ALDRIG vælte resten af sæson-transitionen
+  // (samme disciplin som contract_expiry_release).
+  const releaseRetiredRidersFn =
+    deps.releaseRetiredRiders ?? defaultReleaseRetiredRiders;
+  try {
+    log.push({
+      phase: "retirement_release",
+      ...(await releaseRetiredRidersFn({ supabase })),
+    });
+  } catch (err) {
+    log.push({ phase: "retirement_release", error: err.message, ...(err.partialStats || {}) });
+    captureException(err, {
+      tags: { phase: "retirement_release" },
+      extra: { fromSeasonId, toSeasonNumber: plan.to_season.number },
+    });
   }
 
   // #1704 · Per-division-kalender (forever). Gated bag auto_calendar_enabled (fail-safe OFF):

@@ -178,12 +178,16 @@ export async function getTeamMarketState(supabase, teamId) {
 
   const [riderCount, pendingCount, outgoingCount] = await Promise.all([
     // #1308: akademiryttere tæller ikke mod senior-cap
+    // #2748: pensionerede ryttere heller ikke — de frigives ved sæsonskiftet
+    // (retirementRelease.js), og må ikke optage en cap-plads i vinduet imellem
+    // (eller hvis de er pensioneret ad en anden vej, fx admin-endpointet).
     expectCount(
       supabase
         .from("riders")
         .select("id", { count: "exact", head: true })
         .eq("team_id", teamId)
         .eq("is_academy", false)
+        .eq("is_retired", false)
     ),
     // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
@@ -192,6 +196,7 @@ export async function getTeamMarketState(supabase, teamId) {
         .select("id", { count: "exact", head: true })
         .eq("pending_team_id", teamId)
         .eq("is_academy", false)
+        .eq("is_retired", false)
     ),
     // #268: ryttere på vej VÆK fra holdet — ejet (team_id = mit) men med
     // pending_team_id sat til et andet hold (eller bank/AI). Disse skal
@@ -203,6 +208,7 @@ export async function getTeamMarketState(supabase, teamId) {
         .select("id", { count: "exact", head: true })
         .eq("team_id", teamId)
         .eq("is_academy", false)
+        .eq("is_retired", false)
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)
     ),

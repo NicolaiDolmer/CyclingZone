@@ -32,11 +32,13 @@ export function getSquadLimits(division) {
 export async function fetchSquadCountInputs(supabase, teamId) {
   const [pendingIncomingRes] = await Promise.all([
     // #1308: akademiryttere tæller ikke mod senior-cap
+    // #2748: pensionerede heller ikke — spejler backend getTeamMarketState.
     supabase
       .from("riders")
       .select("id", { count: "exact", head: true })
       .eq("pending_team_id", teamId)
       .eq("is_academy", false)
+      .eq("is_retired", false)
       .or(`team_id.is.null,team_id.neq.${teamId}`),
   ]);
 

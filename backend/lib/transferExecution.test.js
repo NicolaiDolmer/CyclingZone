@@ -441,8 +441,14 @@ function rowsFor(db, table) {
   // #1308: riders.is_academy er NOT NULL DEFAULT false i DB. Squad-cap-queries
   // filtrerer nu .eq("is_academy", false); fixtures uden feltet ville ellers
   // blive ekskluderet (undefined !== false). Default'er feltet ved læsning.
+  // #2748: samme klasse for is_retired (NOT NULL DEFAULT false — verificeret mod
+  // prod 23/7: 0 NULL-rækker ud af 7.034). Squad-cap-queries filtrerer nu også
+  // .eq("is_retired", false), så en pensioneret rytter ikke optager en cap-plads.
   if (table === "riders") {
-    for (const r of db[table]) if (r.is_academy === undefined) r.is_academy = false;
+    for (const r of db[table]) {
+      if (r.is_academy === undefined) r.is_academy = false;
+      if (r.is_retired === undefined) r.is_retired = false;
+    }
   }
   return db[table];
 }

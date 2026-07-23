@@ -231,6 +231,7 @@ test("fetchSquadCountInputs — pending-in inkluderer ryttere med team_id = NULL
     [
       ["eq", "pending_team_id", ME],
       ["eq", "is_academy", false], // #1308: akademiryttere tæller ikke mod senior-cap
+      ["eq", "is_retired", false], // #2748: pensionerede optager ikke en cap-plads
       ["or", `team_id.is.null,team_id.neq.${ME}`],
     ],
     "pending-in-filteret skal inkludere NULL-team_id og ekskludere self-pending og akademiryttere"
