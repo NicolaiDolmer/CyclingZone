@@ -72,3 +72,15 @@ export function generateOffers({ teamId, seasonNumber, renownTargetValue, calend
     };
   });
 }
+
+// #2589: reverse-lookup for aktiverings-genberegning (sponsorContractsService.
+// expireAndRenewContracts). length_seasons er unikt pr. variant (1/2/3) og gemmes
+// direkte på sponsor_contracts-raden, så guaranteedFraction kan slås op UDEN at
+// gætte/matche mod et frisk regenereret tilbud — det matchede tidligere (PR #2606)
+// mod guaranteed_base, hvilket driftede når renownTargetValue (season_standings)
+// ændrede sig mellem pick og aktivering (~36% mismatch, verificeret i prod 17/7).
+// length_seasons ændres aldrig efter pick, så dette opslag er altid stabilt.
+export function guaranteedFractionForLength(lengthSeasons) {
+  const match = VARIANTS.find((v) => v.lengthSeasons === Number(lengthSeasons));
+  return match ? match.guaranteedFraction : null;
+}
