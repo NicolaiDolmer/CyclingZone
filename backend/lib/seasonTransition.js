@@ -139,6 +139,74 @@ export async function emitSeasonStartedNotifications({
   return { eligible: eligible.length, ...stats };
 }
 
+// EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
+// sker via backendMessages-koderne i metadata (#666).
+const SEASON_ENDED_FALLBACK_MESSAGE =
+  "The season is over. See the recap for final standings, promotions and relegations.";
+
+/**
+ * #2745 · Indsæt in-app season_ended-notifikationer til alle berettigede
+ * menneske-managers (humanTeams = is_ai=false, is_frozen=false) ved sæson-slut.
+ * Modstykke til emitSeasonStartedNotifications ovenfor — frontend havde fuld
+ * rendering for typen (NotificationsPage TYPE_CONFIG + notif.seasonEnded-i18n),
+ * men ingen backend-kode indsatte nogensinde en season_ended-row (audit 23/7,
+ * `select count(*) from notifications where type='season_ended'` = 0 i prod).
+ *
+ * Idempotent: notifyUser dedup'er på (type, title, message, related_id) inden for
+ * 24t, og related_id = endedSeason.id gør dedup per manager+sæson, så retries
+ * ikke dublerer. Fejl pr. manager isoleres (tælles, stopper ikke resten).
+ * `notify` er injicerbar for test.
+ */
+export async function emitSeasonEndedNotifications({
+  supabase,
+  endedSeason,
+  humanTeams = null,
+  notify = notifyUser,
+}) {
+  const seasonNumber = endedSeason.number;
+  const stats = { delivered: 0, deduped: 0, failed: 0 };
+  // Samme menneske-manager-diskriminator som resten af motoren (is_ai=false,
+  // is_frozen=false) — AI/test/frosne hold skal ikke have inbox-notifikationer.
+  let managers = humanTeams;
+  if (!managers) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("user_id")
+      .eq("is_ai", false)
+      .eq("is_frozen", false);
+    if (error) {
+      throw new Error(
+        `Could not load managers for season_ended notifications: ${error.message}`,
+      );
+    }
+    managers = data;
+  }
+  const eligible = (managers || []).filter((team) => team.user_id);
+  for (const team of eligible) {
+    try {
+      const res = await notify({
+        supabase,
+        userId: team.user_id,
+        type: "season_ended",
+        title: `Season ${seasonNumber} has ended`,
+        message: SEASON_ENDED_FALLBACK_MESSAGE,
+        relatedId: endedSeason.id,
+        metadata: {
+          titleCode: "notif.seasonEnded.title",
+          titleParams: { number: seasonNumber },
+          messageCode: "notif.seasonEnded.message",
+          messageParams: { number: seasonNumber },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch {
+      stats.failed += 1;
+    }
+  }
+  return { eligible: eligible.length, ...stats };
+}
+
 // #805 · lazy import (betaResetService → economyEngine; samme cyklus-undgåelse
 // som getProcessSeasonStart) til board-test-exit-oprydning.
 let resetBetaBoardProfilesImpl;

@@ -37,6 +37,14 @@ function isolateExecuteHandler() {
   return match[0];
 }
 
+function isolateSeasonEndHandler() {
+  const match = apiSource.match(
+    /router\.post\(\s*"\/admin\/seasons\/:id\/end"[\s\S]*?\n\}\);/,
+  );
+  assert.ok(match, "Kunne ikke isolere POST /admin/seasons/:id/end-handler");
+  return match[0];
+}
+
 test("routes/api.js importerer resolveTransitionSourceSeason fra seasonTransition.js", () => {
   assert.match(
     apiSource,
@@ -138,4 +146,45 @@ test("udfør-handler gater ikke dryRun og sender readiness med i 409-svaret (#13
   const block = isolateExecuteHandler();
   assert.match(block, /if\s*\(!dryRun\)/, "gaten skal kun køre for rigtige writes, ikke dry-runs");
   assert.match(block, /status\(409\)\.json\(\{[\s\S]*?readiness/, "409-svaret skal bære readiness-payloaden til UI'et");
+});
+
+// ============================================================
+// #2745 — season_ended in-app-notifikation var en "død hook":
+// frontend havde fuld rendering for typen (NotificationsPage
+// TYPE_CONFIG + notif.seasonEnded-i18n), men ingen backend-kode
+// indsatte nogensinde en row (prod 23/7: 0 rækker nogensinde).
+// Rod-årsag: season-slut sker i POST /admin/seasons/:id/end, IKKE
+// i seasonTransition.js's transitionToNextSeason (som håndterer
+// season-*start*) — det manglende modstykke blev bygget/lagt i
+// forkert fil ved #1357 og aldrig opdaget siden.
+// ============================================================
+
+test("routes/api.js importerer emitSeasonEndedNotifications fra seasonTransition.js (#2745)", () => {
+  assert.match(
+    apiSource,
+    /import\s*\{[^}]*emitSeasonEndedNotifications[^}]*\}\s*from\s*"\.\.\/lib\/seasonTransition\.js"/,
+    "emitSeasonEndedNotifications skal importeres fra ../lib/seasonTransition.js",
+  );
+});
+
+test("POST /admin/seasons/:id/end kalder emitSeasonEndedNotifications EFTER sæsonen er markeret completed (#2745)", () => {
+  const block = isolateSeasonEndHandler();
+  assert.match(
+    block,
+    /emitSeasonEndedNotifications\(/,
+    "season-end-handleren skal indsætte in-app season_ended-notifikationer til menneske-managers",
+  );
+  assert.ok(
+    block.indexOf('status: "completed"') < block.indexOf("emitSeasonEndedNotifications("),
+    "notifikationerne skal sendes EFTER seasons.status er sat til 'completed', ikke før",
+  );
+  // Additiv + isoleret: en fejl i notifikations-emit må ALDRIG vælte selve
+  // sæson-afslutningen (samme disciplin som Discord-broadcast + de øvrige
+  // notif-faser i seasonTransition.js). En try/catch omkring kaldet er den
+  // enkleste garanti for det i denne route-fil (ingen phase-log her).
+  assert.match(
+    block,
+    /try\s*\{[\s\S]*?emitSeasonEndedNotifications\([\s\S]*?\}\s*catch/,
+    "kaldet skal være try/catch-isoleret så en notifikations-fejl ikke fejler hele endpointet",
+  );
 });

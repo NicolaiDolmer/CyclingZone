@@ -71,8 +71,11 @@ export default function SeasonEndPage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     setMyTeamId(myTeam?.id);
 
+    // #2763: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
+    // spillesæson og må aldrig tilbydes i spillerens sæson-vælger (samme
+    // diskriminator som #2600's .gt("number", 0) i backend/routes/api.js).
     const { data: seasonsData } = await supabase.from("seasons")
-      .select("*").order("number", { ascending: false });
+      .select("*").gt("number", 0).order("number", { ascending: false });
     setSeasons(seasonsData || []);
     setLoading(false);
   };

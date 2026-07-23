@@ -221,9 +221,12 @@ export default function RacesPage() {
         .from("races")
         .select("id, name, race_type, race_class, stages, stages_completed, status, edition_year, league_division_id, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
         .order("name"),
+      // #2763: sæson 0 (bogførings-sæson, 0 løb) filtreres ud af biblioteks-
+      // vælgeren — samme diskriminator som #2600 (.gt("number", 0)).
       supabase
         .from("seasons")
         .select("id, number, status")
+        .gt("number", 0)
         .order("number", { ascending: false }),
     ]);
     setLibRaces(racesRes.data || []);
