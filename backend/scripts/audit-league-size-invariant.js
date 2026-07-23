@@ -90,7 +90,7 @@ export async function runLeagueSizeAudit({
     fetchAllRows(() =>
       supabase
         .from("teams")
-        .select("id, name, is_ai, is_frozen, is_bank, created_at, league_division_id")
+        .select("id, name, is_ai, is_frozen, is_bank, created_at, league_division_id, pending_removal_at")
         .order("id", { ascending: true })
     ).catch((error) => {
       throw new Error(formatSupabaseAuditError("teams select", error));
@@ -110,7 +110,14 @@ export async function runLeagueSizeAudit({
   // Bank-hold (is_bank) er en systemkonto, ikke et rigtigt hold i en pulje —
   // ekskludér fra invariant-tællingen (spejler #2361-mønstret: match UI/spil-
   // logikkens filter for "rigtige hold").
-  const realTeams = teams.filter((t) => !t.is_bank);
+  // #2639: hold der ER markeret til fjernelse (pending_removal_at) tæller IKKE
+  // med i invarianten. De er allerede besluttet ude — men aiTeamTrimHealSweep
+  // må ikke slette et hold med igangværende løbs-entries (guarden fra #2074),
+  // så markøren består indtil løbene er afviklet. Uden dette filter rapporterer
+  // auditen en "overtrædelse" for en pulje der reelt HAR 24 aktive hold, og
+  // checket bliver rødt på ALLE PR'er i dagevis (målt 23/7: 11 markerede hold i
+  // 5 puljer, hver med 6-7 igangværende løb; hver pulje = præcis 24 uden dem).
+  const realTeams = teams.filter((t) => !t.is_bank && t.pending_removal_at == null);
 
   // Teams uden league_division_id (endnu ikke pulje-allokeret — typisk
   // dev/test-hold, jf. #1608 "NULL = endnu ikke pulje-allokeret") hører ikke
