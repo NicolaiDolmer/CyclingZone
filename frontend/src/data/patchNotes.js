@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.47",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Mountain classics arrive in Divisions 2 and 3",
+          "body": "Four of the toughest hilly one-day races have been upgraded to true mountain classics: Limburgse Klassieker in Division 2, and Brabantse Klassieker, Trofeo Ligure and Classique de la Drôme in Division 3. Every division now has a mountain classic in each pool, so climbers outside the top flight finally have a one-day race to build their season around. The new routes take effect from season 2."
+        },
+        "da": {
+          "title": "Bjergklassikere kommer til Division 2 og 3",
+          "body": "Fire af de hårdeste bakkede endagsløb er opgraderet til ægte bjergklassikere: Limburgse Klassieker i Division 2 samt Brabantse Klassieker, Trofeo Ligure og Classique de la Drôme i Division 3. Alle divisioner har nu en bjergklassiker i hver pulje, så klatrere uden for den bedste række endelig har et endagsløb at bygge sæsonen om. De nye ruter gælder fra sæson 2."
+        },
+        "refs": [2755]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Sales are blocked if they would leave you unable to race",
+          "body": "Before you sell, release or list a rider for auction, the game now checks your squad's worst case: expiring contracts and retirement risk are counted together, and any deal that could leave your team below the 8 riders needed to race is blocked with a clear explanation. Above that line you trade as freely as before."
+        },
+        "da": {
+          "title": "Salg blokeres hvis de ville efterlade dig ude af stand til at stille hold",
+          "body": "Før du sælger, frigiver eller sætter en rytter på auktion, tjekker spillet nu din trups værste tilfælde: udløbende kontrakter og pensionsrisiko regnes sammen, og en handel der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, blokeres med en klar forklaring. Over den grænse handler du lige så frit som før."
+        },
+        "refs": [2700, 2748]
+      }
+    ]
+  },
+  {
     "version": "7.46",
     "date": "2026-07-23",
     "label": "Beta",

@@ -1101,6 +1101,10 @@
       "q": "Hvordan kan jeg se hvorfor et resultat blev som det blev?",
       "a": "Løbssiderne forklarer markante udfald i almindeligt sprog, ikke bare tal. Små badges ved en rytters navn markerer fx en hjælper der ofrede sin egen placering for kaptajnen, en favorit der havde en dårlig dag, eller en rytter der timede sin formtop perfekt. En 'Det store billede'-boks på etapesiden tilføjer en sætning ved de store udsving, som et lederskifte i sammenlagtstillingen. De præcise tal bag et resultat forbliver skjulte, kun historien vises."
     },
+    "contractExpiryRetirementFaq": {
+      "q": "Hvad sker der med udløbende kontrakter og ældre ryttere ved sæsonskiftet?",
+      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, med både kontraktudløb og pensionsrisiko regnet med."
+    },
     "staffReleaseFaq": {
       "q": "Hvordan opsiger jeg staff, og hvad koster det?",
       "a": "Åbn staffens profil (eller deres række på personale-oversigten) og brug Opsig staff. Ansættelsen slutter med det samme, og pladsen åbner for ny-hyring med det samme, men det koster et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter, så der er ingen overraskelser. Du kan kun opsige staff på dit eget hold."
