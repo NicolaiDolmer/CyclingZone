@@ -271,8 +271,10 @@ import {
 import {
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
+  getSquadRiskViolation,
   getTeamMarketState,
 } from "../lib/marketUtils.js";
+import { fetchAtRiskCount } from "../lib/squadRiskGuard.js";
 import {
   applyRaceResults,
   buildRacePointsLookup,
@@ -1255,6 +1257,23 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
       error: "You can't afford the buyout fee for this rider",
       errorCode: "cannot_afford_release",
       errorParams: { fee, balance },
+    });
+  }
+
+  // #2748 · sælgeren (her: frigiveren) må ikke handle sig under løbs-minimummet
+  // (MIN_RIDERS_FOR_RACE) når kontraktudløb + pensionsrisiko ved næste sæsonskifte
+  // tælles med. Rytteren der frigives her ekskluderes fra risiko-tællingen (han er
+  // allerede talt som "outgoing").
+  const releaseTeamState = await getTeamMarketState(supabase, req.team.id);
+  releaseTeamState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, currentSeason, {
+    excludeRiderIds: [rider.id],
+  });
+  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
+  if (releaseRiskViolation) {
+    return res.status(409).json({
+      error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
+      errorCode: "cannot_release_squad_risk",
+      errorParams: { minRiders: releaseRiskViolation.minRiders },
     });
   }
 
@@ -4253,6 +4272,27 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
   const isOwnRider = Boolean(rider.team_id) && rider.team_id === req.team.id;
+
+  // #2748 · sælgeren må ikke sætte sin EGEN rytter på auktion hvis det, kombineret
+  // med kontraktudløb + pensionsrisiko ved næste sæsonskifte, ville bringe holdet
+  // under løbs-minimummet (MIN_RIDERS_FOR_RACE). Tjekkes ved OPRETTELSE (ikke ved
+  // finalisering) — pengene er ikke flyttet endnu, og det er her manageren reelt
+  // kan fortryde.
+  if (isOwnRider) {
+    const auctionSeasonNumber = await getActiveSeasonNumber();
+    const auctionSellerState = await getTeamMarketState(supabase, req.team.id);
+    auctionSellerState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, auctionSeasonNumber, {
+      excludeRiderIds: [rider.id],
+    });
+    const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
+    if (auctionRiskViolation) {
+      return res.status(409).json({
+        error: `You can't drop below ${auctionRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
+        errorCode: "cannot_auction_squad_risk",
+        errorParams: { minRiders: auctionRiskViolation.minRiders },
+      });
+    }
+  }
 
   const priceIssue = getAuctionStartPriceIssue({ startingPrice: starting_price, riderValue, isOwnRider });
   if (priceIssue) {

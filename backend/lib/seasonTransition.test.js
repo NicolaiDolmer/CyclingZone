@@ -321,6 +321,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       emitContractExpiringNotifications: async () => ({ eligible: 0, delivered: 0, deduped: 0, failed: 0 }),
       // #2453: Global Rank-rollover stubbet — egen unit-test dækker RPC-laget (SQL).
       applyGlobalRankSeasonRollover: async () => ({ ok: true }),
+      // #2744-B: kontraktudløb-frigivelse stubbet — egen unit-test (contractExpiryRelease.test.js)
+      // dækker release-logikken; dedikerede wiring-tests nedenfor dækker fase-placeringen.
+      releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
     },
   });
 
@@ -328,8 +331,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.dryRun, false);
   // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
   // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
-  // #1980: +season_parachute = 13
-  assert.equal(result.log.length, 13);
+  // #1980: +season_parachute; #2744-B: +contract_expiry_release = 14
+  assert.equal(result.log.length, 14);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -342,20 +345,22 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[4].inserted, true);
   assert.equal(result.log[5].phase, "sponsor_contracts_renewal");
   assert.equal(result.log[5].teams, 1);
-  assert.equal(result.log[6].phase, "sponsor_payout");
-  assert.equal(result.log[6].count, 1);
-  assert.equal(result.log[7].phase, "season_payroll");
-  assert.equal(result.log[7].teams_processed, 1);
-  assert.equal(result.log[7].salary_count, 0);
-  assert.equal(result.log[8].phase, "season_parachute");
-  assert.equal(result.log[8].count, 0);
-  assert.equal(result.log[8].total, 0);
-  assert.equal(result.log[9].phase, "admin_log");
-  assert.equal(result.log[9].inserted, true);
-  assert.equal(result.log[10].phase, "discord_broadcast");
-  assert.equal(result.log[10].sent, true);
-  assert.equal(result.log[11].phase, "season_started_notifications");
-  assert.equal(result.log[12].phase, "contract_expiring_notifications");
+  assert.equal(result.log[6].phase, "contract_expiry_release");
+  assert.equal(result.log[6].candidates, 0);
+  assert.equal(result.log[7].phase, "sponsor_payout");
+  assert.equal(result.log[7].count, 1);
+  assert.equal(result.log[8].phase, "season_payroll");
+  assert.equal(result.log[8].teams_processed, 1);
+  assert.equal(result.log[8].salary_count, 0);
+  assert.equal(result.log[9].phase, "season_parachute");
+  assert.equal(result.log[9].count, 0);
+  assert.equal(result.log[9].total, 0);
+  assert.equal(result.log[10].phase, "admin_log");
+  assert.equal(result.log[10].inserted, true);
+  assert.equal(result.log[11].phase, "discord_broadcast");
+  assert.equal(result.log[11].sent, true);
+  assert.equal(result.log[12].phase, "season_started_notifications");
+  assert.equal(result.log[13].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -379,6 +384,113 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.ok(adminEntry);
   assert.equal(adminEntry.meta.from_season_number, 0);
   assert.equal(adminEntry.meta.to_season_number, 1);
+});
+
+// #2744-B · Kontraktudløb-frigivelse: ny fase parallelt med sponsor_contracts_renewal.
+// Kaldes med DEN AFSLUTTEDE sæsons nummer (plan.from_season.number) — riderne der
+// frigives har contract_end_season <= DEN sæson, ikke den nye.
+test("transitionToNextSeason — kalder releaseExpiredContractRiders med den AFSLUTTEDE sæsons nummer, efter sponsor_contracts_renewal", async () => {
+  let releaseArgs = null;
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => { order.push("renew"); },
+      releaseExpiredContractRiders: async (args) => {
+        order.push("release");
+        releaseArgs = args;
+        return { candidates: 196, released: 195, deferredByRacing: 1, notified: 1, notifyFailed: 0 };
+      },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(order, ["renew", "release", "seasonStart"], "frigivelse sker EFTER kontrakt-fornyelse og FØR sæson-start/rytterudvikling");
+  assert.ok(releaseArgs, "releaseExpiredContractRiders skal kaldes");
+  assert.equal(releaseArgs.seasonNumber, 0, "den AFSLUTTEDE sæsons nummer (fromSeason.number), ikke den nye (1)");
+
+  const releasePhase = result.log.find((p) => p.phase === "contract_expiry_release");
+  assert.ok(releasePhase, "contract_expiry_release-fasen skal logges");
+  assert.equal(releasePhase.candidates, 196);
+  assert.equal(releasePhase.released, 195);
+  assert.equal(releasePhase.deferredByRacing, 1);
+});
+
+test("transitionToNextSeason — en fejl i contract_expiry_release isoleres og vælter ALDRIG resten af transitionen", async () => {
+  // Bevidst UDEN stub for releaseExpiredContractRiders: default-implementeringen
+  // rammer mock-supabasens "riders"-tabel, som mangler .range() (samme
+  // fail-and-catch-mønster som global_rank_decay-testen ovenfor, der udnytter at
+  // mock-supabase mangler .rpc).
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true, "en fejlet release-fase må ALDRIG vælte resten af sæson-transitionen");
+  const releasePhase = result.log.find((p) => p.phase === "contract_expiry_release");
+  assert.ok(releasePhase, "fasen logges selv ved fejl");
+  assert.ok(releasePhase.error, "fejlen er synlig i loggen til undersøgelse/manuel re-run");
+  // Sponsor-payout (og resten) skal stadig være kørt bagefter.
+  assert.ok(result.log.find((p) => p.phase === "sponsor_payout"), "transitionen fortsætter efter den isolerede fejl");
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "admin_log-fasen når stadig at køre");
+});
+
+// #2700/#2748-review-fund: en fejl MIDT i frigivelsen (fx efter 150 af 196
+// ryttere) må ikke kun logge fejlbeskeden — operatøren skal kunne se hvor langt
+// den nåede FØR fejlen (releaseExpiredContractRiders hænger dette på
+// err.partialStats, se contractExpiryRelease.js).
+test("transitionToNextSeason — en fejl i contract_expiry_release logger de PARTIELLE stats (ikke kun fejlbeskeden)", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      releaseExpiredContractRiders: async () => {
+        const err = new Error("crashed after 150/196 riders (simuleret)");
+        err.partialStats = { candidates: 196, released: 150, deferredByRacing: 2, notified: 148, notifyFailed: 1, failed: 0 };
+        throw err;
+      },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const releasePhase = result.log.find((p) => p.phase === "contract_expiry_release");
+  assert.ok(releasePhase, "fasen logges selv ved fejl");
+  assert.match(releasePhase.error, /crashed after 150\/196/);
+  assert.equal(releasePhase.candidates, 196, "partial-tal er synlige i loggen, ikke kun fejlbeskeden");
+  assert.equal(releasePhase.released, 150, "operatøren kan se AT 150 rent faktisk blev frigivet før krasjet");
+  assert.equal(releasePhase.notified, 148);
 });
 
 // #1663 · Sponsor-kontrakter fornyes FØR sponsor-payout: hvert menneske-hold

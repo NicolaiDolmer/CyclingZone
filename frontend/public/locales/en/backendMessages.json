@@ -157,6 +157,16 @@
       "title": "Contract expiring",
       "message": "{rider}'s contract expires at the end of season {season}."
     },
+    "contractExpiredRelease": {
+      "title": "Rider released: contract expired",
+      "message": "{rider}'s contract expired at the end of season {season}. He is now a free agent."
+    },
+    "seasonTransitionRisk": {
+      "title": "Season change: contract and retirement risk",
+      "messageBoth": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires, and {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend a rider's contract from his profile before the change to prevent release; retirement can't be prevented, but you can bid for replacements once the season changes.",
+      "messageExpiringOnly": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires. Extend their contract from the rider's profile before the change to keep them.",
+      "messageRetirementOnly": "Your squad is affected by the upcoming season change: {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Retirement can't be prevented, but you can bid for replacements once the season changes."
+    },
     "watchlistDeparted": {
       "title": "Rider has left the game",
       "message": "{rider} has left the game and was removed from your watchlist."
@@ -266,6 +276,7 @@
         "swapTitle": "Swap cancelled",
         "sellerNoLongerOwns": "{riderName} could not be completed because the rider is no longer on the seller's team.",
         "sellerSquadTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders in Division {division}.",
+        "sellerSquadRiskTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders once riders leaving at the next season change (contract expiry or retirement risk) are counted.",
         "buyerSquadFull": "{riderName} could not be transferred because the buyer's team is already full.",
         "buyerCannotAfford": "The deal on {riderName} could not be completed because the buyer lacks funds.",
         "offeredMoved": "{offeredName} is no longer available for the swap.",

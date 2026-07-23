@@ -6,8 +6,10 @@ import {
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
+  getSquadRiskViolation,
   getTeamMarketState,
   MARKET_SQUAD_LIMITS,
+  MIN_RIDERS_FOR_RACE,
   RIDER_BASE_VALUE_FALLBACK,
   resolveRiderSalary,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
@@ -248,6 +250,46 @@ test("getOutgoingSquadViolation tillader salg helt ned til 0 med division-defaul
   // så en manager kan sælge sin sidste rytter (future_count 1 → 0) uden violation.
   assert.equal(getOutgoingSquadViolation({ division: 3, future_count: 1 }), null);
   assert.equal(getOutgoingSquadViolation({ division: 1, future_count: 1 }), null);
+});
+
+// ─── getSquadRiskViolation (#2748 — kombineret kontraktudløb + pensionsrisiko) ─
+// Uafhængig af division-min (som er 0 i prod, se testen ovenfor): denne floor er
+// ALTID MIN_RIDERS_FOR_RACE (8), uanset division.
+
+test("getSquadRiskViolation: blokerer når (future_count - outgoingCount - at_risk_count) < MIN_RIDERS_FOR_RACE", () => {
+  const issue = getSquadRiskViolation(
+    { future_count: 9, at_risk_count: 1 },
+    { outgoingCount: 1 }
+  );
+  assert.ok(issue, "9 - 1 (denne handel) - 1 (risiko) = 7 < 8 → skal blokere");
+  assert.equal(issue.projected, 7);
+  assert.equal(issue.atRisk, 1);
+  assert.equal(issue.minRiders, MIN_RIDERS_FOR_RACE);
+});
+
+test("getSquadRiskViolation: tillader PRÆCIST ned til MIN_RIDERS_FOR_RACE, ikke under", () => {
+  assert.equal(
+    getSquadRiskViolation({ future_count: 10, at_risk_count: 1 }, { outgoingCount: 1 }),
+    null,
+    "10 - 1 - 1 = 8 = MIN_RIDERS_FOR_RACE → OK, ingen violation ved selve grænsen"
+  );
+  const blocked = getSquadRiskViolation({ future_count: 9, at_risk_count: 1 }, { outgoingCount: 1 });
+  assert.ok(blocked, "9 - 1 - 1 = 7 < 8 → blokeret");
+});
+
+test("getSquadRiskViolation: ingen at_risk_count (0/undefined) degenererer til en simpel outgoing-check mod 8", () => {
+  assert.equal(getSquadRiskViolation({ future_count: 9 }, { outgoingCount: 1 }), null, "9-1=8, ingen risiko → OK");
+  assert.ok(getSquadRiskViolation({ future_count: 8 }, { outgoingCount: 1 }), "8-1=7 < 8 → blokeret selv uden nogen at_risk_count");
+});
+
+test("getSquadRiskViolation: outgoingCount default er 1 (matcher getOutgoingSquadViolation's default)", () => {
+  const withDefault = getSquadRiskViolation({ future_count: 9, at_risk_count: 0 });
+  assert.equal(withDefault, null, "9-1-0=8 → ingen violation med default outgoingCount");
+});
+
+test("getSquadRiskViolation: falder tilbage til total_count når future_count mangler", () => {
+  const issue = getSquadRiskViolation({ total_count: 8, at_risk_count: 1 }, { outgoingCount: 1 });
+  assert.ok(issue, "8-1-1=6 < 8 → blokeret via total_count-fallback");
 });
 
 // #268: outgoingCount-query bruger chained .eq + .not + .neq for at finde

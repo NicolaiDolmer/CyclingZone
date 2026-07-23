@@ -44,6 +44,7 @@ import {
 } from "./sponsorEngine.js";
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
+import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
@@ -633,6 +634,34 @@ export async function transitionToNextSeason({
     phase: "sponsor_contracts_renewal",
     teams: (renewTeams || []).length,
   });
+
+  // Phase 5c (#2744-B, ejer-beslutning 23/7 valg B): rytterkontrakt-udløb → fri-
+  // agent. Ryttere hvis contract_end_season <= den NETOP AFSLUTTEDE sæson
+  // (plan.from_season.number) frigives til fri-agent-poolen (team_id=null).
+  // FØRSTE gang mekanikken kører (S1 → S2, 196 ryttere i prod 23/7). Additivt +
+  // isoleret: en fejl her må ALDRIG vælte resten af sæson-transitionen (samme
+  // disciplin som contract_expiring_notifications/global_rank_decay).
+  const releaseExpiredContractRidersFn =
+    deps.releaseExpiredContractRiders ?? defaultReleaseExpiredContractRiders;
+  try {
+    log.push({
+      phase: "contract_expiry_release",
+      ...(await releaseExpiredContractRidersFn({
+        supabase,
+        seasonNumber: plan.from_season.number,
+      })),
+    });
+  } catch (err) {
+    // Partial-failure-observability: releaseExpiredContractRiders hænger sine
+    // hidtil-akkumulerede stats på err.partialStats FØR den kaster (se dens egen
+    // JSDoc) — uden dette ville operatøren kun se fejlbeskeden, ikke hvor langt
+    // frigivelsen nåede (kritisk 27/7, hvor dette er 196 rækker i ét kørsel).
+    log.push({ phase: "contract_expiry_release", error: err.message, ...(err.partialStats || {}) });
+    captureException(err, {
+      tags: { phase: "contract_expiry_release" },
+      extra: { fromSeasonId, fromSeasonNumber: plan.from_season.number, partialStats: err.partialStats ?? null },
+    });
+  }
 
   // Phase 6: sponsor-payout + payroll (idempotent via partial UNIQUE-indices
   // på sponsor:team:season + salary/negative_interest:team:season +
