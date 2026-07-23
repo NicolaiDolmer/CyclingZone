@@ -33,3 +33,18 @@ export function groupPassagesForStage(rows, stageNumber) {
   out.sort((a, b) => (a.waypoint_km ?? 0) - (b.waypoint_km ?? 0));
   return out;
 }
+
+/**
+ * Sub-4 (#2448): slå ét waypoints passage-resultat op, så et klik på grafen kan
+ * vise hvem der tog point/bonussekunder der. Nøglen (kind, index) er den samme
+ * som race_stage_passages.(waypoint_kind, waypoint_index) — se waypointsFor()
+ * i stageRouteProfile.js. Ingen rækker (etape ikke kørt / tabel ikke migreret)
+ * → tom liste, aldrig et kast.
+ */
+export function passageResultsForWaypoint(passages, stageNumber, kind, index) {
+  return (passages || [])
+    .filter((p) => (p.stage_number ?? 1) === stageNumber
+      && p.waypoint_kind === kind
+      && (p.waypoint_index ?? 0) === index)
+    .sort((a, b) => (a.passage_rank ?? 99) - (b.passage_rank ?? 99));
+}

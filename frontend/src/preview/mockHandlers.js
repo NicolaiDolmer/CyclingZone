@@ -15,6 +15,7 @@ import {
   SEED_RACES,
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
+  SEED_STAGE_PASSAGES,
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
   SEED_RACE_STAGE_MOMENTS,
@@ -96,6 +97,18 @@ export function restRows(table, requestUrl = "") {
         return SEED_STAGE_SCHEDULE.filter(s => s.race_id === id);
       }
       return SEED_STAGE_SCHEDULE;
+    }
+    // Sub-4 (#2448): KOM/mellemsprint/mål-passager. Samme race_id=eq-scoping som
+    // race_stage_profiles ovenfor — RaceDetailPage henter med .eq("race_id", raceId)
+    // (RaceDetailPage.jsx:254-264) og filtrerer selv videre på stage_number/
+    // waypoint_kind/waypoint_index (raceStagePassages.js).
+    case "race_stage_passages": {
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_STAGE_PASSAGES.filter(p => p.race_id === id);
+      }
+      return SEED_STAGE_PASSAGES;
     }
     case "race_results": {
       // Den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-resultater.

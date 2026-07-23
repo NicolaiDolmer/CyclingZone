@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { groupPassagesForStage } from "./raceStagePassages.js";
+import { groupPassagesForStage, passageResultsForWaypoint } from "./raceStagePassages.js";
 
 test("grupperer passage-rækker pr. waypoint i km-orden, finish sidst", () => {
   const rows = [
@@ -41,4 +41,37 @@ test("anden etape end den valgte filtreres fra; tom liste → tom liste", () => 
   assert.deepEqual(groupPassagesForStage(rows, 1), []);
   assert.deepEqual(groupPassagesForStage([], 1), []);
   assert.deepEqual(groupPassagesForStage(undefined, 1), []);
+});
+
+// ── Sub-4 (#2448): passageResultsForWaypoint — waypoint-klik → passage-opslag ──
+const WAYPOINT_ROWS = [
+  { stage_number: 4, waypoint_kind: "kom", waypoint_index: 3, passage_rank: 2, rider_id: "b", rider_name: "B", points: 15, bonus_seconds: 0 },
+  { stage_number: 4, waypoint_kind: "kom", waypoint_index: 3, passage_rank: 1, rider_id: "a", rider_name: "A", points: 20, bonus_seconds: 0 },
+  { stage_number: 4, waypoint_kind: "sprint", waypoint_index: 0, passage_rank: 1, rider_id: "c", rider_name: "C", points: 20, bonus_seconds: 3 },
+  { stage_number: 5, waypoint_kind: "kom", waypoint_index: 3, passage_rank: 1, rider_id: "d", rider_name: "D", points: 20, bonus_seconds: 0 },
+];
+
+test("passageResultsForWaypoint: filtrerer paa etape+waypoint og sorterer paa passage_rank", () => {
+  const r = passageResultsForWaypoint(WAYPOINT_ROWS, 4, "kom", 3);
+  assert.deepEqual(r.map((x) => x.rider_name), ["A", "B"]);
+});
+
+test("passageResultsForWaypoint: forskellige waypoint_kind/waypoint_index blandes ikke", () => {
+  const r = passageResultsForWaypoint(WAYPOINT_ROWS, 4, "sprint", 0);
+  assert.deepEqual(r.map((x) => x.rider_name), ["C"]);
+});
+
+test("passageResultsForWaypoint: anden etape filtreres fra", () => {
+  const r = passageResultsForWaypoint(WAYPOINT_ROWS, 5, "kom", 3);
+  assert.deepEqual(r.map((x) => x.rider_name), ["D"]);
+});
+
+test("passageResultsForWaypoint: ukendt waypoint-index → tom liste, aldrig et kast", () => {
+  assert.deepEqual(passageResultsForWaypoint(WAYPOINT_ROWS, 4, "kom", 9), []);
+});
+
+test("passageResultsForWaypoint: tom/manglende input → tom liste", () => {
+  assert.deepEqual(passageResultsForWaypoint([], 4, "kom", 3), []);
+  assert.deepEqual(passageResultsForWaypoint(null, 4, "kom", 3), []);
+  assert.deepEqual(passageResultsForWaypoint(undefined, 4, "kom", 3), []);
 });

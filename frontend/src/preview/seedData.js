@@ -185,21 +185,90 @@ export const AUCTIONS = [
 // races-tabellen. Embeds (season:season_id, pool_race:pool_race_id) flades på
 // rytte-objektet — RaceDetailPage læser race.season + race.pool_race.
 export const SEED_RACES = [
-  { id: "race-up-1", season_id: ACTIVE_SEASON.id, name: "Tour de Preview", race_type: "stage_race", race_class: "TourFrance", stages: 3, stages_completed: 0, status: "scheduled", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "12 Jul" } },
+  { id: "race-up-1", season_id: ACTIVE_SEASON.id, name: "Tour de Preview", race_type: "stage_race", race_class: "TourFrance", stages: 4, stages_completed: 0, status: "scheduled", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "12 Jul" } },
   { id: "race-live-1", season_id: ACTIVE_SEASON.id, name: "Settimana Preview", race_type: "stage_race", race_class: "ProSeries", stages: 5, stages_completed: 2, status: "scheduled", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "20 Jun" } },
   { id: "race-done-1", season_id: ACTIVE_SEASON.id, name: "Omloop Preview", race_type: "single", race_class: "Monuments", stages: 1, stages_completed: 1, status: "completed", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "01 Mar" } },
   { id: "race-done-2", season_id: ACTIVE_SEASON.id, name: "Giro di Preview", race_type: "stage_race", race_class: "GiroVuelta", stages: 2, stages_completed: 2, status: "completed", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "10 May" } },
 ];
 
 // race_stage_profiles — ≥1 pr. etape. demand_vector summerer til [0.97, 1.03].
+// Sub-4 (#2448): rutefelter (distance_km/elevation_gain_m/climbs/sprints/sectors)
+// tilføjet så en Vercel-preview kan klikkes igennem UDEN en migreret prod-DB
+// (ejer-krav: "ejeren skal kunne klikke fladen igennem på en preview FØR merge",
+// #1834-erfaringen "for ringe" da ruledata manglede). elevation_gain_m er ALTID
+// >= summen af climbGainM(climb) for etapens stigninger + et rimeligt beløb
+// ikke-kategoriseret terræn — samme BASE_ELEVATION-tabel som
+// backend/lib/raceRouteGenerator.js (flat 200, rolling 500, mountain 900,
+// high_mountain 1100, cobbles 400, itt 80) — ellers bisektionen i
+// stageRouteProfile.buildProfileSeries lander på 0 og bølgeterrænet forsvinder.
 export const SEED_STAGE_PROFILES = [
-  { race_id: "race-up-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: { sprint: 0.61, acceleration: 0.15, positioning: 0.08, flat: 0.06, endurance: 0.02, randomness: 0.08 } },
-  { race_id: "race-up-1", stage_number: 2, profile_type: "mountain", finale_type: "long_climb", demand_vector: { climbing: 0.5, endurance: 0.2, tempo: 0.15, recovery: 0.1, randomness: 0.05 } },
-  { race_id: "race-up-1", stage_number: 3, profile_type: "hilly", finale_type: "punch", demand_vector: { punch: 0.45, climbing: 0.25, endurance: 0.15, positioning: 0.1, randomness: 0.05 } },
-  { race_id: "race-live-1", stage_number: 3, profile_type: "rolling", finale_type: "reduced_sprint", demand_vector: { sprint: 0.4, endurance: 0.3, punch: 0.15, positioning: 0.1, randomness: 0.05 } },
-  { race_id: "race-done-1", stage_number: 1, profile_type: "cobbles", finale_type: "breakaway", demand_vector: { cobblestone: 0.4, endurance: 0.25, punch: 0.15, positioning: 0.1, randomness: 0.1 } },
-  { race_id: "race-done-2", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: { sprint: 0.58, acceleration: 0.17, positioning: 0.1, flat: 0.07, endurance: 0.03, randomness: 0.05 } },
-  { race_id: "race-done-2", stage_number: 2, profile_type: "mountain", finale_type: "summit_finish", demand_vector: { climbing: 0.55, endurance: 0.22, tempo: 0.13, recovery: 0.05, randomness: 0.05 } },
+  // race-up-1 "Tour de Preview" (kommende, 4 etaper): flad spurt m. mellemsprint
+  // (st1), bjergetape med nedkørsel til mål — "valley" + "technical"-chips (st2),
+  // bjergetape med målgang på toppen — "summit"-chip (st3), kort enkeltstart (st4).
+  { race_id: "race-up-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 190, elevation_gain_m: 268,
+    climbs: [{ name: "Côte de Beauregard", category: "4", crest_km: 172, length_km: 1.5, avg_gradient: 4.5, summit_finish: false }],
+    sprints: [{ name: "Intermediate Sprint", km: 108, kind: "intermediate" }, { name: "Finish", km: 190, kind: "finish" }],
+    sectors: [], demand_vector: { sprint: 0.61, acceleration: 0.15, positioning: 0.08, flat: 0.06, endurance: 0.02, randomness: 0.08 } },
+  { race_id: "race-up-1", stage_number: 2, profile_type: "mountain", finale_type: "descent",
+    distance_km: 180, elevation_gain_m: 2621,
+    climbs: [
+      { name: "Col de El Cordal", category: "3", crest_km: 78, length_km: 5, avg_gradient: 4.9, summit_finish: false },
+      { name: "Côte de Covadonga", category: "3", crest_km: 111, length_km: 5.9, avg_gradient: 6.1, summit_finish: false },
+      { name: "Col de Portet", category: "1", crest_km: 162, length_km: 15.5, avg_gradient: 7.2, summit_finish: false }],
+    sprints: [{ name: "Intermediate Sprint", km: 77, kind: "intermediate" }, { name: "Finish", km: 180, kind: "finish" }],
+    sectors: [], demand_vector: { climbing: 0.5, endurance: 0.2, tempo: 0.15, recovery: 0.1, randomness: 0.05 } },
+  { race_id: "race-up-1", stage_number: 3, profile_type: "high_mountain", finale_type: "long_climb",
+    distance_km: 170, elevation_gain_m: 5286,
+    climbs: [
+      { name: "Col de la Colombière", category: "1", crest_km: 66, length_km: 14.2, avg_gradient: 6.6, summit_finish: false },
+      { name: "Col du Granier", category: "1", crest_km: 89, length_km: 12.2, avg_gradient: 7.1, summit_finish: false },
+      { name: "Côte de Saint-Roch", category: "1", crest_km: 113, length_km: 13.7, avg_gradient: 8.2, summit_finish: false },
+      { name: "Mont Aubisque", category: "HC", crest_km: 170, length_km: 14, avg_gradient: 9, summit_finish: true }],
+    sprints: [{ name: "Finish", km: 170, kind: "finish" }],
+    sectors: [], demand_vector: { punch: 0.45, climbing: 0.25, endurance: 0.15, positioning: 0.1, randomness: 0.05 } },
+  { race_id: "race-up-1", stage_number: 4, profile_type: "itt", finale_type: "solo_tt",
+    distance_km: 7, elevation_gain_m: 90,
+    climbs: [], sprints: [{ name: "Finish", km: 7, kind: "finish" }], sectors: [],
+    demand_vector: { time_trial: 0.65, endurance: 0.2, positioning: 0.1, randomness: 0.05 } },
+
+  // race-live-1 "Settimana Preview" (i gang) — rullende etape m. én cat 3-stigning.
+  { race_id: "race-live-1", stage_number: 3, profile_type: "rolling", finale_type: "reduced_sprint",
+    distance_km: 170, elevation_gain_m: 679,
+    climbs: [{ name: "Salita di Pratomagno", category: "3", crest_km: 130, length_km: 3.2, avg_gradient: 5.6, summit_finish: false }],
+    sprints: [{ name: "Intermediate Sprint", km: 80, kind: "intermediate" }, { name: "Finish", km: 170, kind: "finish" }],
+    sectors: [], demand_vector: { sprint: 0.4, endurance: 0.3, punch: 0.15, positioning: 0.1, randomness: 0.05 } },
+
+  // race-done-1 "Omloop Preview" (kørt endagsløb) — brostensetape, 5 sektorer.
+  { race_id: "race-done-1", stage_number: 1, profile_type: "cobbles", finale_type: "breakaway",
+    distance_km: 165, elevation_gain_m: 420,
+    climbs: [],
+    sprints: [{ name: "Intermediate Sprint", km: 60, kind: "intermediate" }, { name: "Finish", km: 165, kind: "finish" }],
+    sectors: [
+      { kind: "cobbles", name: "Kruisberg", start_km: 75, length_km: 1.8 },
+      { kind: "cobbles", name: "Haaghoek", start_km: 85, length_km: 2.2 },
+      { kind: "cobbles", name: "Holleweg", start_km: 97, length_km: 2.0 },
+      { kind: "cobbles", name: "Paddestraat", start_km: 110, length_km: 2.6 },
+      { kind: "cobbles", name: "Kemmelstraat", start_km: 122, length_km: 2.4 },
+    ],
+    demand_vector: { cobblestone: 0.4, endurance: 0.25, punch: 0.15, positioning: 0.1, randomness: 0.1 } },
+
+  // race-done-2 "Giro di Preview" (kørt etapeløb, 2 etaper) — st2 har
+  // summit_finish:true, så "RESULT"-tilstanden kan verificeres på en
+  // målgang-på-toppen-waypoint (se SEED_STAGE_PASSAGES).
+  { race_id: "race-done-2", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 180, elevation_gain_m: 276,
+    climbs: [{ name: "Cima di Crostis", category: "4", crest_km: 150, length_km: 1.8, avg_gradient: 4.2, summit_finish: false }],
+    sprints: [{ name: "Intermediate Sprint", km: 95, kind: "intermediate" }, { name: "Finish", km: 180, kind: "finish" }],
+    sectors: [], demand_vector: { sprint: 0.58, acceleration: 0.17, positioning: 0.1, flat: 0.07, endurance: 0.03, randomness: 0.05 } },
+  { race_id: "race-done-2", stage_number: 2, profile_type: "mountain", finale_type: "summit_finish",
+    distance_km: 140, elevation_gain_m: 2790,
+    climbs: [
+      { name: "Passo di San Pellegrino", category: "3", crest_km: 45, length_km: 5.2, avg_gradient: 5.5, summit_finish: false },
+      { name: "Salita di Bondone", category: "2", crest_km: 95, length_km: 8.5, avg_gradient: 6.8, summit_finish: false },
+      { name: "Passo di Fedaia", category: "1", crest_km: 140, length_km: 13.5, avg_gradient: 7.6, summit_finish: true }],
+    sprints: [{ name: "Intermediate Sprint", km: 70, kind: "intermediate" }, { name: "Finish", km: 140, kind: "finish" }],
+    sectors: [], demand_vector: { climbing: 0.55, endurance: 0.22, tempo: 0.13, recovery: 0.05, randomness: 0.05 } },
 ];
 
 // race_stage_schedule — scheduled_at pr. etape (driver next-start-countdown).
@@ -207,6 +276,7 @@ export const SEED_STAGE_SCHEDULE = [
   { race_id: "race-up-1", stage_number: 1, scheduled_at: "2026-07-12T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 2, scheduled_at: "2026-07-13T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 3, scheduled_at: "2026-07-14T13:00:00.000Z" },
+  { race_id: "race-up-1", stage_number: 4, scheduled_at: "2026-07-15T13:00:00.000Z" },
   { race_id: "race-live-1", stage_number: 3, scheduled_at: "2026-06-25T13:00:00.000Z" },
 ];
 
@@ -227,6 +297,43 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d1-team-2", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-1", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
   { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
+];
+
+// race_stage_passages — Sub-4 (#2448) preview-seed: KOM/mellemsprint/mål-
+// passager for de KØRTE etaper, så et klik på et waypoint på grafen viser
+// "RESULT" i stedet for "AT STAKE" (StageWaypointReadout →
+// passageResultsForWaypoint). waypoint_index er positionen i etapens RÅ
+// climbs[]/mellemsprint-liste (matcher stageRouteProfile.waypointsFor), IKKE en
+// km-sorteret position — se raceStagePassages.js. rider_id/rider_name/team_id
+// er de samme to ryttere som SEED_RACE_RESULTS (RiderLink skal pege på en rytter
+// der faktisk findes i preview). Løb uden rækker her (fx race-up-1, ikke kørt
+// endnu) viser fortsat "AT STAKE" — det er den korrekte tilstand før en etape
+// er kørt, ikke en fejl.
+export const SEED_STAGE_PASSAGES = [
+  // race-done-2 st2 (Giro di Preview, summit finish) — alle 3 KOM'er +
+  // mellemsprintet + målet, så hele "RESULT"-flowet kan verificeres i preview.
+  // Mikkel Hansen (RIVAL_TEAM) vinder etapen (matcher res-d2-s2-1) og tager
+  // hver eneste passage; Ada Pedersen (TEST_TEAM) er 2. hver gang.
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 0, waypoint_name: "Passo di San Pellegrino", waypoint_km: 45, climb_category: "3", rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 1, points: 2, bonus_seconds: 0 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 0, waypoint_name: "Passo di San Pellegrino", waypoint_km: 45, climb_category: "3", rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 2, points: 1, bonus_seconds: 0 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 1, waypoint_name: "Salita di Bondone", waypoint_km: 95, climb_category: "2", rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 1, points: 5, bonus_seconds: 0 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 1, waypoint_name: "Salita di Bondone", waypoint_km: 95, climb_category: "2", rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 2, points: 3, bonus_seconds: 0 },
+  // Fedaia er summit-finish på cat 1 → dobbelt KOM-point (komPointsForClimb).
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 2, waypoint_name: "Passo di Fedaia", waypoint_km: 140, climb_category: "1", rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 1, points: 20, bonus_seconds: 0 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "kom", waypoint_index: 2, waypoint_name: "Passo di Fedaia", waypoint_km: 140, climb_category: "1", rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 2, points: 16, bonus_seconds: 0 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "sprint", waypoint_index: 0, waypoint_name: "Intermediate Sprint", waypoint_km: 70, climb_category: null, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 1, points: 20, bonus_seconds: 3 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "sprint", waypoint_index: 0, waypoint_name: "Intermediate Sprint", waypoint_km: 70, climb_category: null, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 2, points: 17, bonus_seconds: 2 },
+  // Målet ligger på toppen af Fedaia (summit finish) — samme km som kom-index 2.
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "finish", waypoint_index: 0, waypoint_name: "Finish", waypoint_km: 140, climb_category: null, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 1, points: 20, bonus_seconds: 10 },
+  { race_id: "race-done-2", stage_number: 2, waypoint_kind: "finish", waypoint_index: 0, waypoint_name: "Finish", waypoint_km: 140, climb_category: null, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 2, points: 17, bonus_seconds: 6 },
+
+  // race-done-1 st1 (Omloop Preview, endagsløb) — mellemsprint + mål (ingen
+  // KOM'er: etapen har ingen climbs). Rækkefølgen matcher SEED_RACE_RESULTS
+  // (Ada Pedersen vandt, in_breakaway:true).
+  { race_id: "race-done-1", stage_number: 1, waypoint_kind: "sprint", waypoint_index: 0, waypoint_name: "Intermediate Sprint", waypoint_km: 60, climb_category: null, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 1, points: 20, bonus_seconds: 3 },
+  { race_id: "race-done-1", stage_number: 1, waypoint_kind: "sprint", waypoint_index: 0, waypoint_name: "Intermediate Sprint", waypoint_km: 60, climb_category: null, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 2, points: 17, bonus_seconds: 2 },
+  { race_id: "race-done-1", stage_number: 1, waypoint_kind: "finish", waypoint_index: 0, waypoint_name: "Finish", waypoint_km: 165, climb_category: null, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, passage_rank: 1, points: 50, bonus_seconds: 10 },
+  { race_id: "race-done-1", stage_number: 1, waypoint_kind: "finish", waypoint_index: 0, waypoint_name: "Finish", waypoint_km: 165, climb_category: null, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, passage_rank: 2, points: 30, bonus_seconds: 6 },
 ];
 
 // S4 (#1176): race_incidents preview-seed for race-done-2 — én DNF på etape 1

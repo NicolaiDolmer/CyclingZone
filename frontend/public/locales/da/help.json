@@ -366,12 +366,12 @@
         "text": "Når et løb med dine ryttere er afsluttet, viser dit dashboard et 'Sådan gik det for dit hold'-kort med dine placeringer, præmiepenge og et kort referat af løbet. Følg linket på kortet til det fulde resultat med alle etaper og klassementer."
       },
       "stageProfile": {
-        "title": "Terræn på et resultat",
-        "text": "Når du åbner et resultat, viser hver etape et lille terræn-badge med en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart og så videre) plus den sandsynlige finale. Det er en vejledende terrænkategori baseret på etapens sværhedsgrad, ikke en målt højdeprofil med distance og højdemeter."
+        "title": "Terræn og etapeprofiler",
+        "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil."
       },
       "raceDetail": {
         "title": "Åbn et løb: rute, terræn-DNA og din opstilling",
-        "text": "Løbsnavne er klikbare overalt i spillet. Når du åbner et løb, ser du resultaterne hvis det er kørt, eller for et kommende løb ruteprofilen pr. etape, en terræn-DNA-bar over hvilke evner hver etape belønner, og din egen opstilling med en rute-match pr. etape, så du kan vælge ryttere der passer parcouren. Vælg en etape i etape-striben for at skifte profil og rute-match. Terrænet er en vejledende kategori, ikke en målt højdeprofil. På en etapes resultat-fane kan du skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold for at se stillingen efter den etape, og et holdfilter lader dig indsnævre tabellerne til alle hold, dit eget hold, eller ét bestemt hold."
+        "text": "Løbsnavne er klikbare overalt i spillet. Når du åbner et løb, ser du resultaterne hvis det er kørt, eller for et kommende løb ruteprofilen pr. etape, en terræn-DNA-bar over hvilke evner hver etape belønner, og din egen opstilling med en rute-match pr. etape, så du kan vælge ryttere der passer parcouren. Vælg en etape i etape-striben for at skifte profil og rute-match. Løb med rutedata viser den nøjagtige profil motoren afvikler; ældre løb uden rutedata viser stadig en vejledende terrænkategori. På en etapes resultat-fane kan du skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold for at se stillingen efter den etape, og et holdfilter lader dig indsnævre tabellerne til alle hold, dit eget hold, eller ét bestemt hold."
       },
       "teamSelection": {
         "title": "Udtag dit hold og flyt ryttere mellem løb",
