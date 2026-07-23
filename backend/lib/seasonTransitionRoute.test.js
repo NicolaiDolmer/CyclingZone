@@ -188,3 +188,48 @@ test("POST /admin/seasons/:id/end kalder emitSeasonEndedNotifications EFTER sæs
     "kaldet skal være try/catch-isoleret så en notifikations-fejl ikke fejler hele endpointet",
   );
 });
+
+// ============================================================
+// #2805 — POST /admin/seasons/:id/end skal spærre mod uafviklede
+// løb FØR processSeasonEnd. pending_race_results-checket fanger
+// kun resultater der venter på behandling — et aldrig-startet løb
+// har ingen række der. Op/nedrykning på ufuldstændig slutstilling
+// er irreversibel, så spærren skal ligge før enhver write.
+// ============================================================
+
+test("routes/api.js importerer assessSeasonEndBlockers fra seasonTransitionReadiness.js", () => {
+  assert.match(
+    apiSource,
+    /import\s*\{[^}]*assessSeasonEndBlockers[^}]*\}\s*from\s*"\.\.\/lib\/seasonTransitionReadiness\.js"/,
+    "assessSeasonEndBlockers skal importeres fra ../lib/seasonTransitionReadiness.js",
+  );
+});
+
+test("POST /admin/seasons/:id/end kalder assessSeasonEndBlockers FØR processSeasonEnd (#2805)", () => {
+  const block = isolateSeasonEndHandler();
+  const blockerIdx = block.indexOf("assessSeasonEndBlockers");
+  const processIdx = block.indexOf("processSeasonEnd");
+  assert.ok(blockerIdx !== -1, "handleren skal kalde assessSeasonEndBlockers");
+  assert.ok(processIdx !== -1, "handleren skal kalde processSeasonEnd");
+  assert.ok(
+    blockerIdx < processIdx,
+    "spærren skal evalueres FØR processSeasonEnd — ellers er skaden sket",
+  );
+  assert.match(
+    block,
+    /seasonEndBlockers\.blocked[\s\S]{0,200}status\(400\)/,
+    "blocked-resultatet skal afvises med 400",
+  );
+});
+
+test("POST /admin/seasons/:id/end har INGEN force-bypass af uafviklede-løb-spærren (#2805)", () => {
+  const block = isolateSeasonEndHandler();
+  // Handleren læser i dag INGEN body-input. En fremtidig force-parameter ville
+  // kræve req.body — den må ikke indføres uden bevidst at genbesøge #2805
+  // (spærren er absolut: transition-force må heller ikke slå den fra).
+  assert.doesNotMatch(
+    block,
+    /req\.body/,
+    "season-end-handleren må ikke læse body-parametre — #2805-spærren er bevidst uden force-bypass",
+  );
+});

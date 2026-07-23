@@ -64,6 +64,7 @@ import {
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import {
+  assessSeasonEndBlockers,
   assessTransitionReadiness,
   formatForceOverrideDescription,
   TRANSITION_BLOCKED_ERROR,
@@ -7431,6 +7432,20 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       if ((pendingCount || 0) > 0) {
         return res.status(400).json({ error: "Der er stadig afventende løbsresultater i sæsonen" });
       }
+    }
+
+    // #2805 · Spærre mod uafviklede løb. pending_race_results-checket ovenfor
+    // fanger kun resultater der VENTER på behandling — et løb der aldrig er
+    // startet har ingen række der. Uden denne kontrol ville et for tidligt klik
+    // droppe alle resterende løb permanent og beregne op/nedrykning på en
+    // ufuldstændig slutstilling (irreversibelt). Ingen force-bypass — bevidst.
+    const seasonEndBlockers = await assessSeasonEndBlockers({ supabase, seasonId });
+    if (seasonEndBlockers.blocked) {
+      return res.status(400).json({
+        error: seasonEndBlockers.detail,
+        unfinished_races: seasonEndBlockers.unfinished_races,
+        last_unfinished_stage_at: seasonEndBlockers.last_unfinished_stage_at,
+      });
     }
 
     // #532 — skip processSeasonEnd for sæson 0 (open-beta-fase uden løb/standings/lønninger).
