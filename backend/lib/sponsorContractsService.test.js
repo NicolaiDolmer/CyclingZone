@@ -719,6 +719,20 @@ test("recomputeActivationRate: robust mod season_standings-drift (matcher IKKE p
   assert.equal(rate, Math.round((340000 - 248200) / 28)); // = 3279
 });
 
+test("recomputeActivationRate: IEEE-754-afrunding (0.55 er ikke eksakt repræsentérbar) giver stadig det korrekte heltal", () => {
+  // Adversarielt review 23/7, prod-række sponsor_contracts.id=286250a9-56fb-
+  // 4388-8fe2-04676c516dea: guaranteed_base=242550, length_seasons=2 (fraction
+  // 0.55). 242550/0.55 er IKKE eksakt 441000 i IEEE-754 — det bliver
+  // 440999.99999999994. Uden Math.round på originalRenownTarget FØR videre
+  // regning ville (440999.99999999994-242550)/28 = 7087.499999999998 afrunde
+  // NED til 7087 i stedet for det korrekte 7088 ((441000-242550)/28 = 7087.5,
+  // som runder OP). Denne test låser at den lagrede per_race_day_rate (7088,
+  // den faktiske prod-værdi) rammes eksakt.
+  const pending = { length_seasons: 2, guaranteed_base: 242550, per_race_day_rate: 7088 };
+  const rate = recomputeActivationRate(pending, 28);
+  assert.equal(rate, 7088);
+});
+
 test("recomputeActivationRate: ukendt length_seasons → behold den lagrede rate (ingen gætning)", () => {
   const pending = { length_seasons: 7, guaranteed_base: 100000, per_race_day_rate: 999 };
   assert.equal(recomputeActivationRate(pending, 28), 999);

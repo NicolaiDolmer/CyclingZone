@@ -51,6 +51,15 @@ async function loadCalendarDays({ supabase }) {
 // sat ved pick og ændres aldrig siden) → originalRenownTarget = guaranteed_base /
 // guaranteedFraction. Det retter KUN divisor-fejlen (60 vs. den reelle kalender),
 // uafhængigt af om renownTargetValue har driftet siden pick.
+//
+// #2589 adversarielt review (23/7): renownTargetValue var ALTID et heltal ved
+// generering (renownEngine/generateOffers), så guaranteedBase = Math.round(target
+// × fraction). Division i IEEE-754 (fraction som 0.55/0.73/0.88 er ikke eksakt
+// repræsentérbare) kan derfor give fx 440999.99999999994 i stedet for 441000 —
+// og hvis den falske rest lander lige på en .5-grænse i næste division, vipper
+// Math.round den forkerte vej (verificeret: guaranteed_base=242550, fraction=0.55
+// → 7087 i stedet for korrekte 7088). Math.round HER genopretter det tabte
+// heltal FØR videre regning, så float-støjen aldrig når frem til slut-rundingen.
 export function recomputeActivationRate(pending, calendarDays) {
   const fraction = guaranteedFractionForLength(pending?.length_seasons);
   const guaranteedBase = Number(pending?.guaranteed_base);
@@ -61,7 +70,7 @@ export function recomputeActivationRate(pending, calendarDays) {
     // length_seasons ∈ {1,2,3}, verificeret 23/7).
     return pending?.per_race_day_rate ?? 0;
   }
-  const originalRenownTarget = guaranteedBase / fraction;
+  const originalRenownTarget = Math.round(guaranteedBase / fraction);
   const divisor = Number(calendarDays) > 0 ? Number(calendarDays) : FULL_CALENDAR_DAYS;
   return Math.round((originalRenownTarget - guaranteedBase) / divisor);
 }

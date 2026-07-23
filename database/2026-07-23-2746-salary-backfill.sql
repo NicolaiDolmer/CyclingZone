@@ -33,6 +33,15 @@
 -- oprettet post-#2594, jf. issue #2674) — denne migration bruger derfor den
 -- samme formel som contractSeed.js direkte i SQL, ikke et RPC-genbrug.
 --
+-- Defensiv guard (adversarielt review 23/7): `AND r.is_academy = false` er
+-- tilføjet EKSPLICIT i WHERE, selvom målingen viser 0 akademi-ryttere med
+-- NULL-løn i dag (rene menneskehold-akademister er allerede fuldt dækket).
+-- Uden guarden ville et FREMTIDIGT gen-run (fx efter en datafejl der
+-- midlertidigt giver en akademi-rytter salary=NULL) kunne ramme akademi-
+-- ryttere med den forkerte (senior-)formel, i stedet for at fejle synligt.
+-- riders.is_academy er NOT NULL DEFAULT FALSE (schema.sql) — ingen COALESCE
+-- nødvendig.
+--
 -- IDEMPOTENT: WHERE salary IS NULL — et gen-run efter første succesfulde kørsel
 -- er et no-op (0 rækker rammes).
 --
@@ -62,7 +71,8 @@ WHERE r.team_id = t.id
   AND t.is_ai = false
   AND t.is_bank = false
   AND t.is_frozen = false
-  AND t.is_test_account = false;
+  AND t.is_test_account = false
+  AND r.is_academy = false;
 
 COMMIT;
 
