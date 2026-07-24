@@ -11,6 +11,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
+import { initialsFrom } from "../components/ui/avatarStyles.js";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { sortRidersForTable } from "../lib/riderTableSort";
 import { cycleSortState } from "../lib/riderSort";
@@ -24,7 +25,6 @@ import {
   PageLoader,
   Button,
   CategoryTag,
-  Avatar,
   Section,
   SectionHeader,
   EmptyState,
@@ -158,18 +158,20 @@ export default function TeamProfilePage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
-  // sætter derfor selv side-padding (#2849 bølge 5, samme mønster som RaceDetailPage).
+  // #2849 bølge 5c: T3-kort-anatomi (ejer-revision 24/7) — hero'en er et kort
+  // med back-link OVER sig, ikke et full-bleed-bånd. Layout's full-bleed-route-
+  // bucket giver stadig ingen padding/cap, så loading/fejl/not-found-grenene
+  // sætter selv den samme ydre max-w-5xl-container som happy-path'en.
   if (loading) return (
-    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <PageLoader />
     </div>
   );
 
   if (loadError) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
-        className="text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4 inline-block">
+        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
         {t("profile.back")}
       </button>
       <ErrorState
@@ -180,9 +182,9 @@ export default function TeamProfilePage() {
   );
 
   if (!team) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
-        className="text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4 inline-block">
+        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
         {t("profile.back")}
       </button>
       <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.notFound")} />
@@ -240,20 +242,30 @@ export default function TeamProfilePage() {
 
   return (
     <div>
-      {/* T3 hero-bånd — --bg-card + 1px bundrule. Layout's full-bleed-route-bucket
-          (#2849 bølge 4/5) giver denne rute ingen padding/cap, så båndet bleeder ægte
-          edge-to-edge; siden ejer selv indre max-w-5xl + padding. */}
-      <div className="bg-cz-card border-b border-cz-border">
-        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
-          <button type="button" onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5">
-            {t("profile.back")}
-          </button>
+      {/* #2849 bølge 5c: ejer-revision 24/7 (2. iteration) — hero'en er et KORT
+          igen, ikke et full-bleed-bånd. Guldlinjen (T3-signatur) følger kortets
+          afrundede topkant, back-linket ligger over kortet, og tabs står under
+          kortet på sidens baggrund (rytterprofil-mønstret, RiderStatsPage). */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <button type="button" onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          {t("profile.back")}
+        </button>
+
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
-            <div className="min-w-0 flex items-start gap-3">
-              <Avatar name={team.name} size="lg" />
+            <div className="min-w-0 flex items-start gap-4 sm:gap-5">
+              {/* Identitets-slot (hold → initialer; hold får ikke fotos, så
+                  ingen "PHOTO"-label — kun rytter/staff-slottet bærer den). */}
+              <div className="mt-1 w-20 h-20 sm:w-24 sm:h-24 flex-none bg-cz-subtle border border-cz-border rounded-cz flex items-center justify-center">
+                <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
+                  {initialsFrom(team.name)}
+                </span>
+              </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {/* Holdnavnet FØRST (sidens vigtigste ord) — tags/meta UNDER navnet. */}
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   {isMyTeam && <CategoryTag>{t("profile.yourTeam")}</CategoryTag>}
                   <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
                     {t("profile.division", { n: team.division })}
@@ -268,7 +280,6 @@ export default function TeamProfilePage() {
                     </>
                   )}
                 </div>
-                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
               </div>
             </div>
             {globalRank && (
@@ -284,22 +295,20 @@ export default function TeamProfilePage() {
               <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Tabs sidder på båndets bundkant — -mb-px fuser fanens egen hairline
-            med selve båndets border-b (spec: T3 tabs on the band's bottom edge). */}
-        <div className="max-w-5xl mx-auto px-4 md:px-8">
-          <Tabs value={activeTab} onChange={setActiveTab}>
-            <TabList label={t("profile.tabsAriaLabel")} className="-mb-px">
-              {TABS.map(key => (
-                <Tab key={key} value={key}>{TAB_LABELS[key]}</Tab>
-              ))}
-            </TabList>
-          </Tabs>
-        </div>
+        {/* Tabs UNDER kortet på sidens baggrund — TabList bærer sin egen
+            hairline-bundrule (tabsStyles.js); ingen -mb-px-fusion mod kortet. */}
+        <Tabs value={activeTab} onChange={setActiveTab} className="mt-5">
+          <TabList label={t("profile.tabsAriaLabel")}>
+            {TABS.map(key => (
+              <Tab key={key} value={key}>{TAB_LABELS[key]}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
       </div>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
           {activeTab === "results" && (
