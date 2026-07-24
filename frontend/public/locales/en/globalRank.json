@@ -10,6 +10,7 @@
   "placesUnit": "places",
   "divisionAll": "All divisions",
   "division": "Division {n}",
+  "divisionSelectLabel": "Division",
   "searchPlaceholder": "Search teams...",
   "noMatch": "No teams match your search",
   "noData": "No Global Rank data yet",
