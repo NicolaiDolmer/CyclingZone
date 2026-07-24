@@ -14,7 +14,15 @@ import {
   InboxIcon,
   UndoIcon,
   ChevronRightIcon,
-  PageLoader,
+  Button,
+  PageHeader,
+  Section,
+  SectionStack,
+  SectionHeader,
+  SectionAction,
+  EmptyState,
+  ErrorState,
+  SkeletonLines,
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -77,40 +85,24 @@ const OFFER_STATUS = {
   withdrawn:             { labelKey: "offerStatus.withdrawn",             cls: "bg-cz-subtle text-cz-3 border-cz-border" },
 };
 
-function SectionHeader({ title, count }) {
-  return (
-    <div className="px-4 py-2.5 bg-cz-subtle border-b border-cz-border flex items-center gap-2">
-      <p className="text-xs font-semibold text-cz-2 uppercase tracking-wider">{title}</p>
-      {count > 0 && <span className="text-xs font-mono text-cz-3">{count}</span>}
-    </div>
-  );
-}
-
-function EmptyState({ icon, title, sub }) {
-  return (
-    <div className="text-center py-14">
-      <div className="mb-3 flex justify-center text-cz-3">{icon}</div>
-      <p className="text-cz-3 font-medium">{title}</p>
-      {sub && <p className="text-sm mt-1 text-cz-3">{sub}</p>}
-    </div>
-  );
-}
-
-// Compact row used throughout all tabs
+// Compact row used throughout all tabs.
+// #2849 bølge 2: T1 row-list-recipe (docs/design/PAGE_TEMPLATES.md) — 13.5px/500
+// titel + data-font 11px uppercase meta-linje, 13px lodret padding. 1px top-rules
+// leveres af forælderens `divide-y divide-cz-border` (ingen border her i selve rowen).
 function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, onClick }) {
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors cursor-pointer"
+      className="flex items-center gap-3 py-[13px] hover:bg-cz-subtle transition-colors cursor-pointer"
       onClick={onClick}>
       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap flex-shrink-0 ${badgeCls}`}>
         {badge}
       </span>
       <div className="flex-1 min-w-0">
         <RiderLink id={riderId} stopPropagation
-          className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
+          className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
           {rider}
         </RiderLink>
-        {detail && <p className="text-xs text-cz-3 truncate">{detail}</p>}
+        {detail && <p className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3 truncate">{detail}</p>}
       </div>
       {children}
       {amount != null && (
@@ -133,6 +125,10 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoaded, setLastLoaded] = useState(null);
+  // #2849 bølge 2: terminal load-fejl (canonical ErrorState) — surfacerer fejl der
+  // tidligere enten kastede uhåndteret (evig spinner) eller blev slugt. Ingen ny
+  // fetch-logik: samme kald, blot med try/catch + explicit error-check.
+  const [loadError, setLoadError] = useState(false);
 
   const [activeAuctions, setActiveAuctions]     = useState([]);
   const [completedAuctions, setCompletedAuctions] = useState([]);
@@ -142,52 +138,69 @@ export default function ActivityPage() {
 
   async function loadAll({ silent = false } = {}) {
     if (silent) setRefreshing(true); else setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
-    if (!user) { setLoading(false); setRefreshing(false); return; }
-    const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    if (!team) { setLoading(false); setRefreshing(false); return; }
-    setMyTeamId(team.id);
+    setLoadError(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+      if (!user) { return; }
+      const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+      if (!team) { return; }
+      setMyTeamId(team.id);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers = { Authorization: `Bearer ${session.access_token}` };
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session.access_token}` };
 
-    const [activeRes, completedRes, offersData, watchlistRes] = await Promise.all([
-      supabase.from("auctions")
-        .select(`id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, market_value, team_id),
-          seller:seller_team_id(name), current_bidder:current_bidder_id(name)`)
-        .in("status", ["active", "extended"])
-        .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
-        .order("calculated_end"),
+      const [activeRes, completedRes, offersData, watchlistRes] = await Promise.all([
+        supabase.from("auctions")
+          .select(`id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
+            rider:rider_id(id, firstname, lastname, market_value, team_id),
+            seller:seller_team_id(name), current_bidder:current_bidder_id(name)`)
+          .in("status", ["active", "extended"])
+          .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
+          .order("calculated_end"),
 
-      supabase.from("auctions")
-        .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, market_value, team_id),
-          seller:seller_team_id(name), winner:current_bidder_id(name)`)
-        .eq("status", "completed")
-        .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
-        .order("actual_end", { ascending: false })
-        .limit(30),
+        supabase.from("auctions")
+          .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
+            rider:rider_id(id, firstname, lastname, market_value, team_id),
+            seller:seller_team_id(name), winner:current_bidder_id(name)`)
+          .eq("status", "completed")
+          .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
+          .order("actual_end", { ascending: false })
+          .limit(30),
 
-      fetch(`${API}/api/transfers/my-offers`, { headers })
-        .then(r => r.json())
-        .catch(err => { console.warn("activity: my-offers load failed", err); return { sent: [], received: [] }; }),
+        fetch(`${API}/api/transfers/my-offers`, { headers })
+          .then(r => r.json())
+          .catch(err => { console.warn("activity: my-offers load failed", err); return { sent: [], received: [] }; }),
 
-      supabase.from("rider_watchlist")
-        .select(`id, created_at, rider:rider_id(id, firstname, lastname, market_value, team:team_id(name))`)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-    ]);
+        supabase.from("rider_watchlist")
+          .select(`id, created_at, rider:rider_id(id, firstname, lastname, market_value, team:team_id(name))`)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
-    setActiveAuctions(activeRes.data || []);
-    setCompletedAuctions(completedRes.data || []);
-    setSentOffers(offersData.sent || []);
-    setReceivedOffers(offersData.received || []);
-    setWatchlist(watchlistRes.data || []);
-    setLastLoaded(new Date());
-    setLoading(false);
-    setRefreshing(false);
+      // #1350-mønster (delt med AuctionsPage): en supabase-fejl returnerer
+      // { data: null, error } uden at kaste — uden dette tjek ville en fejlet
+      // auktions-/watchlist-query se ud som en tom aktivitetsflade.
+      if (activeRes.error || completedRes.error || watchlistRes.error) {
+        setLoadError(true);
+        return;
+      }
+
+      setActiveAuctions(activeRes.data || []);
+      setCompletedAuctions(completedRes.data || []);
+      setSentOffers(offersData.sent || []);
+      setReceivedOffers(offersData.received || []);
+      setWatchlist(watchlistRes.data || []);
+      setLastLoaded(new Date());
+    } catch (e) {
+      // Netværk/auth-fejl der tidligere ville kaste uhåndteret og efterlade en
+      // evig loading-spinner (loading blev aldrig sat til false).
+      console.error("Activity load failed:", e);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -234,33 +247,36 @@ export default function ActivityPage() {
     { key: "history",   label: t("tabs.history"),             count: 0 },
   ];
 
-  if (loading) return (
-    <PageLoader />
-  );
-
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("header.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("header.subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {lastLoaded && (
-            <span className="text-cz-3 text-xs hidden sm:inline">
-              {t("lastUpdated", { time: formatDate(lastLoaded, null, { hour: "2-digit", minute: "2-digit" }) })}
-            </span>
-          )}
-          <button onClick={() => loadAll({ silent: true })} disabled={refreshing}
-            className="px-3 py-1.5 text-xs text-cz-2 hover:text-cz-1
-              bg-cz-card hover:bg-cz-subtle rounded-lg border border-cz-border
-              transition-all disabled:opacity-50 flex items-center gap-1.5"
-            title={t("refreshTitle")}>
-            <UndoIcon size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />
-            {refreshing ? t("refreshing") : t("refresh")}
-          </button>
-        </div>
-      </div>
+      {/* #2849 bølge 2: kanonisk PageHeader. actions-slotten bærer sidst-
+          opdateret-tidsstemplet + refresh-knappen uændret (secondary sm Button;
+          ingen gold primary-knap på denne side) — bevidst afvigelse fra
+          action-cluster-kontraktens "max 1 select + 1 primary" for at bevare
+          eksisterende refresh-feature, samme præcedens som Dashboard/Auctions
+          (bølge 1). */}
+      <PageHeader
+        title={t("header.title")}
+        subtitle={t("header.subtitle")}
+        actions={
+          <>
+            {lastLoaded && (
+              <span className="hidden sm:inline text-[13px] text-cz-3">
+                {t("lastUpdated", { time: formatDate(lastLoaded, null, { hour: "2-digit", minute: "2-digit" }) })}
+              </span>
+            )}
+            <Button
+              variant="secondary" size="sm"
+              onClick={() => loadAll({ silent: true })}
+              disabled={refreshing}
+              iconLeft={<UndoIcon size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />}
+              title={t("refreshTitle")}
+            >
+              {refreshing ? t("refreshing") : t("refresh")}
+            </Button>
+          </>
+        }
+      />
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 overflow-x-auto pb-px">
@@ -283,16 +299,33 @@ export default function ActivityPage() {
         ))}
       </div>
 
+      {/* #2849 bølge 2 — canonical states: chrome (header+tabs) renderer altid;
+          kun kropszonen herunder swapper mellem loading/error/indhold. */}
+      {loading ? (
+        <Section>
+          <SkeletonLines lines={5} />
+        </Section>
+      ) : loadError ? (
+        <Section role="alert">
+          <ErrorState
+            description={t("loadError.message")}
+            action={<Button size="sm" variant="secondary" onClick={() => loadAll()}>{t("loadError.retry")}</Button>}
+          />
+        </Section>
+      ) : (
+      <>
       {/* ── NEEDS ACTION ── */}
       {tab === "action" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          {actionCount === 0 && urgentAuctions.length === 0 ? (
-            <EmptyState icon={<CheckIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.actionTitle")} sub={t("empty.actionSub")} />
-          ) : (
-            <>
+        actionCount === 0 && urgentAuctions.length === 0 ? (
+          <Section>
+            <EmptyState icon={<CheckIcon size={26} aria-hidden="true" />} title={t("empty.actionTitle")} description={t("empty.actionSub")} />
+          </Section>
+        ) : (
+          <SectionStack>
               {actionTransfers.length > 0 && (
-                <>
-                  <SectionHeader title={t("section.offersNeedResponse")} count={actionTransfers.length} />
+                <Section>
+                  <SectionHeader title={t("section.offersNeedResponse")} meta={String(actionTransfers.length)} />
+                  <div className="divide-y divide-cz-border">
                   {actionTransfers.map(o => {
                     const isSent = sentOffers.some(s => s.id === o.id);
                     const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -308,12 +341,14 @@ export default function ActivityPage() {
                         onClick={() => navigate("/transfers")} />
                     );
                   })}
-                </>
+                  </div>
+                </Section>
               )}
 
               {urgentAuctions.length > 0 && (
-                <>
-                  <SectionHeader title={t("section.auctionsEndingSoon")} count={urgentAuctions.length} />
+                <Section>
+                  <SectionHeader title={t("section.auctionsEndingSoon")} meta={String(urgentAuctions.length)} />
+                  <div className="divide-y divide-cz-border">
                   {urgentAuctions.map(a => {
                     const isSelling = isAuctionSeller(a, myTeamId);
                     const isWinning = getAuctionLeaderId(a) === myTeamId;
@@ -338,21 +373,23 @@ export default function ActivityPage() {
                       </Row>
                     );
                   })}
-                </>
+                  </div>
+                </Section>
               )}
-            </>
-          )}
-        </div>
+          </SectionStack>
+          )
       )}
 
       {/* ── AUCTIONS ── */}
       {tab === "auctions" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          {activeAuctions.length === 0 ? (
-            <EmptyState icon={<LightningIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.auctionsTitle")} sub={t("empty.auctionsSub")} />
-          ) : (
-            <>
-              <SectionHeader title={t("section.activeAuctions")} count={activeAuctions.length} />
+        activeAuctions.length === 0 ? (
+          <Section>
+            <EmptyState icon={<LightningIcon size={26} aria-hidden="true" />} title={t("empty.auctionsTitle")} description={t("empty.auctionsSub")} />
+          </Section>
+        ) : (
+          <Section>
+            <SectionHeader title={t("section.activeAuctions")} meta={String(activeAuctions.length)} />
+            <div className="divide-y divide-cz-border">
               {activeAuctions.map(a => {
                 const isSelling = isAuctionSeller(a, myTeamId);
                 const isWinning = getAuctionLeaderId(a) === myTeamId;
@@ -377,23 +414,24 @@ export default function ActivityPage() {
                   </Row>
                 );
               })}
-            </>
-          )}
-        </div>
+            </div>
+          </Section>
+        )
       )}
 
       {/* ── TRANSFERS ── */}
       {tab === "transfers" && (
-        <div className="space-y-4">
+        <SectionStack>
           {activeReceivedOffers.length + activeSentOffers.length === 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-cz">
-              <EmptyState icon={<ExchangeIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.transfersTitle")} sub={t("empty.transfersSub")} />
-            </div>
+            <Section>
+              <EmptyState icon={<ExchangeIcon size={26} aria-hidden="true" />} title={t("empty.transfersTitle")} description={t("empty.transfersSub")} />
+            </Section>
           )}
 
           {activeReceivedOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-              <SectionHeader title={t("section.receivedOffers")} count={activeReceivedOffers.length} />
+            <Section>
+              <SectionHeader title={t("section.receivedOffers")} meta={String(activeReceivedOffers.length)} />
+              <div className="divide-y divide-cz-border">
               {activeReceivedOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
                 return (
@@ -407,12 +445,14 @@ export default function ActivityPage() {
                     onClick={() => navigate("/transfers")} />
                 );
               })}
-            </div>
+              </div>
+            </Section>
           )}
 
           {activeSentOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-              <SectionHeader title={t("section.sentOffers")} count={activeSentOffers.length} />
+            <Section>
+              <SectionHeader title={t("section.sentOffers")} meta={String(activeSentOffers.length)} />
+              <div className="divide-y divide-cz-border">
               {activeSentOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
                 return (
@@ -426,40 +466,39 @@ export default function ActivityPage() {
                     onClick={() => navigate("/transfers")} />
                 );
               })}
-            </div>
+              </div>
+            </Section>
           )}
-        </div>
+        </SectionStack>
       )}
 
       {/* ── WATCHLIST ── */}
       {tab === "watchlist" && (
-        <div>
-          <div className="flex justify-end mb-3">
-            <button onClick={() => navigate("/watchlist")}
-              className="text-sm text-cz-accent-t hover:text-cz-accent-t font-medium transition-colors">
-              {t("watchlist.goToFull")}
-            </button>
-          </div>
-          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-            {watchlist.length === 0 ? (
-              <EmptyState icon={<StarIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.watchlistTitle")}
-                sub={t("empty.watchlistSub")} />
-            ) : (
-              watchlist.map(entry => {
+        <Section>
+          <SectionHeader
+            title={tCommon("nav.item.watchlist")}
+            action={<SectionAction onClick={() => navigate("/watchlist")}>{t("watchlist.goToFull")}</SectionAction>}
+          />
+          {watchlist.length === 0 ? (
+            <EmptyState icon={<StarIcon size={26} aria-hidden="true" />} title={t("empty.watchlistTitle")}
+              description={t("empty.watchlistSub")} />
+          ) : (
+            <div className="divide-y divide-cz-border">
+              {watchlist.map(entry => {
                 const r = entry.rider;
                 const inAuction = auctionRiderIds.has(r?.id);
                 return (
                   <div key={entry.id}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors">
+                    className="flex items-center gap-3 py-[13px] hover:bg-cz-subtle transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <RiderLink id={r?.id}
-                          className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate">
+                          className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate">
                           {r?.firstname} {r?.lastname}
                         </RiderLink>
                         <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
                       </div>
-                      <p className="text-xs text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
+                      <p className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
                     </div>
                     {inAuction && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
@@ -471,28 +510,28 @@ export default function ActivityPage() {
                     </span>
                     <RiderLink id={r?.id}
                       className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">
-                      →
+                      <ChevronRightIcon size={16} aria-hidden="true" />
                     </RiderLink>
                   </div>
                 );
-              })
-            )}
-          </div>
-        </div>
+              })}
+            </div>
+          )}
+        </Section>
       )}
 
       {/* ── HISTORY ── */}
       {tab === "history" && (
-        <div className="space-y-4">
-          {completedAuctions.length + histSentOffers.length + histReceivedOffers.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-cz">
-              <EmptyState icon={<InboxIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.historyTitle")} sub={t("empty.historySub")} />
-            </div>
-          ) : (
-            <>
+        completedAuctions.length + histSentOffers.length + histReceivedOffers.length === 0 ? (
+          <Section>
+            <EmptyState icon={<InboxIcon size={26} aria-hidden="true" />} title={t("empty.historyTitle")} description={t("empty.historySub")} />
+          </Section>
+        ) : (
+          <SectionStack>
               {completedAuctions.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <SectionHeader title={t("section.auctions")} count={completedAuctions.length} />
+                <Section>
+                  <SectionHeader title={t("section.auctions")} meta={String(completedAuctions.length)} />
+                  <div className="divide-y divide-cz-border">
                   {completedAuctions.map(a => {
                     const iWon  = getAuctionLeaderId(a) === myTeamId;
                     const iSold = isAuctionSeller(a, myTeamId);
@@ -513,12 +552,14 @@ export default function ActivityPage() {
                         onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)} />
                     );
                   })}
-                </div>
+                  </div>
+                </Section>
               )}
 
               {(histReceivedOffers.length + histSentOffers.length) > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <SectionHeader title={t("section.transfers")} count={histReceivedOffers.length + histSentOffers.length} />
+                <Section>
+                  <SectionHeader title={t("section.transfers")} meta={String(histReceivedOffers.length + histSentOffers.length)} />
+                  <div className="divide-y divide-cz-border">
                   {[
                     ...histReceivedOffers.map(o => ({ ...o, _dir: "received" })),
                     ...histSentOffers.map(o => ({ ...o, _dir: "sent" })),
@@ -538,11 +579,13 @@ export default function ActivityPage() {
                           onClick={() => o.rider?.id && navigate(`/riders/${o.rider.id}`)} />
                       );
                     })}
-                </div>
+                  </div>
+                </Section>
               )}
-            </>
-          )}
-        </div>
+          </SectionStack>
+        )
+      )}
+      </>
       )}
     </div>
   );
