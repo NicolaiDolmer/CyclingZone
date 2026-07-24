@@ -18,5 +18,5 @@
       ]
     }
   ],
-  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) echo 'skip dependabot preview (#178 hardening)'; exit 0;; esac; if git diff --quiet HEAD^ HEAD -- .; then echo 'skip: no frontend/ changes in HEAD^..HEAD (deploy-quota guard)'; exit 0; fi; exit 1"
+  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) echo 'skip dependabot preview (#178 hardening)'; exit 0;; main) if git diff --quiet HEAD^ HEAD -- .; then echo 'skip: no frontend/ changes in HEAD^..HEAD (deploy-quota guard)'; exit 0; fi; exit 1;; esac; git fetch --quiet --depth=100 origin +refs/heads/main:refs/remotes/origin/main || exit 1; BASE=$(git merge-base HEAD origin/main) || exit 1; if git diff --quiet \"$BASE\" HEAD -- .; then echo 'skip: no frontend/ changes vs merge-base with main (deploy-quota guard, #2849 wave 4 fix)'; exit 0; fi; exit 1"
 }
