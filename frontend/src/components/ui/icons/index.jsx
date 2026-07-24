@@ -510,6 +510,16 @@ export function DiscordIcon(props) {
   );
 }
 
+// Refresh (#2849 bølge 5: admin-sidernes genindlæs-knapper). Cirkulær pil m. spids.
+export function RefreshIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M20 12a8 8 0 1 1-2.3-5.6" />
+      <path d="M20 3v4h-4" />
+    </IconBase>
+  );
+}
+
 // Globe (#1579 WP1: sprog-vælger). Cirkel + ækvator + meridian.
 export function GlobeIcon(props) {
   return (
