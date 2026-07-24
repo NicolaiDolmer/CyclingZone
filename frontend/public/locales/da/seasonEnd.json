@@ -4,7 +4,7 @@
   "subtitle": "{status} · kalender, slutstilling og sæsonens vindere",
   "statusOngoing": "Igangværende",
   "statusCompleted": "Afsluttet",
-  "financeReport": "📊 Finansrapport",
+  "financeReport": "Finansrapport",
   "seasonOption": "Sæson {number} · {status}",
   "empty": {
     "title": "Ingen resultater endnu",
@@ -22,7 +22,7 @@
     "stageKing": { "title": "Stage-king", "secondary": "{count, plural, one {# etapesejr} other {# etapesejre}}", "empty": "Ingen etaper kørt" }
   },
   "calendar": {
-    "heading": "📅 Kalender · {count} løb",
+    "heading": "Kalender · {count} løb",
     "expectedTotal": "Total forventet pulje for sæsonen:",
     "expectedTotalTooltip": "Live-beregnet sum af forventet pulje for alle sæsonens løb",
     "summary": "{completed} afsluttet · {scheduled} kommende",
@@ -42,5 +42,7 @@
   "you": "Dig",
   "promotion": "↑ Op",
   "relegation": "↓ Ned",
-  "myProgression": "Dit holds pointudvikling"
+  "myProgression": "Dit holds pointudvikling",
+  "loadError": "Kunne ikke indlæse sæsonen. Prøv igen.",
+  "retry": "Prøv igen"
 }
