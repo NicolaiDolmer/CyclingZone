@@ -17,7 +17,8 @@ import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
-import { Card, ChevronRightIcon } from "./ui";
+import { Card, ChevronRightIcon, Input, Select, XIcon } from "./ui";
+import { labelClass } from "./ui/fieldStyles.js";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
 // Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig),
@@ -135,11 +136,6 @@ function DualStatSlider({ statKey, label, filters, onChange, t }) {
     commitMax(v);
   };
 
-  const numberInputClass =
-    "w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-1 " +
-    "text-cz-1 text-xs font-mono text-center placeholder-cz-3 " +
-    "focus:outline-none focus:border-cz-accent";
-
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
@@ -163,33 +159,33 @@ function DualStatSlider({ statKey, label, filters, onChange, t }) {
           onMouseUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           onTouchEnd={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           onKeyUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
-          className="w-full cursor-pointer accent-amber-500"
+          className="w-full cursor-pointer accent-cz-accent"
         />
       </div>
       {/* #261: præcise tal-inputs som supplement til slideren — deler _min/_max.
           Committer ved blur og Enter, så man kan taste "45" uden en fetch pr.
           ciffer. localMin/localMax holder visningen live mens man taster. */}
       <div className="flex items-center gap-1 mt-1">
-        <input
-          type="number" inputMode="numeric" min={0} max={99} step={1}
+        <Input
+          size="sm" type="number" inputMode="numeric" min={0} max={99} step={1}
           data-testid={`stat-min-${statKey}`}
           aria-label={t("stats.minInput", { label })}
           value={localMin}
           onChange={e => setLocalMin(e.target.value)}
           onBlur={e => commitMinInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") { commitMinInput(e.target.value); e.target.blur(); } }}
-          className={numberInputClass}
+          className="text-center font-mono"
         />
         <span aria-hidden="true" className="text-cz-3 text-xs">–</span>
-        <input
-          type="number" inputMode="numeric" min={0} max={99} step={1}
+        <Input
+          size="sm" type="number" inputMode="numeric" min={0} max={99} step={1}
           data-testid={`stat-max-${statKey}`}
           aria-label={t("stats.maxInput", { label })}
           value={localMax}
           onChange={e => setLocalMax(e.target.value)}
           onBlur={e => commitMaxInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") { commitMaxInput(e.target.value); e.target.blur(); } }}
-          className={numberInputClass}
+          className="text-center font-mono"
         />
       </div>
     </div>
@@ -250,7 +246,7 @@ export default function RiderFilters({
               className={`transition-transform duration-150 ${panelOpen ? "rotate-90" : ""}`} />
             {t("panel.label")}
             {activeFilterCount > 0 && (
-              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full normal-case tracking-normal">
+              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-cz-pill normal-case tracking-normal">
                 {t("stats.active", { count: activeFilterCount })}
               </span>
             )}
@@ -277,97 +273,75 @@ export default function RiderFilters({
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.name")}</label>
-            <input type="text" data-testid="filter-name" value={filters.q} onChange={e => onChange("q", e.target.value)}
-              placeholder={t("fields.namePlaceholder")}
-              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2
-                text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+            <label className={labelClass()}>{t("fields.name")}</label>
+            <Input type="text" data-testid="filter-name" value={filters.q} onChange={e => onChange("q", e.target.value)}
+              placeholder={t("fields.namePlaceholder")} />
           </div>
 
           {/* Country */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.country")}</label>
-            <select value={filters.nationality_code} onChange={e => onChange("nationality_code", e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+            <label className={labelClass()}>{t("fields.country")}</label>
+            <Select value={filters.nationality_code} onChange={e => onChange("nationality_code", e.target.value)}>
               <option value="">{t("fields.countryAll")}</option>
               {sortedNationalities.map(code => (
                 <option key={code} value={code}>{getCountryName(code, countryLocale)}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Rider type (#49) */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{tTypes("filter.label")}</label>
-            <select value={filters.rider_type} onChange={e => onChange("rider_type", e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+            <label className={labelClass()}>{tTypes("filter.label")}</label>
+            <Select value={filters.rider_type} onChange={e => onChange("rider_type", e.target.value)}>
               <option value="">{tTypes("filter.all")}</option>
               {RIDER_TYPE_KEYS.map(key => (
                 <option key={key} value={key}>{tTypes(`types.${key}`)}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* UCI range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.valueRange")}</label>
+            <label className={labelClass()}>{t("fields.valueRange")}</label>
             <div className="flex gap-1">
-              <input type="number" value={filters.min_value} onChange={e => onChange("min_value", e.target.value)}
-                placeholder={t("fields.min")}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-              <input type="number" value={filters.max_value} onChange={e => onChange("max_value", e.target.value)}
-                placeholder={t("fields.max")}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+              <Input type="number" value={filters.min_value} onChange={e => onChange("min_value", e.target.value)}
+                placeholder={t("fields.min")} />
+              <Input type="number" value={filters.max_value} onChange={e => onChange("max_value", e.target.value)}
+                placeholder={t("fields.max")} />
             </div>
           </div>
 
           {/* Salary range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.salaryRange")}</label>
+            <label className={labelClass()}>{t("fields.salaryRange")}</label>
             <div className="flex gap-1">
-              <input type="number" value={filters.min_salary} onChange={e => onChange("min_salary", e.target.value)}
-                placeholder={t("fields.min")}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-              <input type="number" value={filters.max_salary} onChange={e => onChange("max_salary", e.target.value)}
-                placeholder={t("fields.max")}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+              <Input type="number" value={filters.min_salary} onChange={e => onChange("min_salary", e.target.value)}
+                placeholder={t("fields.min")} />
+              <Input type="number" value={filters.max_salary} onChange={e => onChange("max_salary", e.target.value)}
+                placeholder={t("fields.max")} />
             </div>
           </div>
 
           {/* Age range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.ageRange")}</label>
+            <label className={labelClass()}>{t("fields.ageRange")}</label>
             <div className="flex gap-1">
-              <input type="number" value={filters.min_age} onChange={e => onChange("min_age", e.target.value)}
-                placeholder={t("fields.min")} min={16} max={45}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-              <input type="number" value={filters.max_age} onChange={e => onChange("max_age", e.target.value)}
-                placeholder={t("fields.max")} min={16} max={45}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+              <Input type="number" value={filters.min_age} onChange={e => onChange("min_age", e.target.value)}
+                placeholder={t("fields.min")} min={16} max={45} />
+              <Input type="number" value={filters.max_age} onChange={e => onChange("max_age", e.target.value)}
+                placeholder={t("fields.max")} min={16} max={45} />
             </div>
           </div>
 
           {/* Højeste bud (auction-only) */}
           {showAuctionPriceFilter && (
             <div>
-              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.bidRange")}</label>
+              <label className={labelClass()}>{t("fields.bidRange")}</label>
               <div className="flex gap-1">
-                <input type="number" value={filters.min_auction_price} onChange={e => onChange("min_auction_price", e.target.value)}
-                  placeholder={t("fields.min")}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-                <input type="number" value={filters.max_auction_price} onChange={e => onChange("max_auction_price", e.target.value)}
-                  placeholder={t("fields.max")}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+                <Input type="number" value={filters.min_auction_price} onChange={e => onChange("min_auction_price", e.target.value)}
+                  placeholder={t("fields.min")} />
+                <Input type="number" value={filters.max_auction_price} onChange={e => onChange("max_auction_price", e.target.value)}
+                  placeholder={t("fields.max")} />
               </div>
             </div>
           )}
@@ -376,16 +350,12 @@ export default function RiderFilters({
               adskilt fra auktionens nuværende-bud-filter ovenfor. */}
           {showAskingPriceFilter && (
             <div>
-              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.askingPriceRange")}</label>
+              <label className={labelClass()}>{t("fields.askingPriceRange")}</label>
               <div className="flex gap-1">
-                <input type="number" data-testid="filter-asking-price-min" value={filters.min_asking_price} onChange={e => onChange("min_asking_price", e.target.value)}
-                  placeholder={t("fields.min")}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-                <input type="number" data-testid="filter-asking-price-max" value={filters.max_asking_price} onChange={e => onChange("max_asking_price", e.target.value)}
-                  placeholder={t("fields.max")}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+                <Input type="number" data-testid="filter-asking-price-min" value={filters.min_asking_price} onChange={e => onChange("min_asking_price", e.target.value)}
+                  placeholder={t("fields.min")} />
+                <Input type="number" data-testid="filter-asking-price-max" value={filters.max_asking_price} onChange={e => onChange("max_asking_price", e.target.value)}
+                  placeholder={t("fields.max")} />
               </div>
             </div>
           )}
@@ -397,13 +367,11 @@ export default function RiderFilters({
           {/* Team */}
           {showTeamFilter && teams.length > 0 && (
             <div>
-              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.team")}</label>
-              <select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)}
-                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2
-                  text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+              <label className={labelClass()}>{t("fields.team")}</label>
+              <Select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)}>
                 <option value="">{t("fields.teamAll")}</option>
                 {teams.map(tm => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
-              </select>
+              </Select>
             </div>
           )}
 
@@ -436,7 +404,7 @@ export default function RiderFilters({
               className={`transition-transform duration-150 ${statsOpen ? "rotate-90" : ""}`} />
             <span className="uppercase tracking-wider font-medium">{t("stats.section")}</span>
             {hasActiveStats && (
-              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full">
+              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-cz-pill">
                 {t("stats.active", { count: activeStatKeys.length })}
               </span>
             )}
@@ -513,10 +481,10 @@ function Chip({ t, label, onRemove }) {
       onClick={onRemove}
       aria-label={ariaLabel}
       className="inline-flex items-center gap-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-        text-xs px-3 min-h-[44px] rounded-full font-medium hover:bg-cz-accent/20 transition-colors"
+        text-xs px-3 min-h-[44px] rounded-cz-pill font-medium hover:bg-cz-accent/20 transition-colors"
     >
       {label}
-      <span aria-hidden="true" className="text-base leading-none">×</span>
+      <XIcon size={14} aria-hidden="true" className="flex-shrink-0" />
     </button>
   );
 }
