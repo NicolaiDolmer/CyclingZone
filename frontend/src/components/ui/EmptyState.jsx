@@ -13,7 +13,7 @@ export default function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-3 rounded-[12px] border border-dashed border-cz-border bg-cz-card px-6 py-8 text-center ${className}`}
+      className={`flex flex-col items-center justify-center gap-3 rounded-cz border border-dashed border-cz-border bg-cz-card px-6 py-8 text-center ${className}`}
     >
       {icon && <span className="text-cz-3">{icon}</span>}
       <div>

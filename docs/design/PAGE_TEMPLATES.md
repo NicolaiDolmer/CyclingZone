@@ -37,7 +37,7 @@ Reading pages (Board, Training, Finance detail, settings…).
 Dense tables (Riders, Transfers, Standings, Rankings, Results, Finance…).
 - Container: full-bleed, **capped at 1600px**, centered; filter bar shares the cap, `mb-4`.
 - Filter bar: search Input (sm, 240px) + up to 3 Selects (sm) + optional Checkbox; right-aligned data-font count/meta (12px `--text-3`).
-- Table (`cz-table` recipe): wrap = 12px radius + hairline border on `--bg-card`; header cells **11px uppercase, tracking .06em, `--text-3`**; numeric columns right-aligned tabular; row cells 13px pad 16px; row action buttons are **secondary sm** (never gold in rows).
+- Table (`cz-table` recipe): wrap = **5px radius (`rounded-cz`)** + hairline border on `--bg-card` (12px was the system's only radius outlier; converged 2026-07-24, owner call); header cells **11px uppercase, tracking .06em, `--text-3`**; numeric columns right-aligned tabular; row cells 13px pad 16px; row action buttons are **secondary sm** (never gold in rows).
 - **Sticky first column** (entity name): `position: sticky; left: 0`, opaque cell background, 1px `--border` right rule. Cell = name (13.5/500, jersey/classification dot) + data-font 10.5px uppercase subline.
 - **Zone row tints** (promotion/relegation recipe): full-row `--success-bg` / `--danger-bg` with a 2px semi-opaque success/danger separator on the zone boundary + a 9px uppercase zone pill in-row. Same recipe wherever rows form zones (standings zones, listings closing, etc.). No hover highlight on tinted rows.
 - Under the table: data-font 12px `--text-3` count line ("Showing 8 of 412 riders").
@@ -59,7 +59,7 @@ Rider, team, race detail.
 - **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost — your bids are safe."); retry = **secondary** sm ("Try again"), never gold.
 
 ## Hard don'ts
-No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (radii are 5/8/12px) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions.
+No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions.
 
 ## Migration order (suggested)
 Dashboard → Standings → Riders → the rest of Marked → Season & results → League → settings pages. One template per PR batch; check each page against the artboards in `Manager Page Templates (standalone).html`.

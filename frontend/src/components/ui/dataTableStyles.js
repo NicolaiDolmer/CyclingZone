@@ -2,7 +2,7 @@
 // Sticky første kolonne = opak cellebaggrund + 1px højre-rule; erstatter den rå
 // `shadow-[10px_0_16px_-16px_…]`-skygge der var copy-pastet i 8+ filer.
 
-export const WRAP = "overflow-hidden rounded-[12px] border border-cz-border bg-cz-card";
+export const WRAP = "overflow-hidden rounded-cz border border-cz-border bg-cz-card";
 export const SCROLLER = "overflow-x-auto";
 export const TABLE = "w-full border-collapse";
 // Count-linjen under tabellen ("Showing 8 of 412 riders").

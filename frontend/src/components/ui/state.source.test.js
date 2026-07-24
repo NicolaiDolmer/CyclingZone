@@ -7,13 +7,14 @@ import { fileURLToPath } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
 const read = (f) => readFileSync(join(dir, f), "utf8");
 
-// #2849 bølge 0: states-sheet-recipen — dashed inset (12px radius), 26px ikon,
-// titel 15px/600, beskrivelse 13px.
+// #2849 bølge 0: states-sheet-recipen — dashed inset, 26px ikon,
+// titel 15px/600, beskrivelse 13px. Bølge 4 (ejer 24/7): radius konvergeret
+// til rounded-cz (12px var systemets eneste outlier).
 test("EmptyState er dashed inset med ikon/titel/tekst/handling", () => {
   const src = read("EmptyState.jsx");
   assert.match(src, /border-dashed/);
   assert.match(src, /border-cz-border/);
-  assert.match(src, /rounded-\[12px\]/);
+  assert.match(src, /rounded-cz /);
   assert.match(src, /size=\{26\}/);
   assert.match(src, /text-\[15px\] font-semibold/);
   assert.match(src, /\{icon\}/);
