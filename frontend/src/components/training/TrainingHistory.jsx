@@ -12,6 +12,13 @@ import { useTranslation } from "react-i18next";
 import { formatDate } from "../../lib/intl.js";
 import RiderLink from "../RiderLink.jsx";
 import { daySummary, breakthroughJumps, isBreakthrough } from "../../lib/trainingReport.js";
+import { ChevronDownIcon } from "../ui/icons/index.jsx";
+import { SkeletonLines } from "../ui/Skeleton.jsx";
+import { SCROLLER, TABLE, thClass, tdClass } from "../ui/dataTableStyles.js";
+
+// #2849 bølge 4 — kanonisk dataTableStyles-chrome (T2, docs/design/PAGE_TEMPLATES.md)
+// på dags-tabellen, samme opskrift som TrainingPage's egen rapport-tabel. Ren
+// layout — rører ikke daySummary/breakthroughJumps/isBreakthrough-beregningerne.
 
 function executedByLabel(executedBy, t) {
   // cron-sweep og assistent vises ens (begge = ikke manuelt af dig).
@@ -22,15 +29,15 @@ function executedByLabel(executedBy, t) {
 // TrainingPage, men uden "Næste +1" (kræver live progress-state, ikke historik).
 function DayRiderTable({ rows, t, tRider }) {
   return (
-    <div className="overflow-x-auto border-t border-cz-border">
-      <table data-sort-exempt="Per-dag traeningsrapport i rapport-orden" className="w-full text-sm">
+    <div className={`${SCROLLER} border-t border-cz-border`}>
+      <table data-sort-exempt="Per-dag traeningsrapport i rapport-orden" className={TABLE}>
         <thead>
-          <tr className="border-b border-cz-border">
-            <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
-            <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.focus")}</th>
-            <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.intensity")}</th>
-            <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colGains")}</th>
-            <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colResult")}</th>
+          <tr>
+            <th className={thClass({ sticky: true })}>{t("colRider")}</th>
+            <th className={thClass({})}>{tRider("training.focus")}</th>
+            <th className={thClass({})}>{tRider("training.intensity")}</th>
+            <th className={thClass({})}>{t("colGains")}</th>
+            <th className={thClass({})}>{t("colResult")}</th>
           </tr>
         </thead>
         <tbody>
@@ -42,27 +49,27 @@ function DayRiderTable({ rows, t, tRider }) {
             return (
               <tr
                 key={row.rider_id}
-                className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+                className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
               >
-                <td className="px-4 py-2.5">
+                <td className={tdClass({ sticky: true })}>
                   <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
                     {row.name}
                   </RiderLink>
                   {row.injured && (
-                    <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-cz-danger-bg text-cz-danger">
+                    <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
                       {row.injury_days === 1
                         ? t("injured", { days: row.injury_days })
                         : t("injured_plural", { days: row.injury_days })}
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-cz-2">
+                <td className={tdClass({})}>
                   {row.focus ? tRider(`training.focus_${row.focus}`) : "—"}
                 </td>
-                <td className="px-4 py-2.5 text-cz-2">
+                <td className={tdClass({})}>
                   {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
                 </td>
-                <td className="px-4 py-2.5">
+                <td className={tdClass({})}>
                   {jumps.length > 0 ? (
                     <span className="text-cz-success text-xs font-medium">
                       {jumps.map((j) => (
@@ -75,7 +82,7 @@ function DayRiderTable({ rows, t, tRider }) {
                     <span className="text-cz-3 text-xs">{t("noGains")}</span>
                   )}
                 </td>
-                <td className="px-4 py-2.5">
+                <td className={tdClass({})}>
                   <div className="flex flex-col gap-0.5">
                     {row.status === "over" && <span className="text-cz-success text-xs">{t("sharpDay")}</span>}
                     {row.status === "under" && <span className="text-cz-danger text-xs">{t("flatDay")}</span>}
@@ -121,6 +128,7 @@ function DayCard({ run, t, tRider }) {
             {t("historyDaySummary", { trained: summary.trained, breakthroughs: summary.breakthroughs, peakForm: summary.peakForm })}
           </span>
           <span className="text-xs text-cz-3">{open ? t("historyToggleClose") : t("historyToggleOpen")}</span>
+          <ChevronDownIcon size={14} className={`shrink-0 text-cz-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         </div>
       </button>
       {open && rows.length > 0 && <DayRiderTable rows={rows} t={t} tRider={tRider} />}
@@ -141,8 +149,8 @@ export default function TrainingHistory({ history }) {
       </div>
 
       {loading ? (
-        <div className="bg-cz-card border border-cz-border rounded-cz flex items-center justify-center py-10">
-          <div className="w-6 h-6 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+          <SkeletonLines lines={4} />
         </div>
       ) : runs.length === 0 ? (
         <div className="bg-cz-card border border-cz-border rounded-cz text-center py-8 text-cz-3 text-sm">
