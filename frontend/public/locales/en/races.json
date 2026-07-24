@@ -588,6 +588,10 @@
     }
   },
   "history": {
+    "loadError": {
+      "message": "Could not load the race history. Please try again.",
+      "retry": "Try again"
+    },
     "backToLibrary": "← Race library",
     "editionsCount": "{count, plural, one {# edition} other {# editions}}",
     "editions": "Editions",

@@ -588,6 +588,10 @@
     }
   },
   "history": {
+    "loadError": {
+      "message": "Kunne ikke hente løbshistorikken. Prøv igen.",
+      "retry": "Prøv igen"
+    },
     "backToLibrary": "← Løbsbibliotek",
     "editionsCount": "{count, plural, one {# udgave} other {# udgaver}}",
     "editions": "Udgaver",
