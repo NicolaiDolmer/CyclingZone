@@ -496,12 +496,16 @@ export default function RaceDetailPage() {
     document.getElementById("race-selection-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
+  // sætter derfor selv side-padding (#2849 bølge 4).
   if (loading) return (
-    <PageLoader />
+    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+      <PageLoader />
+    </div>
   );
 
   if (loadError) return (
-    <div className="max-w-4xl mx-auto pt-8">
+    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
       <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
       <ErrorState
         description={t("detail.loadError.message")}
@@ -511,7 +515,7 @@ export default function RaceDetailPage() {
   );
 
   if (notFound) return (
-    <div className="max-w-4xl mx-auto pt-8">
+    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
       <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
       <EmptyState icon={<FlagIcon size={26} aria-hidden="true" />} title={t("empty.raceNotFound")} />
     </div>
@@ -545,12 +549,10 @@ export default function RaceDetailPage() {
     // browser-oversættere der muterer tekst-noderne er samme crash-klasse som de
     // Sentry-dokumenterede NotFoundError-flader. Se PR #2272.
     <div translate="no">
-      {/* T3 hero-bånd — --bg-card + 1px bundrule, bleeder ud til kanten af Layout's
-          padded content-container (-mx/-mt kompenserer Layout's p-4/md:p-6).
-          KENDT BEGRÆNSNING: Layout.jsx centrerer stadig #races/:id i max-w-6xl
-          (ikke i WIDE_CONTENT_ROUTES), så båndet bleeder til content-boksens
-          kant, ikke til sidebar-kanten — se PR-beskrivelsen. */}
-      <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 bg-cz-card border-b border-cz-border">
+      {/* T3 hero-bånd — --bg-card + 1px bundrule. Layout's full-bleed-route-bucket
+          (#2849 bølge 4) giver denne rute ingen padding/cap, så båndet bleeder ægte
+          edge-to-edge (til sidebar-kanten); siden ejer selv indre max-w-5xl + padding. */}
+      <div className="bg-cz-card border-b border-cz-border">
         <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
           <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5">
             {backLabel}
@@ -581,7 +583,7 @@ export default function RaceDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-16">
+      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
           {/* S4: kommende løb — race-DNA-gestalt + etape-stribe + valgt-etape-panel

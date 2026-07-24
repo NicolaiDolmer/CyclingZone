@@ -4,8 +4,10 @@ import { WRAP, COUNT, thClass, tdClass, trClass, zonePillClass, mergeRowProps } 
 
 // #2849 bølge 0 — cz-table-recipen (T2, docs/design/PAGE_TEMPLATES.md).
 
-test("wrap: 12px radius + hairline på bg-card, ingen skygge", () => {
-  assert.ok(WRAP.includes("rounded-[12px]"));
+// #2849 bølge 4 (ejer 24/7): 12px-wrap var systemets eneste radius-outlier
+// (alt andet chrome er rounded-cz 5px) — konvergeret til rounded-cz.
+test("wrap: rounded-cz + hairline på bg-card, ingen skygge", () => {
+  assert.ok(WRAP.includes("rounded-cz "));
   assert.ok(WRAP.includes("border-cz-border"));
   assert.ok(WRAP.includes("bg-cz-card"));
   assert.ok(!WRAP.includes("shadow"));

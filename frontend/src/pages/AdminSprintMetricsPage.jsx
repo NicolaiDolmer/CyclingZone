@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import {
+  Card, Button, Select, Table, Tr, Th, Td,
+  PageLoader, EmptyState, ErrorState, SkeletonLines,
+  DownloadIcon, InfoIcon,
+} from "../components/ui";
 
 const WINDOW_OPTIONS = [
   { value: "24h",    label: "24 timer" },
@@ -95,16 +100,18 @@ function buildCsv(metrics) {
 function KpiCard({ label, value, delta, tooltip }) {
   const deltaClass = delta?.dir === "up" ? "text-cz-success" : delta?.dir === "down" ? "text-cz-danger" : "text-cz-3";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+    <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="text-cz-3 text-xs uppercase tracking-wide">{label}</p>
         {tooltip && (
-          <span className="text-cz-3 text-xs cursor-help" title={tooltip}>ⓘ</span>
+          <span title={tooltip} className="cursor-help text-cz-3">
+            <InfoIcon size={14} aria-hidden="true" />
+          </span>
         )}
       </div>
-      <p className="text-cz-1 text-2xl font-bold mt-1">{value}</p>
+      <p className="text-cz-1 text-2xl font-bold font-data tabular-nums mt-1">{value}</p>
       {delta && <p className={`text-xs mt-1 ${deltaClass}`}>{delta.text}<span className="text-cz-3 ms-1">vs 7d</span></p>}
-    </div>
+    </Card>
   );
 }
 
@@ -189,18 +196,14 @@ export default function AdminSprintMetricsPage() {
   }
 
   if (adminStatus === "checking") {
-    return (
-      <div className="min-h-[40vh] flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoader label="Checker adgang" minHeight="40vh" />;
   }
   if (adminStatus === "not_admin") {
     return <Navigate to="/dashboard" replace />;
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
@@ -211,41 +214,33 @@ export default function AdminSprintMetricsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <select
-            value={windowChoice}
-            onChange={e => setWindowChoice(e.target.value)}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent"
-          >
+          <Select value={windowChoice} onChange={e => setWindowChoice(e.target.value)} size="sm">
             {WINDOW_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <button
-            onClick={loadMetrics}
-            disabled={loading}
-            className="px-3 py-2 bg-cz-subtle border border-cz-border rounded-lg text-cz-1 text-sm hover:bg-cz-card disabled:opacity-50"
-          >
-            {loading ? "Henter..." : "↻ Genindlæs"}
-          </button>
-          <button
+          </Select>
+          <Button variant="secondary" size="sm" onClick={loadMetrics} disabled={loading}>
+            {loading ? "Henter..." : "Genindlæs"}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            iconLeft={<DownloadIcon size={14} aria-hidden="true" />}
             onClick={handleExportCsv}
             disabled={!metrics}
-            className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50"
           >
-            ⬇ CSV
-          </button>
+            CSV
+          </Button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-cz-danger-bg0/20 border border-cz-danger/30 text-cz-danger rounded-lg p-3 text-sm">
-          ❌ {error === "forbidden" ? "403 — du er ikke admin." : error}
-        </div>
+        <ErrorState
+          title="Kunne ikke hente metrics"
+          description={error === "forbidden" ? "403 — du er ikke admin." : error}
+          action={<Button variant="secondary" size="sm" onClick={loadMetrics}>Prøv igen</Button>}
+        />
       )}
 
-      {!metrics && loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {!metrics && loading && <PageLoader label="Henter metrics" minHeight="30vh" />}
 
       {kpis && (
         <>
@@ -259,77 +254,84 @@ export default function AdminSprintMetricsPage() {
             <KpiCard label={`Aktive i ${windowChoice}`} value={kpis.active.value}  delta={kpis.active.delta}  tooltip={TOOLTIPS.active} />
           </div>
 
-          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+          <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-cz-3 text-xs uppercase tracking-wide">Top 5 features ({windowChoice})</p>
-              <span className="text-cz-3 text-xs cursor-help" title={TOOLTIPS.features}>ⓘ</span>
+              <span title={TOOLTIPS.features} className="cursor-help text-cz-3">
+                <InfoIcon size={14} aria-hidden="true" />
+              </span>
             </div>
             {(metrics.top_features || []).length === 0 ? (
-              <p className="text-cz-3 text-sm">Ingen feature-events i valgt vindue endnu. Tilføj instrumentering via <code className="text-cz-1">logEvent(&quot;feature_xxx_yyy&quot;)</code>.</p>
+              <EmptyState
+                title="Ingen feature-events endnu"
+                description={<>Tilføj instrumentering via <code className="text-cz-1">logEvent(&quot;feature_xxx_yyy&quot;)</code>.</>}
+              />
             ) : (
-              <table data-sort-exempt="Fast top-5, server-sorteret" className="w-full text-sm">
-                <thead className="text-cz-3 text-xs uppercase">
-                  <tr>
-                    <th className="text-left py-1">Event</th>
-                    <th className="text-right py-1">Antal</th>
-                  </tr>
+              <Table data-sort-exempt="Fast top-5, server-sorteret">
+                <thead>
+                  <Tr>
+                    <Th>Event</Th>
+                    <Th numeric>Antal</Th>
+                  </Tr>
                 </thead>
                 <tbody>
                   {metrics.top_features.map(f => (
-                    <tr key={f.name} className="border-t border-cz-border">
-                      <td className="py-1.5 text-cz-1 font-mono text-xs">{f.name}</td>
-                      <td className="py-1.5 text-cz-1 text-right">{fmtNumber(f.count)}</td>
-                    </tr>
+                    <Tr key={f.name}>
+                      <Td className="font-mono text-xs">{f.name}</Td>
+                      <Td numeric>{fmtNumber(f.count)}</Td>
+                    </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             )}
-          </div>
+          </Card>
 
-          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+          <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-cz-3 text-xs uppercase tracking-wide">Signup-kohorte-retention (go/no-go · #1168)</p>
-              <span className="text-cz-3 text-xs cursor-help" title={TOOLTIPS.cohort}>ⓘ</span>
+              <span title={TOOLTIPS.cohort} className="cursor-help text-cz-3">
+                <InfoIcon size={14} aria-hidden="true" />
+              </span>
             </div>
             {!cohorts ? (
-              <p className="text-cz-3 text-sm">Henter…</p>
+              <SkeletonLines lines={4} />
             ) : cohorts.length === 0 ? (
-              <p className="text-cz-3 text-sm">Ingen signups i de seneste 8 uger.</p>
+              <EmptyState title="Ingen signups" description="Ingen signups i de seneste 8 uger." />
             ) : (
-              <table data-sort-exempt="Kohorte-retention, kronologisk lille tabel" className="w-full text-sm">
-                <thead className="text-cz-3 text-xs uppercase">
-                  <tr>
-                    <th className="text-left py-1">Signup-uge</th>
-                    <th className="text-right py-1">Kohorte</th>
-                    <th className="text-right py-1">D1</th>
-                    <th className="text-right py-1">D3</th>
-                    <th className="text-right py-1">D7</th>
-                  </tr>
+              <Table data-sort-exempt="Kohorte-retention, kronologisk lille tabel">
+                <thead>
+                  <Tr>
+                    <Th>Signup-uge</Th>
+                    <Th numeric>Kohorte</Th>
+                    <Th numeric>D1</Th>
+                    <Th numeric>D3</Th>
+                    <Th numeric>D7</Th>
+                  </Tr>
                 </thead>
                 <tbody>
                   {cohorts.map(c => (
-                    <tr key={c.cohort_week} className="border-t border-cz-border">
-                      <td className="py-1.5 text-cz-1 font-mono text-xs">{c.cohort_week}</td>
-                      <td className="py-1.5 text-cz-1 text-right">{fmtNumber(c.cohort_size)}</td>
-                      <td className="py-1.5 text-right">{fmtCohortCell(c.d1_pct, c.d1_returned, c.d1_eligible)}</td>
-                      <td className="py-1.5 text-right">{fmtCohortCell(c.d3_pct, c.d3_returned, c.d3_eligible)}</td>
-                      <td className="py-1.5 text-right">{fmtCohortCell(c.d7_pct, c.d7_returned, c.d7_eligible)}</td>
-                    </tr>
+                    <Tr key={c.cohort_week}>
+                      <Td className="font-mono text-xs">{c.cohort_week}</Td>
+                      <Td numeric>{fmtNumber(c.cohort_size)}</Td>
+                      <Td numeric>{fmtCohortCell(c.d1_pct, c.d1_returned, c.d1_eligible)}</Td>
+                      <Td numeric>{fmtCohortCell(c.d3_pct, c.d3_returned, c.d3_eligible)}</Td>
+                      <Td numeric>{fmtCohortCell(c.d7_pct, c.d7_returned, c.d7_eligible)}</Td>
+                    </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             )}
-          </div>
+          </Card>
 
-          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+          <Card className="p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">Hvordan opdaterer jeg SPRINT_DASHBOARD.md?</p>
             <ol className="text-cz-1 text-sm space-y-1 list-decimal list-inside">
               <li>Vælg vindue ovenfor (typisk &quot;7 dage&quot; for ugentlig sprint-update).</li>
-              <li>Klik <span className="text-cz-accent font-bold">⬇ CSV</span>.</li>
+              <li>Klik <span className="text-cz-accent font-bold">CSV</span>.</li>
               <li>Åbn <code>docs/SPRINT_DASHBOARD.md</code> &quot;Game-metrics&quot;-tabellen og overskriv &quot;Nu&quot; + &quot;Trend (7d)&quot;-kolonnerne med tal fra CSV.</li>
               <li>Commit med <code>Refs #365</code>.</li>
             </ol>
-          </div>
+          </Card>
         </>
       )}
     </div>

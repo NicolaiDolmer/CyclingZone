@@ -1,1 +1,35 @@
-{}
+{
+  "title": "Patch notes",
+  "subtitle": "What's new in Cycling Zone Manager",
+  "search": {
+    "ariaLabel": "Search updates",
+    "placeholder": "Search updates…"
+  },
+  "filter": {
+    "ariaLabel": "Filter by category"
+  },
+  "category": {
+    "all": "All",
+    "new": "New",
+    "improved": "Improved",
+    "fixed": "Fixed"
+  },
+  "newBadge": "New",
+  "fallbackLang": {
+    "da": "Danish",
+    "en": "English"
+  },
+  "loadError": "Couldn't load updates",
+  "loadErrorBody": "Nothing was lost. Try reloading the page.",
+  "retry": "Try again",
+  "loading": {
+    "label": "Loading updates"
+  },
+  "empty": {
+    "title": "No updates match",
+    "description": "Try a different search term or category."
+  },
+  "footer": {
+    "hiddenNote": "Internal and technical notes are hidden from this page."
+  }
+}

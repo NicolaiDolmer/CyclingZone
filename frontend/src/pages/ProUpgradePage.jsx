@@ -3,29 +3,64 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useSubscription } from "../lib/useSubscription";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import {
+  PageHeader,
+  PageLoader,
+  ErrorState,
+  Section,
+  SectionStack,
+  SectionHeader,
+  Button,
+  CrownIcon,
+  CheckIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
+
+// #2849 bølge 4 — kanonisk T1 (docs/design/PAGE_TEMPLATES.md). Købs-/checkout-
+// logikken (startCheckout, Stripe-redirect, founder-seat-fetch) er UÆNDRET —
+// kun sidehoved, container, states og pris-/feature-chrome er migreret.
+const PLANS = [
+  { key: "monthly", priceKey: "monthlyPrice", noteKey: null },
+  { key: "semiannual", priceKey: "semiannualPrice", noteKey: "semiannualNote" },
+];
 
 export default function ProUpgradePage() {
   const { t } = useTranslation("pro");
   const [teamId, setTeamId] = useState(null);
+  // Full-page load-gate (#2849 bølge 4): siden havde INGEN loading-state før —
+  // team-opslaget kunne fejle stille og efterlade en "ikke-Pro"-flig af siden
+  // synlig et øjeblik før subscription-status var kendt (en købsside uden
+  // loading-gate). teamLoading dækker selve team-opslaget herunder;
+  // useSubscription leverer sin egen `loading` for subscription-opslaget —
+  // begge kombineres til `initializing` nedenfor. Rører IKKE checkout-kaldet.
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [seats, setSeats] = useState(null);
+  const [interval, setInterval_] = useState("semiannual"); // forudvalgt: samme plan der tidligere havde accent-fremhævning
 
   useDocumentHead({ title: t("metaTitle") });
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      const { data: team } = await supabase
-        .from("teams").select("id").eq("user_id", session.user.id).single();
-      if (alive) setTeamId(team?.id ?? null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) { if (alive) setTeamLoading(false); return; }
+        const { data: team, error } = await supabase
+          .from("teams").select("id").eq("user_id", session.user.id).single();
+        if (error) throw error;
+        if (alive) { setTeamId(team?.id ?? null); setTeamLoading(false); }
+      } catch (e) {
+        console.error("ProUpgradePage: team load failed", e);
+        if (alive) { setLoadError(true); setTeamLoading(false); }
+      }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [retryToken]);
 
   // Live seat-counter (#1903) — offentligt, ikke-sensitivt endpoint. Fejler den
   // stille (progressive enhancement, ikke kritisk for checkout-flowet).
@@ -42,10 +77,11 @@ export default function ProUpgradePage() {
     return () => { alive = false; };
   }, []);
 
-  const { isPro, isFounder } = useSubscription(teamId);
+  const { isPro, isFounder, loading: subLoading } = useSubscription(teamId);
+  const initializing = teamLoading || subLoading;
   const seatsLeft = seats ? Math.max(seats.cap - seats.taken, 0) : null;
 
-  async function startCheckout(interval) {
+  async function startCheckout(selectedInterval) {
     setBusy(true);
     setErr(null);
     try {
@@ -53,7 +89,7 @@ export default function ProUpgradePage() {
       const res = await fetch(`${API}/api/billing/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ interval: selectedInterval }),
       });
       if (!res.ok) throw new Error("checkout failed");
       const { checkout_url } = await res.json();
@@ -68,55 +104,92 @@ export default function ProUpgradePage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-10">
-      <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-none text-cz-1">{t("title")}</h1>
-      <p className="text-cz-2 mt-4 leading-relaxed">{t("subtitle")}</p>
+    <div className="max-w-4xl mx-auto">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      {seats && (
-        <div className="mt-6 border border-cz-border rounded-cz px-5 py-4">
-          <div className="text-cz-3 text-xs uppercase tracking-wider">{t("founderHeading")}</div>
-          <div className="font-data text-2xl text-cz-1 mt-1 tabular-nums">
-            {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
-          </div>
-          {seatsLeft > 0 && (
-            <div className="text-cz-3 text-[11px] mt-0.5">{t("founderSeatsRemaining", { remaining: seatsLeft })}</div>
-          )}
-          <p className="text-cz-2 text-sm mt-3 leading-relaxed">{t("founderExplainer")}</p>
-        </div>
-      )}
-
-      {isPro ? (
-        <p className="mt-8 border-l-2 border-cz-accent bg-cz-subtle rounded-cz px-5 py-4 text-cz-1">
-          {isFounder ? t("alreadyFounder") : t("alreadyPro")}
-        </p>
+      {initializing ? (
+        <PageLoader label={t("metaTitle")} />
+      ) : loadError ? (
+        <ErrorState
+          description={t("loadError.message")}
+          action={
+            <Button variant="secondary" size="sm" onClick={() => setRetryToken(n => n + 1)}>
+              {t("loadError.retry")}
+            </Button>
+          }
+        />
       ) : (
-        <>
-          {err && <p className="text-cz-danger text-sm mt-4">{err}</p>}
-          <div className="grid sm:grid-cols-2 gap-4 mt-8">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => startCheckout("monthly")}
-              className="border border-cz-border rounded-cz p-5 text-left hover:bg-cz-subtle transition-colors disabled:opacity-50"
-            >
-              <div className="text-cz-3 text-xs uppercase tracking-wider">{t("monthly")}</div>
-              <div className="font-data text-2xl text-cz-1 mt-1 tabular-nums">{t("monthlyPrice")}</div>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => startCheckout("semiannual")}
-              className="border border-cz-accent border-t-2 rounded-cz p-5 text-left hover:bg-cz-subtle transition-colors disabled:opacity-50"
-            >
-              <div className="text-cz-3 text-xs uppercase tracking-wider">{t("semiannual")}</div>
-              <div className="font-data text-2xl text-cz-1 mt-1 tabular-nums">{t("semiannualPrice")}</div>
-              <div className="text-cz-3 text-[11px] mt-0.5">{t("semiannualNote")}</div>
-            </button>
-          </div>
-        </>
+        <SectionStack>
+          {seats && (
+            <Section>
+              <SectionHeader title={t("founderHeading")} />
+              <div className="font-data text-2xl text-cz-1 tabular-nums">
+                {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
+              </div>
+              {seatsLeft > 0 && (
+                <p className="mt-0.5 text-[11px] text-cz-3">{t("founderSeatsRemaining", { remaining: seatsLeft })}</p>
+              )}
+              <p className="mt-3 text-sm leading-relaxed text-cz-2">{t("founderExplainer")}</p>
+            </Section>
+          )}
+
+          {isPro ? (
+            <Section>
+              <div className="flex items-center gap-2.5 text-cz-1">
+                {isFounder ? (
+                  <CrownIcon size={18} aria-hidden="true" className="flex-shrink-0 text-cz-accent-t" />
+                ) : (
+                  <CheckIcon size={18} aria-hidden="true" className="flex-shrink-0 text-cz-accent-t" />
+                )}
+                <p className="text-[13.5px] leading-relaxed">{isFounder ? t("alreadyFounder") : t("alreadyPro")}</p>
+              </div>
+            </Section>
+          ) : (
+            <Section>
+              <SectionHeader title={t("choosePlan")} />
+
+              {err && <p className="mb-4 text-sm text-cz-danger">{err}</p>}
+
+              <div role="radiogroup" aria-label={t("choosePlan")} className="grid gap-3 sm:grid-cols-2">
+                {PLANS.map(plan => {
+                  const selected = interval === plan.key;
+                  return (
+                    <button
+                      key={plan.key}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={busy}
+                      onClick={() => setInterval_(plan.key)}
+                      className={`rounded-cz border p-4 text-left transition-colors disabled:opacity-50 ${
+                        selected ? "border-cz-accent bg-cz-accent/5" : "border-cz-border hover:bg-cz-subtle"
+                      }`}
+                    >
+                      <div className="font-data text-xs uppercase tracking-wider text-cz-3">{t(plan.key)}</div>
+                      <div className="font-data mt-1 text-2xl tabular-nums text-cz-1">{t(plan.priceKey)}</div>
+                      {plan.noteKey && <div className="mt-0.5 text-[11px] text-cz-3">{t(plan.noteKey)}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="primary"
+                size="md"
+                fullWidth
+                loading={busy}
+                disabled={busy}
+                onClick={() => startCheckout(interval)}
+                className="mt-5"
+              >
+                {t("cta")}
+              </Button>
+            </Section>
+          )}
+        </SectionStack>
       )}
 
-      <p className="text-cz-3 text-xs mt-8 leading-relaxed">{t("fairnessNote")}</p>
+      <p className="mt-6 text-xs leading-relaxed text-cz-3">{t("fairnessNote")}</p>
     </div>
   );
 }

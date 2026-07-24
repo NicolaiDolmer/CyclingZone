@@ -28,7 +28,15 @@ const I18N_INDEX = join(SRC_DIR, "i18n", "index.js");
 // der naturligt allerede har en loading-state (admin-tools bag spinner) eller
 // af komponenter der ikke render på first paint. Tilføj med begrundelse.
 const INLINE_EXEMPT = new Set([
-  // Tom indtil videre. Hvis du tilføjer: skriv hvorfor + hvilken side.
+  // #2849 bølge 4: sjældent besøgte content-sider hvor namespacet lazy-loades
+  // via HttpBackend og SELVE SIDEN gater render på useTranslation's `ready`-flag
+  // bag PageLoader (ingen raw keys på first paint — kravet er opfyldt af gaten,
+  // ikke af inlining). help.json alene var 121 KB raw pr. sprog (~29% af
+  // index-chunkens rå vægt) — splittet er bundle-budgettets strukturelle fix.
+  // Tilføjer du et namespace her, SKAL forbruger-siden have en ready-gate.
+  "help", // kun HelpPage.jsx — ready-gate + PageLoader
+  "rules", // kun RulesPage.jsx — ready-gate + PageLoader
+  "patchnotes", // kun PatchNotesPage.jsx — ready indgår i eksisterende PageLoader-gate
 ]);
 
 function walk(dir, files = []) {
