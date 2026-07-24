@@ -21,7 +21,7 @@ import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
-  PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
+  PageLoader, EmptyState, ChevronDownIcon, TeamIcon, XIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
@@ -433,49 +433,55 @@ export default function TrainingPage() {
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </td>
 
-        {/* Fokus */}
+        {/* Fokus. Ejer-kvalitetspas 24/7 (#2849): select bred nok til fulde
+            fokus-labels (før: max-w-[150px] klippede til "Thr…"), clear-knap er
+            et rigtigt XIcon-ghost-target på samme linje (før: løst "×"-glyf-
+            tegn under selecten — anti-slop). */}
         <td className={tdClass({})}>
-          <div className="max-w-[150px]">
-            <Select
-              size="sm"
-              value={plan?.focus ?? ""}
-              disabled={busy}
-              aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
-              onChange={(e) => {
-                const newFocus = e.target.value;
-                if (!newFocus) return;
-                handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
-              }}
-            >
-              <option value="">—</option>
-              {TRAINING_FOCUS_KEYS.map((k) => {
-                const level = riderTrainability[k];
-                const marker = level ? t(`trainability_${level}`) : "";
-                return (
-                  <option key={k} value={k}>
-                    {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
-                  </option>
-                );
-              })}
-            </Select>
+          <div className="flex items-center gap-1">
+            <div className="w-[184px]">
+              <Select
+                size="sm"
+                value={plan?.focus ?? ""}
+                disabled={busy}
+                aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
+                onChange={(e) => {
+                  const newFocus = e.target.value;
+                  if (!newFocus) return;
+                  handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
+                }}
+              >
+                <option value="">—</option>
+                {TRAINING_FOCUS_KEYS.map((k) => {
+                  const level = riderTrainability[k];
+                  const marker = level ? t(`trainability_${level}`) : "";
+                  return (
+                    <option key={k} value={k}>
+                      {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
+                    </option>
+                  );
+                })}
+              </Select>
+            </div>
+            {plan?.focus && (
+              <button
+                type="button"
+                onClick={() => handleClearPlan(rider.id)}
+                disabled={busy}
+                className="inline-flex h-6 w-6 flex-none items-center justify-center rounded-cz text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-danger disabled:opacity-40"
+                title={tRider("training.remove")}
+                aria-label={tRider("training.remove")}
+              >
+                <XIcon size={12} aria-hidden="true" />
+              </button>
+            )}
           </div>
-          {plan?.focus && (
-            <button
-              type="button"
-              onClick={() => handleClearPlan(rider.id)}
-              disabled={busy}
-              className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
-              title={tRider("training.remove")}
-            >
-              ×
-            </button>
-          )}
           {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus assistenten
               rent faktisk træner dem med (backend-leveret, samme regel som bulk-
               smart-mode og dailyTraining.js' resolveProgram — INGEN frontend-dublet
               af type→fokus-mappingen). */}
           {!plan?.focus && smartDefaultFocus[rider.id] && (
-            <div className="mt-0.5 text-[10px] text-cz-3">
+            <div className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3">
               {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
             </div>
           )}
@@ -531,9 +537,15 @@ export default function TrainingPage() {
               kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
               Uden dette forsvandt hele forklaringen for ryttere uden eget fokus, som
               stille fulgte holdrytmen uden nogen synlig grund. */}
+          {/* Ejer-kvalitetspas 24/7: den fulde kilde-forklaring gentaget som prosa
+              under HVER række var visuel støj — kompakt T2-meta-linje med den
+              fulde forklaring som title-tooltip i stedet. */}
           {teamRhythmActive && (
-            <div className="mt-0.5 text-[10px] text-cz-3">
-              {t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+            <div
+              className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3"
+              title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+            >
+              {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
             </div>
           )}
         </td>
@@ -544,8 +556,10 @@ export default function TrainingPage() {
             netop-wrappet bar ikke læses som nul fremgang. */}
         <td className={tdClass({})}>
           {isFocusFullyCapped(plan?.focus, capped[rider.id]) ? (
+            /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
+               kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
             <span
-              className="inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill border bg-cz-subtle text-cz-2 border-cz-border"
+              className="font-data text-[10px] uppercase tracking-[.06em] text-cz-3 cursor-help"
               title={t("focusCappedTitle")}
             >
               {t("focusCapped")}
