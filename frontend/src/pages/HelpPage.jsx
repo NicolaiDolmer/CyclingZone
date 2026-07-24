@@ -3,6 +3,17 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import {
+  PageHeader,
+  Card,
+  Section,
+  SectionHeader,
+  Input,
+  EmptyState,
+  Tabs,
+  TabList,
+  Tab,
+} from "../components/ui";
+import {
   InfoIcon,
   RocketIcon,
   ClipboardIcon,
@@ -24,6 +35,7 @@ import {
   JerseyIcon,
   ChevronDownIcon,
   SettingsIcon,
+  SearchIcon,
 } from "../components/ui/icons/index.jsx";
 
 const SECTION_DEFS = [
@@ -400,6 +412,12 @@ function buildFaq(t, vars) {
   }));
 }
 
+// Sidenav item — shared between the desktop sticky rail and the mobile
+// horizontal tab row so icon + active-state markup stays in one place.
+function NavIcon({ Icon }) {
+  return <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />;
+}
+
 export default function HelpPage() {
   const { t, i18n } = useTranslation("help");
   const [searchParams] = useSearchParams();
@@ -446,48 +464,54 @@ export default function HelpPage() {
       )
     : null;
 
+  const hasSearchResults = (filteredSections?.length ?? 0) > 0 || filteredFAQ.length > 0;
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-      </div>
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
 
       {/* Search */}
       <div className="mb-5">
-        <input
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("page.searchPlaceholder")}
           aria-label={t("common:a11y.searchHelp")}
-          className="w-full bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-cz-1 text-sm
-            placeholder-cz-3 focus:outline-none focus:border-cz-accent/40"
         />
       </div>
 
       {search ? (
         /* Search results */
         <div className="space-y-4">
+          {!hasSearchResults && (
+            <EmptyState
+              icon={<SearchIcon size={26} aria-hidden="true" />}
+              title={t("page.searchResults.emptyTitle")}
+              description={t("page.searchResults.emptyDescription")}
+            />
+          )}
           {filteredSections && filteredSections.length > 0 && (
             <div>
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
                 {t("page.searchResults.sectionsHeading")}
               </p>
-              {filteredSections.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => {
-                    setSearch("");
-                    setActiveSection(s.key);
-                  }}
-                  className="w-full text-left bg-cz-card border border-cz-border rounded-cz px-4 py-3 mb-2
-                    hover:border-cz-border transition-all"
-                >
-                  <p className="text-cz-1 text-sm flex items-center gap-2">
-                    <s.Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> <span>{s.label}</span>
-                  </p>
-                </button>
-              ))}
+              <div className="flex flex-col gap-2">
+                {filteredSections.map((s) => (
+                  <Card key={s.key} className="p-0">
+                    <button
+                      onClick={() => {
+                        setSearch("");
+                        setActiveSection(s.key);
+                      }}
+                      className="w-full text-left px-4 py-3"
+                    >
+                      <p className="text-cz-1 text-sm flex items-center gap-2">
+                        <NavIcon Icon={s.Icon} /> <span>{s.label}</span>
+                      </p>
+                    </button>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
           {filteredFAQ.length > 0 && (
@@ -495,49 +519,73 @@ export default function HelpPage() {
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
                 {t("page.searchResults.faqHeading")}
               </p>
-              {filteredFAQ.map((f) => (
-                <div
-                  key={f.id}
-                  className="bg-cz-card border border-cz-border rounded-cz px-4 py-3 mb-2"
-                >
-                  <p className="text-cz-1 text-sm font-medium mb-1">{f.q}</p>
-                  <p className="text-cz-2 text-sm">{f.a}</p>
-                </div>
-              ))}
+              <div className="flex flex-col gap-2">
+                {filteredFAQ.map((f) => (
+                  <Card key={f.id} className="px-4 py-3">
+                    <p className="text-cz-1 text-sm font-medium mb-1">{f.q}</p>
+                    <p className="text-cz-2 text-sm">{f.a}</p>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="flex gap-4">
-          {/* Sidebar */}
-          <div className="w-40 flex-shrink-0">
-            <div className="flex flex-col gap-1">
+        <div className="md:flex md:gap-4">
+          {/* Mobile fallback (<md): sidenav becomes a horizontal scrollable tab
+              row above the content, reusing the canonical Tabs recipe (its
+              tabListClass already ships overflow-x-auto). Presentation-only
+              swap — same activeSection state drives both. */}
+          <div className="md:hidden mb-4">
+            <Tabs value={activeSection} onChange={setActiveSection}>
+              <TabList label={t("page.title")}>
+                {sections.map((s) => (
+                  <Tab key={s.key} value={s.key}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <NavIcon Icon={s.Icon} />
+                      {s.label}
+                    </span>
+                  </Tab>
+                ))}
+                <Tab value="faq">
+                  <span className="inline-flex items-center gap-1.5">
+                    <NavIcon Icon={InfoIcon} />
+                    {t("page.faqLabel")}
+                  </span>
+                </Tab>
+              </TabList>
+            </Tabs>
+          </div>
+
+          {/* Desktop (md+): sticky sidenav */}
+          <div className="hidden md:block w-40 flex-shrink-0">
+            <div className="sticky top-7 flex flex-col gap-1">
               {sections.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setActiveSection(s.key)}
-                  className={`text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2
+                  className={`text-left px-3 py-2 rounded-cz text-xs transition-all flex items-center gap-2
                     ${
                       activeSection === s.key
                         ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
                         : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                     }`}
                 >
-                  <s.Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  <NavIcon Icon={s.Icon} />
                   <span>{s.label}</span>
                 </button>
               ))}
               <div className="h-px bg-cz-subtle my-1" />
               <button
                 onClick={() => setActiveSection("faq")}
-                className={`text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2
+                className={`text-left px-3 py-2 rounded-cz text-xs transition-all flex items-center gap-2
                   ${
                     activeSection === "faq"
                       ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
                       : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                   }`}
               >
-                <InfoIcon className="w-4 h-4 flex-shrink-0" />
+                <NavIcon Icon={InfoIcon} />
                 <span>{t("page.faqLabel")}</span>
               </button>
             </div>
@@ -550,10 +598,7 @@ export default function HelpPage() {
                 <h2 className="text-cz-1 font-bold text-base mb-4">{t("page.faqHeading")}</h2>
                 <div className="flex flex-col gap-2">
                   {faq.map((f, i) => (
-                    <div
-                      key={f.id}
-                      className="bg-cz-card border border-cz-border rounded-cz overflow-hidden"
-                    >
+                    <Card key={f.id} className="overflow-hidden">
                       <button
                         onClick={() => setFaqOpen(faqOpen === i ? null : i)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left"
@@ -571,7 +616,7 @@ export default function HelpPage() {
                           <p className="text-cz-2 text-sm leading-relaxed">{f.a}</p>
                         </div>
                       )}
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -580,13 +625,10 @@ export default function HelpPage() {
                 <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
                   <currentSection.Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
                 </h2>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-[14px]">
                   {currentSection.content.map((block, i) => (
-                    <div
-                      key={i}
-                      className="bg-cz-card border border-cz-border rounded-cz p-4"
-                    >
-                      <h3 className="text-cz-1 font-semibold text-sm mb-2">{block.title}</h3>
+                    <Section key={i}>
+                      <SectionHeader as="h3" title={block.title} />
                       {block.text && (
                         <p className="text-cz-2 text-sm leading-relaxed">{block.text}</p>
                       )}
@@ -644,7 +686,7 @@ export default function HelpPage() {
                           {block.disclaimer}
                         </p>
                       )}
-                    </div>
+                    </Section>
                   ))}
                 </div>
               </div>
