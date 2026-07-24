@@ -410,6 +410,16 @@
     "action": "Set your line-up"
   },
   "detail": {
+    "loadError": {
+      "message": "Couldn't load the race. Nothing was lost. Try again.",
+      "retry": "Try again"
+    },
+    "stat": {
+      "status": "Status",
+      "stages": "Stages",
+      "season": "Season",
+      "nextStage": "Next stage"
+    },
     "backToLibrary": "← Race library",
     "back": "← Back",
     "raceDnaLabel": "This race:",
@@ -458,6 +468,7 @@
       "team": "Team classification"
     },
     "classTab": {
+      "ariaLabel": "Classification",
       "stage": "Stage",
       "gc": "Overall",
       "points": "Points",
