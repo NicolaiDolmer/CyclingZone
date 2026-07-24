@@ -132,7 +132,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "feedback", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "sponsor", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap", "training", "academy", "klub", "staff", "staffOverview", "landing", "rules", "calendar", "pro", "scouting", "planner", "globalRank"],
+    // NB: help/rules/patchnotes står BEVIDST ikke i init-listen — de lazy-loades
+    // først når deres side mountes (react-i18next kalder loadNamespaces via
+    // useTranslation). Stod de her, ville init vente på 6 HTTP-loads ved boot
+    // (da + en-fallback × 3) og forsinke alt der køer på init (fx changeLanguage).
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "banners", "feedback", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "sponsor", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap", "training", "academy", "klub", "staff", "staffOverview", "landing", "calendar", "pro", "scouting", "planner", "globalRank"],
     defaultNS: "common",
     // #2849 bølge 4: help/rules/patchnotes er IKKE i resources (lazy via
     // HttpBackend, se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs).
