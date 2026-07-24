@@ -17,5 +17,10 @@
   "founderSeatsRemaining": "{remaining} seats left",
   "founderSeatsFull": "All Founder seats are taken. New subscribers still get full Pro.",
   "founderExplainer": "The first 50 paying subscribers become Founders. Founders keep a permanent Founder badge, even if the subscription later lapses.",
-  "fairnessNote": "Never pay-to-win: money buys depth, comfort and cosmetics, never a competitive edge."
+  "fairnessNote": "Never pay-to-win: money buys depth, comfort and cosmetics, never a competitive edge.",
+  "choosePlan": "Choose your plan",
+  "loadError": {
+    "message": "We couldn't load your subscription details. Nothing was lost and your account is unaffected.",
+    "retry": "Try again"
+  }
 }

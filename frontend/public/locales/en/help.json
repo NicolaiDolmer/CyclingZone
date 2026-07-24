@@ -5,7 +5,9 @@
     "searchPlaceholder": "Search help and FAQ...",
     "searchResults": {
       "sectionsHeading": "Sections",
-      "faqHeading": "FAQ"
+      "faqHeading": "FAQ",
+      "emptyTitle": "No matches",
+      "emptyDescription": "Try a different search term."
     },
     "faqLabel": "FAQ",
     "faqHeading": "Frequently asked questions"

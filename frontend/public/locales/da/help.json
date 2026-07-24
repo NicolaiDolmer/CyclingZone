@@ -5,7 +5,9 @@
     "searchPlaceholder": "Søg i hjælp og FAQ...",
     "searchResults": {
       "sectionsHeading": "Sektioner",
-      "faqHeading": "FAQ"
+      "faqHeading": "FAQ",
+      "emptyTitle": "Ingen resultater",
+      "emptyDescription": "Prøv et andet søgeord."
     },
     "faqLabel": "FAQ",
     "faqHeading": "Ofte stillede spørgsmål"
