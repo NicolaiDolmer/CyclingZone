@@ -1,5 +1,5 @@
 {
-  "title": "Race Calendar",
+  "title": "Race calendar",
   "eyebrow": "Season {number} · {days} race days",
   "eyebrowNoDays": "Season {number}",
   "loadingAria": "Loading race calendar",
@@ -65,5 +65,10 @@
   },
   "moreRaces": "+{count} more",
   "prevMonth": "Previous month",
-  "nextMonth": "Next month"
+  "nextMonth": "Next month",
+  "error": {
+    "title": "Couldn't load the calendar",
+    "description": "Something went wrong loading the race calendar. Try again in a moment.",
+    "retry": "Try again"
+  }
 }

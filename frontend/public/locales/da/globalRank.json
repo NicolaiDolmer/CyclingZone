@@ -10,6 +10,7 @@
   "placesUnit": "pladser",
   "divisionAll": "Alle divisioner",
   "division": "Division {n}",
+  "divisionSelectLabel": "Division",
   "searchPlaceholder": "Søg hold...",
   "noMatch": "Ingen hold matcher din søgning",
   "noData": "Ingen Global Rank-data endnu",

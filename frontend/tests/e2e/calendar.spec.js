@@ -17,12 +17,14 @@ async function gotoCalendar(page) {
 test("kalenderen renderer header, faner, måneds-grid og legend", async ({ page }) => {
   await gotoCalendar(page);
 
-  // Header: eyebrow + condensed titel.
-  await expect(page.getByRole("heading", { name: "Race Calendar" })).toBeVisible();
+  // Header: kanonisk PageHeader (#2849 bølge 3). DA-titlen var før et engelsk
+  // leftover ("Race Calendar") — match begge sprog så testen ikke er koblet til
+  // LanguageDetector-valget (samme mønster som core-smoke).
+  await expect(page.getByRole("heading", { name: /^(Race calendar|Løbskalender)$/i })).toBeVisible();
   await expect(page.getByText(/Sæson 1 · 60 løbsdage/)).toBeVisible();
 
   // Faner (Mit hold default, Alle hold, Divisioner).
-  const tablist = page.getByRole("tablist", { name: "Race Calendar" });
+  const tablist = page.getByRole("tablist", { name: /^(Race calendar|Løbskalender)$/i });
   await expect(tablist.getByRole("tab")).toHaveCount(3);
   await expect(page.getByRole("tab", { name: "Mit hold" })).toHaveAttribute("aria-selected", "true");
 

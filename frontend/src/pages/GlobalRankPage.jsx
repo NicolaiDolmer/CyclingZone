@@ -5,7 +5,10 @@ import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
 import { useGlobalRank } from "../hooks/useGlobalRank";
-import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
+import {
+  Card, EmptyState, ErrorState, PageHeader, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon,
+} from "../components/ui";
+import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 
@@ -90,30 +93,94 @@ export default function GlobalRankPage() {
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const divCounts = ALL_DIVISIONS.map(d => ({ div: d, count: teams.filter(row => row.division === d).length }));
 
-  if (loading) return <PageLoader />;
-
-  if (error) return (
-    <div className="max-w-full">
-      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("title")}</h1>
-      <div className="text-center py-16 text-cz-3">
-        <p>{t("loadError")}</p>
-        <button onClick={() => { setPage(0); reload(); }}
-          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("retry")}
-        </button>
+  if (loading) return (
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <div className={`${WRAP} p-5`}>
+        <SkeletonLines lines={6} />
       </div>
     </div>
   );
 
+  // #2849 bølge 3: hand-rolled fejl-banner (rounded-lg + ad-hoc knap) erstattet
+  // af den kanoniske ErrorState — samme genindlæsning (setPage(0) + reload()).
+  if (error) return (
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <ErrorState
+        title={t("loadError")}
+        action={<Button size="sm" variant="secondary" onClick={() => { setPage(0); reload(); }}>{t("retry")}</Button>}
+      />
+    </div>
+  );
+
+  // #2849 bølge 3 — DataTable-kolonner (T2 wide-data-recipe). Rang + bevægelse +
+  // holdnavn + badges samlet i ÉN sticky navnecelle (samme mønster som
+  // StandingsPage's renderTeamCell), i stedet for separate "#"/"Bevægelse"-kolonner.
+  const columns = [
+    {
+      key: "team",
+      header: t("thTeam"),
+      sticky: true,
+      render: (row) => {
+        const isMe = row.team_id === myTeamId;
+        return (
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={`font-mono font-bold text-sm ${row.global_rank === 1 ? "text-cz-accent-t" : row.global_rank <= 3 ? "text-cz-2" : "text-cz-3"}`}>
+              #{row.global_rank}
+            </span>
+            <MovementBadge movement={row.movement} t={t} />
+            <TeamLink id={row.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{row.name}</TeamLink>
+            {isMe && (
+              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
+                {t("youBadge")}
+              </span>
+            )}
+            {row.is_ai && (
+              <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-[9px] font-medium uppercase text-cz-3">
+                {t("aiBadge")}
+              </span>
+            )}
+            {row.is_rookie && (
+              <span className="shrink-0 rounded border border-cz-accent/30 px-1 py-0.5 text-[9px] font-medium uppercase text-cz-accent-t">
+                {t("rookieBadge")}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: "division",
+      header: t("thDivision"),
+      fold: true,
+      foldValue: (row) => t("division", { n: row.division }),
+      render: (row) => <span className="text-xs font-medium" style={{ color: divColor(row.division) }}>{t("division", { n: row.division })}</span>,
+    },
+    {
+      key: "score",
+      header: t("thScore"),
+      numeric: true,
+      render: (row) => <span className="font-bold text-cz-1">{formatNumber(row.global_points)}</span>,
+    },
+  ];
+
+  // Leder-guld-tint (global_rank===1) + "mig"-ring (samme inset-konvention som
+  // StandingsPage's rowProps) + helrække-klik til holdsiden.
+  function rowProps(row) {
+    const isMe = row.team_id === myTeamId;
+    const isLeader = row.global_rank === 1;
+    return {
+      onClick: () => navigate(`/teams/${row.team_id}?tab=results`),
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}`,
+      style: isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined,
+    };
+  }
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-          <p className="text-cz-3 text-sm">{t("subtitle")}</p>
-        </div>
-      </div>
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       {/* Egen placering — fastgjort bånd øverst, altid synlig uanset filter/side (godkendt mockup). */}
       {myRow && (
@@ -133,25 +200,23 @@ export default function GlobalRankPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         <div>
-          {/* Division-faner */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <button onClick={() => setDivFilter(DIV_ALL)}
-              className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
-                ${divFilter === DIV_ALL ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
-              {t("divisionAll")}
-              <span className="ms-2 text-[10px] opacity-60">({teams.length})</span>
-            </button>
-            {divCounts.map(({ div, count }) => (
-              <button key={div} onClick={() => setDivFilter(div)}
-                className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
-                  ${divFilter === div ? "border-opacity-30 text-cz-1" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
-                style={divFilter === div ? { backgroundColor: divColor(div, 0.08), borderColor: divColor(div, 0.25), color: divColor(div) } : {}}>
-                {t("division", { n: div })}
-                <span className="ms-2 text-[10px] opacity-60">({count})</span>
-              </button>
-            ))}
-            <Input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={t("searchPlaceholder")} className="w-44 ms-auto" />
+          {/* Filter-bar (T2-recept): division-select + search Input. */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Select
+              size="sm"
+              aria-label={t("divisionSelectLabel")}
+              value={divFilter}
+              onChange={(e) => setDivFilter(e.target.value === DIV_ALL ? DIV_ALL : Number(e.target.value))}
+            >
+              <option value={DIV_ALL}>{t("divisionAll")} ({teams.length})</option>
+              {divCounts.map(({ div, count }) => (
+                <option key={div} value={div}>{t("division", { n: div })} ({count})</option>
+              ))}
+            </Select>
+            <div className="w-60">
+              <Input type="text" size="sm" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder={t("searchPlaceholder")} />
+            </div>
           </div>
 
           {filtered.length === 0 ? (
@@ -160,54 +225,18 @@ export default function GlobalRankPage() {
               title={search ? t("noMatch") : t("noData")}
             />
           ) : (
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table data-sort-exempt="Global Rank, inherent weighted point order" className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-cz-border">
-                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-10">#</th>
-                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thMovement")}</th>
-                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
-                      <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thDivision")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thScore")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map(row => {
-                      const isMe = row.team_id === myTeamId;
-                      return (
-                        <tr key={row.team_id}
-                          onClick={() => navigate(`/teams/${row.team_id}?tab=results`)}
-                          style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : {}}
-                          className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
-                            ${row.global_rank === 1 ? "bg-cz-accent/[0.08]" : ""}`}>
-                          <td className="px-4 py-3.5">
-                            <span className={`font-mono font-bold text-sm ${row.global_rank === 1 ? "text-cz-accent-t" : row.global_rank <= 3 ? "text-cz-2" : "text-cz-3"}`}>
-                              {row.global_rank}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 hidden sm:table-cell"><MovementBadge movement={row.movement} t={t} /></td>
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <TeamLink id={row.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{row.name}</TeamLink>
-                              {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
-                              {row.is_ai && <span className="text-[9px] font-medium uppercase text-cz-3 border border-cz-border px-1 py-0.5 rounded">{t("aiBadge")}</span>}
-                              {row.is_rookie && <span className="text-[9px] font-medium uppercase text-cz-accent-t border border-cz-accent/30 px-1 py-0.5 rounded">{t("rookieBadge")}</span>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 hidden sm:table-cell">
-                            <span className="text-xs font-medium" style={{ color: divColor(row.division) }}>{t("division", { n: row.division })}</span>
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-mono font-bold text-cz-1">{formatNumber(row.global_points)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <>
+              <DataTable
+                label={t("title")}
+                columns={columns}
+                rows={pageRows}
+                rowKey={(row) => row.team_id}
+                rowProps={rowProps}
+                count={t("legendFormula")}
+              />
 
               {totalPages > 1 && (
-                <div className="px-4 py-3 border-t border-cz-border flex items-center justify-between text-xs text-cz-3">
+                <div className="mt-3 flex items-center justify-between text-xs text-cz-3">
                   <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}
                     className="px-3 py-1.5 rounded-cz border border-cz-border disabled:opacity-40 disabled:cursor-not-allowed hover:text-cz-1">
                     {t("prevPage")}
@@ -219,11 +248,7 @@ export default function GlobalRankPage() {
                   </button>
                 </div>
               )}
-
-              <div className="px-4 py-3 border-t border-cz-border text-xs text-cz-3">
-                {t("legendFormula")}
-              </div>
-            </Card>
+            </>
           )}
         </div>
 
