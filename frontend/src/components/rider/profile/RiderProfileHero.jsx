@@ -87,6 +87,7 @@ function StatusBanner({ banner }) {
 export default function RiderProfileHero({
   rider,
   viewer = "own",                 // "own" | "scouting"
+  showTeam = true,                // false når switcher-baren allerede viser holdnavnet (ejer-runde 3: aldrig dobbelt)
   overallRating,
   age,
   typeLabel,
@@ -160,15 +161,18 @@ export default function RiderProfileHero({
               </span>
             </div>
 
-            {/* Hold (+ AI-tag) — står KUN her (fjernet fra switcher-baren, ejer-feedback) */}
-            <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
-              <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
-              {isAiTeam && (
-                <span className="text-[9px] uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz">
-                  {t("profile.hero.aiTag")}
-                </span>
-              )}
-            </p>
+            {/* Hold (+ AI-tag) — kun når switcher-baren ikke allerede bærer
+                holdnavnet i toppen (ejer-runde 3: navnet må aldrig stå dobbelt) */}
+            {showTeam && (
+              <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
+                <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
+                {isAiTeam && (
+                  <span className="text-[9px] uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz">
+                    {t("profile.hero.aiTag")}
+                  </span>
+                )}
+              </p>
+            )}
 
             {/* Kommende hold (handel til næste sæson) */}
             {pendingTeam && (

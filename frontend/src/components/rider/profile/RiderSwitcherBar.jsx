@@ -20,7 +20,7 @@ function shortName(rider) {
   return `${initial}${rider.lastname ?? ""}`.trim();
 }
 
-export default function RiderSwitcherBar({ prevRider, nextRider, index, total, onNavigate }) {
+export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index, total, onNavigate }) {
   const { t } = useTranslation("rider");
 
   // Keyboard ←/→ — kun når fokus ikke er i et input/textarea/select (så pile-
@@ -37,11 +37,11 @@ export default function RiderSwitcherBar({ prevRider, nextRider, index, total, o
     return () => window.removeEventListener("keydown", onKey);
   }, [prevRider, nextRider, onNavigate]);
 
-  // Ejer-runde 24/7 (2. iteration): tilbage til #2000-originalens indrykkede
+  // Ejer-runde 24/7 (2.+3. iteration): tilbage til #2000-originalens indrykkede
   // kort-look (sticky, afrundet på sm+, edge-to-edge stribe på mobil) — hero'en
-  // er et kort igen, og switcheren skal matche. Holdnavnet er FJERNET (stod
-  // dobbelt: også under navnet i hero'en); midten er kun index-pill + hint.
-  // Guldlinjen bor på hero-KORTET, ikke her.
+  // er et kort igen, og switcheren skal matche. Holdnavnet bor HER (ejer: "så
+  // lækkert ud i toppen"); hero'en viser kun sin holdnavn-linje når switcheren
+  // ikke renderes, så navnet aldrig står dobbelt. Guldlinjen bor på hero-KORTET.
   return (
     <div className="sticky top-0 z-sticky -mx-4 sm:mx-0 bg-cz-elevated border-b border-cz-border sm:border sm:rounded-cz mb-4">
       <div className="px-4 sm:px-3 py-2 flex items-center gap-3">
@@ -55,8 +55,11 @@ export default function RiderSwitcherBar({ prevRider, nextRider, index, total, o
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(prevRider)}</span>
         </button>
 
-        {/* Midte: index + hint */}
+        {/* Midte: hold + index + hint */}
         <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+          {teamName && (
+            <span className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate">{teamName}</span>
+          )}
           {index != null && total != null && (
             <span className="font-mono tabular-nums text-[11px] text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
               {index} / {total}

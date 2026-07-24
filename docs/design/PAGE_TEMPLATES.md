@@ -44,13 +44,18 @@ Dense tables (Riders, Transfers, Standings, Rankings, Results, Finance…).
 - **Mobile ≤640px:** name column pinned (min ~148px), secondary text columns (age, type, contract) fold into the name cell's subline; numeric columns scroll horizontally under the pinned column. Filter bar collapses to search + two half-width selects.
 
 ## T3 · Profile / detail page
-Rider, team, race detail.
-- **Hero band:** `--bg-card` with 1px `--border` bottom rule, full-bleed; inner content **max-w-5xl (1024px)**, `pt-5 px-8`.
-  - Back link (12px/500 `--text-2`, chevron-left) → Avatar (lg, initials, never gold) → CategoryTags (specialty, nationality) + data-font meta line → name in **Bebas Neue 40px, ALL CAPS, line-height .92**.
-  - Actions right: one secondary (icon allowed) + the view's one primary.
-  - **Stat row:** 1px top rule, `pt-4`; blocks separated by 1px `--border` right rules (24px padding/margin); label 10px uppercase tracking .1em `--text-3`; value data font **20px/650** tabular; optional 11px delta in success/danger.
-  - Tabs sit on the band's bottom edge (gold 2px underline on active; 14px/500 labels; `margin-bottom: -1px` so tab rule fuses with the band rule).
-- Content: **max-w-5xl (1024px)**, `pt-6 px-8 pb-16`; two-column grid `1.55fr / 1fr`, `gap 14px`; all blocks are canonical section cards.
+Rider, team, race detail. **Revised 2026-07-24 (owner): the hero is a CARD, not a full-bleed band** — containment and air on all sides beat edge-to-edge. The rider profile is the reference implementation.
+- Page container: **max-w-5xl (1024px)**, centered, `pt-4 md:pt-6 px-4 md:px-8`; content continues in the same width, `pb-16` (mobile `pb-24` clears MobileQuickNav).
+- **Back link** (12px/500 `--text-2`) sits ABOVE the hero card, on the page background.
+- Optional **context strip** (roster switcher etc.): inset sticky card above the hero — `--bg-elevated`, hairline border, 5px radius on sm+ (edge-to-edge strip on mobile), `mb-4`. Carries the team/context name (display font uppercase, 14px) + index pill. No keyline here.
+- **Hero card (the ONE anatomy):** canonical card — `--bg-card`, 1px `--border`, **5px radius** — with a **2px gold keyline on its top edge** (the T3 signature; the line follows the rounded corner). Padding 20-24px.
+  - Identity slot left (people/teams): **96px square**, 5px radius, `--bg-subtle` + hairline; initials in Bebas + optional 9px uppercase "PHOTO" label where real photos may come later (riders, staff). Entity pages without portraits (races) omit the slot.
+  - **Name FIRST** in **Bebas Neue 40px, ALL CAPS, line-height .92** — CategoryTags + data-font meta line sit UNDER the name (tags are metadata; the name is the page's most important word).
+  - Quiet icon/secondary actions top-right; the view's action row sits at the card's bottom after a hairline rule (ONE gold primary).
+  - **Stat row:** 1px top rule, `pt-4`; label 10px uppercase tracking .1em `--text-3`; value data font **20px/650** tabular; optional 11px delta in success/danger. **Rating renders as a color plate** (statColor value on a 16%-alpha same-color tint, 5px radius). **Potential renders stars only** (qualitative label in tooltip, never inline; no level badge).
+  - Duplication rule: the team/context name lives in the context strip when present; the hero shows its own team line only when there is no strip. Nothing appears twice.
+- **Tabs sit BELOW the hero card** on the page background: own 1px `--border` bottom rule; active tab = gold 2px underline overlapping the rule (`margin-bottom: -1px`); 14px/500 labels; horizontal scroll on mobile.
+- Content: same **max-w-5xl**; two-column grid `1.55fr / 1fr`, `gap 14px` where content naturally splits; all blocks are canonical section cards.
 - Data-as-imagery: stage profiles / sparklines are inline SVG strokes (2px `--text-1` line, `--bg-subtle` flat fill, data-font 10px axis labels). Never photos, never gradients.
 
 ## Canonical states (inside a section card — chrome always renders, only the body swaps)

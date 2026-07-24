@@ -1464,6 +1464,7 @@ export default function RiderStatsPage() {
           <RiderSwitcherBar
             prevRider={prevRider}
             nextRider={nextRider}
+            teamName={rider.team?.name ?? t(isRetired ? "header.retired" : "header.freeAgent")}
             index={rosterIdx + 1}
             total={roster.length}
             onNavigate={(rid) => navigate(`/riders/${rid}`)}
@@ -1474,6 +1475,7 @@ export default function RiderStatsPage() {
           <RiderProfileHero
             rider={rider}
             viewer={isMyRider ? "own" : "scouting"}
+            showTeam={!hasSwitcher}
             overallRating={overallRating}
             age={age}
             typeLabel={typeLabel}
