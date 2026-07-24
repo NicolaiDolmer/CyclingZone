@@ -57,6 +57,7 @@
     "history": "History"
   },
   "history": {
+    "subtitle": "Your completed auctions: bought, sold and lost bids.",
     "tabActive": "Active",
     "tabHistory": "History ({count})",
     "statBought": "Bought",

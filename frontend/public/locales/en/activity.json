@@ -67,5 +67,9 @@
   "watchlist": {
     "goToFull": "Go to full watchlist →",
     "freeAgent": "Free agent"
+  },
+  "loadError": {
+    "message": "Could not load your activity. Please try again.",
+    "retry": "Try again"
   }
 }

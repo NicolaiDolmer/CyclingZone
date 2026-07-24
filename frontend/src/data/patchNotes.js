@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.51",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "The market pages now share the same visual language",
+          "body": "Riders, transfers, watchlist, activity, auction history, rider rankings and the staff overview now follow the same page layout as the rest of the app: one header style, one table style with a pinned name column that folds extra columns in on mobile, and clearer messages when a list is empty or fails to load. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Markedssiderne deler nu samme visuelle sprog",
+          "body": "Ryttere, transfers, ønskeliste, aktivitet, auktionshistorik, rytterrangliste og personale-oversigten følger nu samme sideopbygning som resten af appen: én header-stil, én tabel-stil med fastlåst navnekolonne der folder ekstra kolonner ind på mobil, og tydeligere beskeder når en liste er tom eller ikke kan hentes. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.50",
     "date": "2026-07-23",
     "label": "Beta",

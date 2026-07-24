@@ -67,5 +67,9 @@
   "watchlist": {
     "goToFull": "Gå til fuld Ønskeliste →",
     "freeAgent": "Fri agent"
+  },
+  "loadError": {
+    "message": "Kunne ikke hente din aktivitet. Prøv igen.",
+    "retry": "Prøv igen"
   }
 }

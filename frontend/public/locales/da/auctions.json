@@ -57,6 +57,7 @@
     "history": "Historik"
   },
   "history": {
+    "subtitle": "Dine afsluttede auktioner: købt, solgt og tabte bud.",
     "tabActive": "Aktive",
     "tabHistory": "Historik ({count})",
     "statBought": "Købt",

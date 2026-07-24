@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 // potentiale fjernet fra visning + sortering (doctrine #1138). Kilde-tekst-test
 // (samme mønster som RidersPage.statBar/pendingTeam) holder strukturen ærlig
 // hvis nogen ruller en af kolonnerne tilbage.
+//
+// #2849 bølge 2: tabellen migrerede fra den delte <SortTh sortKey=...>-komponent
+// til ui/DataTable's kolonne-config (sortKey som objekt-property, ikke JSX-prop).
+// Assertions opdateret til det nye mønster — den sorterbare adfærd er uændret.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, "RidersPage.jsx"), "utf8");
@@ -15,24 +19,24 @@ const src = readFileSync(join(__dirname, "RidersPage.jsx"), "utf8");
 test("Hold-kolonnen er sortérbar (#1537)", () => {
   assert.match(
     src,
-    /<SortTh sortKey="team_id"/,
-    "Hold-headeren skal være en <SortTh sortKey=\"team_id\"> — var en død header før #1537",
+    /sortKey: "team_id"/,
+    "Hold-kolonnen skal have sortKey: \"team_id\" i DataTable-config'en — var en død header før #1537",
   );
 });
 
 test("Status-kolonnen er sortérbar (#1537)", () => {
   assert.match(
     src,
-    /<SortTh sortKey="is_u25"/,
-    "Status-headeren skal være sortérbar (alders-tier) per #1537",
+    /sortKey: "is_u25"/,
+    "Status-kolonnen skal have sortKey: \"is_u25\" (alders-tier) per #1537",
   );
 });
 
 test("Ryttertype har sin egen sortérbare kolonne (#1537)", () => {
   assert.match(
     src,
-    /<SortTh sortKey="primary_type"/,
-    "Ryttertype skal stå i sin egen <SortTh sortKey=\"primary_type\">-kolonne, ikke blandet med Status",
+    /sortKey: "primary_type"/,
+    "Ryttertype skal stå i sin egen kolonne med sortKey: \"primary_type\", ikke blandet med Status",
   );
   assert.match(
     src,

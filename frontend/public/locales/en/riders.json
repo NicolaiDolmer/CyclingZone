@@ -5,6 +5,8 @@
     "watchlistLink": "My Watchlist ({count})",
     "loadingAria": "Loading riders"
   },
+  "loadError": "Couldn't load the riders. Please try again.",
+  "retry": "Try again",
   "table": {
     "nation": "Nation",
     "rider": "Rider",
@@ -60,6 +62,7 @@
     "season": "Season {n}",
     "noActiveSeason": "No active season",
     "ridersCount": "{count} riders",
+    "ownerFilterLabel": "Filter by owner",
     "searchPlaceholder": "Search rider name…",
     "noResults": "No results found",
     "noResultsFor": "No results found for \"{q}\"",
