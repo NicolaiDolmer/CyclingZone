@@ -1,5 +1,5 @@
 {
-  "title": "Race Calendar",
+  "title": "Løbskalender",
   "eyebrow": "Sæson {number} · {days} løbsdage",
   "eyebrowNoDays": "Sæson {number}",
   "loadingAria": "Indlæser løbskalender",

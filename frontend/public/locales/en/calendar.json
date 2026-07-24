@@ -1,5 +1,5 @@
 {
-  "title": "Race Calendar",
+  "title": "Race calendar",
   "eyebrow": "Season {number} · {days} race days",
   "eyebrowNoDays": "Season {number}",
   "loadingAria": "Loading race calendar",

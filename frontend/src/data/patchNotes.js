@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.52",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Season and results pages now share the same visual language",
+          "body": "Results, calendar, global rank, race history, race points, season overview and the race detail page now follow the same page layout as the rest of the app. The race detail page got a new header band with key facts at a glance, wide tables now scroll inside their own box on mobile instead of stretching the page, and every page shows a clear message with a retry button if data fails to load. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Sæson- og resultatsiderne deler nu samme visuelle sprog",
+          "body": "Resultater, kalender, global rangliste, løbshistorik, løbspoint, sæsonoverblik og løbets detaljeside følger nu samme sideopbygning som resten af appen. Løbets detaljeside har fået et nyt topbånd med nøgletal, brede tabeller scroller nu i deres egen boks på mobil i stedet for at strække siden, og alle sider viser en tydelig besked med en prøv-igen-knap hvis data ikke kan hentes. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.51",
     "date": "2026-07-24",
     "label": "Beta",
