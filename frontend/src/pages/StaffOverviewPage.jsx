@@ -5,7 +5,7 @@
 //
 // #2849 bølge 2 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
 // PageHeader-recipe, ui/DataTable (sticky navn+rolle/hold-subline, mobil-fold,
-// count-linje) i stedet for den rå <table> + hånd-rullet sticky-thead-skygge,
+// count-linje) i stedet for den rå table-markup + hånd-rullet sticky-thead-skygge,
 // canoniske SkeletonLines/EmptyState/ErrorState. Ren layout-migrering — INGEN
 // ændringer i filtre, sortering, klik-til-profil eller dataflow.
 import { useEffect, useMemo, useState } from "react";
