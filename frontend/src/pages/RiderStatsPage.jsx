@@ -35,7 +35,6 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
 import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
-import { winsOnTerrainKeys } from "../lib/riderTerrain.js";
 import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
 import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
 import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
@@ -1393,8 +1392,6 @@ export default function RiderStatsPage() {
   const salaryText = rider.contract_length != null
     ? `${formatNumber(rider.salary)} CZ$`
     : `~${formatNumber(getRiderSalary(rider))} CZ$`;
-  const winsOnText = winsOnTerrainKeys(rider.primary_type, rider.secondary_type)
-    .map((k) => t(`terrain.${k}`)).join(", ") || null;
   // Status-banner: auktion > akademi > kontrakt-udløb (egne ryttere).
   let statusBanner = null;
   if (activeAuction) {
@@ -1415,6 +1412,7 @@ export default function RiderStatsPage() {
   const rosterIdx = roster.findIndex((r) => String(r.id) === String(rider.id));
   const prevRider = rosterIdx > 0 ? roster[rosterIdx - 1] : null;
   const nextRider = rosterIdx >= 0 && rosterIdx < roster.length - 1 ? roster[rosterIdx + 1] : null;
+  const hasSwitcher = roster.length > 1 && rosterIdx >= 0;
 
   return (
     // #2253: translate="no" — rytterprofilen (dynamiske stats/scouting-flader)
@@ -1449,13 +1447,10 @@ export default function RiderStatsPage() {
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
-      {/* #2748: en pensioneret rytter frigives til team_id=null ved sæsonskiftet, men
-          han er ikke en fri agent man kan hente — hero'en skal sige "Pensioneret". */}
-      {roster.length > 1 && rosterIdx >= 0 && (
+      {hasSwitcher && (
         <RiderSwitcherBar
           prevRider={prevRider}
           nextRider={nextRider}
-          teamName={rider.team?.name ?? t(isRetired ? "header.retired" : "header.freeAgent")}
           index={rosterIdx + 1}
           total={roster.length}
           onNavigate={(rid) => navigate(`/riders/${rid}`)}
@@ -1464,8 +1459,10 @@ export default function RiderStatsPage() {
 
       {/* T3 hero-bånd — --bg-card + 1px bundrule, full-bleed (Layout giver denne
           rute ingen padding/cap, #2849 bølge 4/5); siden ejer selv indre max-w-5xl +
-          padding. Tabs sidder på båndets bundkant (RiderProfileTabs -mb-px). */}
-      <div className="bg-cz-card border-b border-cz-border">
+          padding. Tabs sidder på båndets bundkant (RiderProfileTabs -mb-px).
+          Guld-keyline (T3-signatur, ejer 24/7) sidder på switcher-baren når den
+          findes — ellers her på båndet, så toppen altid bærer linjen. */}
+      <div className={`bg-cz-card border-b border-cz-border ${hasSwitcher ? "" : "border-t-2 border-t-cz-accent"}`}>
         <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
           <RiderProfileHero
             rider={rider}
@@ -1478,7 +1475,6 @@ export default function RiderStatsPage() {
             valueLabel={riderValueLabel}
             valueTrendWindow={riderValueTrendWindow}
             salaryText={salaryText}
-            winsOnText={winsOnText}
             isAiTeam={isAiRider}
             pendingTeam={pendingTeam}
             banner={statusBanner}

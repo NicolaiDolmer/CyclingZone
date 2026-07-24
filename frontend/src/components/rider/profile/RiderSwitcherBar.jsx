@@ -20,7 +20,7 @@ function shortName(rider) {
   return `${initial}${rider.lastname ?? ""}`.trim();
 }
 
-export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index, total, onNavigate }) {
+export default function RiderSwitcherBar({ prevRider, nextRider, index, total, onNavigate }) {
   const { t } = useTranslation("rider");
 
   // Keyboard ←/→ — kun når fokus ikke er i et input/textarea/select (så pile-
@@ -37,8 +37,12 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index
     return () => window.removeEventListener("keydown", onKey);
   }, [prevRider, nextRider, onNavigate]);
 
+  // #2849 bølge 5 (ejer-feedback): baren er hero-båndets top-stribe, ikke sit
+  // eget løsrevne bånd — samme bg som båndet (bg-cz-card) + guld-keyline øverst
+  // (T3-signaturen). Holdnavnet er FJERNET her (stod dobbelt: også under navnet
+  // i hero'en); midten er kun index-pill + keyboard-hint.
   return (
-    <div className="sticky top-0 z-sticky bg-cz-elevated border-b border-cz-border">
+    <div className="sticky top-0 z-sticky bg-cz-card border-t-2 border-t-cz-accent border-b border-b-cz-border">
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-2 flex items-center gap-3">
         {/* Forrige */}
         <button
@@ -50,9 +54,8 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(prevRider)}</span>
         </button>
 
-        {/* Midte: hold + index + hint */}
+        {/* Midte: index + hint */}
         <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
-          <span className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate">{teamName}</span>
           {index != null && total != null && (
             <span className="font-mono tabular-nums text-[11px] text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
               {index} / {total}

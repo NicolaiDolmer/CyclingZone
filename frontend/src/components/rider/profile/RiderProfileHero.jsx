@@ -9,8 +9,10 @@
 // #2849 bølge 5: migreret til den kanoniske T3-hero-anatomi (PAGE_TEMPLATES.md)
 // — komponenten ejer IKKE længere sin egen bg/border/padding (siden ejer
 // full-bleed-båndet + max-w-5xl-containeren); den renderer kun indholdet:
-// back-link → avatar → CategoryTags/meta → Bebas-navn → stat-række (label
-// 10px uppercase / value 20px/650 tabular, HeroStatBlock-anatomien).
+// back-link → foto-slot → Bebas-navn → CategoryTags/meta → stat-række (label
+// 10px uppercase / value 20px/650 tabular). Ejer-runde 24/7: navn FØRST (tags
+// er metadata), foto-slot i stedet for cirkel-avatar, rating som farveplade,
+// potentiale = stjerner alene (label i tooltip, niveau-badge skjult), winsOn ude.
 //
 // Token-only: ENESTE rå hex er division-chippen (blå rgb(96 165 250), spec-
 // undtagelse). Rating-farve via statColor (SSOT). Potentiale ALTID via
@@ -25,7 +27,7 @@ import { statColor } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
-import { AlertTriangleIcon, Avatar, CategoryTag, StarIcon } from "../../ui";
+import { AlertTriangleIcon, CategoryTag, StarIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -92,7 +94,6 @@ export default function RiderProfileHero({
   valueLabel,                     // fuld label til title
   valueTrendWindow = null,        // #2499: { delta, pct, actualDaysAgo, snapshotDate } | null
   salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
-  winsOnText,                     // "Flade massespurter" (1-2 terræn, kommasepareret)
   isAiTeam = false,
   pendingTeam = null,             // kommende hold (handel til næste sæson) | null
   banner = null,                  // { kind, ...data }
@@ -131,11 +132,23 @@ export default function RiderProfileHero({
       )}
 
       <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
-        <div className="flex items-start gap-4 min-w-0">
-          <Avatar name={`${rider.firstname ?? ""} ${rider.lastname ?? ""}`} size="lg" className="mt-0.5" />
+        <div className="flex items-start gap-4 sm:gap-5 min-w-0">
+          {/* Foto-slot (ejer-feedback bølge 5: cirkel-avataren var for lille som
+              anker) — kvadratisk ramme m. initialer, klar til rigtige fotos. */}
+          <div className="mt-1 w-20 h-20 sm:w-24 sm:h-24 flex-none bg-cz-subtle border border-cz-border rounded-cz flex flex-col items-center justify-center gap-0.5">
+            <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
+              {(rider.firstname?.[0] ?? "")}{(rider.lastname?.[0] ?? "")}
+            </span>
+            <span className="font-data text-[9px] uppercase tracking-[.14em] text-cz-3">{t("profile.hero.photoFallback")}</span>
+          </div>
           <div className="min-w-0">
-            {/* CategoryTags + data-font meta-linje (T3: sidder OVER navnet) */}
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
+            <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">
+              {rider.firstname} {rider.lastname}
+            </h1>
+
+            {/* CategoryTags + data-font meta-linje — UNDER navnet */}
+            <div className="flex items-center gap-2 mt-2.5 flex-wrap">
               {rider.primary_type
                 ? <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} size="md" />
                 : <CategoryTag>{typeLabel}</CategoryTag>}
@@ -160,11 +173,7 @@ export default function RiderProfileHero({
               </span>
             </div>
 
-            <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">
-              {rider.firstname} {rider.lastname}
-            </h1>
-
-            {/* Hold (+ AI-tag) */}
+            {/* Hold (+ AI-tag) — står KUN her (fjernet fra switcher-baren, ejer-feedback) */}
             <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
               <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
               {isAiTeam && (
@@ -180,14 +189,6 @@ export default function RiderProfileHero({
                 <span aria-hidden="true" className="text-cz-accent-t">→</span>
                 <span className="text-cz-3">{t("header.nextSeasonPrefix")}</span>
                 <TeamLink id={pendingTeam.id} className="font-semibold text-cz-accent-t hover:underline">{pendingTeam.name}</TeamLink>
-              </p>
-            )}
-
-            {/* Vinder på */}
-            {winsOnText && (
-              <p className="text-cz-3 text-xs uppercase tracking-[0.12em] font-semibold mt-3">
-                {t("profile.hero.winsOn")}{" "}
-                <span className="text-cz-1 normal-case tracking-normal text-sm font-bold ms-1">{winsOnText}</span>
               </p>
             )}
           </div>
@@ -225,11 +226,23 @@ export default function RiderProfileHero({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
         <HeroStat
           label={t("profile.hero.ratingEyebrow")}
-          value={<span style={hasRating ? { color: statColor(overallRating) } : undefined}>{hasRating ? overallRating : "—"}</span>}
+          value={hasRating ? (
+            /* Farveplade (ejer-feedback): samme statColor-skala som ability-tallene
+               — genindfører det gamle designs instant-signal i systemets sprog.
+               Hex + "29" = 16% alpha-baggrund af samme farve. */
+            <span
+              className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
+              style={{ color: statColor(overallRating), backgroundColor: `${statColor(overallRating)}29` }}
+            >
+              {overallRating}
+            </span>
+          ) : "—"}
         />
         <HeroStat
           label={potentialEyebrow}
-          value={scouting ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} /> : "—"}
+          value={scouting
+            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
+            : "—"}
           valueClassName="text-[15px] font-semibold"
         />
         <HeroStat
