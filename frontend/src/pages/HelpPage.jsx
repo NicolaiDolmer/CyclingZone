@@ -12,6 +12,7 @@ import {
   Tabs,
   TabList,
   Tab,
+  PageLoader,
 } from "../components/ui";
 import {
   InfoIcon,
@@ -419,7 +420,11 @@ function NavIcon({ Icon }) {
 }
 
 export default function HelpPage() {
-  const { t, i18n } = useTranslation("help");
+  // #2849 bølge 4: help-namespacet er IKKE inlinet (121 KB raw pr. sprog var
+  // ~29% af index-chunkens rå vægt; lazy-loades via HttpBackend) — `ready`
+  // gater render bag PageLoader så raw keys aldrig rammer first paint.
+  // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
+  const { t, i18n, ready } = useTranslation("help");
   const [searchParams] = useSearchParams();
   // Deep-link support (#2467): ?faq=<id> opens the FAQ tab with that question
   // expanded; ?section=<key> opens a specific section. Unknown/missing values
@@ -437,6 +442,8 @@ export default function HelpPage() {
     const idx = FAQ_KEYS.indexOf(faqParam);
     return idx !== -1 ? idx : null;
   });
+
+  if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.

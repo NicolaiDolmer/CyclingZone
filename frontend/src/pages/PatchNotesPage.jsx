@@ -24,7 +24,10 @@ function formatDate(iso, lang) {
 // t()-nøgler i det nye "patchnotes"-namespace (allerede wired i i18n/index.js,
 // lazy-loaded — siden er allerede route-lazy, se lib/patchNotes.js).
 export default function PatchNotesPage() {
-  const { t, i18n } = useTranslation("patchnotes");
+  // #2849 bølge 4: patchnotes-namespacet er IKKE inlinet (lazy via HttpBackend) —
+  // `ready` indgår i PageLoader-gaten nedenfor så raw keys aldrig rammer first
+  // paint. Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
+  const { t, i18n, ready } = useTranslation("patchnotes");
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
 
   const [query, setQuery] = useState("");
@@ -96,8 +99,8 @@ export default function PatchNotesPage() {
       return next;
     });
 
-  if (!loadError && patches === null) {
-    return <PageLoader label={t("loading.label")} />;
+  if (!ready || (!loadError && patches === null)) {
+    return <PageLoader label={ready ? t("loading.label") : "Loading"} />;
   }
 
   if (loadError) {

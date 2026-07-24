@@ -40,10 +40,6 @@ import dashboardDa from "../../public/locales/da/dashboard.json";
 import dashboardEn from "../../public/locales/en/dashboard.json";
 import bannersDa from "../../public/locales/da/banners.json";
 import bannersEn from "../../public/locales/en/banners.json";
-import helpDa from "../../public/locales/da/help.json";
-import patchnotesDa from "../../public/locales/da/patchnotes.json";
-import patchnotesEn from "../../public/locales/en/patchnotes.json";
-import helpEn from "../../public/locales/en/help.json";
 import feedbackDa from "../../public/locales/da/feedback.json";
 import feedbackEn from "../../public/locales/en/feedback.json";
 import boardDa from "../../public/locales/da/board.json";
@@ -104,8 +100,6 @@ import staffOverviewDa from "../../public/locales/da/staffOverview.json";
 import staffOverviewEn from "../../public/locales/en/staffOverview.json";
 import landingDa from "../../public/locales/da/landing.json";
 import landingEn from "../../public/locales/en/landing.json";
-import rulesDa from "../../public/locales/da/rules.json";
-import rulesEn from "../../public/locales/en/rules.json";
 import proDa from "../../public/locales/da/pro.json";
 import proEn from "../../public/locales/en/pro.json";
 import calendarDa from "../../public/locales/da/calendar.json";
@@ -141,8 +135,8 @@ i18n
     ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "feedback", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "sponsor", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap", "training", "academy", "klub", "staff", "staffOverview", "landing", "rules", "calendar", "pro", "scouting", "planner", "globalRank"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, feedback: feedbackDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, staffOverview: staffOverviewDa, landing: landingDa, rules: rulesDa, calendar: calendarDa, pro: proDa, scouting: scoutingDa, planner: plannerDa, globalRank: globalRankDa, patchnotes: patchnotesDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, feedback: feedbackEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn, results: resultsEn, seasonEnd: seasonEndEn, founder: founderEn, achievements: achievementsEn, roadmap: roadmapEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, staffOverview: staffOverviewEn, landing: landingEn, rules: rulesEn, calendar: calendarEn, pro: proEn, scouting: scoutingEn, planner: plannerEn, globalRank: globalRankEn, patchnotes: patchnotesEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, feedback: feedbackDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, sponsor: sponsorDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa, training: trainingDa, academy: academyDa, klub: klubDa, staff: staffDa, staffOverview: staffOverviewDa, landing: landingDa, calendar: calendarDa, pro: proDa, scouting: scoutingDa, planner: plannerDa, globalRank: globalRankDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn, results: resultsEn, seasonEnd: seasonEndEn, founder: founderEn, achievements: achievementsEn, roadmap: roadmapEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, staffOverview: staffOverviewEn, landing: landingEn, calendar: calendarEn, pro: proEn, scouting: scoutingEn, planner: plannerEn, globalRank: globalRankEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

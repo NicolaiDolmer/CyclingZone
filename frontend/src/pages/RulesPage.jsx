@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { useAcademy } from "../lib/useAcademy.js";
 import PageHeader from "../components/ui/PageHeader.jsx";
+import PageLoader from "../components/ui/PageLoader.jsx";
 import Section, { SectionHeader } from "../components/ui/Section.jsx";
 import { Table, Tr, Th, Td } from "../components/ui/Table.jsx";
 import { Tabs, TabList, Tab } from "../components/ui/Tabs.jsx";
@@ -78,12 +79,17 @@ function buildVars(n) {
 }
 
 export default function RulesPage() {
-  const { t } = useTranslation("rules");
+  // #2849 bølge 4: rules-namespacet er IKKE inlinet (lazy via HttpBackend) —
+  // `ready` gater render bag PageLoader så raw keys aldrig rammer first paint.
+  // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
+  const { t, ready } = useTranslation("rules");
   const [activeSection, setActiveSection] = useState("squad");
   // Academy is gated behind academy_enabled (#1308); the flag is off until the
   // relaunch. We still render the section (the numbers are final) but show a
   // "launches at relaunch" note while disabled.
   const { enabled: academyEnabled } = useAcademy();
+
+  if (!ready) return <PageLoader />;
 
   const vars = buildVars(RULES_NUMBERS);
   const currentDef = SECTION_DEFS.find((s) => s.key === activeSection) ?? SECTION_DEFS[0];
