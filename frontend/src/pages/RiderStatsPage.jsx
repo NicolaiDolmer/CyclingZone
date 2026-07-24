@@ -30,7 +30,7 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
-import { PageLoader } from "../components/ui";
+import { Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -146,7 +146,7 @@ function SwapOfferButton({ rider, myTeamId }) {
   return (
     <div className="contents">
       {result && (
-        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-cz text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
@@ -157,7 +157,7 @@ function SwapOfferButton({ rider, myTeamId }) {
       {show && (
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
             {myRiders.map(r => (
               <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatNumber(getRiderMarketValue(r))} CZ$)</option>
@@ -166,11 +166,11 @@ function SwapOfferButton({ rider, myTeamId }) {
           <div className="flex items-center gap-2">
             <label className="text-cz-3 text-xs flex-shrink-0">{t("swapOffer.cashLabel")}</label>
             <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
-              className="flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+              className="flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           </div>
           <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? t("swapOffer.sending") : t("swapOffer.submit")}
           </button>
         </div>
@@ -221,7 +221,7 @@ function DirectOfferButton({ rider }) {
   return (
     <div className="contents">
       {result && (
-        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-cz text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
@@ -234,12 +234,12 @@ function DirectOfferButton({ rider }) {
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder={t("directOffer.amountPlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
             placeholder={t("directOffer.messagePlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? t("directOffer.sending") : t("directOffer.submit")}
           </button>
         </div>
@@ -355,7 +355,7 @@ function TransferListButton({ rider }) {
   return (
     <div className="contents">
       {result && (
-        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-cz text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
@@ -368,22 +368,22 @@ function TransferListButton({ rider }) {
           {confirmRemove ? (
             <div className="flex gap-2">
               <button onClick={removeListing} disabled={loading}
-                className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium disabled:opacity-50 transition-all">
+                className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium disabled:opacity-50 transition-all">
                 {loading ? "..." : t("sellRider.confirmRemove")}
               </button>
               <button onClick={() => setConfirmRemove(false)} disabled={loading}
-                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
                 {t("sellRider.cancel")}
               </button>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => setShow(!show)}
-                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm font-medium hover:text-cz-1 hover:border-cz-accent/40 transition-all">
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm font-medium hover:text-cz-1 hover:border-cz-accent/40 transition-all">
                 {show ? t("sellRider.hideEdit") : t("sellRider.editPrice")}
               </button>
               <button onClick={() => { setShow(false); setConfirmRemove(true); }}
-                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm font-medium hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all">
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm font-medium hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all">
                 {t("sellRider.remove")}
               </button>
             </div>
@@ -400,9 +400,9 @@ function TransferListButton({ rider }) {
           <input type="number" value={price} min={1}
             onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
             placeholder={t("sellRider.pricePlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={submit} disabled={loading || priceInvalid}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? t("sellRider.sending") : listing ? t("sellRider.submitUpdate") : t("sellRider.submit")}
           </button>
         </div>
@@ -484,7 +484,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className={`bg-cz-card rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
+        <div className={`bg-cz-card rounded-cz px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-base">
             {formatNumber(auction.current_price)} CZ$
@@ -493,7 +493,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
             <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
-        <div className="bg-cz-card rounded-lg px-3 py-2">
+        <div className="bg-cz-card rounded-cz px-3 py-2">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.timeLeft")}</p>
           <AuctionCountdown end={auction.calculated_end} status={auction.status} />
           <p className="text-cz-3 text-[10px] truncate">{t("auctionPanel.sellerPrefix", { name: getAuctionSellerLabel(auction) })}</p>
@@ -513,18 +513,18 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
               min={minBid}
               onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
               aria-label={t("auctionPanel.bidInputAria")}
-              className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+              className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
               aria-label={imWinning ? t("auctionPanel.bidRaiseAria") : t("auctionPanel.bidPlaceAria")}
-              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+              className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
                 ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                   bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
                 disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? "✓" : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
+              {bidStatus === "loading" ? "..." : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
           <p className="text-[10px] text-cz-3">{t("auctionPanel.minBid", { amount: formatNumber(minBid) })}</p>
@@ -535,7 +535,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
           <div className="mt-1">
             {myProxy && !proxyExpanded ? (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
+                <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-cz-pill">
                   {t("auctionPanel.proxy.display", { amount: formatNumber(myProxy) })}
                 </span>
                 <button
@@ -557,7 +557,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
               <button
                 onClick={() => setProxyExpanded(true)}
                 aria-label={t("auctionPanel.proxy.addAria")}
-                className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
+                className="min-h-[44px] rounded-cz border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
               >
                 {t("auctionPanel.proxy.addButton")}
               </button>
@@ -571,13 +571,13 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                     placeholder={t("auctionPanel.proxy.inputPlaceholder")}
                     aria-label={t("auctionPanel.proxy.inputAria")}
-                    className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
                     aria-label={t("auctionPanel.proxy.saveAria")}
-                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
+                    className={`min-h-[44px] px-3 py-2 rounded-cz text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
@@ -589,7 +589,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                     aria-label={t("auctionPanel.proxy.cancelAria")}
                     className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                   >
-                    ✕
+                    <XIcon size={14} aria-hidden="true" />
                   </button>
                 </div>
                 {proxyStatus === "error" && proxyErrorText && (
@@ -642,7 +642,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
               min={isOwnRider ? 0 : riderValue}
               max={isOwnRider ? riderValue : undefined}
               onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
-              className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+              className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
                 ${priceError
                   ? "border-cz-danger/40 focus:border-cz-danger"
                   : "border-cz-border focus:border-cz-accent"}`}
@@ -650,7 +650,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
             <button
               onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
               disabled={loading || priceError}
-              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
+              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-cz text-sm transition-all disabled:opacity-50
                 ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
               {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
             </button>
@@ -1296,11 +1296,29 @@ export default function RiderStatsPage() {
     }
   }
 
+  // Full-bleed-ruten får ingen Layout-padding (#2849 bølge 5) — loading/fejl-
+  // grenene sætter derfor selv side-padding (RaceDetailPage-mønstret).
   if (loading) return (
-    <PageLoader label={t("page.loadingAria")} />
+    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+      <PageLoader label={t("page.loadingAria")} />
+    </div>
   );
 
-  if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
+  // #1338-princippet: en manglende rytter (forkert id ELLER en fejlet
+  // hentning) må ikke ligne en tavs blank side — ErrorState med retry (samme
+  // loadRider-kald som useEffect'en bruger, ingen ny hente-logik).
+  if (!rider) return (
+    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+      {/* t("page.back") bærer allerede sin egen "←"-glyf (rider.json) — intet ekstra ikon. */}
+      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-4">
+        {t("page.back")}
+      </button>
+      <ErrorState
+        title={t("page.notFound")}
+        action={<Button size="sm" variant="secondary" onClick={loadRider}>{t("page.retry")}</Button>}
+      />
+    </div>
+  );
 
   // #2000 Part 2 / #918: type-meta (label + token-backet linje-farve fra den delte
   // chart-palette, ingen raw hex) til Udvikling-fanens type-rating-graf. Rækkefølge =
@@ -1402,7 +1420,9 @@ export default function RiderStatsPage() {
     // #2253: translate="no" — rytterprofilen (dynamiske stats/scouting-flader)
     // fik NotFoundError-crashes når browser-oversættere muterede tekst-noderne
     // (Sentry CYCLINGZONE-1P m.fl., url=/riders/:id). Se PR #2272.
-    <div translate="no" className="max-w-5xl mx-auto min-w-0">
+    // #2849 bølge 5: /riders/:id er full-bleed (Layout giver ingen padding/cap) —
+    // siden ejer selv hero-bånd + indre max-w-5xl-containere (T3, RaceDetailPage-mønstret).
+    <div translate="no">
       {/* #254: Bid-modaler — confirm før bud, race-confirm ved 409 stale price, confetti på win, overbid-toast */}
       <BidConfirmModal
         show={!!bidConfirm}
@@ -1429,8 +1449,6 @@ export default function RiderStatsPage() {
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
-      <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
-
       {/* #2748: en pensioneret rytter frigives til team_id=null ved sæsonskiftet, men
           han er ikke en fri agent man kan hente — hero'en skal sige "Pensioneret". */}
       {roster.length > 1 && rosterIdx >= 0 && (
@@ -1444,48 +1462,54 @@ export default function RiderStatsPage() {
         />
       )}
 
-      <div className="mb-4">
-        <RiderProfileHero
-          rider={rider}
-          viewer={isMyRider ? "own" : "scouting"}
-          overallRating={overallRating}
-          age={age}
-          typeLabel={typeLabel}
-          divisionLabel={divisionLabel}
-          valueAmount={riderValueAmount}
-          valueLabel={riderValueLabel}
-          valueTrendWindow={riderValueTrendWindow}
-          salaryText={salaryText}
-          winsOnText={winsOnText}
-          isAiTeam={isAiRider}
-          pendingTeam={pendingTeam}
-          banner={statusBanner}
-          scouting={scouting}
-          onWatchlist={onWatchlist}
-          onToggleWatchlist={toggleWatchlist}
-          onCompare={() => navigate(`/compare?ids=${rider.id}`)}
-          actions={
-            /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
-               action row) — udvidede formularer folder ud i fuld bredde under
-               rækken (hver komponents wrapper skifter selv til w-full). Fuld-
-               bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
-            <div className="flex flex-wrap items-start gap-2">
-              {isPendingTransfer && (
-                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-                  {t("blocked.pendingTransfer")}
-                </p>
-              )}
-              {isRetired && (
-                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-                  {t("blocked.retired")}
-                </p>
-              )}
-              {auctionError && (
-                <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
-                  {auctionError}
-                </div>
-              )}
-              {activeAuction && (
+      {/* T3 hero-bånd — --bg-card + 1px bundrule, full-bleed (Layout giver denne
+          rute ingen padding/cap, #2849 bølge 4/5); siden ejer selv indre max-w-5xl +
+          padding. Tabs sidder på båndets bundkant (RiderProfileTabs -mb-px). */}
+      <div className="bg-cz-card border-b border-cz-border">
+        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
+          <RiderProfileHero
+            rider={rider}
+            viewer={isMyRider ? "own" : "scouting"}
+            overallRating={overallRating}
+            age={age}
+            typeLabel={typeLabel}
+            divisionLabel={divisionLabel}
+            valueAmount={riderValueAmount}
+            valueLabel={riderValueLabel}
+            valueTrendWindow={riderValueTrendWindow}
+            salaryText={salaryText}
+            winsOnText={winsOnText}
+            isAiTeam={isAiRider}
+            pendingTeam={pendingTeam}
+            banner={statusBanner}
+            scouting={scouting}
+            onWatchlist={onWatchlist}
+            onToggleWatchlist={toggleWatchlist}
+            onCompare={() => navigate(`/compare?ids=${rider.id}`)}
+            backLabel={t("page.back")}
+            onBack={() => navigate(-1)}
+            actions={
+              /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
+                 action row) — udvidede formularer folder ud i fuld bredde under
+                 rækken (hver komponents wrapper skifter selv til w-full). Fuld-
+                 bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
+              <div className="flex flex-wrap items-start gap-2">
+                {isPendingTransfer && (
+                  <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
+                    {t("blocked.pendingTransfer")}
+                  </p>
+                )}
+                {isRetired && (
+                  <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
+                    {t("blocked.retired")}
+                  </p>
+                )}
+                {auctionError && (
+                  <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm">
+                    {auctionError}
+                  </div>
+                )}
+                {activeAuction && (
                 <div className="w-full">
                   <RiderBidPanel
                     auction={activeAuction}
@@ -1524,35 +1548,37 @@ export default function RiderStatsPage() {
             </div>
           }
         />
+
+        <RiderProfileTabs
+          tabs={[
+            { key: "overview",    label: t("profile.tabs.overview") },
+            { key: "physiology",  label: t("profile.tabs.physiology") },
+            { key: "training",    label: t("profile.tabs.training") },
+            { key: "development", label: t("profile.tabs.development") },
+            // Scouting-fanen bygges i egen slice (#2000) — viser indtil da en
+            // "på vej"-flade med link til roadmappet (ejer-beslutning 3/7).
+            { key: "scouting",    label: t("profile.tabs.scouting") },
+            { key: "history",     label: t("profile.tabs.history") },
+            { key: "results",     label: t("profile.tabs.results") },
+            { key: "palmares",    label: t("profile.tabs.palmares") },
+            { key: "interest",    label: t("profile.tabs.interest") },
+          ]}
+          activeTab={tab}
+          onSelect={(key) => {
+            setTab(key);
+            // Telemetri pr. redesign-fane (#2000) — samme mønster som Udvikling.
+            if (key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+            if (key === "scouting") logEvent("feature_rider_scouting_tab_opened", { rider_id: rider.id });
+            if (key === "history") logEvent("feature_rider_history_tab_opened", { rider_id: rider.id });
+            if (key === "results") logEvent("feature_rider_results_tab_opened", { rider_id: rider.id });
+            if (key === "palmares") logEvent("feature_rider_palmares_tab_opened", { rider_id: rider.id });
+            if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
+          }}
+        />
+        </div>
       </div>
 
-      <RiderProfileTabs
-        tabs={[
-          { key: "overview",    label: t("profile.tabs.overview") },
-          { key: "physiology",  label: t("profile.tabs.physiology") },
-          { key: "training",    label: t("profile.tabs.training") },
-          { key: "development", label: t("profile.tabs.development") },
-          // Scouting-fanen bygges i egen slice (#2000) — viser indtil da en
-          // "på vej"-flade med link til roadmappet (ejer-beslutning 3/7).
-          { key: "scouting",    label: t("profile.tabs.scouting") },
-          { key: "history",     label: t("profile.tabs.history") },
-          { key: "results",     label: t("profile.tabs.results") },
-          { key: "palmares",    label: t("profile.tabs.palmares") },
-          { key: "interest",    label: t("profile.tabs.interest") },
-        ]}
-        activeTab={tab}
-        onSelect={(key) => {
-          setTab(key);
-          // Telemetri pr. redesign-fane (#2000) — samme mønster som Udvikling.
-          if (key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
-          if (key === "scouting") logEvent("feature_rider_scouting_tab_opened", { rider_id: rider.id });
-          if (key === "history") logEvent("feature_rider_history_tab_opened", { rider_id: rider.id });
-          if (key === "results") logEvent("feature_rider_results_tab_opened", { rider_id: rider.id });
-          if (key === "palmares") logEvent("feature_rider_palmares_tab_opened", { rider_id: rider.id });
-          if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
-        }}
-      />
-
+      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
       {/* #2000 stykke 2 — Overblik: objektivt snapshot. Evne-kolonner (3 kort) +
           ryttertype-radar (ægte type-ratings) + compact fysiologi-teaser. Intet
           scout-verdikt her (det lever i Scouting). */}
@@ -1579,9 +1605,9 @@ export default function RiderStatsPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+          <Card className="p-5">
             <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>
-          </div>
+          </Card>
         )
       )}
 
@@ -1639,6 +1665,7 @@ export default function RiderStatsPage() {
           stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
           scout-knap) lever indtil da i hero'en. */}
       {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} />}
+      </div>
     </div>
   );
 }

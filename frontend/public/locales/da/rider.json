@@ -28,6 +28,7 @@
   "page": {
     "back": "← Tilbage",
     "notFound": "Rytter ikke fundet",
+    "retry": "Prøv igen",
     "loadingAria": "Indlæser rytter"
   },
   "header": {

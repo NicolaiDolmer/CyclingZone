@@ -28,6 +28,7 @@
   "page": {
     "back": "← Back",
     "notFound": "Rider not found",
+    "retry": "Try again",
     "loadingAria": "Loading rider"
   },
   "header": {
