@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { EmptyState, PageLoader, Button } from "../components/ui";
+import { EmptyState, PageLoader, Button, Card } from "../components/ui";
 import { useStaffProfile } from "../lib/useStaffProfile.js";
 import { useStaffRelease } from "../lib/useStaffRelease.js";
 import TeamLink from "../components/TeamLink.jsx";
@@ -42,60 +42,83 @@ export default function StaffProfilePage() {
 
   // "public" = #2450 candidate-niveau fallback (staff man ikke selv ejer) —
   // stadig et gyldigt visnings-loading-forløb, ikke en fejl/forbudt-tilstand.
-  if ((status === "loading" || facilitiesLoading) && status !== "public") return <PageLoader />;
-  if (status === "forbidden") return <EmptyState title={t("gate.title")} description={t("gate.description")} />;
-  if (status === "notfound" || status === "error" || !profile)
-    return <EmptyState title={t("missing.title")} description={t("missing.description")} />;
+  //
+  // Full-bleed-ruten (Layout FULL_BLEED_PREFIXES, #2849 bølge 5) giver denne
+  // rute ingen padding/cap — loading/fejl-grenene sætter derfor selv side-
+  // padding (samme mønster som RaceDetailPage, #2849 bølge 4).
+  if ((status === "loading" || facilitiesLoading) && status !== "public") return (
+    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+      <PageLoader />
+    </div>
+  );
+  if (status === "forbidden") return (
+    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+      <EmptyState title={t("gate.title")} description={t("gate.description")} />
+    </div>
+  );
+  if (status === "notfound" || status === "error" || !profile) return (
+    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+      <EmptyState title={t("missing.title")} description={t("missing.description")} />
+    </div>
+  );
 
   const overall = profile.abilities?.overall;
   const isPublic = status === "public";
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      <button type="button" onClick={() => navigate(-1)} className="text-[12px] text-cz-2 mb-3">
-        ‹ {t("back")}
-      </button>
-      {!isPublic && <StaffSwitcherBar current={id} roster={roster} onNavigate={(sid) => navigate(`/staff/${sid}`)} />}
-      <StaffProfileHero profile={profile} />
-      {isPublic ? (
-        <>
-          {profile.teamName && (
-            <p className="text-[13px] text-cz-2 mb-4">
-              {t("public.team", { team: profile.teamName })}{" "}
-              <TeamLink id={profile.teamId} className="text-cz-accent-t underline underline-offset-2">
-                {t("public.viewTeam")}
-              </TeamLink>
-            </p>
-          )}
-          <p className="text-[13px] text-cz-2 max-w-prose">{t("public.limitedNote")}</p>
-        </>
-      ) : (
-        <>
-          <StaffProfileTabs active={tab} onChange={setTab} />
-          {tab === "overview" && <StaffAbilityColumns profile={profile} />}
-          {tab === "effect" && (
-            <p className="text-[13px] text-cz-2 max-w-prose">{t("effect.body", { rating: overall })}</p>
-          )}
-          {tab === "history" && <p className="text-[13px] text-cz-2">{t("history.body")}</p>}
+    <div>
+      {/* T3 hero-bånd — --bg-card + 1px bundrule, bleeder edge-to-edge; siden
+          ejer selv indre max-w-5xl + padding (#2849 bølge 5). */}
+      <StaffProfileHero profile={profile} onBack={() => navigate(-1)} />
 
-          {/* #2649 — opsig EGET staff (destruktiv, sidst i handlingsrækken). */}
-          <div className="mt-5 pt-4 border-t border-cz-border">
-            <Button variant="danger" size="sm" onClick={() => setReleaseOpen(true)}>
-              {t("release.button")}
-            </Button>
-          </div>
-          <ReleaseStaffModal
-            show={releaseOpen}
-            staffName={profile.name}
-            role={profile.role}
-            salary={profile.salary}
-            error={releaseError}
-            busy={releaseBusy}
-            onCancel={() => { if (!releaseBusy) setReleaseOpen(false); }}
-            onConfirm={confirmRelease}
-          />
-        </>
-      )}
+      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+        {!isPublic && <StaffSwitcherBar current={id} roster={roster} onNavigate={(sid) => navigate(`/staff/${sid}`)} />}
+        {isPublic ? (
+          <>
+            {profile.teamName && (
+              <p className="text-[13px] text-cz-2 mb-4">
+                {t("public.team", { team: profile.teamName })}{" "}
+                <TeamLink id={profile.teamId} className="text-cz-accent-t underline underline-offset-2">
+                  {t("public.viewTeam")}
+                </TeamLink>
+              </p>
+            )}
+            <p className="text-[13px] text-cz-2 max-w-prose">{t("public.limitedNote")}</p>
+          </>
+        ) : (
+          <>
+            <StaffProfileTabs active={tab} onChange={setTab} />
+            {tab === "overview" && <StaffAbilityColumns profile={profile} />}
+            {tab === "effect" && (
+              <Card className="p-4 md:p-5">
+                <p className="text-[13px] text-cz-2 max-w-prose">{t("effect.body", { rating: overall })}</p>
+              </Card>
+            )}
+            {tab === "history" && (
+              <Card className="p-4 md:p-5">
+                <p className="text-[13px] text-cz-2">{t("history.body")}</p>
+              </Card>
+            )}
+
+            {/* #2649 — opsig EGET staff (destruktiv, sidst i handlingsrækken). */}
+            <div className="mt-5 pt-4 border-t border-cz-border">
+              <Button variant="danger" size="sm" onClick={() => setReleaseOpen(true)}>
+                {t("release.button")}
+              </Button>
+            </div>
+            <ReleaseStaffModal
+              show={releaseOpen}
+              staffName={profile.name}
+              role={profile.role}
+              salary={profile.salary}
+              error={releaseError}
+              busy={releaseBusy}
+              onCancel={() => { if (!releaseBusy) setReleaseOpen(false); }}
+              onConfirm={confirmRelease}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }
