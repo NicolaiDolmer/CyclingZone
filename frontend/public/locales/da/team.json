@@ -108,6 +108,8 @@
   "profile": {
     "back": "← Tilbage",
     "notFound": "Hold ikke fundet",
+    "loadError": { "message": "Holdet kunne ikke hentes. Intet gik tabt. Prøv igen.", "retry": "Prøv igen" },
+    "tabsAriaLabel": "Holdprofil-sektioner",
     "yourTeam": "Dit hold",
     "managerLabel": "Manager: {name}",
     "division": "Division {n}",

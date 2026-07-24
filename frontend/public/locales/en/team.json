@@ -108,6 +108,8 @@
   "profile": {
     "back": "← Back",
     "notFound": "Team not found",
+    "loadError": { "message": "Couldn't load the team. Nothing was lost. Try again.", "retry": "Try again" },
+    "tabsAriaLabel": "Team profile sections",
     "yourTeam": "Your team",
     "managerLabel": "Manager: {name}",
     "division": "Division {n}",
