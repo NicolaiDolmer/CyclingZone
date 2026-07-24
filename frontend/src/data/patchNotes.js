@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.53",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Training, help, rules, patch notes and Pro pages now share the same visual language",
+          "body": "The last pages outside the shared design now follow the same page layout as the rest of the app: one header style, one card style, and clear loading and error states. Help and rules got a section menu that works on mobile, the training tables scroll inside their own box on small screens, and page spacing is now consistent across the whole app. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Trænings-, hjælp-, regel-, patch note- og Pro-siderne deler nu samme visuelle sprog",
+          "body": "De sidste sider uden for det fælles design følger nu samme sideopbygning som resten af appen: én header-stil, én kort-stil og tydelige indlæsnings- og fejltilstande. Hjælp og regler har fået en sektionsmenu der virker på mobil, træningstabellerne scroller i deres egen boks på små skærme, og sideafstanden er nu ens i hele appen. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.52",
     "date": "2026-07-24",
     "label": "Beta",
