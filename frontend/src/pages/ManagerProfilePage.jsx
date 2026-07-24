@@ -9,11 +9,13 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import {
   Card,
   CategoryTag,
   StatusBadge,
   EmptyState,
+  ErrorState,
   Tabs,
   TabList,
   Tab,
@@ -23,6 +25,8 @@ import {
   Th,
   Td,
   ProgressMeter,
+  Avatar,
+  Button,
   TrophyIcon,
   LockIcon,
   ChevronLeftIcon,
@@ -95,6 +99,18 @@ function AchievementProgress({ achievement }) {
   );
 }
 
+// #2849 bølge 5 — T3 hero stat-blok (label 10px uppercase · value 20px/650
+// data-font tabular). Samme lokale opskrift som RaceDetailPage (bølge 3);
+// sidste blok i rækken udelader højre-rule.
+function HeroStatBlock({ label, value, last = false }) {
+  return (
+    <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
+      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
+    </div>
+  );
+}
+
 export default function ManagerProfilePage() {
   const { teamId } = useParams();
   const navigate   = useNavigate();
@@ -131,12 +147,28 @@ export default function ManagerProfilePage() {
 
   useEffect(() => { loadProfile(); loadMyTeam(); }, [loadProfile, loadMyTeam]);
 
+  // Full-bleed-ruten (#2849 bølge 5: /managers/ i Layouts FULL_BLEED_PREFIXES)
+  // får ingen Layout-padding — loading/fejl-grenene sætter derfor selv side-padding.
   if (loading) return (
-    <PageLoader />
+    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+      <PageLoader />
+    </div>
   );
+
+  // #2849 bølge 5 audit-fund: fejl-tilstand manglede (404 og fetch-fejl kollapsede
+  // begge til en stum EmptyState uden retry). Genbruger den eksisterende
+  // loadProfile-fetch som retry-handler — ingen ny fejl-skelnende logik.
   if (!data) return (
-    <div className="max-w-3xl mx-auto py-8">
-      <EmptyState icon={<InboxIcon size={32} />} title={t("manager.notFound")} />
+    <div className="max-w-5xl mx-auto pt-8 px-4 md:px-8">
+      <button
+        onClick={() => navigate(-1)}
+        className="text-cz-2 hover:text-cz-1 text-xs font-medium mb-4 inline-flex items-center gap-1 transition-colors">
+        <ChevronLeftIcon size={16} />{t("manager.back")}
+      </button>
+      <ErrorState
+        description={t("manager.loadError.message")}
+        action={<Button size="sm" variant="secondary" onClick={loadProfile}>{t("manager.loadError.retry")}</Button>}
+      />
     </div>
   );
 
@@ -147,6 +179,10 @@ export default function ManagerProfilePage() {
   const sortedRiders = sortRows(riders, riderSort.sort ? MANAGER_RIDER_ACCESSORS[riderSort.sort] : null, riderSort.sortDir);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
+  const recentlyUnlocked = achievements
+    .filter(a => a.unlocked)
+    .sort((a, b) => new Date(b.unlocked_at) - new Date(a.unlocked_at))
+    .slice(0, 8);
 
   const achByCategory = achievements.reduce((acc, a) => {
     if (!acc[a.category]) acc[a.category] = [];
@@ -161,231 +197,226 @@ export default function ManagerProfilePage() {
     { key: "achievements", label: t("manager.tabAchievements", { unlocked: unlockedCount, total: achievements.length }) },
   ];
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <button
-        onClick={() => navigate(-1)}
-        className="text-cz-3 hover:text-cz-1 text-sm mb-4 inline-flex items-center gap-1 transition-colors">
-        <ChevronLeftIcon size={16} />{t("manager.back")}
-      </button>
+  // #2849 bølge 5 — hero stat-række: sidens nøgletal (trup, sæsoner, transfers,
+  // achievements). Erstatter de tre duplikerede stat-mini-cards der tidligere
+  // sad øverst i Overview-fanen.
+  const statBlocks = [
+    { label: tCommon("nav.item.riders"), value: String(riders.length) },
+    { label: t("manager.statSeasons"), value: String(season_history.length) },
+    { label: t("manager.statTransfers"), value: String(transfer_activity.length) },
+    { label: t("manager.achievements"), value: `${unlockedCount}/${achievements.length}` },
+  ];
 
-      {/* Header */}
-      <Card className="p-5 mb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-cz-1">{team.name}</h1>
-              {isOwnProfile && (
-                <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
-              )}
+  return (
+    <div>
+      {/* T3 hero-bånd — --bg-card + 1px bundrule, full-bleed (Layout giver ingen
+          padding/cap på /managers/-ruten); siden ejer selv indre max-w-5xl + padding. */}
+      <div className="bg-cz-card border-b border-cz-border">
+        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5">
+            <ChevronLeftIcon size={16} />{t("manager.back")}
+          </button>
+
+          <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-4 min-w-0">
+              <Avatar name={team.name} size="lg" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  {isOwnProfile && (
+                    <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
+                  )}
+                  <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                    {t("manager.managerPrefix")} {user.username} · {t("manager.division", { n: team.division })}
+                  </span>
+                </div>
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
+                <div className="mt-2">
+                  <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
+                </div>
+              </div>
             </div>
-            <p className="text-cz-2 text-sm mb-3">
-              {t("manager.managerPrefix")} <span className="text-cz-2">{user.username}</span>
-              {" · "}{t("manager.division", { n: team.division })}
-            </p>
-            <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
             {isOwnProfile && (
-              <Link
-                to="/profile"
-                className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-cz-3 hover:text-cz-1 transition-colors">
+              <Link to="/profile" className={`${buttonClass({ variant: "secondary", size: "sm" })} flex-none`}>
                 <SettingsIcon size={13} />{t("manager.settingsLink")}
               </Link>
             )}
           </div>
-          <div className="flex gap-3 ms-4">
-            {/* Login-streak skjult per #1139 — ingen daglig login-tvang. Kosmetisk achievements bevares. */}
-            <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
-              <TrophyIcon size={20} className="mx-auto text-cz-accent" />
-              <p className="text-cz-1 font-bold text-sm mt-1">{unlockedCount}</p>
-              <p className="text-cz-3 text-[10px]">{t("manager.achievements")}</p>
-            </div>
+
+          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
+            {statBlocks.map((b, i) => (
+              <HeroStatBlock key={b.label} label={b.label} value={b.value} last={i === statBlocks.length - 1} />
+            ))}
           </div>
         </div>
+      </div>
 
-        {unlockedCount > 0 && (
-          <div className="mt-4 pt-4 border-t border-cz-border">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">{t("manager.recentlyUnlocked")}</p>
-            <div className="flex gap-2 flex-wrap">
-              {achievements
-                .filter(a => a.unlocked)
-                .sort((a, b) => new Date(b.unlocked_at) - new Date(a.unlocked_at))
-                .slice(0, 8)
-                .map(a => <AchievementBadge key={a.id} achievement={a} />)}
-            </div>
-          </div>
-        )}
-      </Card>
+      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+        <Tabs value={tab} onChange={setTab}>
+          <TabList label={team.name} className="mb-4">
+            {TABS.map(tabItem => (
+              <Tab key={tabItem.key} value={tabItem.key}>{tabItem.label}</Tab>
+            ))}
+          </TabList>
 
-      {/* Tabs */}
-      <Tabs value={tab} onChange={setTab}>
-        <TabList label={team.name} className="mb-4">
-          {TABS.map(tabItem => (
-            <Tab key={tabItem.key} value={tabItem.key}>{tabItem.label}</Tab>
-          ))}
-        </TabList>
-
-        <TabPanel value="overview">
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Card className="p-4 text-center">
-                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{tCommon("nav.item.riders")}</p>
-                <p className="text-cz-1 font-bold text-xl">{riders.length}</p>
-              </Card>
-              <Card className="p-4 text-center">
-                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statSeasons")}</p>
-                <p className="text-cz-1 font-bold text-xl">{season_history.length}</p>
-              </Card>
-              <Card className="p-4 text-center">
-                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statTransfers")}</p>
-                <p className="text-cz-1 font-bold text-xl">{transfer_activity.length}</p>
-              </Card>
-            </div>
-            <Card className="p-5">
-              <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
-              {transfer_activity.length === 0 ? (
-                <p className="text-cz-3 text-sm text-center py-4">{t("manager.noTransfers")}</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {transfer_activity.map(tx => {
-                    const isBuyer = tx.buyer_team?.id === teamId;
-                    return (
-                      <div key={tx.id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0">
-                        <div>
-                          <p className="text-cz-1 text-sm">{tx.rider?.firstname} {tx.rider?.lastname}</p>
-                          <p className="text-cz-3 text-xs">
-                            {isBuyer ? t("manager.boughtFrom") : t("manager.soldTo")}{" "}
-                            <Link to={`/managers/${isBuyer ? tx.seller_team?.id : tx.buyer_team?.id}`}
-                              className="text-cz-accent-t/70 hover:text-cz-accent-t">
-                              {isBuyer ? tx.seller_team?.name : tx.buyer_team?.name}
-                            </Link>
-                          </p>
-                        </div>
-                        <span className={`font-mono font-bold text-sm ${isBuyer ? "text-cz-danger" : "text-cz-success"}`}>
-                          {isBuyer ? "-" : "+"}{formatNumber(tx.offer_amount)} CZ$
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-          </div>
-        </TabPanel>
-
-        <TabPanel value="riders">
-          {riders.length === 0 ? (
-            <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noRiders")} />
-          ) : (
-            <Card className="overflow-hidden">
-              <Table data-sortable>
-                <thead><tr>
-                  <Th sortKey="firstname" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thRider")}</Th>
-                  <Th numeric sortKey="value" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thValue")}</Th>
-                  {/* #1529: de 15 CZ-evner (delt config lib/abilities.js) erstatter de
-                      hardkodede 3 PCM-stats (BJ/SP/TT). Korte labels = ingen i18n (#487). */}
-                  {ABILITY_STATS.map(({ key }) => (
-                    <Th key={key} numeric sortKey={key} sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}
-                      className="hidden sm:table-cell px-1.5">{ABILITY_SHORT[key]}</Th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {sortedRiders.map(r => (
-                    <Tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)} className="cursor-pointer">
-                      <Td>
-                        <RiderLink id={r.id} stopPropagation
-                          className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
-                          {r.firstname} {r.lastname}
-                        </RiderLink>
-                        {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
-                            via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
-                        {(() => {
-                          const ageTier = ageBadgeKey(r);
-                          return ageTier ? (
-                            <span className="text-[9px] bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
-                          ) : null;
-                        })()}
-                      </Td>
-                      <Td numeric className="text-cz-accent-t">{formatNumber(r.market_value)}</Td>
-                      {ABILITY_STATS.map(({ key }) => (
-                        <Td key={key} numeric className="hidden sm:table-cell px-1.5">
-                          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded"
-                            style={statStyle(r[key] ?? 0)}>
-                            {r[key] ?? "—"}
-                          </span>
-                        </Td>
-                      ))}
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card>
-          )}
-        </TabPanel>
-
-        <TabPanel value="season">
-          {season_history.length === 0 ? (
-            <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noSeasonHistory")} />
-          ) : (
-            <Card className="overflow-hidden">
-              <Table data-sort-exempt="Saeson-historik, kronologisk">
-                <thead><tr>
-                  <Th>{t("manager.thSeason")}</Th>
-                  <Th className="text-center">{t("manager.thDivision")}</Th>
-                  <Th numeric>{t("manager.thPoints")}</Th>
-                  <Th numeric>{t("manager.thRank")}</Th>
-                </tr></thead>
-                <tbody>
-                  {season_history.map(s => (
-                    <Tr key={s.id}>
-                      <Td>
-                        {t("manager.seasonNumber", { n: s.season?.number })}
-                        {/* #1095: markér igangværende sæson, så historik ikke forveksles med nutid */}
-                        {s.season?.status === "active" && (
-                          <StatusBadge state="live" emphasis className="ms-2">
-                            {t("manager.seasonOngoing")}
-                          </StatusBadge>
-                        )}
-                      </Td>
-                      <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
-                      <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
-                      <Td numeric>
-                        {s.final_rank === 1
-                          ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
-                          : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
-                      </Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card>
-          )}
-        </TabPanel>
-
-        <TabPanel value="achievements">
-          <div className="space-y-4">
-            {Object.entries(achByCategory).map(([cat, achs]) => {
-              const inProgress = achs.filter(a => a.progress);
-              return (
-                <Card key={cat} className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
-                    <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
+          <TabPanel value="overview">
+            <div className="flex flex-col gap-[14px]">
+              {recentlyUnlocked.length > 0 && (
+                <Card className="p-5">
+                  <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+                  <div className="flex gap-2 flex-wrap">
+                    {recentlyUnlocked.map(a => <AchievementBadge key={a.id} achievement={a} />)}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
-                  </div>
-                  {inProgress.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
-                      <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("manager.inProgress")}</p>
-                      {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
-                    </div>
-                  )}
                 </Card>
-              );
-            })}
-          </div>
-        </TabPanel>
-      </Tabs>
+              )}
+              <Card className="p-5">
+                <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
+                {transfer_activity.length === 0 ? (
+                  <p className="text-cz-3 text-sm text-center py-4">{t("manager.noTransfers")}</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {transfer_activity.map(tx => {
+                      const isBuyer = tx.buyer_team?.id === teamId;
+                      return (
+                        <div key={tx.id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0">
+                          <div>
+                            <p className="text-cz-1 text-sm">{tx.rider?.firstname} {tx.rider?.lastname}</p>
+                            <p className="text-cz-3 text-xs">
+                              {isBuyer ? t("manager.boughtFrom") : t("manager.soldTo")}{" "}
+                              <Link to={`/managers/${isBuyer ? tx.seller_team?.id : tx.buyer_team?.id}`}
+                                className="text-cz-accent-t/70 hover:text-cz-accent-t">
+                                {isBuyer ? tx.seller_team?.name : tx.buyer_team?.name}
+                              </Link>
+                            </p>
+                          </div>
+                          <span className={`font-mono font-bold text-sm ${isBuyer ? "text-cz-danger" : "text-cz-success"}`}>
+                            {isBuyer ? "-" : "+"}{formatNumber(tx.offer_amount)} CZ$
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+          </TabPanel>
+
+          <TabPanel value="riders">
+            {riders.length === 0 ? (
+              <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noRiders")} />
+            ) : (
+              <Card className="overflow-hidden">
+                <Table data-sortable>
+                  <thead><tr>
+                    <Th sortKey="firstname" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thRider")}</Th>
+                    <Th numeric sortKey="value" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thValue")}</Th>
+                    {/* #1529: de 15 CZ-evner (delt config lib/abilities.js) erstatter de
+                        hardkodede 3 PCM-stats (BJ/SP/TT). Korte labels = ingen i18n (#487). */}
+                    {ABILITY_STATS.map(({ key }) => (
+                      <Th key={key} numeric sortKey={key} sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}
+                        className="hidden sm:table-cell px-1.5">{ABILITY_SHORT[key]}</Th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {sortedRiders.map(r => (
+                      <Tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)} className="cursor-pointer">
+                        <Td>
+                          <RiderLink id={r.id} stopPropagation
+                            className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
+                            {r.firstname} {r.lastname}
+                          </RiderLink>
+                          {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
+                              via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
+                          {(() => {
+                            const ageTier = ageBadgeKey(r);
+                            return ageTier ? (
+                              <span className="text-[9px] bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
+                            ) : null;
+                          })()}
+                        </Td>
+                        <Td numeric className="text-cz-accent-t">{formatNumber(r.market_value)}</Td>
+                        {ABILITY_STATS.map(({ key }) => (
+                          <Td key={key} numeric className="hidden sm:table-cell px-1.5">
+                            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded-cz"
+                              style={statStyle(r[key] ?? 0)}>
+                              {r[key] ?? "—"}
+                            </span>
+                          </Td>
+                        ))}
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card>
+            )}
+          </TabPanel>
+
+          <TabPanel value="season">
+            {season_history.length === 0 ? (
+              <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noSeasonHistory")} />
+            ) : (
+              <Card className="overflow-hidden">
+                <Table data-sort-exempt="Saeson-historik, kronologisk">
+                  <thead><tr>
+                    <Th>{t("manager.thSeason")}</Th>
+                    <Th className="text-center">{t("manager.thDivision")}</Th>
+                    <Th numeric>{t("manager.thPoints")}</Th>
+                    <Th numeric>{t("manager.thRank")}</Th>
+                  </tr></thead>
+                  <tbody>
+                    {season_history.map(s => (
+                      <Tr key={s.id}>
+                        <Td>
+                          {t("manager.seasonNumber", { n: s.season?.number })}
+                          {/* #1095: markér igangværende sæson, så historik ikke forveksles med nutid */}
+                          {s.season?.status === "active" && (
+                            <StatusBadge state="live" emphasis className="ms-2">
+                              {t("manager.seasonOngoing")}
+                            </StatusBadge>
+                          )}
+                        </Td>
+                        <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
+                        <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
+                        <Td numeric>
+                          {s.final_rank === 1
+                            ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
+                            : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card>
+            )}
+          </TabPanel>
+
+          <TabPanel value="achievements">
+            <div className="flex flex-col gap-[14px]">
+              {Object.entries(achByCategory).map(([cat, achs]) => {
+                const inProgress = achs.filter(a => a.progress);
+                return (
+                  <Card key={cat} className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
+                      <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
+                    </div>
+                    {inProgress.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
+                        <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("manager.inProgress")}</p>
+                        {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </TabPanel>
+        </Tabs>
+      </div>
     </div>
   );
 }

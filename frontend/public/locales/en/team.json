@@ -205,6 +205,7 @@
   "manager": {
     "back": "← Back",
     "notFound": "Team not found",
+    "loadError": { "message": "Couldn't load this manager's profile. Nothing was lost. Try again.", "retry": "Try again" },
     "yourTeam": "Your team",
     "managerPrefix": "Manager:",
     "division": "Division {n}",

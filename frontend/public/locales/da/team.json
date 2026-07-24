@@ -205,6 +205,7 @@
   "manager": {
     "back": "← Tilbage",
     "notFound": "Hold ikke fundet",
+    "loadError": { "message": "Kunne ikke indlæse denne managers profil. Intet gik tabt. Prøv igen.", "retry": "Prøv igen" },
     "yourTeam": "Dit hold",
     "managerPrefix": "Manager:",
     "division": "Division {n}",
