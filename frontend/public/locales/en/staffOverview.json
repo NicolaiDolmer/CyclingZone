@@ -20,8 +20,9 @@
     "salary": "Salary",
     "mine": "Mine",
     "ai": "AI",
-    "actions": "Actions"
+    "actions": "Actions",
+    "count": "Showing {filtered} of {total} staff"
   },
   "disabled": { "title": "Not available yet", "description": "The staff area isn't open yet." },
-  "error": { "title": "Couldn't load staff", "description": "Something went wrong loading the staff directory. Try again in a moment." }
+  "error": { "title": "Couldn't load staff", "description": "Something went wrong loading the staff directory. Try again in a moment.", "retry": "Try again" }
 }

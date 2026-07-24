@@ -5,6 +5,8 @@
     "watchlistLink": "Min ønskeliste ({count})",
     "loadingAria": "Indlæser ryttere"
   },
+  "loadError": "Kunne ikke indlæse rytterne. Prøv igen.",
+  "retry": "Prøv igen",
   "table": {
     "nation": "Nation",
     "rider": "Rytter",
@@ -60,6 +62,7 @@
     "season": "Sæson {n}",
     "noActiveSeason": "Ingen aktiv sæson",
     "ridersCount": "{count} ryttere",
+    "ownerFilterLabel": "Filtrér efter ejer",
     "searchPlaceholder": "Søg rytternavn…",
     "noResults": "Ingen resultater fundet",
     "noResultsFor": "Ingen resultater fundet for \"{q}\"",
