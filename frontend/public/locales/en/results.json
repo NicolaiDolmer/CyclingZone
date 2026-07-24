@@ -23,5 +23,8 @@
   "points": "{count} pt",
   "seeAllStandings": "See the full standings →",
   "seeAllRiders": "See all riders →",
-  "emptyNoResults": "No race results imported yet this season"
+  "emptyNoResults": "No race results imported yet this season",
+  "loadError": "Results could not be loaded",
+  "loadErrorBody": "Nothing was lost. Try loading the page again.",
+  "retry": "Try again"
 }

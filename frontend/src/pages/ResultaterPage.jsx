@@ -8,8 +8,11 @@ import { formatNumber } from "../lib/intl";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import {
   Card,
+  Button,
+  PageHeader,
   PageLoader,
   EmptyState,
+  ErrorState,
   TrophyIcon,
   BikeIcon,
   BookOpenIcon,
@@ -37,13 +40,28 @@ export default function ResultaterPage() {
   const [topTeams, setTopTeams] = useState([]);
   const [topRiders, setTopRiders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // #2849 bølge 3 — wrapper med try/catch/finally, så en fejlet query giver
+  // en kanonisk fejl-tilstand med retry i stedet for en uendelig spinner
+  // (samme mønster som StandingsPage/#2175).
   async function loadAll() {
+    setError(null);
+    try {
+      await loadAllInner();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAllInner() {
     const { data: seasonData } = await supabase
       .from("seasons").select("*").eq("status", "active").single();
     setSeason(seasonData);
 
-    if (!seasonData) { setLoading(false); return; }
+    if (!seasonData) { return; }
 
     // #2444 · topRiders hentede tidligere ALLE sæsonens races + ALLE deres
     // race_results (paginated fetchAllRows — kunne være titusindvis af rækker)
@@ -92,8 +110,6 @@ export default function ResultaterPage() {
           .filter(Boolean)
       );
     }
-
-    setLoading(false);
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -103,14 +119,26 @@ export default function ResultaterPage() {
     <PageLoader label={t("loadingAria")} />
   );
 
+  // #2849 bølge 3 — kanonisk fejl-tilstand med retry (docs/design/PAGE_TEMPLATES.md
+  // states-sheet); erstatter den tidligere stille fejl (eternal spinner, da loadAll
+  // manglede try/catch).
+  if (error) return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <PageHeader title={t("title")} />
+      <ErrorState
+        title={t("loadError")}
+        description={t("loadErrorBody")}
+        action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("retry")}</Button>}
+      />
+    </div>
+  );
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-        <p className="text-cz-3 text-sm">
-          {season ? t("subtitle.active", { number: season.number }) : t("subtitle.noSeason")}
-        </p>
-      </div>
+      <PageHeader
+        title={t("title")}
+        subtitle={season ? t("subtitle.active", { number: season.number }) : t("subtitle.noSeason")}
+      />
 
       {/* Hub navigation */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
