@@ -17,7 +17,15 @@ import { sortRows } from "../lib/useTableSort.js";
 import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
-import { Card, EmptyState, ExchangeIcon, InboxIcon, PageLoader } from "../components/ui";
+import {
+  EmptyState, ExchangeIcon, InboxIcon, PageLoader,
+  PageHeader, Section, Button, Tabs, TabList, Tab,
+} from "../components/ui";
+// #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
+// men tabellen konverteres IKKE til <DataTable> — se kommentar ved MarketTable
+// (bulk-select-checkbokse + en expander-handlingsrække pr. listing er uden for
+// DataTable's API, ligesom AuctionsPage's sticky bud-kolonne i bølge 1).
+import { WRAP } from "../components/ui/dataTableStyles.js";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
@@ -44,6 +52,13 @@ const MARKET_SORT_BUTTONS = [
 // Numeriske kolonner + evner starter faldende ved første header-klik ("bedst/
 // dyrest øverst"), som resten af sidens tabeller (riderSort-konventionen).
 const MARKET_SORT_DESC_FIRST_KEYS = new Set(["age", "listed", "value", "salary", "price", ...ABILITY_KEYS]);
+
+// #2849 bølge 2: cz-table-recipens header-typografi (11px uppercase, tracking
+// .06em, font-data) — samme delte konstant som AuctionsPage's TH_BASE (bølge 1).
+// Markeds-tabellen konverteres IKKE til <DataTable> (bulk-select-checkbokse +
+// en expander-handlingsrække pr. listing er uden for DataTable's API), men
+// genbruger recipens VÆRDIER direkte via dataTableStyles (WRAP) + denne konstant.
+const MARKET_TH_BASE = "font-data text-[11px] font-semibold uppercase tracking-[.06em]";
 
 // Accessorer pr. sorterbar kolonne. Rytterens evner er fladtgjort op på
 // listing.rider[<key>] (flattenAbilities ved load) — se abilities.js (SSOT).
@@ -166,7 +181,11 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-cz p-5 transition-all
+    // #2849 bølge 2: kanonisk section-card-recipe (Section = 20px/16px mobil-
+    // padding, ingen skygge) — statusfarven på border-kanten er bevidst bevaret
+    // via className-override oven på Card's default border (samme mønster som
+    // AuctionsPage's <Card className="border-cz-accent/40 ..."> fra bølge 1).
+    <Section className={`transition-all
       ${isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -188,7 +207,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         </div>
       </div>
 
-      <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">
             {offer.status === "countered" ? t("offerCard.counterLabel") : t("offerCard.offerLabel")}
@@ -213,7 +232,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       </div>
 
       {offer.message && (
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2 mb-3 text-cz-2 text-xs italic">
           &quot;{offer.message}&quot;
         </div>
       )}
@@ -222,38 +241,38 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "counter"
                   ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg transition-all disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg transition-all disabled:opacity-50">
               {t("offerCard.buttons.reject")}
             </button>
           </div>
 
           {mode === "counter" && (
-            <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+            <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.counterLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={counterAmt}
                   onChange={e => setCounterAmt(parseInt(e.target.value) || 0)}
-                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
-                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
                   {t("offerCard.buttons.send")}
                 </button>
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder={t("offerCard.form.messageBuyer")}
-                className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-none" />
             </div>
           )}
         </div>
@@ -262,20 +281,20 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.seller_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
                 {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -283,12 +302,12 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       )}
 
       {canArchive && (
-        <button onClick={() => doAction("archive")} disabled={loading}
-          className="min-h-[44px] mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
+        <Button variant="secondary" size="sm" fullWidth className="mt-3"
+          onClick={() => doAction("archive")} disabled={loading}>
           {t("offerCard.buttons.archive")}
-        </button>
+        </Button>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -321,7 +340,9 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-cz p-5 transition-all
+    // #2849 bølge 2: kanonisk section-card-recipe, status-border via className-
+    // override (samme mønster som ReceivedOfferCard/AuctionsPage bølge 1).
+    <Section className={`transition-all
       ${isAwaiting ? "border-cz-info/30" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -343,7 +364,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         </div>
       </div>
 
-      <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-3">
+      <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.yourBidLabel")}</p>
@@ -359,7 +380,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       </div>
 
       {offer.message && (
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2 mb-3 text-cz-2 text-xs italic">
           &quot;{offer.message}&quot;
         </div>
       )}
@@ -368,66 +389,66 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
-              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium border transition-all
+              className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "new_offer"
                   ? "bg-cz-info-bg0/20 text-cz-info border-cz-info/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.newOffer")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
-              className="min-h-[44px] px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
+              className="min-h-[44px] px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
               {t("offerCard.buttons.withdraw")}
             </button>
           </div>
 
           {mode === "new_offer" && (
-            <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+            <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.newOfferLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={newAmt}
                   onChange={e => setNewAmt(parseInt(e.target.value) || 0)}
-                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="min-w-0 flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
-                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
                   {t("offerCard.buttons.send")}
                 </button>
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder={t("offerCard.form.messagePlaceholder")}
-                className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-none" />
             </div>
           )}
         </div>
       )}
 
       {isPending && (
-        <button onClick={() => doAction("withdraw")} disabled={loading}
-          className="min-h-[44px] w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
-            hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
+        <Button variant="secondary" size="sm" fullWidth
+          className="text-cz-3 hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30"
+          onClick={() => doAction("withdraw")} disabled={loading}>
           {t("offerCard.buttons.withdrawOffer")}
-        </button>
+        </Button>
       )}
 
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.buyer_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
               {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -435,12 +456,12 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       )}
 
       {canArchive && (
-        <button onClick={() => doAction("archive")} disabled={loading}
-          className="min-h-[44px] mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
+        <Button variant="secondary" size="sm" fullWidth className="mt-3"
+          onClick={() => doAction("archive")} disabled={loading}>
           {t("offerCard.buttons.archive")}
-        </button>
+        </Button>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -474,7 +495,8 @@ function SwapCard({ swap, myTeamId, onAction }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-cz p-5 transition-all
+    // #2849 bølge 2: kanonisk section-card-recipe, status-border via className-override.
+    <Section className={`transition-all
       ${isAwaiting ? "border-cz-info/30" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
@@ -495,7 +517,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
         ].map(({ label, rider }) => (
           <RiderLink key={rider?.id} id={rider?.id}
             aria-label={rider ? `${rider.firstname} ${rider.lastname}` : undefined}
-            className="group block bg-cz-subtle rounded-lg px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
+            className="group block bg-cz-subtle rounded-cz px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
             <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{label}</p>
             <p className="text-cz-1 text-sm font-semibold transition-colors group-hover:text-cz-accent-t">
               {rider?.firstname} {rider?.lastname}
@@ -509,14 +531,14 @@ function SwapCard({ swap, myTeamId, onAction }) {
         ))}
       </div>
 
-      <div className={`rounded-lg px-3 py-2 mb-3 text-xs text-center font-medium
+      <div className={`rounded-cz px-3 py-2 mb-3 text-xs text-center font-medium
         ${effectiveCash === 0 ? "bg-cz-subtle text-cz-2" : "bg-cz-accent/10 text-cz-accent-t/80"}`}>
         {cashLabel}
         {isCountered && <span className="text-cz-warning ms-2">{t("swapCard.counterTag")}</span>}
       </div>
 
       {swap.message && (
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2 mb-3 text-cz-2 text-xs italic">
           &quot;{swap.message}&quot;
         </div>
       )}
@@ -525,29 +547,29 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
               {t("swapCard.buttons.reject")}
             </button>
           </div>
           {mode === "counter" && (
-            <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+            <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashReceiveLabel")}</label>
               <div className="flex gap-2">
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_cash: -counterCash })}
                   disabled={loading}
-                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
                   {t("swapCard.buttons.send")}
                 </button>
               </div>
@@ -557,40 +579,40 @@ function SwapCard({ swap, myTeamId, onAction }) {
       )}
 
       {isPending && isProposing && (
-        <button onClick={() => doAction("withdraw")} disabled={loading}
-          className="min-h-[44px] w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
-            hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
+        <Button variant="secondary" size="sm" fullWidth
+          className="text-cz-3 hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30"
+          onClick={() => doAction("withdraw")} disabled={loading}>
           {t("swapCard.buttons.withdraw")}
-        </button>
+        </Button>
       )}
 
       {isCountered && isProposing && (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
-              className="min-h-[44px] px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm hover:bg-cz-danger-bg disabled:opacity-50">
+              className="min-h-[44px] px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm hover:bg-cz-danger-bg disabled:opacity-50">
               {t("swapCard.buttons.rejectShort")}
             </button>
           </div>
           {mode === "counter" && (
-            <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+            <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
               <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashPayLabel")}</label>
               <div className="flex gap-2">
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="flex-1 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
-                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
                   {t("swapCard.buttons.send")}
                 </button>
               </div>
@@ -602,23 +624,23 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {(isProposing ? swap.proposing_confirmed : swap.receiving_confirmed) ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("swapCard.buttons.cancelSwap")}
           </button>
         </div>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -658,21 +680,21 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
 
   if (mode === "edit") {
     return (
-      <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+      <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
         <label className="text-cz-3 text-xs uppercase tracking-wider">{t("transferCard.editPriceLabel")}</label>
         <div className="flex flex-col sm:flex-row gap-2">
           <input type="number" value={price} min={1}
             onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
-            className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+            className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
           <div className="flex gap-2">
-            <button onClick={savePrice} disabled={busy || priceInvalid}
-              className="flex-1 sm:flex-none min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-              {busy ? "..." : t("transferCard.savePrice")}
-            </button>
-            <button onClick={() => { setMode(null); setPrice(listing.asking_price || 0); }} disabled={busy}
-              className="flex-1 sm:flex-none min-h-[44px] px-4 py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+            <Button variant="primary" size="sm" className="flex-1 sm:flex-none"
+              onClick={savePrice} loading={busy} disabled={priceInvalid}>
+              {t("transferCard.savePrice")}
+            </Button>
+            <Button variant="secondary" size="sm" className="flex-1 sm:flex-none"
+              onClick={() => { setMode(null); setPrice(listing.asking_price || 0); }} disabled={busy}>
               {t("transferCard.cancel")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -681,17 +703,17 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
 
   if (mode === "confirmRemove") {
     return (
-      <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+      <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
         <p className="text-cz-2 text-sm">{t("transferCard.removeConfirm", { riderName })}</p>
         <div className="flex gap-2">
           <button onClick={performRemove} disabled={busy}
-            className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
+            className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
             {busy ? t("transferCard.removing") : t("transferCard.confirmRemoveButton")}
           </button>
-          <button onClick={() => setMode(null)} disabled={busy}
-            className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+          <Button variant="secondary" size="sm" className="flex-1"
+            onClick={() => setMode(null)} disabled={busy}>
             {t("transferCard.cancel")}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -699,19 +721,17 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      <button onClick={() => { setPrice(listing.asking_price || 0); setMode("edit"); }}
+      <Button variant="secondary" size="sm"
         aria-label={t("transferCard.editPriceAria", { riderName })}
-        className="min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
-          bg-cz-subtle text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-accent/40">
+        onClick={() => { setPrice(listing.asking_price || 0); setMode("edit"); }}>
         {t("transferCard.editPrice")}
-      </button>
-      <button onClick={() => setMode("confirmRemove")}
+      </Button>
+      <Button variant="secondary" size="sm"
         aria-label={t("transferCard.removeAria", { riderName })}
-        className="min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
-          bg-cz-subtle text-cz-2 border-cz-border
-          hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30">
+        className="hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30"
+        onClick={() => setMode("confirmRemove")}>
         {t("transferCard.removeListing")}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -757,17 +777,16 @@ function MarketOfferForm({ listing, onOffer }) {
         <input type="number" value={offerAmt}
           onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
           aria-label={t("offerCard.form.newOfferLabel")}
-          className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-        <button
+          className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+        <Button variant="primary" size="sm"
           onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
-          disabled={loading || offerAmt <= 0}
-          className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-          {loading ? "..." : t("transferCard.send")}
-        </button>
+          loading={loading} disabled={offerAmt <= 0}>
+          {t("transferCard.send")}
+        </Button>
       </div>
       <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
         placeholder={t("transferCard.messagePlaceholder")}
-        className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-xs focus:outline-none focus:border-cz-accent" />
+        className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-none focus:border-cz-accent" />
       <BidConfirmModal
         show={confirmOpen}
         mode="transfer"
@@ -797,7 +816,10 @@ function MarketRow({
         <td className="px-2 py-2.5 w-12 hidden sm:table-cell">
           <NationCell code={rider?.nationality_code} />
         </td>
-        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
+        {/* #2849 bølge 2: rå box-shadow fjernet — .sticky-name-cell (index.css)
+            giver allerede opak cellebund; border-r er den ene hairline-rule
+            (cz-table-recipen), samme fix som AuctionsPage bølge 1. */}
+        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border">
           <div className="flex items-center gap-2">
             {/* #2451: markering til bulk-prisredigering — kun egne listinger kan
                 bulk-redigeres, så checkboxen findes kun for dem. Ligger i selve
@@ -845,22 +867,22 @@ function MarketRow({
           </td>
         ))}
         <td className="px-3 py-2.5 text-right w-28">
-          <button
+          {/* #2849 bølge 2: T2-kontrakten forbyder gold i rækker — dette er en
+              sekundær expand/collapse-toggle, aldrig sidens primary. */}
+          <Button
+            variant="secondary" size="sm"
             onClick={() => onToggleExpand(listing.id)}
             aria-expanded={expanded}
             aria-label={isOwn ? t("marketRow.manageAria", { riderName }) : t("marketRow.offerAria", { riderName })}
-            className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap
-              ${expanded
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-                : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-accent/40"}`}>
+            className={expanded ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25" : ""}>
             {expanded ? t("marketRow.close") : isOwn ? t("marketRow.manage") : t("marketRow.offer")}
-          </button>
+          </Button>
         </td>
       </tr>
       {expanded && (
         <tr className="border-b border-cz-border bg-cz-subtle">
           <td colSpan={8 + statCols.length + 1} className="px-3 pb-4 pt-1">
-            <div className="max-w-xl rounded-lg border border-cz-border bg-cz-card p-3">
+            <div className="max-w-xl rounded-cz border border-cz-border bg-cz-card p-3">
               {isOwn ? (
                 <OwnListingActions
                   listing={listing}
@@ -908,27 +930,25 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   );
 
   return (
-    <div data-testid="bulk-price-editor" className="bg-cz-card border border-cz-accent/30 rounded-cz p-4 mb-3 flex flex-col gap-3">
+    <Section data-testid="bulk-price-editor" className="border-cz-accent/30 mb-3 flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <span className="text-cz-1 text-sm font-semibold">
           {t("bulkPrice.selected", { count: selectedListings.length })}
         </span>
-        <button onClick={onClear} disabled={busy}
-          className="min-h-[44px] px-3 py-1.5 self-start sm:self-auto text-cz-3 text-xs hover:text-cz-1 transition-colors disabled:opacity-50">
+        <Button variant="ghost" size="sm" className="self-start sm:self-auto"
+          onClick={onClear} disabled={busy}>
           {t("bulkPrice.clear")}
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex gap-1 flex-wrap">
           {BULK_MODES.map(m => (
-            <button key={m} onClick={() => setMode(m)} disabled={busy}
-              className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border disabled:opacity-50
-                ${mode === m
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-subtle border-cz-border"}`}>
+            <Button key={m} variant="secondary" size="sm" disabled={busy}
+              onClick={() => setMode(m)}
+              className={mode === m ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : ""}>
               {t(`bulkPrice.mode.${m}`)}
-            </button>
+            </Button>
           ))}
         </div>
         <input
@@ -939,14 +959,14 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
           onChange={e => setRawValue(e.target.value)}
           placeholder={t(`bulkPrice.valuePlaceholder.${mode}`)}
           aria-label={t("bulkPrice.valueLabel")}
-          className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
+          className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2
             text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
         />
       </div>
 
       {/* Preview: rytter + nuværende pris → ny pris, så justeringen aldrig er en
           overraskelse efter "Anvend". */}
-      <div className="bg-cz-subtle rounded-lg p-3">
+      <div className="bg-cz-subtle rounded-cz p-3">
         <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-2">{t("bulkPrice.previewTitle")}</p>
         {preview.length === 0 ? (
           <p className="text-cz-3 text-xs">{t("bulkPrice.previewEmpty")}</p>
@@ -970,15 +990,14 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
         )}
       </div>
 
-      <button
+      <Button
+        variant="primary" size="sm" className="w-full sm:w-auto sm:self-end"
         data-testid="bulk-price-apply"
         onClick={() => onApply({ mode, value })}
-        disabled={busy || !hasValue || changedCount === 0}
-        className="min-h-[44px] w-full sm:w-auto sm:self-end px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
-          hover:brightness-110 disabled:opacity-50 transition-all">
+        disabled={busy || !hasValue || changedCount === 0}>
         {busy ? t("bulkPrice.applying") : t("bulkPrice.apply", { count: changedCount })}
-      </button>
-    </div>
+      </Button>
+    </Section>
   );
 }
 
@@ -1360,13 +1379,19 @@ export default function TransfersPage() {
     }
   }
 
-  // #1675: market-fanen viser en bred evne-tabel (15 kolonner) — den bruger fuld
-  // content-bredde (Layout giver /transfers max-w-full). De kort-baserede faner
-  // (tilbud/arkiv) + header cappes til en læsbar kolonne, så kortene
-  // ikke strækkes over hele skærmen.
-  const isMarketTab = tab === "market";
+  // #1675: market-fanen viser en bred evne-tabel (15 kolonner) og bruger fuld
+  // content-bredde (Layout's WIDE_CONTENT_ROUTES giver /transfers T2's 1600px-
+  // cap). De kort-baserede faner (modtaget/sendt/arkiv) begrænser kun deres eget
+  // kortindhold til en læsbar kolonne (se max-w-3xl-wrapperne nedenfor) — header/
+  // tabs/toast forbliver i den konstante T2-container (#2849 bølge 2).
   return (
-    <div className={isMarketTab ? "max-w-full" : "max-w-4xl mx-auto"}>
+    // #2849 bølge 2: T2 wide-data-container (docs/design/PAGE_TEMPLATES.md) —
+    // KONSTANT uanset fane (afløser den fane-betingede max-w-full/max-w-4xl-
+    // ternary, som fik header/tabs/toast til at skifte bredde ved fane-skift).
+    // Kort-fanerne (received/sent/archive) begrænser selv deres indhold til en
+    // læsbar kolonne (samme princip som RacesPage's kalender-fane), markeds-
+    // fanens tabel bruger den fulde 1600px-cap.
+    <div className="max-w-[1600px] mx-auto">
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -1376,19 +1401,18 @@ export default function TransfersPage() {
         icon={celebration?.icon}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 max-w-4xl">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-        </div>
-        <div className="bg-cz-card border border-cz-border rounded-lg px-4 py-2 sm:text-right">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("page.balance")}</p>
-          <p className="text-cz-accent-t font-mono font-bold text-sm">{formatNumber(myBalance)} CZ$</p>
-        </div>
-      </div>
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
+
+      {/* Balance er ikke en Select/Button-action — den bor i en enkelt kanonisk
+          stat-Section under headeren (samme recipe som AuctionsPage's stats-
+          grid fra bølge 1), ikke i PageHeader's action-slot. */}
+      <Section className="mb-5 inline-block">
+        <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("page.balance")}</p>
+        <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">{formatNumber(myBalance)} CZ$</p>
+      </Section>
 
       {msg.text && (
-        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border max-w-4xl
+        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border
           ${msg.type === "error"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-success-bg text-cz-success border-cz-success/30"}`}>
@@ -1398,52 +1422,44 @@ export default function TransfersPage() {
 
       {/* #58: primær navigation = 3 handlingsorienterede modes (Skal handles /
           Forhandlinger / Marked). Modet er den øverste beslutning ("hvad skal jeg
-          handle på nu?"); de gamle faner lever videre som underfaner i modet. */}
-      <div className="flex gap-2 mb-3 flex-wrap max-w-4xl">
-        {TAB_MODES.map(m => {
-          const on = m.key === activeMode;
-          return (
-            <button key={m.key} onClick={() => selectMode(m.key)}
-              aria-pressed={on}
-              className={`min-h-[44px] relative px-4 py-2 rounded-lg text-sm font-semibold transition-all border
-                ${on
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+          handle på nu?"); de gamle faner lever videre som underfaner i modet.
+          #2849 bølge 2: delt Tabs-mønster (RacesPage) i stedet for håndrullede
+          rounded-pill-knapper — badge-tallet bæres videre som Tab-children. */}
+      <Tabs value={activeMode} onChange={selectMode} className="mb-3">
+        <TabList label={t("page.title")}>
+          {TAB_MODES.map(m => (
+            <Tab key={m.key} value={m.key}>
               {t(`modes.${m.key}`)}
               {modeBadge[m.key] > 0 && (
                 <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
                   {modeBadge[m.key]}
                 </span>
               )}
-            </button>
-          );
-        })}
-      </div>
+            </Tab>
+          ))}
+        </TabList>
+      </Tabs>
 
       {/* #58: sekundært underfane-bånd — kun for modes med flere faner (Forhandlinger).
           "Skal handles" og "Marked" har hver kun én fane, så de skjuler dette bånd. */}
       {showSubTabs && (
-        <div className="flex gap-2 mb-5 flex-wrap max-w-4xl">
-          {activeModeTabs.map(key => {
-            const meta = tabMeta[key];
-            const on = tab === key;
-            return (
-              <button key={key} onClick={() => setTab(key)}
-                aria-pressed={on}
-                className={`min-h-[44px] relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                  ${on
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-                {meta.label}
-                {meta.badge > 0 && (
-                  <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                    {meta.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <Tabs value={tab} onChange={setTab} className="mb-5">
+          <TabList label={t(`modes.${activeMode}`)}>
+            {activeModeTabs.map(key => {
+              const meta = tabMeta[key];
+              return (
+                <Tab key={key} value={key}>
+                  {meta.label}
+                  {meta.badge > 0 && (
+                    <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                      {meta.badge}
+                    </span>
+                  )}
+                </Tab>
+              );
+            })}
+          </TabList>
+        </Tabs>
       )}
 
       {loading ? (
@@ -1451,13 +1467,19 @@ export default function TransfersPage() {
       ) : (
         <div>
           {tab === "received" && (
-            <div className="flex flex-col gap-3">
+            // #2849 bølge 2: kort-baserede faner beholder en læsbar kolonne (T1-
+            // bredde) INDE i den konstante T2-container — bredden er nu FAST
+            // (ikke betinget af hvilken fane der er aktiv), så header/tabs/toast
+            // ikke længere skifter bredde ved fane-skift.
+            <div className="flex flex-col gap-3 max-w-3xl">
               {receivedOffers.length === 0 && receivedSwaps.length === 0 ? (
-                <EmptyState
-                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
-                  title={t("empty.received")}
-                  description={t("empty.receivedHint")}
-                />
+                <Section>
+                  <EmptyState
+                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                    title={t("empty.received")}
+                    description={t("empty.receivedHint")}
+                  />
+                </Section>
               ) : (
                 receivedOffers.map(o => (
                   <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
@@ -1479,13 +1501,15 @@ export default function TransfersPage() {
           )}
 
           {tab === "sent" && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 max-w-3xl">
               {sentOffers.length === 0 && sentSwaps.length === 0 ? (
-                <EmptyState
-                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
-                  title={t("empty.sent")}
-                  description={t("empty.sentHint")}
-                />
+                <Section>
+                  <EmptyState
+                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                    title={t("empty.sent")}
+                    description={t("empty.sentHint")}
+                  />
+                </Section>
               ) : (
                 sentOffers.map(o => (
                   <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
@@ -1506,12 +1530,14 @@ export default function TransfersPage() {
           )}
 
           {tab === "archive" && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 max-w-3xl">
               {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
-                <EmptyState
-                  icon={<InboxIcon size={28} aria-hidden="true" />}
-                  title={t("empty.archive")}
-                />
+                <Section>
+                  <EmptyState
+                    icon={<InboxIcon size={28} aria-hidden="true" />}
+                    title={t("empty.archive")}
+                  />
+                </Section>
               ) : (
                 <>
                   {archivedReceivedOffers.length > 0 && (
@@ -1544,18 +1570,17 @@ export default function TransfersPage() {
               {/* #1569: kort intro så nye spillere forstår transferlistens marked
                   (vs. auktioner). */}
               <p className="text-cz-3 text-xs mb-3 max-w-4xl">{t("marketIntro")}</p>
-              {/* #1675: cap filter-panelet (form-inputs strækkes ikke i fuld bredde —
-                  samme konvention som RidersPage max-w-[1600px]). */}
-              <div className="max-w-[1600px]">
-                <RiderFilters
-                  filters={riderFilters.filters}
-                  onChange={riderFilters.onChange}
-                  onReset={riderFilters.onReset}
-                  showTeamFilter={false}
-                  showAskingPriceFilter={true}
-                  nationalities={riderFilters.nationalities}
-                />
-              </div>
+              {/* #2849 bølge 2: den ekstra max-w-[1600px]-wrapper er fjernet — siden
+                  er allerede capped på 1600px (T2-containeren), så en indre kopi af
+                  samme bredde var et no-op (den flagede "redundante indre max-w"). */}
+              <RiderFilters
+                filters={riderFilters.filters}
+                onChange={riderFilters.onChange}
+                onReset={riderFilters.onReset}
+                showTeamFilter={false}
+                showAskingPriceFilter={true}
+                nationalities={riderFilters.nationalities}
+              />
               {/* #1185/#2329: sortér på listing-pris (asking_price)/værdi/alder/nyeste
                   via knapperne, ELLER klik en kolonne-header direkte — begge sætter
                   den samme kanoniske sort-state (marketSortState).
@@ -1565,20 +1590,18 @@ export default function TransfersPage() {
                 {MARKET_SORT_BUTTONS.map(btn => {
                   const active = marketSort === btn.sort && marketSortDir === btn.dir;
                   return (
-                    <button key={btn.key} onClick={() => setExactMarketSort(btn.sort, btn.dir)}
-                      className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                        ${active
-                          ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                          : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+                    <Button key={btn.key} variant="secondary" size="sm"
+                      onClick={() => setExactMarketSort(btn.sort, btn.dir)}
+                      className={active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : ""}>
                       {t(`marketSort.${btn.key}`)}
-                    </button>
+                    </Button>
                   );
                 })}
                 <select
                   aria-label={t("marketSort.abilityLabel")}
                   value={ABILITY_KEYS.includes(marketSort) ? marketSort : ""}
                   onChange={e => { if (e.target.value) setExactMarketSort(e.target.value, "desc"); }}
-                  className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                  className={`min-h-[44px] px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
                     ${ABILITY_KEYS.includes(marketSort)
                       ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                       : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1592,11 +1615,9 @@ export default function TransfersPage() {
                   faktisk har egne listinger blandt de viste, og selve editoren kun når
                   noget er markeret. Ellers uændret tabel. */}
               {selectedListingIds.size === 0 && myVisibleListings.length > 0 && (
-                <button onClick={selectAllVisibleMine}
-                  className="min-h-[44px] mb-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-                    text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border">
+                <Button variant="secondary" size="sm" className="mb-3" onClick={selectAllVisibleMine}>
                   {t("bulkPrice.selectAllVisible", { count: myVisibleListings.length })}
-                </button>
+                </Button>
               )}
               {selectedListingIds.size > 0 && (
                 <BulkPriceEditor
@@ -1607,57 +1628,66 @@ export default function TransfersPage() {
                 />
               )}
               {filteredListings.length === 0 ? (
-                <EmptyState
-                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
-                  title={listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}
-                />
+                <Section>
+                  <EmptyState
+                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                    title={listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}
+                  />
+                </Section>
               ) : (
                 /* #1523: rækkelayout på linje med ryttersiden (RidersPage) — bedre
                    overblik + samme evne-kolonner. Sticky navn-kolonne + vandret
-                   scroll til evnerne; pris/status/bud i en expander-række. */
-                <Card className="overflow-hidden">
+                   scroll til evnerne; pris/status/bud i en expander-række.
+                   #2849 bølge 2: konverteres IKKE til <DataTable> — bulk-select-
+                   checkbokse i sticky-cellen + en expander-handlingsrække pr.
+                   listing ligger uden for DataTable's API (samme begrundelse som
+                   AuctionsPage's sticky bud-kolonne i bølge 1). Wrap-chromet deles
+                   via dataTableStyles' WRAP (samme konstant som AuctionsPage bruger
+                   for sin håndrullede tabel); header-typografien deler MARKET_TH_BASE
+                   med cz-table-recipen. */
+                <div className={WRAP}>
                   <div className="overflow-auto max-h-[calc(100vh-260px)]">
                     <table data-sortable className="w-full text-xs">
-                      <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
+                      <thead className="sticky top-0 z-20 bg-cz-card">
                         <tr className="border-b border-cz-border">
                           {/* Nation-kolonnen er bevidst ikke sorterbar (rent visuelt flag, ingen
                               entydig "bedste" nation) — resten af kolonnerne er via SortableTh. */}
-                          <th className="px-2 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-12 hidden sm:table-cell">{t("marketRow.nation")}</th>
+                          <th className={`px-2 py-3 text-left text-cz-3 w-12 hidden sm:table-cell ${MARKET_TH_BASE}`}>{t("marketRow.nation")}</th>
                           <SortableTh sortKey="rider" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-left uppercase tracking-wider w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">
+                            className={`px-3 py-3 text-left w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
                             {t("marketRow.rider")}
                           </SortableTh>
                           <SortableTh sortKey="seller" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-left uppercase tracking-wider hidden sm:table-cell">
+                            className={`px-3 py-3 text-left hidden sm:table-cell ${MARKET_TH_BASE}`}>
                             {t("marketRow.seller")}
                           </SortableTh>
                           <SortableTh sortKey="age" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-2 py-3 text-center uppercase tracking-wider w-12 hidden md:table-cell">
+                            className={`px-2 py-3 text-center w-12 hidden md:table-cell ${MARKET_TH_BASE}`}>
                             {t("marketRow.age")}
                           </SortableTh>
                           <SortableTh sortKey="listed" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-left uppercase tracking-wider hidden md:table-cell">
+                            className={`px-3 py-3 text-left hidden md:table-cell ${MARKET_TH_BASE}`}>
                             {t("marketRow.listed")}
                           </SortableTh>
                           <SortableTh sortKey="value" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-right uppercase tracking-wider w-20">
+                            className={`px-3 py-3 text-right w-20 ${MARKET_TH_BASE}`}>
                             {t("marketRow.value")}
                           </SortableTh>
                           <SortableTh sortKey="salary" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-right uppercase tracking-wider w-20 hidden sm:table-cell">
+                            className={`px-3 py-3 text-right w-20 hidden sm:table-cell ${MARKET_TH_BASE}`}>
                             {t("marketRow.salary")}
                           </SortableTh>
                           <SortableTh sortKey="price" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className="px-3 py-3 text-right uppercase tracking-wider w-24">
+                            className={`px-3 py-3 text-right w-24 ${MARKET_TH_BASE}`}>
                             {t("marketRow.price")}
                           </SortableTh>
                           {LISTING_STATS.map(({ key, label }) => (
                             <SortableTh key={key} sortKey={key} sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                              className="px-1.5 py-3 text-center w-14">
+                              className={`px-1.5 py-3 text-center w-14 ${MARKET_TH_BASE}`}>
                               {label}
                             </SortableTh>
                           ))}
-                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-28">{t("marketRow.action")}</th>
+                          <th className={`px-3 py-3 text-right text-cz-3 w-28 ${MARKET_TH_BASE}`}>{t("marketRow.action")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1679,7 +1709,7 @@ export default function TransfersPage() {
                       </tbody>
                     </table>
                   </div>
-                </Card>
+                </div>
               )}
             </div>
           )}
