@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WRAP, COUNT, thClass, tdClass, trClass, zonePillClass } from "./dataTableStyles.js";
+import { WRAP, COUNT, thClass, tdClass, trClass, zonePillClass, mergeRowProps } from "./dataTableStyles.js";
 
 // #2849 bølge 0 — cz-table-recipen (T2, docs/design/PAGE_TEMPLATES.md).
 
@@ -68,4 +68,35 @@ test("count-linje: font-data 12px i text-3", () => {
   assert.ok(COUNT.includes("font-data"));
   assert.ok(COUNT.includes("text-xs"));
   assert.ok(COUNT.includes("text-cz-3"));
+});
+
+// #2849 bølge 1 — rowProps-hook (DataTable): per-række ref/onClick/className.
+test("mergeRowProps: uden rowProps falder tilbage til ren trClass(zone)", () => {
+  assert.equal(mergeRowProps("danger", null).className, trClass("danger"));
+  assert.equal(mergeRowProps(null, undefined).className, trClass(null));
+});
+
+test("mergeRowProps: className KONKATENERES efter trClass(zone), ikke erstatter den", () => {
+  const merged = mergeRowProps("success", { className: "ring-1 ring-cz-me-ring" });
+  assert.equal(merged.className, `${trClass("success")} ring-1 ring-cz-me-ring`.trim());
+  assert.ok(merged.className.startsWith(trClass("success") || ""), "zone-klassen står stadig først");
+});
+
+test("mergeRowProps: tom/manglende zone-klasse giver ikke et lorent mellemrum", () => {
+  // trClass(zone="success") === "" — konkatenering skal ikke efterlade et
+  // ledende blank i den mergede className.
+  const merged = mergeRowProps("success", { className: "ring-1" });
+  assert.equal(merged.className, "ring-1");
+});
+
+test("mergeRowProps: øvrige props (onClick, ref, data-*) spredes uændret — onClick rammer rækken", () => {
+  let hit = false;
+  const onClick = () => { hit = true; };
+  const ref = () => {};
+  const merged = mergeRowProps(null, { onClick, ref, "data-team-id": "123" });
+  assert.equal(merged.onClick, onClick);
+  assert.equal(merged.ref, ref);
+  assert.equal(merged["data-team-id"], "123");
+  merged.onClick();
+  assert.ok(hit, "onClick fra rowProps skal kunne kaldes via de mergede <tr>-props");
 });

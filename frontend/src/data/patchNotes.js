@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.50",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Dashboard, standings, team, auctions and races share one visual language",
+          "body": "The five most used pages now follow the same page layout: one header style, one card style, and one table style with a pinned name column that works better on mobile. Promotion and relegation zones in the standings are easier to read, and nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Dashboard, stilling, hold, auktioner og løb deler nu ét visuelt sprog",
+          "body": "De fem mest brugte sider følger nu samme sideopbygning: én header-stil, én kort-stil og én tabel-stil med fastlåst navnekolonne, der fungerer bedre på mobil. Op- og nedrykningszoner i stillingen er lettere at læse, og intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.49",
     "date": "2026-07-23",
     "label": "Beta",

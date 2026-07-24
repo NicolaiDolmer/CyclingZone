@@ -62,7 +62,9 @@ async function setup(page) {
   await login(page);
   await page.goto("/standings");
   await expect(page.getByRole("table")).toBeVisible();
-  await page.getByRole("button", { name: /^Division 3/ }).click();
+  // #2849 bølge 1: division-vælgeren er nu ét Select i sidehovedets actions-slot
+  // (T2 action-cluster-kontrakt) i stedet for en fane-knap-række.
+  await page.getByRole("combobox", { name: "Division" }).selectOption("3");
 }
 
 test("Alle-fanen markerer top 2 op + bund 4 ned i HVER pulje (#1760)", async ({ page }) => {
@@ -74,7 +76,9 @@ test("Alle-fanen markerer top 2 op + bund 4 ned i HVER pulje (#1760)", async ({ 
 
 test("en enkelt pulje viser kun dén puljes zone (#1760)", async ({ page }) => {
   await setup(page);
-  await page.getByRole("button", { name: /^Pool A/ }).click();
+  // Pulje-vælgeren er fortsat et eget Select i filter-baren (kun vist når tieren
+  // har flere puljer) — vælg via dens value (poolens id), ikke label-teksten.
+  await page.getByRole("combobox", { name: /^(Pool|Pulje)$/ }).selectOption(POOL_A);
   await expect(page.getByText(/↑ (Up|Op)/)).toHaveCount(2);
   await expect(page.getByText(/↓ (Down|Ned)/)).toHaveCount(4);
 });

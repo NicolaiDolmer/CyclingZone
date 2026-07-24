@@ -1,5 +1,5 @@
 import { SortIndicator } from "./SortableTh.jsx";
-import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass, zonePillClass } from "./dataTableStyles.js";
+import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 
 // #2849 bølge 0 — DEN kanoniske wide-data-tabel (T2, docs/design/PAGE_TEMPLATES.md).
 //
@@ -18,11 +18,17 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass, zonePillClass 
 //
 // rowZone(row, i) => "success" | "danger" | null styrer zone-row-tints; 2px
 // separatorer beregnes automatisk på zone-grænserne (ikke mod tabellens kant).
+//
+// rowProps(row, i) => { ref?, onClick?, className?, ...andre <tr>-props } — valgfrit
+// per-række-hook (#2849 bølge 1). className KONKATENERES EFTER den zone-afledte
+// klasse (så caller-klasser, fx en selektions-ring, kan style oven på zone-tint/
+// hover); øvrige props (ref, onClick, data-*, …) spredes uændret på <tr>.
 export function DataTable({
   columns,
   rows,
   rowKey,
   rowZone = null,
+  rowProps = null,
   sort,
   sortDir,
   onSort,
@@ -74,7 +80,7 @@ export function DataTable({
                 const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;
                 const edgeBottom = Boolean(zone) && i < rows.length - 1 && zones[i + 1] !== zone;
                 return (
-                  <tr key={rowKey ? rowKey(row, i) : i} className={trClass(zone)}>
+                  <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zone, rowProps ? rowProps(row, i) : null)}>
                     {columns.map((col) => (
                       <td
                         key={col.key}

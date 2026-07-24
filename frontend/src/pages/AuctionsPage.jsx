@@ -49,7 +49,13 @@ import { riderOverallRating } from "../lib/riderRating";
 import { ageBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, TagIcon, EyeIcon, StarIcon, PageLoader } from "../components/ui";
+import {
+  Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
+  PageHeader, Section, EmptyState, ErrorState,
+} from "../components/ui";
+// #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
+// selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
+import { WRAP } from "../components/ui/dataTableStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -218,7 +224,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Rytter — sticky left. #228: rent navn, hverken land eller alders-/
           statusbadges blandes ind i navnecellen — begge har nu egen kolonne. */}
-      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)] ${imWinning ? "auction-rider-cell-winning" : ""}`}>
+      {/* #2849 bølge 1: rå box-shadow erstattet af 1px border-rule (border-r) —
+          .auction-rider-cell giver opak cellebund (index.css), så kolonner
+          bag den ikke skinner igennem ved horisontal scroll. */}
+      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-10 border-r border-cz-border ${imWinning ? "auction-rider-cell-winning" : ""}`}>
         <div className="flex items-center gap-2">
           {r?.id && (
             <WatchlistStar
@@ -362,7 +371,8 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       ))}
 
       {/* Byd */}
-      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
+      {/* Samme border-rule-erstatning som rytter-cellen ovenfor. */}
+      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           roomBlocked ? (
             <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
@@ -1374,7 +1384,9 @@ export default function AuctionsPage() {
   const tickerCount = recentBidEvents.length;
 
   return (
-    <div className="max-w-full">
+    // #2849 bølge 1: ÉN container-ramme om hele siden (T2, cap 1600px) —
+    // erstatter det tidligere miks af max-w-full + spredte max-w-[1600px].
+    <div className="max-w-[1600px] mx-auto">
       <OnboardingTour pageKey="auctions" steps={auctionsTourSteps} />
       <ConfettiModal
         show={!!celebration}
@@ -1413,41 +1425,44 @@ export default function AuctionsPage() {
         </div>
       )}
 
-      <div className="mb-5">
-        <div className="flex items-baseline justify-between gap-4 mb-3">
-          <h1 className="text-xl font-bold text-cz-1">{t("auctions:page.title")}</h1>
-          {/* #196: aggregat-ticker — 30s rolling vindue, opdateres live via channel + 1s tick */}
-          <span
-            data-testid="auctions-ticker"
-            className="text-cz-3 text-[11px] font-mono tabular-nums whitespace-nowrap"
-            aria-live="polite"
-          >
+      {/* #2849 bølge 1: DEN kanoniske sidehoved-recipe. Eksisterende actions
+          (Aktiv/Historik-faner) bevares uændret i actions-slotten — dette er
+          side-navigation, ikke en Select+Button, en bevidst afvigelse fra
+          actions-kontraktens "max 1 select + 1 knap" for at undgå at opfinde
+          nyt navigations-mønster i denne bølge. */}
+      <PageHeader
+        title={t("auctions:page.title")}
+        subtitle={
+          // #196: aggregat-ticker — rolling vindue, opdateres live via channel + 1s tick.
+          <span data-testid="auctions-ticker" className="font-data tabular-nums" aria-live="polite">
             {t("auctions:ticker.bidCount", { count: tickerCount })}
           </span>
-        </div>
-        <div className="flex gap-2">
-          <NavLink to="/auctions" end
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                isActive
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t("auctions:nav.active", { count: auctions.length })}
-          </NavLink>
-          <NavLink to="/auctions/history"
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                isActive
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t("auctions:nav.history")}
-          </NavLink>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <NavLink to="/auctions" end
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  isActive
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {t("auctions:nav.active", { count: auctions.length })}
+            </NavLink>
+            <NavLink to="/auctions/history"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  isActive
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {t("auctions:nav.history")}
+            </NavLink>
+          </>
+        }
+      />
 
       {!loading && myTeamId && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 max-w-[1600px]">
-          <Card className="px-4 py-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <Section>
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
               {formatNumber(myBalance)} CZ$
@@ -1457,8 +1472,8 @@ export default function AuctionsPage() {
                 {t("auctions:stats.balanceAvailable", { amount: formatNumber(availableBalance) })}
               </p>
             )}
-          </Card>
-          <Card className="px-4 py-3">
+          </Section>
+          <Section>
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {formatNumber(reservedBalance)} CZ$
@@ -1466,14 +1481,14 @@ export default function AuctionsPage() {
             {winningAuctions.length > 0 && (
               <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
             )}
-          </Card>
-          <Card className="px-4 py-3">
+          </Section>
+          <Section>
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {currentRiderCount ?? "—"}
             </p>
-          </Card>
-          <Card className="px-4 py-3">
+          </Section>
+          <Section>
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {projectedRiderCount ?? "—"}
@@ -1490,7 +1505,7 @@ export default function AuctionsPage() {
                 {outgoingCount > 0 && t("auctions:stats.outgoing", { count: outgoingCount })}
               </p>
             )}
-          </Card>
+          </Section>
         </div>
       )}
 
@@ -1546,30 +1561,30 @@ export default function AuctionsPage() {
         />
       </div>
 
-      <div className="max-w-[1600px]">
-        <RiderFilters
-          filters={riderFilters.filters}
-          onChange={riderFilters.onChange}
-          onReset={riderFilters.onReset}
-          showTeamFilter={false}
-          nationalities={riderFilters.nationalities}
-          showAuctionPriceFilter={true}
-        />
-      </div>
+      {/* RiderFilters er en delt komponent på tværs af flere rytter-oversigter
+          (RidersPage, TransfersPage m.fl.) — dens interne Input/Select-recipe
+          rører vi ikke i denne bølge (bølge 1-scope er AuctionsPage.jsx alene). */}
+      <RiderFilters
+        filters={riderFilters.filters}
+        onChange={riderFilters.onChange}
+        onReset={riderFilters.onReset}
+        showTeamFilter={false}
+        nationalities={riderFilters.nationalities}
+        showAuctionPriceFilter={true}
+      />
 
       {loading ? (
         <PageLoader label={t("auctions:page.loadingAria")} />
       ) : loadError ? (
         // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
-        // tom-state der ligner "ingen aktive auktioner".
-        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4 flex items-center justify-between gap-3"
-          role="alert">
-          <p className="text-cz-danger text-sm">{t("auctions:loadError.message")}</p>
-          <button onClick={loadAll}
-            className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
-            {t("auctions:loadError.retry")}
-          </button>
-        </div>
+        // tom-state der ligner "ingen aktive auktioner". Canonical ErrorState
+        // inde i en Section (chrome renderer altid, kun body swapper).
+        <Section role="alert">
+          <ErrorState
+            description={t("auctions:loadError.message")}
+            action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("auctions:loadError.retry")}</Button>}
+          />
+        </Section>
       ) : (
         <AuctionsContent
           filter={filter}
@@ -1622,73 +1637,90 @@ function applyAuctionSort(list, auctionSort) {
   });
 }
 
+// #2849 bølge 1: cz-table-recipens header-typografi (11px uppercase, tracking
+// .06em, font-data) — farven (--text-3/aktiv-accent) styres fortsat af selve
+// SortableTh-komponenten, så den ikke dupliceres her.
+const TH_BASE = "font-data text-[11px] font-semibold uppercase tracking-[.06em]";
+
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
-    <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
+    // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
+    // er nu den eneste adskillelse, jf. cz-table-recipen.
+    <thead className="sticky top-0 z-20 bg-cz-card">
       <tr className="border-b border-cz-border">
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
+          className={`px-3 py-3 text-left sticky left-0 z-30 bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
         {/* #228: Nation — samme sorterbare mønster som ryttersiden (NationCell). */}
         <SortTh sortKey="nationality_code" sort={activeSort("nationality_code") ? "nationality_code" : riderFiltersSort}
           sortDir={activeSortDir("nationality_code")} onSort={handleSort}
-          className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden xl:table-cell">{t("table.nation")}</SortTh>
+          className={`px-2 py-3 text-left hidden xl:table-cell ${TH_BASE}`}>{t("table.nation")}</SortTh>
         {/* #228: Status — badge-kolonne som på de andre rytteroversigter. */}
         <SortTh sortKey="is_u25" sort={activeSort("is_u25") ? "is_u25" : riderFiltersSort}
           sortDir={activeSortDir("is_u25")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("table.status")}</SortTh>
+          className={`px-3 py-3 text-left ${TH_BASE}`}>{t("table.status")}</SortTh>
         {/* #228 v2: Ryttertype — samme komponent/mønster som ryttersiden, lige efter Status. */}
         <SortTh sortKey="primary_type" sort={activeSort("primary_type") ? "primary_type" : riderFiltersSort}
           sortDir={activeSortDir("primary_type")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("table.type")}</SortTh>
+          className={`px-3 py-3 text-left ${TH_BASE}`}>{t("table.type")}</SortTh>
         {/* #228: kolonneprioritet — navn, alder, løn, højeste bud, tid tilbage
             forrest (altid synlige, ikke gemt bag et breakpoint). */}
         <SortTh sortKey="birthdate" sort={activeSort("birthdate") ? "birthdate" : riderFiltersSort}
           sortDir={activeSortDir("birthdate")} onSort={handleSort}
-          className="px-2 py-3 text-center font-medium">{t("table.age")}</SortTh>
+          className={`px-2 py-3 text-center ${TH_BASE}`}>{t("table.age")}</SortTh>
         <SortTh sortKey="salary" sort={activeSort("salary") ? "salary" : riderFiltersSort}
           sortDir={activeSortDir("salary")} onSort={handleSort}
-          className="px-2 py-3 text-right font-medium">{t("table.salary")}</SortTh>
+          className={`px-2 py-3 text-right ${TH_BASE}`}>{t("table.salary")}</SortTh>
         {/* #228 v2: Værdi lige ved siden af Højeste bud (værdi først). */}
         <SortTh sortKey="value" sort={activeSort("value") ? "value" : riderFiltersSort}
           sortDir={activeSortDir("value")} onSort={handleSort}
-          className="px-2 py-3 text-right font-medium">{t("table.value")}</SortTh>
+          className={`px-2 py-3 text-right ${TH_BASE}`}>{t("table.value")}</SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
-          className="px-3 py-3 text-right font-medium uppercase tracking-wider whitespace-nowrap">
+          className={`px-3 py-3 text-right whitespace-nowrap ${TH_BASE}`}>
           {t("table.highestBid")}
         </SortTh>
         <SortTh sortKey="calculated_end"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
-          className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
+          className={`px-3 py-3 text-center whitespace-nowrap ${TH_BASE}`}>
           {t("table.timeLeft")}
         </SortTh>
         {/* #2464: OVR-kolonne — sorterbar via den dekorerede _ovr (rytter-niveau). */}
         <SortTh sortKey="_ovr" sort={activeSort("_ovr") ? "_ovr" : riderFiltersSort}
           sortDir={activeSortDir("_ovr")} onSort={handleSort}
           title={t("table.ovrTitle")}
-          className="px-2 py-3 text-center font-medium uppercase tracking-wider">
+          className={`px-2 py-3 text-center ${TH_BASE}`}>
           {t("table.ovr")}
         </SortTh>
         <SortTh sortKey="_scoutMid"
           sort={activeSort("_scoutMid") ? "_scoutMid" : riderFiltersSort}
           sortDir={activeSortDir("_scoutMid")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider whitespace-nowrap">{t("table.potential")}</SortTh>
-        <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden xl:table-cell">{t("table.seller")}</th>
+          className={`px-3 py-3 text-left whitespace-nowrap ${TH_BASE}`}>{t("table.potential")}</SortTh>
+        <th className={`px-3 py-3 text-left text-cz-3 hidden xl:table-cell ${TH_BASE}`}>{t("table.seller")}</th>
         {visibleStatsArr.map(key => (
           <SortTh key={key} sortKey={key}
             sort={activeSort(key) ? key : riderFiltersSort}
             sortDir={activeSortDir(key)} onSort={handleSort}
-            className="px-1 py-3 text-center font-medium w-9">{STAT_LABEL_BY_KEY[key]}</SortTh>
+            className={`px-1 py-3 text-center w-9 ${TH_BASE}`}>{STAT_LABEL_BY_KEY[key]}</SortTh>
         ))}
-        <th className="auction-bid-cell px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 z-30 border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)]">{t("table.bid")}</th>
+        {/* Sticky bud-kolonne: 1px border-rule (border-l) erstatter den rå
+            skygge; .auction-bid-cell giver opak cellebund (index.css). */}
+        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-30 border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
       </tr>
     </thead>
   );
 }
 
+// #2849 bølge 1: DENNE tabel konverteres bevidst IKKE til <DataTable> (T2's
+// kanoniske komponent). DataTable-API'et understøtter kun ét sticky-hjørne
+// (venstre navnekolonne) — auktionstabellen har OGSÅ en sticky HØJRE bud-
+// kolonne (live-budflowet er spillets kerne og skal altid være synlig ved
+// horisontal scroll), som DataTable ikke har en recipe for. I stedet
+// genbruges cz-table-recipens VÆRDIER direkte (WRAP-radius/border, header-
+// typografi, border-rule i stedet for box-shadow) uden at bytte selve
+// tabel-primitivet.
 function AuctionList({ auctions, sectionId, sharedProps }) {
   const sorted = applyAuctionSort(auctions, sharedProps.auctionSort);
   return (
@@ -1716,7 +1748,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
           />
         ))}
       </div>
-      <Card className="hidden md:block overflow-hidden min-w-0">
+      <div className={`hidden md:block min-w-0 ${WRAP}`}>
         <div className="overflow-auto max-h-[calc(100vh-220px)]">
           <table data-sortable className="w-full text-xs">
             <AuctionTableHead
@@ -1752,7 +1784,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </>
   );
 }
@@ -1788,23 +1820,23 @@ function AuctionsContent(props) {
     <div className={showFeed ? "md:grid md:grid-cols-[minmax(0,1fr)_280px] md:gap-4" : ""}>
       <div className="min-w-0">
         {isEmpty ? (
-          <div className="text-center py-16 text-cz-3">
-            <div className="flex justify-center mb-3" aria-hidden="true">
-              {wishlistOnly
-                ? <StarIcon size={36} className="text-cz-3" />
-                : <TagIcon size={36} className="text-cz-3" />}
-            </div>
-            <p>
-              {wishlistOnly
-                ? t("empty.wishlistNoResults")
-                : (filter === "my-situation" ? t("empty.noInvolvementMySituation") : t("empty.noResults"))}
-            </p>
-            <p className="text-sm mt-2">
-              {wishlistOnly
-                ? t("empty.wishlistHelp")
-                : (filter === "my-situation" ? t("empty.browseSuggestion") : t("empty.startAuctionSuggestion"))}
-            </p>
-          </div>
+          // #2849 bølge 1: canonical EmptyState inde i en Section (chrome
+          // renderer altid, kun body swapper).
+          <Section>
+            <EmptyState
+              icon={wishlistOnly ? <StarIcon size={26} aria-hidden="true" /> : <TagIcon size={26} aria-hidden="true" />}
+              title={
+                wishlistOnly
+                  ? t("empty.wishlistNoResults")
+                  : (filter === "my-situation" ? t("empty.noInvolvementMySituation") : t("empty.noResults"))
+              }
+              description={
+                wishlistOnly
+                  ? t("empty.wishlistHelp")
+                  : (filter === "my-situation" ? t("empty.browseSuggestion") : t("empty.startAuctionSuggestion"))
+              }
+            />
+          </Section>
         ) : filter === "my-situation" ? (
           <>
             <MySituationSection

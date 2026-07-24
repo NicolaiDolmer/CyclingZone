@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,10 @@ import { mergeStandings } from "../lib/standingsMerge";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
-import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
+import {
+  EmptyState, ErrorState, Input, Select, Button, PageHeader, DataTable, ZonePill, SkeletonLines, PodiumIcon,
+} from "../components/ui";
+import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 
@@ -57,6 +60,18 @@ function MiniSparkline({ points, color }) {
     <svg width={w} height={h}>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
     </svg>
+  );
+}
+
+// #2849 bølge 1 — mini andels-bar i den sticky navnecelles subline (point- eller
+// værdi-andel af tierens topscorer). ProgressMeter (ui) har kun faste tone-farver
+// (accent/success/danger/warning); denne bar skal følge divisionens egen farve
+// (divColor), så bespoke markup bevares — ingen rå skygge involveret.
+function ShareBar({ pct, color }) {
+  return (
+    <span className="mt-1 block h-1 w-full max-w-[120px] overflow-hidden rounded-full bg-cz-subtle">
+      <span className="block h-1 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+    </span>
   );
 }
 
@@ -350,7 +365,8 @@ export default function StandingsPage() {
   const divStandings = divRanked.filter(matchesSearch);
 
   // #2577: FLIP-reorder — rækker glider til nye pladser når data opdateres
-  // (realtime refetch / linse-/fane-skifte) i stedet for at hoppe.
+  // (realtime refetch / linse-/fane-skifte) i stedet for at hoppe. Ref'en wires
+  // ind pr. række via DataTable's rowProps-hook (#2849 bølge 1).
   const rowRef = useFlipRows([standings, divTab, poolTab, lens, search, strength]);
 
   // #2577: jersey handoff — puls på LeaderBadge når føringen skifter hold inden
@@ -395,6 +411,8 @@ export default function StandingsPage() {
     if (canPromote) poolRows.slice(0, PROMOTE_N).forEach(s => promoteIds.add(s.team_id));
     if (canRelegate) poolRows.slice(-RELEGATE_N).forEach(s => relegateIds.add(s.team_id));
   });
+  const isPromotionRow = (s) => promoteIds.has(s.team_id) && canPromote;
+  const isRelegationRow = (s) => relegateIds.has(s.team_id) && canRelegate;
 
   // #1760: nedryknings-destinationen (tieren under) kan være dormant — Div4-puljer åbnes
   // per pulje når en Div3-pulje er all-real (#1152), så Div3 relegerer reelt ikke før
@@ -420,127 +438,254 @@ export default function StandingsPage() {
     count: standings.filter(s => s.team?.division === d).length,
   }));
 
-  const COLSPAN = lens === LENS_STRENGTH ? 9 : 8;
+  // #2849 bølge 1 — sticky navnecellens fælles indhold (begge linser): compare-
+  // toggle/rang, online-prik, holdlink, badges (leder/dig/AI) + zone-pill
+  // (op-/nedrykning). Delt mellem Linse A- og B-kolonnerne så adfærden er identisk
+  // uanset sortering.
+  function renderTeamCell(s, i) {
+    const isSelected = selected.includes(s.team_id);
+    const isLeader = lens === LENS_STANDINGS && i === 0;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={(e) => toggleSelect(s.team_id, e)}
+          aria-pressed={isSelected}
+          aria-label={t("compare.select", { team: s.team?.name })}
+          title={t("compare.selectHint")}
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz font-data text-xs font-bold transition-colors
+            ${isSelected ? "bg-cz-accent/15 text-cz-accent-t" : "hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
+        >
+          {i + 1}
+        </button>
+        {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
+        <span aria-hidden="true"
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
+          title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
+        {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
+            stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
+            uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
+        <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
+        {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
+        {s.team_id === myTeamId && (
+          <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+            style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
+            {t("youBadge")}
+          </span>
+        )}
+        {/* #1718: diskret AI-markør (uden eget hue/emoji, samme dæmpede stil som
+            rytter-ranglistens AI-tag) — AI-hold vises nu, men skal kunne skelnes. */}
+        {s.team?.is_ai && (
+          <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-[9px] font-medium uppercase text-cz-3">
+            {t("aiBadge")}
+          </span>
+        )}
+        {isPromotionRow(s) && <ZonePill tone="success">{t("promotionBadge")}</ZonePill>}
+        {isRelegationRow(s) && <ZonePill tone="danger">{t("relegationBadge")}</ZonePill>}
+      </>
+    );
+  }
+
+  // #2849 bølge 1 — per-række <tr>-props via DataTable's rowProps-hook: FLIP-ref
+  // (#2577), helrække-klik til holdsiden, samt "dig"/compare-valgt-ringene og
+  // leder-guld-tinten. Zone-tint (success/danger) sidder på <td> og maler derfor
+  // OVEN PÅ <tr>'ens baggrund — leder-guld vinder aldrig over en zone (uændret
+  // fra før migreringen: "gold never overrides a zone bar").
+  function rowProps(s, i) {
+    const isMe = s.team_id === myTeamId;
+    const isSelected = selected.includes(s.team_id);
+    const isLeader = lens === LENS_STANDINGS && i === 0;
+    const rings = [];
+    if (isMe) rings.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
+    if (isSelected) rings.push("inset 0 0 0 1.5px rgb(var(--accent) / 0.6)");
+    return {
+      ref: rowRef(s.team_id),
+      onClick: () => navigate(`/teams/${s.team_id}?tab=results`),
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}`,
+      style: rings.length ? { boxShadow: rings.join(", ") } : undefined,
+    };
+  }
+
+  // Kolonner pr. linse — sticky navnecelle delt, resten skifter mellem point- og
+  // trup-styrke-visning (uændret data/beregning, kun kolonne-recept).
+  const standingsColumns = [
+    {
+      key: "team", header: t("thTeam"), sticky: true,
+      render: renderTeamCell,
+      subline: (s) => <ShareBar pct={Math.round((effectivePts(s) / maxPts) * 100)} color={colorSoft} />,
+    },
+    { key: "stageWins", header: t("thStageWins"), numeric: true, fold: true, foldValue: (s) => String(s.stage_wins || 0), render: (s) => s.stage_wins || 0 },
+    { key: "teamComp", header: t("thTeamComp"), numeric: true, fold: true, foldValue: (s) => String(teamComp[s.team_id]?.wins || 0), render: (s) => teamComp[s.team_id]?.wins || 0 },
+    { key: "podiums", header: t("thPodiums"), numeric: true, fold: true, foldValue: (s) => String(podiums[s.team_id] || 0), render: (s) => podiums[s.team_id] || 0 },
+    {
+      key: "prize", header: t("thPrize"), numeric: true,
+      render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-[10px] text-cz-3">CZ$</span></>,
+    },
+    {
+      key: "points", header: t("thPoints"), numeric: true,
+      render: (s) => {
+        const eff = effectivePts(s);
+        const penalty = s.penalty_points || 0;
+        return (
+          <>
+            <span className="font-bold" style={{ color }}>{formatNumber(eff)}</span>
+            {penalty > 0 && (
+              <span className="ms-1.5 text-[10px] text-cz-danger"
+                title={t("penaltyTooltip", { penalty, earned: formatNumber(s.total_points || 0) })}>
+                (−{penalty})
+              </span>
+            )}
+          </>
+        );
+      },
+    },
+    {
+      key: "progress", header: t("thProgress"), fold: true, foldValue: () => "",
+      render: (s) => <MiniSparkline points={racePoints[s.team_id] || []} color={color} />,
+    },
+  ];
+
+  const strengthColumns = [
+    {
+      key: "team", header: t("thTeam"), sticky: true,
+      render: renderTeamCell,
+      subline: (s) => <ShareBar pct={Math.round((strengthVal(s) / maxValue) * 100)} color={colorSoft} />,
+    },
+    {
+      key: "squadValue", header: t("thSquadValue"), numeric: true,
+      render: (s) => (strengthLoading && !strength?.[s.team_id]
+        ? <span className="text-cz-3">…</span>
+        : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-[10px] text-cz-3">CZ$</span></>),
+    },
+    { key: "riders", header: t("thRiders"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.riderCount || 0), render: (s) => strength?.[s.team_id]?.riderCount || 0 },
+    { key: "u25", header: t("thU25"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.u25Count || 0), render: (s) => strength?.[s.team_id]?.u25Count || 0 },
+    {
+      key: "climb", header: ABILITY_SHORT.climbing, numeric: true, fold: true,
+      render: (s) => {
+        const v = strength?.[s.team_id]?.avgBj || 0;
+        return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
+      },
+    },
+    {
+      key: "sprint", header: ABILITY_SHORT.sprint, numeric: true, fold: true,
+      render: (s) => {
+        const v = strength?.[s.team_id]?.avgSp || 0;
+        return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
+      },
+    },
+    {
+      key: "tt", header: ABILITY_SHORT.time_trial, numeric: true, fold: true,
+      render: (s) => {
+        const v = strength?.[s.team_id]?.avgTt || 0;
+        return <span className={v >= STRONG_THRESHOLD ? "font-bold text-cz-accent-t" : ""}>{v}</span>;
+      },
+    },
+    {
+      key: "topStar", header: t("thTopStar"), fold: true, foldValue: (s) => strength?.[s.team_id]?.topRider ? `${strength[s.team_id].topRider.firstname} ${strength[s.team_id].topRider.lastname}` : "",
+      render: (s) => {
+        const agg = strength?.[s.team_id];
+        return agg?.topRider
+          ? <span title={formatCz(getRiderMarketValue(agg.topRider))}>{agg.topRider.firstname} {agg.topRider.lastname}</span>
+          : <span className="text-cz-3">—</span>;
+      },
+    },
+  ];
 
   if (loading) return (
-    <PageLoader />
+    <div translate="no" className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} />
+      <div className={`${WRAP} p-5`}>
+        <SkeletonLines lines={6} />
+      </div>
+    </div>
   );
 
   // #2175: eksplicit fejl-tilstand med retry frem for uendelig spinner ved fejl.
   if (error) return (
-    <div className="max-w-full">
-      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("title")}</h1>
-      <div className="text-center py-16 text-cz-3">
-        <p>{t("loadError")}</p>
-        <button onClick={() => { setLoading(true); loadAll(); }}
-          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("retry")}
-        </button>
-      </div>
+    <div translate="no" className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} />
+      <ErrorState
+        title={t("loadError")}
+        action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("retry")}</Button>}
+      />
     </div>
   );
+
+  const columns = lens === LENS_STANDINGS ? standingsColumns : strengthColumns;
 
   return (
     // #2253: translate="no" — standings-tabellerne re-renderer hyppigt;
     // browser-oversættere muterede tekst-noderne og udløste NotFoundError-crashes
     // (Sentry-events med url=/standings). Se PR #2272.
-    <div translate="no" className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-          <p className="text-cz-3 text-sm" title={season ? t("seasonTooltip") : undefined}>
-            {season ? t("season", { n: season.number }) : t("noActiveSeason")}
-          </p>
+    <div translate="no" className="mx-auto max-w-[1600px]">
+      <PageHeader
+        title={t("title")}
+        subtitle={season ? t("season", { n: season.number }) : t("noActiveSeason")}
+        actions={
+          <Select
+            size="sm"
+            aria-label={t("divisionSelectLabel")}
+            value={divTab}
+            onChange={(e) => { setDivTab(Number(e.target.value)); setPoolTab(POOL_ALL); }}
+          >
+            {divCounts.map(({ div, count }) => (
+              <option key={div} value={div}>{t("division", { n: div })} ({count})</option>
+            ))}
+          </Select>
+        }
+      />
+
+      {/* Filter-bar (T2-recept): op til 3 Selects + search Input, compare-handling
+          højrestillet. Pulje-select er kun med når tieren har flere puljer. */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {hasPoolSubtabs && (
+          <Select
+            size="sm"
+            aria-label={t("poolSelectLabel")}
+            value={poolTab}
+            onChange={(e) => setPoolTab(e.target.value)}
+          >
+            <option value={POOL_ALL}>{t("poolAll")}</option>
+            {tierPools.map(p => {
+              const poolCount = standings.filter(s => s.team?.division === divTab && rowPoolId(s) === p.id).length;
+              return <option key={p.id} value={p.id}>{p.label} ({poolCount})</option>;
+            })}
+          </Select>
+        )}
+        <Select size="sm" aria-label={t("lensSelectLabel")} value={lens} onChange={(e) => selectLens(e.target.value)}>
+          <option value={LENS_STANDINGS}>{t("lens.standings")}</option>
+          <option value={LENS_STRENGTH}>{t("lens.strength")}</option>
+        </Select>
+        {/* controlClass er w-full — bredden styres af wrapperen (T2: search ~240px) */}
+        <div className="w-60">
+          <Input
+            type="text" size="sm" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+          />
         </div>
-      </div>
-
-      {/* Division (tier) tabs */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {divCounts.map(({ div, count }) => (
-          <button key={div} onClick={() => { setDivTab(div); setPoolTab(POOL_ALL); }}
-            className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
-              ${divTab === div
-                ? "border-opacity-30 text-cz-1"
-                : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
-            style={divTab === div ? { backgroundColor: divColor(div, 0.08), borderColor: divColor(div, 0.25), color: divColor(div) } : {}}>
-            {t("division", { n: div })}
-            <span className="ms-2 text-[10px] opacity-60">({count})</span>
-          </button>
-        ))}
-      </div>
-
-      {/* #1688 pulje-sub-faner: kun når den valgte tier har flere puljer (tier 2:2,
-          3:4, 4:8). "All" samler hele tieren; hver pulje-fane filtrerer til puljen. */}
-      {hasPoolSubtabs && (
-        <div className="flex gap-1.5 mb-4 flex-wrap">
-          <button onClick={() => setPoolTab(POOL_ALL)}
-            className={`px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
-              ${poolTab === POOL_ALL
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
-                : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
-            {t("poolAll")}
-          </button>
-          {tierPools.map(p => {
-            const poolCount = standings.filter(s => s.team?.division === divTab && rowPoolId(s) === p.id).length;
-            return (
-              <button key={p.id} onClick={() => setPoolTab(p.id)}
-                className={`px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
-                  ${poolTab === p.id
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
-                    : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
-                {p.label}
-                <span className="ms-1.5 text-[10px] opacity-60">({poolCount})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Lens switch + search + compare action */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="flex rounded-cz border border-cz-border overflow-hidden">
-          {[
-            { key: LENS_STANDINGS, label: t("lens.standings") },
-            { key: LENS_STRENGTH, label: t("lens.strength") },
-          ].map(v => (
-            <button key={v.key} onClick={() => selectLens(v.key)}
-              className={`px-3 py-1.5 text-xs font-medium transition-all
-                ${lens === v.key ? "bg-cz-accent/10 text-cz-accent-t" : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-              {v.label}
-            </button>
-          ))}
-        </div>
-
-        <Input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={t("searchPlaceholder")} className="w-44" />
-
-        <button
-          onClick={openCompare}
-          disabled={selected.length !== 2}
-          className={`ms-auto px-3 py-1.5 rounded-cz text-xs font-medium border transition-all
-            ${selected.length === 2
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40 hover:bg-cz-accent/20"
-              : "bg-cz-card text-cz-3 border-cz-border cursor-not-allowed"}`}>
+        <Button
+          variant="secondary" size="sm" className="ms-auto"
+          onClick={openCompare} disabled={selected.length !== 2}
+        >
           {t("compare.action", { count: selected.length })}
-        </button>
+        </Button>
       </div>
 
       {/* #1745/#1760: entydig op-/nedryknings-summarie. Tallene er antal i den aktuelle
           visning; regel-teksten forklarer per-pulje-mekanikken (top 2 op, bund 4 ned).
           Kun i Linse A uden aktiv søgning, og kun når tieren faktisk kan rykke. */}
       {lens === LENS_STANDINGS && !search && divStandings.length > 0 && (canPromote || canRelegate) && (
-        <div className="mb-4 px-3.5 py-2.5 rounded-cz border border-cz-border bg-cz-card text-xs text-cz-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="text-cz-3 font-medium uppercase tracking-wide text-[10px]">{t("movement.label")}</span>
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-cz border border-cz-border bg-cz-card px-3.5 py-2.5 text-xs text-cz-2">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-cz-3">{t("movement.label")}</span>
           {canPromote && (
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/40" />
+              <span className="h-2 w-2 rounded-sm border border-cz-success/40 bg-cz-success-bg" />
               {t("movement.up", { count: promoteCount })}
             </span>
           )}
           {canRelegate && (
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/40" />
+              <span className="h-2 w-2 rounded-sm border border-cz-danger/40 bg-cz-danger-bg" />
               {t("movement.down", { count: relegateCount })}
             </span>
           )}
@@ -554,224 +699,52 @@ export default function StandingsPage() {
                 : t("movement.ruleUp", { up: PROMOTE_N })}
           </span>
           {relegationDormant && (
-            <span className="text-cz-3 italic">{t("movement.dormant", { n: relegationTargetTier })}</span>
+            <span className="italic text-cz-3">{t("movement.dormant", { n: relegationTargetTier })}</span>
           )}
         </div>
       )}
 
       {divStandings.length === 0 ? (
         <EmptyState
-          icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
+          icon={<PodiumIcon size={26} aria-hidden="true" />}
           title={search ? t("noMatch") : t("noData", { n: divTab })}
         />
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table data-sort-exempt="Stilling, iboende point-orden + zone-logik" className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-8">#</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
-                  {lens === LENS_STANDINGS ? (
-                    <>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thStageWins")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell" title={t("thTeamComp")}>
-                        <span className="hidden xl:inline">{t("thTeamComp")}</span>
-                        <span className="xl:hidden">{t("thTeamCompShort")}</span>
-                      </th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thPodiums")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">
-                        <span className="hidden sm:inline">{t("thPrize")}</span>
-                        <span className="sm:hidden">{t("thPrizeShort")}</span>
-                      </th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thPoints")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell w-20">{t("thProgress")}</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">
-                        <span className="hidden sm:inline">{t("thSquadValue")}</span>
-                        <span className="sm:hidden">{t("thSquadValueShort")}</span>
-                      </th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thRiders")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thU25")}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell">{ABILITY_SHORT.climbing}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell">{ABILITY_SHORT.sprint}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell">{ABILITY_SHORT.time_trial}</th>
-                      <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thTopStar")}</th>
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {divStandings.map((s, i) => {
-                  const isMe = s.team_id === myTeamId;
-                  const prog = racePoints[s.team_id] || [];
-                  const eff = effectivePts(s);
-                  const penalty = s.penalty_points || 0;
-                  const ptsWidth = Math.round((eff / maxPts) * 100);
-                  const agg = strength?.[s.team_id];
-                  const valWidth = Math.round((strengthVal(s) / maxValue) * 100);
-                  const isPromotion = promoteIds.has(s.team_id) && canPromote;
-                  const isRelegation = relegateIds.has(s.team_id) && canRelegate;
-                  const isLeader = lens === LENS_STANDINGS && i === 0;
-                  const isSelected = selected.includes(s.team_id);
-                  // Zone bar (green/red) + the neutral "you" ring can co-exist; gold
-                  // never overrides a zone bar — the leader signal is the chip (PF2 B).
-                  const bars = [];
-                  if (isPromotion) bars.push("inset 3px 0 0 rgb(var(--success))");
-                  else if (isRelegation) bars.push("inset 3px 0 0 rgb(var(--danger))");
-                  if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
-                  if (isSelected) bars.push("inset 0 0 0 1.5px rgb(var(--accent) / 0.6)");
-                  const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
-                  // Zone-separatorer (Linse A, ingen aktiv søgning — index-baserede
-                  // grænser kræver den uændrede point-sorterede rækkefølge).
-                  const showZoneSeparators = lens === LENS_STANDINGS && !search;
-                  return (
-                    <Fragment key={s.id}>
-                      {/* Separator before relegation zone */}
-                      {showZoneSeparators && !(hasPoolSubtabs && poolTab === POOL_ALL) && canRelegate && divStandings.length > PROMOTE_N + RELEGATE_N && i === divStandings.length - RELEGATE_N && (
-                        <tr aria-hidden="true">
-                          <td colSpan={COLSPAN} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div className="border-t border-cz-danger/30" />
-                          </td>
-                        </tr>
-                      )}
-                      <tr
-                        ref={rowRef(s.team_id)}
-                        onClick={() => navigate(`/teams/${s.team_id}?tab=results`)}
-                        style={rowStyle}
-                        className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
-                          ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}>
-                        <td className="px-4 py-3.5">
-                          <button
-                            type="button"
-                            onClick={(e) => toggleSelect(s.team_id, e)}
-                            aria-pressed={isSelected}
-                            aria-label={t("compare.select", { team: s.team?.name })}
-                            title={t("compare.selectHint")}
-                            className={`font-mono font-bold text-sm w-6 h-6 inline-flex items-center justify-center rounded-cz transition-colors
-                              ${isSelected ? "bg-cz-accent/15 text-cz-accent-t" : "hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}>
-                            {i + 1}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
-                            <span aria-hidden="true"
-                              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
-                              title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
-                            {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen */}
-                            <TeamLink id={s.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
-                            {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
-                            {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
-                            {/* #1718: diskret AI-markør (uden eget hue/emoji, samme dæmpede stil som
-                                rytter-ranglistens AI-tag) — AI-hold vises nu, men skal kunne skelnes. */}
-                            {s.team?.is_ai && <span className="text-[9px] font-medium uppercase text-cz-3 border border-cz-border px-1 py-0.5 rounded">{t("aiBadge")}</span>}
-                            {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
-                            {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegationBadge")}</span>}
-                          </div>
-                          {/* Mini progress bar — point-andel (Linse A) eller værdi-andel (Linse B) */}
-                          <div className="mt-1.5 bg-cz-subtle rounded-full h-1 w-full max-w-32">
-                            <div className="h-1 rounded-full" style={{ width: `${lens === LENS_STRENGTH ? valWidth : ptsWidth}%`, backgroundColor: colorSoft }} />
-                          </div>
-                        </td>
-
-                        {lens === LENS_STANDINGS ? (
-                          <>
-                            <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
-                            <td className="px-4 py-3.5 text-right text-cz-2 hidden lg:table-cell font-mono">{teamComp[s.team_id]?.wins || 0}</td>
-                            <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{podiums[s.team_id] || 0}</td>
-                            <td className="px-4 py-3.5 text-right font-mono text-cz-2 whitespace-nowrap">
-                              {formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-cz-3 text-[10px]">CZ$</span>
-                            </td>
-                            <td className="px-4 py-3.5 text-right">
-                              <span className="font-mono font-bold" style={{ color }}>
-                                {formatNumber(eff)}
-                              </span>
-                              {penalty > 0 && (
-                                <span
-                                  className="ms-1.5 font-mono text-[10px] text-cz-danger"
-                                  title={t("penaltyTooltip", { penalty, earned: formatNumber(s.total_points || 0) })}
-                                >
-                                  (−{penalty})
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3.5 text-right hidden lg:table-cell">
-                              <MiniSparkline points={prog} color={color} />
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3.5 text-right font-mono text-cz-2 whitespace-nowrap">
-                              {strengthLoading && !agg ? <span className="text-cz-3">…</span> : <>{formatNumber(agg?.totalValue || 0)} <span className="text-cz-3 text-[10px]">CZ$</span></>}
-                            </td>
-                            <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{agg?.riderCount || 0}</td>
-                            <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{agg?.u25Count || 0}</td>
-                            <td className={`px-4 py-3.5 text-right hidden lg:table-cell font-mono ${(agg?.avgBj || 0) >= STRONG_THRESHOLD ? "text-cz-accent-t font-bold" : "text-cz-2"}`}>{agg?.avgBj || 0}</td>
-                            <td className={`px-4 py-3.5 text-right hidden lg:table-cell font-mono ${(agg?.avgSp || 0) >= STRONG_THRESHOLD ? "text-cz-accent-t font-bold" : "text-cz-2"}`}>{agg?.avgSp || 0}</td>
-                            <td className={`px-4 py-3.5 text-right hidden lg:table-cell font-mono ${(agg?.avgTt || 0) >= STRONG_THRESHOLD ? "text-cz-accent-t font-bold" : "text-cz-2"}`}>{agg?.avgTt || 0}</td>
-                            <td className="px-4 py-3.5 text-right hidden md:table-cell text-cz-2 text-xs whitespace-nowrap">
-                              {agg?.topRider ? (
-                                <span title={formatCz(getRiderMarketValue(agg.topRider))}>
-                                  {agg.topRider.firstname} {agg.topRider.lastname}
-                                </span>
-                              ) : <span className="text-cz-3">—</span>}
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                      {/* Separator after promotion zone */}
-                      {showZoneSeparators && !(hasPoolSubtabs && poolTab === POOL_ALL) && canPromote && divStandings.length > PROMOTE_N + RELEGATE_N && i === PROMOTE_N - 1 && (
-                        <tr aria-hidden="true">
-                          <td colSpan={COLSPAN} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div className="border-t border-cz-success/30" />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Legend */}
-          <div className="px-4 py-3 border-t border-cz-border flex items-center gap-4 flex-wrap">
-            {lens === LENS_STANDINGS ? (
-              <>
-                <div className="flex items-center gap-1.5 text-xs text-cz-accent-t">
-                  <span className="w-2 h-2 rounded-sm bg-cz-accent" />
-                  {t("legendLeader")}
-                </div>
+        <DataTable
+          label={t("title")}
+          columns={columns}
+          rows={divStandings}
+          rowKey={(s) => s.id}
+          rowZone={(s) => (isPromotionRow(s) ? "success" : isRelegationRow(s) ? "danger" : null)}
+          rowProps={rowProps}
+          count={
+            lens === LENS_STANDINGS ? (
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="inline-flex items-center gap-1.5 text-cz-accent-t">
+                  <span className="h-2 w-2 rounded-sm bg-cz-accent" /> {t("legendLeader")}
+                </span>
                 {canPromote && (
-                  <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
-                    <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/30" />
-                    {t("legendPromotion")}
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-cz-success/70">
+                    <span className="h-2 w-2 rounded-sm border border-cz-success/30 bg-cz-success-bg" /> {t("legendPromotion")}
+                  </span>
                 )}
                 {canRelegate && (
-                  <div className="flex items-center gap-1.5 text-xs text-cz-danger/70">
-                    <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/30" />
-                    {t("legendRelegation")}
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-cz-danger/70">
+                    <span className="h-2 w-2 rounded-sm border border-cz-danger/30 bg-cz-danger-bg" /> {t("legendRelegation")}
+                  </span>
                 )}
-                <div className="ms-auto text-xs text-cz-3">
-                  {t("racesPlayed", { count: races.length })}
-                </div>
-              </>
+                <span className="ms-auto">{t("racesPlayed", { count: races.length })}</span>
+              </div>
             ) : (
-              <>
-                <div className="flex items-center gap-1.5 text-xs text-cz-accent-t">
-                  <span className="w-2 h-2 rounded-sm bg-cz-accent" />
-                  {t("legendStrong", { n: STRONG_THRESHOLD })}
-                </div>
-                <div className="ms-auto text-xs text-cz-3">{t("strengthHint")}</div>
-              </>
-            )}
-          </div>
-        </Card>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="inline-flex items-center gap-1.5 text-cz-accent-t">
+                  <span className="h-2 w-2 rounded-sm bg-cz-accent" /> {t("legendStrong", { n: STRONG_THRESHOLD })}
+                </span>
+                <span className="ms-auto">{t("strengthHint")}</span>
+              </div>
+            )
+          }
+        />
       )}
 
       {compareTeams && (
