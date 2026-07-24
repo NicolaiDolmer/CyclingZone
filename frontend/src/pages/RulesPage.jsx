@@ -11,6 +11,10 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { useAcademy } from "../lib/useAcademy.js";
+import PageHeader from "../components/ui/PageHeader.jsx";
+import Section, { SectionHeader } from "../components/ui/Section.jsx";
+import { Table, Tr, Th, Td } from "../components/ui/Table.jsx";
+import { Tabs, TabList, Tab } from "../components/ui/Tabs.jsx";
 import {
   InfoIcon,
   ExternalLinkIcon,
@@ -86,12 +90,9 @@ export default function RulesPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-      </div>
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-4 mb-5">
+      <Section className="mb-[14px]">
         <p className="text-cz-2 text-sm leading-relaxed">{t("page.intro")}</p>
         <div className="mt-3 pt-3 border-t border-cz-border">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">
@@ -111,21 +112,42 @@ export default function RulesPage() {
             ))}
           </ul>
         </div>
+      </Section>
+
+      {/* Section nav — mobile ≤767px: horizontal scrollable tab row (ui/Tabs).
+          md+: sticky vertical list to the left of the content column. Both are
+          fully controlled by the same activeSection state; only one is visible
+          per breakpoint via `hidden`/`md:hidden`, so there's no duplicate
+          interaction surface — just two responsive renderings of one nav. */}
+      <div className="md:hidden mb-4">
+        <Tabs value={activeSection} onChange={setActiveSection}>
+          <TabList label={t("sections.navLabel", { defaultValue: "Rule sections" })}>
+            {SECTION_DEFS.map((s) => (
+              <Tab key={s.key} value={s.key}>
+                <span className="inline-flex items-center gap-1.5">
+                  <s.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  {t(`sections.${s.key}.label`)}
+                </span>
+              </Tab>
+            ))}
+          </TabList>
+        </Tabs>
       </div>
 
       <div className="flex gap-4">
-        {/* Section nav */}
-        <div className="w-40 flex-shrink-0">
-          <div className="flex flex-col gap-1">
+        <div className="hidden md:block w-40 flex-shrink-0">
+          <div className="sticky top-4 flex flex-col gap-1">
             {SECTION_DEFS.map((s) => (
               <button
                 key={s.key}
+                type="button"
                 onClick={() => setActiveSection(s.key)}
-                className={`text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2
+                aria-current={activeSection === s.key ? "true" : undefined}
+                className={`text-left px-3 py-2 rounded-cz text-xs transition-colors flex items-center gap-2 border
                   ${
                     activeSection === s.key
-                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
-                      : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
+                      ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                      : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle border-transparent"
                   }`}
               >
                 <s.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
@@ -137,11 +159,6 @@ export default function RulesPage() {
 
         {/* Section content */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
-            <currentDef.icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-            {t(`sections.${currentDef.key}.label`)}
-          </h2>
-
           {currentDef.gated && !academyEnabled && (
             <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4 flex items-start gap-2">
               <InfoIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-cz-accent-t" />
@@ -149,52 +166,43 @@ export default function RulesPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-[14px]">
             {currentDef.blocks.map((block) => {
               const id = typeof block === "string" ? block : block.id;
               const kind = typeof block === "string" ? "text" : block.kind;
               const base = `sections.${currentDef.key}.blocks.${id}`;
               return (
-                <div key={id} className="bg-cz-card border border-cz-border rounded-cz p-4">
-                  <h3 className="text-cz-1 font-semibold text-sm mb-2">{t(`${base}.title`)}</h3>
+                <Section key={id}>
+                  <SectionHeader as="h3" title={t(`${base}.title`)} />
                   <p className="text-cz-2 text-sm leading-relaxed">{t(`${base}.text`, vars)}</p>
                   {kind === "table" && (
-                    <div className="overflow-x-auto mt-3">
-                      <table data-sort-exempt="Statisk regel-reference (i18n rows)" className="w-full text-sm">
+                    <div className="mt-3">
+                      <Table data-sort-exempt="Statisk regel-reference (i18n rows)">
                         <tbody>
                           {t(`${base}.rows`, { returnObjects: true }).map((row, ri) => {
                             const cells = row.map((cell) => interpolateCell(cell, vars));
                             const isHeader = ri === 0;
                             return (
-                              <tr
-                                key={ri}
-                                className="border-b border-cz-border last:border-0"
-                              >
+                              <Tr key={ri}>
                                 {cells.map((cell, ci) =>
                                   isHeader ? (
-                                    <th
-                                      key={ci}
-                                      className="px-3 py-2 text-left text-cz-3 text-xs uppercase tracking-wider font-medium"
-                                    >
+                                    <Th key={ci} numeric={ci > 0}>
                                       {cell}
-                                    </th>
+                                    </Th>
                                   ) : (
-                                    <td
-                                      key={ci}
-                                      className={`px-3 py-2 ${ci === 0 ? "text-cz-1 font-medium" : "text-cz-2"}`}
-                                    >
+                                    <Td key={ci} numeric={ci > 0} className={ci === 0 ? "font-medium" : ""}>
                                       {cell}
-                                    </td>
+                                    </Td>
                                   )
                                 )}
-                              </tr>
+                              </Tr>
                             );
                           })}
                         </tbody>
-                      </table>
+                      </Table>
                     </div>
                   )}
-                </div>
+                </Section>
               );
             })}
           </div>
