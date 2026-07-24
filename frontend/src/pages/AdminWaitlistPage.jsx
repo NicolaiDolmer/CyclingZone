@@ -334,7 +334,7 @@ export default function AdminWaitlistPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <Table>
+        <Table data-sortable>
           <thead className="bg-cz-subtle border-b border-cz-border">
             <tr>
               <SortableTh sortKey="email" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
