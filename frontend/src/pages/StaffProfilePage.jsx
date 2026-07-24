@@ -43,21 +43,22 @@ export default function StaffProfilePage() {
   // "public" = #2450 candidate-niveau fallback (staff man ikke selv ejer) —
   // stadig et gyldigt visnings-loading-forløb, ikke en fejl/forbudt-tilstand.
   //
-  // Full-bleed-ruten (Layout FULL_BLEED_PREFIXES, #2849 bølge 5) giver denne
-  // rute ingen padding/cap — loading/fejl-grenene sætter derfor selv side-
-  // padding (samme mønster som RaceDetailPage, #2849 bølge 4).
+  // Full-bleed-ruten (Layout FULL_BLEED_PREFIXES) giver denne rute ingen
+  // padding/cap — alle grene sætter derfor selv den kanoniske T3-container
+  // (#2849 bølge 5c: ejer-runde 24/7, hero er et KORT igen, se RiderStatsPage).
+  const outerContainer = "max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8";
   if ((status === "loading" || facilitiesLoading) && status !== "public") return (
-    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+    <div className={outerContainer}>
       <PageLoader />
     </div>
   );
   if (status === "forbidden") return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+    <div className={outerContainer}>
       <EmptyState title={t("gate.title")} description={t("gate.description")} />
     </div>
   );
   if (status === "notfound" || status === "error" || !profile) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
+    <div className={outerContainer}>
       <EmptyState title={t("missing.title")} description={t("missing.description")} />
     </div>
   );
@@ -67,12 +68,45 @@ export default function StaffProfilePage() {
 
   return (
     <div>
-      {/* T3 hero-bånd — --bg-card + 1px bundrule, bleeder edge-to-edge; siden
-          ejer selv indre max-w-5xl + padding (#2849 bølge 5). */}
-      <StaffProfileHero profile={profile} onBack={() => navigate(-1)} />
+      {/* #2849 bølge 5c (T3-revision, ejer 24/7 2. iteration): hero'en er et
+          KORT igen — ikke et full-bleed bånd. Guldlinjen (T3-signatur) følger
+          kortets afrundede topkant, switcheren er et indrykket kort, Back
+          ligger over, og tabs står under kortet på sidens baggrund. Spejler
+          RiderStatsPage/RiderProfileHero-mønstret 1:1. */}
+      <div className={outerContainer}>
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
+        >
+          ‹ {t("back")}
+        </button>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
-        {!isPublic && <StaffSwitcherBar current={id} roster={roster} onNavigate={(sid) => navigate(`/staff/${sid}`)} />}
+        {!isPublic && (
+          <StaffSwitcherBar current={id} roster={roster} onNavigate={(sid) => navigate(`/staff/${sid}`)} />
+        )}
+
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
+          <StaffProfileHero
+            profile={profile}
+            actions={
+              // #2649 — opsig EGET staff (destruktiv, sidst i handlingsrækken).
+              // Kun for det ejede staff-view (public/candidate-visning har ingen
+              // handlinger) — flyttet til kortets bund efter hairline-rule
+              // (T3-spec: "the view's action row sits at the card's bottom"),
+              // samme sted RiderProfileHero injicerer sin action-række.
+              !isPublic ? (
+                <Button variant="danger" size="sm" onClick={() => setReleaseOpen(true)}>
+                  {t("release.button")}
+                </Button>
+              ) : null
+            }
+          />
+        </section>
+
+        {!isPublic && <StaffProfileTabs active={tab} onChange={setTab} />}
+      </div>
+
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         {isPublic ? (
           <>
             {profile.teamName && (
@@ -87,7 +121,6 @@ export default function StaffProfilePage() {
           </>
         ) : (
           <>
-            <StaffProfileTabs active={tab} onChange={setTab} />
             {tab === "overview" && <StaffAbilityColumns profile={profile} />}
             {tab === "effect" && (
               <Card className="p-4 md:p-5">
@@ -100,12 +133,6 @@ export default function StaffProfilePage() {
               </Card>
             )}
 
-            {/* #2649 — opsig EGET staff (destruktiv, sidst i handlingsrækken). */}
-            <div className="mt-5 pt-4 border-t border-cz-border">
-              <Button variant="danger" size="sm" onClick={() => setReleaseOpen(true)}>
-                {t("release.button")}
-              </Button>
-            </div>
             <ReleaseStaffModal
               show={releaseOpen}
               staffName={profile.name}

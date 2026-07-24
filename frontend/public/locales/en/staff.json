@@ -3,7 +3,7 @@
   "gate": { "title": "Not available yet", "description": "The staff area isn't open yet." },
   "missing": { "title": "Staff not found", "description": "This chief isn't on your team." },
   "roles": { "training": "Sports Director", "scouting": "Chief Scout", "medical": "Team Doctor", "academy": "Academy Director", "commercial": "Commercial Director" },
-  "hero": { "tierLabel": "Tier", "salaryLabel": "Salary", "salary": "{amount} CZ$/season", "ratingEyebrow": "Rating /99", "specHeadline": "Best at {axis}" },
+  "hero": { "tierLabel": "Tier", "salaryLabel": "Salary", "salary": "{amount} CZ$/season", "ratingEyebrow": "Rating /99", "specHeadline": "Best at {axis}", "photoFallback": "Photo" },
   "tabs": { "overview": "Overview", "effect": "Effect", "history": "History" },
   "columns": {
     "dimensions": "Coaching", "levels": "Coaching group focus", "roleSkills": "Role skills",
