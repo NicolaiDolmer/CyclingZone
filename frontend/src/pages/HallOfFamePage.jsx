@@ -4,7 +4,12 @@ import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { formatNumber } from "../lib/intl";
-import { TrophyIcon, LightningIcon, CrownIcon, PageLoader } from "../components/ui";
+import {
+  TrophyIcon, LightningIcon, CrownIcon, PageLoader,
+  PageHeader, Section, SectionHeader, DataTable, EmptyState, ErrorState, Button,
+  Tabs, TabList, Tab,
+} from "../components/ui";
+import { SCROLLER, TABLE, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
 const CATEGORIES = [
   { key: "most_points_season", Icon: TrophyIcon, unitKey: "points" },
@@ -37,10 +42,12 @@ export default function HallOfFamePage() {
   const [standings, setStandings] = useState([]);
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [tab, setTab] = useState("hof");
 
   async function loadAll() {
     setLoading(true);
+    setError(null);
     const [hofRes, standingsRes, managersRes] = await Promise.all([
       supabase.from("hall_of_fame").select("*, team:team_id(id, name)").order("value", { ascending: false }),
       supabase.from("season_standings")
@@ -53,6 +60,17 @@ export default function HallOfFamePage() {
         .eq("is_frozen", false)
         .order("name"),
     ]);
+
+    // #2849 bølge 3 (audit-fund): en fejlet fetch degraderede tidligere tavst til
+    // tomme lister (|| []) — surfaces nu som canonical ErrorState med retry i
+    // stedet. Ingen ændring af selve queries/aggregeringen.
+    const failure = hofRes.error || standingsRes.error || managersRes.error;
+    if (failure) {
+      console.error("Hall of Fame load failed:", failure);
+      setError(failure);
+      setLoading(false);
+      return;
+    }
 
     // Group HoF by category
     const grouped = {};
@@ -114,180 +132,205 @@ export default function HallOfFamePage() {
     <PageLoader />
   );
 
+  // #2849 bølge 3 — manager-ranglisten er den eneste tabel her tæt nok på T2's
+  // "dense wide data"-form (5 kolonner, egen kort-ramme) til at bruge den
+  // kanoniske DataTable direkte: sticky navnekolonne + Titel foldes ind i
+  // underlinjen ≤640px, Niveau/XP forbliver synlige og scroller vandret under
+  // den pinnede kolonne i stedet for at presse siden bredere end 375px.
+  const managerColumns = [
+    {
+      key: "name",
+      header: t("thManager"),
+      sticky: true,
+      render: (m, i) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono text-xs text-cz-3">#{i + 1}</span>
+          <TeamLink id={m.team_id} className="text-cz-1 font-medium hover:text-cz-accent-t">
+            {m.manager_name || m.team_name || "—"}
+          </TeamLink>
+        </span>
+      ),
+      subline: (m) => (m.manager_name && m.team_name && m.manager_name !== m.team_name ? m.team_name : null),
+    },
+    {
+      key: "title",
+      header: t("thTitle"),
+      fold: true,
+      foldValue: (m) => t(`level.${getLevelInfo(m.level || 1).key}`),
+      render: (m) => {
+        const levelInfo = getLevelInfo(m.level || 1);
+        return (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle ${levelInfo.cls}`}>
+            {t(`level.${levelInfo.key}`)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "level",
+      header: t("thLevel"),
+      numeric: true,
+      render: (m) => {
+        const levelInfo = getLevelInfo(m.level || 1);
+        return <span className={`font-mono font-bold ${levelInfo.cls}`}>{m.level || 1}</span>;
+      },
+    },
+    {
+      key: "xp",
+      header: t("thXp"),
+      numeric: true,
+      render: (m) => {
+        const xpProgress = (m.xp || 0) % 100;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <div className="w-16 bg-cz-subtle rounded-full h-1.5">
+              <div className="h-1.5 rounded-full bg-cz-accent" style={{ width: `${Math.min(xpProgress, 100)}%` }} />
+            </div>
+            <span className="text-cz-2 font-mono text-xs">{m.xp || 0}</span>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-        <p className="text-cz-3 text-sm">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        {[
-          { key: "hof", label: t("tabRecords") },
-          { key: "managers", label: t("tabManagers") },
-          { key: "divhistory", label: t("tabDivHistory") },
-        ].map(tabItem => (
-          <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === tabItem.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {tabItem.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onChange={setTab} className="mb-6">
+        <TabList label={t("title")}>
+          <Tab value="hof">{t("tabRecords")}</Tab>
+          <Tab value="managers">{t("tabManagers")}</Tab>
+          <Tab value="divhistory">{t("tabDivHistory")}</Tab>
+        </TabList>
+      </Tabs>
 
-      {/* Records tab */}
-      {tab === "hof" && (
-        <div className="flex flex-col gap-6">
-          {CATEGORIES.map(cat => {
-            const entries = getBestFromStandings(cat.key);
-            return (
-              <div key={cat.key} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-l-[3px] border-cz-border border-l-cz-accent">
-                  <cat.Icon size={20} className="text-cz-accent-t" aria-hidden="true" />
-                  <h2 className="text-cz-1 font-semibold text-sm">{t(`categories.${cat.key}`)}</h2>
-                </div>
-                {entries.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-cz-3 text-sm">
-                    {t("noRecords")}
-                  </div>
-                ) : (
-                  <table data-sort-exempt="Top-5 rekord-liste, iboende orden" className="w-full text-sm">
-                    <tbody>
-                      {entries.map((e, i) => (
-                        <tr key={i} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
-                          <td className="px-5 py-3 w-8">
-                            <span className={`font-mono font-bold text-sm
-                              ${i === 0 ? "text-cz-accent-t" : i === 1 ? "text-cz-2" : i === 2 ? "text-cz-warning/60" : "text-cz-3"}`}>
-                              #{i + 1}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <TeamLink id={e.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
-                              {e.team_name || e.team?.name || "—"}
-                            </TeamLink>
-                            {e.season_number && (
-                              <p className="text-cz-3 text-xs">{t("season", { n: e.season_number })}</p>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            <span className="font-mono font-bold text-lg text-cz-accent-t">
-                              {formatNumber(e.value)}
-                            </span>
-                            <span className="text-cz-3 text-xs ms-1">{t(`units.${cat.unitKey}`)}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Managers tab */}
-      {tab === "managers" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          <table data-sort-exempt="Manager-rangliste, iboende level/xp-orden" className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-cz-border">
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">#</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("thManager")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("thTitle")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("thLevel")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("thXp")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {managers.map((m, i) => {
-                const levelInfo = getLevelInfo(m.level || 1);
-                const xpProgress = ((m.xp || 0) % 100);
+      {error ? (
+        <ErrorState
+          title={t("loadError")}
+          action={<Button size="sm" variant="secondary" onClick={() => loadAll()}>{t("retry")}</Button>}
+        />
+      ) : (
+        <>
+          {/* Records tab — hver kategori er en kanonisk Section (T1-kort); rækkerne
+              genbruger dataTableStyles' tdClass/trClass (samme 1px top-rule-recipe
+              som T1's "row lists inside cards") inde i en overflow-x-scroller, så
+              lange holdnavne aldrig presser siden bredere end 375px. */}
+          {tab === "hof" && (
+            <div className="flex flex-col gap-[14px]">
+              {CATEGORIES.map(cat => {
+                const entries = getBestFromStandings(cat.key);
                 return (
-                  <tr key={m.id} className="border-b border-cz-border hover:bg-cz-subtle">
-                    <td className="px-4 py-3 text-cz-2 font-mono text-sm">#{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <TeamLink id={m.team_id} className="text-cz-1 font-medium hover:text-cz-accent-t">
-                        {m.manager_name || m.team_name || "—"}
-                      </TeamLink>
-                      {m.manager_name && m.team_name && m.manager_name !== m.team_name && (
-                        <p className="text-cz-3 text-xs">{m.team_name}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle ${levelInfo.cls}`}>
-                        {t(`level.${levelInfo.key}`)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`font-mono font-bold ${levelInfo.cls}`}>
-                        {m.level || 1}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 bg-cz-subtle rounded-full h-1.5">
-                          <div className="h-1.5 rounded-full bg-cz-accent"
-                            style={{ width: `${Math.min(xpProgress, 100)}%` }} />
-                        </div>
-                        <span className="text-cz-2 font-mono text-xs">{m.xp || 0}</span>
+                  <Section key={cat.key}>
+                    <SectionHeader
+                      title={
+                        <span className="flex items-center gap-2">
+                          <cat.Icon size={16} className="text-cz-accent-t" aria-hidden="true" />
+                          {t(`categories.${cat.key}`)}
+                        </span>
+                      }
+                    />
+                    {entries.length === 0 ? (
+                      <EmptyState icon={<cat.Icon size={26} aria-hidden="true" />} title={t("noRecords")} />
+                    ) : (
+                      <div className={SCROLLER}>
+                        <table data-sort-exempt="Top-5 rekord-liste, iboende orden" className={TABLE}>
+                          <tbody>
+                            {entries.map((e, i) => (
+                              <tr key={i} className={trClass(null)}>
+                                <td className={`${tdClass({})} w-8`}>
+                                  <span className={`font-mono font-bold text-sm
+                                    ${i === 0 ? "text-cz-accent-t" : i === 1 ? "text-cz-2" : i === 2 ? "text-cz-warning/60" : "text-cz-3"}`}>
+                                    #{i + 1}
+                                  </span>
+                                </td>
+                                <td className={tdClass({})}>
+                                  <TeamLink id={e.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
+                                    {e.team_name || e.team?.name || "—"}
+                                  </TeamLink>
+                                  {e.season_number && (
+                                    <p className="text-cz-3 text-xs">{t("season", { n: e.season_number })}</p>
+                                  )}
+                                </td>
+                                <td className={tdClass({ numeric: true })}>
+                                  <span className="font-bold text-lg text-cz-accent-t">
+                                    {formatNumber(e.value)}
+                                  </span>
+                                  <span className="text-cz-3 text-xs ms-1">{t(`units.${cat.unitKey}`)}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </td>
-                  </tr>
+                    )}
+                  </Section>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Division history tab */}
-      {tab === "divhistory" && (
-        <div>
-          {Object.keys(divHistory).length === 0 ? (
-            <div className="text-center py-16 text-cz-3">
-              <TrophyIcon size={32} className="mx-auto mb-3" aria-hidden="true" />
-              <p>{t("noDivHistory")}</p>
-              <p className="text-sm mt-2">{t("noDivHistoryHint")}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {Object.entries(divHistory).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([season, entries]) => (
-                <div key={season} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                  <div className="px-5 py-3 border-b border-cz-border flex items-center gap-2">
-                    <span className="text-cz-accent-t font-bold text-sm">{t("season", { n: season })}</span>
-                    <span className="text-cz-3 text-xs">{t("division1")}</span>
-                  </div>
-                  <table data-sort-exempt="Saeson-liste, iboende point-orden" className="w-full text-sm">
-                    <tbody>
-                      {entries.sort((a, b) => b.total_points - a.total_points).map((s, i) => (
-                        <tr key={s.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
-                          <td className="px-5 py-2.5 w-8">
-                            <span className={`font-mono font-bold ${i === 0 ? "text-cz-accent-t" : "text-cz-2"}`}>
-                              #{i + 1}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <TeamLink id={s.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
-                              {s.team?.name}
-                            </TeamLink>
-                          </td>
-                          <td className="px-5 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                            {formatNumber(s.total_points)} {t("ptSuffix")}
-                          </td>
-                          <td className="px-5 py-2.5 text-right text-cz-2 text-xs">
-                            {t("stageWins", { count: s.stage_wins || 0 })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
             </div>
           )}
-        </div>
+
+          {/* Managers tab — kanonisk DataTable (T2-recipe: sticky navnekolonne,
+              Titel foldes ind i underlinjen ≤640px). */}
+          {tab === "managers" && (
+            managers.length === 0 ? (
+              <EmptyState title={t("noManagers")} />
+            ) : (
+              <DataTable
+                label={t("tabManagers")}
+                columns={managerColumns}
+                rows={managers}
+                rowKey={(m) => m.id}
+              />
+            )
+          )}
+
+          {/* Division history tab — samme Section+dataTableStyles-mønster som
+              Records-tabbet ovenfor (en kanonisk kort pr. sæson). */}
+          {tab === "divhistory" && (
+            Object.keys(divHistory).length === 0 ? (
+              <EmptyState
+                icon={<TrophyIcon size={26} aria-hidden="true" />}
+                title={t("noDivHistory")}
+                description={t("noDivHistoryHint")}
+              />
+            ) : (
+              <div className="flex flex-col gap-[14px]">
+                {Object.entries(divHistory).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([season, entries]) => (
+                  <Section key={season}>
+                    <SectionHeader title={t("season", { n: season })} meta={t("division1")} />
+                    <div className={SCROLLER}>
+                      <table data-sort-exempt="Saeson-liste, iboende point-orden" className={TABLE}>
+                        <tbody>
+                          {entries.sort((a, b) => b.total_points - a.total_points).map((s, i) => (
+                            <tr key={s.id} className={trClass(null)}>
+                              <td className={`${tdClass({})} w-8`}>
+                                <span className={`font-mono font-bold ${i === 0 ? "text-cz-accent-t" : "text-cz-2"}`}>
+                                  #{i + 1}
+                                </span>
+                              </td>
+                              <td className={tdClass({})}>
+                                <TeamLink id={s.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
+                                  {s.team?.name}
+                                </TeamLink>
+                              </td>
+                              <td className={tdClass({ numeric: true })}>
+                                <span className="text-cz-accent-t font-bold">{formatNumber(s.total_points)} {t("ptSuffix")}</span>
+                              </td>
+                              <td className={tdClass({ numeric: true })}>
+                                <span className="text-cz-2 text-xs">{t("stageWins", { count: s.stage_wins || 0 })}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Section>
+                ))}
+              </div>
+            )
+          )}
+        </>
       )}
     </div>
   );

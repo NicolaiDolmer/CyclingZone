@@ -36,5 +36,8 @@
     "gcContender": "GC Contender",
     "grandTour": "Grand Tour",
     "legend": "Legend"
-  }
+  },
+  "loadError": "Couldn't load the hall of fame. Please try again.",
+  "retry": "Try again",
+  "noManagers": "No managers yet"
 }
