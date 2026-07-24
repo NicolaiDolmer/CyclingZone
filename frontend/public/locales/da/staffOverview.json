@@ -21,7 +21,8 @@
     "mine": "Mit",
     "ai": "AI",
     "actions": "Handlinger",
-    "count": "Viser {filtered} af {total} ansatte"
+    "count": "Viser {filtered} af {total} ansatte",
+    "emptyFiltered": "Ingen ansatte matcher dine filtre"
   },
   "disabled": { "title": "Ikke tilgængelig endnu", "description": "Personale-området er ikke åbnet endnu." },
   "error": { "title": "Kunne ikke hente personale", "description": "Noget gik galt under indlæsning af personale-oversigten. Prøv igen om lidt.", "retry": "Prøv igen" }

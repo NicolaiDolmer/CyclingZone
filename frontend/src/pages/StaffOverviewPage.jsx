@@ -41,7 +41,6 @@ function OverallBadge({ value }) {
 export default function StaffOverviewPage() {
   const { t } = useTranslation("staffOverview");
   const { t: tStaff } = useTranslation("staff");
-  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [includeAi, setIncludeAi] = useState(false);
   const { staff, enabled, loading, error, refresh } = useStaffDirectory({ includeAi });
@@ -227,7 +226,7 @@ export default function StaffOverviewPage() {
       </Card>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={<BriefcaseIcon size={26} aria-hidden="true" />} title={tCommon("controls.noFilterResults")} />
+        <EmptyState icon={<BriefcaseIcon size={26} aria-hidden="true" />} title={t("table.emptyFiltered")} />
       ) : (
         <DataTable
           label={t("page.title")}

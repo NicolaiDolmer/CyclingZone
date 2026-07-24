@@ -21,7 +21,8 @@
     "mine": "Mine",
     "ai": "AI",
     "actions": "Actions",
-    "count": "Showing {filtered} of {total} staff"
+    "count": "Showing {filtered} of {total} staff",
+    "emptyFiltered": "No staff match your filters"
   },
   "disabled": { "title": "Not available yet", "description": "The staff area isn't open yet." },
   "error": { "title": "Couldn't load staff", "description": "Something went wrong loading the staff directory. Try again in a moment.", "retry": "Try again" }
