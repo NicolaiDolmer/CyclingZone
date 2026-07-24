@@ -10,6 +10,7 @@ import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities
 import { statStyle } from "../lib/statColor";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { initialsFrom } from "../components/ui/avatarStyles.js";
 import {
   Card,
   CategoryTag,
@@ -25,7 +26,6 @@ import {
   Th,
   Td,
   ProgressMeter,
-  Avatar,
   Button,
   TrophyIcon,
   LockIcon,
@@ -148,9 +148,10 @@ export default function ManagerProfilePage() {
   useEffect(() => { loadProfile(); loadMyTeam(); }, [loadProfile, loadMyTeam]);
 
   // Full-bleed-ruten (#2849 bølge 5: /managers/ i Layouts FULL_BLEED_PREFIXES)
-  // får ingen Layout-padding — loading/fejl-grenene sætter derfor selv side-padding.
+  // får ingen Layout-padding — loading/fejl-grenene matcher derfor selv den
+  // reviderede T3-kort-container (#2849 bølge 5c: hero er et kort, ikke et bånd).
   if (loading) return (
-    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <PageLoader />
     </div>
   );
@@ -159,10 +160,10 @@ export default function ManagerProfilePage() {
   // begge til en stum EmptyState uden retry). Genbruger den eksisterende
   // loadProfile-fetch som retry-handler — ingen ny fejl-skelnende logik.
   if (!data) return (
-    <div className="max-w-5xl mx-auto pt-8 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button
         onClick={() => navigate(-1)}
-        className="text-cz-2 hover:text-cz-1 text-xs font-medium mb-4 inline-flex items-center gap-1 transition-colors">
+        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
         <ChevronLeftIcon size={16} />{t("manager.back")}
       </button>
       <ErrorState
@@ -209,21 +210,36 @@ export default function ManagerProfilePage() {
 
   return (
     <div>
-      {/* T3 hero-bånd — --bg-card + 1px bundrule, full-bleed (Layout giver ingen
-          padding/cap på /managers/-ruten); siden ejer selv indre max-w-5xl + padding. */}
-      <div className="bg-cz-card border-b border-cz-border">
-        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5">
-            <ChevronLeftIcon size={16} />{t("manager.back")}
-          </button>
+      {/* #2849 bølge 5c — ejer-revision 24/7: heroet er et KORT, ikke et
+          full-bleed bånd (RiderProfileHero/RiderStatsPage er referenceimplementeringen).
+          Back-linket ligger over kortet på sidens baggrund; kortet bærer selv
+          guld-keylinen på topkanten. Layout-ruten er stadig full-bleed — siden
+          ejer selv sine containere. */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          <ChevronLeftIcon size={16} />{t("manager.back")}
+        </button>
 
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
             <div className="flex items-center gap-4 min-w-0">
-              <Avatar name={team.name} size="lg" />
+              {/* Identitets-slot (managerkontoen bag holdet) — kvadratisk ramme m.
+                  initialer, samme anatomi som rytterprofilens foto-slot. Ingen
+                  "Photo"-label: en managerprofil er en spillerkonto, ikke en
+                  fotoberettiget entitet (rytter/staff kan få rigtige fotos senere;
+                  et hold har ingen ansigt at vente på). */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 flex-none bg-cz-subtle border border-cz-border rounded-cz flex items-center justify-center">
+                <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
+                  {initialsFrom(team.name)}
+                </span>
+              </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {/* Holdnavnet FØRST (ejer-runde 24/7: sidens vigtigste ord først;
+                    tags/meta er metadata og sidder UNDER navnet). */}
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
+                <div className="flex items-center gap-2 flex-wrap mt-2.5">
                   {isOwnProfile && (
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
@@ -231,7 +247,6 @@ export default function ManagerProfilePage() {
                     {t("manager.managerPrefix")} {user.username} · {t("manager.division", { n: team.division })}
                   </span>
                 </div>
-                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
                 <div className="mt-2">
                   <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
                 </div>
@@ -249,17 +264,21 @@ export default function ManagerProfilePage() {
               <HeroStatBlock key={b.label} label={b.label} value={b.value} last={i === statBlocks.length - 1} />
             ))}
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+        {/* Faner UNDER kortet på sidens baggrund — TabList bærer sin egen
+            hairline-bundrule (tabsStyles.js); ingen bånd-fusion. */}
         <Tabs value={tab} onChange={setTab}>
-          <TabList label={team.name} className="mb-4">
+          <TabList label={team.name} className="mt-5">
             {TABS.map(tabItem => (
               <Tab key={tabItem.key} value={tabItem.key}>{tabItem.label}</Tab>
             ))}
           </TabList>
+        </Tabs>
+      </div>
 
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
+        <Tabs value={tab} onChange={setTab}>
           <TabPanel value="overview">
             <div className="flex flex-col gap-[14px]">
               {recentlyUnlocked.length > 0 && (
