@@ -1,16 +1,16 @@
-// RiderProfileTabs — T3 hero-bånd tab-bar for rytterprofilen (#2000, migreret
-// #2849 bølge 5).
+// RiderProfileTabs — tab-bar for rytterprofilen (#2000, #2849 bølge 5).
 //
 // 9 tabs, aktiv = guld-understregning. Horisontal scroll på mobil (tab-baren
 // klipper aldrig). Prop-drevet: parent ejer activeTab-state. Token-only.
-// Sidder på hero-båndets bundkant — `-mb-px` fusionerer tab-rulen med båndets
-// egen `border-b` (PAGE_TEMPLATES.md T3: "tabs sit on the band's bottom edge").
+// Ejer-runde 24/7 (2. iteration): heroet er et kort igen, så tab-baren står
+// UNDER kortet på sidens baggrund og bærer sin egen hairline-bundrule; den
+// aktive fanes guld-underline overlapper rulen via `-mb-px`.
 
 export default function RiderProfileTabs({ tabs, activeTab, onSelect }) {
   return (
     <div
       role="tablist"
-      className="-mx-4 md:mx-0 px-4 md:px-0 mt-5 flex gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="-mx-4 md:mx-0 px-4 md:px-0 mt-5 flex gap-1 overflow-x-auto border-b border-cz-border [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((tab) => {
         const active = tab.key === activeTab;

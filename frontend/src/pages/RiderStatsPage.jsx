@@ -1447,23 +1447,30 @@ export default function RiderStatsPage() {
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
-      {hasSwitcher && (
-        <RiderSwitcherBar
-          prevRider={prevRider}
-          nextRider={nextRider}
-          index={rosterIdx + 1}
-          total={roster.length}
-          onNavigate={(rid) => navigate(`/riders/${rid}`)}
-        />
-      )}
+      {/* Ejer-runde 24/7 (2. iteration): hero'en er et KORT igen — ikke et
+          full-bleed bånd. Guldlinjen (T3-signatur) følger kortets afrundede
+          topkant som i #2000-originalen, switcheren er et indrykket kort,
+          Back ligger over, og tabs står under kortet på sidens baggrund.
+          Layout-ruten er stadig full-bleed — siden ejer selv sine containere. */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
+        >
+          {t("page.back")}
+        </button>
 
-      {/* T3 hero-bånd — --bg-card + 1px bundrule, full-bleed (Layout giver denne
-          rute ingen padding/cap, #2849 bølge 4/5); siden ejer selv indre max-w-5xl +
-          padding. Tabs sidder på båndets bundkant (RiderProfileTabs -mb-px).
-          Guld-keyline (T3-signatur, ejer 24/7) sidder på switcher-baren når den
-          findes — ellers her på båndet, så toppen altid bærer linjen. */}
-      <div className={`bg-cz-card border-b border-cz-border ${hasSwitcher ? "" : "border-t-2 border-t-cz-accent"}`}>
-        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
+        {hasSwitcher && (
+          <RiderSwitcherBar
+            prevRider={prevRider}
+            nextRider={nextRider}
+            index={rosterIdx + 1}
+            total={roster.length}
+            onNavigate={(rid) => navigate(`/riders/${rid}`)}
+          />
+        )}
+
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <RiderProfileHero
             rider={rider}
             viewer={isMyRider ? "own" : "scouting"}
@@ -1482,8 +1489,6 @@ export default function RiderStatsPage() {
             onWatchlist={onWatchlist}
             onToggleWatchlist={toggleWatchlist}
             onCompare={() => navigate(`/compare?ids=${rider.id}`)}
-            backLabel={t("page.back")}
-            onBack={() => navigate(-1)}
             actions={
               /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
                  action row) — udvidede formularer folder ud i fuld bredde under
@@ -1544,6 +1549,7 @@ export default function RiderStatsPage() {
             </div>
           }
         />
+        </section>
 
         <RiderProfileTabs
           tabs={[
@@ -1571,10 +1577,9 @@ export default function RiderStatsPage() {
             if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
           }}
         />
-        </div>
       </div>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
       {/* #2000 stykke 2 — Overblik: objektivt snapshot. Evne-kolonner (3 kort) +
           ryttertype-radar (ægte type-ratings) + compact fysiologi-teaser. Intet
           scout-verdikt her (det lever i Scouting). */}

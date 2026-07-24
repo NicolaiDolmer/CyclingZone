@@ -37,13 +37,14 @@ export default function RiderSwitcherBar({ prevRider, nextRider, index, total, o
     return () => window.removeEventListener("keydown", onKey);
   }, [prevRider, nextRider, onNavigate]);
 
-  // #2849 bølge 5 (ejer-feedback): baren er hero-båndets top-stribe, ikke sit
-  // eget løsrevne bånd — samme bg som båndet (bg-cz-card) + guld-keyline øverst
-  // (T3-signaturen). Holdnavnet er FJERNET her (stod dobbelt: også under navnet
-  // i hero'en); midten er kun index-pill + keyboard-hint.
+  // Ejer-runde 24/7 (2. iteration): tilbage til #2000-originalens indrykkede
+  // kort-look (sticky, afrundet på sm+, edge-to-edge stribe på mobil) — hero'en
+  // er et kort igen, og switcheren skal matche. Holdnavnet er FJERNET (stod
+  // dobbelt: også under navnet i hero'en); midten er kun index-pill + hint.
+  // Guldlinjen bor på hero-KORTET, ikke her.
   return (
-    <div className="sticky top-0 z-sticky bg-cz-card border-t-2 border-t-cz-accent border-b border-b-cz-border">
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-2 flex items-center gap-3">
+    <div className="sticky top-0 z-sticky -mx-4 sm:mx-0 bg-cz-elevated border-b border-cz-border sm:border sm:rounded-cz mb-4">
+      <div className="px-4 sm:px-3 py-2 flex items-center gap-3">
         {/* Forrige */}
         <button
           onClick={() => prevRider && onNavigate?.(prevRider.id)}

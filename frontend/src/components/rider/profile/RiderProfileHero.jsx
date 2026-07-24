@@ -6,13 +6,14 @@
 //   • scouting — rival/AI-rytter; potentiale er fuzzy (ScoutablePotentiale
 //                håndterer maskering server-side), form/træthed vises IKKE her.
 //
-// #2849 bølge 5: migreret til den kanoniske T3-hero-anatomi (PAGE_TEMPLATES.md)
-// — komponenten ejer IKKE længere sin egen bg/border/padding (siden ejer
-// full-bleed-båndet + max-w-5xl-containeren); den renderer kun indholdet:
-// back-link → foto-slot → Bebas-navn → CategoryTags/meta → stat-række (label
-// 10px uppercase / value 20px/650 tabular). Ejer-runde 24/7: navn FØRST (tags
-// er metadata), foto-slot i stedet for cirkel-avatar, rating som farveplade,
-// potentiale = stjerner alene (label i tooltip, niveau-badge skjult), winsOn ude.
+// #2849 bølge 5: komponenten ejer IKKE sin egen bg/border/padding — SIDEN ejer
+// kort-rammen (bg-cz-card + hairline + guld-keyline + rounded-cz, ejer-runde
+// 24/7 2. iteration: kort igen, ikke full-bleed-bånd) og back-linket over
+// kortet. Indholdet her: foto-slot → Bebas-navn → CategoryTags/meta →
+// stat-række (label 10px uppercase / value 20px/650 tabular). Ejer-runde 24/7:
+// navn FØRST (tags er metadata), foto-slot i stedet for cirkel-avatar, rating
+// som farveplade, potentiale = stjerner alene (label i tooltip, niveau-badge
+// skjult), winsOn ude.
 //
 // Token-only: ENESTE rå hex er division-chippen (blå rgb(96 165 250), spec-
 // undtagelse). Rating-farve via statColor (SSOT). Potentiale ALTID via
@@ -101,8 +102,6 @@ export default function RiderProfileHero({
   onWatchlist = false,
   onToggleWatchlist,
   onCompare,                      // () => void — navigér til /compare?ids=... (parent styrer routing)
-  backLabel,                      // T3 back-link-tekst (parent oversætter)
-  onBack,                         // () => void — navigate(-1) (parent styrer routing)
   actions = null,                 // action-række (ReactNode) — injiceres af parent
 }) {
   const { t } = useTranslation("rider");
@@ -119,18 +118,6 @@ export default function RiderProfileHero({
 
   return (
     <>
-      {onBack && (
-        // t("page.back") bærer allerede sin egen "←"-glyf (rider.json) — intet
-        // separat ChevronLeftIcon her, ellers dobbelt-pil (samme mønster som
-        // RaceDetailPage's <Link>{backLabel}</Link>, ingen ikon-prefiks).
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5"
-        >
-          {backLabel}
-        </button>
-      )}
-
       <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
         <div className="flex items-start gap-4 sm:gap-5 min-w-0">
           {/* Foto-slot (ejer-feedback bølge 5: cirkel-avataren var for lille som
