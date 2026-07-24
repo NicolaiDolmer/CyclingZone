@@ -13,12 +13,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI",
         "en": {
-          "title": "Profile pages got a new header band, and the rider filters match the rest of the app",
-          "body": "Rider, team, manager and staff profile pages now open with the same header band as the race page: name up top, key numbers at a glance, and tabs right below. The rider filter panel across the market pages now uses the app's shared inputs and chips. A few stray emoji were also removed from buttons. Nothing about how the pages work has changed."
+          "title": "Profile pages got a new header card, and the rider filters match the rest of the app",
+          "body": "Rider, team, manager, staff and race pages now open with the same header card: a gold top line, the name up top, key numbers at a glance, and tabs right below. The rider rating now carries the same colour scale as the ability numbers. The rider filter panel across the market pages now uses the app's shared inputs and chips, and a few stray emoji were removed from buttons. Nothing about how the pages work has changed."
         },
         "da": {
-          "title": "Profilsiderne har fået et nyt topbånd, og rytterfiltrene matcher resten af appen",
-          "body": "Rytter-, hold-, manager- og staffprofilsiderne åbner nu med samme topbånd som løbssiden: navnet øverst, nøgletal med det samme og faner lige under. Rytterfilter-panelet på markedssiderne bruger nu appens fælles felter og chips. Et par løsrevne emoji er også fjernet fra knapper. Intet i sidernes funktion er ændret."
+          "title": "Profilsiderne har fået et nyt topkort, og rytterfiltrene matcher resten af appen",
+          "body": "Rytter-, hold-, manager-, staff- og løbssiderne åbner nu med samme topkort: en guldlinje øverst, navnet i toppen, nøgletal med det samme og faner lige under. Rytterens rating har nu samme farveskala som evne-tallene. Rytterfilter-panelet på markedssiderne bruger appens fælles felter og chips, og et par løsrevne emoji er fjernet fra knapper. Intet i sidernes funktion er ændret."
         },
         "refs": [2849]
       }
