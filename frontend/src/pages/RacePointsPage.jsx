@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
-import { Card, PageLoader, CoinIcon, InfoIcon } from "../components/ui";
+import {
+  Card, PageLoader, PageHeader, EmptyState, ErrorState, Button,
+  CoinIcon, InfoIcon,
+} from "../components/ui";
+import { SCROLLER, TABLE, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 // Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
 import { PRIZE_PER_POINT } from "../lib/expectedPrizeCalculator";
 
@@ -59,14 +63,26 @@ export default function RacePointsPage() {
   const { t } = useTranslation("races");
   const [grouped, setGrouped] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeClass, setActiveClass] = useState("TourFrance");
   const [expanded, setExpanded] = useState({});
 
   async function loadData() {
-    const { data: rows } = await supabase
+    setError(null);
+    const { data: rows, error: err } = await supabase
       .from("race_points")
       .select("race_class, result_type, rank, points")
       .order("rank");
+
+    // #2849 bølge 3 (audit-fund): en fejlet fetch degraderede tidligere tavst til
+    // en tom liste (kun `data` blev destruktureret) — den fejlede hoved-hentning
+    // surfaces nu som ErrorState med retry i stedet.
+    if (err) {
+      console.error("RacePointsPage loadData failed:", err.message);
+      setError(err);
+      setLoading(false);
+      return;
+    }
 
     const g = {};
     for (const row of rows || []) {
@@ -88,25 +104,41 @@ export default function RacePointsPage() {
     <PageLoader />
   );
 
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <PageHeader title={t("points.title")} subtitle={t("points.subtitle")} />
+        <ErrorState
+          title={t("points.loadError")}
+          action={
+            <Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadData(); }}>
+              {t("points.retry")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   const classData = grouped[activeClass] || {};
   const availableTypes = TYPE_ORDER.filter(type => classData[type]?.length > 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("points.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("points.subtitle")}</p>
-        </div>
-        <Link
-          to="/help"
-          className="flex-shrink-0 flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors mt-1"
-          title={t("points.help")}
-        >
-          <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("points.help")}</span>
-        </Link>
-      </div>
+      <PageHeader
+        title={t("points.title")}
+        subtitle={t("points.subtitle")}
+        actions={
+          <Link
+            to="/help"
+            className="flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors"
+            title={t("points.help")}
+          >
+            <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("points.help")}</span>
+          </Link>
+        }
+      />
 
       {/* Prize formula */}
       <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 space-y-3">
@@ -116,7 +148,7 @@ export default function RacePointsPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PRIZE_EXAMPLES.map(ex => (
-            <div key={ex.key} className="bg-cz-card rounded-lg px-3 py-2 border border-cz-accent/30">
+            <div key={ex.key} className="bg-cz-card rounded-cz px-3 py-2 border border-cz-accent/30">
               <p className="text-xs text-cz-2 truncate">{t(`points.prizeExample.${ex.key}`)}</p>
               <p className="font-mono font-bold text-cz-accent-t text-sm">{fmt(ex.points)} pt</p>
               <p className="text-xs text-cz-3">{fmtPrize(ex.points)}</p>
@@ -131,7 +163,7 @@ export default function RacePointsPage() {
           <button
             key={c}
             onClick={() => setActiveClass(c)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap
+            className={`flex-shrink-0 px-3 py-1.5 rounded-cz-pill text-sm font-medium transition-colors whitespace-nowrap
               ${activeClass === c
                 ? "bg-cz-accent-t text-cz-on-accent"
                 : "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent/30 hover:text-cz-accent-t"
@@ -151,9 +183,7 @@ export default function RacePointsPage() {
 
       {/* Result type tables */}
       {availableTypes.length === 0 ? (
-        <div className="text-center py-12 text-cz-3">
-          <p>{t("points.noClassData")}</p>
-        </div>
+        <EmptyState title={t("points.noClassData")} />
       ) : (
         <div className="space-y-4">
           {availableTypes.map(rType => {
@@ -192,29 +222,31 @@ export default function RacePointsPage() {
                   <h3 className="font-semibold text-cz-1 text-sm">{label}</h3>
                   <p className="text-xs text-cz-3">{desc}</p>
                 </div>
-                <div className="overflow-x-auto">
-                  <table data-sort-exempt="Point-reference opslag, sorteret paa rank" className="w-full text-sm">
+                <div className={SCROLLER}>
+                  <table data-sort-exempt="Point-reference opslag, sorteret paa rank" className={TABLE}>
                     <thead>
-                      <tr className="border-b border-cz-border text-left">
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs w-14">{t("points.thRank")}</th>
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("points.thPoints")}</th>
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs text-right">{t("points.thPrize")}</th>
+                      <tr>
+                        <th className={`${thClass({})} w-14`}>{t("points.thRank")}</th>
+                        <th className={thClass({})}>{t("points.thPoints")}</th>
+                        <th className={thClass({ numeric: true })}>{t("points.thPrize")}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-cz-border">
+                    <tbody>
                       {displayRows.map(row => (
-                        <tr key={row.rank} className="hover:bg-cz-subtle">
-                          <td className={`px-4 py-2 font-mono font-bold text-sm
-                            ${row.rank === 1 ? "text-cz-accent-t"
-                              : row.rank <= 3 ? "text-cz-2"
-                              : "text-cz-3"}`}>
-                            {row.rank}
+                        <tr key={row.rank} className={trClass()}>
+                          <td className={tdClass({})}>
+                            <span className={`font-mono font-bold text-sm
+                              ${row.rank === 1 ? "text-cz-accent-t"
+                                : row.rank <= 3 ? "text-cz-2"
+                                : "text-cz-3"}`}>
+                              {row.rank}
+                            </span>
                           </td>
-                          <td className="px-4 py-2 font-mono text-cz-1">
+                          <td className={`${tdClass({})} font-mono`}>
                             {fmt(row.points)}
                           </td>
-                          <td className="px-4 py-2 text-right text-cz-2 text-xs tabular-nums">
-                            {fmtPrize(row.points)}
+                          <td className={tdClass({ numeric: true })}>
+                            <span className="text-cz-2 text-xs">{fmtPrize(row.points)}</span>
                           </td>
                         </tr>
                       ))}

@@ -208,6 +208,8 @@
     "young": "Youth"
   },
   "points": {
+    "loadError": "Couldn't load the points table. Please try again.",
+    "retry": "Try again",
     "title": "Points & prize overview",
     "subtitle": "How your race prizes are calculated from your placements",
     "help": "Help & Rules",

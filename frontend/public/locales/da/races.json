@@ -208,6 +208,8 @@
     "young": "Unge"
   },
   "points": {
+    "loadError": "Kunne ikke indlæse pointtabellen. Prøv igen.",
+    "retry": "Prøv igen",
     "title": "Point- og præmieoversigt",
     "subtitle": "Sådan beregnes dine løbspræmier fra dine placeringer",
     "help": "Hjælp & Regler",
