@@ -31,6 +31,7 @@ import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+import { captureException as captureExceptionShared } from "./sentry.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -548,6 +549,11 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
+      // #2976 · observabilitets-seam for notifyManagerSafe. Uden den kan en
+      // fejlet notifikation ikke asserteres fra loop-niveau, og det er præcis
+      // loop-niveauet der beviser at ét holds fejl ikke koster de øvrige deres
+      // sæsonskifte.
+      captureException: deps.captureException,
     });
     results.push(payroll);
   }
@@ -701,7 +707,10 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     throwIfSupabaseError(freezeError, `Could not freeze transfers for team ${team.id} (emergency loan escalation)`);
     frozenEarlierThisRun = true;
     console.log(`  🔴🔴 ${team.name}: emergency_loan_streak=${emergencyLoanStreak} (>= ${EMERGENCY_LOAN_ESCALATION_STREAK}) — the board freezes transfers`);
-    await notifyManager(team.id, "board_critical",
+    // #2976: notifikationen må ikke kunne vælte payroll for de resterende hold.
+    // Pengene (nødlånet) er allerede bogført og frysningen allerede skrevet på
+    // dette punkt, så en throw redder ingenting.
+    await notifyManagerSafe(team.id, "board_critical",
       "The board freezes transfers",
       `Your team has needed an emergency loan ${emergencyLoanStreak} seasons in a row. The board freezes transfers until your finances stabilize.`,
       { supabase: supabaseClient },
@@ -710,7 +719,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         titleParams: {},
         messageCode: "notif.emergencyLoanEscalation.message",
         messageParams: { streak: emergencyLoanStreak },
-      }
+      },
+      { sourcePath: "processTeamSeasonPayroll.emergencyLoanEscalation", seasonId, captureException: deps.captureException }
     );
   }
 
@@ -882,12 +892,14 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     //      til tvangssalget: streak 0→1 gav ingen besked fordi frysningen ikke
     //      var en overgang, og streak 1→2 solgte rytteren uden forvarsel.
     //
-    // Ingen af kaldene er wrappet i try/catch: en fejlet notifikation skal
-    // kastes videre (notifyUser kaster på både lookup- og insert-fejl) og lande
-    // i cron-loggen/Sentry, ikke sluges. Samme kontrakt som #2912.
+    // Alle tre kald går gennem notifyManagerSafe: en fejlet afsendelse logges
+    // højlydt og captures til Sentry, men afbryder ALDRIG kørslen. Pengene er
+    // allerede bogført når vi når hertil, og payroll-loopet i
+    // defaultRunSeasonPayroll har ingen per-hold-grænse — en throw ville koste
+    // de resterende hold deres sæsonskifte for at redde én besked.
     if (forcedSaleRiderNames.length > 0) {
       const riders = forcedSaleRiderNames.join(", ");
-      await notifyManager(team.id, "board_critical",
+      await notifyManagerSafe(team.id, "board_critical",
         "The board forced a sale",
         `Your debt of ${interestExcludedDebt} CZ$ stayed over your division cap of ${debtCeiling} CZ$ for ${breachStreak} seasons in a row, so the board sold ${riders} for ${forcedSaleTotal} CZ$ and put the money straight into your loans. Your debt is now ${debtAfterForcedSales} CZ$ and transfers stay frozen until you are back under the cap. If you are still over it at the next season change, the board will sell again. Repay loans, sell riders yourself, or cut wages before then.`,
         { supabase: supabaseClient },
@@ -903,10 +915,11 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             streak: breachStreak,
             remainingDebt: debtAfterForcedSales,
           },
-        }
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingForcedSale", seasonId, captureException: deps.captureException }
       );
     } else if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
-      await notifyManager(team.id, "board_critical",
+      await notifyManagerSafe(team.id, "board_critical",
         "Transfers frozen: debt over the cap",
         `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale.`,
         { supabase: supabaseClient },
@@ -915,10 +928,11 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           titleParams: {},
           messageCode: "notif.debtCeilingFreeze.message",
           messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
-        }
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingFreeze", seasonId, captureException: deps.captureException }
       );
     } else if (breachStreak === 1) {
-      await notifyManager(team.id, "board_critical",
+      await notifyManagerSafe(team.id, "board_critical",
         "One season before a forced sale",
         `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$, and transfers are already frozen. If you are still over the cap at the next season change, the board will sell your most valuable riders to close the gap. Repay loans, sell riders yourself, or cut wages before then.`,
         { supabase: supabaseClient },
@@ -927,7 +941,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           titleParams: {},
           messageCode: "notif.debtCeilingFinalWarning.message",
           messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
-        }
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingFinalWarning", seasonId, captureException: deps.captureException }
       );
     }
 
@@ -2463,6 +2478,58 @@ async function notifyManager(teamId, type, title, message, deps = {}, metadata =
     metadata,
     now: deps.now,
   });
+}
+
+/**
+ * #2976 · Notifikations-afsendelse der ALDRIG afbryder pengelogikken.
+ *
+ * Kald-kæden ved sæsonskiftet har INGEN per-hold-grænse:
+ *   seasonTransition.transitionToNextSeason (fase 6)
+ *     → economyEngine.processSeasonStart
+ *       → defaultRunSeasonPayroll  ← `for (team of teams) await ...`, intet try/catch
+ *         → processTeamSeasonPayroll
+ *
+ * En kastet notifikationsfejl for ÉT hold (DB-hikke, netværk, hold uden
+ * user_id) ville derfor afbryde payroll for alle resterende hold OG resten af
+ * sæson-transitionen (fase 7+ kører aldrig). Og den kaster først EFTER at
+ * pengene er bogført, så at kaste redder ingenting: det bytter "én manglende
+ * besked" for "halvt gennemført økonomikørsel".
+ *
+ * Fejlen sluges ikke: den logges højlydt til cron-loggen og captures til Sentry
+ * med hold-id + besked-type, så en systematisk fejl (fx en notifikationstype
+ * der mangler i notifications_type_check) er synlig med det samme.
+ *
+ * Samme forsvar som squadEnforcement.processSquadEnforcementCron's per-hold
+ * try/catch + captureException.
+ *
+ * Returnerer true hvis beskeden blev afsendt, false hvis den fejlede.
+ */
+async function notifyManagerSafe(teamId, type, title, message, deps = {}, metadata = null, context = {}) {
+  try {
+    await notifyManager(teamId, type, title, message, deps, metadata);
+    return true;
+  } catch (error) {
+    const capture = context.captureException ?? captureExceptionShared;
+    console.error(
+      `  ❌ [economy] NOTIFIKATION FEJLEDE (${context.sourcePath || "unknown"}) for hold ${teamId}`
+        + ` · type=${type} code=${metadata?.messageCode ?? "n/a"} · ${error?.message || error}`
+        + " — payroll fortsætter, beskeden er tabt for dette hold",
+    );
+    try {
+      capture(error, {
+        tags: { cron: "season-payroll", notification_type: type },
+        teamId,
+        messageCode: metadata?.messageCode ?? null,
+        sourcePath: context.sourcePath ?? null,
+        seasonId: context.seasonId ?? null,
+      });
+    } catch (captureError) {
+      // Sentry må heller ikke kunne vælte kørslen. console.error ovenfor er
+      // allerede skrevet, så fejlen er ikke tavs.
+      console.error(`  ❌ [economy] captureException fejlede selv: ${captureError?.message || captureError}`);
+    }
+    return false;
+  }
 }
 
 // #666: build per-plan-type i18n key (1yr/3yr/5yr) — used in board notifications
