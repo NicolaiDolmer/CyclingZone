@@ -20,6 +20,8 @@ on:
       - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/i18n-check-terrain-coverage.mjs'
       - 'scripts/i18n-check-terrain-coverage.test.mjs'
+      - 'scripts/i18n-check-error-codes.mjs'
+      - 'scripts/i18n-check-error-codes.test.mjs'
       - 'scripts/tone-check-em-dash.mjs'
       - 'scripts/tone-check-em-dash.test.mjs'
       - 'frontend/index.html'
@@ -151,6 +153,33 @@ jobs:
 
       - name: Run i18n terrain-coverage guard
         run: node scripts/i18n-check-terrain-coverage.mjs
+
+  error-code-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED (Refs #2848) — forward-guard for backend errorCode-literaler uden
+    # en+da-oversættelse i errors.json's api.*-namespace. Postmortem: #2834
+    # tilføjede 3 nye errorCode-literaler (seller_squad_risk_too_small m.fl.)
+    # der manglede SYMMETRISK i begge sprog — usynligt for i18n-check-keys.mjs
+    # (kun en-vs-da-diff), samme blind-spot-klasse som #2896s terrain-coverage.
+    # Scanner backend/{lib,routes}/**/*.js (ikke tests) for errorCode-literaler
+    # (direkte property, ternary, lookup-tabel, assignment, samt
+    # transferExecution.js's failure()-helper og de to issue-getters hvis
+    # .code forwardes direkte) og fejler hvis en kode mangler oversættelse.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Test error-code coverage guard
+        run: node --test scripts/i18n-check-error-codes.test.mjs
+
+      - name: Run i18n error-code coverage guard
+        run: node scripts/i18n-check-error-codes.mjs
 
   leak-check:
     runs-on: ubuntu-latest
