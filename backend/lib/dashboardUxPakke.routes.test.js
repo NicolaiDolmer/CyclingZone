@@ -197,6 +197,33 @@ test("my-latest-result: historik-fejl kastes — kun 'funktionen findes ikke' de
   );
 });
 
+// Degraderingen dækker den tilstand hvor en migration er glemt. Netop derfor må
+// den ikke være tavs: uden en larm ser den ud som "kortet mangler bare den
+// nederste halvdel", og det er ikke noget en spiller melder.
+test("my-latest-result: degraderingen er hørbar — console + Sentry med RPC, migration, hold og sæson (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(
+    block,
+    /console\.warn\([\s\S]*?dashboard_my_team_season_races/,
+    "degraderingen skal logge hvilken RPC der mangler",
+  );
+  assert.match(
+    block,
+    /captureException\(seasonRacesRes\.error,\s*\{[\s\S]*?teamId:\s*req\.team\.id[\s\S]*?seasonId:\s*season\.id[\s\S]*?\}\)/,
+    "Sentry-eventet skal bære hold og sæson, så vinduets omfang kan aflæses",
+  );
+  assert.match(
+    block,
+    /fingerprint:\s*\["dashboard-my-team-season-races-rpc-missing"\]/,
+    "fast fingerprint samler alle hold i ÉT issue, så first→last seen aflæser hvor længe migrationen har manglet",
+  );
+  assert.match(
+    block,
+    /migration:\s*"database\/2026-07-25-dashboard-my-team-season-races-rpc\.sql"/,
+    "eventet skal pege på den migration der mangler at blive anvendt",
+  );
+});
+
 test("my-latest-result: svaret bærer history + season_totals (#2886)", () => {
   const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
   assert.match(block, /buildSeasonHistory\(\{[\s\S]*?latestRaceId:\s*raceId/, "historikken skal bygges med det viste løb som filter");

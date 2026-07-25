@@ -8831,10 +8831,33 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     // season_totals: null → sektionerne skjules), i stedet for at 500'e og
     // dermed fjerne HELE det eksisterende seneste-løb-kort. Alt andet (timeout,
     // permission, SQL-fejl) kastes som ægte fejl — ingen tavs `|| []`.
+    //
+    // Degraderingen må ikke være diskret. Den udløses præcis når nogen har
+    // glemt at anvende en migration, og uden en larm ville den tilstand leve
+    // videre som "kortet mangler bare den nederste halvdel" — en fejl ingen
+    // melder, fordi der ikke er noget synligt at melde. Både console-linjen og
+    // Sentry-eventet bærer derfor RPC-navn, migrationssti, hold og sæson.
     if (seasonRacesRes.error) {
       const code = seasonRacesRes.error.code;
       if (code !== "PGRST202" && code !== "42883") throw seasonRacesRes.error;
-      captureException(seasonRacesRes.error);
+      console.warn(
+        "[dashboard] #2886 season-history degraderet: RPC dashboard_my_team_season_races mangler"
+          + ` (code=${code}) · team=${req.team.id} season=${season.id}`
+          + " — anvend database/2026-07-25-dashboard-my-team-season-races-rpc.sql",
+      );
+      captureException(seasonRacesRes.error, {
+        // Fast fingerprint (#2434-mønstret): alle hold der rammer den manglende
+        // RPC samles i ÉT Sentry-issue i stedet for ét pr. hold. Så aflæser
+        // "first seen → last seen" direkte hvor længe vinduet har stået åbent,
+        // i stedet for at drukne i 80 næsten-ens issues man ikke kan datere.
+        fingerprint: ["dashboard-my-team-season-races-rpc-missing"],
+        tags: { feature: "dashboard-my-latest-result", degraded: "season-history-rpc-missing" },
+        rpc: "dashboard_my_team_season_races",
+        migration: "database/2026-07-25-dashboard-my-team-season-races-rpc.sql",
+        code,
+        teamId: req.team.id,
+        seasonId: season.id,
+      });
     }
     const { history, season_totals } = buildSeasonHistory({
       rows: seasonRacesRes.error ? [] : (seasonRacesRes.data || []),
