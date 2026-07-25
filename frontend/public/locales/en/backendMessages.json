@@ -146,7 +146,11 @@
     },
     "seasonEnded": {
       "title": "Season {number} has ended",
-      "message": "The season is over. See the recap for final standings, promotions and relegations."
+      "message": "The season is over. See the recap for final standings, promotions and relegations.",
+      "messagePersonal": "You finished in position {rank} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. You start Season {nextSeason} in Division {nextDivision}.",
+      "messagePersonalNoNextDivision": "You finished in position {rank} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points.",
+      "messagePersonalNoRider": "You finished in position {rank} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. You start Season {nextSeason} in Division {nextDivision}.",
+      "messagePersonalMinimal": "You finished in position {rank} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money."
     },
     "raceResult": {
       "title": "Race result is in",

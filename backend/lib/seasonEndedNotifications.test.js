@@ -9,6 +9,12 @@ import { emitSeasonEndedNotifications } from "./seasonTransition.js";
 
 const ENDED_SEASON = { id: "season-uuid-3", number: 3 };
 
+// #2924 · Personaliseringen har sine egne tests (seasonEndedPersonalization.test.js)
+// og sin egen fail-safe-test nedenfor. Her stubbes den ud, saa disse tests bliver
+// ved med at teste UDSENDELSES-kontrakten (hvem faar besked, dedup, isolering).
+const STUB_PERSONALIZATION = async () => new Map();
+const STUB_MOVEMENT_SKIPPED = async () => true;
+
 function makeNotifyRecorder(behavior = () => ({ delivered: true })) {
   const calls = [];
   const notify = async (args) => {
@@ -30,11 +36,13 @@ test("emit: sender til menneske-managers med user_id, springer rows uden user_id
     supabase: {},
     humanTeams,
     endedSeason: ENDED_SEASON,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
     notify,
   });
 
   assert.equal(calls.length, 2, "kun de to managers med user_id notificeres");
-  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0 });
+  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0, personalized: 0 });
 });
 
 test("emit: korrekt type, related_id og locale-aware metadata-koder", async () => {
@@ -44,6 +52,8 @@ test("emit: korrekt type, related_id og locale-aware metadata-koder", async () =
     supabase: {},
     humanTeams: [{ id: "t1", user_id: "u1" }],
     endedSeason: ENDED_SEASON,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
     notify,
   });
 
@@ -72,10 +82,12 @@ test("emit: deduped-svar tælles separat fra delivered (idempotens)", async () =
       { id: "t2", user_id: "u2" },
     ],
     endedSeason: ENDED_SEASON,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
     notify,
   });
 
-  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 1, failed: 0 });
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 1, failed: 0, personalized: 0 });
 });
 
 test("emit: en fejl pr. manager isoleres og stopper ikke resten", async () => {
@@ -91,10 +103,12 @@ test("emit: en fejl pr. manager isoleres og stopper ikke resten", async () => {
       { id: "t2", user_id: "u2" },
     ],
     endedSeason: ENDED_SEASON,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
     notify,
   });
 
-  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 0, failed: 1 });
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 0, failed: 1, personalized: 0 });
 });
 
 test("emit: tom humanTeams-liste giver nul-stats uden at hente fra DB", async () => {
@@ -103,13 +117,15 @@ test("emit: tom humanTeams-liste giver nul-stats uden at hente fra DB", async ()
     supabase: {}, // ville kaste hvis emit forsøgte en fetch
     humanTeams: [],
     endedSeason: ENDED_SEASON,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
     notify,
   });
   assert.equal(calls.length, 0);
-  assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
+  assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0, personalized: 0 });
 });
 
-test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false, select user_id) når humanTeams ikke gives", async () => {
+test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false, select id, user_id, division) når humanTeams ikke gives", async () => {
   const queryLog = [];
   const supabase = {
     from(table) {
@@ -126,7 +142,13 @@ test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen
   };
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await emitSeasonEndedNotifications({ supabase, endedSeason: ENDED_SEASON, notify });
+  const stats = await emitSeasonEndedNotifications({
+    supabase,
+    endedSeason: ENDED_SEASON,
+    notify,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
+  });
 
   // #2832-review (fund 4) · diskriminatoren SKAL matche motorens FULDE
   // kanoniske filter (fx boardWeekendFinalization.js) — AI/bank/frosne/
@@ -134,14 +156,14 @@ test("emit: henter selv menneske-managere (is_ai=false, is_bank=false, is_frozen
   // test-kontiene ("Test A"/"Test B"/"Test Seller") tælle som eligible.
   assert.deepEqual(queryLog, [
     ["from", "teams"],
-    ["select", "user_id"],
+    ["select", "id, user_id, division"],
     ["eq", "is_ai", false],
     ["eq", "is_bank", false],
     ["eq", "is_frozen", false],
     ["eq", "is_test_account", false],
   ]);
   assert.equal(calls.length, 2);
-  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0 });
+  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0, personalized: 0 });
 });
 
 test("emit: kaster hvis manager-fetch fejler (fejl må ikke svales til tom liste)", async () => {
@@ -160,6 +182,10 @@ test("emit: kaster hvis manager-fetch fejler (fejl må ikke svales til tom liste
       emitSeasonEndedNotifications({
         supabase,
         endedSeason: ENDED_SEASON,
+        loadPersonalization: STUB_PERSONALIZATION,
+        isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
+    loadPersonalization: STUB_PERSONALIZATION,
+    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
         notify: async () => ({ delivered: true }),
       }),
     /Could not load managers/,
