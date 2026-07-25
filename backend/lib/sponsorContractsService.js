@@ -122,23 +122,32 @@ async function loadRenownTargetValue({ supabase, teamId, seasonNumber }) {
     prevSeasonId = prevSeason?.id ?? null;
   }
 
-  // Forrige sæsons placeringer (alle hold i samme division som målholdet) for at
-  // beregne division-median + rank-faktor. Tom liste hvis ingen forrige sæson.
-  let divisionStandings = [];
+  // Forrige sæsons ALLE placeringer, ufiltreret. #2909: et hold der er rykket
+  // op/ned mellem sæsoner findes IKKE i sin NYE division sidste sæson — filtrér
+  // derfor aldrig FØR opslag på team_id. Præcis samme mønster som udbetalings-
+  // stien (economyEngine.js processSeasonStart / seasonTransition.js preview),
+  // som bruger et ufiltreret standingByTeamId-map for netop at undgå dette.
+  let allStandings = [];
   if (prevSeasonId) {
     const { data: rows, error: standingsError } = await supabase
       .from("season_standings")
       .select("season_id, team_id, division, rank_in_division, total_points")
       .eq("season_id", prevSeasonId);
     if (standingsError) throw standingsError;
-    const all = rows || [];
-    // Filtrér til holdets division (renown-sammenligning er pr. division).
-    divisionStandings =
-      division == null ? all : all.filter((s) => s.division === division);
+    allStandings = rows || [];
   }
 
   const lastSeasonStanding =
-    divisionStandings.find((s) => s.team_id === teamId) || null;
+    allStandings.find((s) => s.team_id === teamId) || null;
+
+  // Sammenligningskonteksten (median/rank-faktor) er divisionen holdet FAKTISK
+  // konkurrerede i sidste sæson — standingens EGEN division, ikke holdets nye
+  // (samme som divisionStandingsByDivision.get(lastSeasonStanding.division) i
+  // udbetalingsstien). `division` (holdets nuværende) bruges stadig til selve
+  // renown-basen (SPONSOR_INCOME_BY_DIVISION) i renownTarget nedenfor.
+  const divisionStandings = lastSeasonStanding
+    ? allStandings.filter((s) => s.division === lastSeasonStanding.division)
+    : [];
 
   return renownTarget({ division, lastSeasonStanding, divisionStandings });
 }
