@@ -73,3 +73,33 @@ export function scoreGrandTour(stages) {
   if (hcClimbs < 3 || hcClimbs > 8) failures.push(`HC-stigninger ${hcClimbs} udenfor 3–8`);
   return { totalKm, categorizedClimbs, hcClimbs, pass: failures.length === 0, failures };
 }
+
+// Et løb med mindst så mange etaper scores mod GT-båndet.
+export const GRAND_TOUR_MIN_STAGES = 21;
+
+/**
+ * Sæson-aggregat: samler tier-scores + GT-scores til ét resultat + én verdict.
+ * Ren funktion — scorecard-scriptet leverer de (regenererede) løb pr. tier.
+ *
+ * @param {Array<{tier:number, races:Array<{race_type,stages,name?}>}>} tierEntries
+ */
+export function scoreSeason(tierEntries) {
+  const tiers = [];
+  let allPass = true;
+
+  for (const { tier, races = [] } of tierEntries) {
+    const score = scoreTier(tier, races);
+    allPass = allPass && score.pass;
+
+    const grandTours = [];
+    for (const r of races) {
+      const stages = Array.isArray(r.stages) ? r.stages : [];
+      if (stages.length < GRAND_TOUR_MIN_STAGES) continue;
+      grandTours.push({ name: r.name ?? null, stageCount: stages.length, ...scoreGrandTour(stages) });
+    }
+
+    tiers.push({ tier, raceCount: races.length, score, grandTours });
+  }
+
+  return { tiers, verdict: allPass ? "GO" : "NO-GO", exitCode: allPass ? 0 : 1 };
+}
