@@ -31,6 +31,8 @@ import {
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
+  SEED_MANAGER_TRANSFERS,
+  seedManagerAchievements,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -203,7 +205,37 @@ export function restObject(table, requestUrl = "") {
   }
 }
 
+// #2917 · GET /api/managers/:teamId — manglede helt, så ManagerProfilePage kollapsede
+// til sin fejl-tilstand på preview og kunne ikke klik-testes før noget gik live.
+// Kontrakten spejler routes/api.js: team/user/riders/season_history/achievements/
+// transfer_activity, med redigerede hemmeligheder (#1666) og progress (#1008).
+//
+// Rival-holdet er bevidst uden oplåste achievements — det er den eneste vej til at
+// se tomtilstanden på "Senest låst op" uden at rode i data.
+export function managerProfile(teamId) {
+  const isRival = teamId === RIVAL_TEAM.id;
+  const team = isRival ? RIVAL_TEAM : TEST_TEAM;
+  return {
+    team: { id: team.id, name: team.name, division: team.division },
+    user: {
+      id: team.user_id,
+      username: team.manager_name,
+      last_seen: isRival ? "2026-07-24T19:00:00.000Z" : "2026-07-25T20:55:00.000Z",
+      login_streak: isRival ? 1 : 9,
+      is_online: !isRival,
+    },
+    riders: RIDERS.filter((rider) => rider.team_id === team.id),
+    season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
+    achievements: seedManagerAchievements({ unlocked: !isRival }),
+    transfer_activity: isRival ? [] : SEED_MANAGER_TRANSFERS,
+  };
+}
+
 export function apiResponse(pathname) {
+  // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
+  const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
+  if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
+
   if (pathname.endsWith("/api/board/status")) {
     return {
       is_baseline_phase: true,

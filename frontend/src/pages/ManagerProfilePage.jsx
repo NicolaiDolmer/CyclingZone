@@ -421,10 +421,15 @@ export default function ManagerProfilePage() {
                         </Td>
                         <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
                         <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
+                        {/* #2917: kolonnen læste `s.final_rank` — den findes ikke i
+                            season_standings (og ingen andre steder i koden), så
+                            placeringen har altid vist "#—" for alle. Den rigtige
+                            kolonne er rank_in_division (rangen i holdets pulje) —
+                            samme tal sæson-achievements nu måles på. */}
                         <Td numeric>
-                          {s.final_rank === 1
+                          {s.rank_in_division === 1
                             ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
-                            : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
+                            : <span className="text-cz-2">#{s.rank_in_division || "—"}</span>}
                         </Td>
                       </Tr>
                     ))}

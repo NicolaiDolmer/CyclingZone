@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
 
 test("races-tabel returnerer seed-løb", () => {
   const rows = restRows("races", "https://x/rest/v1/races?select=*");
@@ -77,4 +78,46 @@ test("/api/races/distribution/browse returnerer read-only browse-payload (ikke b
   assert.deepEqual(Object.keys(rider).sort(), ["firstname", "id", "lastname", "nationality_code"]);
   // Mindst ét låst løb (uden for 7-dages-vinduet) uden hold-data.
   assert.ok(r.columns.some((c) => c.visible === false && c.teams.length === 0));
+});
+
+// #2917: managerprofilen havde ingen mock-handler — siden kunne ikke klik-testes
+// på preview før noget gik live.
+test("/api/managers/:id returnerer managerprofilens fulde kontrakt", () => {
+  const r = apiResponse(`/api/managers/${TEST_TEAM.id}`);
+  assert.deepEqual(
+    Object.keys(r).sort(),
+    ["achievements", "riders", "season_history", "team", "transfer_activity", "user"]
+  );
+  assert.equal(r.team.id, TEST_TEAM.id);
+  assert.equal(typeof r.team.division, "number");
+  assert.ok(r.user.username, "manager-navn skal være sat");
+  assert.ok(r.riders.length >= 1, "profilen skal have ryttere");
+  assert.ok(r.season_history.length >= 1, "profilen skal have sæsonhistorik");
+  // #2917: kolonnen læser rank_in_division (final_rank fandtes ikke).
+  assert.ok(r.season_history.every((s) => Number.isInteger(s.rank_in_division)));
+});
+
+test("/api/managers/:id — achievements dækker låst, oplåst, hemmelig og progress", () => {
+  const { achievements } = apiResponse(`/api/managers/${TEST_TEAM.id}`);
+  assert.ok(achievements.some((a) => a.unlocked), "mindst én oplåst");
+  assert.ok(achievements.some((a) => !a.unlocked), "mindst én låst");
+  assert.ok(achievements.some((a) => a.progress), "mindst én med progress");
+  // #1666: låste hemmeligheder må ALDRIG bære titel/beskrivelse i payloaden.
+  const hiddenSecret = achievements.find((a) => a.is_secret && !a.unlocked);
+  assert.ok(hiddenSecret, "mindst én låst hemmelighed");
+  assert.equal(hiddenSecret.title, null);
+  assert.equal(hiddenSecret.description, null);
+  // #1008: progress sendes aldrig for hemmeligheder (ville lække indholdet).
+  assert.ok(achievements.every((a) => !(a.is_secret && a.progress)));
+  // #2917: de nye sæson-achievements skal være med, ellers tester preview ikke fixet.
+  for (const id of ["season_top10", "season_winner", "team_promotion", "team_relegation"]) {
+    assert.ok(achievements.some((a) => a.id === id), `mangler ${id}`);
+  }
+});
+
+test("/api/managers/:id — rival-holdet har nul oplåste (tomtilstand kan ses)", () => {
+  const r = apiResponse(`/api/managers/${RIVAL_TEAM.id}`);
+  assert.equal(r.team.id, RIVAL_TEAM.id);
+  assert.equal(r.achievements.filter((a) => a.unlocked).length, 0);
+  assert.deepEqual(r.transfer_activity, []);
 });

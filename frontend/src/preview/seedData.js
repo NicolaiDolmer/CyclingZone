@@ -421,6 +421,113 @@ export const SEED_TEAM_HALL_OF_FAME = [
   { id: "hof-e2e-1", team_id: TEST_TEAM.id, category: "most_points_season", value: 11250, season_number: 2 },
 ];
 
+// #2917 · GET /api/managers/:teamId — managerprofilen havde INGEN mock-handler, så
+// hele siden var utestbar på preview. Titler/beskrivelser matcher prods
+// achievements-tabel (frontend oversætter dem via locales/*/achievements.json når
+// nøglen findes; DB-værdien er fallback — præcis som i prod).
+//
+// Sammensætningen er valgt så begge tilstande kan ses: TEST_TEAM har et realistisk
+// miks af oplåste, låste, låste-hemmelige og igangværende (progress), mens
+// RIVAL_TEAM har nul oplåste og derfor viser tomtilstanden på "Senest låst op".
+const MANAGER_ACHIEVEMENT_DEFS = [
+  ["auction_first_bid", "auktioner", "Første bud", "Afgiv dit første bud på en auktion.", false],
+  ["auction_first_win", "auktioner", "Første sejr", "Vind din første auktion.", false],
+  ["auction_5_wins", "auktioner", "5 auktioner vundet", "Vind 5 auktioner i alt.", false],
+  ["auction_25_wins", "auktioner", "25 auktioner vundet", "Vind 25 auktioner i alt.", false],
+  ["auction_sniper", "auktioner", "Sniper", "Vind en auktion med minimumsbud.", false],
+  ["transfer_first", "transfers", "Første handel", "Gennemfør din første transfer.", false],
+  ["transfer_5", "transfers", "5 transfers", "Gennemfør 5 transfers i alt.", false],
+  ["transfer_bargain", "transfers", "The Steal", "Buy a rider for less than half his value.", true],
+  ["team_15_riders", "hold", "Voksende hold", "Hav 15 ryttere på dit hold samtidig.", false],
+  ["team_youth", "hold", "Ungdomshold", "Hav mindst 50% U25-ryttere på dit hold.", false],
+  ["team_star", "hold", "Star team", "Have a star rider on your team: a rider valued at 8,000,000 CZ$ or more.", false],
+  ["team_5_achievements", "hold", "Trofæskab", "Lås op for 5 achievements.", false],
+  ["team_promotion", "hold", "Oprykket!", "Ryk op i en højere division.", false],
+  ["team_relegation", "hold", "Nedrykning", "Ryk ned i en lavere division.", false],
+  ["team_survived", "hold", "Overlevede", "Undgå nedrykning i en sæson hvor du var i farezonerne.", true],
+  ["founder_badge", "sæson", "Founding Manager", "Here from the opening season. Permanent. Survives every reset.", false],
+  ["season_first_result", "sæson", "Første resultat", "Få dit første løbsresultat registreret.", false],
+  ["season_top10", "sæson", "Top 10", "Slut en sæson i top 10 i din division.", false],
+  ["season_top5", "sæson", "Top 5", "Slut en sæson i top 5 i din division.", false],
+  ["season_top3", "sæson", "Podium", "Slut en sæson i top 3 i din division.", false],
+  ["season_winner", "sæson", "Divisionsvinder", "Vind din division i en sæson.", false],
+  ["season_div1_winner", "sæson", "Mester", "Vind Division 1.", false],
+  ["season_3_top3", "sæson", "Konstant", "Slut i top 3 tre sæsoner i træk.", true],
+  ["season_2_seasons", "sæson", "2 sæsoner overlevet", "Gennemfør 2 sæsoner.", false],
+  ["season_grand_tour_rider", "sæson", "Grand Tour Hold", "Hav en rytter der deltager i en Grand Tour.", false],
+  ["secret_streak_7", "hemmelig", "Ugentlig", "Log ind 7 dage i træk.", true],
+  ["secret_watchlist_50", "hemmelig", "Spejder", "Tilføj 50 ryttere til din ønskeliste.", true],
+];
+
+// Oplåste for TEST_TEAM, med spredte tidsstempler så "Senest låst op" sorterer synligt.
+const MANAGER_UNLOCKED_AT = {
+  auction_first_bid: "2026-06-23T09:12:00.000Z",
+  auction_first_win: "2026-06-24T18:40:00.000Z",
+  auction_5_wins: "2026-07-02T20:05:00.000Z",
+  auction_sniper: "2026-07-05T19:31:00.000Z",
+  transfer_first: "2026-06-28T11:20:00.000Z",
+  transfer_bargain: "2026-07-09T14:02:00.000Z",
+  team_15_riders: "2026-06-23T09:45:00.000Z",
+  team_youth: "2026-06-30T08:15:00.000Z",
+  team_5_achievements: "2026-07-02T20:05:00.000Z",
+  founder_badge: "2026-06-22T12:00:00.000Z",
+  season_first_result: "2026-06-25T21:10:00.000Z",
+  // De nye sæson-achievements (#2917) — tildelt ved sæsonskiftet, samme tidsstempel.
+  season_top10: "2026-07-26T17:30:00.000Z",
+  season_top5: "2026-07-26T17:30:00.000Z",
+  season_top3: "2026-07-26T17:30:00.000Z",
+  season_winner: "2026-07-26T17:30:00.000Z",
+  team_promotion: "2026-07-26T17:30:00.000Z",
+  secret_streak_7: "2026-07-01T07:05:00.000Z",
+};
+
+// Progress mod næste mål for låste, ikke-hemmelige tæller-achievements (#1008).
+const MANAGER_PROGRESS = {
+  auction_25_wins: { current: 9, target: 25 },
+  transfer_5: { current: 2, target: 5 },
+  season_2_seasons: { current: 1, target: 2 },
+};
+
+export function seedManagerAchievements({ unlocked = true } = {}) {
+  return MANAGER_ACHIEVEMENT_DEFS.map(([id, category, title, description, isSecret], index) => {
+    const unlockedAt = unlocked ? MANAGER_UNLOCKED_AT[id] || null : null;
+    const isUnlocked = Boolean(unlockedAt);
+    // Backend redigerer titel/beskrivelse væk for LÅSTE hemmeligheder (#1666) —
+    // mocken skal gøre præcis det samme, ellers tester preview en anden kontrakt.
+    const hideSecret = !isUnlocked && isSecret;
+    return {
+      id,
+      category,
+      title: hideSecret ? null : title,
+      description: hideSecret ? null : description,
+      is_secret: isSecret,
+      sort_order: index,
+      unlocked: isUnlocked,
+      unlocked_at: unlockedAt,
+      progress: !isUnlocked && !isSecret ? MANAGER_PROGRESS[id] || null : null,
+    };
+  });
+}
+
+export const SEED_MANAGER_TRANSFERS = [
+  {
+    id: "tx-e2e-1",
+    offer_amount: 640000,
+    created_at: "2026-07-09T14:02:00.000Z",
+    rider: { id: "rider-3", firstname: "Sofie", lastname: "Lund" },
+    buyer_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    seller_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+  },
+  {
+    id: "tx-e2e-2",
+    offer_amount: 415000,
+    created_at: "2026-06-28T11:20:00.000Z",
+    rider: { id: "rider-4", firstname: "Jonas", lastname: "Brandt" },
+    buyer_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    seller_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+  },
+];
+
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
