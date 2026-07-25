@@ -655,7 +655,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //     gentagne nødlån er i praksis samme signal (hold der ikke kan stå på egne
   //     ben), bare en anden trigger end gælds-LOFT-brud. emergency_loan_streak er
   //     en separat tæller (nulstilles når en sæson IKKE kræver nødlån).
+  //
+  // #2919 · `frozenEarlierThisRun` er run-lokal "strengeste tilstand vinder"-
+  //     hukommelse. `team` er et in-memory-snapshot fra loadHumanSeasonEndTeams
+  //     og opdateres IKKE af de UPDATE's vi skriver undervejs, så gældsgrenen
+  //     (2c) læste `team.transfer_frozen === false` og skrev false igen — den
+  //     ophævede nødlåns-frysningen i samme kørsel og gjorde #2301's eskalering
+  //     virkningsløs. Flaget kan kun sættes, aldrig ryddes: en senere gren må
+  //     aldrig optø et hold en tidligere gren har frosset.
   const EMERGENCY_LOAN_ESCALATION_STREAK = 2;
+  let frozenEarlierThisRun = false;
   const previousEmergencyLoanStreak = team.emergency_loan_streak || 0;
   const emergencyLoanStreak = emergencyLoanAmount > 0 ? previousEmergencyLoanStreak + 1 : 0;
   if (emergencyLoanStreak !== previousEmergencyLoanStreak) {
@@ -671,6 +680,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .update({ transfer_frozen: true })
       .eq("id", team.id);
     throwIfSupabaseError(freezeError, `Could not freeze transfers for team ${team.id} (emergency loan escalation)`);
+    frozenEarlierThisRun = true;
     console.log(`  🔴🔴 ${team.name}: emergency_loan_streak=${emergencyLoanStreak} (>= ${EMERGENCY_LOAN_ESCALATION_STREAK}) — the board freezes transfers`);
     await notifyManager(team.id, "board_critical",
       "The board freezes transfers",
@@ -695,10 +705,26 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   if (debtCeiling != null) {
     const currentDebt = await getTotalDebtFn(team.id, supabaseClient);
 
-    let breachStreak = team.debt_breach_streak || 0;
-    let transferFrozen = team.transfer_frozen || false;
+    // #2912 · Loftet måles på gælden EKSKLUSIVE den rente trin 1 lige har
+    //     kapitaliseret. Målte vi på den rå `currentDebt`, kunne motorens egen
+    //     bogføring skubbe et hold der lå under loftet i går over grænsen i dag
+    //     og fryse det samme sekund, uden at holdet havde foretaget sig noget.
+    //     Prod 25/7: 11 af 29 gældsatte hold brød loftet FØRST efter renten.
+    //     Med eksklusionen får holdet den sæson renten koster dem til at
+    //     reagere; næste sæson indgår renten fuldt i basisgælden og tæller med,
+    //     så eskaleringen ikke kan udskydes i det uendelige.
+    //     Bemærk asymmetrien (bevidst): LÅNE-headroom (createEmergencyLoan /
+    //     createLoan) måles fortsat på den rå gæld, så ingen kan låne sig over
+    //     loftet. Kun STRAFFEN (fryse + tvangssalg) bruger det rente-eksklusive
+    //     mål, fordi man ikke bør straffes for motorens egen kapitalisering.
+    const interestExcludedDebt = Math.max(0, currentDebt - loanInterestTotal);
 
-    if (currentDebt > debtCeiling) {
+    let breachStreak = team.debt_breach_streak || 0;
+    // #2919: baseline OR'es med run-lokal frysning (nødlåns-eskaleringen ovenfor).
+    let transferFrozen = team.transfer_frozen || frozenEarlierThisRun || false;
+    const alreadyFrozenBeforeDebtBranch = transferFrozen;
+
+    if (interestExcludedDebt > debtCeiling) {
       breachStreak += 1;
       transferFrozen = true; // streak >= 1 → fryser transfer
 
@@ -710,12 +736,15 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         //   3. luk åbne transfer_listings for rytteren
         const sortedRiders = [...(team.riders || [])]
           .sort((a, b) => (b.market_value || 0) - (a.market_value || 0));
-        let runningDebt = currentDebt;
+        // #2912: loopets stop-kriterium bruger SAMME mål som bruddet blev
+        // erklæret på (rente-eksklusivt). Ellers ville vi sælge ryttere for at
+        // ramme et strengere mål end det der udløste tvangssalget.
+        let runningDebt = interestExcludedDebt;
         for (const rider of sortedRiders) {
           if (runningDebt <= debtCeiling) break;
           const credit = rider.market_value || 0;
 
-          await creditTeam(
+          const forcedSaleCredit = await creditTeam(
             team.id,
             credit,
             "forced_debt_sale",
@@ -725,6 +754,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             seasonId,
             supabaseClient,
             {
+              // #2920: forced_debt_sale var den ENESTE penge-callsite uden
+              // idempotency-beskyttelse — en cron-genkørsel af sæson-start
+              // kunne bogføre samme tvangssalg to gange. Nøglen følger samme
+              // mønster som de øvrige callsites i denne fil (salary/upkeep/
+              // academy_drift osv.): `<type>:<team>:<season>` plus rytter-id,
+              // fordi ét hold kan have FLERE tvangssalg i samme sæson og
+              // hvert salg skal kunne bogføres én (og kun én) gang.
+              // idempotent: true → DB'ens 23505 fra uniq_finance_idempotency_key
+              // ruller stille tilbage i stedet for at kaste og vælte payroll.
+              idempotent: true,
               metadata: {
                 code: "tx.forcedDebtSale",
                 params: { riderName: `${rider.firstname} ${rider.lastname}` },
@@ -734,9 +773,19 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
                 reasonCode: FINANCE_REASON.SQUAD_AUTO_SALE,
                 relatedEntityType: FINANCE_RELATED_ENTITY.SEASON,
                 relatedEntityId: seasonId || null,
+                idempotencyKey: `forced_debt_sale:${team.id}:${seasonId}:${rider.id}`,
               },
             }
           );
+
+          // Krediteringen blev afvist som dublet → salget ER allerede bogført i
+          // en tidligere kørsel. Spring resten af dispositionen over: et nyt
+          // afdrag med "provenu" der aldrig blev krediteret ville slette gæld
+          // uden penge bag.
+          if (forcedSaleCredit?.skipped) {
+            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip`);
+            continue;
+          }
 
           const { error: riderUpdateError } = await supabaseClient
             .from("riders")
@@ -765,15 +814,19 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           if (credit > 0) {
             await repayLoansFromForcedSaleFn(team.id, credit, supabaseClient, seasonId);
           }
-          runningDebt = await getTotalDebtFn(team.id, supabaseClient);
+          // #2912: samme rente-eksklusive mål som stop-kriteriet ovenfor.
+          runningDebt = Math.max(0, (await getTotalDebtFn(team.id, supabaseClient)) - loanInterestTotal);
 
           console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}, gæld nu ${runningDebt}`);
         }
       }
     } else {
-      // Under ceiling → nulstil streak + ophæv freeze
+      // Under ceiling → nulstil streak + ophæv freeze.
+      // #2919: freeze ophæves KUN hvis ingen tidligere gren i samme kørsel har
+      // frosset holdet. Nødlåns-eskaleringen (2b) og gældsloftet deler kolonne;
+      // den strengeste tilstand skal vinde, uanset gren-rækkefølge.
       breachStreak = 0;
-      transferFrozen = false;
+      transferFrozen = frozenEarlierThisRun;
     }
 
     const { error: breachUpdateError } = await supabaseClient
@@ -781,6 +834,24 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .update({ debt_breach_streak: breachStreak, transfer_frozen: transferFrozen })
       .eq("id", team.id);
     throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
+
+    // #2912 · Frysningen var 100% tavs: holdet opdagede den først når det
+    // prøvede at handle. Notificér på selve OVERGANGEN til frosset, så et hold
+    // der bliver ved med at bryde loftet ikke får samme besked hver sæson, og
+    // så nødlåns-eskaleringens egen besked (2b) ikke dubleres.
+    if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
+      await notifyManager(team.id, "board_critical",
+        "Transfers frozen: debt over the cap",
+        `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingFreeze.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingFreeze.message",
+          messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
+        }
+      );
+    }
 
     console.log(`  📊 ${team.name}: debt_breach_streak=${breachStreak}, transfer_frozen=${transferFrozen}`);
   }

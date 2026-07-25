@@ -82,6 +82,10 @@
       "title": "The board freezes transfers",
       "message": "Your team has needed an emergency loan {streak} seasons in a row. The board freezes transfers until your finances stabilize."
     },
+    "debtCeilingFreeze": {
+      "title": "Transfers frozen: debt over the cap",
+      "message": "Your debt of {debt} CZ$ is over your division cap of {ceiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale."
+    },
     "loanPaidOff": {
       "title": "✅ Loan repaid",
       "message": "Congratulations! You've fully repaid your loan."
