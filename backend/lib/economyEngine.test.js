@@ -2074,7 +2074,7 @@ test("updateStandings retry'er et statement timeout og lykkes (CYCLINGZONE-3D)",
   // re-derivation og dermed idempotent, så et retry er sikkert.
   let calls = 0;
   const supabase = {
-    rpc(name, params) {
+    rpc(_name, _params) {
       calls++;
       if (calls === 1) {
         return Promise.resolve({
