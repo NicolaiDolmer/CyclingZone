@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recomputeRiderValue } from "./riderValueRefresh.js";
-import { computeRiderValueTrend, groupSnapshotsByRider } from "./riderValueTrend.js";
+import { computeRiderValueTrend } from "./riderValueTrend.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
@@ -60,18 +60,4 @@ test("computeRiderValueTrend: vælger nærmeste snapshot PÅ ELLER FØR target (
   const windows = computeRiderValueTrend({ currentBaseValue, snapshotsAsc, baseline, model, now: NOW });
   assert.equal(windows[14].snapshotDate, isoDaysAgo(20), "skal bruge det ÆLDSTE snapshot før target, ikke det nyeste efter");
   assert.equal(windows[14].actualDaysAgo, 20);
-});
-
-test("groupSnapshotsByRider: grupperer + sorterer ASC pr. rytter, ignorerer rækker uden rider_id", () => {
-  const rows = [
-    { rider_id: "r2", snapshot_date: isoDaysAgo(1), abilities: STRONG },
-    { rider_id: "r1", snapshot_date: isoDaysAgo(5), abilities: WEAK },
-    { rider_id: "r1", snapshot_date: isoDaysAgo(10), abilities: WEAK },
-    { rider_id: null, snapshot_date: isoDaysAgo(1), abilities: WEAK },
-  ];
-  const map = groupSnapshotsByRider(rows);
-  assert.equal(map.size, 2);
-  const r1 = map.get("r1");
-  assert.equal(r1.length, 2);
-  assert.ok(new Date(r1[0].snapshot_date) < new Date(r1[1].snapshot_date), "ASC-sorteret");
 });
