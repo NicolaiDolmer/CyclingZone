@@ -176,7 +176,7 @@ export async function sendWebhook(webhookUrl, payload, {
         // hændelsen hvor 1 af 4 tier-3-resultatposter manglede. Capture ALTID,
         // så et tabt resultat aldrig igen kun findes i (roterede) Railway-logs.
         captureExceptionFn(
-          new Error(`Discord webhook drop efter ${result.attempts} forsøg: ${statusLabel} (${result.failure?.reason || "unknown"})`),
+          new Error(`Discord webhook dropped after ${result.attempts} attempt(s): ${statusLabel} (${result.failure?.reason || "unknown"})`),
           {
             tags: { lib: "discordNotifier", status: String(statusLabel), reason: result.failure?.reason || "unknown" },
             extra: { attempts: result.attempts, deferred: !!result.failure?.deferred },

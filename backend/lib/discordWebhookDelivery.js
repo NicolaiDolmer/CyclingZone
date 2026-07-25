@@ -59,6 +59,11 @@ async function postOnce({ webhookUrl, payload, fetchFn }) {
       body: JSON.stringify(payload),
     });
   } catch (err) {
+    // best-effort: fetch selv kastede (netværks-/DNS-/socket-fejl) — konverteret
+    // til et failure-resultat (status: null → classifyWebhookFailure klassificerer
+    // det "network"/retryable) i stedet for at rethrow'e her. attemptWebhookDelivery
+    // retries det som enhver anden retryable fejl, og overlever fejlen ALLE forsøg,
+    // capturer sendWebhook (discordNotifier.js) den til Sentry — ingen tavs tab.
     return { ok: false, status: null, errorText: err.message, retryAfterMs: null };
   }
   if (res.ok) return { ok: true, status: res.status };

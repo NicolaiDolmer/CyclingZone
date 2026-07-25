@@ -343,7 +343,7 @@ test("sendWebhook — 429 overlever alle forsøg → synlig Sentry-capture (var 
   assert.equal(calls.length, 4); // default maxAttempts i attemptWebhookDelivery
   assert.equal(captureExceptionFn.calls.length, 1);
   const { error, context } = captureExceptionFn.calls[0];
-  assert.match(error.message, /Discord webhook drop efter 4 forsøg/);
+  assert.match(error.message, /Discord webhook dropped after 4 attempt\(s\)/);
   assert.equal(context.tags.reason, "rate-limited");
   assert.equal(context.extra.attempts, 4);
 });

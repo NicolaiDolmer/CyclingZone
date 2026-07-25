@@ -34,8 +34,11 @@ export function serializeByUrl(url, fn) {
   // Kæden holder kun styr på TIMING (hvornår forrige er færdig) — swallow fejl
   // her, så ét fejlet forsøg ikke låser alle efterfølgende poster til samme
   // URL fast for evigt. Selve fejlen returneres stadig til den ægte kalder
-  // via `result`.
-  tailByUrl.set(url, result.catch(() => {}));
+  // via `result` (linjen ovenfor) uændret — kun kø-halens interne bogføring
+  // ignorerer den, så vi bevidst IKKE dobbelt-rapporterer/capturer samme fejl.
+  tailByUrl.set(url, result.catch(() => {
+    // best-effort: se kommentaren ovenfor — fejlen håndteres via `result`, ikke her.
+  }));
   return result;
 }
 
