@@ -570,6 +570,85 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   assert.ok(supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert"));
 });
 
+// ── #2898: fejlhåndtering på race_results delete + races.status=completed ────
+// Injicerer en Supabase-fejl på ÉT specifikt (table, op)-par oven på makeSupabase's
+// normale happy-path (uden at røre den delte mock — andre tests skal forblive
+// upåvirkede).
+function withInjectedError(canned, table, op, message) {
+  const base = makeSupabase(canned);
+  const originalFrom = base.from;
+  base.from = (t) => {
+    const b = originalFrom(t);
+    if (t !== table) return b;
+    if (op === "delete") {
+      const originalDelete = b.delete.bind(b);
+      b.delete = (...args) => {
+        const d = originalDelete(...args);
+        d.then = (r) => Promise.resolve({ error: { message } }).then(r);
+        return d;
+      };
+    } else if (op === "update") {
+      const originalUpdate = b.update.bind(b);
+      b.update = (...args) => {
+        const u = originalUpdate(...args);
+        u.then = (r) => Promise.resolve({ error: { message } }).then(r);
+        return u;
+      };
+    }
+    return b;
+  };
+  return base;
+}
+
+function simulateRaceCanned() {
+  return {
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  };
+}
+
+test("#2898 simulateRace: race_results delete-fejl → abort FØR insert (ingen dublerede point/præmier)", async () => {
+  const supabase = withInjectedError(simulateRaceCanned(), "race_results", "delete", "statement timeout");
+  let applyRaceResultsCalled = false;
+  await assert.rejects(
+    () => simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async ({ resultRows }) => {
+        applyRaceResultsCalled = true;
+        return { rowsImported: resultRows.length };
+      },
+      recomputeRaceDays: async () => {},
+    }),
+    /race_results delete failed/,
+  );
+  assert.equal(applyRaceResultsCalled, false, "insert MÅ IKKE køre efter en fejlet delete — ville duplikere point/præmier oven på de gamle rækker");
+  const statusUpd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
+  assert.equal(statusUpd, undefined, "status må ikke sættes til completed når afviklingen er afbrudt af en delete-fejl");
+});
+
+test("#2898 simulateRace: races.status=completed update-fejl → synlig fejl (ingen tavs succes)", async () => {
+  const supabase = withInjectedError(simulateRaceCanned(), "races", "update", "connection reset by peer");
+  await assert.rejects(
+    () => simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+      recomputeRaceDays: async () => {},
+    }),
+    /Failed to mark race .* as completed/,
+  );
+  // Resultaterne ER allerede skrevet (delete + insert kørte før update-kaldet der fejler)
+  // — kun status-flippet fejler, men det skal stadig kastes synligt, ikke sluges tavst,
+  // for at recovery-logikken (der læner sig på status='completed') ikke ser en falsk
+  // "ikke afviklet"-tilstand.
+  const del = supabase.__writes.find((w) => w.table === "race_results" && w.op === "delete");
+  assert.ok(del, "race_results-delete skulle være kørt før status-update-fejlen opstod");
+});
+
 // #2352 (Race v3 S1): checkV3Enabled=false (default-mock) → INGEN
 // race_simulation_rider_scores-skrivning, race_simulation_runs uden client-side id.
 test("simulateRace: v3=false (kill-switch off) — ingen race_simulation_rider_scores skrives", async () => {

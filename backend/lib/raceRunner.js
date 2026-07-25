@@ -1194,9 +1194,28 @@ export async function simulateRace({
 
   // Idempotent PR. ETAPE — spejler pcmResultsImport: slet kun de etaper denne
   // afvikling faktisk dækker, så en gen-afvikling ikke wiper andre etaper.
+  //
+  // #2898: eksplicit error-tjek er PÅKRÆVET her. Fejler denne delete tavst (fx et
+  // statement timeout under samtidige etaper — netop det Sentry fangede i
+  // CYCLINGZONE-3D/3E), ville applyRaceResults nedenfor indsætte de nye rækker
+  // OVEN PÅ de gamle race_results — dublerede points_earned og dobbelt
+  // prize_money (prizePayoutEngine.js). Abort FØR insert, ingen tavs fortsættelse.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
   if (stagesInRun.length) {
-    await supabase.from("race_results").delete().eq("race_id", race.id).in("stage_number", stagesInRun);
+    const { error: deleteError } = await supabase
+      .from("race_results")
+      .delete()
+      .eq("race_id", race.id)
+      .in("stage_number", stagesInRun);
+    if (deleteError) {
+      const err = new Error(
+        `race_results delete failed for race ${race.id} (stages ${stagesInRun.join(",")}) — ` +
+          `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
+      );
+      console.error(`  ⚠️  ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "race-results-delete" }, raceId: race.id });
+      throw err;
+    }
   }
 
   const applied = await applyRaceResults({
@@ -1223,7 +1242,21 @@ export async function simulateRace({
   if (v3 && moments.length) {
     await persistStageMoments({ supabase, race, moments, stageNumbers: stages.map((s) => s.stage_number || 1) });
   }
-  await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+  // #2898: race_results er allerede skrevet på dette tidspunkt — recovery-logikken
+  // (fx den stage-scheduler-baserede retry-sti #2878) læner sig på at status='completed'
+  // er pålideligt sat. Et tavst-fejlet update ville efterlade løbet stående som
+  // "ikke afviklet" trods skrevne resultater → et gen-forsøg ville forsøge at
+  // afvikle igen oven på allerede skrevne race_results. Tjek + kast.
+  const { error: statusError } = await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+  if (statusError) {
+    const err = new Error(
+      `Failed to mark race ${race.id} as completed after results were persisted — results ARE written, ` +
+        `only the status flag failed: ${statusError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "race-status-completed" }, raceId: race.id });
+    throw err;
+  }
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });
