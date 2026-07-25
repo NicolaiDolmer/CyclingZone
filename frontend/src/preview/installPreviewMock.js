@@ -9,7 +9,7 @@ import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mo
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
-import { TEST_USER } from "./seedData.js";
+import { TEST_USER, SEED_ONBOARDING_PROGRESS, SEED_TRAINING } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
 // objekt, eller helt fraværende (når input er et Request-objekt med egne headers).
@@ -111,6 +111,19 @@ export function installPreviewMock() {
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = scoutingMockRoute(method, u.pathname, body);
         if (res) return jsonResponse(res.body, res.status);
+      }
+
+      // #2819: onboarding-kortet + trænings-fladen. Rout FØR den generiske /api-
+      // blok, så preview viser den ÆGTE onboarding-respons (4 trin, "Show me how"
+      // klikbar) og en rigtig trænings-roster at hænge tour-ankrene på. Bevidst
+      // KUN her og ikke i mockHandlers: Playwright-fixtures deler den fil, og et
+      // synligt onboarding-kort ville flytte dashboard-snapshots (samme lagdeling
+      // som scouting-mocken ovenfor).
+      if (method === "GET" && /\/api\/me\/onboarding-progress$/.test(url)) {
+        return jsonResponse(SEED_ONBOARDING_PROGRESS);
+      }
+      if (method === "GET" && /\/api\/training\/me$/.test(url)) {
+        return jsonResponse(SEED_TRAINING);
       }
 
       // Express-API (/api/...).

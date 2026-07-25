@@ -977,3 +977,53 @@ export const SEED_PROJECTION = {
   timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
   pastPeak: false,
 };
+
+// #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
+// GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
+// + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
+// completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
+// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
+// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+export const SEED_ONBOARDING_PROGRESS = {
+  steps: [
+    { key: "first_bid_placed", done: true },
+    { key: "first_training_run", done: false },
+    { key: "first_squad_selected", done: false },
+    { key: "board_plan_set", done: false },
+  ],
+  completed_count: 1,
+  total_count: 4,
+  dismissed: false,
+  established: false,
+};
+
+// #2819 preview-seed: /api/training/me. Uden den var /training tom i preview-mocken
+// (ingen roster-tabel, ingen fokus-select), så trin 2's tour havde ingen ankre at
+// pege på. Formen spejler useTraining.js' refresh(): plans/condition/progress/
+// capped/trainability/smartDefaultFocus. Ada har et fokus + en bar tæt på gennembrud
+// (0.82 → "82%"); Mikkel står uden fokus, så assistent-hintet også er synligt.
+export const SEED_TRAINING = {
+  enabled: true,
+  teamId: TEST_TEAM.id,
+  slots: { total: 2, used: 1 },
+  todayRun: null,
+  plans: {
+    "rider-1": { focus: "sprint", intensity: "normal" },
+  },
+  condition: {
+    "rider-1": { form: 72, fatigue: 38, risk: 0.02, injured_until: null },
+    "rider-2": { form: 64, fatigue: 51, risk: 0.03, injured_until: null },
+  },
+  progress: {
+    "rider-1": { sprint: 0.82, acceleration: 0.41 },
+    "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
+  },
+  capped: {},
+  trainability: {
+    "rider-1": { sprint: "high", acceleration: "high", vo2max: "limited", threshold: "limited" },
+    "rider-2": { vo2max: "high", sprint: "blocked", aero: "limited" },
+  },
+  smartDefaultFocus: { "rider-2": "vo2max" },
+  weekPlan: null,
+  riderWeekPlans: {},
+};

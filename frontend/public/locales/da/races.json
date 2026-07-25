@@ -779,5 +779,19 @@
     "poolPicker": "Pulje",
     "you": "dig",
     "unknownTeam": "Ukendt"
+  },
+  "tour": {
+    "pickRace": {
+      "title": "Én kolonne pr. løb i dag",
+      "body": "Chippen viser hvor mange ryttere du har udtaget ud af de pladser løbet giver dig. Kører du underbemandet, har du ingen til at arbejde for din kaptajn. Tryk på en rytter for at gøre ham til kaptajn, sprint-kaptajn eller udbrudsjæger."
+    },
+    "pickRiders": {
+      "title": "Dine ryttere bor her",
+      "body": "Tryk på en rytter, eller træk ham over på et løb, for at udtage ham. En grånet chip er allerede bundet: én rytter kører ét løb pr. løbsdag. Auto-udfyld lukker hullerne og bevarer det du selv har valgt. Intet tæller før du trykker Gem ændringer."
+    },
+    "tactics": {
+      "title": "Sæt dine præferencer én gang",
+      "body": "Holdstrategi gemmer de ryttere du bygger omkring, dine kaptajner pr. terræn og de løb der betyder mest. Din assistent genbruger det hver gang den udfylder et hold for dig. Taktik inde i et etapeløb sættes på selve løbet."
+    }
   }
 }

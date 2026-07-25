@@ -296,6 +296,12 @@ export function apiResponse(pathname) {
     return { sent: [], received: [], archivedSent: [], archivedReceived: [] };
   }
   if (pathname.endsWith("/api/transfers/swaps")) return { sent: [], received: [] };
+  // NB: i preview-interceptoren (installPreviewMock) fanges /api/me/onboarding-
+  // progress + /api/training/me af #2819-blokken FØR denne linje, så onboarding-
+  // kortet har rigtige trin og /training har en roster at vise touren på. Denne
+  // tomme variant rammes kun af Playwright-fixtures, hvor kortet bevidst forbliver
+  // skjult så dashboard-snapshots ikke ændrer sig (samme lagdeling som scouting
+  // nedenfor). Formen her er historisk og læses ikke af nogen komponent.
   if (pathname.endsWith("/api/me/onboarding-progress")) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }
