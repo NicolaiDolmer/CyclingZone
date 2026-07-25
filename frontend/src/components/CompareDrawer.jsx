@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
@@ -107,7 +107,7 @@ export default function CompareDrawer({ teamA, teamB, onClose }) {
           aria-label={tStandings("compare.drawerTitle")}
           className="relative h-full w-full max-w-md bg-cz-card border-s border-cz-border overflow-y-auto shadow-overlay">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-cz-card border-b border-cz-border px-5 py-4 flex items-center justify-between gap-3">
+          <div className="sticky top-0 z-sticky bg-cz-card border-b border-cz-border px-5 py-4 flex items-center justify-between gap-3">
             <h2 className="text-cz-1 font-semibold text-sm">{tStandings("compare.drawerTitle")}</h2>
             <button
               type="button"

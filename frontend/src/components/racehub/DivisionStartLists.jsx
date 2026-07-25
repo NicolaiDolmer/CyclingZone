@@ -3,7 +3,7 @@
 // PCS-style startlister (bruttotrupper). Ingen mutationer rammer denne flade.
 // scope="division" → låst til egen tier; "others" → alle tiers.
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";

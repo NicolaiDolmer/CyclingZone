@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook } from "./discordNotifier.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
+import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
 
 function makeCaptureSpy() {
   const calls = [];
@@ -265,4 +266,114 @@ test("notifyDiscordDM — muted tælles ikke med, sendDM-fejl tælles som skip, 
     if (savedBotToken === undefined) delete process.env.DISCORD_BOT_TOKEN; else process.env.DISCORD_BOT_TOKEN = savedBotToken;
     if (savedToken === undefined) delete process.env.DISCORD_TOKEN; else process.env.DISCORD_TOKEN = savedToken;
   }
+});
+
+// ── sendWebhook — #2882: 429-retry + synlig fejl-logning ────────────────────
+// Rod-årsag 24/7: 1 af 4 tier-3-puljers resultatpost forsvandt tavst efter en
+// Discord 429 — den gamle sendWebhook havde ingen retry og loggede kun med
+// console.error. Disse tests dækker den fulde sendWebhook-sti (URL-safety +
+// serialisering + attemptWebhookDelivery + Sentry-capture), ikke kun de rene
+// delivery-modulers egne unit-tests.
+
+function makeFetchSequence(responses) {
+  const calls = [];
+  let i = 0;
+  const fetchFn = async (url, opts) => {
+    calls.push({ url, opts });
+    const next = responses[Math.min(i, responses.length - 1)];
+    i++;
+    if (next instanceof Error) throw next;
+    return {
+      ok: next.status >= 200 && next.status < 300,
+      status: next.status,
+      text: async () => JSON.stringify(next.body ?? {}),
+      headers: { get: (name) => (next.headers && next.headers[name]) ?? null },
+    };
+  };
+  return { fetchFn, calls };
+}
+
+const RESULT_WEBHOOK = "https://discord.com/api/webhooks/1/tier3-summary";
+const noSleep = async () => {};
+
+test.beforeEach(() => __resetWebhookQueueForTests());
+
+test("sendWebhook — 429 med Retry-After → retry → succes, INGEN Sentry-capture ved endelig succes", async () => {
+  const { fetchFn, calls } = makeFetchSequence([
+    { status: 429, body: { retry_after: 0.001 } },
+    { status: 204 },
+  ]);
+  const captureExceptionFn = makeCaptureSpy();
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Tour des Fjords" }] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(captureExceptionFn.calls.length, 0);
+});
+
+test("sendWebhook — permanent config-fejl (404, dødt webhook #2395) → Sentry-capture, uændret opførsel", async () => {
+  const { fetchFn } = makeFetchSequence([{ status: 404, body: { message: "Unknown Webhook" } }]);
+  const captureExceptionFn = makeCaptureSpy();
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { fetchFn, sleepFn: noSleep, captureExceptionFn });
+
+  assert.equal(captureExceptionFn.calls.length, 1);
+  assert.match(captureExceptionFn.calls[0].error.message, /404.*persistent config\/routing error/);
+  assert.equal(captureExceptionFn.calls[0].context.tags.status, "404");
+});
+
+// Kerne-regressionstesten for selve #2882-bugreporten: en 429 der overlever
+// ALLE retry-forsøg (permanent rate-limit, fx en vedvarende byge) skal nu
+// capture'es til Sentry — før denne fix forsvandt den tavst med kun
+// console.error, hvilket var præcis hvorfor droppet 24/7 ikke blev opdaget.
+test("sendWebhook — 429 overlever alle forsøg → synlig Sentry-capture (var tavst før #2882)", async () => {
+  const { fetchFn, calls } = makeFetchSequence([{ status: 429, body: { retry_after: 0 } }]);
+  const captureExceptionFn = makeCaptureSpy();
+
+  await sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Koerse van Nokere" }] }, {
+    fetchFn,
+    sleepFn: noSleep,
+    captureExceptionFn,
+  });
+
+  assert.equal(calls.length, 4); // default maxAttempts i attemptWebhookDelivery
+  assert.equal(captureExceptionFn.calls.length, 1);
+  const { error, context } = captureExceptionFn.calls[0];
+  assert.match(error.message, /Discord webhook dropped after 4 attempt\(s\)/);
+  assert.equal(context.tags.reason, "rate-limited");
+  assert.equal(context.extra.attempts, 4);
+});
+
+// #2882: to resultat-poster til SAMME webhook-URL (fx to puljer der begge
+// rammer tier-samlekanalen inden for samme sekund) må aldrig sendes som en
+// samtidig byge — serializeByUrl skal tvinge dem efter hinanden.
+test("sendWebhook — to samtidige kald mod samme URL sendes sekventielt, ikke som byge", async () => {
+  // Deterministisk overlap-detektion frem for wall-clock-måling: ms-baserede
+  // asserts flaker på belastede CI-runnere (fik 14ms hvor 15 var krævet, 25/7).
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let posts = 0;
+  const fetchFn = async () => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    posts += 1;
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight -= 1;
+    return { ok: true, status: 204, text: async () => "{}", headers: { get: () => null } };
+  };
+  const captureExceptionFn = makeCaptureSpy();
+
+  await Promise.all([
+    sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Pulje A" }] }, { fetchFn, sleepFn: noSleep, captureExceptionFn }),
+    sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Pulje B" }] }, { fetchFn, sleepFn: noSleep, captureExceptionFn }),
+  ]);
+
+  assert.equal(posts, 2);
+  // Den 2. POST må ikke starte mens den 1. stadig er i flight.
+  assert.equal(maxInFlight, 1, `forventede sekventiel afsendelse (max 1 i flight), fik ${maxInFlight} samtidige`);
+  assert.equal(captureExceptionFn.calls.length, 0);
 });

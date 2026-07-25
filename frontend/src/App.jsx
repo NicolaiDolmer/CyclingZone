@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation, useSearchParams, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useSearchParams, useNavigate } from "react-router";
 import { Suspense, useEffect, useState } from "react";
 import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorHash.js";
 // #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
@@ -272,14 +272,19 @@ export default function App() {
             <Route path="seasons/:seasonId/finance/:teamId" element={<SeasonFinanceReport />} />
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
+            {/* Redirect-målene er ABSOLUTTE med vilje. React Router v7 opløser relative
+                paths inde i en splat-route mod HELE den matchede location (splat
+                inklusive), ikke mod route-path'en uden splat som v6 gjorde. Et relativt
+                to="season" på splat-linjen ville derfor sende /admin/bogus videre til
+                /admin/bogus/season → ny splat-match → redirect-loop. */}
             <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="season" replace />} />
+              <Route index element={<Navigate to="/admin/season" replace />} />
               <Route path="season"  element={<AdminSeasonTab />} />
               <Route path="economy" element={<AdminEconomyTab />} />
               <Route path="users"   element={<AdminUsersTab />} />
               <Route path="data"    element={<AdminDataTab />} />
               <Route path="system"  element={<AdminSystemTab />} />
-              <Route path="*"       element={<Navigate to="season" replace />} />
+              <Route path="*"       element={<Navigate to="/admin/season" replace />} />
             </Route>
             <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="admin/sprint-metrics" element={<AdminSprintMetricsPage />} />

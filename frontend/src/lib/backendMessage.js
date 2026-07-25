@@ -35,6 +35,8 @@ const RAW_KEYS = new Set([
   "seasonFrom", "seasonTo",
   // #2523 · etape-nummer + placering (stage_result) er små heltal, ikke beløb.
   "stage", "position",
+  // #2945 · scout-undersøgelsesniveau (1-3) er et lille ordinaltal, ikke et beløb.
+  "level",
   // #1980 · nedrykningsfaldskærm — division-numre, ikke beløb.
   "oldDivision", "newDivision",
   // #2700 · sæsonskifte-risiko-varsel — antal ryttere, ikke beløb.

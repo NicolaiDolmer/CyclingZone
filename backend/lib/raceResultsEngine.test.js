@@ -276,6 +276,40 @@ test("applyRaceResults inserts results and recalculates standings without touchi
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
 });
 
+// #2898: fuld-sim sletter race_results FØR applyRaceResults kaldes (raceRunner.js).
+// Fejler selve insertet (fx statement timeout), skal det være en synlig fejl —
+// IKKE en tavs succes der lader standings genberegne på et ufuldstændigt
+// resultatsæt eller lader kalderen tro afviklingen lykkedes.
+test("applyRaceResults: insert-fejl kastes synligt, standings genberegnes ALDRIG på delvis skrivning", async () => {
+  const standingsCalls = [];
+  const supabase = {
+    from(table) {
+      if (table === "race_results") {
+        return {
+          insert() {
+            return Promise.resolve({ error: { message: "duplicate key value violates unique constraint" } });
+          },
+        };
+      }
+      throw new Error(`uventet tabel i test-double: ${table}`);
+    },
+  };
+
+  await assert.rejects(
+    () => applyRaceResults({
+      supabase,
+      race: { id: "race-1", season_id: "season-1" },
+      resultRows: [
+        { rider_id: "rider-1", result_type: "stage", rank: 1, stage_number: 1, prize_money: 50, points_earned: 8 },
+      ],
+      ensureSeasonStandings: async (seasonId) => { standingsCalls.push(["ensure", seasonId]); },
+      updateStandings: async (seasonId, raceId) => { standingsCalls.push(["update", seasonId, raceId]); },
+    }),
+    /duplicate key value violates unique constraint/,
+  );
+  assert.deepEqual(standingsCalls, [], "standings må IKKE genberegnes når race_results-insert fejlede — ville låse forkerte tal fast");
+});
+
 // Sub-2 (#2770): applyRaceResults' normalizedRows enumererer race_results-
 // kolonnerne eksplicit — passage-lagets aggregater (sprint_points/kom_points/
 // bonus_seconds) SKAL med her, ellers dropper whole-race-stien (simulateRace)

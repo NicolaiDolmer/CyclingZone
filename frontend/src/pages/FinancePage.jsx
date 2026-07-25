@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";

@@ -127,11 +127,8 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
   // i academyGraduation.js. Fjern denne entry når tabellen har rows.
   "academy_graduation",
-  // CZ Pro billing-rails (#1903, PR #1909 merged 2/7): subscriptions fyldes først når
-  // Alunta-checkout/webhook går live (ejer-opsætning: plan + tokens i Infisical +
-  // test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
-  // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
-  "subscriptions",
+  // (subscriptions (#1903) fjernet 25/7: første checkout.completed-række landede kl.
+  // 17:45 lokal (Alunta-checkout live) — featuren er levende, Detector A overvåger igen.)
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
   // første rækker — featuren er levende, Detector A overvåger den normalt igen.)
   // (rider_peak_plans (#2224) fjernet 16/7: tabellen fik sine første 4 rows via

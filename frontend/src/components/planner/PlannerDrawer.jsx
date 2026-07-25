@@ -6,7 +6,7 @@
 // evner). Rytter-fokus: evne-barer + foreslået build/taper-blok pr. peak m.
 // "Auto-plan training" (accept-endpoint) + fjern-peak + vælg-mål-løb.
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { riderSuitability } from "../../lib/suitability";
 import { riderOverallRating } from "../../lib/riderRating";

@@ -1,5 +1,5 @@
 import { renderToString } from "react-dom/server";
-import { StaticRouter } from "react-router-dom/server";
+import { StaticRouter } from "react-router";
 import i18n from "./i18n";
 import { AppProviders } from "./AppProviders.jsx";
 import App from "./App.jsx";

@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Season Planner · Model B · List first</title>
+<style>
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent:232 197 71; --accent-t:255 217 102;
+    --success:#5fd98a; --success-bg:rgba(95,217,138,.12);
+    --danger:#fb8484; --danger-bg:rgba(251,132,132,.12);
+    --warning:#f0a830; --warning-bg:rgba(240,168,48,.12);
+    --font-display:"Bebas Neue","Oswald","Arial Narrow",Impact,sans-serif;
+    --font-body:"Inter Tight","Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:var(--font-body);
+       font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  h1,.disp{font-family:var(--font-display);font-weight:400;letter-spacing:.02em;margin:0}
+  .wrap{max-width:1140px;margin:0 auto;padding:28px 20px 64px}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px}
+  .t2{color:var(--text-2)} .t3{color:var(--text-3)}
+  .xs{font-size:12px} .x2{font-size:11px}
+  .x3{font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  .row{display:flex;align-items:center} .between{justify-content:space-between}
+  .gap6{gap:6px}.gap8{gap:8px}.gap12{gap:12px}
+  .mb14{margin-bottom:14px}.mb20{margin-bottom:20px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
+        border-bottom:1.5px solid var(--text-1);padding-bottom:10px;margin-bottom:16px}
+  .head h1{font-size:38px;line-height:1}
+  .seg{display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;font-size:11px}
+  .seg button{background:none;border:0;color:var(--text-2);padding:6px 12px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--bg-elevated);color:var(--text-1)}
+  .btn{font-family:inherit;font-size:12px;border-radius:5px;padding:7px 13px;cursor:pointer;
+       display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);
+       background:transparent;color:var(--text-1)}
+  .btn:hover{background:var(--bg-elevated)}
+  .btn-gold{background:rgb(var(--accent));border-color:rgb(var(--accent));color:#0e0f15;font-weight:600}
+  .btn-sm{font-size:11px;padding:5px 10px}
+  .ghost{border-style:dashed;color:var(--text-2)}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.05em;
+        text-transform:uppercase;border:1px solid var(--border);border-radius:999px;padding:3px 9px;
+        color:var(--text-2);background:transparent;cursor:pointer;font-family:inherit}
+  .chip:hover{background:var(--bg-elevated);color:var(--text-1)}
+  .chip.warn{color:var(--warning);border-color:rgba(240,168,48,.45);background:var(--warning-bg)}
+  .chip.good{color:var(--success);border-color:rgba(95,217,138,.4);background:var(--success-bg)}
+  .chip.gold{color:rgb(var(--accent-t));border-color:rgba(255,217,102,.45)}
+  .chip .act{color:var(--text-1);border-left:1px solid currentColor;padding-left:6px;opacity:.85}
+  .keyline{border-top:2px solid rgb(var(--accent))}
+  .flagcode{font-size:10px;letter-spacing:.08em;color:var(--text-3);border:1px solid var(--border);
+            border-radius:3px;padding:0 4px}
+  /* the plan list */
+  .plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+             padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg-subtle)}
+  .slab{font-family:var(--font-display);font-size:15px;letter-spacing:.06em;color:var(--text-2)}
+  .grid{display:grid;grid-template-columns:196px 96px 1fr 1fr 120px 132px;align-items:center;gap:12px;
+        padding:12px 16px;border-bottom:1px solid var(--border)}
+  .grid.hdr{padding-top:9px;padding-bottom:9px;background:transparent}
+  .grid.hdr>div{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+  .grid:last-child{border-bottom:0}
+  .grid:hover{background:var(--bg-subtle)}
+  .rnm{font-size:13.5px;font-weight:500}
+  /* the core control: peak target select */
+  .sel-wrap{position:relative}
+  select{appearance:none;width:100%;font-family:inherit;font-size:12.5px;color:var(--text-1);
+          background:var(--bg-subtle);border:1px solid var(--border);border-radius:5px;
+          padding:8px 30px 8px 10px;cursor:pointer;font-variant-numeric:tabular-nums}
+  select:hover{border-color:var(--text-3)}
+  select.suggested{border-color:rgba(255,217,102,.5)}
+  select.empty{color:var(--text-3);border-style:dashed}
+  .sel-wrap svg{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-3)}
+  .sel-note{font-size:10px;color:var(--text-3);margin-top:4px;letter-spacing:.04em}
+  .sel-note.gold{color:rgb(var(--accent-t))}
+  .formval{font-family:var(--font-display);font-size:26px;line-height:1}
+  .delta{font-size:11px;color:var(--success)}
+  .delta.none{color:var(--text-3)}
+  /* summary strip */
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+  .summary>div{padding:14px 16px;border-left:1px solid var(--border);background:var(--bg-card)}
+  .summary>div:first-child{border-left:0;background:var(--bg-subtle)}
+  .summary .v{font-family:var(--font-display);font-size:28px;line-height:1;margin-top:4px}
+  /* collapsed board */
+  .board-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer}
+  .lane{display:flex;border-top:1px solid var(--border)}
+  .rail{width:170px;flex:none;padding:7px 12px;border-right:1px solid var(--border)}
+  .canvas{background:var(--bg-card)}
+  .divider{margin:56px 0 24px;border-top:1px solid var(--border);padding-top:14px}
+  .phone{width:375px;border:1px solid var(--border);border-radius:5px;background:var(--bg-body);padding:14px;margin:0 auto}
+  .mrow{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:12px;margin-bottom:8px}
+  .notes{margin-top:44px;border-top:1px dashed var(--border);padding-top:16px;color:var(--text-2);font-size:12px}
+  .notes b{color:var(--text-1)}
+  .notes li{margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ PAGE HEAD ============ -->
+  <div class="head">
+    <div>
+      <h1>SEASON PLANNER</h1>
+      <p class="xs t2" style="margin:2px 0 0">Pick the race each rider peaks for.</p>
+    </div>
+    <div class="row gap12">
+      <div class="row gap6">
+        <span class="x3 t3">Season</span>
+        <div class="seg"><button>S1</button><button class="on">S2</button></div>
+      </div>
+      <div class="seg"><button class="on">My riders</button><button>All</button></div>
+    </div>
+  </div>
+
+  <!-- ============ THE PLAN IS THE DEFAULT STATE ============ -->
+  <div class="card keyline mb14" style="background:var(--bg-subtle)">
+    <div style="padding:18px 20px">
+      <div class="row between gap12" style="align-items:flex-start">
+        <div style="max-width:640px">
+          <div class="row gap8" style="margin-bottom:5px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--accent-t))" stroke-width="1.6">
+              <path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.4l6-.8z"/></svg>
+            <span class="disp" style="font-size:24px">HERE IS YOUR PLAN</span>
+          </div>
+          <p class="xs t2" style="margin:0">
+            Your assistant picked a target race for every rider: terrain that suits them, at least three weeks
+            between peaks, and races where your division pays out. Change any row you disagree with.
+          </p>
+          <p class="x2 t3 num" style="margin:6px 0 0">
+            Six of eight riders would gain form. Decline everything and no rider starts a race above 78.
+          </p>
+        </div>
+        <div class="row gap8" style="flex:none">
+          <button class="btn btn-sm">Clear all</button>
+          <button class="btn btn-gold">Accept plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SUMMARY (the 10-second answer) ============ -->
+  <div class="summary mb14">
+    <div>
+      <div class="x3 t3">Next key race</div>
+      <div class="v" style="font-size:22px">TOUR DE FRANCE</div>
+      <div class="x2 t2 num" style="margin-top:3px">5 Jul · in 20 days</div>
+    </div>
+    <div>
+      <div class="x3 t3">Ready for it</div>
+      <div class="v num"><span style="color:var(--success)">3</span><span class="t3"> / 6</span></div>
+      <div class="x2 t2" style="margin-top:3px">2 riders have no peak</div>
+    </div>
+    <div>
+      <div class="x3 t3">Peaks planned</div>
+      <div class="v num">7 <span class="t3" style="font-size:16px">/ 12</span></div>
+      <div class="x2 t2" style="margin-top:3px">Max 2 per rider</div>
+    </div>
+    <div>
+      <div class="x3 t3">Races with no rider</div>
+      <div class="v num" style="color:var(--warning)">4</div>
+      <div class="x2 t2" style="margin-top:3px">Of 16 in your division</div>
+    </div>
+  </div>
+
+  <!-- ============ THE LIST: one row per rider, "peak for" is the control ============ -->
+  <div class="card mb20">
+    <div class="plan-head">
+      <span class="slab">YOUR RIDERS</span>
+      <div class="row gap8">
+        <span class="x2 t3">Sorted by next race date</span>
+        <button class="btn btn-sm">Sort by form gap</button>
+      </div>
+    </div>
+
+    <div class="grid hdr">
+      <div>Rider</div><div>Form trend</div><div>Peak for</div><div>Second peak</div>
+      <div>Start-line form</div><div>Status</div>
+    </div>
+
+    <!-- row 1 -->
+    <div class="grid">
+      <div>
+        <div class="row gap6"><span class="flagcode">BEL</span><span class="rnm">L. Vermeulen</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 78 · Classics · 27y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 24 C 12 22, 22 9, 30 7 C 42 14, 50 21, 56 22" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 22 C 64 19, 70 8, 74 5 C 80 12, 84 18, 88 20" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".75"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select><option>5 Jul · Tour de France</option><option>8 Jun · Criterium du Dauphine</option><option>2 Aug · Clasica San Sebastian</option><option>No peak</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note">Build from 18 Jun · taper from 1 Jul</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty"><option>Add a second peak</option><option>23 Aug · Vuelta a Espana</option><option>11 Oct · Il Lombardia</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num">92</div>
+        <div class="delta num">+30 vs no peak</div>
+      </div>
+      <div><button class="chip good">On track <span class="act">View</span></button></div>
+    </div>
+
+    <!-- row 2 -->
+    <div class="grid">
+      <div>
+        <div class="row gap6"><span class="flagcode">ITA</span><span class="rnm">M. Fiorelli</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 74 · Climber · 24y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 26 C 20 24, 40 20, 56 18" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 18 C 64 14, 70 8, 74 7 C 80 13, 84 18, 88 20" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".75"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select><option>5 Jul · Tour de France</option><option>8 Jun · Criterium du Dauphine</option><option>No peak</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note" style="color:var(--warning)">Taper not set. Form will fall 6 short.</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select><option>11 Oct · Il Lombardia</option><option>23 Aug · Vuelta a Espana</option><option>Remove</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num" style="color:var(--warning)">82</div>
+        <div class="delta num">+12 vs no peak</div>
+      </div>
+      <div><button class="chip warn">Taper late <span class="act">Fix it</span></button></div>
+    </div>
+
+    <!-- row 3 -->
+    <div class="grid">
+      <div>
+        <div class="row gap6"><span class="flagcode">DEN</span><span class="rnm">J. Brink</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 71 · Time trial · 29y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 27 C 14 24, 24 12, 32 9 C 44 18, 52 23, 56 24" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 24 C 66 22, 74 12, 80 9 C 84 14, 86 18, 88 20" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".75"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select><option>23 Aug · Vuelta a Espana</option><option>5 Jul · Tour de France</option><option>No peak</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note">Build from 6 Aug · taper from 19 Aug</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty"><option>Add a second peak</option><option>12 Sep · GP de Montreal</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num">88</div>
+        <div class="delta num">+27 vs no peak</div>
+      </div>
+      <div><button class="chip good">On track <span class="act">View</span></button></div>
+    </div>
+
+    <!-- row 4 · suggestion not yet accepted -->
+    <div class="grid" style="background:rgba(255,217,102,.04)">
+      <div>
+        <div class="row gap6"><span class="flagcode">ESP</span><span class="rnm">T. Aguirre</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 69 · Climber · 22y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 27 C 20 26, 40 25, 56 25" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 25 C 66 23, 74 14, 80 11 C 84 16, 86 19, 88 21" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".55"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="suggested"><option>2 Aug · Clasica San Sebastian</option><option>12 Sep · GP de Montreal</option><option>No peak</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note gold">Suggested: hilly finish suits him, and he is free that week.</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty"><option>Add a second peak</option><option>11 Oct · Il Lombardia</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num t3">84</div>
+        <div class="delta num">+25 if accepted</div>
+      </div>
+      <div><button class="chip gold">Suggested <span class="act">Accept</span></button></div>
+    </div>
+
+    <!-- row 5 · no peak -->
+    <div class="grid">
+      <div>
+        <div class="row gap6"><span class="flagcode">NED</span><span class="rnm">R. Haas</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 66 · Sprinter · 25y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 26 C 20 26, 40 25, 56 25" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 25 C 68 25, 78 25, 88 25" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".5"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty"><option>Choose a race</option><option>2 Aug · Clasica San Sebastian</option><option>30 Aug · Bretagne Classic</option><option>12 Sep · GP de Montreal</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note">Flat sprints suit him. Three are still open.</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty" disabled><option>Pick a first peak first</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num t3">61</div>
+        <div class="delta none num">base form only</div>
+      </div>
+      <div><button class="chip">No peak <span class="act">Plan one</span></button></div>
+    </div>
+
+    <!-- row 6 -->
+    <div class="grid">
+      <div>
+        <div class="row gap6"><span class="flagcode">SWE</span><span class="rnm">E. Sandberg</span></div>
+        <div class="x2 t2 num" style="margin-top:2px">OVR 63 · Domestique · 31y</div>
+      </div>
+      <div>
+        <svg width="88" height="30" viewBox="0 0 88 30">
+          <line x1="0" y1="8" x2="88" y2="8" stroke="var(--border)"/>
+          <line x1="0" y1="24" x2="88" y2="24" stroke="var(--border)"/>
+          <path d="M0 27 C 20 27, 40 26, 56 26" fill="none" stroke="var(--text-1)" stroke-width="1.5"/>
+          <path d="M56 26 C 68 26, 78 26, 88 26" fill="none" stroke="var(--text-1)" stroke-width="1.5" stroke-dasharray="3 2" opacity=".5"/>
+          <line x1="56" y1="0" x2="56" y2="30" stroke="rgb(var(--accent-t))" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty"><option>Choose a race</option><option>12 Sep · GP de Montreal</option><option>11 Oct · Il Lombardia</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="sel-note">A domestique gains less from a peak. Leaving him flat is a fair call.</div>
+      </div>
+      <div>
+        <div class="sel-wrap">
+          <select class="empty" disabled><option>Pick a first peak first</option></select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div>
+        <div class="formval num t3">58</div>
+        <div class="delta none num">base form only</div>
+      </div>
+      <div><button class="chip">No peak <span class="act">Plan one</span></button></div>
+    </div>
+  </div>
+
+  <!-- ============ BOARD AS SECONDARY VISUALISATION ============ -->
+  <div class="card mb20">
+    <div class="board-toggle">
+      <div class="row gap8">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        <span class="slab">SEASON BOARD</span>
+        <span class="x2 t3">Same plan on a timeline. Check for clashes and gaps.</span>
+      </div>
+      <span class="x2 t3">Hide</span>
+    </div>
+
+    <div style="display:flex;background:var(--bg-subtle);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+      <div style="width:170px;flex:none;border-right:1px solid var(--border)"></div>
+      <svg width="900" height="20" aria-hidden="true">
+        <text x="4"   y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">MAR</text>
+        <text x="116" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">APR</text>
+        <text x="228" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">MAY</text>
+        <text x="340" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">JUN</text>
+        <text x="452" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">JUL</text>
+        <text x="564" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">AUG</text>
+        <text x="676" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">SEP</text>
+        <text x="788" y="14" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">OCT</text>
+        <line x1="390" y1="0" x2="390" y2="20" stroke="rgb(var(--accent-t))" stroke-width="1.2" opacity=".8"/>
+        <text x="395" y="14" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">TODAY</text>
+      </svg>
+    </div>
+
+    <!-- compact lanes: bands only, no curve detail -->
+    <div class="lane">
+      <div class="rail"><span class="x2">L. Vermeulen</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <rect x="410" y="6" width="76" height="20" fill="rgb(var(--accent))" opacity=".16" rx="2"/>
+        <line x1="410" y1="7" x2="486" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+        <text x="414" y="20" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">TOUR DE FRANCE</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+    <div class="lane">
+      <div class="rail"><span class="x2">M. Fiorelli</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <rect x="418" y="6" width="66" height="20" fill="rgb(var(--accent))" opacity=".16" rx="2"/>
+        <line x1="418" y1="7" x2="484" y2="7" stroke="var(--warning)" stroke-width="2"/>
+        <text x="421" y="20" font-size="10" fill="var(--warning)" font-family="Inter Tight,monospace">TDF · TAPER LATE</text>
+        <rect x="790" y="6" width="66" height="20" fill="rgb(var(--accent))" opacity=".16" rx="2"/>
+        <line x1="790" y1="7" x2="856" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+        <text x="793" y="20" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">LOMBARDIA</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+    <div class="lane">
+      <div class="rail"><span class="x2">J. Brink</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <rect x="600" y="6" width="62" height="20" fill="rgb(var(--accent))" opacity=".16" rx="2"/>
+        <line x1="600" y1="7" x2="662" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+        <text x="603" y="20" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">VUELTA</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+    <div class="lane">
+      <div class="rail"><span class="x2">T. Aguirre</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <rect x="524" y="6" width="62" height="20" fill="rgb(var(--accent))" opacity=".07" rx="2" stroke="rgb(var(--accent-t))" stroke-dasharray="4 3"/>
+        <text x="527" y="20" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">SAN SEBASTIAN</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+    <div class="lane">
+      <div class="rail"><span class="x2 t3">R. Haas</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <text x="430" y="20" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">NO PEAK PLANNED</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+    <div class="lane">
+      <div class="rail"><span class="x2 t3">E. Sandberg</span></div>
+      <div class="canvas"><svg width="900" height="32">
+        <line x1="0" y1="16" x2="900" y2="16" stroke="var(--border)"/>
+        <text x="430" y="20" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">NO PEAK PLANNED</text>
+        <line x1="390" y1="0" x2="390" y2="32" stroke="rgb(var(--accent-t))" opacity=".5"/>
+      </svg></div>
+    </div>
+  </div>
+
+  <!-- ============ MOBILE ============ -->
+  <div class="divider">
+    <div class="slab" style="margin-bottom:4px">MOBILE · 375PX</div>
+    <p class="xs t2" style="margin:0 0 18px">The list is the same control at every width. A native select is the whole interaction, so nothing has to be redesigned for touch.</p>
+  </div>
+
+  <div class="phone">
+    <div style="border-bottom:1.5px solid var(--text-1);padding-bottom:8px;margin-bottom:12px">
+      <div class="disp" style="font-size:28px;line-height:1">SEASON PLANNER</div>
+      <div class="x2 t2">Pick the race each rider peaks for.</div>
+    </div>
+
+    <div class="card keyline" style="background:var(--bg-subtle);padding:12px;margin-bottom:10px">
+      <div class="disp" style="font-size:19px">HERE IS YOUR PLAN</div>
+      <div class="x2 t2" style="margin-top:4px">Your assistant picked a target for every rider. Change what you disagree with.</div>
+      <div class="row gap8" style="margin-top:9px">
+        <button class="btn btn-gold btn-sm" style="flex:1;justify-content:center">Accept plan</button>
+        <button class="btn btn-sm">Clear</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:11px 12px;margin-bottom:12px">
+      <div class="row between">
+        <div>
+          <div class="x3 t3">Next key race</div>
+          <div class="disp" style="font-size:18px">TOUR DE FRANCE</div>
+          <div class="x2 t2 num">5 Jul · in 20 days</div>
+        </div>
+        <div style="text-align:right">
+          <div class="x3 t3">Ready</div>
+          <div class="disp num" style="font-size:22px"><span style="color:var(--success)">3</span><span class="t3">/6</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mrow">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">BEL</span><span class="rnm">L. Vermeulen</span></div>
+        <span class="x2 t2 num">OVR 78</span>
+      </div>
+      <div class="x3 t3" style="margin:9px 0 4px">Peak for</div>
+      <div class="sel-wrap">
+        <select><option>5 Jul · Tour de France</option><option>2 Aug · Clasica San Sebastian</option><option>No peak</option></select>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="row between" style="margin-top:9px">
+        <span class="x2 t2 num">Starts at <b style="color:var(--text-1)">92</b> <span style="color:var(--success)">(+30)</span></span>
+        <span class="chip good" style="cursor:default">On track</span>
+      </div>
+    </div>
+
+    <div class="mrow" style="background:rgba(255,217,102,.04)">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">ESP</span><span class="rnm">T. Aguirre</span></div>
+        <span class="x2 t2 num">OVR 69</span>
+      </div>
+      <div class="x3 t3" style="margin:9px 0 4px">Peak for</div>
+      <div class="sel-wrap">
+        <select class="suggested"><option>2 Aug · Clasica San Sebastian</option><option>12 Sep · GP de Montreal</option><option>No peak</option></select>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sel-note gold" style="margin-top:5px">Suggested: hilly finish suits him.</div>
+      <div class="row between" style="margin-top:9px">
+        <span class="x2 t2 num">Would start at <b style="color:var(--text-1)">84</b> <span style="color:var(--success)">(+25)</span></span>
+        <span class="chip gold">Accept</span>
+      </div>
+    </div>
+
+    <div class="mrow">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">NED</span><span class="rnm">R. Haas</span></div>
+        <span class="x2 t2 num">OVR 66</span>
+      </div>
+      <div class="x3 t3" style="margin:9px 0 4px">Peak for</div>
+      <div class="sel-wrap">
+        <select class="empty"><option>Choose a race</option><option>2 Aug · Clasica San Sebastian</option><option>30 Aug · Bretagne Classic</option></select>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="row between" style="margin-top:9px">
+        <span class="x2 t2 num">Base form only <b style="color:var(--text-1)">61</b></span>
+        <span class="chip">Plan one</span>
+      </div>
+    </div>
+
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:4px">Show season board</button>
+  </div>
+
+  <div class="notes">
+    <b>Model B in one sentence</b>
+    <p style="margin:6px 0 12px">The page opens on the assistant's finished plan. The list is the surface you edit, one native select per rider, and the board becomes a check-for-clashes view underneath.</p>
+    <b>What it changes versus today</b>
+    <ol>
+      <li>The primary action is a form control, not a gesture. It is discoverable, keyboard accessible and identical on mobile.</li>
+      <li>"Start-line form" turns every row into a decision with a visible consequence.</li>
+      <li>The race list and the board stop competing: the race picker lives inside the row, so there is one place to plan and one place to verify.</li>
+      <li>The assistant's reasoning sits on the row it applies to, not in a page-level banner.</li>
+      <li>Cost: the timeline stops being where you plan, so nuance like "move this peak two weeks earlier" needs the drawer rather than a drag.</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

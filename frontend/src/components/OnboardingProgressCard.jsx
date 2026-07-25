@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
 

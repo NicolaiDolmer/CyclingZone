@@ -9,31 +9,48 @@ import {
   acceptOffer,
   expireAndRenewContracts,
   recomputeActivationRate,
+  resolveStageDivisor,
+  evaluateSeasonObjectives,
 } from "./sponsorContractsService.js";
 import { renownTarget } from "./renownEngine.js";
-import { generateOffers } from "./sponsorOffers.js";
+import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
+import { FINANCE_REASON } from "./economyConstants.js";
 
 // ─── Faithful service_role-mock ────────────────────────────────────────────────
 // Modelleret efter prizePayoutEngine.test.js. Dækker præcis de queries servicen
-// laver:
+// laver (udvidet i #2948 "Sponsorvalg 2.0" med races/league_divisions/teams.in()
+// for divisor-opslaget + rpc for signing/objective-bonus):
 //   teams:            .select("id, division").eq("id", teamId).single()
-//   seasons:          .select("id, number").eq("number", N-1).maybeSingle()
+//                      .select("id, division, league_division_id").in("id", teamIds)
+//   seasons:          .select(...).eq("number", N).maybeSingle()  (renown + stageCounts)
+//                      .select("race_days_total").eq("status","active").maybeSingle() (calendarDays)
 //   season_standings: .select(...).eq("season_id", id)  (thenable → array)
+//   races:            .select("league_division_id, stages").eq("season_id", id) (thenable)
+//   league_divisions: .select("id, tier")  (thenable, ingen filter)
 //   sponsor_contracts:
-//     .select("*").eq("team_id").eq("status","active").maybeSingle()
-//     .select("*").eq("team_id").eq("status","pending").maybeSingle()
+//     .select("*").eq("team_id").eq("status","active"|"pending").maybeSingle()
+//     .select(...).eq("status","active")                 (thenable, bulk — evaluateSeasonObjectives)
 //     .update({status}).eq("team_id").eq("status",...)   (registreres i state.updates)
 //     .update({status}).eq("id", id)                     (registreres i state.updates)
 //     .insert(row).select().single()                     (registreres i state.inserts)
+//   rpc: increment_balance_with_audit (ægte incrementBalanceWithAudit-wrapper kører igennem)
 function makeSupabase({
   team = { id: "t1", division: 2 },
-  seasonsByNumber = {},       // { [number]: { id, number } | null }
+  seasonsByNumber = {},       // { [number]: { id, number, race_days_total? } | null }
   activeSeason = null,        // { race_days_total } | null — seasons.eq("status","active")
-  standingsBySeasonId = {},   // { [seasonId]: [rows] }
+  standingsBySeasonId = {},   // { [seasonId]: [rows] } — også season_standings for evaluateSeasonObjectives
   activeContractByTeam = {},  // { [teamId]: contractRow | null }
   pendingContractByTeam = {}, // { [teamId]: contractRow | null }
+  teamsById: teamsByIdOverride = {}, // { [teamId]: { id, division, league_division_id } } — teams.in()
+  racesBySeasonId = {},       // { [seasonId]: [{ league_division_id, stages }] }
+  poolsList = [],             // [{ id, tier }] — league_divisions
+  skipRpcKeys = new Set(),    // idempotency_keys der skal simulere 23505 (skip)
 } = {}) {
-  const state = { updates: [], inserts: [] };
+  const state = { updates: [], inserts: [], rpcCalls: [] };
+  const teamsById = {
+    [team.id]: { id: team.id, division: team.division, league_division_id: null },
+    ...teamsByIdOverride,
+  };
 
   function seasonsBuilder() {
     const ctx = {};
@@ -49,7 +66,7 @@ function makeSupabase({
         if (ctx.status === "active") {
           return Promise.resolve({ data: activeSeason, error: null });
         }
-        // loadRenownTargetValue: .select("id, number").eq("number", N-1)
+        // loadRenownTargetValue / loadSeasonStageCounts: .eq("number", N)
         const row = seasonsByNumber[ctx.number] ?? null;
         return Promise.resolve({ data: row, error: null });
       },
@@ -58,10 +75,24 @@ function makeSupabase({
   }
 
   function teamsBuilder() {
+    const ctx = {};
     const b = {
       select: () => b,
-      eq: () => b,
+      eq: (col, val) => {
+        if (col === "id") ctx.id = val;
+        return b;
+      },
+      in: (_col, vals) => {
+        ctx.inVals = vals;
+        return b;
+      },
       single: () => Promise.resolve({ data: team, error: null }),
+      then: (resolve) => {
+        const rows = (ctx.inVals || []).map(
+          (id) => teamsById[id] || { id, division: null, league_division_id: null },
+        );
+        return resolve({ data: rows, error: null });
+      },
     };
     return b;
   }
@@ -76,6 +107,27 @@ function makeSupabase({
       },
       then: (resolve) =>
         resolve({ data: standingsBySeasonId[ctx.seasonId] ?? [], error: null }),
+    };
+    return b;
+  }
+
+  function racesBuilder() {
+    const ctx = {};
+    const b = {
+      select: () => b,
+      eq: (col, val) => {
+        if (col === "season_id") ctx.seasonId = val;
+        return b;
+      },
+      then: (resolve) => resolve({ data: racesBySeasonId[ctx.seasonId] ?? [], error: null }),
+    };
+    return b;
+  }
+
+  function leagueDivisionsBuilder() {
+    const b = {
+      select: () => b,
+      then: (resolve) => resolve({ data: poolsList, error: null }),
     };
     return b;
   }
@@ -114,7 +166,8 @@ function makeSupabase({
         return Promise.resolve({ data: ctx.insertRow, error: null });
       },
     };
-    // Make update(...).eq(...) resolve as a thenable (no .single()/.maybeSingle()).
+    // Make update(...).eq(...) resolve as a thenable (no .single()/.maybeSingle()),
+    // OG en plain select uden team_id-filter (evaluateSeasonObjectives' bulk-fetch).
     b.then = (resolve) => {
       if (b._op === "update") {
         state.updates.push({
@@ -144,11 +197,19 @@ function makeSupabase({
             if (row && row.id === ctx.id) {
               pendingContractByTeam[k] = null;
               if (newStatus === "active") {
-                activeContractByTeam[k] = { ...row, status: "active" };
+                activeContractByTeam[k] = { ...row, ...ctx.payload };
               }
             }
           }
         }
+        return resolve({ data: null, error: null });
+      }
+      if (b._op === null) {
+        // Plain select awaited directly (evaluateSeasonObjectives: bulk-fetch
+        // alle aktive kontrakter — mocken har kun ét aktivt hold-lag, så vi
+        // returnerer alle ikke-null aktive rækker uanset ctx.team_id-fravær).
+        const rows = Object.values(activeContractByTeam).filter(Boolean);
+        return resolve({ data: rows, error: null });
       }
       return resolve({ data: null, error: null });
     };
@@ -157,10 +218,25 @@ function makeSupabase({
 
   return {
     state,
+    rpc(name, params) {
+      state.rpcCalls.push({
+        name,
+        teamId: params.p_team_id,
+        delta: params.p_delta,
+        payload: params.p_finance_payload,
+      });
+      const key = params?.p_finance_payload?.idempotency_key;
+      if (key && skipRpcKeys.has(key)) {
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+      }
+      return Promise.resolve({ data: 100000, error: null });
+    },
     from(table) {
       if (table === "teams") return teamsBuilder();
       if (table === "seasons") return seasonsBuilder();
       if (table === "season_standings") return standingsBuilder();
+      if (table === "races") return racesBuilder();
+      if (table === "league_divisions") return leagueDivisionsBuilder();
       if (table === "sponsor_contracts") return contractsBuilder();
       throw new Error(`uventet tabel: ${table}`);
     },
@@ -208,7 +284,7 @@ test("getPendingContract returnerer null når intet pending", async () => {
   assert.equal(row, null);
 });
 
-test("getOffers udleder 3 tilbud fra renown af holdets sidste-sæsons placering", async () => {
+test("getOffers udleder 5 tilbud fra renown af holdets sidste-sæsons placering", async () => {
   // Hold i division 2; sidste sæson (sæson 1) → placering nr. 1 af 4 med flest point.
   const prevSeason = { id: "s1", number: 1 };
   const standings = [
@@ -238,7 +314,7 @@ test("getOffers udleder 3 tilbud fra renown af holdets sidste-sæsons placering"
     renownTargetValue: expectedTarget,
   });
 
-  assert.equal(offers.length, 3);
+  assert.equal(offers.length, 5);
   assert.deepEqual(offers, expectedOffers);
   // Top-hold → multiplier > 1.0 → target > division-base (400000).
   assert.ok(expectedTarget > 400000);
@@ -344,13 +420,13 @@ test("getOffers bruger seasons.race_days_total som per-dag-divisor (#1663)", asy
   });
   assert.notDeepEqual(offers, default60);
 
-  // Sanity: guaranteed_base + per_dag × 40 rammer ≈ target for hver variant.
+  // Sanity: guaranteed_base + per_dag × 40 rammer ≈ target × (fraction+share) for hver variant.
   for (const o of offers) {
     const reconstructed = o.guaranteedBase + o.perRaceDayRate * 40;
-    // Afrunding pr. variant → tillad lille afvigelse (< 40, ét per-dag-trin).
+    const expectedTotal = renownTargetValue * (o.guaranteedFraction + o.raceDayShare);
     assert.ok(
-      Math.abs(reconstructed - renownTargetValue) < 40,
-      `variant ${o.variant}: ${reconstructed} bør være ≈ ${renownTargetValue}`,
+      Math.abs(reconstructed - expectedTotal) < 40,
+      `variant ${o.variant}: ${reconstructed} bør være ≈ ${expectedTotal}`,
     );
   }
 });
@@ -398,7 +474,7 @@ test("getNegotiationState — negotiable når aktiv kontrakt udløber ved nuvær
 
   assert.equal(result.negotiable, true);
   assert.equal(result.upcomingSeasonNumber, 3);
-  assert.equal(result.offers.length, 3);
+  assert.equal(result.offers.length, 5);
   assert.equal(result.pendingVariant, null);
   // Tilbuddene er for den KOMMENDE sæson (3).
   const expected = generateOffers({
@@ -424,7 +500,7 @@ test("getNegotiationState — negotiable når INGEN aktiv kontrakt", async () =>
   });
 
   assert.equal(result.negotiable, true);
-  assert.equal(result.offers.length, 3);
+  assert.equal(result.offers.length, 5);
 });
 
 test("getNegotiationState — IKKE negotiable når aktiv kontrakt stadig dækker kommende sæson", async () => {
@@ -451,21 +527,22 @@ test("getNegotiationState — IKKE negotiable når aktiv kontrakt stadig dækker
   assert.equal(result.pendingVariant, null);
 });
 
-test("getNegotiationState — pendingVariant detekteres fra eksisterende pending-række", async () => {
-  // Manager har allerede valgt 'long' for kommende sæson (3) → pending-række findes.
-  const longOffer = generateOffers({
+test("getNegotiationState — pendingVariant detekteres fra eksisterende pending-række (variant persisteret)", async () => {
+  // Manager har allerede valgt 'loyal' (3-sæsons plan) for kommende sæson (3).
+  const loyalOffer = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
     renownTargetValue: 400000,
-  }).find((o) => o.variant === "long");
+  }).find((o) => o.variant === "loyal");
   const pending = {
     id: "p1",
     team_id: "t1",
     status: "pending",
     start_season: 3,
-    length_seasons: longOffer.lengthSeasons,
-    guaranteed_base: longOffer.guaranteedBase,
-    expires_after_season: 3 + longOffer.lengthSeasons - 1,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    variant: "loyal",
+    expires_after_season: 3 + loyalOffer.lengthSeasons - 1,
   };
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
@@ -481,22 +558,54 @@ test("getNegotiationState — pendingVariant detekteres fra eksisterende pending
   });
 
   assert.equal(result.negotiable, true);
-  assert.equal(result.pendingVariant, "long");
+  assert.equal(result.pendingVariant, "loyal");
 });
 
-test("getNegotiationState — pending med forkert start_season giver pendingVariant null", async () => {
-  const longOffer = generateOffers({
+test("getNegotiationState — legacy pending UDEN variant-kolonne falder tilbage til length+base-match", async () => {
+  const loyalOffer = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
     renownTargetValue: 400000,
-  }).find((o) => o.variant === "long");
+  }).find((o) => o.variant === "loyal");
+  const legacyPending = {
+    id: "p1",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    variant: null, // legacy-række skrevet før #2948-kolonnen
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: legacyPending },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.pendingVariant, "loyal");
+});
+
+test("getNegotiationState — pending med forkert start_season giver pendingVariant null", async () => {
+  const loyalOffer = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: 400000,
+  }).find((o) => o.variant === "loyal");
   const stalePending = {
     id: "p1",
     team_id: "t1",
     status: "pending",
     start_season: 99, // matcher ikke upcomingSeasonNumber 3
-    length_seasons: longOffer.lengthSeasons,
-    guaranteed_base: longOffer.guaranteedBase,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    variant: "loyal",
   };
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
@@ -514,7 +623,7 @@ test("getNegotiationState — pending med forkert start_season giver pendingVari
   assert.equal(result.pendingVariant, null);
 });
 
-test("acceptOffer skriver en PENDING kontrakt (ikke aktiv) for kommende sæson", async () => {
+test("acceptOffer skriver en PENDING kontrakt (ikke aktiv) for kommende sæson, med frosne #2948-felter", async () => {
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
     seasonsByNumber: { 2: null }, // kommende sæson 3 → prev 2; frisk → target 400000
@@ -527,7 +636,7 @@ test("acceptOffer skriver en PENDING kontrakt (ikke aktiv) for kommende sæson",
     supabase,
     teamId: "t1",
     upcomingSeasonNumber: 3,
-    variant: "long",
+    variant: "loyal",
   });
 
   // Erstatter en evt. pending (her ingen) — flip gatet på status=pending, IKKE active.
@@ -537,22 +646,29 @@ test("acceptOffer skriver en PENDING kontrakt (ikke aktiv) for kommende sæson",
   assert.equal(supabase.state.updates[0].status, "pending");
 
   // Den nye række er PENDING med korrekt start_season + variant-felter.
-  const longVariant = generateOffers({
+  const loyalVariant = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
     renownTargetValue: 400000,
-  }).find((o) => o.variant === "long");
+  }).find((o) => o.variant === "loyal");
 
   assert.equal(supabase.state.inserts.length, 1);
   const inserted = supabase.state.inserts[0];
   assert.equal(inserted.team_id, "t1");
-  assert.equal(inserted.sponsor_name, longVariant.sponsorName);
-  assert.equal(inserted.guaranteed_base, longVariant.guaranteedBase);
-  assert.equal(inserted.per_race_day_rate, longVariant.perRaceDayRate);
-  assert.equal(inserted.length_seasons, longVariant.lengthSeasons); // 3
+  assert.equal(inserted.sponsor_name, loyalVariant.sponsorName);
+  assert.equal(inserted.guaranteed_base, loyalVariant.guaranteedBase);
+  assert.equal(inserted.per_race_day_rate, loyalVariant.perRaceDayRate);
+  assert.equal(inserted.length_seasons, loyalVariant.lengthSeasons); // 3
   assert.equal(inserted.start_season, 3);
-  assert.equal(inserted.expires_after_season, 3 + longVariant.lengthSeasons - 1); // 5
+  assert.equal(inserted.expires_after_season, 3 + loyalVariant.lengthSeasons - 1); // 5
   assert.equal(inserted.status, "pending");
+
+  // #2948: variant + frosne andele + klausuler skrives på rækken.
+  assert.equal(inserted.variant, "loyal");
+  assert.equal(inserted.guaranteed_fraction, 0.78);
+  assert.equal(inserted.race_day_share, 0.18);
+  assert.deepEqual(inserted.bonus_clauses, loyalVariant.clauses);
+  assert.equal(inserted.bonus_clauses[0].type, "signing");
 
   assert.deepEqual(row, inserted);
 });
@@ -574,7 +690,7 @@ test("acceptOffer erstatter en eksisterende pending", async () => {
     supabase,
     teamId: "t1",
     upcomingSeasonNumber: 3,
-    variant: "predictable",
+    variant: "safe",
   });
 
   // Den gamle pending blev flippet til 'replaced'.
@@ -584,6 +700,7 @@ test("acceptOffer erstatter en eksisterende pending", async () => {
   // Den nye pending er indsat.
   assert.equal(supabase.state.inserts.length, 1);
   assert.equal(supabase.state.inserts[0].status, "pending");
+  assert.equal(supabase.state.inserts[0].variant, "safe");
 });
 
 test("acceptOffer kaster ved ukendt variant", async () => {
@@ -611,12 +728,13 @@ test("expireAndRenewContracts beholder en stadig-låst kontrakt", async () => {
 
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
-  // Ingen update, ingen insert — kontrakten er låst.
+  // Ingen update, ingen insert, ingen rpc — kontrakten er låst.
   assert.equal(supabase.state.updates.length, 0);
   assert.equal(supabase.state.inserts.length, 0);
+  assert.equal(supabase.state.rpcCalls.length, 0);
 });
 
-test("expireAndRenewContracts AKTIVERER en matchende pending (manager-valg)", async () => {
+test("expireAndRenewContracts AKTIVERER en matchende pending (manager-valg, legacy-række uden guaranteed_fraction)", async () => {
   const expiring = {
     id: "c-exp",
     team_id: "t1",
@@ -653,6 +771,8 @@ test("expireAndRenewContracts AKTIVERER en matchende pending (manager-valg)", as
 
   // Ingen default-insert: managerens valg blev brugt.
   assert.equal(supabase.state.inserts.length, 0);
+  // Ingen bonus_clauses på denne legacy-pending → ingen signing-bonus krediteres.
+  assert.equal(supabase.state.rpcCalls.length, 0);
 
   // Pending er nu aktiv (mock-state afspejler aktivering).
   const nowActive = await getActiveContract({ supabase, teamId: "t1" });
@@ -664,7 +784,7 @@ test("expireAndRenewContracts AKTIVERER en matchende pending (manager-valg)", as
   assert.equal(stillPending, null);
 });
 
-test("expireAndRenewContracts falder tilbage til default 'long' når ingen matchende pending", async () => {
+test("expireAndRenewContracts falder tilbage til default 'safe' når ingen matchende pending (#2914)", async () => {
   const expiring = {
     id: "c-exp",
     team_id: "t1",
@@ -686,18 +806,22 @@ test("expireAndRenewContracts falder tilbage til default 'long' når ingen match
   assert.ok(expiredFlip, "forventede en 'expired'-flip");
   assert.equal(expiredFlip.id, "c-exp");
 
-  // Default-forny med 'long' (aktiv) for sæson 3 — direkte insert, ingen pending.
+  // Default-forny med 'safe' (aktiv) for sæson 3 — direkte insert, ingen pending.
   assert.equal(supabase.state.inserts.length, 1);
   const inserted = supabase.state.inserts[0];
-  const longVariant = generateOffers({
+  const safeVariant = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
     renownTargetValue: 400000,
-  }).find((o) => o.variant === "long");
-  assert.equal(inserted.length_seasons, longVariant.lengthSeasons);
+  }).find((o) => o.variant === "safe");
+  assert.equal(inserted.variant, "safe");
+  assert.equal(inserted.length_seasons, safeVariant.lengthSeasons); // 1
   assert.equal(inserted.start_season, 3);
-  assert.equal(inserted.expires_after_season, 3 + longVariant.lengthSeasons - 1); // 5
+  assert.equal(inserted.expires_after_season, 3 + safeVariant.lengthSeasons - 1); // 3
   assert.equal(inserted.status, "active");
+  assert.equal(inserted.guaranteed_fraction, 0.92);
+  assert.equal(inserted.race_day_share, 0.08);
+  assert.deepEqual(inserted.bonus_clauses, []);
 });
 
 test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold der skiftede division (#2909)", async () => {
@@ -727,26 +851,27 @@ test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold de
   assert.equal(supabase.state.inserts.length, 1);
   const inserted = supabase.state.inserts[0];
   assert.equal(inserted.status, "active");
+  assert.equal(inserted.variant, "safe");
 
   // Facit: samme renownTarget som motoren beregner direkte fra holdets EGEN
   // (D3-)standing — ikke den flade division-2-base (400000).
   const mine = standings.find((s) => s.team_id === "t1");
   const divisionStandings = standings.filter((s) => s.division === 3);
   const expectedTarget = renownTarget({ division: 2, lastSeasonStanding: mine, divisionStandings });
-  const longVariant = generateOffers({
+  const safeVariant = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
     renownTargetValue: expectedTarget,
-  }).find((o) => o.variant === "long");
+  }).find((o) => o.variant === "safe");
 
-  assert.equal(inserted.guaranteed_base, longVariant.guaranteedBase);
+  assert.equal(inserted.guaranteed_base, safeVariant.guaranteedBase);
   assert.ok(
-    inserted.guaranteed_base > 400000,
-    `guaranteed_base skal afspejle D3-formen (>400000), fik ${inserted.guaranteed_base}`,
+    inserted.guaranteed_base > Math.round(400000 * 0.92),
+    `guaranteed_base skal afspejle D3-formen, fik ${inserted.guaranteed_base}`,
   );
 });
 
-test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'long')", async () => {
+test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'safe')", async () => {
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
     seasonsByNumber: { 2: null },
@@ -756,10 +881,11 @@ test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'long'
 
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
-  // Ingen 'expired'-flip (intet at udløbe), men en ny 'long'-kontrakt (aktiv) indsættes.
+  // Ingen 'expired'-flip (intet at udløbe), men en ny 'safe'-kontrakt (aktiv) indsættes.
   assert.equal(supabase.state.updates.filter((u) => u.payload.status === "expired").length, 0);
   assert.equal(supabase.state.inserts.length, 1);
   assert.equal(supabase.state.inserts[0].status, "active");
+  assert.equal(supabase.state.inserts[0].variant, "safe");
   assert.equal(supabase.state.inserts[0].start_season, 3);
 });
 
@@ -782,17 +908,18 @@ test("expireAndRenewContracts ignorerer pending der ikke matcher newSeasonNumber
 
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
-  // Ingen aktivering af den stale pending; default 'long' indsat i stedet.
+  // Ingen aktivering af den stale pending; default 'safe' indsat i stedet.
   assert.equal(supabase.state.updates.filter((u) => u.payload.status === "active").length, 0);
   assert.equal(supabase.state.inserts.length, 1);
   assert.equal(supabase.state.inserts[0].status, "active");
+  assert.equal(supabase.state.inserts[0].variant, "safe");
   assert.equal(supabase.state.inserts[0].start_season, 3);
 });
 
-// ─── #2589: per_race_day_rate genberegnes ved AKTIVERING ─────────────────────
+// ─── #2589/#2948: per_race_day_rate genberegnes ved AKTIVERING ───────────────
 
-test("recomputeActivationRate: bruger den NYE sæsons kalenderlængde som divisor, ikke pick-tidens", () => {
-  // "activity"-variant (length_seasons=2 → guaranteedFraction=0.55). guaranteed_base
+test("recomputeActivationRate: (legacy) bruger den NYE sæsons kalenderlængde som divisor, ikke pick-tidens", () => {
+  // "activity"-variant (legacy length_seasons=2 → guaranteedFraction=0.55). guaranteed_base
   // = 220000 → original renownTargetValue = 220000/0.55 = 400000. Ved pick var
   // kalenderen 60 dage (den daværende default); ved aktivering er den nye sæsons
   // reelle kalender 28 dage — raten SKAL låses til 28, ikke 60.
@@ -804,9 +931,9 @@ test("recomputeActivationRate: bruger den NYE sæsons kalenderlængde som diviso
   assert.notEqual(rate28, rate60, "en anden kalenderlængde SKAL give en anden rate");
 });
 
-test("recomputeActivationRate: robust mod season_standings-drift (matcher IKKE på guaranteed_base)", () => {
+test("recomputeActivationRate: (legacy) robust mod season_standings-drift (matcher IKKE på guaranteed_base)", () => {
   // Reproducerer prod-eksemplet fra issue #2589-kommentaren (team 0a4ed517):
-  // "long"-variant (length_seasons=3 → guaranteedFraction=0.73), guaranteed_base
+  // "long"-variant (legacy length_seasons=3 → guaranteedFraction=0.73), guaranteed_base
   // 248200 svarer til en original renownTargetValue på 340000 — IKKE den ~339109
   // en frisk regenerering ville give i dag (season_standings har flyttet sig siden
   // pick). Den gamle tilgang (match mod et regenereret tilbud) ville fejle her og
@@ -816,7 +943,7 @@ test("recomputeActivationRate: robust mod season_standings-drift (matcher IKKE p
   assert.equal(rate, Math.round((340000 - 248200) / 28)); // = 3279
 });
 
-test("recomputeActivationRate: IEEE-754-afrunding (0.55 er ikke eksakt repræsentérbar) giver stadig det korrekte heltal", () => {
+test("recomputeActivationRate: (legacy) IEEE-754-afrunding (0.55 er ikke eksakt repræsentérbar) giver stadig det korrekte heltal", () => {
   // Adversarielt review 23/7, prod-række sponsor_contracts.id=286250a9-56fb-
   // 4388-8fe2-04676c516dea: guaranteed_base=242550, length_seasons=2 (fraction
   // 0.55). 242550/0.55 er IKKE eksakt 441000 i IEEE-754 — det bliver
@@ -830,26 +957,41 @@ test("recomputeActivationRate: IEEE-754-afrunding (0.55 er ikke eksakt repræsen
   assert.equal(rate, 7088);
 });
 
-test("recomputeActivationRate: ukendt length_seasons → behold den lagrede rate (ingen gætning)", () => {
+test("recomputeActivationRate: (legacy) ukendt length_seasons → behold den lagrede rate (ingen gætning)", () => {
   const pending = { length_seasons: 7, guaranteed_base: 100000, per_race_day_rate: 999 };
   assert.equal(recomputeActivationRate(pending, 28), 999);
 });
 
-test("expireAndRenewContracts: aktivering af en pending genberegner per_race_day_rate ud fra sæson-2-kalenderen (28 dage)", async () => {
+test("recomputeActivationRate: (#2948 primær sti) bruger lagret guaranteed_fraction + race_day_share, ikke legacy-length-opslag", () => {
+  // 'loyal'-arketype (fraction 0.78, raceDayShare 0.18). guaranteed_base = round(500000×0.78) = 390000.
+  const pending = { guaranteed_fraction: 0.78, race_day_share: 0.18, guaranteed_base: 390000 };
+  const rate = recomputeActivationRate(pending, 28);
+  // originalRenownTarget = round(390000/0.78) = 500000; rate = round(500000×0.18/28).
+  assert.equal(rate, Math.round((500000 * 0.18) / 28));
+});
+
+test("recomputeActivationRate: (#2948) manglende race_day_share falder tilbage til (1 - fraction)", () => {
+  const pending = { guaranteed_fraction: 0.92, guaranteed_base: 460000 }; // 500000×0.92
+  const rate = recomputeActivationRate(pending, 28);
+  const share = 1 - 0.92;
+  assert.equal(rate, Math.round((500000 * share) / 28));
+});
+
+test("expireAndRenewContracts: aktivering af en pending genberegner per_race_day_rate ud fra sæson-3-kalenderen (28 dage, legacy-fallback)", async () => {
   const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
   const pending = {
     id: "p-choice",
     team_id: "t1",
     status: "pending",
     start_season: 3,
-    length_seasons: 2, // guaranteedFraction 0.55
+    length_seasons: 2, // guaranteedFraction 0.55 (legacy-opslag, ingen guaranteed_fraction-kolonne)
     guaranteed_base: 220000,
     per_race_day_rate: 3000, // frosset ved pick med den daværende (60-dages) kalender
     expires_after_season: 4,
   };
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
-    activeSeason: { race_days_total: 28 }, // den NYE sæsons faktiske kalenderlængde
+    seasonsByNumber: { 3: { id: "s3", number: 3, race_days_total: 28 } }, // den NYE sæsons faktiske kalenderlængde
     activeContractByTeam: { t1: expiring },
     pendingContractByTeam: { t1: pending },
   });
@@ -862,4 +1004,200 @@ test("expireAndRenewContracts: aktivering af en pending genberegner per_race_day
   // 400000 = 220000 / 0.55 (original renownTargetValue); (400000-220000)/28 = 6429.
   assert.equal(activatedFlip.payload.per_race_day_rate, 6429);
   assert.notEqual(activatedFlip.payload.per_race_day_rate, pending.per_race_day_rate);
+});
+
+// ─── #2913: divisor = holdets FAKTISKE etapetal (races/league_divisions), ikke kalenderdage ─
+
+test("expireAndRenewContracts: bruger holdets EGEN pulje-etapetal som divisor ved aktivering (#2913)", async () => {
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const loyalOffer = generateOffers({ teamId: "t1", seasonNumber: 3, renownTargetValue: 400000 })
+    .find((o) => o.variant === "loyal");
+  const pending = {
+    id: "p-loyal",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    guaranteed_fraction: loyalOffer.guaranteedFraction,
+    race_day_share: loyalOffer.raceDayShare,
+    bonus_clauses: [],
+    expires_after_season: 5,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    teamsById: { t1: { id: "t1", division: 2, league_division_id: "pool-a" } },
+    seasonsByNumber: { 3: { id: "s3", number: 3, race_days_total: 60 } },
+    racesBySeasonId: { s3: [
+      { league_division_id: "pool-a", stages: 3 },
+      { league_division_id: "pool-a", stages: 2 },
+      { league_division_id: "pool-b", stages: 5 },
+    ] },
+    poolsList: [{ id: "pool-a", tier: 2 }, { id: "pool-b", tier: 3 }],
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  const activatedFlip = supabase.state.updates.find((u) => u.id === "p-loyal");
+  assert.ok(activatedFlip);
+  // Pool-a's etapetal er 3+2=5 — IKKE den generelle sæson-kalender (60).
+  assert.equal(
+    activatedFlip.payload.per_race_day_rate,
+    Math.round((400000 * 0.18) / 5),
+    "divisoren skal være holdets EGEN pulje-etapetal (5), ikke race_days_total (60)",
+  );
+});
+
+// ─── #2948: signing bonus krediteres ved aktivering af 'loyal'-pending ────────
+
+test("expireAndRenewContracts: krediterer signing bonus ved aktivering af 'loyal'-pending (idempotency_key sponsor_signing:<id>)", async () => {
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const loyalOffer = generateOffers({ teamId: "t1", seasonNumber: 3, renownTargetValue: 400000 })
+    .find((o) => o.variant === "loyal");
+  const signingAmount = loyalOffer.clauses.find((c) => c.type === "signing").amount;
+  const pending = {
+    id: "p-loyal",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    guaranteed_fraction: loyalOffer.guaranteedFraction,
+    race_day_share: loyalOffer.raceDayShare,
+    bonus_clauses: loyalOffer.clauses,
+    sponsor_name: loyalOffer.sponsorName,
+    expires_after_season: 5,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.rpcCalls.length, 1, "forventede præcis ét rpc-kald (signing bonus)");
+  const call = supabase.state.rpcCalls[0];
+  assert.equal(call.teamId, "t1");
+  assert.equal(call.delta, signingAmount);
+  assert.equal(call.payload.type, "sponsor_signing_bonus");
+  assert.equal(call.payload.reason_code, FINANCE_REASON.SPONSOR_SIGNING_BONUS);
+  assert.equal(call.payload.idempotency_key, "sponsor_signing:p-loyal");
+});
+
+test("expireAndRenewContracts: 'safe'-default-fornyelse (ingen signing-klausul) krediterer INGEN signing bonus", async () => {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: null },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.rpcCalls.length, 0, "default-forny sker via direkte insert (active), ikke aktivering — ingen signing-bonus-kald");
+});
+
+// ─── #2948: evaluateSeasonObjectives (sæsonmåls-klausul) ──────────────────────
+
+test("evaluateSeasonObjectives: betaler kun hold med rank <= ceil(poolSize/2) (top_half)", async () => {
+  const supabase = makeSupabase({
+    seasonsByNumber: { 2: { id: "s2", number: 2 } },
+    activeContractByTeam: {
+      t1: { id: "c1", team_id: "t1", sponsor_name: "Larkin Brewing", bonus_clauses: [{ type: "season_objective", objective: "top_half", amount: 50000 }] },
+      t2: { id: "c2", team_id: "t2", sponsor_name: "Brennan Whisky", bonus_clauses: [{ type: "season_objective", objective: "top_half", amount: 30000 }] },
+      t3: { id: "c3", team_id: "t3", sponsor_name: "Safe Co", bonus_clauses: [] }, // ingen sæsonmåls-klausul
+    },
+    standingsBySeasonId: {
+      s2: [
+        { team_id: "t1", league_division_id: "pool-a", rank_in_division: 1 }, // top halvdel (pool på 4, ceil(4/2)=2)
+        { team_id: "t2", league_division_id: "pool-a", rank_in_division: 4 }, // bund halvdel → ingen bonus
+        { team_id: "t3", league_division_id: "pool-a", rank_in_division: 2 },
+        { team_id: "t4", league_division_id: "pool-a", rank_in_division: 3 },
+      ],
+    },
+  });
+
+  const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+
+  assert.equal(result.evaluated, 2, "kun de 2 kontrakter med en season_objective-klausul tælles");
+  assert.equal(result.paid, 1, "kun t1 (rank 1 <= ceil(4/2)=2) opnåede målet");
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  const call = supabase.state.rpcCalls[0];
+  assert.equal(call.teamId, "t1");
+  assert.equal(call.delta, 50000);
+  assert.equal(call.payload.type, "sponsor_objective_bonus");
+  assert.equal(call.payload.reason_code, FINANCE_REASON.SPONSOR_OBJECTIVE_BONUS);
+  assert.equal(call.payload.idempotency_key, "sponsor_objective:c1:2");
+});
+
+test("evaluateSeasonObjectives: idempotent — 23505-skip (allerede betalt) tæller IKKE som paid", async () => {
+  const supabase = makeSupabase({
+    seasonsByNumber: { 2: { id: "s2", number: 2 } },
+    activeContractByTeam: {
+      t1: { id: "c1", team_id: "t1", sponsor_name: "Larkin Brewing", bonus_clauses: [{ type: "season_objective", objective: "top_half", amount: 50000 }] },
+    },
+    standingsBySeasonId: {
+      s2: [{ team_id: "t1", league_division_id: "pool-a", rank_in_division: 1 }],
+    },
+    skipRpcKeys: new Set(["sponsor_objective:c1:2"]),
+  });
+
+  const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+
+  assert.equal(result.evaluated, 1);
+  assert.equal(result.paid, 0, "genkørsel (23505-dublet) må ikke tælle som en ny betaling");
+  assert.equal(supabase.state.rpcCalls.length, 1, "rpc'en blev stadig forsøgt (idempotent no-op, ikke skippet FØR kaldet)");
+});
+
+test("evaluateSeasonObjectives: ingen sæson fundet → {evaluated:0, paid:0} uden at kaste", async () => {
+  const supabase = makeSupabase({ seasonsByNumber: { 2: null } });
+  const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+  assert.deepEqual(result, { evaluated: 0, paid: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 0);
+});
+
+test("evaluateSeasonObjectives: ingen aktive kontrakter med season_objective-klausul → {evaluated:0, paid:0}", async () => {
+  const supabase = makeSupabase({
+    seasonsByNumber: { 2: { id: "s2", number: 2 } },
+    activeContractByTeam: {
+      t1: { id: "c1", team_id: "t1", bonus_clauses: [{ type: "signing", amount: 1000 }] }, // ikke season_objective
+    },
+    standingsBySeasonId: { s2: [{ team_id: "t1", league_division_id: "pool-a", rank_in_division: 1 }] },
+  });
+  const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+  assert.deepEqual(result, { evaluated: 0, paid: 0 });
+});
+
+// ─── #2913: resolveStageDivisor fallback-kæde (pure) ──────────────────────────
+
+test("resolveStageDivisor: bruger holdets EGEN pulje-etapetal når til stede", () => {
+  const stageCounts = { byPool: { "pool-a": 21 }, byTier: { 2: 30 }, fallbackDays: 60 };
+  const team = { league_division_id: "pool-a", division: 2 };
+  assert.equal(resolveStageDivisor(stageCounts, team), 21);
+});
+
+test("resolveStageDivisor: falder tilbage til tier-gennemsnit når holdets EGEN pulje mangler", () => {
+  const stageCounts = { byPool: {}, byTier: { 2: 30 }, fallbackDays: 60 };
+  const team = { league_division_id: "pool-missing", division: 2 };
+  assert.equal(resolveStageDivisor(stageCounts, team), 30);
+});
+
+test("resolveStageDivisor: falder tilbage til fallbackDays (seasons.race_days_total) når hverken pulje eller tier findes", () => {
+  const stageCounts = { byPool: {}, byTier: {}, fallbackDays: 45 };
+  const team = { league_division_id: "pool-x", division: 9 };
+  assert.equal(resolveStageDivisor(stageCounts, team), 45);
+});
+
+test("resolveStageDivisor: falder tilbage til FULL_CALENDAR_DAYS (60) når fallbackDays også mangler", () => {
+  const stageCounts = { byPool: {}, byTier: {}, fallbackDays: 0 };
+  const team = { league_division_id: null, division: null };
+  assert.equal(resolveStageDivisor(stageCounts, team), FULL_CALENDAR_DAYS);
+});
+
+test("resolveStageDivisor: håndterer manglende stageCounts/team helt (undefined) uden at kaste", () => {
+  assert.equal(resolveStageDivisor(undefined, undefined), FULL_CALENDAR_DAYS);
 });

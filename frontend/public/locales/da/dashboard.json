@@ -15,6 +15,30 @@
     "notTrainedToday": "Du har ikke trænet i dag",
     "boardPlanMissing": "Ingen bestyrelsesplan forhandlet endnu"
   },
+  "seasonStart": {
+    "title": "Sæson {number}: kom i gang",
+    "dismissAria": "Skjul kom i gang-guiden",
+    "done": "Klaret",
+    "progress": "{done} af {total} beslutninger taget",
+    "items": {
+      "squad": {
+        "title": "Byg din trup",
+        "desc": "De fleste hold starter en sæson med for få ryttere. Byd i de live auktioner og fyld hullerne."
+      },
+      "training": {
+        "title": "Læg træningsplanen",
+        "desc": "Træningsplaner hører til én sæson, så sidste sæsons plan gælder ikke længere."
+      },
+      "board": {
+        "title": "Forhandl med bestyrelsen",
+        "desc": "Din nye plan venter. Indtil du har godkendt den, er sæsonens mål ikke fastlagt."
+      },
+      "academy": {
+        "title": "Tag stilling til akademi-graduates",
+        "desc": "Forfrem, sælg eller slip ryttere der er fyldt 21. Efter 7 dage forfremmer motoren dem hvis du har plads og penge, ellers sælger den."
+      }
+    }
+  },
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
@@ -176,6 +200,7 @@
       "loanInterest": "Lånerenter"
     },
     "sponsorDetail": {
+      "contract": "Kontrakt med {sponsor}: garanteret base {base}, løbsdags-indtægt oveni",
       "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",
       "intro": "Introsæson: variabel sponsor starter fra sæson 2",
       "fallback": "Fallback: mangler standings for forrige sæson"

@@ -61,3 +61,31 @@ export function ageBadgeKey(rider, now = new Date()) {
   if (age < 25) return "u25";
   return null;
 }
+
+// #2943: pensions-risiko-badge på auktions-/budfladen + rytterprofilen. SSOT for
+// selve pensions-vinduet er `backend/lib/riderProgression.js`
+// PROGRESSION_CONFIG.retirement = { windowStartAge: 36, guaranteedAge: 40,
+// noticeSeasons: 1 } — dupliceret her efter samme mønster som
+// `backend/lib/squadRiskGuard.js` (ageForSeason/LAUNCH_REFERENCE_YEAR), for at
+// undgå at frontend importerer et backend-modul. Varslet vises ÉT sæson-varsel
+// (noticeSeasons=1) FØR selve vinduet — altså alder ≥ windowStartAge − 1 = 35,
+// jf. #2943's egen ordlyd ("byde på 35+ ryttere") og #2700 (windowStartAge=36).
+const RETIREMENT_WINDOW_START_AGE = 36;
+const RETIREMENT_NOTICE_SEASONS = 1;
+export const RETIREMENT_WARNING_AGE = RETIREMENT_WINDOW_START_AGE - RETIREMENT_NOTICE_SEASONS; // 35
+
+// True når rytteren er gammel nok til at pensionsrisikoen bør vises til en
+// potentiel køber (alder ≥ RETIREMENT_WARNING_AGE). Bruger samme wall-clock
+// alders-konvention som getRiderAge (matcher den øvrige auktions-UI, der også
+// viser rå kalenderårs-alder, ikke sæson-alder).
+export function isRetirementRisk(birthdate, now = new Date()) {
+  const age = getRiderAge(birthdate, now);
+  return age != null && age >= RETIREMENT_WARNING_AGE;
+}
+
+// Badge-nøgle til RiderBadges (uafhængig af ageBadgeKey — en rytter kan aldrig
+// ramme begge, men de er separate klassifikationer og bør ikke deles ind i ét
+// gensidigt udelukkende felt). Returnerer null ved manglende fødselsdato.
+export function retirementRiskBadgeKey(rider, now = new Date()) {
+  return isRetirementRisk(rider?.birthdate, now) ? "retireRisk" : null;
+}

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 /**
  * Samtykke-tekst der embeddes i Founder-waitlist-formularen (#360 / #362,

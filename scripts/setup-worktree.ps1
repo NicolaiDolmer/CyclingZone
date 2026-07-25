@@ -88,6 +88,22 @@ if ($WorktreeRoot -eq $MainRepoRoot) {
 }
 
 # --- 1. node_modules-junctions (delt med main) ---
+#
+# #2967: junctionen deler main-repoets RIGTIGE node_modules. Det er kun sikkert
+# når worktreets lockfile er identisk med mains. Er de forskellige:
+#   1) worktreet kører sine tests mod mains pakker (stille forkert resultat —
+#      bider hårdest netop i dependency-PR'er, hvor testene betyder mest), og
+#   2) et `npm ci` i én af dem sletter node_modules FØR geninstallation, og
+#      junctionen fører sletningen over i den anden. Ramte hoved-checkoutet 3x
+#      på én aften 25/7 (sidste gang forsvandt `react`, 1320 tests fejlede).
+# Derfor: sammenlign lockfile-hash. Match -> junction (billigt, korrekt).
+# Mismatch -> ingen junction, worktreet får sin egen install.
+function Get-LockfileHash($repoRoot, $nmRelPath) {
+  $lock = Join-Path (Join-Path $repoRoot (Split-Path $nmRelPath -Parent)) 'package-lock.json'
+  if (-not (Test-Path $lock)) { return $null }
+  return (Get-FileHash -Path $lock -Algorithm SHA256).Hash
+}
+
 function Set-NodeModulesJunctions {
   Write-Section "node_modules junctions (delt med main)"
   foreach ($nm in @('backend\node_modules', 'frontend\node_modules')) {
@@ -99,6 +115,41 @@ function Set-NodeModulesJunctions {
     }
     if (Test-Path $dst) {
       Write-Info "  [skip] $nm findes allerede"
+      continue
+    }
+
+    # Lockfile-gate (#2967) — deling kræver identiske lockfiles.
+    $pkgDir = Split-Path $nm -Parent
+    $mainHash = Get-LockfileHash $MainRepoRoot $nm
+    $wtHash = Get-LockfileHash $WorktreeRoot $nm
+    if ($null -eq $mainHash -or $null -eq $wtHash) {
+      Write-Info "  [skip] $nm — kunne ikke læse package-lock.json i begge; deler IKKE" "Yellow"
+      continue
+    }
+    if ($mainHash -ne $wtHash) {
+      # Ingen deling — men efterlad ALDRIG worktreet uden node_modules. Hooken
+      # scripts/hooks/setup-worktree-if-needed.sh kalder os netop fordi mappen
+      # mangler, og dens kontrakt er "efter dette er worktreet klar". Sprang vi
+      # bare over, ville agentens `node --test` fejle med "Cannot find package".
+      Write-Info "  [ingen junction] $pkgDir har en anden package-lock.json end main (#2967)." "Yellow"
+      Write-Info "                   Deling ville give forkerte pakker + risiko for at 'npm ci'" "Yellow"
+      Write-Info "                   sletter mains node_modules. Installerer separat i stedet." "Yellow"
+      if ($DryRun) {
+        Write-Info "  [would-npm-ci] npm ci --prefix $pkgDir (i $WorktreeRoot)" "Cyan"
+        continue
+      }
+      Push-Location $WorktreeRoot
+      try {
+        & npm ci --prefix $pkgDir 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $dst)) {
+          Write-Info "  [ok] $nm installeret separat"
+        } else {
+          Write-Info "  [FEJL] 'npm ci --prefix $pkgDir' fejlede (exit $LASTEXITCODE)." "Red"
+          Write-Info "         Kør den manuelt i $WorktreeRoot før du bruger worktreet." "Red"
+        }
+      } finally {
+        Pop-Location
+      }
       continue
     }
     $parent = Split-Path $dst -Parent

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 // tab: åbn en bestemt tab på holdprofilen (fx "results" fra ranglisten, #824).
 export default function TeamLink({ id, className = "", stopPropagation = false, tab, children }) {
