@@ -46,3 +46,32 @@ beskeder om samme begivenhed.
 - **Idempotency-skip er ikke det samme som "allerede gjort".** Ved tvangssalget
   betyder et skip at pengene er bogført mens rytteren stadig står på holdet, så
   netop dér må beskeden IKKE sendes. "Vi solgte X" ville være usandt.
+
+## Efterspil: "fejl højlydt" er ikke det samme som "kast"
+
+Første udgave af fixet lod notifikationsfejl kaste videre, med den begrundelse at
+en tavs `catch` er værre. Reviewet fangede at kald-kæden ved sæsonskiftet ikke
+har nogen per-hold-grænse:
+
+```
+transitionToNextSeason (fase 6) → processSeasonStart → defaultRunSeasonPayroll
+  → for (team of teams) await processTeamSeasonPayroll(...)   ← 0 try/catch
+```
+
+En kastet notifikationsfejl for ét hold ville altså afbryde payroll for alle
+resterende hold og resten af transitionen — og den kaster først EFTER at pengene
+er bogført.
+
+- **Spørg altid: hvad er kaldekædens fejl-radius?** "Kast så det bliver set" er
+  kun rigtigt hvis der er en grænse der fanger og fortsætter. Er der ingen
+  grænse, er radius hele kørslen.
+- **En bivirkning må ikke kunne vælte den handling den beskriver.** Notifikationen
+  beskriver en pengebevægelse der allerede er commit'et; at kaste redder hverken
+  pengene eller beskeden.
+- **Tredje vej findes:** fang omkring bivirkningen, log højlydt, capture til
+  Sentry med nok kontekst til at efterbehandle (hold-id, besked-type), fortsæt.
+  `squadEnforcement.processSquadEnforcementCron` gjorde det allerede — mønsteret
+  fandtes i repoet og burde være genbrugt fra start.
+- **Skriv en negativ kontrol for resiliens-tests.** "Kørslen fortsætter" består
+  trivielt hvis mocken aldrig fejler. Rul fixet tilbage, se testen fejle, rul
+  frem igen.
