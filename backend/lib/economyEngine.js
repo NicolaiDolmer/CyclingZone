@@ -57,6 +57,7 @@ import {
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
+import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -1119,30 +1120,43 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Pay division bonuses based on final standings
   await payDivisionBonuses(standings, seasonId, supabaseClient);
 
-  // Process each division after finance/board side effects have succeeded.
-  // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
-  // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
-  // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
-  // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
-  const poolTree = await buildPoolTree(supabaseClient);
+  // #2851 · Engangs-gate (S1→S2 pyramide-komprimering): når app_config-nøglen
+  // season_end_skip_division_movement er 'on' springes divisions-flytningen
+  // (processDivisionEnd) OG AI-fyld-sweepen over — scripts/compressPyramid.js ER
+  // flytningen i det skifte og kører sit eget reconcile bagefter. Fail-safe:
+  // manglende nøgle/fejl → false → motorens normale adfærd (ejer-gate 25/7).
+  const isMovementSkippedFn =
+    deps.isSeasonEndDivisionMovementSkipped ?? isSeasonEndDivisionMovementSkipped;
+  const skipDivisionMovement = await isMovementSkippedFn(supabaseClient);
 
-  for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
-    const divStandings = standings.filter(s => s.division === division);
-    await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
-      supabase: supabaseClient,
-      now: notificationNow,
-      poolTree,
-    });
-  }
+  if (skipDivisionMovement) {
+    console.log("  ⏭  Op/nedrykning + AI-reconcile sprunget over (season_end_skip_division_movement=on, #2851 — komprimeringen ER flytningen i dette skifte)");
+  } else {
+    // Process each division after finance/board side effects have succeeded.
+    // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
+    // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
+    // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
+    // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
+    const poolTree = await buildPoolTree(supabaseClient);
 
-  // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
-  // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
-  // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
-  // tier-fyld-fra-top (rebalanceDivisions) — pulje-modellen fylder med AI, ikke ved at
-  // trække ægte hold op uden for sporten.
-  if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
-    for (const ld of poolTree.byId.values()) {
-      await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+    for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
+      const divStandings = standings.filter(s => s.division === division);
+      await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
+        supabase: supabaseClient,
+        now: notificationNow,
+        poolTree,
+      });
+    }
+
+    // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
+    // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
+    // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
+    // tier-fyld-fra-top (rebalanceDivisions) — pulje-modellen fylder med AI, ikke ved at
+    // trække ægte hold op uden for sporten.
+    if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
+      for (const ld of poolTree.byId.values()) {
+        await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+      }
     }
   }
 
