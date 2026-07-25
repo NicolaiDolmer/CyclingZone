@@ -27,11 +27,13 @@ import ReleaseStaffModal from "../components/staff/ReleaseStaffModal.jsx";
 const ROLES = ["training", "scouting", "medical", "academy", "commercial"];
 const TIERS = [1, 2, 3, 4, 5];
 
+// #2890: staffRating, ikke rating — staff-overall (tier-bånd 28-90) er en anden
+// fordeling end rytter-overallRating (median 48 vs. 21).
 function OverallBadge({ value }) {
   return (
     <span
       className="inline-block min-w-[30px] rounded px-1.5 py-0.5 text-center font-data text-xs tabular-nums"
-      style={statStyle(value, { scale: "rating" })}
+      style={statStyle(value, { scale: "staffRating" })}
     >
       {value ?? "—"}
     </span>

@@ -13,22 +13,35 @@
 //   metode som RATING_O_ELITE/O_MIN i riderRating.js), IKKE faste tal. TUNABLE KNOBS: gen-fit
 //   ved sæsonskifte hvis populationen flytter sig markant (samme regel som riderRating.js).
 //
-//   "ability" (15 rå evne-værdier, RiderAbilityColumns/StaffAbilityColumns/evne-badges i
-//   lister/planlægger — IKKE type-vægtet): n=104.595 værdier (6.973 ryttere).
+//   "ability" (15 rå rytter-evne-værdier, RiderAbilityColumns/evne-badges i lister/
+//   planlægger — IKKE type-vægtet): n=104.595 værdier (6.973 ryttere).
 //     median 12 · p75 21 · p90 32 · p97 53 · p99,5 67 · max 99
 //     (Menneskehold alene, is_ai=false/is_test_account=false/is_frozen=false, n=39.930/2.662:
 //     median 16 · p75 22 · p90 32 · p97 51 · p99,5 64 — praktisk talt samme kurve; ankrene
 //     herunder bruger FULD population for større n/stabilitet.)
 //   "rating" (riderOverallRating — normaliseret 1-99 type-blendet output, RiderProfileHero/
-//     StaffProfileHero/StaffPanel/StaffOverviewPage/planner-OVR/auktion-OVR): n=6.973 ryttere.
+//     planner-OVR/auktion-OVR): n=6.973 ryttere.
 //     median 21 · p75 30 · p90 37 · p97 76 · p99,5 92 · max 99
+//   "staffAbility" (staff_derived_abilities.dimensions/levels/role_skills — enkelt-akse pr.
+//     StaffAbilityColumns-række): n=552 akse-værdier (119 ansatte). Genereres via en HELT
+//     ANDEN model end rytter-evner (tier-bånd 28-90 + jitter, staffAbilityDerivation.js) —
+//     deler INGEN fordeling med rytter-siden, så genbrug af "ability" havde stillet stort
+//     set alt staff i guld/apex (median 55 > rytter-guld-anker 53). Egen skala, målt 2026-07-25:
+//     median 55 · p75 70 · p90 85 · p97 92 · p99,5 99 · max 99.
+//   "staffRating" (staff_derived_abilities.overall — StaffPanel/StaffProfileHero/
+//     StaffOverviewPage): n=119 ansatte (candidate-niveau bruger samme model). Målt 2026-07-25:
+//     median 48 · p75 60 · p90 65 · p97 71 · p99,5 78 · max 79 (tier-båndets teoretiske loft
+//     er 90 — næste gen-fit bør retjekke om max har flyttet sig).
 //
 // Samme #855-farver til og med guld. Toppen (tidl. pink/rød 74-99) er flyttet til dyb
 // rav/bronze — rød er ELLERS altid "fejl/bagud/advarsel" i designsystemet (--danger,
 // StatusBadge), og elite-ryttere i samme røde var en semantisk kollision (#2890 pkt. 3).
 //
-// TO ankersæt, ikke ét (#2890 pkt. 2) — samme farvepalet, forskellige knæk:
-//   statColor(value, { scale: "ability" | "rating" }). Default "ability" (flest kald-steder).
+// FIRE ankersæt, ikke ét (#2890 pkt. 2 — udvidet fra to til fire efter ejer-krav om at
+// afgøre staff-spørgsmålet konkret i stedet for at lade det stå åbent) — samme
+// farvepalet, forskellige knæk pr. den population der faktisk vises:
+//   statColor(value, { scale: "ability" | "rating" | "staffAbility" | "staffRating" }).
+//   Default "ability" (flest kald-steder).
 const KNOTS_BY_SCALE = {
   // Rå enkelt-evne (0-99). Ankre: median 12 (gray-rising-stop) · p75 21 (grøn) ·
   // p90 32 (gul) · p97 53 (guld) · p99,5 67 (apex) · 99 (dybeste, klamp).
@@ -54,6 +67,32 @@ const KNOTS_BY_SCALE = {
     [92, [0xe2, 0x90, 0x0f]],
     [99, [0x8a, 0x4b, 0x06]],
   ],
+  // Staff dimensions/levels/roleSkills (0-99). Ankre: median 55 (gray-rising-stop) ·
+  // p75 70 (grøn) · p90 85 (gul) · p97 92 (guld) · p99,5≈max 99 (apex/dybeste smelter
+  // sammen — distributionen klamper hårdt i toppen af tier-båndet).
+  staffAbility: [
+    [0, [0x56, 0x59, 0x69]],
+    [27, [0x6f, 0x72, 0x85]],
+    [55, [0xae, 0xb1, 0xc0]],
+    [70, [0x33, 0xfc, 0x96]],
+    [85, [0xfd, 0xe4, 0x47]],
+    [92, [0xfd, 0xc0, 0x32]],
+    [97, [0xe2, 0x90, 0x0f]],
+    [99, [0x8a, 0x4b, 0x06]],
+  ],
+  // Staff overall (0-99). Ankre: median 48 (gray-rising-stop) · p75 60 (grøn) ·
+  // p90 65 (gul) · p97 71 (guld) · p99,5≈78 (apex). Klamp bevidst ved 99 (ikke målt
+  // max 79) — tier-båndets teoretiske loft er 90 (TIER_OVERALL_BAND, tier 5).
+  staffRating: [
+    [0, [0x56, 0x59, 0x69]],
+    [24, [0x6f, 0x72, 0x85]],
+    [48, [0xae, 0xb1, 0xc0]],
+    [60, [0x33, 0xfc, 0x96]],
+    [65, [0xfd, 0xe4, 0x47]],
+    [71, [0xfd, 0xc0, 0x32]],
+    [78, [0xe2, 0x90, 0x0f]],
+    [99, [0x8a, 0x4b, 0x06]],
+  ],
 };
 
 function toHex(rgb) {
@@ -66,8 +105,10 @@ function resolveKnots(scale) {
 
 /**
  * Gradient-farven (hex-streng) for en 0-99-værdi. Klampes til knæk-intervallet.
- * `scale`: "ability" (rå enkelt-evne, default) eller "rating" (normaliseret 1-99-overall) —
- * de to fordelinger er væsensforskellige (#2890), så samme tal betyder ikke det samme.
+ * `scale`: "ability" (rå rytter-enkelt-evne, default) · "rating" (normaliseret rytter-
+ * overall) · "staffAbility" (staff dimensions/levels/roleSkills) · "staffRating"
+ * (staff overall) — fire væsensforskellige fordelinger (#2890), så samme tal betyder
+ * IKKE det samme på tværs af dem.
  */
 export function statColor(value, { scale = "ability" } = {}) {
   const num = Number(value);

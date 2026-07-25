@@ -35,6 +35,27 @@ test("statColor — samme værdi, forskellig skala, forskellig farve", () => {
   assert.notEqual(statColor(32, { scale: "rating" }), "#fde447");
 });
 
+// "staffAbility" (staff dimensions/levels/roleSkills) — median 55 · p75 70 · p90 85 ·
+// p97 92 · p99,5≈99. Egen fordeling: staff genereres via tier-bånd (28-90 + jitter),
+// IKKE rytter-evne-modellen — samme rå tal betyder ikke det samme som ability/rating.
+test("statColor — staffAbility-skala har egne ankre (tier-bånd, ikke rytter-evner)", () => {
+  assert.equal(statColor(70, { scale: "staffAbility" }), "#33fc96"); // grøn (p75)
+  assert.equal(statColor(85, { scale: "staffAbility" }), "#fde447"); // gul (p90)
+  assert.equal(statColor(92, { scale: "staffAbility" }), "#fdc032"); // guld (p97)
+  // 55 (staff-median) ville være dybt gråt/grønt-kant på ability-skalaen (langt over
+  // dens grøn-anker 21) men er netop grå-stigende-knækket her — beviser at de to
+  // skalaer IKKE kan dele ankre.
+  assert.equal(statColor(55, { scale: "staffAbility" }), "#aeb1c0");
+});
+
+// "staffRating" (staff overall) — median 48 · p75 60 · p90 65 · p97 71 · p99,5≈78.
+test("statColor — staffRating-skala har egne ankre (staff-overall, ikke rytter-rating)", () => {
+  assert.equal(statColor(60, { scale: "staffRating" }), "#33fc96"); // grøn (p75)
+  assert.equal(statColor(65, { scale: "staffRating" }), "#fde447"); // gul (p90)
+  assert.equal(statColor(71, { scale: "staffRating" }), "#fdc032"); // guld (p97)
+  assert.equal(statColor(78, { scale: "staffRating" }), "#e2900f"); // apex/rav (p99,5)
+});
+
 test("statColor — ukendt scale falder tilbage til ability", () => {
   assert.equal(statColor(21, { scale: "bogus" }), statColor(21));
 });
@@ -82,4 +103,10 @@ test("statPlateStyle — default scale er 'rating' (bruges altid til normalisere
   assert.equal(plate.backgroundColor, "#33fc9629");
   // Samme rå tal på ability-skalaen ville IKKE ramme grøn (p75=21 der)
   assert.notEqual(statPlateStyle(30, { scale: "ability" }).color, plate.color);
+});
+
+test("statPlateStyle — staffRating giver samme farve-plade-mekanik som rating", () => {
+  const plate = statPlateStyle(60, { scale: "staffRating" }); // p75 på staffRating-skalaen
+  assert.equal(plate.color, "#33fc96");
+  assert.equal(plate.backgroundColor, "#33fc9629");
 });

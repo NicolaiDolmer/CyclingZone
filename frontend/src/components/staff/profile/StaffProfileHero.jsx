@@ -58,11 +58,12 @@ export default function StaffProfileHero({ profile, actions = null }) {
         <HeroStat
           label={t("hero.ratingEyebrow")}
           value={hasRating ? (
-            /* Farveplade (T3-spec): samme statColor-skala som ability-tallene,
-               via den delte statPlateStyle (#2888/#2906). */
+            /* Farveplade (T3-spec) via den delte statPlateStyle (#2888/#2906).
+               #2890: eksplicit staffRating — staff-overall (tier-bånd 28-90) er en
+               anden fordeling end rytter-overallRating (statPlateStyle's default). */
             <span
               className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
-              style={statPlateStyle(overall)}
+              style={statPlateStyle(overall, { scale: "staffRating" })}
             >
               {overall}
             </span>
