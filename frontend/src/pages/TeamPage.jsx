@@ -6,14 +6,13 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import { supabase } from "../lib/supabase";
-import { statStyle } from "../lib/statColor";
+import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
 import { getCountryCode3 } from "../lib/countryUtils";
-import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
 import { riderOverallRating } from "../lib/riderRating";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
@@ -389,8 +388,6 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
-  // #2906: ryttertype som underlinje i den sticky navnecelle i evne-tilstanden.
-  const { t: tTypes } = useTranslation("riderTypes");
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
   // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.
@@ -456,27 +453,16 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
 
-  // Ryttertype som ren tekst — bruges til den sticky navnecelles underlinje i
-  // evne-tilstanden (hvor Type ikke har sin egen kolonne) og til mobil-folden.
-  // KUN primærtypen: underlinjen deler bredde med den pinnede navnekolonne, og
-  // "Etapeløbsrytter / Bjergrytter" gjorde den ~2x bredere end navnet — på 393px
-  // åd den halvdelen af skærmen, så kun 2 evne-kolonner var synlige.
-  // Samme gyldigheds-gate som RiderTypeBadge: en ukendt type-nøgle skal give
-  // INTET, ikke en rå i18n-nøgle ("types.leadout") — fælden #2849 bølge 6 ryddede
-  // op i, da en fjernet type stadig lå i en fixture.
-  function typeText(r) {
-    if (!r.primary_type || !RIDER_TYPE_KEYS.includes(r.primary_type)) return "";
-    return tTypes(`types.${r.primary_type}`);
-  }
-
   const nameColumn = {
     key: "name",
     header: t("squad.headers.rider"),
     sticky: true,
     sortKey: "firstname",
-    // Evne-tilstanden har ingen Type-kolonne — typen lever i underlinjen i stedet
-    // (T2-recipens sticky-celle: navn + text-3xs uppercase underlinje).
-    subline: tableMode === "abilities" ? (r) => typeText(r) : undefined,
+    // INGEN subline (ejer 25/7: "navnet er helligt"). Ryttertypen stod her et
+    // øjeblik i evne-tilstanden — den hører hjemme i sin egen kolonne som alle
+    // andre steder i appen. Det eneste der må lande under navnet er mobil-folden
+    // herunder, og den er skåret ned til nation + alder (samme to felter som
+    // /riders allerede folder, og som ejeren har accepteret dér).
     render: (r) => (
       <>
         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
@@ -490,26 +476,48 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
   };
 
   // #2906 punkt 2 / #2888 punkt 2: rating som TAL (1-99), ikke stjerner.
-  // Bevidst UDEN farveplade: statColor-skalaen er fejl-ankret (#2890), så en
-  // farvet rating-celle ville rendre ~96% af menneskehold-ryttere grå. Tallet
-  // står i data-fonten med tabular figures (tdClass numeric).
+  // Farveplade via den DELTE statPlateStyle — nøjagtig samme behandling som
+  // rytterprofilens hero (ejer 25/7: rating skal have farve, og den skal se ud
+  // som den gør på profilen). At skalaen hælder mod gråt indtil #2890 er løst er
+  // en accepteret afvejning; fixet sker ét sted (statColor), ikke her.
   const ratingColumn = {
     key: "rating",
     header: <span title={t("squad.headers.ratingTitle")}>{t("squad.headers.rating")}</span>,
     sortKey: "_ovr",
     numeric: true,
     compact: true,
-    render: (r) => <span className="font-semibold text-cz-1">{r._ovr || "—"}</span>,
+    render: (r) => (r._ovr ? (
+      <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+        style={statPlateStyle(r._ovr)}>
+        {r._ovr}
+      </span>
+    ) : <span className="text-cz-3">—</span>),
   };
 
+  // #2888 punkt 3: sekundærtypen på egen linje — kolonnen var den bredeste
+  // enkeltkolonne i tabellen ("Etapeløbsrytter / Bjergrytter" på én linje).
+  // Ejer 25/7: typen skal ALTID stå i sin egen kolonne som den plejer, aldrig
+  // som en del af navnecellen — derfor deles præcis samme definition af begge
+  // tilstande i stedet for at evne-tilstanden opfinder sin egen placering.
+  const typeColumn = {
+    key: "type",
+    header: t("squad.headers.type"),
+    sortKey: "primary_type",
+    compact: true,
+    render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
+  };
+
+  // Ejer-feedback 25/7: evne-tallene stod for langt fra hinanden — de skal læses
+  // som ÉN matrix. `tight` (px-1) i stedet for `compact` (px-2) halverer gutteren
+  // igen; adskillelsen kommer fra badgens egen farve, ikke fra luft.
   const abilityColumns = STATS.map(({ key, label }) => ({
     key,
     header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
     sortKey: key,
     numeric: true,
-    compact: true,
+    tight: true,
     render: (r) => (
-      <span className="inline-block min-w-[26px] text-center text-xs font-mono px-1 py-0.5 rounded"
+      <span className="inline-block min-w-[24px] text-center text-xs font-mono px-1 py-0.5 rounded"
         style={statStyle(r[key] || 0)}>
         {r[key] || "-"}
       </span>
@@ -577,14 +585,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       foldValue: (r) => String(getRiderAge(r.birthdate) ?? "—"),
       render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate) ?? "—"}</span>,
     },
-    // #2888 punkt 3: sekundærtypen på egen linje — kolonnen var den bredeste
-    // enkeltkolonne i tabellen ("Etapeløbsrytter / Bjergrytter" på én linje).
-    {
-      key: "type",
-      header: t("squad.headers.type"),
-      sortKey: "primary_type",
-      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
-    },
+    typeColumn,
     // #1482: Kontraktudløb. #2888: cellen viser den korte sæson-form ("S4") med
     // den fulde sætning i tooltip'en — "Udløber efter S4" fyldte ~120px pr. række.
     {
@@ -593,8 +594,6 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       sortKey: "contract_end_season",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => (r.contract_end_season != null ? t("squad.headers.contractShort", { season: r.contract_end_season }) : "—"),
       render: (r) => (
         <span className="text-cz-2"
           title={r.contract_end_season != null ? t("squad.headers.contractValue", { season: r.contract_end_season }) : undefined}>
@@ -615,9 +614,10 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
     },
   ];
 
-  // Evne-tilstand: navn (sticky) + rating + de 15 evner. ~870px i alt på desktop
-  // → ingen vandret scroll; på mobil scroller evnerne under den pinnede navnekolonne.
-  const abilityModeColumns = [nameColumn, ratingColumn, ...abilityColumns];
+  // Evne-tilstand: navn (sticky) + rating + type + de 15 evner. Med tight-gutteren
+  // er det ~830px på desktop → ingen vandret scroll, og typen beholder sin egen
+  // kolonne i stedet for at ligge under navnet.
+  const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
   return (

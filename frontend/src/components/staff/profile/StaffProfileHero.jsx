@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import CategoryTag from "../../ui/CategoryTag.jsx";
 import { initialsFrom } from "../../ui/avatarStyles.js";
-import { statColor } from "../../../lib/statColor.js";
+import { statPlateStyle } from "../../../lib/statColor.js";
 import { staffSpecializationHeadline } from "../../../lib/staffAbilities.js";
 
 // #2849 bølge 5c — T3 hero stat-blok (label 10px uppercase · value 20px/650
@@ -58,11 +58,11 @@ export default function StaffProfileHero({ profile, actions = null }) {
         <HeroStat
           label={t("hero.ratingEyebrow")}
           value={hasRating ? (
-            /* Farveplade (T3-spec): samme statColor-skala som ability-tallene.
-               Hex + "29" = 16% alpha-baggrund af samme farve. */
+            /* Farveplade (T3-spec): samme statColor-skala som ability-tallene,
+               via den delte statPlateStyle (#2888/#2906). */
             <span
               className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
-              style={{ color: statColor(overall), backgroundColor: `${statColor(overall)}29` }}
+              style={statPlateStyle(overall)}
             >
               {overall}
             </span>

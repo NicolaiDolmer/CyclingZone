@@ -36,9 +36,25 @@ test("dense er opt-in — T2's default-rytme er uændret", () => {
   assert.ok(thClass().includes("py-3"), "default-header skal stadig være py-3");
 });
 
-test("dense rører ikke den VANDRETTE gutter (det er `compact`s job)", () => {
+test("dense rører ikke den VANDRETTE gutter (det er `compact`/`tight`s job)", () => {
   assert.ok(tdClass({ dense: true }).includes("px-4"));
   assert.ok(tdClass({ dense: true, compact: true }).includes("px-2"));
+});
+
+// Ejer-feedback 25/7 (#2888/#2906): evne-tallene stod stadig for langt fra
+// hinanden ved px-2. `tight` er det tredje og strammeste gutter-trin, til
+// tal-MATRICER hvor nabo-celler skal læses som én blok.
+test("gutter i tre trin: px-4 default, px-2 compact, px-1 tight", () => {
+  assert.ok(tdClass().includes("px-4"));
+  assert.ok(tdClass({ compact: true }).includes("px-2"));
+  assert.ok(tdClass({ tight: true }).includes("px-1"));
+  assert.ok(thClass({ tight: true }).includes("px-1"), "headeren skal følge cellen, ellers flugter kolonnen ikke");
+});
+
+test("tight vinder over compact når begge er sat", () => {
+  const c = tdClass({ compact: true, tight: true });
+  assert.ok(c.includes("px-1"));
+  assert.ok(!c.includes("px-2"));
 });
 
 test("numerisk celle er højrestillet font-data tabular", () => {

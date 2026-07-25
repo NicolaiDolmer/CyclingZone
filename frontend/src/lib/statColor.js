@@ -67,3 +67,20 @@ export function statTextColor(value) {
 export function statStyle(value) {
   return { backgroundColor: statColor(value), color: statTextColor(value) };
 }
+
+/**
+ * Inline-style til en RATING-plade: farvet tal på en 16%-alpha tint af SAMME farve
+ * (T3-spec'ens "rating renders as a color plate"). Modsat statStyle (fuld-mættet
+ * badge til evne-tallene) er pladen den roligere behandling der bruges hvor
+ * ratingen står alene som hovedtal.
+ *
+ * #2888/#2906: udtrukket her fordi rytterprofilens hero, personale-heroen og nu
+ * trup-tabellen alle skal se ENS ud — de to heroer havde hver sin kopi af
+ * `${statColor(v)}29`-udtrykket. Hex + "29" = 16% alpha.
+ *
+ * Brug: <span className="...rounded-cz" style={statPlateStyle(rating)}>{rating}</span>
+ */
+export function statPlateStyle(value) {
+  const hex = statColor(value);
+  return { color: hex, backgroundColor: `${hex}29` };
+}
