@@ -6,6 +6,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 
 const {
   buildSeasonEndPreviewRows,
+  loadHumanSeasonEndTeams,
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
@@ -29,6 +30,7 @@ const {
 const { ACADEMY } = await import("./academyFlag.js");
 const { getTotalDebt: realGetTotalDebt, repayLoansFromForcedSale: realRepayLoansFromForcedSale } =
   await import("./loanEngine.js");
+const { SUPABASE_PAGE_SIZE } = await import("./supabasePagination.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -262,16 +264,28 @@ function createSeasonEndSupabase({
               in(column, values) {
                 assert.equal(column, "team_id");
                 assert.deepEqual(values, [state.team.id]);
-                if (ridersError) {
-                  return Promise.resolve({
-                    data: null,
-                    error: ridersError,
-                  });
-                }
-                return Promise.resolve({
-                  data: clone(state.riders),
-                  error: null,
-                });
+                // #2907: loadHumanSeasonEndTeams paginerer nu riders (fetchAllRows →
+                // .order("id").range()), samme mønster som race_results i updateStandings.
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        if (ridersError) {
+                          return Promise.resolve({
+                            data: null,
+                            error: ridersError,
+                          });
+                        }
+                        return Promise.resolve({
+                          data: clone(state.riders).slice(from, to + 1),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -864,6 +878,111 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
 }
 
 const FIXED_SEASON_END_NOW = new Date("2026-04-23T08:00:00.000Z");
+
+test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", async () => {
+  // Reproducerer prod-fundet 25/7: 2.652 ryttere på 156 menneskehold — et naivt
+  // .select().in() uden .range() returnerer stille kun første side (SUPABASE_PAGE_SIZE
+  // rækker), så et hold hvis ryttere falder uden for side 1 fremstår med riders=[] →
+  // totalSalary=0 → ingen lønpostering, forkert bestyrelsesdom (ikke en fejl, ikke en
+  // nulrække — ingenting). team-b herunder ligger UDELUKKENDE i side 2, for at
+  // reproducere netop det scenarie.
+  const pageSize = SUPABASE_PAGE_SIZE;
+  const teamBRiderCount = 500;
+  const allRiders = [];
+  for (let i = 1; i <= pageSize; i += 1) {
+    allRiders.push({ id: `r${i}`, team_id: "team-a", salary: 100 });
+  }
+  for (let i = pageSize + 1; i <= pageSize + teamBRiderCount; i += 1) {
+    allRiders.push({ id: `r${i}`, team_id: "team-b", salary: 100 });
+  }
+
+  let rangeCallCount = 0;
+  const supabase = {
+    from(table) {
+      if (table === "teams") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return {
+                      eq() {
+                        return Promise.resolve({
+                          data: [
+                            { id: "team-a", is_ai: false, is_bank: false, is_frozen: false },
+                            { id: "team-b", is_ai: false, is_bank: false, is_frozen: false },
+                          ],
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select() {
+            return {
+              in(column, values) {
+                assert.equal(column, "team_id");
+                assert.deepEqual(values, ["team-a", "team-b"]);
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        rangeCallCount += 1;
+                        return Promise.resolve({
+                          data: allRiders.slice(from, to + 1),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "board_profiles") {
+        return {
+          select() {
+            return {
+              in() {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const teams = await loadHumanSeasonEndTeams(supabase);
+
+  assert.equal(rangeCallCount >= 2, true, "skal hente mindst 2 sider (1500 ryttere > page-size)");
+  const teamA = teams.find(t => t.id === "team-a");
+  const teamB = teams.find(t => t.id === "team-b");
+  assert.equal(teamA.riders.length, pageSize, "team-a (side 1) skal have alle sine ryttere");
+  assert.equal(
+    teamB.riders.length,
+    teamBRiderCount,
+    "team-b (UDELUKKENDE side 2) må IKKE fremstå tom — dette var #2907-bugget (0 løn, forkert bestyrelsesdom)"
+  );
+  assert.equal(
+    teams.reduce((sum, t) => sum + t.riders.length, 0),
+    pageSize + teamBRiderCount,
+    "alle ryttere på tværs af begge sider skal være med i det samlede resultat"
+  );
+});
 
 test("processSeasonEnd keeps the board flow on the shared runtime path", async () => {
   const supabase = createSeasonEndSupabase({
