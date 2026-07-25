@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { mapSupabaseAuthError, isEmailNotConfirmedError } from "../lib/authErrors";
+import { suggestEmailFix } from "../lib/emailDomainSuggestion.js";
+import { cooldownSecondsLeft, cooldownUntil, parseRateLimitSeconds } from "../lib/resendCooldown.js";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
 import DiscordJoinLink from "../components/DiscordJoinLink";
@@ -21,6 +23,45 @@ const PUBLIC_APP_URL =
 
 function getPasswordResetRedirectUrl() {
   return new URL("/reset-password", PUBLIC_APP_URL).toString();
+}
+
+/**
+ * "Send bekræftelsesmail igen" med nedtælling. Refs #2826.
+ *
+ * Resend kan trigges tre steder (udløbet-link-banner, signup-succes-skærmen og
+ * "email not confirmed"-login-fejlen), men rate-limitten er den SAMME på
+ * serveren. Før #2826 havde hvert sted sin egen kopi af knappen uden cooldown,
+ * så et klik nummer to inden for et minut gav en rå rate-limit-fejl i stedet
+ * for hjælp — og knappen forsvandt helt efter første succesfulde send, så en
+ * spiller der stadig ikke havde fået mailen stod uden vej videre.
+ *
+ * Her er alle tre steder samlet: nedtælling mens man venter, og knappen kommer
+ * TILBAGE når cooldownen er ovre.
+ */
+function ResendConfirmation({ t, state, error, cooldownLeft, onResend, disabled = false, prompt = null, cta }) {
+  const waiting = cooldownLeft > 0;
+
+  return (
+    <>
+      {state === "sent" && <span className="block text-cz-success">{t("auth:success.resendSent")}</span>}
+      {error && <span className="block text-cz-danger">{error}</span>}
+      {waiting ? (
+        <span className="block">{t("auth:success.resendCooldown", { seconds: cooldownLeft })}</span>
+      ) : (
+        <>
+          {prompt ? `${prompt} ` : null}
+          <button
+            type="button"
+            disabled={disabled || state === "sending"}
+            onClick={onResend}
+            className="underline hover:text-cz-1 disabled:opacity-60"
+          >
+            {state === "sending" ? t("auth:success.resendSending") : cta}
+          </button>
+        </>
+      )}
+    </>
+  );
 }
 
 export default function LoginPage() {
@@ -63,6 +104,14 @@ export default function LoginPage() {
   // success-skærmen, som ikke renderer #auth-error-blokken (den ligger kun i
   // login-formularen).
   const [resendError, setResendError] = useState("");
+  // #2826: cooldown på resend. Supabase afviser to resends inden for ~60s, så
+  // uden nedtælling blev det andet klik til en fejlbesked i stedet for hjælp.
+  // `until` er epoch-ms (sandheden), `cooldownLeft` er det tikkende display.
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(null);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  // #2826: sæt fokus i email-feltet når spilleren vender tilbage for at rette
+  // en forkert adresse, så rettelsen kan laves uden at lede efter feltet.
+  const [focusEmailOnReturn, setFocusEmailOnReturn] = useState(false);
 
   // Per-route head for den public /login-rute (#1404/#1301).
   useDocumentHead({
@@ -82,9 +131,43 @@ export default function LoginPage() {
     }
   }, [location, navigate]);
 
+  // #2826: tik nedtællingen ned mens en cooldown er aktiv. Intervallet rydder
+  // sig selv når der ikke er mere tilbage, så vi ikke holder en timer i live på
+  // en side spilleren typisk forlader.
+  useEffect(() => {
+    if (!resendCooldownUntil) {
+      setCooldownLeft(0);
+      return undefined;
+    }
+    setCooldownLeft(cooldownSecondsLeft(resendCooldownUntil, Date.now()));
+    const id = setInterval(() => {
+      const left = cooldownSecondsLeft(resendCooldownUntil, Date.now());
+      setCooldownLeft(left);
+      if (left <= 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [resendCooldownUntil]);
+
   const isLoginMode = mode === "login";
   const isSignupMode = mode === "signup";
   const isForgotMode = mode === "forgot";
+
+  // #2826: en af de ubekræftede konti i prod var oprettet på "gmal.com" — den
+  // mail kunne aldrig ankomme. Vi foreslår en rettelse mens de stadig kan nå at
+  // fange den, men blokerer aldrig indsendelsen: adressen kan være ægte.
+  const emailSuggestion = useMemo(
+    () => (isSignupMode ? suggestEmailFix(email) : null),
+    [isSignupMode, email],
+  );
+
+  // #2826: fokus tilbage i email-feltet efter "ret din email". Input er en delt
+  // primitiv uden ref-forwarding, så vi bruger den id vi selv ejer på siden
+  // frem for at ændre en komponent hele appen deler.
+  useEffect(() => {
+    if (!focusEmailOnReturn || success) return;
+    document.getElementById("auth-email")?.focus();
+    setFocusEmailOnReturn(false);
+  }, [focusEmailOnReturn, success]);
 
   function resetMessages() {
     setError("");
@@ -98,6 +181,8 @@ export default function LoginPage() {
   // og fra login-fejlen "email not confirmed" — begge kender allerede emailen.
   async function handleResendConfirmation(targetEmail) {
     if (!targetEmail || resendState === "sending") return;
+    // #2826: respektér cooldownen frem for at sende et kald vi ved bliver afvist.
+    if (cooldownSecondsLeft(resendCooldownUntil, Date.now()) > 0) return;
     setResendState("sending");
     setResendError("");
     const { error: err } = await supabase.auth.resend({
@@ -107,9 +192,28 @@ export default function LoginPage() {
     if (err) {
       setResendState("idle");
       setResendError(mapSupabaseAuthError(err, t));
+      // #2826: ramte vi alligevel rate-limitten (fx mailen blev sendt fra en
+      // anden fane), så brug serverens EGET sekundtal til nedtællingen i stedet
+      // for vores default, så den viste ventetid er sand.
+      const retryAfter = parseRateLimitSeconds(err);
+      if (retryAfter) setResendCooldownUntil(cooldownUntil(Date.now(), retryAfter));
     } else {
       setResendState("sent");
+      setResendCooldownUntil(cooldownUntil(Date.now()));
     }
+  }
+
+  // #2826: vejen tilbage i flowet uden at starte forfra. Holdnavn, managernavn
+  // og adgangskode bliver stående i state, så en spiller der har tastet
+  // emailen forkert kun skal rette adressen og sende igen. Uden den her sad de
+  // fast på en succes-skærm for en mail der aldrig kunne ankomme.
+  function handleFixEmail() {
+    setSuccess(null);
+    setMode("signup");
+    setError("");
+    setResendState("idle");
+    setResendError("");
+    setFocusEmailOnReturn(true);
   }
 
   function switchMode(nextMode) {
@@ -369,22 +473,16 @@ export default function LoginPage() {
                   uden at skulle gætte password og fejl-logge-ind først. Vi kender
                   ikke emailen fra fejl-hash'et, så knappen bruger email-feltet
                   nedenfor (deaktiveret til det er udfyldt). */}
-              <div className="mt-2 text-xs">
-                {resendState === "sent" ? (
-                  <span className="text-cz-success">{t("auth:success.resendSent")}</span>
-                ) : (
-                  <>
-                    {resendError && <span className="block text-cz-danger">{resendError}</span>}
-                    <button
-                      type="button"
-                      disabled={resendState === "sending" || !email.trim()}
-                      onClick={() => handleResendConfirmation(email.trim())}
-                      className="underline hover:text-cz-1 disabled:opacity-60"
-                    >
-                      {resendState === "sending" ? t("auth:success.resendSending") : t("auth:linkError.resendCta")}
-                    </button>
-                  </>
-                )}
+              <div className="mt-2 text-xs text-cz-2">
+                <ResendConfirmation
+                  t={t}
+                  state={resendState}
+                  error={resendError}
+                  cooldownLeft={cooldownLeft}
+                  disabled={!email.trim()}
+                  onResend={() => handleResendConfirmation(email.trim())}
+                  cta={t("auth:linkError.resendCta")}
+                />
               </div>
             </div>
           )}
@@ -400,31 +498,50 @@ export default function LoginPage() {
               <p className="text-sm font-medium text-cz-success">
                 {success.kind === "confirm" ? t("auth:success.confirmTitle") : success.message}
               </p>
-              <p className="mt-3 text-xs text-cz-3">
-                {success.kind === "signup"
-                  ? t("auth:success.signupBody")
-                  : success.kind === "confirm"
-                    ? t("auth:success.confirmBody", { email: success.email })
-                    : t("auth:success.forgotBody")}
-              </p>
-              {success.kind === "confirm" && (
+              {success.kind !== "confirm" && (
                 <p className="mt-3 text-xs text-cz-3">
-                  {resendState === "sent" ? (
-                    t("auth:success.resendSent")
-                  ) : (
-                    <>
-                      {resendError ? resendError : t("auth:success.resendPrompt")}{" "}
-                      <button
-                        type="button"
-                        disabled={resendState === "sending"}
-                        onClick={() => handleResendConfirmation(success.email)}
-                        className="underline hover:text-cz-1 disabled:opacity-60"
-                      >
-                        {resendState === "sending" ? t("auth:success.resendSending") : t("auth:success.resendCta")}
-                      </button>
-                    </>
-                  )}
+                  {success.kind === "signup"
+                    ? t("auth:success.signupBody")
+                    : t("auth:success.forgotBody")}
                 </p>
+              )}
+              {/* #2826: bekræftelses-skærmen er der hele frafaldet sker. Målingen
+                  viste at INGEN af 148 bekræftelser skete efter mere end en time
+                  — kommer spilleren ikke videre her, kommer de aldrig ind. Derfor
+                  står adressen tydeligt (så en tastefejl kan opdages), spam-hintet
+                  står med det samme (ikke først efter et resend), og der er en vej
+                  tilbage til formularen uden at miste det udfyldte. */}
+              {success.kind === "confirm" && (
+                <>
+                  <p className="mt-3 text-xs text-cz-3">{t("auth:success.confirmSentTo")}</p>
+                  <p className="mt-1 break-all rounded-cz border border-cz-border bg-cz-subtle px-3 py-2 text-sm font-semibold text-cz-1">
+                    {success.email}
+                  </p>
+                  <p className="mt-3 text-xs text-cz-3">{t("auth:success.confirmNext")}</p>
+                  <p className="mt-2 text-xs text-cz-3">{t("auth:success.confirmSpam")}</p>
+                  <div className="mt-3 text-xs text-cz-3">
+                    <ResendConfirmation
+                      t={t}
+                      state={resendState}
+                      error={resendError}
+                      cooldownLeft={cooldownLeft}
+                      onResend={() => handleResendConfirmation(success.email)}
+                      prompt={t("auth:success.resendPrompt")}
+                      cta={t("auth:success.resendCta")}
+                    />
+                  </div>
+                  <div className="mt-4 border-t border-cz-border pt-4 text-xs text-cz-3">
+                    {t("auth:success.wrongEmailPrompt")}{" "}
+                    <button
+                      type="button"
+                      onClick={handleFixEmail}
+                      className="underline hover:text-cz-1"
+                    >
+                      {t("auth:success.wrongEmailCta")}
+                    </button>
+                    <p className="mt-1">{t("auth:success.confirmKeepOpen")}</p>
+                  </div>
+                </>
               )}
               <Button
                 type="button"
@@ -502,7 +619,12 @@ export default function LoginPage() {
                   required
                   error={Boolean(error)}
                   aria-describedby={
-                    [isForgotMode ? "auth-email-help" : null, error ? "auth-error" : null]
+                    [
+                      isForgotMode ? "auth-email-help" : null,
+                      isSignupMode ? "auth-email-signup-help" : null,
+                      emailSuggestion ? "auth-email-suggestion" : null,
+                      error ? "auth-error" : null,
+                    ]
                       .filter(Boolean)
                       .join(" ") || undefined
                   }
@@ -510,6 +632,25 @@ export default function LoginPage() {
                 {isForgotMode && (
                   <p id="auth-email-help" className={helperClass()}>
                     {t("auth:field.email.forgotHelp")}
+                  </p>
+                )}
+                {isSignupMode && (
+                  <p id="auth-email-signup-help" className={helperClass()}>
+                    {t("auth:field.email.signupHelp")}
+                  </p>
+                )}
+                {/* #2826: en konto i prod blev oprettet på "gmal.com" og kunne
+                    aldrig bekræftes. Hintet er et forslag, ikke en validering:
+                    det blokerer ikke indsendelse, for adressen kan være ægte. */}
+                {emailSuggestion && (
+                  <p id="auth-email-suggestion" className="mt-1.5 text-xs text-cz-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmail(emailSuggestion.suggestion)}
+                      className="underline hover:text-cz-1"
+                    >
+                      {t("auth:field.email.didYouMeanCta", { suggestion: emailSuggestion.suggestion })}
+                    </button>
                   </p>
                 )}
               </div>
@@ -549,21 +690,14 @@ export default function LoginPage() {
                   {error}
                   {showResend && (
                     <div className="mt-1.5">
-                      {resendState === "sent" ? (
-                        t("auth:success.resendSent")
-                      ) : (
-                        <>
-                          {resendError && <span className="block">{resendError}</span>}
-                          <button
-                            type="button"
-                            disabled={resendState === "sending"}
-                            onClick={() => handleResendConfirmation(email.trim())}
-                            className="underline hover:text-cz-1 disabled:opacity-60"
-                          >
-                            {resendState === "sending" ? t("auth:success.resendSending") : t("auth:success.resendCta")}
-                          </button>
-                        </>
-                      )}
+                      <ResendConfirmation
+                        t={t}
+                        state={resendState}
+                        error={resendError}
+                        cooldownLeft={cooldownLeft}
+                        onResend={() => handleResendConfirmation(email.trim())}
+                        cta={t("auth:success.resendCta")}
+                      />
                     </div>
                   )}
                 </div>
