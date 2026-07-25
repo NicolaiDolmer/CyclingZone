@@ -54,3 +54,54 @@ test("contract: api.js importerer feedbackLimiter + notifyPlayerFeedback", () =>
   assert.match(apiSource, /feedbackLimiter/);
   assert.match(apiSource, /notifyPlayerFeedback/);
 });
+
+// #2842 — en fejlende insert loggede tidligere KUN til konsollen. Discord-
+// mirroret kører først efter insert, så en fejl på skrive-stien forsvandt
+// fuldstændig: spilleren fik "kunne ikke sende", ingen så hvorfor.
+test("POST /api/feedback rapporterer insert-fejl til Sentry, ikke kun konsollen", () => {
+  const idx = apiSource.indexOf('router.post("/feedback"');
+  const block = apiSource.slice(idx, idx + 2500);
+  assert.match(block, /captureException\(error\)/, "insert-fejlstien skal captureException'e");
+});
+
+// ── Admin-indbakke (#2842) ──────────────────────────────────────────────────
+
+test("admin-indbakkens tre ruter er registreret og ALLE gated af requireAdmin", () => {
+  // player_feedback er fritekst fra spillere og kan indeholde personoplysninger.
+  // requireAuth alene ville lade enhver indlogget spiller læse alles feedback.
+  for (const [verb, path] of [
+    ["get", "/admin/feedback"],
+    ["patch", "/admin/feedback/:id/status"],
+    ["post", "/admin/feedback/:id/reply"],
+  ]) {
+    const needle = `router.${verb}("${path}"`;
+    const idx = apiSource.indexOf(needle);
+    assert.ok(idx !== -1, `${verb.toUpperCase()} ${path} skal findes`);
+    const header = apiSource.slice(idx, idx + 160);
+    assert.match(header, /requireAdmin/, `${verb.toUpperCase()} ${path} skal kræve admin`);
+  }
+});
+
+test("admin-indbakkens skrive-ruter er rate-limited", () => {
+  for (const needle of [
+    'router.patch("/admin/feedback/:id/status"',
+    'router.post("/admin/feedback/:id/reply"',
+  ]) {
+    const idx = apiSource.indexOf(needle);
+    const header = apiSource.slice(idx, idx + 160);
+    assert.match(header, /adminWriteLimiter/, `${needle} skal bruge adminWriteLimiter`);
+  }
+});
+
+test("admin-indbakken delegerer til feedbackInbox-handlerne (ikke inline logik i api.js)", () => {
+  assert.match(apiSource, /from "\.\.\/lib\/feedbackInbox\.js"/, "handlerne skal importeres fra lib");
+  for (const fn of ["listFeedbackInbox", "getFeedbackCounts", "setFeedbackStatus", "replyToFeedback"]) {
+    assert.match(apiSource, new RegExp(`${fn}\\(`), `${fn} skal kaldes fra routen`);
+  }
+});
+
+test("admin-indbakken sender ALDRIG et klient-leveret user_id videre", () => {
+  const idx = apiSource.indexOf('router.post("/admin/feedback/:id/reply"');
+  const block = apiSource.slice(idx, idx + 700);
+  assert.match(block, /adminUserId:\s*req\.user\.id/, "afsenderen af svaret er den autentificerede admin, ikke noget i req.body");
+});

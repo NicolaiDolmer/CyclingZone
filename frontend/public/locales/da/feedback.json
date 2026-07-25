@@ -17,7 +17,7 @@
   },
   "submit": "Send",
   "sent": {
-    "text": "Tak. Din besked er sendt.",
+    "text": "Tak. Din besked er sendt. Hvis den kræver et svar, får du det under dine notifikationer.",
     "close": "Luk"
   },
   "error": {

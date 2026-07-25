@@ -129,8 +129,8 @@ export function installPreviewMock() {
       // Express-API (/api/...).
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
-        const pathname = new URL(url, window.location.origin).pathname;
-        return jsonResponse(apiResponse(pathname));
+        const parsed = new URL(url, window.location.origin);
+        return jsonResponse(apiResponse(parsed.pathname, parsed.search));
       }
     } catch (err) {
       // Aldrig kaste fra interceptoren — fald tilbage til ægte fetch.

@@ -14,7 +14,7 @@ import {
   Tabs, TabList, Tab,
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
-  ClipboardIcon, PodiumIcon, BellIcon, SearchIcon,
+  ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
   ChevronRightIcon, ChevronDownIcon, InfoIcon,
 } from "../components/ui";
 
@@ -68,6 +68,9 @@ const TYPE_CONFIG = {
   // target-undersøgelser SÆTTER metadata.riderId → den generiske #1486-regel
   // (linje ~484) overstyrer dette link med /riders/:riderId automatisk.
   scout_report_ready:        { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },
+  // #2842: svar på spillerens egen feedback-indsendelse. Bevidst UDEN link —
+  // beskeden ER indholdet, og der findes ingen side at sende spilleren hen til.
+  admin_notice:              { Icon: InboxIcon,        color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };

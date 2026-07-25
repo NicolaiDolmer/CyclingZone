@@ -39,6 +39,7 @@ const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminSeasonTab = lazy(() => import("./pages/admin/AdminSeasonTab"));
 const AdminEconomyTab = lazy(() => import("./pages/admin/AdminEconomyTab"));
 const AdminUsersTab = lazy(() => import("./pages/admin/AdminUsersTab"));
+const AdminFeedbackTab = lazy(() => import("./pages/admin/AdminFeedbackTab"));
 const AdminDataTab = lazy(() => import("./pages/admin/AdminDataTab"));
 const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
@@ -282,6 +283,7 @@ export default function App() {
               <Route path="season"  element={<AdminSeasonTab />} />
               <Route path="economy" element={<AdminEconomyTab />} />
               <Route path="users"   element={<AdminUsersTab />} />
+              <Route path="feedback" element={<AdminFeedbackTab />} />
               <Route path="data"    element={<AdminDataTab />} />
               <Route path="system"  element={<AdminSystemTab />} />
               <Route path="*"       element={<Navigate to="/admin/season" replace />} />

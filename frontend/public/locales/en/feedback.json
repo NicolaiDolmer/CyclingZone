@@ -17,7 +17,7 @@
   },
   "submit": "Send",
   "sent": {
-    "text": "Thanks. Your message has been sent.",
+    "text": "Thanks. Your message has been sent. If it needs a reply, you will get one in your notifications.",
     "close": "Close"
   },
   "error": {
