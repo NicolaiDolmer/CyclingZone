@@ -4,6 +4,69 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.63",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "\"How your team did\" now shows more than the latest race",
+          "body": "The dashboard card now lists your team's earlier races this season, with best finish, points and prize money for each one, plus a running season total for points, prize money and race count. The five most recent races show by default, with a toggle to see the rest."
+        },
+        "da": {
+          "title": "\"How your team did\" viser nu mere end det seneste løb",
+          "body": "Dashboard-kortet lister nu holdets tidligere løb i denne sæson med bedste placering, point og præmiepenge for hvert løb, plus en løbende sæson-total for point, præmiepenge og antal løb. De fem seneste løb vises som standard, med en knap til at se resten."
+        },
+        "refs": [2886]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Your training plans now carry over between seasons",
+          "body": "When a new season started, every rider's training plan used to reset silently to an automatic default, even if you had set your own focus and intensity. Training plans now carry over intact as long as the rider is still on your squad."
+        },
+        "da": {
+          "title": "Dine træningsplaner videreføres nu mellem sæsoner",
+          "body": "Når en ny sæson startede, blev alle rytteres træningsplan tidligere nulstillet tavst til et automatisk standardprogram, selvom du selv havde sat fokus og intensitet. Træningsplaner videreføres nu intakt, så længe rytteren stadig er på din trup."
+        },
+        "refs": [2916]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Forced sales for unpaid debt no longer happen silently",
+          "body": "If your debt stays over your division's cap for two seasons in a row, the board sells your most valuable rider to close the gap, and until now that sale happened without a word. You now get a warning the season before it can happen, and if the sale goes through, a message names the rider sold, what it raised and where your debt stands afterwards."
+        },
+        "da": {
+          "title": "Tvangssalg ved ubetalt gæld sker ikke længere i stilhed",
+          "body": "Bliver din gæld ved med at ligge over din divisions loft to sæsoner i træk, sælger bestyrelsen din mest værdifulde rytter for at lukke hullet, og indtil nu skete det salg uden et ord. Du får nu en advarsel sæsonen før det kan ske, og gennemføres salget, navngiver en besked den solgte rytter, hvad det indbragte, og hvor din gæld står bagefter."
+        },
+        "refs": [2976]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Manager profile pages no longer fail to load on missing data",
+          "body": "A manager's profile page, including pages for AI-controlled teams that you reach through transfer history, could fail to load if some of the team's data was missing. It now shows the page normally, with an empty state where the data is missing."
+        },
+        "da": {
+          "title": "Manager-profilsider fejler ikke længere ved manglende data",
+          "body": "En managers profilside, herunder sider for AI-styrede hold du når via transfer-historikken, kunne fejle ved indlæsning hvis noget af holdets data manglede. Den viser nu siden normalt, med en tom-tilstand hvor data mangler."
+        },
+        "refs": [2876]
+      }
+    ]
+  },
+  {
     "version": "7.62",
     "date": "2026-07-25",
     "label": "Beta",
