@@ -4909,3 +4909,98 @@ test("#2357: processTeamSeasonPayroll threader facilitiesEnabled til chargeFacil
   assert.equal(financeRows.filter((r) => r.type === "facility_upkeep").length, 1);
   assert.equal(financeRows.filter((r) => r.type === "staff_salary").length, 1);
 });
+
+// ─── #2851 · Motor-gate: season_end_skip_division_movement ──────────────────
+// Ejer-gate 25/7: processSeasonEnd skal kunne springe divisions-flytningen +
+// AI-reconcile over for S1→S2-komprimeringen — fail-safe default = motorens
+// normale adfærd. Vi måler på league_divisions-queries: buildPoolTree er det
+// FØRSTE flytnings-skridt, så 0 queries = hele op/nedryknings-blokken sprunget
+// over (processDivisionEnd + reconcileAiTeamsForPool afhænger begge af træet).
+
+function makeSeasonEndGateFixture() {
+  return {
+    season: { id: "season-1", number: 5, status: "active" },
+    team: {
+      id: "team-1",
+      name: "Gate Testers",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      riders: [],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+        team: { id: "team-1", is_ai: false },
+      },
+    ],
+  };
+}
+
+function countLeagueDivisionQueries(supabase) {
+  const counter = { count: 0 };
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table === "league_divisions") counter.count += 1;
+    return originalFrom(table);
+  };
+  return counter;
+}
+
+test("processSeasonEnd springer op/nedrykning + AI-reconcile over når #2851-flaget er på", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const counter = countLeagueDivisionQueries(supabase);
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+  });
+
+  assert.equal(counter.count, 0, "buildPoolTree/reconcile må ikke røre league_divisions når flaget er på");
+  // Resten af sæson-slut kører stadig: sæsonen lukkes og board-flowet skrev.
+  assert.equal(supabase.state.season.status, "completed");
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
+});
+
+test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens normale flytning", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const counter = countLeagueDivisionQueries(supabase);
+
+  // INGEN deps-override: default-implementeringen læser app_config, som mocken
+  // ikke kender (kaster "Unexpected table") — readFlagStage skal fange det og
+  // svare false, så motoren kører sin normale op/nedryknings-sti.
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+  });
+
+  assert.ok(counter.count >= 1, "fail-safe default skal bygge pulje-træet som før #2851");
+  assert.equal(supabase.state.season.status, "completed");
+});
