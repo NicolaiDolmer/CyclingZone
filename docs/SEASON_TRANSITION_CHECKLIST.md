@@ -164,13 +164,15 @@ Kør derefter `GET /api/admin/season-transition/preview` — forventet: **alle c
 
 **5a. Forventet fase-log** (rækkefølgen i `transitionToNextSeason`): `insert_next_season` (promoverer S2 upcoming→active) → `mark_previous_completed` (no-op, allerede sat) → `global_rank_decay` → `close_prev_transfer_window` → `insert_next_transfer_window` (S2-racing-window, `closed_at=NULL`) → `sponsor_contracts_renewal` (70 pending→active; dagsrater genberegnes mod S2's 28 dage, #2589) → `contract_expiry_release` (**~195 frigivelser**, 1 menneskehold-rytter) → `sponsor_payout` (~153) → `season_payroll` (**første nogensinde, ~2,62M**) → `season_parachute` (forventet 0 — kun D1/D2-nedrykkere er berettigede, og de er AI) → `rider_progression` (**udvikling + pension, første gang**) → `retirement_release` (team_id ryddes for netop-pensionerede) → `admin_log` → Discord `season_started` → `season_started_notifications` (~150) → `contract_expiring_notifications` (varsler S2-udløb).
 
-**5b. Hvis `no_active_auctions` er rød** (auktioner løber ~24t, så søndags-auktioner kan være i luften): mål overlap mod risiko-mængden:
+**5b. Hvis `no_active_auctions` er rød** (auktioner løber ~24t, så søndags-auktioner kan være i luften): mål overlap mod risiko-mængden. **#2918-rettelse 25/7:** den gamle query målte `contract_end_season <= 1 or is_retired`, som begge er strukturelt 0 FØR transitionen — den gav altid falsk tryghed. Den mængde der betyder noget er auktioner på ryttere der KAN pensioneres i transitionens `rider_progression` (36+ ved sæson 2):
 ```sql
-select count(*) from auctions a join riders r on r.id=a.rider_id
+select a.id, r.firstname, r.lastname,
+       (2027 - extract(year from r.birthdate)::int) as alder_s2, a.calculated_end
+from auctions a join riders r on r.id = a.rider_id
 where a.status in ('active','extended')
-and (r.contract_end_season <= 1 or r.is_retired);
+  and (2027 - extract(year from r.birthdate)::int) >= 36;
 ```
-Er overlappet **0** (som 23/7): kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er overlappet **> 0**: annullér de konkrete auktioner via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb.
+Er mængden **tom**: kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden pensions-risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er den **ikke tom**: krydstjek navnene mod #2700-varslets deterministiske pensionsliste (30 ryttere); auktioner på ryttere DER pensioneres annulleres via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb. NB: finaliserings-guarden (#2918-koden) fanger efterladte tilfælde, men proaktiv annullering er pænere for køberen.
 
 **5c. Hård stop-regel:** fejler fasen `global_rank_decay`, **STOP HELT** — RPC'en er ikke retry-sikker (en delvist kørt halvering, kørt igen, halverer dobbelt). Alle ANDRE faser er idempotente; ved delvis fejl i dem er recovery = ret årsagen og kør transitionen igen (resume-stien er designet til det, #578).
 
