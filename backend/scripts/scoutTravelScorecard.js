@@ -140,6 +140,9 @@ function main() {
   console.log("──────────────────────────────────────────────────────────────────────");
   console.log(`HEADLINE: scout-travel-cost-gate ${allPass ? "✅ PASS — Slice-D-krav opfyldt" : "❌ FAIL — se FORSLAG ovenfor, ejer-review krævet"}`);
   console.log("NOTE: dette er en model-profil (BLØDT input, aftalt i Slice-D-briefen) — ikke en hård spend-cap i spillet.\n");
+  // #2854 (backwards-check): headline-verdicten skal også nå exit-koden — ellers
+  // ser en caller/CI succes på en kørsel der printede FAIL.
+  process.exitCode = allPass ? 0 : 1;
 
   if (markdown) {
     console.log("### Markdown-summary\n");
