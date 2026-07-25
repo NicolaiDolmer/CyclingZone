@@ -98,11 +98,15 @@ on conflict (key) do update set value = '"on"'::jsonb;
 
 Hvad der så sker, i rækkefølge (`routes/api.js` → `economyEngine.processSeasonEnd`): standings genberegnes → board-evaluering pr. menneskehold (satisfaction/konsekvenser) → divisionsbonusser udbetales → **op/nedrykning + AI-reconcile SPRINGES OVER** (server-loggen skal vise `⏭ Op/nedrykning + AI-reconcile sprunget over (season_end_skip_division_movement=on, #2851 …)`) → `seasons.status='completed'` → sekventiel board-forhandling for S2 åbnes → season_ended-notifikationer (~150 managere, in-app) + Discord-broadcast.
 
+**#2924 · season_ended-beskeden er personlig fra 25/7.** Hver manager får sin egen slutplacering, sine point, sin præmiesum og sin bedste rytter. Divisions-sætningen ("du starter sæson 2 i Division X") **udelades automatisk i DETTE skifte**, fordi `season_end_skip_division_movement='on'` betyder at flytningen først sker i skridt 3b — beskeden lover kun noget den kan se er sandt. Fejler personaliseringen for et hold (eller helt), sendes den gamle generiske tekst; udsendelsen kan ikke vælte af det.
+
 Verificér:
 
 ```sql
 select status, end_date from seasons where number=1;                          -- completed + dato
 select count(*) from notifications where type='season_ended';                 -- ~150
+-- #2924: stikprøve — beskeden skal indeholde modtagerens egne tal, ikke samme tekst til alle:
+select count(distinct message) from notifications where type='season_ended';  -- >1 (var 1 før 25/7)
 select division, count(*) filter (where not is_ai) as real_teams from teams group by division order by 1;
 -- SKAL være UÆNDRET fra skridt 0-snapshottet — flytter noget sig her, var flaget ikke på. STOP i så fald.
 ```
@@ -173,6 +177,18 @@ where a.status in ('active','extended')
   and (2027 - extract(year from r.birthdate)::int) >= 36;
 ```
 Er mængden **tom**: kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden pensions-risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er den **ikke tom**: krydstjek navnene mod #2700-varslets deterministiske pensionsliste (30 ryttere); auktioner på ryttere DER pensioneres annulleres via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb. NB: finaliserings-guarden (#2918-koden) fanger efterladte tilfælde, men proaktiv annullering er pænere for køberen.
+
+**5b-bis. Browser-timeout er IKKE en fejl (#2921).** Railways proxy lukker forbindelsen efter 5 minutter uden datatransfer, så UI'et kan vise en fejl mens serveren arbejder videre. **Klik ALDRIG igen på baggrund af et rødt svar alene** — verificér først i SQL:
+
+```sql
+-- Kom transitionen i gang, og kom den igennem? (#2921-ankre i admin_log)
+select created_at, meta->>'status' as status, meta->'phases' as phases, meta->>'error' as error
+from admin_log
+where action_type='manual_override' and meta->>'source'='season_transition_phase'
+order by created_at desc limit 5;
+```
+
+`started` uden et efterfølgende `completed` = transitionen nåede ikke igennem (se `phases` for hvor langt den kom + Sentry for stacktracen). `started` + `completed` = den ER kørt, uanset hvad browseren viste. Ankrene bruger `action_type='manual_override'` (samme mønster som #1346's force-log) netop for ikke at forurene `season_transition`-tællingen som `dailySeasonCountCheck` og verifikationen nedenfor bygger på.
 
 **5c. Hård stop-regel:** fejler fasen `global_rank_decay`, **STOP HELT** — RPC'en er ikke retry-sikker (en delvist kørt halvering, kørt igen, halverer dobbelt). Alle ANDRE faser er idempotente; ved delvis fejl i dem er recovery = ret årsagen og kør transitionen igen (resume-stien er designet til det, #578).
 

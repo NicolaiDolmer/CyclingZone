@@ -150,7 +150,11 @@
     },
     "seasonEnded": {
       "title": "Sæson {number} er afsluttet",
-      "message": "Sæsonen er slut. Se opsamlingen for den endelige stilling, oprykning og nedrykning."
+      "message": "Sæsonen er slut. Se opsamlingen for den endelige stilling, oprykning og nedrykning.",
+      "messagePersonal": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point. Du starter sæson {nextSeason} i Division {nextDivision}.",
+      "messagePersonalNoNextDivision": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point.",
+      "messagePersonalNoRider": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Du starter sæson {nextSeason} i Division {nextDivision}.",
+      "messagePersonalMinimal": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge."
     },
     "raceResult": {
       "title": "Resultat er klar",

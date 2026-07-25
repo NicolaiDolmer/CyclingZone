@@ -69,6 +69,10 @@ import {
   formatForceOverrideDescription,
   TRANSITION_BLOCKED_ERROR,
 } from "../lib/seasonTransitionReadiness.js";
+import {
+  logTransitionPhaseSafe,
+  TRANSITION_PHASE_STATUS,
+} from "../lib/seasonTransitionPhaseLog.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
@@ -9408,8 +9412,13 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
 // Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun?, force? (#1346: bypass readiness-gate, logges) }
 // dryRun=true: returnerer kun planen, ingen writes til DB.
 router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (req, res) => {
+  // #2921 · Hejst ud af try'et så catch-blokken kan skrive et FEJL-anker til
+  // admin_log med den sæson det faktisk gik galt på.
+  let resolvedFromSeasonId = null;
+  let resolvedDryRun = false;
   try {
     const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
+    resolvedDryRun = Boolean(dryRun);
     // Strict === true: en string "false" må aldrig tælle som override.
     const force = (req.body || {}).force === true;
     let fromSeasonId = bodyFromSeasonId;
@@ -9422,6 +9431,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
       }
       fromSeasonId = fromSeason.id;
     }
+    resolvedFromSeasonId = fromSeasonId;
 
     // #1346: readiness-gate FØR enhver transition-write. dryRun gates ikke
     // (ingen writes). Force er en bevidst, logget nødudgang (ejer-beslutning
@@ -9458,7 +9468,28 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     });
 
     res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    // #2921 · Et 500 herfra nåede aldrig Sentry: ruten fangede fejlen selv og
+    // returnerede den kun til browseren. En transition der fejler halvvejs er
+    // dermed usynlig i overvågningen. Nu rapporteres den, OG der skrives et
+    // FEJL-anker til admin_log som modstykke til START-ankeret i motoren.
+    captureException(e, {
+      tags: { phase: "season_transition_route" },
+      extra: { fromSeasonId: resolvedFromSeasonId, dryRun: resolvedDryRun },
+    });
+    if (!resolvedDryRun) {
+      // best-effort: logTransitionPhaseSafe kaster aldrig, men vi må heller ikke
+      // lade et log-problem erstatte den rigtige fejlbesked til operatøren.
+      await logTransitionPhaseSafe({
+        supabase,
+        status: TRANSITION_PHASE_STATUS.FAILED,
+        fromSeasonId: resolvedFromSeasonId,
+        adminUserId: req.user?.id ?? null,
+        error: e.message,
+      });
+    }
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/admin/adjust-balance — juster holdbalance manuelt

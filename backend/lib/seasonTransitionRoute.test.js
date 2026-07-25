@@ -233,3 +233,48 @@ test("POST /admin/seasons/:id/end har INGEN force-bypass af uafviklede-løb-spæ
     "season-end-handleren må ikke læse body-parametre — #2805-spærren er bevidst uden force-bypass",
   );
 });
+
+// ============================================================
+// #2921 — en halvt gennemført transition skal være maskinelt synlig.
+// Ruten fangede tidligere sin egen fejl og returnerede den KUN til
+// browseren: intet Sentry-event, intet admin_log-spor. Railways proxy
+// lukker desuden forbindelsen efter 5 min uden datatransfer, så et
+// rødt svar i UI'et kan dække over en server der arbejder videre.
+// ============================================================
+
+test("routes/api.js importerer fase-log-helperne (#2921) — ellers ReferenceError i selve fejlstien", () => {
+  // Denne test findes fordi netop dén fejl blev begået under implementeringen:
+  // catch-blokken kaldte logTransitionPhaseSafe uden at symbolet var importeret.
+  // Det ville først vise sig NÅR en transition fejlede — værst tænkelige tidspunkt.
+  assert.match(
+    apiSource,
+    /import\s*\{[^}]*logTransitionPhaseSafe[^}]*\}\s*from\s*"\.\.\/lib\/seasonTransitionPhaseLog\.js"/,
+    "logTransitionPhaseSafe skal importeres fra ../lib/seasonTransitionPhaseLog.js",
+  );
+  assert.match(
+    apiSource,
+    /import\s*\{[^}]*TRANSITION_PHASE_STATUS[^}]*\}\s*from\s*"\.\.\/lib\/seasonTransitionPhaseLog\.js"/,
+    "TRANSITION_PHASE_STATUS skal importeres fra ../lib/seasonTransitionPhaseLog.js",
+  );
+});
+
+test("udfør-handlerens catch rapporterer til Sentry OG skriver et FEJL-anker (#2921)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(block, /catch\s*\(e\)\s*\{[\s\S]*captureException\(/, "500 skal nå Sentry");
+  assert.match(block, /logTransitionPhaseSafe\(/, "fejlstien skal efterlade et admin_log-spor");
+  assert.match(
+    block,
+    /TRANSITION_PHASE_STATUS\.FAILED/,
+    "ankeret skal markeres som failed, så started-uden-completed kan aflæses",
+  );
+  assert.match(block, /res\.status\(500\)/, "operatøren skal stadig få fejlbeskeden");
+});
+
+test("FEJL-ankeret skrives ikke for dry-runs (ingen writes, intet at spore)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(
+    block,
+    /if\s*\(!resolvedDryRun\)\s*\{[\s\S]*?logTransitionPhaseSafe\(/,
+    "dry-run må ikke efterlade transition-ankre i admin_log",
+  );
+});

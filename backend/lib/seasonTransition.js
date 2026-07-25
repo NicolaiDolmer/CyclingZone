@@ -52,6 +52,12 @@ import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retiremen
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
+import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
+import { logTransitionPhaseSafe, TRANSITION_PHASE_STATUS } from "./seasonTransitionPhaseLog.js";
+import {
+  loadSeasonEndedPersonalization,
+  buildPersonalSeasonEndedMessage,
+} from "./seasonEndedPersonalization.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -178,9 +184,11 @@ export async function emitSeasonEndedNotifications({
   endedSeason,
   humanTeams = null,
   notify = notifyUser,
+  loadPersonalization = loadSeasonEndedPersonalization,
+  isDivisionMovementSkipped = isSeasonEndDivisionMovementSkipped,
 }) {
   const seasonNumber = endedSeason.number;
-  const stats = { delivered: 0, deduped: 0, failed: 0 };
+  const stats = { delivered: 0, deduped: 0, failed: 0, personalized: 0 };
   // #2832-review (fund 4) · fulde menneske-manager-diskriminator som resten af
   // motoren (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false —
   // se fx boardWeekendFinalization.js) — den forkortede is_ai/is_frozen-udgave
@@ -190,7 +198,10 @@ export async function emitSeasonEndedNotifications({
   if (!managers) {
     const { data, error } = await supabase
       .from("teams")
-      .select("user_id")
+      // #2924 · id + division kom til for personaliseringen: id slår standings/
+      // præmier/ryttere op, division er (efter processSeasonEnd) holdets division
+      // for den KOMMENDE sæson.
+      .select("id, user_id, division")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
@@ -203,20 +214,70 @@ export async function emitSeasonEndedNotifications({
     managers = data;
   }
   const eligible = (managers || []).filter((team) => team.user_id);
+
+  // #2924 · Må vi love en division for næste sæson?
+  // Beskeden sendes EFTER processSeasonEnd (routes/api.js: processSeasonEnd →
+  // seasons.status='completed' → emitSeasonEndedNotifications), så op/nedrykningen
+  // er normalt allerede kørt og teams.division ER næste sæsons division.
+  // UNDTAGELSEN er #2851-gaten: når season_end_skip_division_movement='on'
+  // springer motoren flytningen over (pyramide-komprimeringen flytter i stedet,
+  // og den kører FØRST bagefter) — så er teams.division stadig den AFSLUTTEDE
+  // sæsons division, og en "du starter i Division X"-sætning ville være løgn.
+  // Fail-safe: kan flaget ikke læses, udelader vi linjen frem for at gætte.
+  let includeNextDivision = false;
+  let personalization = null;
+  if (eligible.length > 0) {
+    try {
+      includeNextDivision = !(await isDivisionMovementSkipped(supabase));
+    } catch (flagErr) {
+      // best-effort: uafklaret flag → udelad divisions-sætningen (den eneste
+      // sikre fortolkning). Resten af beskeden er upåvirket.
+      console.error("season_ended: division-movement flag unreadable, omitting next-division sentence:", flagErr?.message || flagErr);
+    }
+
+    try {
+      personalization = await loadPersonalization({
+        supabase,
+        seasonId: endedSeason.id,
+        teams: eligible,
+        includeNextDivision,
+      });
+    } catch (loadErr) {
+      // best-effort: den kanoniske loader fanger selv sine fejl, men en
+      // injiceret/fremtidig variant må heller ikke kunne vælte udsendelsen.
+      // Uden personalisering får alle den generiske besked — beskeden SKAL ud.
+      console.error("season_ended: personalization load failed, falling back to the generic message for all:", loadErr?.message || loadErr);
+      personalization = null;
+    }
+  }
+
   for (const team of eligible) {
+    let personal = null;
+    try {
+      personal = buildPersonalSeasonEndedMessage({
+        facts: personalization?.get?.(team.id),
+        nextSeasonNumber: seasonNumber + 1,
+      });
+    } catch (personalErr) {
+      // best-effort: kan beskeden ikke personaliseres for DETTE hold, får holdet
+      // den generiske besked. Aldrig en grund til at springe manageren over.
+      console.error(`season_ended: personalization failed (team ${team.id}), using generic message:`, personalErr?.message || personalErr);
+    }
+    if (personal) stats.personalized += 1;
+
     try {
       const res = await notify({
         supabase,
         userId: team.user_id,
         type: "season_ended",
         title: `Season ${seasonNumber} has ended`,
-        message: SEASON_ENDED_FALLBACK_MESSAGE,
+        message: personal?.message || SEASON_ENDED_FALLBACK_MESSAGE,
         relatedId: endedSeason.id,
         metadata: {
           titleCode: "notif.seasonEnded.title",
           titleParams: { number: seasonNumber },
-          messageCode: "notif.seasonEnded.message",
-          messageParams: { number: seasonNumber },
+          messageCode: personal?.messageCode || "notif.seasonEnded.message",
+          messageParams: personal?.messageParams || { number: seasonNumber },
         },
       });
       if (res?.delivered) stats.delivered += 1;
@@ -626,6 +687,20 @@ export async function transitionToNextSeason({
 
   const log = [];
 
+  // #2921 · START-anker FØR første write. Uden det er en transition der dør
+  // halvvejs (fejl, proces-død, Railway-restart) maskinelt usynlig: admin_log
+  // fik tidligere først en række NÅR alt var færdigt. Best-effort — kaster aldrig.
+  await logTransitionPhaseSafe({
+    supabase,
+    status: TRANSITION_PHASE_STATUS.STARTED,
+    fromSeasonId,
+    toSeasonId: plan.to_season.id,
+    fromNumber: plan.from_season.number,
+    toNumber: plan.to_season.number,
+    adminUserId,
+    transitionAtIso,
+  });
+
   log.push({
     phase: "insert_next_season",
     ...(await insertSeasonIfMissing(
@@ -715,7 +790,16 @@ export async function transitionToNextSeason({
       })),
     });
   } catch (err) {
+    // best-effort: fasen er additiv-isoleret (#2948) og må aldrig vælte skiftet,
+    // men den udbetaler RIGTIGE penge (sæsonmåls-bonus). En tavs fejl = managere
+    // der lydløst mister deres bonus, og det opdages først hvis nogen tæller
+    // finance_transactions manuelt. Samme Sentry-disciplin som søsterfaserne
+    // global_rank_decay og contract_expiry_release ovenfor.
     log.push({ phase: "sponsor_season_objectives", error: err.message });
+    captureException(err, {
+      tags: { phase: "sponsor_season_objectives" },
+      extra: { finishedSeasonNumber: plan.from_season.number },
+    });
   }
 
   // Phase 5b (#1663, Økonomi Fase 2): udløb + forny sponsor-kontrakter FØR
@@ -953,6 +1037,22 @@ export async function transitionToNextSeason({
   } catch (err) {
     log.push({ phase: "contract_expiring_notifications", error: err.message });
   }
+
+  // #2921 · SLUT-anker med hele fase-listen (inkl. de fejl som de isolerede
+  // faser selv fangede og lagde i loggen). Sammen med START-ankeret ovenfor
+  // giver det: kørslen begyndte kl. X, nåede disse faser, sluttede kl. Y.
+  // Mangler denne række mens START findes → transitionen kom aldrig igennem.
+  await logTransitionPhaseSafe({
+    supabase,
+    status: TRANSITION_PHASE_STATUS.COMPLETED,
+    fromSeasonId,
+    toSeasonId: plan.to_season.id,
+    fromNumber: plan.from_season.number,
+    toNumber: plan.to_season.number,
+    adminUserId,
+    transitionAtIso,
+    log,
+  });
 
   return { ok: true, dryRun: false, plan, log };
 }

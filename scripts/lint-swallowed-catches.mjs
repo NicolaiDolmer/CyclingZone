@@ -167,7 +167,7 @@ export function findSwallowedCatches(rawSrc) {
 // forklarende kommentar der bare mangler markør-token) — det er at forhindre at
 // bunken VOKSER. Whittle den ned over tid ved at markere/capture pr. site.
 const BASELINE = {
-  "backend/lib/seasonTransition.js": 4,
+  "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
   "backend/lib/raceRunner.js": 3,
