@@ -46,7 +46,7 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { riderOverallRating } from "../lib/riderRating";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, retirementRiskBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
@@ -279,7 +279,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               {t("auctions:badge.flash")}
             </span>
           )}
-          <RiderBadges badges={[ageBadgeKey(r)]} />
+          {/* #2943: pensions-risiko-advarsel til KØBEREN før bud (alder ≥35,
+              retirementRiskBadgeKey) — samme badge-kolonne/RiderBadges-mønster
+              som alders-badget lige ovenfor. Advarsel, ikke blokering. */}
+          <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
           {auction.is_youth && (
             <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
@@ -556,7 +559,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
-              <RiderBadges badges={[ageBadgeKey(r)]} />
+              {/* #2943: samme pensions-risiko-badge som AuctionRow (desktop). */}
+              <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
               {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
