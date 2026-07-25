@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { stabilizePage, installNetworkMocks, login, TEST_TEAM, RIVAL_TEAM } from "./fixtures.js";
 
@@ -9,6 +10,15 @@ import { stabilizePage, installNetworkMocks, login, TEST_TEAM, RIVAL_TEAM } from
 // Skærmbilleder skrives til test-results/2917/ (gitignoreret) så en session kan
 // dokumentere UI'et uden at committe binære filer.
 const SHOT_DIR = "test-results/2917";
+
+// Læses fra locale-filen i stedet for at være hardkodet: #2917's CI-fejl var netop
+// at testen påstod en tekst som merge-committen ikke rendrede (duplikat-nøgle mellem
+// to parallelle branches). Bindes assertionen til kilden, kan de to ikke drive fra
+// hinanden — og en omformulering af copy'en bryder ikke testen.
+const daTeam = JSON.parse(
+  readFileSync(new URL("../../public/locales/da/team.json", import.meta.url), "utf8")
+);
+const EMPTY_TEXT = daTeam.manager.noRecentAchievements;
 
 async function openProfile(page, teamId) {
   await stabilizePage(page);
@@ -35,7 +45,7 @@ test("managerprofilen bæres af den delte preview-mock (ingen lokal override)", 
   // Fejl-tilstanden må IKKE vises — det var symptomet før mock-handleren fandtes.
   await expect(page.getByRole("heading", { name: TEST_TEAM.name })).toBeVisible();
   // "Senest låst op" har badges, ikke tomtilstand.
-  await expect(page.getByText("Intet låst op endnu.", { exact: false })).toHaveCount(0);
+  await expect(page.getByText(EMPTY_TEXT, { exact: false })).toHaveCount(0);
 
   if (testInfo.project.name === "desktop-chromium") {
     await page.screenshot({ path: `${SHOT_DIR}/manager-overview-unlocked.png`, fullPage: false });
@@ -83,7 +93,7 @@ test("en manager uden achievements får en ordentlig tomtilstand", async ({ page
   // #2917: kortet blev tidligere skjult helt, så en ny manager aldrig så at
   // achievements fandtes. Nu står overskriften med en forklarende tomtilstand.
   await expect(page.getByRole("heading", { name: "Senest låst op" })).toBeVisible();
-  await expect(page.getByText("Intet låst op endnu.", { exact: false })).toBeVisible();
+  await expect(page.getByText(EMPTY_TEXT, { exact: false })).toBeVisible();
 
   if (testInfo.project.name === "desktop-chromium") {
     await page.screenshot({ path: `${SHOT_DIR}/manager-overview-empty.png`, fullPage: false });

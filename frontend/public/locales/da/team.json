@@ -224,7 +224,7 @@
     "streak": "streak",
     "achievements": "achievements",
     "recentlyUnlocked": "Senest låst op",
-    "noAchievements": "Intet låst op endnu. Kør løb, byd og byg en trup for at komme i gang.",
+    "noRecentAchievements": "Intet låst op endnu. Kør løb, byd og byg en trup for at komme i gang.",
     "inProgress": "I gang",
     "progressTowards": "{title}: {current} af {target}",
     "tabOverview": "Overblik",
