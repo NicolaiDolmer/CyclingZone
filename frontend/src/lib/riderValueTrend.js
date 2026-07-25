@@ -1,6 +1,8 @@
 // #2499 — værdi-bevægelse skal kunne SES. Ren helper til at vælge/formatere
 // et delta-vindue fra backend-svaret { windows: { "7": {...}|null, "14": {...}|null } }
-// (GET /api/riders/:id/value-trend, POST /api/riders/value-trend for batch).
+// (GET /api/riders/:id/value-trend). Den tidligere batch-variant
+// (POST /api/riders/value-trend) blev fjernet som orphaned endpoint —
+// #2849 bølge 6 fjernede sidste frontend-caller (holdlistens batch-hentning).
 // Ingen model-komponenter håndteres her (fog-gate) — kun det færdige total-delta.
 
 // Foretræk 14-dages-vinduet (matcher issue-eksemplet "seneste 14 dage");
