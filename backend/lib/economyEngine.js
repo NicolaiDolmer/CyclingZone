@@ -47,6 +47,8 @@ import {
   INITIAL_BALANCE,
   NEGATIVE_BALANCE_INTEREST_RATE,
   POOL_TARGET_SIZE,
+  PROMOTION_SLOTS,
+  RELEGATION_SLOTS,
   SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
@@ -93,11 +95,10 @@ async function getDefaultSupabaseClient() {
 // GENERATED). Raten lever i economyConstants.SALARY_RATE (E2: 0.067) og bruges af
 // contractSeed/marketUtils — IKKE her. Sæson-slut læser den stored rider.salary.
 // #1152 binær-træ-model (ejer 2026-06-23): per pulje rykker top 2 OP til forælder-
-// puljen, og bund 4 NED delt 2+2 ud i de to børne-puljer. 2 søsterpuljer × 2 op = 4
-// op samlet i forælderen = 4 ned fra forælderen → balancerer eksakt. Kun ægte hold
-// flyttes (AI er fyld der regenereres pr. pulje af reconcileAiTeamsForPool).
-const PROMOTION_SLOTS = 2;         // Top 2 op til forælder-pulje
-const RELEGATION_SLOTS = 4;        // Bund 4 ned, delt 2+2 til de to børne-puljer
+// puljen, og bund 4 NED delt 2+2 ud i de to børne-puljer. Kun ægte hold flyttes (AI er
+// fyld der regenereres pr. pulje af reconcileAiTeamsForPool).
+// #2917: PROMOTION_SLOTS / RELEGATION_SLOTS lever nu i economyConstants.js — delt med
+// seasonAchievements.js, så nedrykningsstregen kun defineres ét sted.
 // MIN_DIVISION / MAX_DIVISION lever nu i economyConstants.js (#962) — delt med
 // fyld-fra-toppen i teamProfileEngine, så bounds ikke duplikeres.
 const RIDER_VALUE_PATCH_CONCURRENCY = 25;

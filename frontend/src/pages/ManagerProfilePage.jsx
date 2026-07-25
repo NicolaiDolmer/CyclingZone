@@ -300,14 +300,21 @@ export default function ManagerProfilePage() {
         <Tabs value={tab} onChange={setTab}>
           <TabPanel value="overview">
             <div className="flex flex-col gap-[14px]">
-              {recentlyUnlocked.length > 0 && (
-                <Card className="p-5">
-                  <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+              {/* #2917: kortet blev tidligere skjult helt når intet var låst op, så en
+                  ny manager aldrig så at achievements fandtes. Nu står det med en
+                  tomtilstand — samme tekst-mønster som "Ingen transfers" nedenfor.
+                  Egen nøgle (noRecentAchievements): #2876's manager.noAchievements
+                  hører til Achievements-FANENS EmptyState og har sin egen ordlyd. */}
+              <Card className="p-5">
+                <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+                {recentlyUnlocked.length === 0 ? (
+                  <p className="text-cz-3 text-sm text-center py-4">{t("manager.noRecentAchievements")}</p>
+                ) : (
                   <div className="flex gap-2 flex-wrap">
                     {recentlyUnlocked.map(a => <AchievementBadge key={a.id} achievement={a} />)}
                   </div>
-                </Card>
-              )}
+                )}
+              </Card>
               <Card className="p-5">
                 <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
                 {transfer_activity.length === 0 ? (
@@ -416,10 +423,15 @@ export default function ManagerProfilePage() {
                         </Td>
                         <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
                         <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
+                        {/* #2917: kolonnen læste `s.final_rank` — den findes ikke i
+                            season_standings (og ingen andre steder i koden), så
+                            placeringen har altid vist "#—" for alle. Den rigtige
+                            kolonne er rank_in_division (rangen i holdets pulje) —
+                            samme tal sæson-achievements nu måles på. */}
                         <Td numeric>
-                          {s.final_rank === 1
+                          {s.rank_in_division === 1
                             ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
-                            : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
+                            : <span className="text-cz-2">#{s.rank_in_division || "—"}</span>}
                         </Td>
                       </Tr>
                     ))}

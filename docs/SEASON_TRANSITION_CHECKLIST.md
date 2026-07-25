@@ -251,6 +251,19 @@ select count(*) from race_entries re join races r on r.id=re.race_id join teams 
 
 **Rollback herfra:** entries er frit regenererbare (generatoren er diff-baseret) — laveste risiko i hele drejebogen.
 
+### Skridt 6b — Sæson-achievements for S1 ([#2917](https://github.com/NicolaiDolmer/CyclingZone/issues/2917)) (søndag ~18:40)
+
+**Hvem:** Claude. **Kør EFTER skridt 3b + 5** (op/nedrykning skal være landet i `teams.division`, ellers er `team_promotion`/`team_relegation` nul).
+
+```bash
+railway run --service CyclingZone -- node scripts/backfillSeasonAchievements.js            # dry-run
+railway run --service CyclingZone -- node scripts/backfillSeasonAchievements.js --execute
+```
+
+Forventet ud fra S1-data + komprimeringens fordeling (målt 25/7): top10 66 · top5 38 · top3 26 · divisionsvinder 12 · div3-vinder 4 · oprykket 90 · nedrykket 5 · overlevede 12. `season_div1_winner`, `season_grand_tour_rider`, `season_3_top3`, `season_2_seasons`, `season_5_seasons` er 0 — de kræver Division 1 eller flere sæsoner.
+
+Idempotent (UNIQUE på `user_id, achievement_id`) — re-run er sikkert. Vil ejeren ikke tildele "Overlevede" i netop dette skifte (farezonen er en tilnærmelse når komprimeringen flytter i stedet for den normale per-pulje-nedrykning): tilføj `--skip=team_survived`.
+
 ### Skridt 7 — Slutkontrol søndag aften
 
 1. `GET /api/admin/season-transition/preview` → `already_transitioned` og ingen ny kilde-sæson (defensivt).

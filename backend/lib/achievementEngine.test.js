@@ -21,6 +21,11 @@ function createAchievementSupabase(initialState) {
     transfer_offers: (initialState.transfer_offers || []).map(row => ({ ...row })),
     board_profiles: (initialState.board_profiles || []).map(row => ({ ...row })),
     race_results: (initialState.race_results || []).map(row => ({ ...row })),
+    // #2917 · sæson-achievements
+    season_standings: (initialState.season_standings || []).map(row => ({ ...row })),
+    seasons: (initialState.seasons || []).map(row => ({ ...row })),
+    races: (initialState.races || []).map(row => ({ ...row })),
+    race_entries: (initialState.race_entries || []).map(row => ({ ...row })),
     inserts: [],
   };
 
@@ -35,6 +40,11 @@ function createAchievementSupabase(initialState) {
       in(column, values) {
         const allowed = new Set(values);
         filtered = filtered.filter(row => allowed.has(row[column]));
+        return query;
+      },
+      // #2917: Grand Tour-opslaget filtrerer på `stages >= GRAND_TOUR_MIN_STAGES`.
+      gte(column, value) {
+        filtered = filtered.filter(row => Number(row[column]) >= Number(value));
         return query;
       },
       limit(count) {
@@ -333,6 +343,115 @@ test("checkAchievements tolerates missing public user row for login streak", asy
     unlocked.map(achievement => achievement.id),
     ["auction_first_bid"]
   );
+});
+
+// #2917: 13 sæson-achievements var defineret + synlige, men uden unlock-logik.
+const SEASON_ACHIEVEMENT_DEFS = [
+  { id: "season_top10" }, { id: "season_top5" }, { id: "season_top3" },
+  { id: "season_winner" }, { id: "season_div1_winner" }, { id: "season_div3_winner" },
+  { id: "season_3_top3" }, { id: "season_2_seasons" }, { id: "season_5_seasons" },
+  { id: "team_promotion" }, { id: "team_relegation" }, { id: "team_survived" },
+  { id: "season_grand_tour_rider" },
+];
+
+function seasonPool({ seasonId, poolId, division, size, ownTeamId, ownRank }) {
+  return Array.from({ length: size }, (_, index) => ({
+    season_id: seasonId,
+    league_division_id: poolId,
+    division,
+    rank_in_division: index + 1,
+    team_id: index + 1 === ownRank ? ownTeamId : `filler-${seasonId}-${poolId}-${index}`,
+  }));
+}
+
+function seasonAchievementSupabase({ ownRank, currentDivision, seasonStatus = "completed", extra = {} }) {
+  return createAchievementSupabase({
+    achievements: SEASON_ACHIEVEMENT_DEFS,
+    teams: [{ id: "team-1", user_id: "user-1", division: currentDivision }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    rider_watchlist: [],
+    riders: [],
+    auction_bids: [],
+    auctions: [],
+    transfer_offers: [],
+    board_profiles: [],
+    seasons: [{ id: "season-1", number: 1, status: seasonStatus }],
+    season_standings: seasonPool({
+      seasonId: "season-1", poolId: 4, division: 3, size: 24, ownTeamId: "team-1", ownRank,
+    }),
+    ...extra,
+  });
+}
+
+test("checkAchievements unlocks placering + oprykning for en puljevinder", async () => {
+  const supabase = seasonAchievementSupabase({ ownRank: 1, currentDivision: 2 });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(
+    unlocked.map(achievement => achievement.id).sort(),
+    ["season_div3_winner", "season_top10", "season_top3", "season_top5", "season_winner", "team_promotion"]
+  );
+});
+
+test("checkAchievements unlocks team_relegation men ikke team_survived ved nedrykning", async () => {
+  const supabase = seasonAchievementSupabase({ ownRank: 22, currentDivision: 4 });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked.map(achievement => achievement.id).sort(), ["team_relegation"]);
+});
+
+test("checkAchievements unlocks team_survived i farezonen uden nedrykning", async () => {
+  const supabase = seasonAchievementSupabase({ ownRank: 19, currentDivision: 3 });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked.map(achievement => achievement.id).sort(), ["team_survived"]);
+});
+
+test("checkAchievements tildeler ingen sæson-achievements mens sæsonen kører", async () => {
+  const supabase = seasonAchievementSupabase({ ownRank: 1, currentDivision: 3, seasonStatus: "active" });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked, []);
+});
+
+test("checkAchievements unlocks season_grand_tour_rider ved en entry i et ≥15-etapers løb", async () => {
+  const supabase = seasonAchievementSupabase({
+    ownRank: 12,
+    currentDivision: 3,
+    extra: {
+      races: [
+        { id: "race-gt", stages: 21 },
+        { id: "race-classic", stages: 1 },
+      ],
+      race_entries: [
+        { id: "entry-1", team_id: "team-1", race_id: "race-gt" },
+        { id: "entry-2", team_id: "team-2", race_id: "race-gt" },
+      ],
+    },
+  });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked.map(a => a.id).sort(), ["season_grand_tour_rider"]);
+});
+
+test("checkAchievements unlocks ikke season_grand_tour_rider for et kort etapeløb", async () => {
+  const supabase = seasonAchievementSupabase({
+    ownRank: 12,
+    currentDivision: 3,
+    extra: {
+      races: [{ id: "race-short", stages: 5 }],
+      race_entries: [{ id: "entry-1", team_id: "team-1", race_id: "race-short" }],
+    },
+  });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked, []);
 });
 
 // #1008: progress mod næste mål.
