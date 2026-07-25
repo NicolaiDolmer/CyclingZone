@@ -30,7 +30,9 @@ import {
 // #2914 (ejer-beslutning 25/7): default ved ikke-valg = 1-sæsons safe-aftale.
 // 47 af 73 hold der valgte, valgte 1 sæson — defaulten skal matche flertallet,
 // ikke binde passive hold i 3 sæsoner.
-const DEFAULT_RENEW_VARIANT = "safe";
+// Eksporteret i #2926 så sæson-transitionens PREVIEW bruger nøjagtig samme
+// default som fornyelsen — ikke en kopi der kan drive fra hinanden.
+export const DEFAULT_RENEW_VARIANT = "safe";
 
 // Henter den reelle sæson-kalenderlængde (seasons.race_days_total) for den aktive
 // sæson — bruges som DISPLAY-divisor i tilbud. Falder tilbage til FULL_CALENDAR_DAYS.
@@ -141,6 +143,114 @@ export function recomputeActivationRate(pending, divisor) {
   }
   const originalRenownTarget = Math.round(guaranteedBase / fraction);
   return Math.round((originalRenownTarget - guaranteedBase) / div);
+}
+
+// ─── #2926 · Delte, rene kontrakt-regler (preview ⇄ udførelse) ────────────────
+// Sæson-transitionens dry-run modellerede tidligere en KONTRAKTFRI tilstand
+// (division-base + variabel pulje) selvom udbetalingen sker EFTER
+// expireAndRenewContracts har gjort én kontrakt aktiv pr. hold. Reglerne herunder
+// er den eneste kilde til "hvilken kontrakt bærer den garanterede base i sæson N",
+// så previewet og fornyelsen ikke kan drive fra hinanden.
+
+/** Dækker kontrakten stadig `seasonNumber`? (samme test som expireAndRenewContracts). */
+export function contractCoversSeason(contract, seasonNumber) {
+  return Boolean(contract) && Number(contract.expires_after_season) >= Number(seasonNumber);
+}
+
+/** Er den pending kontrakt valgt netop TIL `seasonNumber`? */
+export function pendingAppliesToSeason(pending, seasonNumber) {
+  return Boolean(pending) && Number(pending.start_season) === Number(seasonNumber);
+}
+
+/**
+ * Hvilken kontrakt bærer holdets garanterede base i `newSeasonNumber`?
+ * Spejler expireAndRenewContracts' tre grene 1:1:
+ *   1. "locked"  — den aktive kontrakt dækker stadig sæsonen (beholdes urørt)
+ *   2. "pending" — managerens valg for netop denne sæson aktiveres
+ *   3. "default" — intet valg → 'safe'-aftalen tildeles automatisk (#2914)
+ *
+ * Ren funktion: ingen I/O. `renownTargetValue` skal være beregnet med
+ * renownEngine.renownTarget mod holdets NUVÆRENDE division + forrige sæsons
+ * standings — nøjagtig samme input som loadRenownTargetValue henter i drift.
+ * `calendarDays` rører kun DISPLAY-raten; den garanterede base er uafhængig.
+ *
+ * @returns {{ source: "locked"|"pending"|"default", contract: object }}
+ */
+export function resolveContractForNewSeason({
+  teamId,
+  newSeasonNumber,
+  activeContract = null,
+  pendingContract = null,
+  renownTargetValue = 0,
+  calendarDays = FULL_CALENDAR_DAYS,
+} = {}) {
+  if (contractCoversSeason(activeContract, newSeasonNumber)) {
+    return { source: "locked", contract: activeContract };
+  }
+  if (pendingAppliesToSeason(pendingContract, newSeasonNumber)) {
+    return { source: "pending", contract: pendingContract };
+  }
+  const offers = generateOffers({
+    teamId,
+    seasonNumber: newSeasonNumber,
+    renownTargetValue,
+    calendarDays,
+  });
+  const chosen = offers.find((o) => o.variant === DEFAULT_RENEW_VARIANT);
+  if (!chosen) throw new Error(`Ukendt variant: ${DEFAULT_RENEW_VARIANT}`);
+  return {
+    source: "default",
+    contract: {
+      team_id: teamId,
+      sponsor_name: chosen.sponsorName,
+      guaranteed_base: chosen.guaranteedBase,
+      per_race_day_rate: chosen.perRaceDayRate,
+      length_seasons: chosen.lengthSeasons,
+      start_season: newSeasonNumber,
+      expires_after_season: newSeasonNumber + chosen.lengthSeasons - 1,
+      status: "active",
+      variant: chosen.variant,
+      guaranteed_fraction: chosen.guaranteedFraction,
+      race_day_share: chosen.raceDayShare,
+      bonus_clauses: chosen.clauses,
+      // Markør: rækken findes ikke i DB endnu — den OPRETTES af
+      // expireAndRenewContracts ved skiftet. Kun til preview/rapportering.
+      simulated: true,
+    },
+  };
+}
+
+/**
+ * Den variable puljes STØRRELSE for en kontrakt (race_day_share × target) —
+ * altså hvad holdet kan tjene over hele sæsonen ved fuld deltagelse, IKKE noget
+ * der udbetales ved sæsonskiftet. Baglæns-udledt fra guaranteed_base præcis som
+ * recomputeActivationRate, så legacy-rækker uden race_day_share også rammer rigtigt.
+ */
+export function contractRaceDayPool(contract) {
+  const guaranteedBase = Number(contract?.guaranteed_base);
+  if (!Number.isFinite(guaranteedBase)) return 0;
+
+  const storedFraction = Number(contract?.guaranteed_fraction);
+  const storedShare = Number(contract?.race_day_share);
+  if (storedFraction > 0) {
+    const target = Math.round(guaranteedBase / storedFraction);
+    const share = Number.isFinite(storedShare) && storedShare >= 0
+      ? storedShare
+      : 1 - storedFraction;
+    return Math.max(0, Math.round(target * share));
+  }
+
+  const fraction = guaranteedFractionForLength(contract?.length_seasons);
+  if (!fraction) return 0;
+  const target = Math.round(guaranteedBase / fraction);
+  return Math.max(0, target - guaranteedBase);
+}
+
+/** Signing-bonussen på en kontrakt (0 hvis klausulen ikke findes). */
+export function contractSigningBonus(contract) {
+  const clause = (contract?.bonus_clauses || []).find((c) => c?.type === "signing");
+  const amount = Number(clause?.amount);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
 }
 
 export async function getActiveContract({ supabase, teamId }) {

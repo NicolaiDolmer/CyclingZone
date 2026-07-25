@@ -11,6 +11,10 @@ import {
   recomputeActivationRate,
   resolveStageDivisor,
   evaluateSeasonObjectives,
+  resolveContractForNewSeason,
+  contractRaceDayPool,
+  contractSigningBonus,
+  DEFAULT_RENEW_VARIANT,
 } from "./sponsorContractsService.js";
 import { renownTarget } from "./renownEngine.js";
 import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
@@ -1200,4 +1204,85 @@ test("resolveStageDivisor: falder tilbage til FULL_CALENDAR_DAYS (60) når fallb
 
 test("resolveStageDivisor: håndterer manglende stageCounts/team helt (undefined) uden at kaste", () => {
   assert.equal(resolveStageDivisor(undefined, undefined), FULL_CALENDAR_DAYS);
+});
+
+// ─── #2926: resolveContractForNewSeason + afledte størrelser (pure) ───────────
+// Samme regel som expireAndRenewContracts bruger i drift — previewet i
+// seasonTransition.buildTransitionPlan kalder præcis denne funktion, så
+// dry-runnets sponsortal ikke kan drive fra det der faktisk udbetales.
+
+test("resolveContractForNewSeason: en aktiv kontrakt der stadig dækker sæsonen vinder ('locked')", () => {
+  const active = { id: "c1", guaranteed_base: 400_000, expires_after_season: 3 };
+  const pending = { id: "c2", guaranteed_base: 999_999, start_season: 2 };
+  const { source, contract } = resolveContractForNewSeason({
+    teamId: "t1", newSeasonNumber: 2, activeContract: active, pendingContract: pending,
+    renownTargetValue: 500_000,
+  });
+  assert.equal(source, "locked");
+  assert.equal(contract.guaranteed_base, 400_000);
+});
+
+test("resolveContractForNewSeason: en udløbende aktiv kontrakt viger for managerens pending valg", () => {
+  const active = { id: "c1", guaranteed_base: 400_000, expires_after_season: 1 };
+  const pending = { id: "c2", guaranteed_base: 238_000, start_season: 2, variant: "racing" };
+  const { source, contract } = resolveContractForNewSeason({
+    teamId: "t1", newSeasonNumber: 2, activeContract: active, pendingContract: pending,
+    renownTargetValue: 476_000,
+  });
+  assert.equal(source, "pending");
+  assert.equal(contract.guaranteed_base, 238_000);
+});
+
+test("resolveContractForNewSeason: pending for en ANDEN sæson tæller ikke — holdet auto-defaulter til 'safe'", () => {
+  const pending = { id: "c2", guaranteed_base: 999_999, start_season: 4 };
+  const { source, contract } = resolveContractForNewSeason({
+    teamId: "t1", newSeasonNumber: 2, activeContract: null, pendingContract: pending,
+    renownTargetValue: 400_000,
+  });
+  assert.equal(source, "default");
+  assert.equal(contract.variant, DEFAULT_RENEW_VARIANT);
+  assert.equal(contract.guaranteed_base, Math.round(400_000 * 0.92));
+  assert.equal(contract.length_seasons, 1);
+  assert.equal(contract.expires_after_season, 2);
+  assert.equal(contract.simulated, true);
+});
+
+test("resolveContractForNewSeason: auto-default matcher generateOffers' 'safe'-tilbud 1:1", () => {
+  const renownTargetValue = 476_000;
+  const offer = generateOffers({ teamId: "t1", seasonNumber: 2, renownTargetValue })
+    .find((o) => o.variant === DEFAULT_RENEW_VARIANT);
+  const { contract } = resolveContractForNewSeason({
+    teamId: "t1", newSeasonNumber: 2, renownTargetValue,
+  });
+  assert.equal(contract.guaranteed_base, offer.guaranteedBase);
+  assert.equal(contract.sponsor_name, offer.sponsorName);
+  assert.equal(contract.race_day_share, offer.raceDayShare);
+});
+
+test("contractRaceDayPool: udleder puljen baglæns fra guaranteed_base × race_day_share/fraction", () => {
+  // racing: 0,50 garanteret / 0,58 pr. etape → target 476.000 → pulje 276.080
+  assert.equal(
+    contractRaceDayPool({ guaranteed_base: 238_000, guaranteed_fraction: 0.5, race_day_share: 0.58 }),
+    276_080
+  );
+});
+
+test("contractRaceDayPool: legacy-række uden race_day_share falder tilbage til (1 − fraction)", () => {
+  assert.equal(
+    contractRaceDayPool({ guaranteed_base: 352_000, guaranteed_fraction: 0.88 }),
+    Math.round(400_000 * 0.12)
+  );
+});
+
+test("contractRaceDayPool: ukendt/manglende data giver 0 i stedet for at gætte", () => {
+  assert.equal(contractRaceDayPool(null), 0);
+  assert.equal(contractRaceDayPool({ guaranteed_base: "n/a" }), 0);
+  assert.equal(contractRaceDayPool({ guaranteed_base: 100_000, length_seasons: 99 }), 0);
+});
+
+test("contractSigningBonus: læser signing-klausulen, ellers 0", () => {
+  assert.equal(contractSigningBonus({ bonus_clauses: [{ type: "signing", amount: 38_080 }] }), 38_080);
+  assert.equal(contractSigningBonus({ bonus_clauses: [{ type: "podium", amount: 5_000 }] }), 0);
+  assert.equal(contractSigningBonus({}), 0);
+  assert.equal(contractSigningBonus(null), 0);
 });
