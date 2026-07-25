@@ -138,22 +138,38 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   const teamIds = (teams || []).map(team => team.id).filter(Boolean);
   if (teamIds.length === 0) return [];
 
-  const [ridersRes, boardsRes] = await Promise.all([
-    supabaseClient
-      .from("riders")
-      // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
-      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
-      .in("team_id", teamIds),
-    supabaseClient
-      .from("board_profiles")
-      .select("*")
-      .in("team_id", teamIds),
-  ]);
-  throwIfSupabaseError(ridersRes.error, "Could not load riders for season end");
+  // #2907 P0: prod 25/7 havde 2.652 ryttere på 156 menneskehold — langt over
+  // PostgREST's 1000-rows-loft. Et naivt .select().in() returnerede stille kun
+  // første side, så payroll og bestyrelsesdom kørte på ~38% af feltet for hold
+  // hvis ryttere faldt uden for side 1 (ingen fejl, ingen nulrække — ingenting).
+  // fetchAllRows paginerer; .order("id") gør siderne stabile (supabasePagination.js).
+  //
+  // board_profiles (435 rækker, 25/7) og teams-filtret ovenfor (156 rækker) er
+  // IKKE pagineret her — begge er langt under 1000 og vokser med samme,
+  // langsommere driver (antal hold, ikke antal ryttere pr. hold). Se PR for #2907
+  // for fuld liste af andre unpaginerede season-end-queries fundet i samme sweep.
+  let riders;
+  try {
+    riders = await fetchAllRows(() => (
+      supabaseClient
+        .from("riders")
+        // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
+        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })
+    ));
+  } catch (error) {
+    throw new Error(`Could not load riders for season end: ${error.message}`, { cause: error });
+  }
+
+  const boardsRes = await supabaseClient
+    .from("board_profiles")
+    .select("*")
+    .in("team_id", teamIds);
   throwIfSupabaseError(boardsRes.error, "Could not load board profiles for season end");
 
   const ridersByTeam = new Map();
-  for (const rider of ridersRes.data || []) {
+  for (const rider of riders || []) {
     if (!rider.team_id) continue;
     if (!ridersByTeam.has(rider.team_id)) ridersByTeam.set(rider.team_id, []);
     ridersByTeam.get(rider.team_id).push(rider);
