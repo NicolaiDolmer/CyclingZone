@@ -86,6 +86,22 @@ const ACADEMY_RIDER = {
   id: "r1", team_id: "t1", firstname: "Up", lastname: "Coming",
   is_academy: true, base_value: 100000, prize_earnings_bonus: 0, salary: 670,
 };
+// #2881: akademi-rytter uden nogen kontrakt endnu (salary == null) — skal
+// stadig få en frisk standard-kontrakt ved promote.
+const CONTRACTLESS_ACADEMY_RIDER = {
+  id: "r3", team_id: "t1", firstname: "Fresh", lastname: "Intake",
+  is_academy: true, base_value: 50000, prize_earnings_bonus: 0,
+  current_production_value: 20_000, salary: null,
+};
+// #2881: akademi-rytter der bærer en OVERLEVET senior-kontrakt (fx fra før et
+// akademi-ophold, sæson 1 med 3 sæsoners restløbetid) — promote må IKKE røre
+// disse felter.
+const ACADEMY_RIDER_WITH_SURVIVING_CONTRACT = {
+  id: "r4", team_id: "t1", firstname: "Old", lastname: "Contract",
+  is_academy: true, base_value: 200000, prize_earnings_bonus: 0,
+  current_production_value: 80_000, salary: 12_000,
+  contract_length: 3, contract_end_season: 3,
+};
 const SENIOR_U23 = {
   id: "r2", team_id: "t1", firstname: "Young", lastname: "Senior",
   is_academy: false, current_production_value: 50_000, birthdate: "2005-06-15", salary: 3350,
@@ -104,21 +120,38 @@ test("demoteSalary: computeFrozenSalary-delegation (current_production_value × 
 
 // ─── promote ──────────────────────────────────────────────────────────────────
 
-test("promote: is_academy=false + frossen senior-løn + senior-kontrakt; notify", async () => {
-  const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER, gradRow: null });
+test("promote: is_academy=false + kontraktløs rytter (salary==null) får standard-kontrakt; notify", async () => {
+  const { supabase, rec } = makeSupabase({ rider: CONTRACTLESS_ACADEMY_RIDER, gradRow: null });
   const notify = spyNotify();
-  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 3 });
+  const res = await promote(supabase, { teamId: "t1", riderId: "r3", seasonNumber: 1, getMarketState, notify });
 
   assert.equal(res.action, "promoted");
   assert.equal(rec.riderUpdates.length, 1);
   assert.equal(rec.riderUpdates[0].is_academy, false);
-  assert.equal(rec.riderUpdates[0].salary, computeFrozenSalary(ACADEMY_RIDER));
+  assert.equal(rec.riderUpdates[0].salary, computeFrozenSalary({ ...CONTRACTLESS_ACADEMY_RIDER, division: 3 }));
   assert.equal(rec.riderUpdates[0].contract_length, CONTRACT.DEFAULT_ACQUIRE_LENGTH);
   assert.equal(rec.riderUpdates[0].contract_end_season, computeContractEndSeason(1, CONTRACT.DEFAULT_ACQUIRE_LENGTH));
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_promoted");
-  assert.equal(res.salary, computeFrozenSalary(ACADEMY_RIDER));
+  assert.equal(res.salary, computeFrozenSalary({ ...CONTRACTLESS_ACADEMY_RIDER, division: 3 }));
+});
+
+// #2881 regression: promote() overskrev UBETINGET en eksisterende kontrakt
+// (3 resterende sæsoner → 2, ny løn) — brød #1309-invarianten ("eksisterende
+// kontrakt arves uændret — regenerér ALDRIG"). Låser fast at en akademi-rytter
+// der allerede har kontraktfelter (overlevet fra før akademi-opholdet) IKKE
+// får sin løn/længde/udløbssæson rørt ved promote — kun is_academy flipper.
+test("promote: #2881 — eksisterende kontrakt (3 sæsoner) overlever UÆNDRET, kun is_academy flipper", async () => {
+  const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER_WITH_SURVIVING_CONTRACT, gradRow: null });
+  const notify = spyNotify();
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 2 });
+  const res = await promote(supabase, { teamId: "t1", riderId: "r4", seasonNumber: 1, getMarketState, notify });
+
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.deepEqual(rec.riderUpdates[0], { is_academy: false }, "salary/contract_length/contract_end_season slet ikke i patchen");
+  assert.equal(res.salary, ACADEMY_RIDER_WITH_SURVIVING_CONTRACT.salary, "returneret løn = den overlevede kontraktløn, ikke en ny beregning");
 });
 
 test("promote: resolver pending academy_graduation-row til 'promoted'", async () => {

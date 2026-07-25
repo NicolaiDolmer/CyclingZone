@@ -2,10 +2,12 @@
 // graduerings-vinduet:
 //
 //   • promote(...)  — flyt en akademi-rytter OP i senior-truppen (cap-guard +
-//     frossen senior-løn + senior-kontrakt). Resolver en evt. pending
-//     academy_graduation-row så sweepet ikke dobbelt-kører. Kalder IKKE
-//     resolveGraduation direkte (den kræver en pending grad-row; promote skal
-//     virke for enhver akademi-rytter, også de der endnu ikke er gradueret).
+//     #1309-kontrakt-invariant: kun kontraktløse ryttere får en ny standard-
+//     kontrakt, en eksisterende kontrakt arves uændret — #2881). Resolver en
+//     evt. pending academy_graduation-row så sweepet ikke dobbelt-kører.
+//     Kalder IKKE resolveGraduation direkte (den kræver en pending grad-row;
+//     promote skal virke for enhver akademi-rytter, også de der endnu ikke er
+//     gradueret).
 //
 //   • demote(...)   — flyt en U23-senior-rytter NED i akademiet (D5-berettigelse).
 //     Kører via demote_rider_to_academy-RPC'en under advisory-lås (akademi-8-cap +
@@ -14,7 +16,7 @@
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
 
 import { notifyTeamOwner } from "./notificationService.js";
-import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
+import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
@@ -33,8 +35,13 @@ export function demoteSalary({ current_production_value, division } = {}) {
  *
  * - cap-guard via getTeamMarketState (future_count + 1 > squad_limits.max →
  *   'squad_cap_violation').
- * - salary = computeFrozenSalary(rider) (ny senior-løn, overskriver akademi-løn).
- * - is_academy=false + senior-kontrakt (DEFAULT_ACQUIRE_LENGTH).
+ * - kontrakt/løn: #1309-invarianten — genbruger contractOnAcquirePatch, SAMME
+ *   gate som auktion/transfer/swap. Rytteren er allerede "ejet" (kun akademi-
+ *   flaget skifter), så en EKSISTERENDE kontrakt (salary != null) arves
+ *   UÆNDRET (#2881: promote må aldrig forkorte/overskrive en kontrakt der
+ *   fulgte med fra før akademi-ophold). Kun en reelt kontraktløs rytter
+ *   (salary == null) får en frisk standard-kontrakt (DEFAULT_ACQUIRE_LENGTH).
+ * - is_academy=false.
  * - resolver en evt. pending academy_graduation-row → 'promoted' (så
  *   academyGraduationSweep ikke auto-resolver den bagefter).
  * - notify 'academy_promoted'.
@@ -61,13 +68,13 @@ export async function promote(supabase, {
   const future = state?.future_count ?? state?.rider_count ?? 0;
   if (future + 1 > cap) throw new Error("squad_cap_violation");
 
-  const salary = computeFrozenSalary({ ...rider, division: state?.division });
-  const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
+  // #2881/#1309: kun kontraktløse ryttere (salary == null) får en ny kontrakt;
+  // en eksisterende kontrakt (fx overlevet fra før et akademi-ophold) arves
+  // UÆNDRET — regenerér ALDRIG. {} hvis rider.salary != null.
+  const contractPatch = contractOnAcquirePatch(rider, seasonNumber, { division: state?.division });
   const { error } = await supabase.from("riders").update({
     is_academy: false,
-    salary,
-    contract_length: length,
-    contract_end_season: computeContractEndSeason(seasonNumber, length),
+    ...contractPatch,
   }).eq("id", riderId);
   if (error) throw new Error(`promote update: ${error.message}`);
 
@@ -80,6 +87,8 @@ export async function promote(supabase, {
       .eq("team_id", teamId).eq("rider_id", riderId);
     if (gradErr) throw new Error(`promote grad resolve: ${gradErr.message}`);
   }
+
+  const salary = contractPatch.salary ?? rider.salary;
 
   const name = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await notify({
