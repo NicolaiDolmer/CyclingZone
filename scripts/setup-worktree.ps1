@@ -127,10 +127,29 @@ function Set-NodeModulesJunctions {
       continue
     }
     if ($mainHash -ne $wtHash) {
+      # Ingen deling — men efterlad ALDRIG worktreet uden node_modules. Hooken
+      # scripts/hooks/setup-worktree-if-needed.sh kalder os netop fordi mappen
+      # mangler, og dens kontrakt er "efter dette er worktreet klar". Sprang vi
+      # bare over, ville agentens `node --test` fejle med "Cannot find package".
       Write-Info "  [ingen junction] $pkgDir har en anden package-lock.json end main (#2967)." "Yellow"
       Write-Info "                   Deling ville give forkerte pakker + risiko for at 'npm ci'" "Yellow"
-      Write-Info "                   sletter mains node_modules. Kør i stedet:" "Yellow"
-      Write-Info "                     npm ci --prefix $pkgDir   (fra $WorktreeRoot)" "Cyan"
+      Write-Info "                   sletter mains node_modules. Installerer separat i stedet." "Yellow"
+      if ($DryRun) {
+        Write-Info "  [would-npm-ci] npm ci --prefix $pkgDir (i $WorktreeRoot)" "Cyan"
+        continue
+      }
+      Push-Location $WorktreeRoot
+      try {
+        & npm ci --prefix $pkgDir 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $dst)) {
+          Write-Info "  [ok] $nm installeret separat"
+        } else {
+          Write-Info "  [FEJL] 'npm ci --prefix $pkgDir' fejlede (exit $LASTEXITCODE)." "Red"
+          Write-Info "         Kør den manuelt i $WorktreeRoot før du bruger worktreet." "Red"
+        }
+      } finally {
+        Pop-Location
+      }
       continue
     }
     $parent = Split-Path $dst -Parent
