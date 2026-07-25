@@ -37,6 +37,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { blankStringsAndComments, lineAt } from "./lib/js-source-scan.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SRC_DIR = join(ROOT, "frontend", "src");
@@ -88,56 +89,8 @@ function collectFiles() {
   return files;
 }
 
-// ── Blank strenge + kommentarer til whitespace (bevar længde + newlines) ──────
-function blankStringsAndComments(src) {
-  const out = src.split("");
-  let i = 0;
-  const n = src.length;
-  const blank = (from, to) => {
-    for (let k = from; k < to && k < n; k++) {
-      if (out[k] !== "\n" && out[k] !== "\r") out[k] = " ";
-    }
-  };
-  while (i < n) {
-    const c = src[i];
-    const next = src[i + 1];
-    if (c === "/" && next === "/") {
-      let j = i + 2;
-      while (j < n && src[j] !== "\n") j++;
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    if (c === "/" && next === "*") {
-      let j = i + 2;
-      while (j < n && !(src[j] === "*" && src[j + 1] === "/")) j++;
-      j = Math.min(n, j + 2);
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      let j = i + 1;
-      while (j < n) {
-        if (src[j] === "\\") { j += 2; continue; }
-        if (src[j] === quote) { j++; break; }
-        j++;
-      }
-      blank(i + 1, j - 1);
-      i = j;
-      continue;
-    }
-    i++;
-  }
-  return out.join("");
-}
-
-function lineAt(src, offset) {
-  let line = 1;
-  for (let k = 0; k < offset && k < src.length; k++) if (src[k] === "\n") line++;
-  return line;
-}
+// blankStringsAndComments + lineAt bor i scripts/lib/js-source-scan.mjs (delt med
+// lint-swallowed-catches.mjs og lint-dropped-supabase-error.mjs, #2897).
 
 // Find den matchende lukke-parentes for en åbne-parentes ved index `openIdx`
 // (src[openIdx] === "("). Returnerer index af den matchende ")", eller -1.

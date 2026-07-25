@@ -272,6 +272,8 @@ jobs:
     # skjuler fejl for Sentry (Sentry-hærdningen 12/7 fandt ~20 sådanne, flere ægte).
     # Ratchet pr. fil: baseline låst efter audit-oprydningen — en net-ny svaltet
     # catch fejler CI. Statisk (heuristik-scanner), ingen DB/runtime nødvendig.
+    # #2897 (26/7): backend/routes/** kom i scope — api.js (hele HTTP-fladen,
+    # 174 svaltede catches) lå udenfor, hvilket var hele pointen i issuet.
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -342,3 +344,29 @@ jobs:
 
       - name: Run finance-type guard
         run: node scripts/lint-finance-types.mjs
+
+  dropped-supabase-error-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod NYE droppede Supabase-errors (#2897, rodårsagen bag #2861).
+    # supabase-js kaster ikke — den returnerer { data, error }. Destrukturerer man
+    # kun `data`, forsvinder fejlen sporløst: ingen throw, ingen 500, ingen Sentry.
+    # Kalender-siden brændte 8-9 sek. pr. load på et kald der aldrig kunne lykkes,
+    # og ingen opdagede det. Fejlklassen har ramt tre gange (#2861, #2898, #2877);
+    # swallowed-catch-guarden fanger den IKKE (der er ingen catch involveret).
+    # Ratchet pr. fil, samme mønster som søster-guardsene. Statisk, ingen DB.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test dropped-supabase-error guard
+        run: node --test scripts/lint-dropped-supabase-error.test.mjs
+
+      - name: Run dropped-supabase-error guard
+        run: node scripts/lint-dropped-supabase-error.mjs

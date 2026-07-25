@@ -10,8 +10,13 @@
 //   ægte fejl (tavst deaktiveret betalt feature, fail-forkert-retning). Dette er
 //   den strukturelle forebyggelse: hver svaltet catch skal træffe et BEVIDST valg.
 //
+// SCOPE (#2897): backend/lib/**/*.js + backend/routes/**/*.js + backend/cron.js.
+//   `backend/routes/api.js` — hele HTTP-fladen, ~12.500 linjer — lå UDEN FOR scope
+//   indtil 26/7: 198 catch-blokke mod kun 44 captureException-kald. Guarden virkede,
+//   den kiggede bare det forkerte sted.
+//
 // REGEL:
-//   Enhver `catch`-blok i backend/lib/**/*.js + backend/cron.js skal enten
+//   Enhver `catch`-blok i scopet skal enten
 //     (a) captureException'e / sentryCapture'e fejlen, ELLER
 //     (b) rethrow'e (throw), ELLER
 //     (c) bære en eksplicit markør-kommentar: `// best-effort` (eller `swallow-ok`)
@@ -27,7 +32,7 @@
 //   findes ikke i praksis i denne kodebase; markøren er escape-hatch hvis det sker.
 //
 // Usage:
-//   node scripts/lint-swallowed-catches.mjs            # scanner backend/lib + cron.js
+//   node scripts/lint-swallowed-catches.mjs            # scanner backend/lib + routes + cron.js
 //   node scripts/lint-swallowed-catches.mjs --warn     # rapport-only (exit 0)
 //   npm run lint:catches                               # samme som default (fail-hard)
 //
@@ -37,17 +42,18 @@
 //
 // Refs #2395 #2389.
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { blankStringsAndComments, lineAt } from "./lib/js-source-scan.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 // ── Fil-udvælgelse ───────────────────────────────────────────────────────────
-function collectFiles() {
+export function collectFiles(root = ROOT) {
   const files = [];
-  const libDir = join(ROOT, "backend", "lib");
   const walk = (dir) => {
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
       const st = statSync(full);
@@ -57,67 +63,15 @@ function collectFiles() {
       files.push(full);
     }
   };
-  walk(libDir);
-  files.push(join(ROOT, "backend", "cron.js"));
+  walk(join(root, "backend", "lib"));
+  walk(join(root, "backend", "routes")); // #2897 — hele HTTP-fladen
+  const cron = join(root, "backend", "cron.js");
+  if (existsSync(cron)) files.push(cron);
   return files;
 }
 
-// ── Blank strenge + kommentarer til whitespace (bevar længde + newlines) ──────
-// Returnerer { blanked } hvor strenge/kommentar-indhold er erstattet med mellemrum,
-// så brace-matching + keyword-scan ikke rammer indhold inde i strenge/kommentarer.
-function blankStringsAndComments(src) {
-  const out = src.split("");
-  let i = 0;
-  const n = src.length;
-  const blank = (from, to) => {
-    for (let k = from; k < to && k < n; k++) {
-      if (out[k] !== "\n" && out[k] !== "\r") out[k] = " ";
-    }
-  };
-  while (i < n) {
-    const c = src[i];
-    const next = src[i + 1];
-    // Line-kommentar
-    if (c === "/" && next === "/") {
-      let j = i + 2;
-      while (j < n && src[j] !== "\n") j++;
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    // Blok-kommentar
-    if (c === "/" && next === "*") {
-      let j = i + 2;
-      while (j < n && !(src[j] === "*" && src[j + 1] === "/")) j++;
-      j = Math.min(n, j + 2);
-      blank(i, j);
-      i = j;
-      continue;
-    }
-    // Streng (', ", `) — håndter escapes; template-literals blankes fladt (godt nok).
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      let j = i + 1;
-      while (j < n) {
-        if (src[j] === "\\") { j += 2; continue; }
-        if (src[j] === quote) { j++; break; }
-        j++;
-      }
-      blank(i + 1, j - 1); // bevar selve quote-tegnene så strukturen ikke skrider
-      i = j;
-      continue;
-    }
-    i++;
-  }
-  return out.join("");
-}
-
-// ── Linjenr fra char-offset ───────────────────────────────────────────────────
-function lineAt(src, offset) {
-  let line = 1;
-  for (let k = 0; k < offset && k < src.length; k++) if (src[k] === "\n") line++;
-  return line;
-}
+// blankStringsAndComments + lineAt bor i scripts/lib/js-source-scan.mjs (delt med
+// lint-silent-mutations.mjs og lint-dropped-supabase-error.mjs, #2897).
 
 const MARKER_RE = /best[-\s]?effort|swallow-ok|catch-ok/i;
 const HANDLED_RE = /\bcaptureException\b|\bsentryCapture\b|\bcaptureExceptionFn\b|\bthrow\b/;
@@ -167,6 +121,9 @@ export function findSwallowedCatches(rawSrc) {
 // forklarende kommentar der bare mangler markør-token) — det er at forhindre at
 // bunken VOKSER. Whittle den ned over tid ved at markere/capture pr. site.
 const BASELINE = {
+  // #2897 (26/7): backend/routes/** kom i scope. api.js' 174 svaltede catches er
+  // IKKE godkendt — de er frosset, så bunken ikke kan vokse mens den ædes ned.
+  "backend/routes/api.js": 174,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
