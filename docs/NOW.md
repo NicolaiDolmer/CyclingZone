@@ -23,7 +23,7 @@
 
 > **Åbne ejer-beslutninger:** #2699 akademi-overflow · #2697 scout-slot · #2670 ROI-loft · #2452/#2176 (når v4 kan måles). **Ejer-klik:** #929+#2258 OTP+leaked-pw · #2588 · #2680.
 
-> **🤖 Working agent:** Ingen aktiv session. Cutover-audit-sessionen 25/7 afsluttet (docs + 20 issues, ingen kode rørt). **Næste kritiske: [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851)** (Fable, alene, worktree — rører op/nedryknings-motoren) · parallelt **#2907+#2908 P0-PR** (sonnet, worktree, uafhængig) · derefter #2879/#2881, #2861. Princip: parallelisér udførelse, serialisér dømmekraft. Workers rører ikke NOW.md/MASTERPLAN.md — orkestrator samler close-out.
+> **🤖 Working agent:** Fable-orkestrator AKTIV 25/7: [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851) pyramide-komprimering (Fable, worktree) + parallelle sonnet-workers på #2907/#2908/#2879/#2881 + #2902-analyse. Princip: parallelisér udførelse, serialisér dømmekraft. Workers rører ikke NOW.md/MASTERPLAN.md — orkestrator samler close-out.
 
 ## Standing context (forever-relaunch)
 
