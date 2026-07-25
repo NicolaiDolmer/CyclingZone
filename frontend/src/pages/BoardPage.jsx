@@ -15,6 +15,7 @@ import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
@@ -1644,7 +1645,8 @@ function TradeoffWarningLine({ payload }) {
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
-  requestError, requestingType, onRequest, onRenew, onNegotiate, onGoalClick }) {
+  requestError, requestingType, onRequest, onRenew, renewBusy = false, renewError = "",
+  onNegotiate, onGoalClick }) {
   const { t } = useTranslation("board");
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -1865,10 +1867,15 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           />
 
           {!is_expired && !renew_locked && (
-            <button onClick={onRenew}
-              className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all">
-              {t("plan.renew")}
-            </button>
+            <>
+              <button type="button" onClick={onRenew} disabled={renewBusy} aria-busy={renewBusy || undefined}
+                className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all disabled:opacity-50">
+                {renewBusy ? t("plan.renewing") : t("plan.renew")}
+              </button>
+              {renewError && (
+                <p role="alert" className="text-cz-danger text-3xs text-center mt-1">{renewError}</p>
+              )}
+            </>
           )}
           {!is_expired && renew_locked && (
             <p className="text-cz-3 text-3xs text-center">{t("plan.renewLocked")}</p>
@@ -2192,6 +2199,9 @@ export default function BoardPage() {
   const [saving, setSaving] = useState(false);
   const [requestingType, setRequestingType] = useState("");
   const [requestErrors, setRequestErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
+  // #2718-sweep: "Forny plan" havde hverken loading- eller fejl-state.
+  const [renewingType, setRenewingType] = useState("");
+  const [renewErrors, setRenewErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
   // S-02h: GoalMiniDialog + multi-plan renewal queue
   const [goalMiniDialog, setGoalMiniDialog] = useState(null); // { goal, evaluation, achieved, cumulativeProgress }
   // #1030: medlem-portræt + DNA-detalje-dialoger (affordance-pakke)
@@ -2647,18 +2657,43 @@ export default function BoardPage() {
     }
   }
 
+  // #2718-sweep (tavs fejl + manglende in-flight-feedback): kaldet ignorerede
+  // både res.ok og netværksfejl, og knappen havde ingen busy-tilstand. En fejlet
+  // fornyelse var derfor helt usynlig — planen stod uændret, og spilleren havde
+  // ingen måde at vide om han overhovedet havde ramt knappen. Samme mønster som
+  // sendBoardRequest lige ovenfor, som gjorde det rigtigt hele tiden.
   async function renewContract(planType) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-
-    await fetch(`${API}/api/board/renew`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ plan_type: planType }),
-    });
-
-    loadAll();
+    setRenewingType(planType);
+    setRenewErrors(e => ({ ...e, [planType]: "" }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setRenewErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
+        return;
+      }
+      const res = await fetch(`${API}/api/board/renew`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan_type: planType }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setRenewErrors(e => ({ ...e, [planType]: resolveApiError(data, t, t("errors.renewFallback")) }));
+        reportActionFailure("board_plan_renew", {
+          reason: data?.errorCode || data?.error,
+          status: res.status,
+          context: { planType },
+        });
+        return;
+      }
+      await loadAll();
+    } catch (cause) {
+      setRenewErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
+      reportActionFailure("board_plan_renew", { cause, context: { planType } });
+    } finally {
+      setRenewingType("");
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -2872,6 +2907,8 @@ export default function BoardPage() {
               }
               onRequest={(requestType) => sendBoardRequest(activePlanTab, requestType)}
               onRenew={() => renewContract(activePlanTab)}
+              renewBusy={renewingType === activePlanTab}
+              renewError={renewErrors[activePlanTab] || ""}
               onNegotiate={() => openWizard(activePlanTab, false)}
               onGoalClick={(goal, evaluation, achieved, cumProgress) =>
                 setGoalMiniDialog({ goal, evaluation, achieved, cumulativeProgress: cumProgress })}

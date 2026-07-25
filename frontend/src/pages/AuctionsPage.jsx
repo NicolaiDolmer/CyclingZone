@@ -51,7 +51,7 @@ import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
   Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
-  PageHeader, Section, EmptyState, ErrorState,
+  PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
 } from "../components/ui";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
 // selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
@@ -206,7 +206,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
     minBid, myProxy,
     bidAmount, setBidAmount, bidStatus, errorText, warningText,
     proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
-    proxyStatus, proxyErrorText,
+    proxyStatus, proxyErrorText, bidBlock, proxyBlock,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
@@ -401,8 +401,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
               <button
+                type="button"
                 onClick={handleBid}
-                disabled={bidStatus === "loading" || bidAmount < minBid}
+                disabled={bidStatus === "loading"}
+                {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
@@ -410,7 +412,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     imWinning
                       ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
                       : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                  disabled:opacity-50`}>
+                  disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") :
                  bidStatus === "error"   ? t("auctions:bid.buttonError") :
                  bidStatus === "success" ? t("common:actions.success") :
@@ -422,8 +424,13 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                   <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
-                  <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
-                  <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-3xs text-cz-3 hover:text-cz-danger">{t("auctions:bid.proxy.removeButton")}</button>
+                  <button type="button" onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
+                  {/* #2719: fjern-kaldet havde hverken loading- eller fejl-state. */}
+                  <button type="button" onClick={handleRemoveProxy} disabled={proxyStatus === "loading"}
+                    aria-label={t("auctions:bid.proxy.remove")}
+                    className="text-3xs text-cz-3 hover:text-cz-danger disabled:opacity-50">
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : t("auctions:bid.proxy.removeButton")}
+                  </button>
                 </div>
               ) : (
                 <button
@@ -438,6 +445,15 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 <p className="text-3xs text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
               )}
             </div>
+            {/* #2719: min-buddet stod kun som title-tooltip på inputtet — usynligt
+                på mobil og aldrig knyttet til den knap der nægter at reagere. */}
+            <BlockedNote id={bidBlock.reasonId} pulseKey={bidBlock.pulseKey} className="text-3xs max-w-[240px]">
+              {bidBlock.reason}
+            </BlockedNote>
+            {/* Fejl fra "fjern autobud" — vises også når panelet er foldet sammen. */}
+            {!proxyExpanded && proxyStatus === "error" && proxyErrorText && (
+              <p className="text-3xs text-cz-danger max-w-[240px] leading-tight">{proxyErrorText}</p>
+            )}
             {proxyExpanded && (
               <div className="flex flex-col gap-0.5 mt-0.5">
                 <div className="flex items-center gap-1">
@@ -451,18 +467,23 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    disabled={proxyStatus === "loading"}
+                    {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
                     className={`px-2 py-1 rounded text-3xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
+                      disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-3xs text-cz-3 hover:text-cz-2"><span aria-hidden="true">✕</span></button>
+                  <button type="button" onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-3xs text-cz-3 hover:text-cz-2"><XIcon size={12} aria-hidden="true" /></button>
                 </div>
+                <BlockedNote id={proxyBlock.reasonId} pulseKey={proxyBlock.pulseKey} className="text-3xs max-w-[180px]">
+                  {proxyBlock.reason}
+                </BlockedNote>
                 <p className="text-3xs text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-3xs text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
@@ -506,7 +527,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     minBid, myProxy,
     bidAmount, setBidAmount, bidStatus, errorText, warningText,
     proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
-    proxyStatus, proxyErrorText,
+    proxyStatus, proxyErrorText, bidBlock, proxyBlock,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
@@ -657,14 +678,16 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
               />
               <button
+                type="button"
                 onClick={handleBid}
-                disabled={bidStatus === "loading" || bidAmount < minBid}
+                disabled={bidStatus === "loading"}
+                {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                     imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
-                  disabled:opacity-50`}>
+                  disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctions:bid.buttonError") : bidStatus === "success" ? t("common:actions.success") : imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
               {/* Proxy bid section — vandret til højre for bud-knappen */}
@@ -681,11 +704,13 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     {t("auctions:bid.proxy.editButton")}
                   </button>
                   <button
+                    type="button"
                     onClick={handleRemoveProxy}
+                    disabled={proxyStatus === "loading"}
                     aria-label={t("auctions:bid.proxy.remove")}
-                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
+                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger disabled:opacity-50"
                   >
-                    {t("auctions:bid.proxy.removeButton")}
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : t("auctions:bid.proxy.removeButton")}
                   </button>
                 </div>
               ) : (
@@ -699,9 +724,15 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               ))}
             </div>
             <p className="text-3xs text-cz-3">{t("auctions:bid.minBidCard", { amount: formatNumber(minBid) })}</p>
+            <BlockedNote id={bidBlock.reasonId} pulseKey={bidBlock.pulseKey} className="text-2xs">
+              {bidBlock.reason}
+            </BlockedNote>
             {bidStatus === "error" && errorText && <p className="text-2xs text-cz-danger">{errorText}</p>}
             {warningText && (
               <p className="text-2xs text-cz-warning leading-snug">{warningText}</p>
+            )}
+            {!proxyExpanded && proxyStatus === "error" && proxyErrorText && (
+              <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
             )}
             {proxyExpanded && (
               <div className="flex flex-col gap-1">
@@ -716,24 +747,30 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    disabled={proxyStatus === "loading"}
+                    {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
                     className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
+                      disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setProxyExpanded(false)}
                     aria-label={t("auctions:bid.proxy.cancel")}
                     className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                   >
-                    ✕
+                    <XIcon size={14} aria-hidden="true" />
                   </button>
                 </div>
+                <BlockedNote id={proxyBlock.reasonId} pulseKey={proxyBlock.pulseKey} className="text-2xs">
+                  {proxyBlock.reason}
+                </BlockedNote>
                 <p className="text-2xs text-cz-3 leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
@@ -1237,14 +1274,20 @@ export default function AuctionsPage() {
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
   }
 
+  // #2719: returnerer nu { ok } så useAuctionBidding kan vise fejl + rapportere.
+  // Tidligere blev responsen kastet væk: en fejlet DELETE så præcis ud som en
+  // succes indtil næste reload, hvor autobud-badget dukkede op igen.
   async function handleRemoveProxy(auctionId) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
-    await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-    loadAll();
+    if (res.ok) { loadAll(); return { ok: true }; }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };
   }
 
   function showWatchlistError() {

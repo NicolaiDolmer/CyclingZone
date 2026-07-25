@@ -13,6 +13,7 @@ export { default as Checkbox } from "./Checkbox.jsx";
 export { default as Radio } from "./Radio.jsx";
 export { default as Toggle } from "./Toggle.jsx";
 export { Table, Tr, Th, Td, JerseyDot } from "./Table.jsx";
+export { default as BlockedNote } from "./BlockedNote.jsx";
 export { default as EmptyState } from "./EmptyState.jsx";
 export { default as ErrorState } from "./ErrorState.jsx";
 export { default as Skeleton, SkeletonLines } from "./Skeleton.jsx";

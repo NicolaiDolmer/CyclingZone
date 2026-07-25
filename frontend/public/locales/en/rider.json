@@ -653,6 +653,7 @@
     "minBid": "Min. bid: {amount} CZ$",
     "errorFallback": "The bid could not be placed",
     "proxyErrorFallback": "Failed to set auto-bid",
+    "proxyRemoveErrorFallback": "The auto-bid limit could not be removed. It is still active.",
     "proxy": {
       "display": "Auto-bid: max {amount} CZ$",
       "edit": "Change",
@@ -738,6 +739,8 @@
       "newContract": "New contract",
       "newContractValue": "Through season {season}",
       "confirm": "Confirm extension",
+      "loadingTerms": "Loading terms…",
+      "working": "Extending…",
       "success": "Contract extended.",
       "errorPrefix": "Couldn't extend:"
     },
@@ -750,6 +753,8 @@
       "freeHint": "This rider is out of contract, so there's no buyout fee.",
       "cannotAfford": "You can't afford the buyout fee.",
       "confirm": "Release rider",
+      "loadingTerms": "Loading terms…",
+      "working": "Releasing…",
       "cancel": "Cancel",
       "success": "Rider released.",
       "errorPrefix": "Couldn't release:"

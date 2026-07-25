@@ -5,7 +5,9 @@ import { Modal, Button } from "../ui";
 // fyring). Editorial: cz-tokens, ingen rounded-2xl/glow/emoji. `lines` er små
 // omkostnings-rækker ({label, value}) vist som en let tabel; tal i font-data.
 // Bygger på den delte Modal (footer = primær bekræft + sekundær annullér).
-export default function ConfirmModal({ open, title, lines = [], note, confirmLabel, onConfirm, onClose, busy }) {
+// #2718-sweep: `error` er tilføjet fordi et fejlet køb tidligere lukkede dialogen
+// uden et ord — spilleren så gold blive stående og troede knappen var død.
+export default function ConfirmModal({ open, title, lines = [], note, confirmLabel, onConfirm, onClose, busy, error = null }) {
   const { t } = useTranslation("klub");
   return (
     <Modal
@@ -35,6 +37,11 @@ export default function ConfirmModal({ open, title, lines = [], note, confirmLab
         </dl>
       )}
       {note && <p className="mt-3 text-2xs text-cz-3">{note}</p>}
+      {error && (
+        <p role="alert" className="mt-3 rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2 text-xs text-cz-danger">
+          {error}
+        </p>
+      )}
     </Modal>
   );
 }
