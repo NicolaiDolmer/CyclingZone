@@ -4,6 +4,111 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.58",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "One-off between seasons 1 and 2: the pyramid is compacted",
+          "body": "Between season 1 and 2 the pyramid is compacted: the top 48 manager teams fill Division 2 and the next 96 fill Division 3, based on overall season 1 points across all groups. Normal promotion and relegation (top 2 up, bottom 4 down per group) resumes from season 2. Division 1 stays untouched and fills from Division 2 at the next season change."
+        },
+        "da": {
+          "title": "Engangsændring mellem sæson 1 og 2: pyramiden komprimeres",
+          "body": "Mellem sæson 1 og 2 komprimeres pyramiden: de 48 bedste managerhold fylder Division 2 og de næste 96 fylder Division 3, baseret på de samlede sæson 1-point på tværs af alle puljer. Normal op- og nedrykning (top 2 op, bund 4 ned pr. pulje) genoptages fra sæson 2. Division 1 røres ikke og fyldes fra Division 2 ved næste sæsonskifte."
+        },
+        "refs": [2851]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season summary now shows all four divisions",
+          "body": "The season summary page only rendered Divisions 1 to 3 and grouped teams by the division they were moved to after the season, so 57 teams could not find themselves on exactly the page the season-ended notification links to. It now shows every division, including Division 4, and groups teams by the division they actually raced in during the ended season."
+        },
+        "da": {
+          "title": "Sæson-oversigten viser nu alle fire divisioner",
+          "body": "Sæson-oversigten viste kun Division 1 til 3 og grupperede hold efter den division de blev flyttet til efter sæsonen, så 57 hold ikke kunne finde sig selv på præcis den side sæson-slut-notifikationen linker til. Den viser nu alle divisioner, inklusive Division 4, og grupperer hold efter den division de faktisk kørte i under den afsluttede sæson."
+        },
+        "refs": [2908]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Standings",
+        "en": {
+          "title": "Group tabs on the standings page show data again",
+          "body": "Selecting a division sub-group (Pool A, B, C or D) on the standings page showed No data even though the team count above it was correct. The group filter now matches teams reliably again."
+        },
+        "da": {
+          "title": "Pulje-faner på stillingssiden viser data igen",
+          "body": "Valg af en pulje-underfane (Pulje A, B, C eller D) på stillingssiden viste Ingen data, selvom antallet af hold ovenover var korrekt. Pulje-filteret matcher nu hold pålideligt igen."
+        },
+        "refs": [2879]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Sponsor renewals now credit your past season after a division change",
+          "body": "When a sponsor contract auto-renewed for a team that had just moved divisions, the team's previous-season performance was not credited and the renewal fell back to the lowest multiplier, locked in for up to 3 seasons. Renewals now use your results from the division you actually raced in."
+        },
+        "da": {
+          "title": "Sponsor-fornyelser krediterer nu din forrige sæson efter et divisionsskifte",
+          "body": "Når en sponsorkontrakt auto-fornyede for et hold der lige havde skiftet division, blev holdets forrige sæson ikke krediteret, og fornyelsen faldt tilbage til den laveste multiplikator, låst i op til 3 sæsoner. Fornyelser bruger nu dine resultater fra den division du faktisk kørte i."
+        },
+        "refs": [2909]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Season-end payroll and the board's verdict now cover every team",
+          "body": "A data-loading limit meant riders beyond the first 1,000 loaded could be silently left out of season-end salary payments and the board's season evaluation. All riders are now loaded page by page, so every team is fully included."
+        },
+        "da": {
+          "title": "Sæsonslut-løn og bestyrelsens dom dækker nu alle hold",
+          "body": "En grænse i data-indlæsningen betød at ryttere ud over de første 1.000 indlæste stille kunne blive udeladt af sæsonslut-lønudbetalinger og bestyrelsens sæsonevaluering. Alle ryttere indlæses nu side for side, så alle hold er fuldt med."
+        },
+        "refs": [2907]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Weekly board updates now see your full squad",
+          "body": "The same data-loading limit could leave riders out of the board's weekly satisfaction updates after race weekends. The weekly evaluation now loads every rider, so the board judges your team on the whole squad."
+        },
+        "da": {
+          "title": "Bestyrelsens ugentlige opdateringer ser nu hele din trup",
+          "body": "Den samme grænse i data-indlæsningen kunne udelade ryttere fra bestyrelsens ugentlige tilfredsheds-opdateringer efter løbsweekender. Den ugentlige evaluering indlæser nu alle ryttere, så bestyrelsen dømmer dit hold på hele truppen."
+        },
+        "refs": [2932]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promoting an academy rider no longer touches an existing contract",
+          "body": "Promoting a rider from your academy could shorten an existing contract and overwrite the salary. Promotion now only assigns a fresh contract to riders who do not already have one."
+        },
+        "da": {
+          "title": "Promovering af en akademirytter rører ikke længere en eksisterende kontrakt",
+          "body": "Promovering af en rytter fra dit akademi kunne forkorte en eksisterende kontrakt og overskrive lønnen. Promovering tildeler nu kun en ny kontrakt til ryttere der ikke allerede har én."
+        },
+        "refs": [2881]
+      }
+    ]
+  },
+  {
     "version": "7.57",
     "date": "2026-07-25",
     "label": "Beta",
@@ -17,8 +122,8 @@ export const PATCHES = [
           "body": "Board, Inbox, Season planner, Scouting, Club, Compare riders, Roadmap, Strategy, Academy and the privacy pages now use the same page header, cards, loading and error states as the rest of the app. Compare riders had no loading screen at all, and several pages failed silently instead of telling you something went wrong. Five markings were also quietly broken and now work: the gold highlight on an auction you are leading, the gold edge on a transfer offer waiting for your answer, the icons on the season planner, the engine icons in the roadmap history, and a set of buttons in the admin panel. Status colours are now one single colour across the whole app instead of each page mixing its own. The ability columns on Riders and My team sit closer together so more of them fit on screen, the season planner shows more riders at once, and the squad list drops the value arrow and the potential label to make room for what you actually scan for."
         },
         "da": {
-          "title": "De sidste sider er flyttet over pÃ¥ det fÃ¦lles layout, og fem markeringer der aldrig blev vist er rettet",
-          "body": "Bestyrelse, Indbakke, SÃ¦sonplanlÃ¦gger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlÃ¦sning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlÃ¦sningsskÃ¦rm, og flere sider fejlede tavst i stedet for at fortÃ¦lle dig at noget gik galt. Fem markeringer var ogsÃ¥ i stilhed i stykker og virker nu: den gyldne fremhÃ¦vning pÃ¥ en auktion du fÃ¸rer, den gyldne kant pÃ¥ et bytte-tilbud der venter pÃ¥ dit svar, ikonerne i sÃ¦sonplanlÃ¦ggeren, motor-ikonerne i roadmap-historikken og en rÃ¦kke knapper i admin-panelet. Statusfarver er nu Ã©n farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne pÃ¥ Ryttere og Mit Hold stÃ¥r tÃ¦ttere, sÃ¥ flere af dem er pÃ¥ skÃ¦rmen ad gangen, sÃ¦sonplanlÃ¦ggeren viser flere ryttere pÃ¥ Ã©n gang, og truppen har droppet vÃ¦rdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
+          "title": "De sidste sider er flyttet over på det fælles layout, og fem markeringer der aldrig blev vist er rettet",
+          "body": "Bestyrelse, Indbakke, Sæsonplanlægger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlæsning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlæsningsskærm, og flere sider fejlede tavst i stedet for at fortælle dig at noget gik galt. Fem markeringer var også i stilhed i stykker og virker nu: den gyldne fremhævning på en auktion du fører, den gyldne kant på et bytte-tilbud der venter på dit svar, ikonerne i sæsonplanlæggeren, motor-ikonerne i roadmap-historikken og en række knapper i admin-panelet. Statusfarver er nu én farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne på Ryttere og Mit Hold står tættere, så flere af dem er på skærmen ad gangen, sæsonplanlæggeren viser flere ryttere på én gang, og truppen har droppet værdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
         },
         "refs": [2849]
       }
