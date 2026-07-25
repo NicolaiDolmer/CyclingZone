@@ -20,6 +20,9 @@ const TONE = {
   neutral: "bg-cz-subtle text-cz-2 border border-cz-border",
   success: "bg-cz-success-bg text-cz-success",
   danger: "bg-cz-danger-bg text-cz-danger",
+  // #2943: samme amber warning-tone som auktionens "extended"-badge (inline
+  // bg-cz-warning-bg/text-cz-warning) — advarsel, ikke blokering.
+  warning: "bg-cz-warning-bg text-cz-warning",
 };
 
 const BADGE_DEFS = {
@@ -38,6 +41,10 @@ const BADGE_DEFS = {
   // #1929-redesign: akademi-badge — markerer off-cap-akademiryttere i badge-kolonnen
   // (afløser den inline "Academy"-tag), overalt hvor badge-kolonnen bruges.
   academy: { tone: "accent" },
+  // #2943: pensions-risiko — rytteren er i eller lige før pensions-vinduet
+  // (retirementRiskBadgeKey, riderAge.js). Advarsel til KØBEREN før bud, ikke
+  // en blokering (jf. #2918/#2947, som guarder selve finaliseringen).
+  retireRisk: { tone: "warning" },
 };
 
 export default function RiderBadges({ badges = [], className = "" }) {

@@ -11,6 +11,7 @@
     "sold": "Du solgte denne rytter",
     "injured": "Skadet",
     "academy": "Akademirytter (uden for senior-cap'en)",
+    "retireRisk": "Høj pensionsrisiko: ryttere stopper typisk mellem 36 og 40 år",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -22,7 +23,8 @@
       "bought": "KØBT",
       "sold": "SOLGT",
       "injured": "SKD",
-      "academy": "AKAD"
+      "academy": "AKAD",
+      "retireRisk": "35+"
     }
   },
   "page": {
