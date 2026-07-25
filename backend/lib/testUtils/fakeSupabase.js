@@ -140,6 +140,7 @@ export function createFakeSupabase(initialState = {}, options = {}) {
     const filters = [];
     let order = null;
     let limit = null;
+    let range = null;
     let projection = null;
 
     function matches(row) {
@@ -158,6 +159,11 @@ export function createFakeSupabase(initialState = {}, options = {}) {
         });
       }
       if (limit != null) result = result.slice(0, limit);
+      // #2932 · .range(from, to) — PostgREST-agtig, INKLUSIV øvre grænse. Bruges af
+      // fetchAllRows (supabasePagination.js) til at hente forbi 1000-rows-loftet
+      // side-for-side; .order() SKAL stå før i kæden for stabile sider (håndhæves
+      // ikke her, kun i den ægte fejl-kommentar i supabasePagination.js).
+      if (range) result = result.slice(range.from, range.to + 1);
       return clone(result).map((row) => projectRow(row, projection));
     }
 
@@ -232,6 +238,7 @@ export function createFakeSupabase(initialState = {}, options = {}) {
       is(column, value) { filters.push({ type: "is", column, value }); return query; },
       order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
       limit(n) { limit = n; return query; },
+      range(from, to) { range = { from, to }; return query; },
       select(columns) { projection = parseSelectColumns(columns); return query; },
       single() { return execute().then((r) => ({ data: r.data?.[0] ?? null, error: r.error })); },
       maybeSingle() { return execute().then((r) => ({ data: r.data?.[0] ?? null, error: r.error })); },
