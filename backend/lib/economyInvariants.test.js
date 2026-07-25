@@ -530,6 +530,17 @@ test("processSeasonStart fanger unique_violation på sponsor (team, season)", as
         single() {
           return Promise.resolve({ data: { balance: 0 }, error: null });
         },
+        // #2962 · processSeasonStart's teams-select pagineres nu via fetchAllRows
+        // (.order("id").range()).
+        order(orderColumn, orderOptions) {
+          assert.equal(orderColumn, "id");
+          assert.deepEqual(orderOptions, { ascending: true });
+          return {
+            range(from, to) {
+              return Promise.resolve({ data: teamsResult.data.slice(from, to + 1), error: null });
+            },
+          };
+        },
       });
       return {
         select() {
@@ -669,8 +680,19 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
           }],
           error: null,
         };
+        // #2962 · processSeasonStart's teams-select pagineres nu via fetchAllRows
+        // (.order("id").range()).
         const makeTeamsChain = () => Object.assign(Promise.resolve(teamsResult), {
           eq() { return makeTeamsChain(); },
+          order(orderColumn, orderOptions) {
+            assert.equal(orderColumn, "id");
+            assert.deepEqual(orderOptions, { ascending: true });
+            return {
+              range(from, to) {
+                return Promise.resolve({ data: teamsResult.data.slice(from, to + 1), error: null });
+              },
+            };
+          },
         });
         return {
           select() {
@@ -757,8 +779,19 @@ test("processSeasonStart tvinger sponsor-modifier til 1.0 i board test-mode", as
             }],
             error: null,
           };
+          // #2962 · processSeasonStart's teams-select pagineres nu via fetchAllRows
+          // (.order("id").range()).
           const makeTeamsChain = () => Object.assign(Promise.resolve(teamsResult), {
             eq() { return makeTeamsChain(); },
+            order(orderColumn, orderOptions) {
+              assert.equal(orderColumn, "id");
+              assert.deepEqual(orderOptions, { ascending: true });
+              return {
+                range(from, to) {
+                  return Promise.resolve({ data: teamsResult.data.slice(from, to + 1), error: null });
+                },
+              };
+            },
           });
           return {
             select() { return { eq() { return makeTeamsChain(); } }; },
@@ -837,8 +870,18 @@ test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll 
       }
       if (table === "teams") {
         // #1077 · is_ai.is_bank.is_frozen (3 eq) — self-chainende thenable.
+        // #2962 · pagineres nu via fetchAllRows (.order("id").range()).
         const makeTeamsChain = () => Object.assign(Promise.resolve({ data: teams, error: null }), {
           eq() { return makeTeamsChain(); },
+          order(orderColumn, orderOptions) {
+            assert.equal(orderColumn, "id");
+            assert.deepEqual(orderOptions, { ascending: true });
+            return {
+              range(from, to) {
+                return Promise.resolve({ data: teams.slice(from, to + 1), error: null });
+              },
+            };
+          },
         });
         return {
           select() {

@@ -72,6 +72,7 @@ import { captureException } from "./sentry.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
@@ -650,11 +651,21 @@ async function loadStartFieldRiderIds({ supabase, raceId }) {
 //      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
 //      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
 export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
-  const { data: teams, error: teamErr } = await supabase
-    .from("teams")
-    .select("id, is_test_account, is_frozen, league_division_id")
-    .or("is_test_account.is.null,is_test_account.eq.false");
-  if (teamErr) throw new Error(`teams: ${teamErr.message}`);
+  // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
+  // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
+  // fetchAllRows; stabilt .order("id") som tiebreak.
+  let teams;
+  try {
+    teams = await fetchAllRows(() => (
+      supabase
+        .from("teams")
+        .select("id, is_test_account, is_frozen, league_division_id")
+        .or("is_test_account.is.null,is_test_account.eq.false")
+        .order("id", { ascending: true })
+    ));
+  } catch (teamErr) {
+    throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
+  }
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
   const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });

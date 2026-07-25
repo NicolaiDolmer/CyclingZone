@@ -696,7 +696,7 @@ function createSeasonEndSupabase({
   };
 }
 
-function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
+function createStandingsSupabase({ teams, races, results, liveTeams = null, penalties = [] }) {
   const state = {
     teams: clone(teams),
     races: clone(races),
@@ -705,6 +705,7 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
     // (select("id") før upsert) ser denne liste, mens den indledende teams-læsning
     // ser den fulde. Default = samme liste (intet slettet).
     liveTeams: clone(liveTeams ?? teams),
+    penalties: clone(penalties),
     upserts: [],
   };
 
@@ -728,10 +729,23 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
               };
             }
             assert.equal(columns, "id, division, league_division_id");
-            return Promise.resolve({
-              data: clone(state.teams),
-              error: null,
-            });
+            // #2962 · updateStandings' initielle teams-load pagineres nu via
+            // fetchAllRows (.order("id").range()) — samme klasse som
+            // race_results/season_standings-penalty-selectet nedenfor.
+            return {
+              order(orderColumn, orderOptions) {
+                assert.equal(orderColumn, "id");
+                assert.deepEqual(orderOptions, { ascending: true });
+                return {
+                  range(from, to) {
+                    return Promise.resolve({
+                      data: clone(state.teams).slice(from, to + 1),
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -791,8 +805,21 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
                 return {
                   in(_col2, _vals) {
                     // S-03: updateStandings henter penalty_points for at rank-justere.
-                    // Test har ingen pre-existing penalty rows, så returnér tomt sæt.
-                    return Promise.resolve({ data: [], error: null });
+                    // #2962: pagineres nu via fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({
+                              data: clone(state.penalties).slice(from, to + 1),
+                              error: null,
+                            });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -2232,6 +2259,41 @@ test("updateStandings paginerer race_results forbi 1000-row-loftet", async () =>
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 2500); // alle sider talt
 });
 
+test("#2962: updateStandings paginerer det INDLEDENDE teams-select forbi 1000-row-loftet (legacy-fallback-sti)", async () => {
+  // 1500 hold — uden paginering ville kun de første 1000 optræde i upsert'et,
+  // og standings for de sidste 500 hold ville aldrig blive skrevet (samme
+  // klasse som race_results-testen ovenfor, blot på den INDLEDENDE teams-load).
+  const teams = [];
+  for (let i = 0; i < 1500; i += 1) teams.push({ id: `team-${i}`, division: 3 });
+
+  const supabase = createStandingsSupabase({ teams, races: [], results: [] });
+  const summary = await updateStandings("season-1", null, { supabase });
+
+  assert.equal(summary.rowsUpdated, 1500, "alle 1500 hold, ikke kun de første 1000, skal skrives til standings");
+  assert.equal(supabase.state.upserts[0].rows.length, 1500);
+});
+
+test("#2962: updateStandings paginerer season_standings-penalty-selectet forbi 1000-row-loftet", async () => {
+  // 1500 hold, alle med 0 point — ét hold (team-1499, index 1499) har en
+  // eksisterende penalty_points-række, der ligger PÅ SIDE 2 (>1000) af det
+  // pagineret penalty-select. Uden paginering ville penaltyen aldrig blive
+  // set, og team-1499 ville uretmæssigt beholde rank_in_division=1 (i stedet
+  // for sidstepladsen, som penaltyen retmæssigt sender det til).
+  const teams = [];
+  const penalties = [];
+  for (let i = 0; i < 1500; i += 1) {
+    teams.push({ id: `team-${i}`, division: 3, league_division_id: 1 });
+    penalties.push({ team_id: `team-${i}`, penalty_points: i === 1499 ? 500 : 0 });
+  }
+
+  const supabase = createStandingsSupabase({ teams, races: [], results: [], penalties });
+  await updateStandings("season-1", null, { supabase });
+
+  const rows = supabase.state.upserts[0].rows;
+  const penalized = rows.find(r => r.team_id === "team-1499");
+  assert.equal(penalized.rank_in_division, 1500, "penaltyen fra side 2 af det pagineret select skal sende holdet sidst");
+});
+
 test("updateStandings filtrerer hold slettet under recalc fra upsert (#2389, Sentry CYCLINGZONE-2F)", async () => {
   // team-b slettes (AI-trim) mellem den indledende teams-læsning og upsert'et —
   // uden filteret ville HELE upsert'et FK-fejle og abortere løbets finalization.
@@ -2915,6 +2977,11 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
 function createSeasonStartSupabase({
   season,
   team,
+  // #2962 · forward-guard: eksplicit teams-array (>1000 rækker) for at bevise
+  // pagineringen behandler ALLE hold, ikke kun de første 1000. De fleste tests
+  // bruger stadig singular `team` (bagudkompatibelt — teams-selectet returnerer
+  // så bare det ene hold).
+  teams: teamsOverride = null,
   prevSeasonId = null,
   prevStandings = [],
   activeContract = null,
@@ -2925,14 +2992,18 @@ function createSeasonStartSupabase({
 } = {}) {
   const state = {
     season: clone(season),
-    team: clone(team),
+    // #2962 · team er valgfri når `teams`-array-overriden bruges (forward-guard).
+    team: team ? clone(team) : null,
     activeContract: clone(activeContract),
     financeRows: [],
     usedIdempotencyKeys: new Set(),
   };
+  state.teams = teamsOverride
+    ? clone(teamsOverride).map(t => ({ ...t, board_profiles: t.board_profiles || [] }))
+    : (state.team ? [state.team] : []);
 
   // Embed board_profiles direkte på holdet (som processSeasonStart forventer)
-  state.team.board_profiles = state.team.board_profiles || [];
+  if (state.team) state.team.board_profiles = state.team.board_profiles || [];
 
   return {
     state,
@@ -2944,7 +3015,11 @@ function createSeasonStartSupabase({
       }
       if (simulateIdempotency && key) state.usedIdempotencyKeys.add(key);
       state.financeRows.push({ ...params.p_finance_payload, team_id: params.p_team_id });
-      return Promise.resolve({ data: (state.team.balance ?? 0) + params.p_delta, error: null });
+      // #2962 · multi-team forward-guard-scenarier har intet singular state.team —
+      // slå balancen op i state.teams pr. team_id i stedet (fallback til state.team
+      // for de mange eksisterende enkelt-hold-tests).
+      const rpcTeam = state.team ?? state.teams.find(t => t.id === params.p_team_id);
+      return Promise.resolve({ data: (rpcTeam?.balance ?? 0) + params.p_delta, error: null });
     },
     from(table) {
       if (table === "seasons") {
@@ -3014,9 +3089,21 @@ function createSeasonStartSupabase({
           select(columns) {
             assert.equal(columns, "*, board_profiles(*)");
             // Returnerer en thenable der svarer til .eq("is_ai", false).eq("is_frozen", false)
-            const result = { data: [clone(state.team)], error: null };
+            const rows = clone(state.teams);
+            const result = { data: rows, error: null };
             const chain = Object.assign(Promise.resolve(result), {
               eq(_col, _val) { return chain; },
+              // #2962 · processSeasonStart's teams-select pagineres nu via
+              // fetchAllRows (.order("id").range()).
+              order(orderColumn, orderOptions) {
+                assert.equal(orderColumn, "id");
+                assert.deepEqual(orderOptions, { ascending: true });
+                return {
+                  range(from, to) {
+                    return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+                  },
+                };
+              },
             });
             return chain;
           },
@@ -3177,6 +3264,41 @@ test("processSeasonStart clamper FINAL sponsor-payout til gross_sponsor × MAX_B
     expectedCeiling,
     `Sponsor payout skal clampes til round(gross_sponsor ${gross} × MAX_BOARD_MODIFIER ${MAX_BOARD_MODIFIER}) = ${expectedCeiling} — fik ${sponsorRow.amount}`
   );
+});
+
+test("#2962: processSeasonStart paginerer sin egen teams-select forbi 1000-row-loftet", async () => {
+  // 1200 hold — uden paginering ville kun de første 1000 hold få sponsor/parachute-
+  // behandling, og de sidste 200 hold ville stille springe sæson-start-cashflowet
+  // over (ingen fejl, bare fravær — samme klasse som #2907/#2932).
+  const seasonId = "season-2962";
+  const teamCount = 1200;
+  const teams = [];
+  for (let i = 0; i < teamCount; i += 1) {
+    teams.push({
+      id: `team-${i}`,
+      name: `Team ${i}`,
+      is_ai: false,
+      is_frozen: false,
+      division: 3,
+      balance: 500_000,
+      sponsor_income: 200_000,
+      board_profiles: [],
+    });
+  }
+
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    teams,
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  assert.equal(outcome.sponsor.length, teamCount, "alle 1200 hold, ikke kun de første 1000, skal have sponsor-resultat");
+  const uniqueTeams = new Set(supabase.state.financeRows.map(r => r.team_id));
+  assert.equal(uniqueTeams.size, teamCount, "alle 1200 hold skal have modtaget en finance-row (sponsor)");
 });
 
 // ─── #1980 Nedrykningsfaldskærm ───────────────────────────────────────────────

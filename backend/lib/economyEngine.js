@@ -244,13 +244,18 @@ export async function processSeasonStart(seasonId, deps = {}) {
     seasonNumber
   );
 
-  const { data: teams } = await supabaseClient
-    .from("teams")
-    .select("*, board_profiles(*)")
-    // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
+  // #2962: egen teams-query (156 rækker 25/7, samme vækstdriver som resten af
+  // #2951-klassen) — deferred i PR #2961-bodyen, nu pagineret via fetchAllRows.
+  const teams = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("teams")
+      .select("*, board_profiles(*)")
+      // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .order("id", { ascending: true })
+  ), "Could not load teams for season start");
 
   // S-02e · Lag 5 sponsor-pullout: load aktive pullouts FØR vi expirer dem.
   // Pullout oprettes ved sæson-end af forrige sæson (expires_at_season_id = X)
@@ -2068,12 +2073,19 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     }
   }
 
-  const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
-    supabaseClient.from("teams").select("id, division, league_division_id"),
+  // #2962: ufiltreret teams-select i legacy-fallback-stien (RPC-stien er allerede
+  // pagineret via #2391) — 369 rækker 25/7, samme #2951-klasse. Pagineret via
+  // fetchAllRows; kun aktiv når recompute_season_standings-RPC'en mangler.
+  const [teams, { data: races, error: racesError }] = await Promise.all([
+    fetchAllRowsOrThrow(() => (
+      supabaseClient
+        .from("teams")
+        .select("id, division, league_division_id")
+        .order("id", { ascending: true })
+    ), "Could not load teams for standings recalculation"),
     supabaseClient.from("races").select("id").eq("season_id", seasonId),
   ]);
 
-  if (teamsError) throw new Error(teamsError.message);
   if (racesError) throw new Error(racesError.message);
 
   const teamStats = {};
@@ -2143,12 +2155,16 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   const teamIds = Object.keys(teamStats);
   const penaltyByTeamId = new Map();
   if (teamIds.length > 0) {
-    const { data: penaltyRows, error: penaltyError } = await supabaseClient
-      .from("season_standings")
-      .select("team_id, penalty_points")
-      .eq("season_id", seasonId)
-      .in("team_id", teamIds);
-    if (penaltyError) throw new Error(penaltyError.message);
+    // #2962: penalty-select bundet af teamIds.length (≤369 25/7, samme driver som
+    // teams-selectet ovenfor) — deferred i PR #2961-bodyen, nu pagineret.
+    const penaltyRows = await fetchAllRowsOrThrow(() => (
+      supabaseClient
+        .from("season_standings")
+        .select("team_id, penalty_points")
+        .eq("season_id", seasonId)
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })
+    ), "Could not load penalty points for standings recalculation");
     for (const row of penaltyRows || []) {
       penaltyByTeamId.set(row.team_id, row.penalty_points || 0);
     }
