@@ -6,20 +6,27 @@ import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPr
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
+import { RULES_NUMBERS } from "../lib/rulesNumbers";
+import { divColor } from "../lib/divisionColors.js";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
   Button, Select, ZonePill,
 } from "../components/ui";
 
-// 2-farve-system: guld bærer division-hierarkiet via faldende opacitet (tema-bevidst),
-// så Div 2/3-tabeller ikke maler sig i fremmed SaaS-blå/lilla. Bruges i rgb()-form
-// så inline-style/SVG-attributter også resolver mod --accent-tokenet.
-const DIV_COLORS = {
-  1: "rgb(var(--accent))",
-  2: "rgb(var(--accent) / 0.6)",
-  3: "rgb(var(--accent) / 0.4)",
-};
+// #2908: division-farven kommer nu fra den delte anti-drift-vokabular
+// (divisionColors.js, #671) i stedet for en lokal DIV_COLORS der stoppede ved 3 —
+// samme kilde som StandingsPage + race-hub, så en 4. tier ikke kræver en ny
+// hardcodet farve her.
+//
+// #2908: ALL_DIVISIONS dækker MIN_DIVISION..MAX_DIVISION (nu 4, #1608-pyramiden)
+// i stedet for et hardcodet [1, 2, 3] — samme mønster som StandingsPage.jsx.
+// Uden dette forsvandt division 4 (57 af 153 ægte hold) helt fra præcis den side
+// season_ended-notifikationen sender alle managere til.
+const ALL_DIVISIONS = Array.from(
+  { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
+  (_, i) => RULES_NUMBERS.minDivision + i,
+);
 
 // Label resolves via t("status.<key>") ved render — se seasonEnd-namespacet.
 const RACE_STATUS_CLS = {
@@ -105,7 +112,11 @@ export default function SeasonEndPage() {
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
         supabase.from("season_standings")
-          .select("*, team:team_id(id, name, division, is_ai)")
+          // #2908: team.division fjernet — grupperingen bruger nu standings-
+          // rækkens EGEN division (season_standings.division = tieren holdet
+          // faktisk kørte i under den afsluttede sæson), ikke holdets nuværende
+          // division (team.division), som "Afslut sæson" allerede har flyttet.
+          .select("*, team:team_id(id, name, is_ai)")
           .eq("season_id", season.id)
           .order("division").order("total_points", { ascending: false }),
         supabase.from("races")
@@ -250,9 +261,13 @@ export default function SeasonEndPage() {
     }), 0);
   }, [races, racePoints]);
 
-  // Group standings by division
+  // #2908: gruppér på standings-rækkens EGEN division (den tier holdet faktisk
+  // sluttede sæsonen i), ikke s.team?.division (holdets NUVÆRENDE division efter
+  // en evt. op-/nedrykning). "Afslut sæson" flytter teams.division med det samme,
+  // så et oprykket hold ville ellers vise sig under sin NYE division i en
+  // slutstilling der hører til den gamle sæson.
   const byDiv = standings.reduce((acc, s) => {
-    const div = s.team?.division || 3;
+    const div = s.division ?? RULES_NUMBERS.maxDivision;
     if (!acc[div]) acc[div] = [];
     acc[div].push(s);
     return acc;
@@ -409,21 +424,29 @@ export default function SeasonEndPage() {
             </Section>
           )}
 
-          {/* Slutstilling */}
-          {[1, 2, 3].map(div => {
+          {/* Slutstilling. #2908: alle fire divisioner (ALL_DIVISIONS = MIN..MAX_DIVISION,
+              tidligere hardcodet [1, 2, 3] — division 4 vistes slet ikke). */}
+          {ALL_DIVISIONS.map(div => {
             const divStandings = byDiv[div] || [];
             if (!divStandings.length) return null;
-            const color = DIV_COLORS[div];
+            const color = divColor(div);
             const isCompleted = selectedSeason?.status === "completed";
             return (
               <Card key={div} className="overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${color}` }}>
                   <h2 className="font-bold text-sm" style={{ color }}>{t("division", { div })}</h2>
-                  {isCompleted && div < 3 && (
+                  {/* #2908: retningen var byttet om siden dag ét (div 1 = toppen, viste
+                      fejlagtigt "promoted"; bunden viste fejlagtigt "relegated" — se
+                      economyConstants.js "Div 1 = toppen, MAX_DIVISION = bunden").
+                      Ufarligt mens kun div 1-3 rendrede (div 2 dækkede begge betingelser
+                      korrekt), men uden rettelsen ville den nyligt synlige division 4
+                      vise en falsk nedrykningsadvarsel til bundtieren, som ikke kan rykke
+                      længere ned. */}
+                  {isCompleted && div > RULES_NUMBERS.minDivision && (
                     <span className="text-xs text-cz-3">{t("promotionNote")}</span>
                   )}
-                  {isCompleted && div > 1 && (
+                  {isCompleted && div < RULES_NUMBERS.maxDivision && (
                     <span className="text-xs text-cz-3">{t("relegationNote")}</span>
                   )}
                 </div>
@@ -440,8 +463,8 @@ export default function SeasonEndPage() {
                   <tbody>
                     {divStandings.map((s, i) => {
                       const isMe = s.team_id === myTeamId;
-                      const isPromotion = isCompleted && i < 2 && div < 3;
-                      const isRelegation = isCompleted && i >= divStandings.length - 2 && div > 1;
+                      const isPromotion = isCompleted && i < 2 && div > RULES_NUMBERS.minDivision;
+                      const isRelegation = isCompleted && i >= divStandings.length - 2 && div < RULES_NUMBERS.maxDivision;
                       const isLeader = i === 0;
                       const prog = pointsByTeam[s.team_id] || [];
                       // Zone bar + neutral "you" ring co-exist; gold = the leader chip (PF2 B).
@@ -453,7 +476,7 @@ export default function SeasonEndPage() {
                       return (
                         <Fragment key={s.id}>
                           {/* Separator before relegation zone */}
-                          {isCompleted && i === divStandings.length - 2 && div > 1 && divStandings.length > 4 && (
+                          {isCompleted && i === divStandings.length - 2 && div < RULES_NUMBERS.maxDivision && divStandings.length > 4 && (
                             <tr aria-hidden="true">
                               <td colSpan={5} className="p-0 leading-[0] border-0">
                                 <div className="border-t border-cz-danger/30" />
@@ -495,7 +518,7 @@ export default function SeasonEndPage() {
                             </Td>
                           </tr>
                           {/* Separator after promotion zone */}
-                          {isCompleted && i === 1 && div < 3 && divStandings.length > 2 && (
+                          {isCompleted && i === 1 && div > RULES_NUMBERS.minDivision && divStandings.length > 2 && (
                             <tr aria-hidden="true">
                               <td colSpan={5} className="p-0 leading-[0] border-0">
                                 <div className="border-t border-cz-success/30" />
