@@ -17,15 +17,18 @@ import {
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 // ── In-memory riders+teams-mock til single-team-allokering (#1560/#1563) ───────
 // Riders: select(firstname/lastname).order().range() (navne-fetch),
 // select(id).eq(team_id).order().range() (rytter-liste), insert(rows).select("id")
 // (respekterer team_id fra payload — #1563 insert-med-team_id), update().eq(),
-// delete().eq(). Teams: select(starter_squad_allocated_at).eq(id).single() (markør-
-// læsning) + update().eq() (markør-skrivning). Ukendte hold auto-vivifies som
-// markør-NULL (et nyt hold) så happy-path-tests ikke behøver seede teams.
-function createRidersMock({ seedRiders = [], teamMarkers = {} } = {}) {
+// delete().eq(). Teams: select(starter_squad_allocated_at,division).eq(id).single()
+// (markør+division-læsning, #2894/#2902) + update().eq() (markør-skrivning). Seasons:
+// select(number).eq(status).maybeSingle() (#2894/#2902 aktiv-sæson-opslag). Ukendte
+// hold auto-vivifies som markør-NULL (et nyt hold) så happy-path-tests ikke behøver
+// seede teams.
+function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1 } = {}) {
   const store = new Map();
   for (const r of seedRiders) store.set(r.id, { ...r });
   const teams = new Map(Object.entries(teamMarkers));
@@ -36,16 +39,29 @@ function createRidersMock({ seedRiders = [], teamMarkers = {} } = {}) {
   let nextId = 1;
 
   const fakeDerive = async (_sb, ids) => {
-    // Deterministisk base_value pr. id-rækkefølge → varieret pulje (unge dyrest),
-    // så allokatorens youth/dom-split + fairness har noget at arbejde med.
+    // Deterministisk base_value → varieret pulje (unge dyrest) OG current_production_
+    // value (#2894/#2902-forward-guard: BEVIDST en ANDEN formel end base_value, så en
+    // kontrakt-salary-test der ved et tilfælde matcher base_value i stedet for
+    // current_production_value ikke skjuler en regression til den forkerte kilde).
     ids.forEach((id, i) => {
       const row = store.get(id);
-      if (row) row.base_value = 100_000 - i * 1000;
+      if (row) {
+        row.base_value = 100_000 - i * 1000;
+        row.current_production_value = 80_000 - i * 800;
+      }
     });
   };
 
   const supabase = {
     from(table) {
+      if (table === "seasons") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: { number: activeSeasonNumber }, error: null }); },
+        };
+        return api;
+      }
       if (table === "teams") {
         let idFilter;
         const tb = {
@@ -58,7 +74,7 @@ function createRidersMock({ seedRiders = [], teamMarkers = {} } = {}) {
         };
         return tb;
       }
-      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams");
+      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams + seasons");
       let teamFilter = undefined;
       let inIds = null;
       const builder = {
@@ -294,8 +310,34 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
 
   const inserted = [];
   const updates = [];
+  // #2894/#2902: to hold i forskellige divisioner + en aktiv sæson ≠ 1, så
+  // forward-guard-assertions nedenfor ikke kan passere ved et tilfælde (fx en
+  // hardcodet division/sæson-1-antagelse i implementeringen).
+  const teamDivisions = { t1: 1, t2: 3 };
+  const ACTIVE_SEASON = 4;
   const supabase = {
-    from() {
+    from(table) {
+      if (table === "seasons") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: { number: ACTIVE_SEASON }, error: null }); },
+        };
+        return api;
+      }
+      if (table === "teams") {
+        let ids = [];
+        const api = {
+          select() { return api; },
+          in(_c, i) { ids = i; return api; },
+          order() { return api; },
+          range() { return Promise.resolve({ data: ids.map((id) => ({ id, division: teamDivisions[id] ?? null })), error: null }); },
+          // #1563-markørskrivning (setSquadMarker) — samler i samme `updates`-array
+          // som riders-updates, matcher det oprindelige table-agnostiske mock-design.
+          update(patch) { return { eq(_c, id) { updates.push({ id, ...patch }); return Promise.resolve({ error: null }); } }; },
+        };
+        return api;
+      }
       let cols = null;
       let inIds = null;
       const api = {
@@ -308,7 +350,7 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
           if (cols && cols.includes("firstname")) return Promise.resolve({ data: [], error: null }); // navne-fetch
           if (inIds) {
             return Promise.resolve({
-              data: inIds.map((id) => ({ id, birthdate: "2000-01-01", potentiale: 3, base_value: 5000 })),
+              data: inIds.map((id) => ({ id, birthdate: "2000-01-01", potentiale: 3, base_value: 5000, current_production_value: 40000 })),
               error: null,
             });
           }
@@ -346,6 +388,22 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
   assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "24 team_id-tildelinger");
   assert.ok(teamIdUpdates.every((u) => u.team_id === "t1" || u.team_id === "t2"));
   assert.equal(markerUpdates.length, 2, "#1563: begge hold markeret som start-trup-allokeret");
+
+  // #2894/#2902 root-cause forward-guard: HVER team_id-tildeling bærer OGSÅ
+  // salary + contract_length + contract_end_season — allokeringen må aldrig igen
+  // regne ud i team_id-only og efterlade kontrakt-felterne NULL.
+  for (const u of teamIdUpdates) {
+    assert.ok(u.contract_length >= 1 && u.contract_length <= 3, `contract_length ${u.contract_length} ude af 1-3`);
+    assert.equal(u.contract_end_season, ACTIVE_SEASON + u.contract_length - 1, "end = aktiv sæson + length - 1 (aldrig hardcodet sæson 1)");
+    const expectedSalary = computeFrozenSalary({ current_production_value: 40000, division: teamDivisions[u.team_id] });
+    assert.equal(u.salary, expectedSalary, `salary matcher computeFrozenSalary for hold ${u.team_id}s division`);
+    assert.ok(u.salary > 0, "salary aldrig 0/NULL");
+  }
+  // De to divisioner (1 og 3) har forskellig sats → salary skal reelt variere med
+  // holdets division, ikke bare være en flad konstant.
+  const t1Salary = teamIdUpdates.find((u) => u.team_id === "t1").salary;
+  const t2Salary = teamIdUpdates.find((u) => u.team_id === "t2").salary;
+  assert.notEqual(t1Salary, t2Salary, "division 1 og 3 har forskellige satser → forskellig salary");
 });
 
 // ── #1560 · allocateStarterSquadForTeam (single-team-bootstrap) ────────────────
@@ -376,6 +434,60 @@ test("#1560 single-team happy path: præcis TOTAL_SIZE ryttere med korrekt team_
     for (const k of STAT_KEYS) {
       assert.ok(r[k] >= STARTER_POOL_STAT_WINDOW.lo && r[k] <= STARTER_POOL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor vindue`);
     }
+  }
+});
+
+// #2894/#2902 root-cause forward-guard: single-team-bootstrap-stien (signup) må
+// ALDRIG igen efterlade salary/contract_length/contract_end_season NULL — det var
+// netop denne sti der producerede de 1.326 rører-ryttere/138 hold (25/7). Aktiv
+// sæson + division kommer fra mock'ens seasons/teams-tabeller (#2894/#2902).
+test("#2894/#2902 single-team: allokering sætter salary + contract_length + contract_end_season", async () => {
+  const ACTIVE_SEASON = 3;
+  const { supabase, store, fakeDerive } = createRidersMock({
+    teamMarkers: { "contract-team": { starter_squad_allocated_at: null, division: 2 } },
+    activeSeasonNumber: ACTIVE_SEASON,
+  });
+  const res = await allocateStarterSquadForTeam(supabase, "contract-team", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE);
+  const riders = [...store.values()].filter((r) => r.team_id === "contract-team");
+  assert.equal(riders.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of riders) {
+    assert.ok(r.salary != null && r.salary > 0, `rytter ${r.id} mangler salary`);
+    assert.ok(r.contract_length >= 1 && r.contract_length <= 3, `rytter ${r.id} contract_length ${r.contract_length} ude af 1-3`);
+    assert.equal(r.contract_end_season, ACTIVE_SEASON + r.contract_length - 1,
+      `rytter ${r.id} contract_end_season skal følge den AKTIVE sæson (${ACTIVE_SEASON}), ikke en hardcodet sæson 1`);
+    const expectedSalary = computeFrozenSalary({ current_production_value: r.current_production_value, division: 2 });
+    assert.equal(r.salary, expectedSalary, `rytter ${r.id} salary matcher computeFrozenSalary (division 2)`);
+  }
+});
+
+// #2894/#2902: "re-derived"-heal-grenen (insert lykkedes, derive/markør fejlede
+// sidst) skal OGSÅ heale kontrakt-felterne — ikke kun re-køre derive-kæden. Uden
+// dette ville en rytter der allerede havde team_id, men intet salary (fra FØR
+// fixet), forblive kontraktløs efter en heal.
+test("#2894/#2902 single-team heal (re-derived): eksisterende TOTAL_SIZE-trup uden kontrakt-felter får dem sat", async () => {
+  const seedRiders = Array.from({ length: STARTER_SQUAD.TOTAL_SIZE }, (_, i) => ({
+    id: `pre-${i}`, team_id: "heal-contract-team", firstname: `F${i}`, lastname: `L${i}`,
+    // Ingen salary/contract_length/contract_end_season — spejler prod-tilstanden
+    // FØR #2894/#2902-fixet.
+  }));
+  const { supabase, store, fakeDerive } = createRidersMock({
+    seedRiders,
+    teamMarkers: { "heal-contract-team": { starter_squad_allocated_at: null, division: 1 } },
+    activeSeasonNumber: 2,
+  });
+  const res = await allocateStarterSquadForTeam(supabase, "heal-contract-team", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+
+  assert.equal(res.recovered, "re-derived");
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of store.values()) {
+    assert.ok(r.salary != null && r.salary > 0, `rytter ${r.id} skal have fået salary af heal-grenen`);
+    assert.ok(r.contract_end_season != null, `rytter ${r.id} skal have fået contract_end_season af heal-grenen`);
   }
 });
 

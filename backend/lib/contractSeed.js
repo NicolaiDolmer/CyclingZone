@@ -43,16 +43,24 @@ export function computeContractEndSeason(startSeasonNumber, length) {
 }
 
 // #1309 kontrakt-on-acquire: returnér et patch der opretter en standard-kontrakt
-// HVIS rytteren er kontraktløs (salary == null); ellers {} (eksisterende kontrakt
-// arves UÆNDRET — regenerér ALDRIG). Bruges af alle erhvervelses-paths (auktion,
+// HVIS rytteren er kontraktløs; ellers {} (eksisterende KOMPLET kontrakt arves
+// UÆNDRET — regenerér ALDRIG). Bruges af alle erhvervelses-paths (auktion,
 // transfer, swap, lån-buyout) så "ejede ryttere har altid salary != null" holder.
 // currentSeasonNumber = aktiv sæson-number (default-håndteres af kalderen).
 // NB: undefined salary behandles som kontraktløs (== null loose) — det er det
 // ønskede for free agents der aldrig har haft en kontrakt.
 // #2594: `division` = det ERHVERVENDE holds division (styrer løn-satsen). Udeladt
 // division → global sats (bevidst konservativt fallback, ikke en fejl).
+//
+// #2902 forward-guard (25/7): guarden kræver NU OGSÅ contract_end_season != null —
+// før krævede den kun salary != null, hvilket "blindede" patchen for ryttere hvis
+// salary blev backfillet (#2746) mens contract_length/contract_end_season forblev
+// NULL (starterSquadAllocator satte dengang aldrig disse felter, #2894/#2902 root
+// cause — 1.326 ryttere/138 hold, verificeret 25/7). Et fremtidigt erhvervelses-kald
+// på sådan en rytter heler den nu i stedet for at arve det ufuldstændige NULL-par
+// videre for evigt.
 export function contractOnAcquirePatch(rider, currentSeasonNumber, { division } = {}) {
-  if (rider && rider.salary != null) return {};
+  if (rider && rider.salary != null && rider.contract_end_season != null) return {};
   const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
   return {
     salary: computeFrozenSalary({ ...rider, division }),

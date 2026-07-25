@@ -30,6 +30,7 @@ import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
+import { computeFrozenSalary, pickContractLength, computeContractEndSeason } from "./contractSeed.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -377,29 +378,78 @@ async function insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, d
   // 2) Data-hale-garanti: physiology→abilities→type→base_value for de nye ryttere.
   await derive(supabase, insertedIds, { dryRun: false });
 
-  // 3) Læs base_value (+ alder/potentiale) tilbage → allokerings-pulje.
+  // 3) Læs base_value (+ alder/potentiale/current_production_value) tilbage →
+  //    allokerings-pulje. current_production_value skrives af derive-kæden
+  //    (deriveForRiderIds) og er #2894/#2902's grundlag for salary-beregningen.
   const rows = await fetchAllRows(() =>
-    supabase.from("riders").select("id, birthdate, potentiale, base_value").in("id", insertedIds).order("id"));
+    supabase.from("riders").select("id, birthdate, potentiale, base_value, current_production_value").in("id", insertedIds).order("id"));
   return rows.map((r) => ({
     id: r.id,
     age: computeAge(r.birthdate, referenceYear),
     potentiale: r.potentiale,
     base_value: r.base_value,
+    current_production_value: r.current_production_value,
   }));
 }
 
-// DELT KERNE: skriv team_id på de allokerede ryttere (concurrency-bounded).
+// DELT KERNE: skriv patch (team_id + #2894/#2902 kontrakt-felter) på de allokerede
+// ryttere (concurrency-bounded). Generisk over patch-formen (id + resten af
+// nøglerne) så samme skrive-runde dækker team_id-tildeling OG kontrakt-seeding —
+// ét round-trip pr. rytter i stedet for to.
 async function writeTeamAssignments(supabase, pairs) {
   let assigned = 0;
   for (let i = 0; i < pairs.length; i += WRITE_CONCURRENCY) {
     const batch = pairs.slice(i, i + WRITE_CONCURRENCY);
-    await Promise.all(batch.map(({ id, team_id }) =>
-      supabase.from("riders").update({ team_id }).eq("id", id).then(({ error }) => {
+    await Promise.all(batch.map(({ id, ...patch }) =>
+      supabase.from("riders").update(patch).eq("id", id).then(({ error }) => {
         if (error) throw new Error(`assign ${id}: ${error.message}`);
       })));
     assigned += batch.length;
   }
   return assigned;
+}
+
+// #2894/#2902: aktiv sæson-number — anker for contract_end_season. Spejler
+// opslaget i contractSeed.runContractSeed / backfillCores.activeSeasonNumber (ÉN
+// linje duplikeret pr. modul er den eksisterende konvention her frem for en delt
+// cross-modul-afhængighed for et enkelt select). Læses LIVE, aldrig hardcodet.
+async function fetchActiveSeasonNumber(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`active season lookup: ${error.message}`);
+  return data?.number ?? 1;
+}
+
+// #2894/#2902 root-cause-fix: start-trup-allokeringen skrev historisk KUN team_id —
+// salary/contract_length/contract_end_season forblev NULL for evigt (1.326 ryttere/
+// 138 hold pr. 25/7, ~1 nyt hold/dag). Denne helper sætter kontrakt-felterne EFTER
+// derive (current_production_value findes først når derive-kæden har kørt) via
+// SAMME formel/PRNG-konventioner som contractSeed.js' "andre ejede hold: blandet
+// 1-3"-gren (runContractSeed non-founder-sti): pickContractLength (seeded rng) +
+// computeFrozenSalary (current_production_value × per-division-sats) +
+// computeContractEndSeason (startSeason + length - 1). Genbruger de eksporterede
+// pure helpers direkte — duplikerer ALDRIG formlen.
+async function applyContractFieldsForRiders(supabase, riderIds, { division, startSeason, rng }) {
+  if (!riderIds || riderIds.length === 0) return 0;
+  const rows = await fetchAllRows(() =>
+    supabase.from("riders").select("id, current_production_value").in("id", riderIds).order("id"));
+  let applied = 0;
+  for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
+    const batch = rows.slice(i, i + WRITE_CONCURRENCY);
+    await Promise.all(batch.map((r) => {
+      const length = pickContractLength(rng);
+      const patch = {
+        salary: computeFrozenSalary({ current_production_value: r.current_production_value, division }),
+        contract_length: length,
+        contract_end_season: computeContractEndSeason(startSeason, length),
+      };
+      return supabase.from("riders").update(patch).eq("id", r.id).then(({ error }) => {
+        if (error) throw new Error(`contract-fields ${r.id}: ${error.message}`);
+      });
+    }));
+    applied += batch.length;
+  }
+  return applied;
 }
 
 // Rytter-id'er på et hold (rækkefølge-stabil). Single-team-bootstrap bruger den
@@ -426,11 +476,13 @@ async function deleteRiders(supabase, ids) {
 // #1563-markør: "fik dette hold nogensinde sin start-trup?" (teams.starter_squad_allocated_at).
 // SANDHEDEN for idempotens — IKKE rytter-antallet — så et hold der selv har solgt
 // ned under 8 aldrig får gratis ryttere. Service-role-managed (api.js + cron).
+// #2894/#2902: samme række giver også holdets division (kontrakt-løn-satsen) —
+// ÉT ekstra select-felt, intet ekstra round-trip.
 async function readSquadMarker(supabase, teamId) {
   const { data, error } = await supabase
-    .from("teams").select("starter_squad_allocated_at").eq("id", teamId).single();
+    .from("teams").select("starter_squad_allocated_at, division").eq("id", teamId).single();
   if (error) throw new Error(`read starter-squad marker ${teamId}: ${error.message}`);
-  return data?.starter_squad_allocated_at ?? null;
+  return { allocatedAt: data?.starter_squad_allocated_at ?? null, division: data?.division ?? null };
 }
 
 async function setSquadMarker(supabase, teamId, nowIso) {
@@ -444,7 +496,7 @@ async function setSquadMarker(supabase, teamId, nowIso) {
 // Det lukker orphan-vinduet: fejler noget efter insert, er rytterne EJET (ikke
 // ejerløse i markedet), og en re-derive heler dem. Genbruger den svage pulje-mekanik
 // (#1487) + derive-kæden (data-hale).
-async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive }) {
+async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, division, startSeason, contractRng }) {
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
   // Per-hold seed: basis-offset (+1487, samme som relaunch) XOR hash(teamId).
   // Eget seed-offset pr. tier (kerne vs hale) → distinkte pools.
@@ -470,6 +522,9 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
 
   // Data-hale-garanti: physiology→abilities→type→base_value for de nye ryttere.
   await derive(supabase, insertedIds, { dryRun: false });
+  // #2894/#2902: kontrakt-felter (salary/contract_length/contract_end_season) —
+  // KRÆVER current_production_value, som først findes efter derive ovenfor.
+  await applyContractFieldsForRiders(supabase, insertedIds, { division, startSeason, rng: contractRng });
   return insertedIds;
 }
 
@@ -496,7 +551,7 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
 
-  const marker = await readSquadMarker(supabase, teamId);
+  const { allocatedAt: marker, division } = await readSquadMarker(supabase, teamId);
   if (marker) {
     return { teamId, skipped: "already-allocated", allocatedAt: marker, assigned: 0 };
   }
@@ -505,20 +560,27 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   const n = existingIds.length;
   const SIZE = STARTER_SQUAD.TOTAL_SIZE;
 
+  // #2894/#2902: aktiv sæson (contract_end_season-anker) + en per-hold deterministisk
+  // rng til pickContractLength — eget seed-offset (adskilt fra pulje-generatorens),
+  // så to uafhængige, reproducerbare tilfældighedskilder ikke deler tilstand.
+  const startSeason = await fetchActiveSeasonNumber(supabase);
+  const contractRng = makeRng(deriveTeamSeed((seed + 2894) >>> 0, teamId));
+
   let assigned;
   let recovered = null;
   if (n === 0) {
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, division, startSeason, contractRng });
     assigned = ids.length;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
     await derive(supabase, existingIds, { dryRun: false });
+    await applyContractFieldsForRiders(supabase, existingIds, { division, startSeason, rng: contractRng });
     assigned = n;
     recovered = "re-derived";
   } else {
     // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
     await deleteRiders(supabase, existingIds);
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, division, startSeason, contractRng });
     assigned = ids.length;
     recovered = "cleaned-partial";
   }
@@ -578,10 +640,29 @@ export async function runStarterSquadAllocation(supabase, {
   const { tailAssignments } = distributeTailRiders(tailPool, teamIds, STARTER_SQUAD.TAIL_SIZE, { seed });
   for (const t of teamIds) assignments[t].push(...tailAssignments[t]);
 
-  const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
-    ids.map((id) => ({ id, team_id: teamId })));
+  // #2894/#2902: kontrakt-felter kræver aktiv sæson + hver managers division —
+  // SAMME formel/PRNG-konventioner som contractSeed.js' non-founder-gren
+  // (pickContractLength seedet rng + computeFrozenSalary + computeContractEndSeason).
+  const startSeason = await fetchActiveSeasonNumber(supabase);
+  const teamRows = await fetchAllRows(() =>
+    supabase.from("teams").select("id, division").in("id", teamIds).order("id"));
+  const divisionByTeam = new Map(teamRows.map((t) => [t.id, t.division]));
+  const cpvById = new Map([...corePool, ...tailPool].map((r) => [r.id, r.current_production_value]));
+  const contractRng = makeRng((seed + 2894) >>> 0);
 
-  // Skriv team_id (delt kerne).
+  const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
+    ids.map((id) => {
+      const length = pickContractLength(contractRng);
+      return {
+        id,
+        team_id: teamId,
+        salary: computeFrozenSalary({ current_production_value: cpvById.get(id), division: divisionByTeam.get(teamId) }),
+        contract_length: length,
+        contract_end_season: computeContractEndSeason(startSeason, length),
+      };
+    }));
+
+  // Skriv team_id + kontrakt-felter (delt kerne, ét round-trip pr. rytter).
   const assigned = await writeTeamAssignments(supabase, pairs);
 
   // #1563: markér holdene som start-trup-allokeret, så self-heal-sweep'en og
