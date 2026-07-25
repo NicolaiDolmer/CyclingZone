@@ -63,6 +63,8 @@ import {
   loadSeasonEndedPersonalization,
   buildPersonalSeasonEndedMessage,
 } from "./seasonEndedPersonalization.js";
+import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { carryOverManagerSetup as defaultCarryOverManagerSetup } from "./seasonCarryOver.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -371,12 +373,14 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   // #2926: samme menneske-hold-diskriminator som processSeasonStart og
   // expireAndRenewContracts (is_bank=false manglede → previewet kunne tælle
   // bank-pseudo-holdet med selvom udbetalingen aldrig rammer det).
-  const { data: humanTeams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, sponsor_income, division")
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
+  // #2852 · udvidet med is_test_account og flyttet ind i den fælles helper: den
+  // forkortede udgave lod også de 3 test-konti ("Test A"/"Test B"/"Test Seller")
+  // tælle med i teams_affected og sponsor_base_total — 159 hold i prod-preview
+  // 25/7 mod korrekte 156. Diskriminatoren bor nu ét sted (humanTeamFilter.js),
+  // så den ikke kan drive fra notifikations-/board-stierne igen.
+  const { data: humanTeams, error: teamsError } = await applyHumanTeamFilter(
+    supabase.from("teams").select("id, name, sponsor_income, division")
+  );
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
     supabase,
@@ -764,7 +768,31 @@ export async function transitionToNextSeason({
   const plan = await buildTransitionPlan({ supabase, fromSeasonId });
 
   if (dryRun) {
-    return { ok: true, dryRun: true, plan };
+    // #2916 · vis carry-over-tallene i preview'et, så man kan se HVOR MANGE
+    // træningsplaner der bæres over FØR man trykker på knappen. Rent læsende
+    // (dryRun=true) og best-effort — et preview må aldrig fejle på den her konto.
+    let carryOverPreview = null;
+    try {
+      const carryOverFn = deps.carryOverManagerSetup ?? defaultCarryOverManagerSetup;
+      carryOverPreview = await carryOverFn({
+        supabase,
+        fromSeasonId,
+        toSeasonId: plan.to_season.id,
+        dryRun: true,
+      });
+    } catch (err) {
+      // Previewet må aldrig fejle på carry-over-probens konto — men fejlen må
+      // heller ikke være usynlig: præcis denne kode kører for alvor få minutter
+      // senere, og ejeren bruger tallet som go/no-go-gate før cutoveren. Derfor
+      // både i svaret (så det ses i dialogen), i loggen og i Sentry.
+      carryOverPreview = { error: err.message };
+      console.error("season-transition preview: carry-over-probe fejlede:", err?.message || err);
+      captureException(err, {
+        tags: { phase: "manager_setup_carry_over", stage: "preview" },
+        extra: { fromSeasonId, toSeasonId: plan.to_season.id },
+      });
+    }
+    return { ok: true, dryRun: true, plan, carryOverPreview };
   }
 
   if (plan.already_transitioned) {
@@ -893,17 +921,16 @@ export async function transitionToNextSeason({
   // (expires_after_season >= ny sæson) — ellers udløbes den gamle og default-
   // varianten ("safe", 1 sæson — #2914) for den nye sæson auto-tildeles. Garanterer at hvert
   // hold har en aktiv kontrakt hvis guaranteed_base processSeasonStart betaler.
-  // Samme menneske-hold-diskriminator som processSeasonStart (is_ai=false,
-  // is_bank=false, is_frozen=false; #1077). expireAndRenewContracts er
-  // injicerbar via deps for test (mirror'er processSeasonStart-mønstret).
+  // Samme menneske-hold-diskriminator som processSeasonStart (#1077), nu via den
+  // fælles helper og INKLUSIV is_test_account (#2852) — ellers ville test-kontiene
+  // få tildelt rigtige sponsorkontrakter som processSeasonStart bagefter nægter at
+  // betale, altså en ny form for drift mellem de to faser.
+  // expireAndRenewContracts er injicerbar via deps for test.
   const expireAndRenewContractsFn =
     deps.expireAndRenewContracts ?? defaultExpireAndRenewContracts;
-  const { data: renewTeams, error: renewTeamsError } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
+  const { data: renewTeams, error: renewTeamsError } = await applyHumanTeamFilter(
+    supabase.from("teams").select("id")
+  );
   if (renewTeamsError) {
     throw new Error(`Could not load teams for contract renewal: ${renewTeamsError.message}`);
   }
@@ -1066,6 +1093,43 @@ export async function transitionToNextSeason({
         log.push({ phase: "season_entry_generator", error: err.message });
       }
     }
+  }
+
+  // Phase 6f (#2916) · Carry-over af managerens egen opsætning.
+  //
+  // Placeringen er bevidst SENT: først her er den nye sæsons trup og kalender
+  // endelige (contract_expiry_release + rider_progression + retirement_release
+  // har frigivet ryttere, og auto-kalenderen er materialiseret). Kopierer vi
+  // tidligere, bærer vi planer over for ryttere der er på vej ud, og
+  // peak/udtagelses-valideringen ville køre mod en kalender der ikke findes endnu.
+  //
+  // Additivt + isoleret: fasen skriver KUN nye training_plans-rækker til den nye
+  // sæson og TÆLLER resten. En fejl her må aldrig vælte sæsonskiftet — samme
+  // disciplin som contract_expiry_release/retirement_release ovenfor.
+  const carryOverFn = deps.carryOverManagerSetup ?? defaultCarryOverManagerSetup;
+  try {
+    const carry = await carryOverFn({
+      supabase,
+      fromSeasonId,
+      toSeasonId: plan.to_season.id,
+      dryRun: false,
+    });
+    log.push({ phase: "manager_setup_carry_over", ...carry });
+  } catch (err) {
+    log.push({
+      phase: "manager_setup_carry_over",
+      error: err.message,
+      ...(err.partialStats || {}),
+    });
+    captureException(err, {
+      tags: { phase: "manager_setup_carry_over" },
+      extra: {
+        fromSeasonId,
+        toSeasonId: plan.to_season.id,
+        partialStats: err.partialStats ?? null,
+        note: "managerens træningsplaner blev IKKE båret over — ryttere falder tilbage på auto-programmer indtil fasen køres igen (den er idempotent)",
+      },
+    });
   }
 
   log.push({

@@ -73,6 +73,7 @@ import { getActiveContract } from "./sponsorContractsService.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
+import { applyHumanTeamFilter } from "./humanTeamFilter.js";
 
 let defaultSupabaseClientPromise;
 
@@ -247,14 +248,17 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // #2962: egen teams-query (156 rækker 25/7, samme vækstdriver som resten af
   // #2951-klassen) — deferred i PR #2961-bodyen, nu pagineret via fetchAllRows.
   const teams = await fetchAllRowsOrThrow(() => (
-    supabaseClient
-      .from("teams")
-      .select("*, board_profiles(*)")
+    applyHumanTeamFilter(
+      supabaseClient
+        .from("teams")
+        .select("*, board_profiles(*)")
       // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
-      .eq("is_ai", false)
-      .eq("is_bank", false)
-      .eq("is_frozen", false)
-      .order("id", { ascending: true })
+      // #2852 · is_test_account tilføjet: uden den fik "Test A"/"Test B"/
+      // "Test Seller" sponsor-payout + payroll ved HVERT sæsonskifte og
+      // forurenede sponsor-base-total/payroll-summary/teams_affected. Filteret
+      // kommer nu fra humanTeamFilter.js så det ikke kan drive fra
+      // notifikations-/board-stierne igen (samme fix-klasse som #2832 fund 4).
+    ).order("id", { ascending: true })
   ), "Could not load teams for season start");
 
   // S-02e · Lag 5 sponsor-pullout: load aktive pullouts FØR vi expirer dem.
