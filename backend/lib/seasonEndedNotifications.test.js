@@ -184,8 +184,6 @@ test("emit: kaster hvis manager-fetch fejler (fejl må ikke svales til tom liste
         endedSeason: ENDED_SEASON,
         loadPersonalization: STUB_PERSONALIZATION,
         isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
-    loadPersonalization: STUB_PERSONALIZATION,
-    isDivisionMovementSkipped: STUB_MOVEMENT_SKIPPED,
         notify: async () => ({ delivered: true }),
       }),
     /Could not load managers/,

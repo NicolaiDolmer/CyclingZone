@@ -790,7 +790,16 @@ export async function transitionToNextSeason({
       })),
     });
   } catch (err) {
+    // best-effort: fasen er additiv-isoleret (#2948) og må aldrig vælte skiftet,
+    // men den udbetaler RIGTIGE penge (sæsonmåls-bonus). En tavs fejl = managere
+    // der lydløst mister deres bonus, og det opdages først hvis nogen tæller
+    // finance_transactions manuelt. Samme Sentry-disciplin som søsterfaserne
+    // global_rank_decay og contract_expiry_release ovenfor.
     log.push({ phase: "sponsor_season_objectives", error: err.message });
+    captureException(err, {
+      tags: { phase: "sponsor_season_objectives" },
+      extra: { finishedSeasonNumber: plan.from_season.number },
+    });
   }
 
   // Phase 5b (#1663, Økonomi Fase 2): udløb + forny sponsor-kontrakter FØR
