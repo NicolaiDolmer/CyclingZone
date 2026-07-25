@@ -327,7 +327,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
 
           {/* Sticky save bar */}
           {dirtyCount > 0 && (
-            <div className="mt-4 sticky bottom-2 z-10 flex items-center justify-end gap-2 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
+            <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-2 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
               <button
                 type="button"
                 onClick={discardAll}

@@ -103,6 +103,18 @@ export default {
         // giving persistent chrome that tier buries anything portaled near it
         // (regression: LanguageSwitcher's document.body-portaled dropdown).
         dropdown: "1000", sticky: "1100", nav: "1150", overlay: "1200", modal: "1300", toast: "1400",
+
+        // #2952: table-local intra-sticky layering — deliberately OUTSIDE the
+        // page-chrome scale above (hence the separate quoted/hyphenated key
+        // style; zIndexScale.test.js locks the 6 canonical layers by name and
+        // does not scan these). Only needed by tables that combine a sticky
+        // TOP header row with sticky LEFT/RIGHT columns (AuctionsPage,
+        // TransfersPage market view): the header row + its corner cells must
+        // out-rank the body's sticky columns during vertical scroll, or the
+        // columns cover the header. Kept far below "dropdown" (1000) so this
+        // local scale can never accidentally outrank real page chrome.
+        "table-col": "1",
+        "table-head": "2",
       },
     },
 

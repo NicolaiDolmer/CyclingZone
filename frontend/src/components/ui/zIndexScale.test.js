@@ -38,6 +38,7 @@ function walk(dir, out = []) {
 const CLASSNAME_VALUE = /className\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\})/g;
 const RAW_Z = /\bz-\d+\b|\bz-\[/;
 const FIXED = /\bfixed\b/;
+const STICKY = /\bsticky\b/;
 
 test("#2880: ingen raw z-index på fixed-elementer uden om token-skalaen", () => {
   const offenders = [];
@@ -96,6 +97,59 @@ test("#2880: ingen raw z-index på position:fixed sat via inline style (Language
     offenders,
     [],
     `position:"fixed" sat via inline style skal STADIG bruge token-skalaen (z-dropdown/z-sticky/z-nav/z-overlay/z-modal/z-toast) i className — ikke kun Tailwind-klassen \`fixed\` (#2880):\n${offenders.join("\n")}`,
+  );
+});
+
+// #2952 forward-guard, follow-up to #2880. That migration deliberately left
+// raw z-{10,20,30} on `sticky` (not `fixed`) table headers/columns out of
+// scope — they sit far below the nav/modal scale and don't cause the #2880
+// bug, but were the last drift class without tokens. This guard mirrors the
+// `fixed`-className guard above, swapped to `sticky`: most sticky elements
+// (page sub-headers, floating action bars, drawer headers) migrate straight
+// to `z-sticky`. A few tables combine a sticky TOP header row with sticky
+// LEFT/RIGHT columns (AuctionsPage, TransfersPage market view) — those use
+// the table-local `z-table-col`/`z-table-head` sub-scale (tailwind.config.js)
+// instead, since flattening both onto the same `z-sticky` value would make
+// the body's sticky columns cover the header row on vertical scroll (DOM
+// order, not the token, would then decide stacking). Either way the guard
+// only cares that no BARE z-{n}/z-[n] remains — it doesn't prescribe which
+// named token.
+test("#2952: ingen raw z-index på sticky-elementer uden om token-skalaen", () => {
+  const offenders = [];
+  for (const file of walk(srcRoot)) {
+    const src = readFileSync(file, "utf8");
+    CLASSNAME_VALUE.lastIndex = 0;
+    let m;
+    while ((m = CLASSNAME_VALUE.exec(src))) {
+      const value = m[1] ?? m[2] ?? "";
+      if (STICKY.test(value) && RAW_Z.test(value)) {
+        offenders.push(`${file.slice(srcRoot.length).replace(/\\/g, "/")}: ${value.trim().replace(/\s+/g, " ").slice(0, 90)}`);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `Brug z-sticky (eller den table-lokale z-table-col/z-table-head-skala for tabeller med BÅDE sticky top-header og sticky venstre/højre-kolonner, #2952) i stedet for raw z-{n} på sticky-elementer:\n${offenders.join("\n")}`,
+  );
+});
+
+test("#2952: tailwind.config.js table-lokal z-skala (table-col/table-head) er under page-chrome-skalaen og korrekt ordnet", () => {
+  const tw = readFileSync(join(srcRoot, "..", "tailwind.config.js"), "utf8");
+  const m = tw.match(/zIndex:\s*\{([^}]*)\}/);
+  assert.ok(m, "tailwind.config.js mangler zIndex-blokken");
+  const local = {};
+  for (const [, name, value] of m[1].matchAll(/"([\w-]+)":\s*"(\d+)"/g)) local[name] = Number(value);
+
+  assert.equal(local["table-col"], 1, 'zIndex["table-col"] skal være "1"');
+  assert.equal(local["table-head"], 2, 'zIndex["table-head"] skal være "2"');
+  assert.ok(
+    local["table-head"] > local["table-col"],
+    "table-head skal være > table-col — ellers vinder sticky-kolonnerne over header-rækken ved lodret scroll",
+  );
+  assert.ok(
+    local["table-col"] < 1000 && local["table-head"] < 1000,
+    "table-lokal skala skal forblive under dropdown (1000) — ellers konkurrerer den med side-chrome",
   );
 });
 
