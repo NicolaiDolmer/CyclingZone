@@ -21,7 +21,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
   const amountText = formatNumber(amount ?? 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
+    <div className="fixed inset-0 z-modal flex items-center justify-center" onClick={onCancel}>
       <div className="absolute inset-0 bg-black/70" />
       <div
         className="relative z-10 bg-cz-card border border-cz-border rounded-cz p-6 text-center max-w-sm w-full mx-4 shadow-2xl"

@@ -2903,7 +2903,7 @@ export default function BoardPage() {
 
       {/* S-02h · Wizard modal overlay — vises oven på dashboard (ikke full-page takeover) */}
       {wizardPlanType && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-modal flex items-start justify-center bg-black/70 overflow-y-auto py-6 px-4">
           {/* #1241 · Solid tema-flade (bg-cz-body) bag wizard-indholdet: overskrifter,
               mål-tæller og knapper flød før direkte på den mørke overlay → tema-tokens
               (text-cz-1/2/3) blev ulæselige i light-mode ("gennemsigtig tekst"). */}

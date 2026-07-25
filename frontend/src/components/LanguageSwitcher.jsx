@@ -116,7 +116,14 @@ export default function LanguageSwitcher({ className = "" }) {
               bottom: coords.bottom ?? undefined,
               maxHeight: `calc(100vh - ${GAP * 2}px)`,
             }}
-            className="z-50 min-w-[140px] overflow-y-auto rounded-md border border-cz-border bg-cz-card shadow-lg py-1"
+            // #2880: portaled to document.body, so it competes at the TOP-LEVEL
+            // stacking context against everything else — including nav chrome
+            // its own trigger button lives inside (desktop sidebar / mobile
+            // drawer footer). A page-local z-dropdown isn't enough here: this
+            // must always win over nav (z-nav) and any open drawer (z-overlay),
+            // so it uses the same tier as a modal (the closest "always on top,
+            // no matter what surrounds the trigger" semantic).
+            className="z-modal min-w-[140px] overflow-y-auto rounded-md border border-cz-border bg-cz-card shadow-lg py-1"
           >
             {OPTIONS.map((opt) => {
               const selected = opt.code === language;

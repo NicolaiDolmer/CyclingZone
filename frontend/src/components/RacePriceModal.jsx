@@ -9,7 +9,7 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
   const { t } = useTranslation("auctions");
   if (!show) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
+    <div className="fixed inset-0 z-modal flex items-center justify-center" onClick={onCancel}>
       <div className="absolute inset-0 bg-black/70" />
       <div
         className="relative z-10 bg-cz-card border border-cz-border rounded-cz p-6

@@ -94,7 +94,15 @@ export default {
         overlay: "var(--shadow-overlay)",
       },
       zIndex: {
-        dropdown: "1000", sticky: "1100", overlay: "1200", modal: "1300", toast: "1400",
+        // #2880: single canonical scale. `nav` = persistent, always-mounted
+        // navigation chrome (MobileQuickNav bottom bar + the desktop static
+        // sidebar). It sits between sticky content and the overlay tier so
+        // page-sticky headers/cells can never cover it, and it can never cover
+        // a dismissible layer (drawer/modal/portaled menu). `overlay` is for
+        // TRANSIENT/dismissible layers only (mobile drawer, backdrops, tours) —
+        // giving persistent chrome that tier buries anything portaled near it
+        // (regression: LanguageSwitcher's document.body-portaled dropdown).
+        dropdown: "1000", sticky: "1100", nav: "1150", overlay: "1200", modal: "1300", toast: "1400",
       },
     },
 
