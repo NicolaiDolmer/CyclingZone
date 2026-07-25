@@ -6,7 +6,7 @@
 // #1823: alle mutationer tjekker res.ok, viser en mappet fejlbesked (toast), og
 // re-henter board'et bagefter (server-sandhed = optimistisk rollback ved fejl).
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router";
 import { supabase } from "../lib/supabase";
 import {
   Card, Button, Select, Table, Tr, Th, Td,

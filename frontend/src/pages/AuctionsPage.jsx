@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";

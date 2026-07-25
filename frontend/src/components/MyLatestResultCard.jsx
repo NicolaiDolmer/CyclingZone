@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card } from "./ui";
 import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";

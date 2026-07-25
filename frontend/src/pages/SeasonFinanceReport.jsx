@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 
 // Slice 07h · Sæson-finansrapport per hold — RUTE-shell.
