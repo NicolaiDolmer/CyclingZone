@@ -487,7 +487,7 @@ function TransactionDetailModal({ tx, onClose }) {
     ["Transaktions-ID", tx.id, null],
   ];
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal px-4 py-6 overflow-y-auto"
       onClick={onClose}>
       <div className="bg-cz-card border border-cz-border rounded-cz max-w-2xl w-full p-5"
         onClick={(e) => e.stopPropagation()}>
@@ -728,7 +728,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
 function AdminLogDetailModal({ entry, onClose }) {
   if (!entry) return null;
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-modal px-4 py-6 overflow-y-auto"
       onClick={onClose}>
       <div className="bg-cz-card border border-cz-border rounded-cz max-w-2xl w-full p-5"
         onClick={(e) => e.stopPropagation()}>

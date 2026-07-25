@@ -531,15 +531,15 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-cz-body flex">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-30">
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-overlay">
         <SidebarContent {...sidebarProps} onNav={() => {}} />
       </aside>
 
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-overlay md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-52 bg-cz-sidebar border-r border-cz-sidebar-border z-50">
+          <aside className="absolute left-0 top-0 h-full w-52 bg-cz-sidebar border-r border-cz-sidebar-border z-10">
             <SidebarContent {...sidebarProps} onNav={() => setMobileOpen(false)} />
           </aside>
         </div>

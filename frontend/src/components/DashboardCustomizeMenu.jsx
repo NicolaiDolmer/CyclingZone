@@ -23,8 +23,8 @@ export default function DashboardCustomizeMenu({ open, onToggleOpen, isVisible, 
       {open && (
         <>
           {/* Klik-udenfor-overlay */}
-          <div className="fixed inset-0 z-30" onClick={onToggleOpen} />
-          <div className="absolute right-0 mt-2 z-40 w-60 bg-cz-card border border-cz-border rounded-lg shadow-lg p-3">
+          <div className="fixed inset-0 z-dropdown" onClick={onToggleOpen} />
+          <div className="absolute right-0 mt-2 z-dropdown w-60 bg-cz-card border border-cz-border rounded-lg shadow-lg p-3">
             <p className="text-xs font-medium text-cz-3 mb-2">{t("dashboard:customize.heading")}</p>
             <div className="flex flex-col gap-1.5">
               {DASHBOARD_MODULES.map(m => (

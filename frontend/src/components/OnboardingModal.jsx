@@ -24,7 +24,7 @@ export default function OnboardingModal({ onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-start sm:items-center justify-center bg-black/60 p-4 overflow-y-auto"
+      className="fixed inset-0 z-modal flex items-start sm:items-center justify-center bg-black/60 p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div

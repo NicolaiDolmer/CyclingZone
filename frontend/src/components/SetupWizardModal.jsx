@@ -72,7 +72,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 p-4">
       <div className="bg-cz-card rounded-cz shadow-2xl max-w-md w-full p-6">
         {/* #1569: intet monogram i chrome (jf. #671 — titlen bærer brandet);
             rounded-cz matcher resten af appens modaler (var rounded-2xl SaaS-slop). */}

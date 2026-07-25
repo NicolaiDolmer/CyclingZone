@@ -43,7 +43,7 @@ export function AcademyTransferConfirmModal({
   const showRaces = !isPromote && Number.isFinite(racesNum) && racesNum > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={busy ? undefined : onCancel}>
+    <div className="fixed inset-0 z-modal flex items-center justify-center" onClick={busy ? undefined : onCancel}>
       <div className="absolute inset-0 bg-black/70" />
       <div
         ref={dialogRef}

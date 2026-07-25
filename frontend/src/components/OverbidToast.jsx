@@ -14,7 +14,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
   return (
     <div
       data-testid="overbid-toast-stack"
-      className="fixed z-50 flex flex-col gap-2 pointer-events-none
+      className="fixed z-toast flex flex-col gap-2 pointer-events-none
         top-16 right-4 left-4 md:left-auto md:top-auto md:bottom-4 md:right-4 md:max-w-sm"
     >
       {toasts.map(toast => (

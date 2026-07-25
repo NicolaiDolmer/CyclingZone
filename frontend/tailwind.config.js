@@ -94,7 +94,10 @@ export default {
         overlay: "var(--shadow-overlay)",
       },
       zIndex: {
-        dropdown: "1000", sticky: "1100", overlay: "1200", modal: "1300", toast: "1400",
+        // #2880: single canonical scale. `nav` (mobile bottom quick-nav) sits
+        // between sticky content and the overlay tier so page-sticky headers/cells
+        // can never cover it and it can never cover a drawer/modal.
+        dropdown: "1000", sticky: "1100", nav: "1150", overlay: "1200", modal: "1300", toast: "1400",
       },
     },
 

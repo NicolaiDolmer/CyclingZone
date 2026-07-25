@@ -27,7 +27,7 @@ export function CompareBar({ ids, onClear }) {
   if (ids.length === 0) return null;
   const canCompare = ids.length >= 2;
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-cz-card border border-cz-accent/30
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-overlay bg-cz-card border border-cz-accent/30
       rounded-cz shadow-2xl px-4 py-2.5 flex items-center gap-3">
       <span className="text-cz-2 text-sm">
         <span className="text-cz-accent-t font-bold">{ids.length}</span>/{MAX_COMPARE} {t("controls.compareSelectedLabel")}
