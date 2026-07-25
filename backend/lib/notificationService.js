@@ -514,3 +514,129 @@ async function defaultFetchStageParticipants({ supabase, raceId, stageNumber }) 
     riderName: row.rider_name ?? null,
   }));
 }
+
+// ─── #2945 · Scouting-rapport klar-notifikation ───────────────────────────
+//
+// PROBLEM (#2945): scout_assignments modner ad to stier — lazy-finalisering
+// ved visning (#2644, scoutAssignmentService.getScoutState → ~30 min for
+// 'target') og den natlige sweep (scoutSweep.js: backstop for 'target', eneste
+// sti for 'mission') — men ingen af dem fortalte spilleren at rapporten var
+// klar. Man skulle selv huske at åbne /scouting igen (spiller-ønske, #2945).
+//
+// ÉN delt notifikationstype dækker begge scout_assignments-kinds, så frontend
+// kun har ét TYPE_CONFIG-opslag (NotificationsPage.jsx): 'target' sætter
+// metadata.riderId og deep-linker (via den EKSISTERENDE #1486-riderId-regel)
+// direkte til rytterprofilens Scouting-fane; 'mission' har intet riderId og
+// falder tilbage til config.link = /scouting (ShortlistFeed).
+//
+// Idempotens: related_id = assignment.id. Hver assignment fuldføres netop ÉN
+// gang (claim-first UPDATE i scoutTargetMaturation.js's lazy-sti, team-dags-
+// mutex i scoutSweep.js), så related_id alene garanterer unikhed pr. rapport
+// — notifyUser/notifyTeamOwner's (type,title,message,related_id) 24t-dedup
+// (#666) er dermed et rent defensivt andet lag, testet eksplicit nedenfor.
+export const SCOUT_REPORT_READY_TYPE = "scout_report_ready";
+
+/**
+ * Hent rytternavn til target-besked-teksten. scout_assignments-rækken bærer
+ * kun rider_id, ikke navn. Standard-implementering; injicérbar i test.
+ */
+async function defaultFetchScoutRiderName({ supabase, riderId }) {
+  if (!riderId) return null;
+  const { data, error } = await supabase
+    .from("riders")
+    .select("firstname, lastname")
+    .eq("id", riderId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return `${data.firstname ?? ""} ${data.lastname ?? ""}`.trim() || null;
+}
+
+/**
+ * #2945 · Byg payloaden for "din scouting-rapport er klar"-notifikationen for
+ * én fuldført scout_assignments-række. Dækker begge kinds:
+ *   target  — enkelt-rytter-undersøgelse, riderName forventes leveret af kalderen.
+ *   mission — shortlist-mission, ingen enkelt-rytter at linke til.
+ */
+export function buildScoutReportReadyNotification({ assignment, riderName }) {
+  if (assignment.kind === "target") {
+    const level = assignment.target_level ?? assignment.result?.level ?? null;
+    const name = riderName || "the rider";
+    return {
+      type: SCOUT_REPORT_READY_TYPE,
+      title: "Scouting report ready",
+      message: level != null
+        ? `Your level ${level} investigation of ${name} is ready. View the report.`
+        : `Your investigation of ${name} is ready. View the report.`,
+      relatedId: assignment.id,
+      metadata: {
+        riderId: assignment.rider_id ?? null,
+        kind: "target",
+        level,
+        titleCode: "notif.scoutReportReady.target.title",
+        titleParams: {},
+        messageCode: "notif.scoutReportReady.target.message",
+        messageParams: { rider: name, level },
+      },
+    };
+  }
+
+  const shortlistCount = assignment.result?.shortlist?.length ?? 0;
+  return {
+    type: SCOUT_REPORT_READY_TYPE,
+    title: "Scouting mission ready",
+    message: shortlistCount > 0
+      ? `Your scouting mission found ${shortlistCount} rider${shortlistCount === 1 ? "" : "s"}. View the shortlist.`
+      : "Your scouting mission is complete. No matching riders were found this time.",
+    relatedId: assignment.id,
+    metadata: {
+      kind: "mission",
+      shortlistCount,
+      titleCode: "notif.scoutReportReady.mission.title",
+      titleParams: {},
+      // Single/multi/empty-varianter valgt server-side (samme mønster som
+      // tx.squadFineSingle/-Multi) i stedet for ICU-plural — {count}-parametret
+      // gennemgår formatBackendParams' RAW_KEYS-stringifikation (frontend/src/lib/
+      // backendMessage.js), som ikke er et sikkert input til {count, plural, ...}.
+      messageCode: shortlistCount === 0
+        ? "notif.scoutReportReady.mission.messageEmpty"
+        : shortlistCount === 1
+          ? "notif.scoutReportReady.mission.messageSingle"
+          : "notif.scoutReportReady.mission.messageMulti",
+      messageParams: { count: shortlistCount },
+    },
+  };
+}
+
+/**
+ * #2945 · Notificér holdejeren om en netop fuldført scout_assignments-række.
+ * Kaldes EFTER assignment-status allerede er sat til 'completed' (begge
+ * modnings-stier: scoutTargetMaturation.js's lazy+sweep-completion,
+ * scoutSweep.js's completeMissionAssignment) — en notifikationsfejl må derfor
+ * ALDRIG kunne vælte selve rapport-fuldførelsen. Samme A2-lære som resten af
+ * filen (#2389): isolér, log, Sentry, fortsæt (returnér et fejl-resultat i
+ * stedet for at kaste).
+ *
+ * `notify` + `fetchRiderName` er injicérbare for test.
+ */
+export async function notifyScoutReportReady({
+  supabase,
+  assignment,
+  notify = notifyTeamOwner,
+  fetchRiderName = defaultFetchScoutRiderName,
+  now = new Date(),
+}) {
+  if (!assignment?.id || !assignment?.team_id) {
+    return { delivered: false, deduped: false, reason: "missing_assignment" };
+  }
+  try {
+    const riderName = assignment.kind === "target"
+      ? await fetchRiderName({ supabase, riderId: assignment.rider_id })
+      : null;
+    const payload = buildScoutReportReadyNotification({ assignment, riderName });
+    return await notify({ supabase, teamId: assignment.team_id, now, ...payload });
+  } catch (err) {
+    console.error(`  ❌ scout-report-ready-notifikation fejlede (assignment ${assignment?.id}):`, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "scout-report-ready" }, assignmentId: assignment?.id });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}

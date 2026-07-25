@@ -419,4 +419,65 @@ describe("runScoutSweep", () => {
     assert.equal(result.failed, 1);
     assert.equal(supabase.state.assignments.find((a) => a.id === "a2").status, "completed");
   });
+
+  // #2945 — notify()-wiring: sweepen er den ENESTE fuldførelses-sti for missioner
+  // (ingen lazy-modvægt som target har), så dette er den eneste plads mission-
+  // rapport-klar-notifikationen kan udløses fra.
+  it("#2945 target-assignment: kalder notify med den fuldførte assignment", async () => {
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "a1", team_id: "team-1", kind: "target", status: "active",
+        rider_id: "rider-1", target_level: 2, ready_on: "2026-07-10", season_id: "season-1",
+      }],
+    });
+    const calls = [];
+    const notify = async (args) => { calls.push(args); return { delivered: true }; };
+    const result = await runScoutSweep({ supabase, now: afterWindow, notify });
+    assert.deepEqual(result, { swept: 1 });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].assignment.id, "a1");
+    assert.equal(calls[0].assignment.status, "completed");
+  });
+
+  it("#2945 mission-assignment: kalder notify med den fuldførte assignment + result (shortlist)", async () => {
+    const candidates = Array.from({ length: 10 }, (_, i) => ({
+      id: `rider-${i}`, potentiale: 1 + i / 2, divisionId: "div-1", country: "DK", age: 22, isNmEligible: true,
+    }));
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "m1", team_id: "team-1", kind: "mission", status: "active",
+        mission_criteria: { scope: "division", value: "div-1" }, ready_on: "2026-07-10", season_id: "season-1",
+      }],
+      candidates,
+    });
+    const calls = [];
+    const notify = async (args) => { calls.push(args); return { delivered: true }; };
+    const result = await runScoutSweep({
+      supabase, now: afterWindow, loadCandidates: async () => candidates, notify,
+    });
+    assert.deepEqual(result, { swept: 1 });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].assignment.id, "m1");
+    assert.equal(calls[0].assignment.status, "completed");
+    assert.ok(calls[0].assignment.result.shortlist.length >= 3, "notify ser den fuldførte result med shortlist");
+  });
+
+  it("#2945 en fejlende notify isoleres af sweepens eksisterende per-assignment try/catch (kaster ikke videre)", async () => {
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "a1", team_id: "team-1", kind: "target", status: "active",
+        rider_id: "rider-1", target_level: 1, ready_on: "2026-07-10", season_id: "season-1",
+      }],
+    });
+    // Simulerer en injiceret notify der (i modsætning til den ægte
+    // notifyScoutReportReady) IKKE fanger sine egne fejl — beviser at sweepens
+    // eksisterende try/catch pr. assignment stadig dækker denne sti.
+    const notify = async () => { throw new Error("boom"); };
+    const result = await runScoutSweep({ supabase, now: afterWindow, notify });
+    assert.equal(result.swept, 0);
+    assert.equal(result.failed, 1);
+    // Selve status-flippet SKETE allerede (update kørte før notify) — kun
+    // notify-fejlen blev talt, rapporten er reelt klar i DB'en.
+    assert.equal(supabase.state.assignments[0].status, "completed");
+  });
 });

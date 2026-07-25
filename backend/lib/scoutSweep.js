@@ -13,6 +13,7 @@ import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { generateShortlist } from "./scoutMission.js";
 import { getScoutState } from "./scoutAssignmentService.js";
 import { completeTargetAssignment } from "./scoutTargetMaturation.js";
+import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -103,7 +104,7 @@ async function defaultGetScout(supabase, teamId) {
 // completeTargetAssignment flyttet til scoutTargetMaturation.js (#2644):
 // deles med lazy-finaliseringen i scoutAssignmentService.getScoutState.
 
-async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now }) {
+async function completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now, notify = notifyScoutReportReady }) {
   // #2644 del 2: sweepen læser targetPool fra selve assignmentens mission_criteria
   // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibelt
   // default "free_agents" for assignments der blev startet FØR denne feature.
@@ -127,15 +128,20 @@ async function completeMissionAssignment({ supabase, assignment, loadCandidates,
     if (insErr) throw new Error(`scout_actions insert (mission top-find): ${insErr.message}`);
   }
 
+  const result = { shortlist, top_rider_id: topRiderId };
   const { error: updErr } = await supabase
     .from("scout_assignments")
     .update({
       status: "completed",
       completed_at: now.toISOString(),
-      result: { shortlist, top_rider_id: topRiderId },
+      result,
     })
     .eq("id", assignment.id);
   if (updErr) throw new Error(`scout_assignments update: ${updErr.message}`);
+
+  // #2945: notify() kaldes EFTER status→completed er bekræftet — notifyScoutReportReady
+  // isolerer selv sine fejl, kaster aldrig. `notify` injicérbar for test.
+  await notify({ supabase, assignment: { ...assignment, status: "completed", result }, now });
 }
 
 /**
@@ -150,6 +156,7 @@ export async function runScoutSweep({
   now = new Date(),
   loadCandidates = defaultLoadCandidates,
   getScout = defaultGetScout,
+  notify = notifyScoutReportReady, // #2945, injicérbar for test
 } = {}) {
   if (!shouldSweepNow(now)) {
     return { swept: 0, skipped: "before_window" };
@@ -192,9 +199,9 @@ export async function runScoutSweep({
     for (const assignment of assignments) {
       try {
         if (assignment.kind === "target") {
-          await completeTargetAssignment({ supabase, assignment });
+          await completeTargetAssignment({ supabase, assignment, notify });
         } else if (assignment.kind === "mission") {
-          await completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now });
+          await completeMissionAssignment({ supabase, assignment, loadCandidates, getScout, now, notify });
         }
         swept += 1;
       } catch (err) {

@@ -183,6 +183,18 @@
       "title": "Rytter har forladt spillet",
       "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
     },
+    "scoutReportReady": {
+      "target": {
+        "title": "Spejderrapport klar",
+        "message": "Din niveau {level}-undersøgelse af {rider} er klar. Se rapporten."
+      },
+      "mission": {
+        "title": "Spejdermission klar",
+        "messageSingle": "Din spejdermission fandt {count} rytter. Se listen.",
+        "messageMulti": "Din spejdermission fandt {count} ryttere. Se listen.",
+        "messageEmpty": "Din spejdermission er afsluttet. Ingen matchende ryttere blev fundet denne gang."
+      }
+    },
     "auctionCancelledRetired": {
       "title": "Auktion annulleret: rytter pensioneret",
       "messageBidder": "{rider} pensionerede sig, før auktionen kunne gennemføres. Du er ikke blevet trukket.",
