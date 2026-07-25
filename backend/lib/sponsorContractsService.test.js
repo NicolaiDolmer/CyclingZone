@@ -244,6 +244,57 @@ test("getOffers udleder 3 tilbud fra renown af holdets sidste-sæsons placering"
   assert.ok(expectedTarget > 400000);
 });
 
+test("getOffers bevarer renown fra forrige division når holdet er rykket op/ned (#2909)", async () => {
+  // Holdets NYE division er 2 (D2), men sidste sæson (s1) kørte det i division 3
+  // (D3) og vandt suverænt. Standings-tabellen indeholder BEGGE divisioner for
+  // samme sæson (som den vil gøre efter det virkelige divisionsskifte). Før
+  // #2909-fixet blev season_standings filtreret på holdets NYE division (2) FØR
+  // opslag på team_id → t1's egen D3-række blev aldrig fundet, og renown faldt
+  // til 1.0 (target = flad 400000). Fixet slår op UDEN divisionsfilter, ligesom
+  // udbetalingsstien (economyEngine.js standingByTeamId).
+  const prevSeason = { id: "s1", number: 1 };
+  const standings = [
+    // Holdets EGEN placering sidste sæson — i D3, suverænt førstepladset.
+    { season_id: "s1", team_id: "t1", division: 3, rank_in_division: 1, total_points: 900 },
+    { season_id: "s1", team_id: "t3b", division: 3, rank_in_division: 2, total_points: 200 },
+    { season_id: "s1", team_id: "t3c", division: 3, rank_in_division: 3, total_points: 100 },
+    // Andre holds D2-placeringer (holdets NYE division) — t1 er IKKE med her,
+    // netop fordi det ikke kørte i D2 sidste sæson.
+    { season_id: "s1", team_id: "t2a", division: 2, rank_in_division: 1, total_points: 500 },
+    { season_id: "s1", team_id: "t2b", division: 2, rank_in_division: 2, total_points: 300 },
+  ];
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 }, // NYE division efter oprykning
+    seasonsByNumber: { 1: prevSeason },
+    standingsBySeasonId: { s1: standings },
+  });
+
+  const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 2 });
+
+  // Forventet renown: base for holdets NYE division (D2=400000) ganget med
+  // multiplikatoren fra holdets EGEN (D3-)standing — IKKE 1.0.
+  const mine = standings.find((s) => s.team_id === "t1");
+  const divisionStandings = standings.filter((s) => s.division === 3);
+  const expectedTarget = renownTarget({
+    division: 2,
+    lastSeasonStanding: mine,
+    divisionStandings,
+  });
+  const expectedOffers = generateOffers({
+    teamId: "t1",
+    seasonNumber: 2,
+    renownTargetValue: expectedTarget,
+  });
+
+  assert.deepEqual(offers, expectedOffers);
+  // Kernen af regressions-testen: suveræn D3-vinder skal IKKE lande på den
+  // flade 1.0-multiplikator (400000) — det ville bevise bugtilbagefald.
+  assert.ok(
+    expectedTarget > 400000,
+    `renown skal afspejle D3-formen (>400000), fik ${expectedTarget}`,
+  );
+});
+
 test("getOffers falder tilbage til division-base × 1.0 når intet sidste-sæsons-data", async () => {
   // Frisk hold: sæson 2, men ingen sæson-1-placering (eller sæson findes ikke).
   const supabase = makeSupabase({
@@ -647,6 +698,52 @@ test("expireAndRenewContracts falder tilbage til default 'long' når ingen match
   assert.equal(inserted.start_season, 3);
   assert.equal(inserted.expires_after_season, 3 + longVariant.lengthSeasons - 1); // 5
   assert.equal(inserted.status, "active");
+});
+
+test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold der skiftede division (#2909)", async () => {
+  // Hold der IKKE selv valgte sponsor (ingen pending) → default-forny rammer
+  // getOffers → loadRenownTargetValue. Holdets nye division er 2; sidste sæson
+  // kørte det suverænt i D3. Regressions-fælden: hvis renewal-stien filtrerer
+  // season_standings på holdets NYE division FØR opslag, findes t1's egen
+  // række aldrig, og den fornyede kontrakts guaranteed_base falder til den
+  // flade 1.0-multiplikator-værdi i stedet for at afspejle D3-formen.
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const prevSeason = { id: "s1", number: 2 };
+  const standings = [
+    { season_id: "s1", team_id: "t1", division: 3, rank_in_division: 1, total_points: 900 },
+    { season_id: "s1", team_id: "t3b", division: 3, rank_in_division: 2, total_points: 200 },
+    { season_id: "s1", team_id: "t2a", division: 2, rank_in_division: 1, total_points: 500 },
+  ];
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 }, // NYE division efter oprykning fra D3
+    seasonsByNumber: { 2: prevSeason },
+    standingsBySeasonId: { s1: standings },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: null },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.inserts.length, 1);
+  const inserted = supabase.state.inserts[0];
+  assert.equal(inserted.status, "active");
+
+  // Facit: samme renownTarget som motoren beregner direkte fra holdets EGEN
+  // (D3-)standing — ikke den flade division-2-base (400000).
+  const mine = standings.find((s) => s.team_id === "t1");
+  const divisionStandings = standings.filter((s) => s.division === 3);
+  const expectedTarget = renownTarget({ division: 2, lastSeasonStanding: mine, divisionStandings });
+  const longVariant = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: expectedTarget,
+  }).find((o) => o.variant === "long");
+
+  assert.equal(inserted.guaranteed_base, longVariant.guaranteedBase);
+  assert.ok(
+    inserted.guaranteed_base > 400000,
+    `guaranteed_base skal afspejle D3-formen (>400000), fik ${inserted.guaranteed_base}`,
+  );
 });
 
 test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'long')", async () => {
