@@ -5743,3 +5743,277 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
   // faktisk bogførte pengene.
   assert.equal(ctx.riderUpdates.length, 1, "rytteren må ikke dispositioneres to gange");
 });
+
+// ─── #2976 · Tvangssalg + varsel må ikke være tavse ───────────────────────────
+//
+// Tvangssalget (breach-streak >= 2) tog holdets dyreste rytter uden at sende
+// noget som helst: manageren opdagede tabet ved selv at kigge på truppen.
+// #2912 gav frysningen en besked, men KUN på overgangen til frosset — et hold
+// der allerede var frosset (typisk af nødlåns-eskaleringen) løb derfor hele
+// vejen fra første brud til tvangssalg i fuldstændig stilhed.
+//
+// Kontrakt der testes her:
+//   1. tvangssalg  → salgs-besked der navngiver rytteren
+//   2. første brud → varsel FØR straffen, også når holdet allerede er frosset
+//   3. præcis ÉN besked pr. kørsel (salget erstatter frysnings-beskeden)
+//   4. cron-genkørsel sender ikke salgs-beskeden igen
+
+test("#2976 · tvangssalget navngiver rytteren i en besked til manageren", async () => {
+  const teamId = "team-2976-sale";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Forced Sale D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1, // → streak 2 → tvangssalg
+    transfer_frozen: true, // allerede frosset af sidste sæsons brud
+    riders: [
+      { id: "rider-a", firstname: "Marco", lastname: "Pantani", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-sale", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    // 700k > D3-loft 600k → brud; efter salget er gælden 200k.
+    getTotalDebt: (() => {
+      let calls = 0;
+      return async () => (calls++ === 0 ? 700_000 : 200_000);
+    })(),
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 500_000, loans: [] }),
+  });
+
+  assert.equal(ctx.riderUpdates.length, 1, "rytteren skal faktisk være solgt");
+
+  assert.equal(ctx.notifications.length, 1, "tvangssalget må ikke længere være tavst (#2976)");
+  const notif = ctx.notifications[0];
+  assert.equal(notif.type, "board_critical");
+  assert.equal(notif.metadata.titleCode, "notif.debtCeilingForcedSale.title");
+  assert.equal(notif.metadata.messageCode, "notif.debtCeilingForcedSale.message");
+  // Hvilken rytter, hvorfor, hvad koster det, hvor står holdet nu.
+  assert.equal(notif.metadata.messageParams.riders, "Marco Pantani");
+  assert.equal(notif.metadata.messageParams.proceeds, 500_000);
+  assert.equal(notif.metadata.messageParams.debt, 700_000, "beskeden citerer det tal bruddet blev erklæret på");
+  assert.equal(notif.metadata.messageParams.ceiling, 600_000);
+  assert.equal(notif.metadata.messageParams.streak, 2);
+  assert.equal(notif.metadata.messageParams.remainingDebt, 200_000);
+  // EN-first fallback (frontend renderer locale-aware via metadata-koderne).
+  assert.match(notif.message, /Marco Pantani/);
+});
+
+test("#2976 · flere salg i samme kørsel giver ÉN besked med alle ryttere", async () => {
+  const teamId = "team-2976-multi";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Fire Sale D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: true,
+    riders: [
+      { id: "rider-a", firstname: "Top", lastname: "Earner", market_value: 300_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+      { id: "rider-b", firstname: "Second", lastname: "Best", market_value: 200_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  // Første salg rækker ikke under loftet, andet gør.
+  const debts = [900_000, 700_000, 500_000];
+  let call = 0;
+
+  await processTeamSeasonPayroll(team, "season-2976-multi", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => debts[Math.min(call++, debts.length - 1)],
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.riderUpdates.length, 2, "begge ryttere skal være solgt");
+  assert.equal(ctx.notifications.length, 1, "to salg er én begivenhed for manageren, ikke to beskeder");
+  assert.equal(
+    ctx.notifications[0].metadata.messageParams.riders,
+    "Top Earner, Second Best",
+    "begge navne skal med, dyreste først",
+  );
+  assert.equal(ctx.notifications[0].metadata.messageParams.proceeds, 500_000);
+});
+
+test("#2976 · salgs-beskeden erstatter frysnings-beskeden (ingen dublet i samme kørsel)", async () => {
+  const teamId = "team-2976-no-dupe";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Unfrozen Then Sold D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: false, // frysningen er en OVERGANG i denne kørsel
+    riders: [
+      { id: "rider-a", firstname: "Only", lastname: "Asset", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-no-dupe", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.notifications.length, 1, "både frysning og salg i samme kørsel = én besked");
+  assert.equal(
+    ctx.notifications[0].metadata.titleCode,
+    "notif.debtCeilingForcedSale.title",
+    "salget er overskriften; frysningen nævnes inde i samme besked",
+  );
+});
+
+test("#2976 · varsel FØR straffen: et allerede frosset hold får sidste varsel ved første brud", async () => {
+  const teamId = "team-2976-warning";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // Den tidligere tavse vej: holdet er frosset af nødlåns-eskaleringen (#2301),
+  // så #2912's frysnings-besked fyrer ikke (ingen overgang). Uden #2976 fik
+  // holdet derfor INTET at vide før dets dyreste rytter forsvandt sæsonen efter.
+  const team = {
+    id: teamId,
+    name: "Already Frozen D3",
+    division: 3,
+    balance: 999_999,
+    emergency_loan_streak: 0,
+    debt_breach_streak: 0, // → streak 1, altså sæsonen FØR tvangssalget
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-warning", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.equal(breachUpdate.payload.debt_breach_streak, 1, "dette er første brud, ikke tvangssalgs-sæsonen");
+  assert.equal(ctx.riderUpdates.length, 0, "ingen rytter må sælges ved streak 1");
+
+  assert.equal(ctx.notifications.length, 1, "varslet må ikke afhænge af om frysningen er en overgang (#2976)");
+  const notif = ctx.notifications[0];
+  assert.equal(notif.type, "board_critical");
+  assert.equal(notif.metadata.titleCode, "notif.debtCeilingFinalWarning.title");
+  assert.equal(notif.metadata.messageCode, "notif.debtCeilingFinalWarning.message");
+  assert.equal(notif.metadata.messageParams.debt, 700_000);
+  assert.equal(notif.metadata.messageParams.ceiling, 600_000);
+});
+
+test("#2976 · et hold der er dybt i brud får ikke varslet igen hver sæson", async () => {
+  const teamId = "team-2976-no-nag";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // streak 2 → 3 uden ryttere at sælge: intet nyt er sket, så ingen besked.
+  const team = {
+    id: teamId,
+    name: "Chronic D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 2,
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-no-nag", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.notifications.length, 0, "ingen ny begivenhed = ingen ny besked");
+});
+
+test("#2976 · cron-genkørsel sender ikke salgs-beskeden to gange", async () => {
+  const teamId = "team-2976-rerun";
+  const seasonId = "season-2976-rerun";
+  // Delt idempotency-state mellem kørslerne, som en rigtig DB.
+  const ctx = createDebtClusterSupabase({ teamId, enforceIdempotency: true });
+
+  const rider = { id: "rider-a", firstname: "Sold", lastname: "Once", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId };
+  const deps = {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  };
+
+  // Kørsel 1: salget bogføres og manageren får beskeden.
+  await processTeamSeasonPayroll(
+    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 1, transfer_frozen: true, riders: [rider] },
+    seasonId,
+    deps,
+  );
+  assert.equal(ctx.notifications.length, 1, "kørsel 1 skal sende salgs-beskeden");
+  assert.equal(ctx.notifications[0].metadata.titleCode, "notif.debtCeilingForcedSale.title");
+
+  // Kørsel 2: worst case for dublet-risikoen — krediteringen afvises af
+  // idempotency-nøglen mens rytteren stadig ligger i snapshottet. Beskeden må
+  // ikke sendes igen, og "vi solgte X" må slet ikke gentages for en rytter der
+  // ikke forlod holdet i denne kørsel.
+  await processTeamSeasonPayroll(
+    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 2, transfer_frozen: true, riders: [rider] },
+    seasonId,
+    deps,
+  );
+
+  assert.equal(ctx.financeRows.filter(r => r.type === "forced_debt_sale").length, 1);
+  assert.equal(ctx.notifications.length, 1, "genkørslen må ikke sende salgs-beskeden igen (#2976)");
+});
+
+test("#2976 · alle nye notifikations-koder findes i BÅDE en og da backendMessages", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+
+  const LOCALES = join(import.meta.dirname, "..", "..", "frontend", "public", "locales");
+  const flatten = (lang) => {
+    const out = new Set();
+    (function walk(o, p) {
+      for (const [k, v] of Object.entries(o)) {
+        const key = p ? `${p}.${k}` : k;
+        if (v && typeof v === "object") walk(v, key);
+        else out.add(key);
+      }
+    })(JSON.parse(readFileSync(join(LOCALES, lang, "backendMessages.json"), "utf8")), "");
+    return out;
+  };
+
+  const EN = flatten("en");
+  const DA = flatten("da");
+  const CODES = [
+    "notif.debtCeilingForcedSale.title",
+    "notif.debtCeilingForcedSale.message",
+    "notif.debtCeilingFinalWarning.title",
+    "notif.debtCeilingFinalWarning.message",
+  ];
+
+  assert.deepEqual(CODES.filter(c => !EN.has(c)), [], "manglende EN-nøgler");
+  assert.deepEqual(CODES.filter(c => !DA.has(c)), [], "manglende DA-nøgler");
+
+  // Tone-guard (#2948): ingen em-dash i player-facing copy.
+  for (const lang of ["en", "da"]) {
+    const raw = readFileSync(join(LOCALES, lang, "backendMessages.json"), "utf8");
+    const notif = JSON.parse(raw).notif;
+    for (const key of ["debtCeilingForcedSale", "debtCeilingFinalWarning"]) {
+      assert.ok(!notif[key].title.includes("—"), `${lang}.${key}.title må ikke indeholde em-dash`);
+      assert.ok(!notif[key].message.includes("—"), `${lang}.${key}.message må ikke indeholde em-dash`);
+    }
+  }
+});

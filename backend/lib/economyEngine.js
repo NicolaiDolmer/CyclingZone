@@ -743,6 +743,12 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     let transferFrozen = team.transfer_frozen || frozenEarlierThisRun || false;
     const alreadyFrozenBeforeDebtBranch = transferFrozen;
 
+    // #2976 · Notifikations-materiale for tvangssalget. Samles i loopet og
+    // afsendes ÉN gang efter breach-opdateringen (ét hold kan miste flere
+    // ryttere i samme kørsel; det er én begivenhed for manageren, ikke N).
+    const forcedSaleRiderNames = [];
+    let debtAfterForcedSales = interestExcludedDebt;
+
     if (interestExcludedDebt > debtCeiling) {
       breachStreak += 1;
       transferFrozen = true; // streak >= 1 → fryser transfer
@@ -802,7 +808,10 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           // afdrag med "provenu" der aldrig blev krediteret ville slette gæld
           // uden penge bag.
           if (forcedSaleCredit?.skipped) {
-            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip`);
+            // #2976: bevidst UDEN notifikation. Skip'et betyder at pengene er
+            // bogført mens dispositionen ikke nåede igennem, altså at rytteren
+            // stadig står på holdet. "Vi solgte X" ville være usandt her.
+            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip (ingen salgs-notifikation)`);
             continue;
           }
 
@@ -822,6 +831,9 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
 
           forcedSaleCount += 1;
           forcedSaleTotal += credit;
+          // #2976: kun ryttere der FAKTISK forlod holdet i denne kørsel nævnes
+          // i beskeden.
+          forcedSaleRiderNames.push(`${rider.firstname} ${rider.lastname}`);
 
           // #2303: provenuet afdrager lånene DIREKTE (ældste lån først) i
           // stedet for det gamle runningDebt-estimat (der aldrig rørte
@@ -835,6 +847,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           }
           // #2912: samme rente-eksklusive mål som stop-kriteriet ovenfor.
           runningDebt = Math.max(0, (await getTotalDebtFn(team.id, supabaseClient)) - loanInterestTotal);
+          // #2976: beskeden skal kunne fortælle hvor holdet står EFTER salget.
+          debtAfterForcedSales = runningDebt;
 
           console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}, gæld nu ${runningDebt}`);
         }
@@ -854,11 +868,44 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .eq("id", team.id);
     throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
 
-    // #2912 · Frysningen var 100% tavs: holdet opdagede den først når det
-    // prøvede at handle. Notificér på selve OVERGANGEN til frosset, så et hold
-    // der bliver ved med at bryde loftet ikke får samme besked hver sæson, og
-    // så nødlåns-eskaleringens egen besked (2b) ikke dubleres.
-    if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
+    // #2912/#2976 · Gældseskaleringen sender PRÆCIS ÉN besked pr. kørsel, valgt
+    // efter hvad der faktisk skete. Grenene er gensidigt udelukkende, så et hold
+    // aldrig får både "vi solgte" og "vi frøs" for samme begivenhed:
+    //
+    //   1. Tvangssalg gennemført  → salgs-beskeden (den vigtigste, nævner også
+    //      frysningen, så frysnings-beskeden ville være redundant).
+    //   2. Overgang til frosset   → frysnings-beskeden (#2912). Den advarer selv
+    //      om det kommende tvangssalg.
+    //   3. Første brud, men holdet var allerede frosset (typisk af nødlåns-
+    //      eskaleringen i 2b, eller en frysning fra sidste sæson) → sidste
+    //      varsel (#2976). Uden denne gren var netop DENNE vej helt tavs frem
+    //      til tvangssalget: streak 0→1 gav ingen besked fordi frysningen ikke
+    //      var en overgang, og streak 1→2 solgte rytteren uden forvarsel.
+    //
+    // Ingen af kaldene er wrappet i try/catch: en fejlet notifikation skal
+    // kastes videre (notifyUser kaster på både lookup- og insert-fejl) og lande
+    // i cron-loggen/Sentry, ikke sluges. Samme kontrakt som #2912.
+    if (forcedSaleRiderNames.length > 0) {
+      const riders = forcedSaleRiderNames.join(", ");
+      await notifyManager(team.id, "board_critical",
+        "The board forced a sale",
+        `Your debt of ${interestExcludedDebt} CZ$ stayed over your division cap of ${debtCeiling} CZ$ for ${breachStreak} seasons in a row, so the board sold ${riders} for ${forcedSaleTotal} CZ$ and put the money straight into your loans. Your debt is now ${debtAfterForcedSales} CZ$ and transfers stay frozen until you are back under the cap. If you are still over it at the next season change, the board will sell again. Repay loans, sell riders yourself, or cut wages before then.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingForcedSale.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingForcedSale.message",
+          messageParams: {
+            riders,
+            proceeds: forcedSaleTotal,
+            debt: interestExcludedDebt,
+            ceiling: debtCeiling,
+            streak: breachStreak,
+            remainingDebt: debtAfterForcedSales,
+          },
+        }
+      );
+    } else if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
       await notifyManager(team.id, "board_critical",
         "Transfers frozen: debt over the cap",
         `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale.`,
@@ -867,6 +914,18 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           titleCode: "notif.debtCeilingFreeze.title",
           titleParams: {},
           messageCode: "notif.debtCeilingFreeze.message",
+          messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
+        }
+      );
+    } else if (breachStreak === 1) {
+      await notifyManager(team.id, "board_critical",
+        "One season before a forced sale",
+        `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$, and transfers are already frozen. If you are still over the cap at the next season change, the board will sell your most valuable riders to close the gap. Repay loans, sell riders yourself, or cut wages before then.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingFinalWarning.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingFinalWarning.message",
           messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
         }
       );
