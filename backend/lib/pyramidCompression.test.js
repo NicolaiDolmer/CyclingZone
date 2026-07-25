@@ -179,7 +179,7 @@ test("distributeCompression kaster ved skæv pyramide (manglende tier 2-pulje)",
   const pools = makePools().filter((p) => p.id !== "d2-b");
   const { teams, standings } = makeRankedField(150);
   const ranked = rankTeamsGlobally({ teams, standings });
-  assert.throws(() => distributeCompression(ranked, pools), /forventede 2 tier 2-puljer/);
+  assert.throws(() => distributeCompression(ranked, pools), /expected 2 tier 2 pools/);
 });
 
 test("re-run-determinisme: samme input giver bit-identisk fordeling (idempotens-fundamentet)", () => {
