@@ -206,3 +206,26 @@ test("GET /peak-plans/board + GET /races/calendar eksponerer availableSeasons ti
   assert.match(calBlock, /availableSeasons/, "kalenderen skal returnere listen af oprettede sæsoner");
   assert.match(calBlock, /\.gt\(\s*["']number["']\s*,\s*0\s*\)/, "kalenderen skal filtrere sæson 0 ud af spillerens vælger (#2600)");
 });
+
+// #2883: tre testere rapporterede planneren som "låst til den aktive sæson" 25/7.
+// Sæson-vælgeren (#2518) understøtter reelt et vilkårligt sæsonnummer allerede —
+// men availableSeasons-queryen manglede fejl-håndtering (eneste query i disse to
+// handlere der IKKE kastede ved error). En fejlende query degraderede tavst til
+// availableSeasons:[], hvilket skjuler sæson-vælgeren HELT (UI'et renderer den kun
+// ved length > 1) — ikke-til-at-skelne fra "låst til aktiv sæson", uden en eneste
+// Sentry-linje at debugge ud fra. Låser at BEGGE handlere nu kaster her.
+test("GET /peak-plans/board + GET /races/calendar kaster hvis availableSeasons-queryen fejler (#2883)", () => {
+  const boardBlock = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(
+    boardBlock,
+    /const \{ data: allSeasonsRows, error: seasonsErr \} = await supabase[\s\S]{0,200}if \(seasonsErr\) throw new Error/,
+    "board skal kaste hvis availableSeasons-queryen fejler, ikke tavst degradere til []",
+  );
+  const calIdx = apiSource.indexOf('router.get("/races/calendar"');
+  const calBlock = apiSource.slice(calIdx, calIdx + 3500);
+  assert.match(
+    calBlock,
+    /const \{ data: allSeasonsRows, error: allSeasonsErr \} = await supabase[\s\S]{0,200}if \(allSeasonsErr\) throw new Error/,
+    "kalenderen skal kaste hvis availableSeasons-queryen fejler, ikke tavst degradere til []",
+  );
+});

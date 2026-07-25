@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, racesForList, myPeakCountByRace } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, racesForList, myPeakCountByRace, nextPlannableSeason } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -66,6 +66,39 @@ test("racesForList: filter 'all' → inkluderer rivalers løb; nowOrd=null → i
 test("racesForList: tom/ugyldig input → tom liste", () => {
   assert.deepEqual(racesForList(null, "mine", 0), []);
   assert.deepEqual(racesForList([], "all", 0), []);
+});
+
+// #2883: sæson-nudge — planneren viste ingen proaktiv besked om at S2 kunne
+// planlægges, selvom sæson-vælgeren (#2518) allerede understøttede det.
+test("nextPlannableSeason: finder nærmeste senere sæson end den viste", () => {
+  const seasons = [
+    { id: "s1", number: 1, status: "active" },
+    { id: "s2", number: 2, status: "upcoming" },
+  ];
+  assert.deepEqual(nextPlannableSeason(seasons, 1), { id: "s2", number: 2, status: "upcoming" });
+});
+
+test("nextPlannableSeason: ingen kandidat når den viste sæson allerede er den seneste", () => {
+  const seasons = [
+    { id: "s1", number: 1, status: "active" },
+    { id: "s2", number: 2, status: "upcoming" },
+  ];
+  assert.equal(nextPlannableSeason(seasons, 2), null);
+});
+
+test("nextPlannableSeason: vælger den NÆRMESTE senere sæson, ikke den seneste, når flere findes", () => {
+  const seasons = [
+    { id: "s1", number: 1, status: "active" },
+    { id: "s2", number: 2, status: "upcoming" },
+    { id: "s3", number: 3, status: "upcoming" },
+  ];
+  assert.deepEqual(nextPlannableSeason(seasons, 1), { id: "s2", number: 2, status: "upcoming" });
+});
+
+test("nextPlannableSeason: null/tom liste eller ukendt viewingNumber → ingen nudge", () => {
+  assert.equal(nextPlannableSeason(null, 1), null);
+  assert.equal(nextPlannableSeason([], 1), null);
+  assert.equal(nextPlannableSeason([{ id: "s2", number: 2 }], null), null);
 });
 
 test("myPeakCountByRace: tæller egne rytteres peaks pr. løb (ægte + forslag)", () => {
