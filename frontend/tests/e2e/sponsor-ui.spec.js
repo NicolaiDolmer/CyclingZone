@@ -1,8 +1,10 @@
-// #1663 · UI-verifikation for renown-skaleret sponsor + forhandlbare kontrakter
-// + per-løbsdag-indkomst. Sponsor-UI'et henter fra BACKEND-API'et
-// (${VITE_API_URL}/api/sponsor/contract + /api/sponsor/offers), IKKE Supabase
-// direkte — så vi mocker disse to endpoints OVEN PÅ installNetworkMocks
-// (catch-all `**/api/**`); senest registrerede route vinder i Playwright.
+// #1663/#2948 · UI-verifikation for Sponsorvalg 2.0: 5 arketype-tilbud med
+// bonusklausuler, divisionsvælger m. løbsdage, deadline-banner og Review &
+// sign-bekræftelse + kontraktpanel med klausuler og earnings. Sponsor-UI'et
+// henter fra BACKEND-API'et (${VITE_API_URL}/api/sponsor/contract +
+// /api/sponsor/offers), IKKE Supabase direkte — så vi mocker disse to endpoints
+// OVEN PÅ installNetworkMocks (catch-all `**/api/**`); senest registrerede
+// route vinder i Playwright.
 //
 // Verifikations-artefakt, ikke en cross-browser snapshot: kører kun på
 // desktop-chromium og gemmer rå page.screenshot-billeder (ingen toHaveScreenshot-
@@ -33,16 +35,40 @@ const ACTIVE_CONTRACT = {
   start_season: 1,
   expires_after_season: 2,
   status: "active",
+  variant: "results",
+  guaranteed_fraction: 0.55,
+  race_day_share: 0.1,
+  bonus_clauses: [
+    { type: "stage_win", amount: 8900 },
+    { type: "podium", amount: 3500 },
+    { type: "results_cap", amount: 247000 },
+  ],
+  created_at: "2026-05-08T00:00:00Z",
 };
 
+// Earnings-breakdown (#2948): panelet viser hvad kontrakten faktisk har givet.
+const CONTRACT_EARNINGS = {
+  base: 544000,
+  raceDays: 96000,
+  results: 17800,
+  signing: 0,
+  objective: 0,
+  total: 657800,
+};
+
+// #2948-payload: 5 arketyper med frosne andele + klausuler.
 const OFFERS_STATE = {
   negotiable: true,
   upcomingSeasonNumber: 2,
   pendingVariant: null,
+  teamDivision: 3,
+  stageCounts: { byTier: { 2: 112, 3: 84 }, fallbackDays: 28 },
   offers: [
-    { variant: "predictable", sponsorName: "Meridian Bank", guaranteedBase: 479000, perRaceDayRate: 1000, lengthSeasons: 1 },
-    { variant: "activity", sponsorName: "Alta Cycles", guaranteedBase: 299000, perRaceDayRate: 4100, lengthSeasons: 2 },
-    { variant: "long", sponsorName: "Provincia Forsikring", guaranteedBase: 397000, perRaceDayRate: 2700, lengthSeasons: 3 },
+    { variant: "safe", sponsorName: "Meridian Bank", guaranteedBase: 440000, guaranteedFraction: 0.92, raceDayShare: 0.08, perRaceDayRate: 1367, lengthSeasons: 1, clauses: [] },
+    { variant: "loyal", sponsorName: "Nordhavn Shipping", guaranteedBase: 373000, guaranteedFraction: 0.78, raceDayShare: 0.18, perRaceDayRate: 3074, lengthSeasons: 3, clauses: [{ type: "signing", amount: 38240 }] },
+    { variant: "racing", sponsorName: "Kestrel Outdoor", guaranteedBase: 239000, guaranteedFraction: 0.5, raceDayShare: 0.58, perRaceDayRate: 9906, lengthSeasons: 1, clauses: [] },
+    { variant: "results", sponsorName: "Vesna Robotics", guaranteedBase: 263000, guaranteedFraction: 0.55, raceDayShare: 0.1, perRaceDayRate: 1708, lengthSeasons: 2, clauses: [{ type: "stage_win", amount: 8604 }, { type: "podium", amount: 3346 }, { type: "results_cap", amount: 239000 }] },
+    { variant: "ambition", sponsorName: "Larkin Brewing", guaranteedBase: 335000, guaranteedFraction: 0.7, raceDayShare: 0.2, perRaceDayRate: 3416, lengthSeasons: 2, clauses: [{ type: "season_objective", objective: "top_half", amount: 86040 }] },
   ],
 };
 
@@ -54,7 +80,7 @@ async function installSponsorMocks(page) {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() !== "GET") return route.fallback();
-    return json(route, { contract: ACTIVE_CONTRACT });
+    return json(route, { contract: ACTIVE_CONTRACT, earnings: CONTRACT_EARNINGS });
   });
 
   await page.route("**/api/sponsor/offers", (route) => {
@@ -65,8 +91,8 @@ async function installSponsorMocks(page) {
   });
 }
 
-test.describe("#1663 sponsor UI", () => {
-  test("Finance sponsor tab renders the active contract + Board negotiation modal shows 3 offers", async ({ page }) => {
+test.describe("#2948 sponsor UI", () => {
+  test("Finance sponsor tab renders contract + earnings; Board modal shows 5 archetype offers with clauses", async ({ page }) => {
     const pageErrors = [];
     const consoleErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -83,42 +109,65 @@ test.describe("#1663 sponsor UI", () => {
 
     await login(page);
 
-    // ── Finance → Sponsor-fane: aktiv kontrakt-panel ────────────────────────
+    // ── Finance → Sponsor-fane: aktiv kontrakt-panel m. klausuler + earnings ──
     await page.goto("/finance?tab=sponsors");
 
-    // Panel-titel (sponsor.json → contract.title) + sponsornavn + tal.
     await expect(page.getByRole("heading", { name: "Nuværende sponsor" })).toBeVisible();
     await expect(page.getByText("Alta Cycles")).toBeVisible();
     // formatNumber er locale-aware (da → punktum som tusindtals-separator).
-    await expect(page.getByText("544.000 CZ$")).toBeVisible();
+    await expect(page.getByText("544.000 CZ$").first()).toBeVisible();
     await expect(page.getByText("2.400 CZ$")).toBeVisible();
-    // Kontraktlængde (field.seasons, count=2) + "løber sæson 2 ud".
     await expect(page.getByText(/2 sæsoner/)).toBeVisible();
     await expect(page.getByText(/Løber sæson 2 ud/)).toBeVisible();
+    // #2948: klausul-linjer + earnings-sektion.
+    await expect(page.getByText("Bonusklausuler")).toBeVisible();
+    await expect(page.getByText(/8\.900 CZ\$ pr\. etapesejr/)).toBeVisible();
+    await expect(page.getByText("Tjent på denne kontrakt")).toBeVisible();
+    await expect(page.getByText("657.800 CZ$")).toBeVisible();
 
     await page.screenshot({ path: "tests/screenshots/sponsor-contract-panel.png", fullPage: true });
 
-    // ── Board → "Se tilbud"-CTA → tilbuds-modal med 3 tilbud ────────────────
+    // ── Board → "Se tilbud"-CTA → tilbuds-modal med 5 arketyper ─────────────
     await page.goto("/board");
 
-    // CTA-titel + knap (sponsor.json → cta.title/cta.button, sæson 2).
-    await expect(page.getByRole("heading", { name: "Vælg din sponsor for sæson 2" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Vælg din sponsor til sæson 2" })).toBeVisible();
     const ctaButton = page.getByRole("button", { name: "Se tilbud" });
     await expect(ctaButton).toBeVisible();
     await ctaButton.click();
 
-    // Modal åbner (offers.title) med de 3 varianter (variant.*).
-    await expect(page.getByRole("heading", { name: "Sponsortilbud" })).toBeVisible();
-    await expect(page.getByText("Stabil bagmand")).toBeVisible();
-    await expect(page.getByText("Løbsdags-bagmand")).toBeVisible();
-    await expect(page.getByText("Langsigtet partner")).toBeVisible();
-    // De tre tilbuds sponsornavne — beviser at alle 3 kort renderes.
-    // (Modal-primitivens luk-knap deler accessible name "Vælg" med kortenes
-    //  vælg-knap, så vi tæller IKKE knapper; sponsornavnene er entydige.)
-    await expect(page.getByText("Meridian Bank")).toBeVisible();
-    await expect(page.getByText("Provincia Forsikring")).toBeVisible();
-    // Tre vælg-knapper i kortene + modalens luk-knap = 4 "Vælg" i alt.
-    await expect(page.getByRole("button", { name: "Vælg", exact: true })).toHaveCount(4);
+    // Modal åbner (offers.title) med de 5 arketyper (variant.*). exact: true —
+    // CTA-headingen "Vælg din sponsor til sæson 2" er stadig i DOM bag modalen.
+    await expect(page.getByRole("heading", { name: "Vælg din sponsor", exact: true })).toBeVisible();
+    await expect(page.getByText("Den sikre aftale")).toBeVisible();
+    await expect(page.getByText("Den loyale aftale")).toBeVisible();
+    await expect(page.getByText("Løbsaftalen")).toBeVisible();
+    await expect(page.getByText("Resultataftalen")).toBeVisible();
+    await expect(page.getByText("Ambitionsaftalen")).toBeVisible();
+
+    // Enheds-definition + deadline/default-regel (#2862/#1778/#2914).
+    await expect(page.getByText(/1 løbsdag = én etape dit hold stiller til start i/)).toBeVisible();
+    await expect(page.getByText(/Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale/)).toBeVisible();
+
+    // Divisionsvælger med løbsdage fra kalenderdata (#2862).
+    await expect(page.getByRole("button", { name: "Division 3 · 84 løbsdage" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Division 2 · 112 løbsdage" })).toBeVisible();
+
+    // Klausul-linjer på kortene.
+    await expect(page.getByText(/38\.240 CZ\$ underskriftsbonus/)).toBeVisible();
+    await expect(page.getByText(/8\.604 CZ\$ pr\. etapesejr/)).toBeVisible();
+    await expect(page.getByText(/Slut i øverste halvdel af din division/)).toBeVisible();
+
+    // 5 "Gennemgå og underskriv"-knapper (én pr. kort).
+    await expect(page.getByRole("button", { name: "Gennemgå og underskriv" })).toHaveCount(5);
+
+    // Review & sign-flow: bekræftelses-bar med "Underskriv aftale" (eneste gold).
+    // Mobil-viewport: kortet ligger langt nede i modal-scrollen → scroll først.
+    const reviewButton = page.getByRole("button", { name: "Gennemgå og underskriv" }).first();
+    await reviewButton.scrollIntoViewIfNeeded();
+    await reviewButton.click();
+    await expect(page.getByText(/Underskriv med Meridian Bank i 1 sæson\?/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Underskriv aftale" })).toBeVisible();
+    await page.getByRole("button", { name: "Annullér" }).click();
 
     await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal.png", fullPage: true });
 

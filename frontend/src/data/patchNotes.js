@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.61",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Sponsor choice 2.0: five deals, five ways to earn",
+          "body": "The sponsor negotiation has been rebuilt. Five sponsors are now at the table instead of three near-identical offers: a safe deal (92% guaranteed, 1 season), a loyal deal (3 seasons with an up-front signing bonus), a racing deal (low base, high race-day rate), a results deal (bonuses per stage win and podium, under a cap) and an ambition deal (a season-end bonus for finishing in the top half of your division). The offer cards now define the unit — 1 race day = one stage your team starts — show projected earnings per division based on the actual calendar, state the deadline, and ask you to review and sign before the choice is locked in. The Finance page's sponsor tab shows your contract's clauses and what the deal has actually earned you so far."
+        },
+        "da": {
+          "title": "Sponsorvalg 2.0: fem aftaler, fem måder at tjene på",
+          "body": "Sponsorforhandlingen er bygget om. Fem sponsorer sidder nu ved bordet i stedet for tre næsten ens tilbud: en sikker aftale (92 % garanteret, 1 sæson), en loyal aftale (3 sæsoner med underskriftsbonus udbetalt med det samme), en løbsaftale (lav base, høj løbsdags-sats), en resultataftale (bonus pr. etapesejr og podieplads, under et loft) og en ambitionsaftale (sæsonslut-bonus for at slutte i øverste halvdel af din division). Tilbudskortene definerer nu enheden — 1 løbsdag = én etape dit hold stiller til start i — viser projiceret indtjening pr. division ud fra den faktiske kalender, viser deadlinen og beder dig gennemgå og underskrive før valget låses. Sponsor-fanen på Finanser-siden viser kontraktens klausuler og hvad aftalen faktisk har indbragt dig."
+        },
+        "refs": [2948, 2862, 1778]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Race-day sponsor income is now rated against your division's actual calendar",
+          "body": "The variable part of a sponsor deal was calculated against 28 calendar days but paid out per stage, which would have overpaid by 2-5x depending on division. The per-race-day rate is now set against the number of stages in your division's season calendar when the contract activates, so the deal's maximum matches what the cards promise. Also, if you don't pick a sponsor, the club now signs the 1-season safe deal for you instead of a 3-season binding."
+        },
+        "da": {
+          "title": "Løbsdags-sponsorindtægt beregnes nu mod din divisions faktiske kalender",
+          "body": "Den variable del af en sponsoraftale blev beregnet mod 28 kalenderdage men udbetalt pr. etape, hvilket ville have overbetalt 2-5 gange afhængigt af division. Satsen pr. løbsdag sættes nu mod antallet af etaper i din divisions sæsonkalender når kontrakten aktiveres, så aftalens maksimum matcher det kortene lover. Og vælger du ikke en sponsor, underskriver klubben nu den sikre 1-sæsons aftale for dig i stedet for en 3-sæsoners binding."
+        },
+        "refs": [2913, 2914]
+      }
+    ]
+  },
+  {
     "version": "7.60",
     "date": "2026-07-25",
     "label": "Beta",
