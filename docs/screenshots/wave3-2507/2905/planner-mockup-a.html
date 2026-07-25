@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Season Planner · Model A · The board, improved</title>
+<style>
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent:232 197 71; --accent-t:255 217 102;
+    --success:#5fd98a; --success-bg:rgba(95,217,138,.12);
+    --danger:#fb8484; --danger-bg:rgba(251,132,132,.12);
+    --warning:#f0a830; --warning-bg:rgba(240,168,48,.12);
+    --font-display:"Bebas Neue","Oswald","Arial Narrow",Impact,sans-serif;
+    --font-body:"Inter Tight","Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:var(--font-body);
+       font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  h1,h2,h3,.disp{font-family:var(--font-display);font-weight:400;letter-spacing:.02em;margin:0}
+  .wrap{max-width:1140px;margin:0 auto;padding:28px 20px 64px}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px}
+  .pad{padding:20px}
+  .t2{color:var(--text-2)} .t3{color:var(--text-3)}
+  .xs{font-size:12px} .x2{font-size:11px} .x3{font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  .row{display:flex;align-items:center} .between{justify-content:space-between}
+  .gap6{gap:6px}.gap8{gap:8px}.gap12{gap:12px}.gap16{gap:16px}
+  .mb14{margin-bottom:14px}.mb20{margin-bottom:20px}
+  /* page head */
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
+        border-bottom:1.5px solid var(--text-1);padding-bottom:10px;margin-bottom:16px}
+  .head h1{font-size:38px;line-height:1}
+  .seg{display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;font-size:11px}
+  .seg button{background:none;border:0;color:var(--text-2);padding:6px 12px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--bg-elevated);color:var(--text-1)}
+  /* buttons */
+  .btn{font-family:inherit;font-size:12px;border-radius:5px;padding:7px 13px;cursor:pointer;
+       display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);
+       background:transparent;color:var(--text-1)}
+  .btn:hover{background:var(--bg-elevated)}
+  .btn-gold{background:rgb(var(--accent));border-color:rgb(var(--accent));color:#0e0f15;font-weight:600}
+  .btn-sm{font-size:11px;padding:5px 10px}
+  .ghost{border-style:dashed;color:var(--text-2)}
+  /* chips */
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.05em;
+        text-transform:uppercase;border:1px solid var(--border);border-radius:999px;padding:3px 9px;
+        color:var(--text-2);background:transparent;cursor:pointer;font-family:inherit}
+  .chip:hover{background:var(--bg-elevated);color:var(--text-1)}
+  .chip.warn{color:var(--warning);border-color:rgba(240,168,48,.45);background:var(--warning-bg)}
+  .chip.good{color:var(--success);border-color:rgba(95,217,138,.4);background:var(--success-bg)}
+  .chip.gold{color:rgb(var(--accent-t));border-color:rgba(255,217,102,.45)}
+  .chip .act{color:var(--text-1);border-left:1px solid currentColor;padding-left:6px;opacity:.85}
+  /* answer bar */
+  .answer{border:1px solid var(--border);border-radius:5px;background:var(--bg-subtle);padding:16px 20px}
+  .answer .big{font-family:var(--font-display);font-size:26px;line-height:1.05}
+  .ready-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .rdy{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:5px;
+       padding:5px 9px;font-size:11px;background:var(--bg-card);cursor:pointer}
+  .rdy:hover{border-color:var(--text-3)}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dot.ok{background:var(--success)} .dot.no{background:var(--danger)} .dot.mid{background:var(--warning)}
+  /* board */
+  .board-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+              padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-subtle)}
+  .lane{display:flex;border-top:1px solid var(--border)}
+  .lane:first-of-type{border-top:0}
+  .rail{width:206px;flex:none;padding:10px 12px;border-right:1px solid var(--border);background:var(--bg-card)}
+  .lane.sel .rail,.lane.sel .canvas{background:var(--bg-subtle)}
+  .rail .nm{font-size:13.5px;font-weight:500;letter-spacing:.01em}
+  .canvas{position:relative;background:var(--bg-card);overflow:hidden}
+  .ovr{font-size:11px;color:var(--text-2)}
+  .ovr b{color:var(--text-1);font-weight:600}
+  .flagcode{font-size:10px;letter-spacing:.08em;color:var(--text-3);border:1px solid var(--border);
+            border-radius:3px;padding:0 4px}
+  .lane-acts{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+  /* race list */
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);
+     text-align:left;font-weight:500;padding:9px 12px;border-bottom:1px solid var(--border)}
+  td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px}
+  tr:last-child td{border-bottom:0}
+  tr.hot td{background:var(--bg-subtle)}
+  tr:hover td{background:var(--bg-subtle)}
+  .rname{font-weight:500}
+  .num-r{text-align:right}
+  /* consequence */
+  .conseq{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:0;border:1px solid var(--border);border-radius:5px;overflow:hidden}
+  .conseq>div{padding:16px 18px;border-left:1px solid var(--border);background:var(--bg-card)}
+  .conseq>div:first-child{border-left:0;background:var(--bg-subtle)}
+  .stat{font-family:var(--font-display);font-size:32px;line-height:1}
+  .delta{color:var(--success);font-size:12px}
+  .keyline{border-top:2px solid rgb(var(--accent))}
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:10px;color:var(--text-2);
+          text-transform:uppercase;letter-spacing:.05em;padding:10px 14px;border-top:1px solid var(--border)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  /* section label */
+  .slab{font-family:var(--font-display);font-size:15px;letter-spacing:.06em;color:var(--text-2)}
+  /* mobile frame */
+  .divider{margin:56px 0 24px;border-top:1px solid var(--border);padding-top:14px}
+  .phone{width:375px;border:1px solid var(--border);border-radius:5px;background:var(--bg-body);
+         padding:14px;margin:0 auto}
+  .mrow{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:12px;margin-bottom:8px}
+  .notes{margin-top:44px;border-top:1px dashed var(--border);padding-top:16px;color:var(--text-2);font-size:12px}
+  .notes b{color:var(--text-1)}
+  .notes li{margin-bottom:5px}
+</style>
+</head>
+<body>
+
+<!-- shared timeline defs: month grid, race ticks, form gridlines, today line -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="grid">
+    <line x1="0" y1="17.3" x2="900" y2="17.3" stroke="var(--border)" stroke-width="1" opacity=".55"/>
+    <line x1="0" y1="36"   x2="900" y2="36"   stroke="var(--border)" stroke-width="1" opacity=".55"/>
+    <line x1="0" y1="54.7" x2="900" y2="54.7" stroke="var(--border)" stroke-width="1" opacity=".55"/>
+    <text x="3" y="14.5" font-size="10" fill="var(--text-3)" opacity=".8" font-family="Inter Tight,monospace">90</text>
+    <text x="3" y="33.2" font-size="10" fill="var(--text-3)" opacity=".8" font-family="Inter Tight,monospace">70</text>
+    <text x="3" y="51.9" font-size="10" fill="var(--text-3)" opacity=".8" font-family="Inter Tight,monospace">50</text>
+  </g>
+  <g id="ticks" opacity=".5">
+    <line x1="128" y1="4" x2="128" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="152" y1="4" x2="152" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="205" y1="4" x2="205" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="365" y1="4" x2="365" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="466" y1="4" x2="466" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="567" y1="4" x2="567" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="644" y1="4" x2="644" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="717" y1="4" x2="717" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+    <line x1="826" y1="4" x2="826" y2="72" stroke="var(--border)" stroke-dasharray="1 3"/>
+  </g>
+  <g id="now">
+    <line x1="390" y1="0" x2="390" y2="76" stroke="rgb(var(--accent-t))" stroke-width="1.2" opacity=".55"/>
+  </g>
+</defs></svg>
+
+<div class="wrap">
+
+  <!-- ============ PAGE HEAD ============ -->
+  <div class="head">
+    <div>
+      <h1>SEASON PLANNER</h1>
+      <p class="xs t2" style="margin:2px 0 0">Decide which races each rider peaks for.</p>
+    </div>
+    <div class="row gap12">
+      <div class="row gap6">
+        <span class="x3 t3">Season</span>
+        <div class="seg"><button>S1</button><button class="on">S2</button></div>
+      </div>
+      <div class="seg"><button class="on">My riders</button><button>All</button></div>
+    </div>
+  </div>
+
+  <!-- ============ 1. THE 10-SECOND ANSWER (readiness bar) ============ -->
+  <div class="answer mb14">
+    <div class="row between gap16" style="align-items:flex-start">
+      <div>
+        <div class="x3 t3" style="margin-bottom:4px">Next key race</div>
+        <div class="big">TOUR DE FRANCE</div>
+        <div class="xs t2 num" style="margin-top:2px">5 Jul · in 20 days · Grand Tour · Mountain</div>
+      </div>
+      <div style="text-align:right">
+        <div class="x3 t3" style="margin-bottom:4px">Riders ready</div>
+        <div class="big num"><span style="color:var(--success)">3</span><span class="t3"> / 6</span></div>
+        <div class="xs t2" style="margin-top:2px">2 have no peak planned</div>
+      </div>
+    </div>
+    <div class="ready-grid">
+      <button class="rdy"><span class="dot ok"></span><span>L. Vermeulen</span><span class="num t2">92</span></button>
+      <button class="rdy"><span class="dot ok"></span><span>M. Fiorelli</span><span class="num t2">88</span></button>
+      <button class="rdy"><span class="dot ok"></span><span>J. Brink</span><span class="num t2">85</span></button>
+      <button class="rdy"><span class="dot mid"></span><span>T. Aguirre</span><span class="num t2">74</span><span class="x3" style="color:var(--warning)">taper late</span></button>
+      <button class="rdy"><span class="dot no"></span><span>R. Haas</span><span class="num t2">61</span><span class="x3" style="color:var(--danger)">no peak</span></button>
+      <button class="rdy"><span class="dot no"></span><span>E. Sandberg</span><span class="num t2">58</span><span class="x3" style="color:var(--danger)">no peak</span></button>
+    </div>
+  </div>
+
+  <!-- ============ 2. ASSISTANT, EXPLAINED ============ -->
+  <div class="card mb14" style="background:var(--bg-subtle);border-color:rgba(255,217,102,.45)">
+    <div class="pad">
+      <div class="row gap12" style="align-items:flex-start">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--accent-t))" stroke-width="1.6" style="margin-top:2px;flex:none">
+          <path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.4l6-.8z"/></svg>
+        <div style="flex:1">
+          <p style="margin:0;font-size:15px;font-weight:600">Your assistant drafted 8 peaks for this season.</p>
+          <p class="xs t2" style="margin:5px 0 0">
+            It matched each rider to races their terrain suits, kept two weeks between peaks, and favoured races
+            where your division pays prize money. Nothing is locked in: change any target, or clear the plan and start blank.
+          </p>
+          <p class="x2 t3 num" style="margin:6px 0 0">
+            If you decline, riders race on base form. No rider would start above 78.
+          </p>
+          <div class="row gap8" style="margin-top:11px">
+            <button class="btn btn-gold">Review the plan</button>
+            <button class="btn btn-sm">Clear and plan myself</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. THE BOARD ============ -->
+  <div class="card mb14" style="overflow:hidden">
+    <div class="board-head">
+      <div class="row gap8">
+        <span class="slab">SEASON BOARD</span>
+        <span class="x2 t3">Form 40 to 100 · drag a bracket to change a target</span>
+      </div>
+      <div class="row gap8">
+        <span class="chip gold" style="cursor:default">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/></svg>
+          Today 15 Jun</span>
+      </div>
+    </div>
+
+    <!-- month axis -->
+    <div style="display:flex;background:var(--bg-subtle);border-bottom:1px solid var(--border)">
+      <div style="width:206px;flex:none;border-right:1px solid var(--border)"></div>
+      <svg width="900" height="22" aria-hidden="true">
+        <text x="4"   y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">MAR</text>
+        <text x="116" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">APR</text>
+        <text x="228" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">MAY</text>
+        <text x="340" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">JUN</text>
+        <text x="470" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">JUL</text>
+        <text x="564" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">AUG</text>
+        <text x="676" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">SEP</text>
+        <text x="788" y="15" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">OCT</text>
+        <line x1="390" y1="0" x2="390" y2="22" stroke="rgb(var(--accent-t))" stroke-width="1.2" opacity=".8"/>
+        <text x="386" y="15" font-size="10" text-anchor="end" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">TODAY</text>
+      </svg>
+    </div>
+
+    <!-- LANE 1 · selected, peak planned for Tour de France -->
+    <div class="lane sel">
+      <div class="rail">
+        <div class="row gap6"><span class="flagcode">BEL</span><span class="nm">L. Vermeulen</span></div>
+        <div class="ovr num" style="margin-top:3px">OVR <b>78</b> · Classics · 27y</div>
+        <div class="lane-acts">
+          <button class="chip good">On track <span class="act">View</span></button>
+        </div>
+      </div>
+      <div class="canvas">
+        <svg width="900" height="76">
+          <use href="#grid"/><use href="#ticks"/>
+          <!-- potential ceiling -->
+          <line x1="0" y1="13.6" x2="900" y2="13.6" stroke="rgb(var(--accent-t))" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+          <!-- realized form -->
+          <path d="M0 50 C 40 46, 90 24, 128 19 C 170 25, 205 41, 250 45 C 300 48, 350 46, 390 45"
+                fill="none" stroke="var(--text-1)" stroke-width="1.8"/>
+          <path d="M0 50 C 40 46, 90 24, 128 19 C 170 25, 205 41, 250 45 C 300 48, 350 46, 390 45 L390 72 L0 72 Z"
+                fill="var(--text-1)" opacity=".07"/>
+          <!-- projected form -->
+          <path d="M390 45 C 420 40, 448 22, 466 15.5 C 500 23, 540 39, 575 45 C 660 47, 780 48, 900 47"
+                fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/>
+          <!-- peak bracket (build + taper window) -->
+          <rect x="410" y="6" width="76" height="64" fill="rgb(var(--accent))" opacity=".13" rx="2"/>
+          <line x1="410" y1="7" x2="486" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+          <rect x="408" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <rect x="484" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <circle cx="466" cy="15.5" r="4" fill="rgb(var(--accent))" stroke="rgb(var(--accent-t))"/>
+          <text x="410" y="66" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">TOUR DE FRANCE</text>
+          <text x="500" y="66" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">BUILD 18 JUN · TAPER 1 JUL</text>
+          <use href="#now"/>
+          <!-- current value badge on the now line -->
+          <rect x="356" y="37" width="30" height="15" rx="3" fill="var(--bg-elevated)" stroke="var(--border)"/>
+          <text x="362" y="48" font-size="10" fill="var(--text-1)" font-family="Inter Tight,monospace">62</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- LANE 2 · peak at risk, actionable chip -->
+    <div class="lane">
+      <div class="rail">
+        <div class="row gap6"><span class="flagcode">ITA</span><span class="nm">M. Fiorelli</span></div>
+        <div class="ovr num" style="margin-top:3px">OVR <b>74</b> · Climber · 24y</div>
+        <div class="lane-acts">
+          <button class="chip warn">Taper late <span class="act">Fix it</span></button>
+        </div>
+      </div>
+      <div class="canvas">
+        <svg width="900" height="76">
+          <use href="#grid"/><use href="#ticks"/>
+          <line x1="0" y1="16" x2="900" y2="16" stroke="rgb(var(--accent-t))" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+          <path d="M0 56 C 60 54, 120 48, 180 44 C 250 41, 320 42, 390 40"
+                fill="none" stroke="var(--text-1)" stroke-width="1.8"/>
+          <path d="M0 56 C 60 54, 120 48, 180 44 C 250 41, 320 42, 390 40 L390 72 L0 72 Z" fill="var(--text-1)" opacity=".07"/>
+          <path d="M390 40 C 420 36, 450 24, 466 21 C 510 28, 560 40, 610 44 C 680 42, 760 30, 826 22 C 860 30, 880 38, 900 42"
+                fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/>
+          <rect x="418" y="6" width="66" height="64" fill="rgb(var(--accent))" opacity=".13" rx="2"/>
+          <line x1="418" y1="7" x2="484" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+          <rect x="416" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <rect x="482" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <circle cx="466" cy="21" r="4" fill="rgb(var(--accent))" stroke="rgb(var(--accent-t))"/>
+          <text x="410" y="66" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">TOUR DE FRANCE</text>
+          <text x="500" y="66" font-size="10" fill="var(--warning)" font-family="Inter Tight,monospace">TAPER NOT SET</text>
+          <!-- second peak, autumn -->
+          <rect x="790" y="6" width="66" height="64" fill="rgb(var(--accent))" opacity=".13" rx="2"/>
+          <line x1="790" y1="7" x2="856" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+          <circle cx="826" cy="22" r="4" fill="rgb(var(--accent))" stroke="rgb(var(--accent-t))"/>
+          <text x="786" y="66" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">IL LOMBARDIA</text>
+          <use href="#now"/>
+          <rect x="356" y="32" width="30" height="15" rx="3" fill="var(--bg-elevated)" stroke="var(--border)"/>
+          <text x="362" y="43" font-size="10" fill="var(--text-1)" font-family="Inter Tight,monospace">70</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- LANE 3 · time triallist, on track -->
+    <div class="lane">
+      <div class="rail">
+        <div class="row gap6"><span class="flagcode">DEN</span><span class="nm">J. Brink</span></div>
+        <div class="ovr num" style="margin-top:3px">OVR <b>71</b> · Time trial · 29y</div>
+        <div class="lane-acts">
+          <button class="chip good">On track <span class="act">View</span></button>
+        </div>
+      </div>
+      <div class="canvas">
+        <svg width="900" height="76">
+          <use href="#grid"/><use href="#ticks"/>
+          <line x1="0" y1="19" x2="900" y2="19" stroke="rgb(var(--accent-t))" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+          <path d="M0 58 C 50 55, 100 46, 152 28 C 200 36, 260 48, 320 50 C 350 49, 370 47, 390 46"
+                fill="none" stroke="var(--text-1)" stroke-width="1.8"/>
+          <path d="M0 58 C 50 55, 100 46, 152 28 C 200 36, 260 48, 320 50 C 350 49, 370 47, 390 46 L390 72 L0 72 Z" fill="var(--text-1)" opacity=".07"/>
+          <path d="M390 46 C 430 42, 480 40, 520 42 C 570 44, 610 32, 644 24 C 690 32, 760 42, 900 45"
+                fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/>
+          <rect x="600" y="6" width="62" height="64" fill="rgb(var(--accent))" opacity=".13" rx="2"/>
+          <line x1="600" y1="7" x2="662" y2="7" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+          <rect x="598" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <rect x="660" y="26" width="4" height="24" rx="2" fill="rgb(var(--accent-t))"/>
+          <circle cx="644" cy="24" r="4" fill="rgb(var(--accent))" stroke="rgb(var(--accent-t))"/>
+          <text x="596" y="66" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">VUELTA A ESPANA</text>
+          <use href="#now"/>
+          <rect x="356" y="38" width="30" height="15" rx="3" fill="var(--bg-elevated)" stroke="var(--border)"/>
+          <text x="362" y="49" font-size="10" fill="var(--text-1)" font-family="Inter Tight,monospace">61</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- LANE 4 · suggestion, not yet accepted -->
+    <div class="lane">
+      <div class="rail">
+        <div class="row gap6"><span class="flagcode">ESP</span><span class="nm">T. Aguirre</span></div>
+        <div class="ovr num" style="margin-top:3px">OVR <b>69</b> · Climber · 22y</div>
+        <div class="lane-acts">
+          <button class="chip gold">Suggested <span class="act">Accept</span></button>
+        </div>
+      </div>
+      <div class="canvas">
+        <svg width="900" height="76">
+          <use href="#grid"/><use href="#ticks"/>
+          <line x1="0" y1="21" x2="900" y2="21" stroke="rgb(var(--accent-t))" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+          <path d="M0 60 C 60 58, 140 54, 220 50 C 300 47, 350 47, 390 48"
+                fill="none" stroke="var(--text-1)" stroke-width="1.8"/>
+          <path d="M0 60 C 60 58, 140 54, 220 50 C 300 47, 350 47, 390 48 L390 72 L0 72 Z" fill="var(--text-1)" opacity=".07"/>
+          <path d="M390 48 C 440 46, 500 44, 540 38 C 560 32, 560 30, 567 27 C 600 34, 680 44, 900 46"
+                fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".55"/>
+          <!-- suggestion = dashed outline bracket -->
+          <rect x="524" y="6" width="62" height="64" fill="rgb(var(--accent))" opacity=".07" rx="2"
+                stroke="rgb(var(--accent-t))" stroke-dasharray="4 3" stroke-width="1"/>
+          <circle cx="567" cy="27" r="4" fill="none" stroke="rgb(var(--accent-t))" stroke-dasharray="2 2"/>
+          <text x="520" y="66" font-size="10" fill="rgb(var(--accent-t))" font-family="Inter Tight,monospace">SAN SEBASTIAN</text>
+          <text x="610" y="66" font-size="10" fill="var(--text-3)" font-family="Inter Tight,monospace">SUGGESTED · NOT ACCEPTED</text>
+          <use href="#now"/>
+          <rect x="356" y="40" width="30" height="15" rx="3" fill="var(--bg-elevated)" stroke="var(--border)"/>
+          <text x="362" y="51" font-size="10" fill="var(--text-1)" font-family="Inter Tight,monospace">59</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- LANE 5 · EMPTY LANE with a visible primary action -->
+    <div class="lane">
+      <div class="rail">
+        <div class="row gap6"><span class="flagcode">SWE</span><span class="nm">E. Sandberg</span></div>
+        <div class="ovr num" style="margin-top:3px">OVR <b>63</b> · Domestique · 31y</div>
+        <div class="lane-acts">
+          <button class="chip">No peak <span class="act">Plan one</span></button>
+        </div>
+      </div>
+      <div class="canvas" style="position:relative">
+        <svg width="900" height="76">
+          <use href="#grid"/><use href="#ticks"/>
+          <path d="M0 62 C 80 61, 180 59, 280 58 C 340 58, 370 58, 390 58" fill="none" stroke="var(--text-1)" stroke-width="1.8"/>
+          <path d="M0 62 C 80 61, 180 59, 280 58 C 340 58, 370 58, 390 58 L390 72 L0 72 Z" fill="var(--text-1)" opacity=".07"/>
+          <path d="M390 58 C 500 57, 700 57, 900 56" fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".5"/>
+          <use href="#now"/>
+        </svg>
+        <div style="position:absolute;left:430px;top:8px">
+          <button class="btn ghost btn-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Plan this rider's first peak
+          </button>
+          <div class="x3 t3" style="margin-top:5px">Or drag from a race in the list below</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--text-1)" stroke-width="1.8"/></svg>Form so far</span>
+      <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/></svg>Projected</span>
+      <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="rgb(var(--accent-t))" stroke-width="1" stroke-dasharray="3 3"/></svg>Ceiling</span>
+      <span><svg width="18" height="10"><rect x="0" y="1" width="18" height="8" fill="rgb(var(--accent))" opacity=".13"/><line x1="0" y1="1" x2="18" y2="1" stroke="rgb(var(--accent-t))" stroke-width="2"/></svg>Peak window</span>
+      <span><svg width="12" height="10"><circle cx="6" cy="5" r="4" fill="rgb(var(--accent))" stroke="rgb(var(--accent-t))"/></svg>Target race</span>
+      <span>Numbers on the left are form, 40 to 100</span>
+    </div>
+  </div>
+
+  <!-- ============ 4. WHAT THIS PEAK BUYS YOU (consequence) ============ -->
+  <div class="conseq keyline mb20">
+    <div>
+      <div class="x3 t3">Selected peak</div>
+      <div class="disp" style="font-size:22px;margin-top:3px">L. VERMEULEN</div>
+      <div class="xs t2 num">Tour de France · 5 Jul · Grand Tour</div>
+      <div class="row gap8" style="margin-top:11px">
+        <button class="btn btn-sm">Move target</button>
+        <button class="btn btn-sm">Remove peak</button>
+      </div>
+    </div>
+    <div>
+      <div class="x3 t3">Form on the start line</div>
+      <div class="stat num" style="margin-top:5px">92</div>
+      <div class="delta num" style="margin-top:3px">+30 vs no peak (62)</div>
+      <div class="x2 t3" style="margin-top:6px">Ceiling for this rider is 94.</div>
+    </div>
+    <div>
+      <div class="x3 t3">What that is worth</div>
+      <div class="stat num" style="margin-top:5px">Top 10</div>
+      <div class="delta num" style="margin-top:3px">34% to 61% chance</div>
+      <div class="x2 t3" style="margin-top:6px">Estimated against the riders entered so far.</div>
+    </div>
+  </div>
+
+  <!-- ============ 5. SEASON RACES (linked to the board) ============ -->
+  <div class="card">
+    <div class="board-head">
+      <span class="slab">SEASON RACES</span>
+      <span class="x2 t3">Hover a race to highlight its column on the board</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:88px">Date</th><th>Race</th><th style="width:120px">Terrain</th>
+        <th style="width:96px">Category</th><th style="width:110px" class="num-r">Your peaks</th><th style="width:132px"></th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="num t2">8 Jun</td><td class="rname">Criterium du Dauphine</td><td class="t2">Mountain</td><td class="t2">Stage race</td><td class="num-r num t3">0</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+        <tr class="hot"><td class="num t2">5 Jul</td><td class="rname">Tour de France <span class="chip gold" style="margin-left:6px;cursor:default">Key race</span></td><td class="t2">Mountain</td><td class="t2">Grand Tour</td><td class="num-r num" style="color:rgb(var(--accent-t))">3</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+        <tr><td class="num t2">2 Aug</td><td class="rname">Clasica San Sebastian</td><td class="t2">Hilly</td><td class="t2">One day</td><td class="num-r num t3">1 suggested</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+        <tr><td class="num t2">23 Aug</td><td class="rname">Vuelta a Espana</td><td class="t2">Mountain</td><td class="t2">Grand Tour</td><td class="num-r num">1</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+        <tr><td class="num t2">12 Sep</td><td class="rname">GP de Montreal</td><td class="t2">Hilly</td><td class="t2">One day</td><td class="num-r num t3">0</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+        <tr><td class="num t2">11 Oct</td><td class="rname">Il Lombardia</td><td class="t2">Hilly</td><td class="t2">One day</td><td class="num-r num">1</td><td><button class="btn btn-sm">Peak here</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============ MOBILE ============ -->
+  <div class="divider">
+    <div class="slab" style="margin-bottom:4px">MOBILE · 375PX</div>
+    <p class="xs t2" style="margin:0 0 18px">The board collapses to stacked lanes. The readiness bar and the actionable chips carry over unchanged.</p>
+  </div>
+
+  <div class="phone">
+    <div style="border-bottom:1.5px solid var(--text-1);padding-bottom:8px;margin-bottom:12px">
+      <div class="disp" style="font-size:28px;line-height:1">SEASON PLANNER</div>
+      <div class="x2 t2">Decide which races each rider peaks for.</div>
+    </div>
+
+    <div class="answer" style="padding:12px 14px;margin-bottom:10px">
+      <div class="x3 t3">Next key race</div>
+      <div class="big" style="font-size:21px">TOUR DE FRANCE</div>
+      <div class="x2 t2 num">5 Jul · in 20 days</div>
+      <div class="row between" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--border)">
+        <span class="x2 t2">Riders ready</span>
+        <span class="num" style="font-family:var(--font-display);font-size:19px">
+          <span style="color:var(--success)">3</span><span class="t3">/6</span></span>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--bg-subtle);border-color:rgba(255,217,102,.45);padding:12px;margin-bottom:12px">
+      <div style="font-size:13.5px;font-weight:600">Assistant drafted 8 peaks</div>
+      <div class="x2 t2" style="margin-top:4px">Matched to terrain and prize money. Decline and no rider starts above 78.</div>
+      <button class="btn btn-gold btn-sm" style="margin-top:9px;width:100%;justify-content:center">Review the plan</button>
+    </div>
+
+    <div class="x3 t3" style="margin:0 0 7px">Your riders</div>
+
+    <div class="mrow">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">BEL</span><span style="font-size:13.5px;font-weight:500">L. Vermeulen</span></div>
+        <span class="num x2 t2">OVR 78</span>
+      </div>
+      <svg width="100%" height="42" viewBox="0 0 320 42" preserveAspectRatio="none" style="margin-top:8px">
+        <line x1="0" y1="10" x2="320" y2="10" stroke="var(--border)"/>
+        <line x1="0" y1="30" x2="320" y2="30" stroke="var(--border)"/>
+        <path d="M0 30 C 40 26, 70 12, 92 9 C 130 16, 170 27, 200 28" fill="none" stroke="var(--text-1)" stroke-width="1.6"/>
+        <path d="M200 28 C 220 24, 240 10, 252 7 C 280 16, 300 24, 320 27" fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/>
+        <rect x="232" y="2" width="40" height="38" fill="rgb(var(--accent))" opacity=".13"/>
+        <line x1="232" y1="3" x2="272" y2="3" stroke="rgb(var(--accent-t))" stroke-width="2"/>
+        <line x1="200" y1="0" x2="200" y2="42" stroke="rgb(var(--accent-t))" opacity=".55"/>
+      </svg>
+      <div class="row between" style="margin-top:7px">
+        <span class="x2 t2 num">Peak: Tour de France · 5 Jul</span>
+        <span class="chip good" style="cursor:default">On track</span>
+      </div>
+      <div class="x2 num" style="margin-top:5px;color:var(--success)">Starts at form 92 (+30)</div>
+    </div>
+
+    <div class="mrow">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">ESP</span><span style="font-size:13.5px;font-weight:500">T. Aguirre</span></div>
+        <span class="num x2 t2">OVR 69</span>
+      </div>
+      <svg width="100%" height="42" viewBox="0 0 320 42" preserveAspectRatio="none" style="margin-top:8px">
+        <line x1="0" y1="10" x2="320" y2="10" stroke="var(--border)"/>
+        <line x1="0" y1="30" x2="320" y2="30" stroke="var(--border)"/>
+        <path d="M0 34 C 80 32, 150 30, 200 30" fill="none" stroke="var(--text-1)" stroke-width="1.6"/>
+        <path d="M200 30 C 240 28, 270 18, 286 14 C 300 20, 312 25, 320 27" fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".55"/>
+        <rect x="266" y="2" width="40" height="38" fill="rgb(var(--accent))" opacity=".07" stroke="rgb(var(--accent-t))" stroke-dasharray="4 3"/>
+        <line x1="200" y1="0" x2="200" y2="42" stroke="rgb(var(--accent-t))" opacity=".55"/>
+      </svg>
+      <div class="row between" style="margin-top:7px">
+        <span class="x2 t2 num">Suggested: San Sebastian · 2 Aug</span>
+        <span class="chip gold">Accept</span>
+      </div>
+    </div>
+
+    <div class="mrow">
+      <div class="row between">
+        <div class="row gap6"><span class="flagcode">SWE</span><span style="font-size:13.5px;font-weight:500">E. Sandberg</span></div>
+        <span class="num x2 t2">OVR 63</span>
+      </div>
+      <div class="x2 t2" style="margin-top:7px">No peak planned. Races on base form.</div>
+      <button class="btn ghost btn-sm" style="margin-top:8px;width:100%;justify-content:center">Plan a peak</button>
+    </div>
+  </div>
+
+  <!-- design notes, outside the app chrome -->
+  <div class="notes">
+    <b>Model A fixes, mapped to the six observations in #2905</b>
+    <ol>
+      <li><b>Invisible primary action.</b> Every empty lane carries a visible "Plan this rider's first peak" button, and every race row has "Peak here". Dragging is now an accelerator, not the only door in.</li>
+      <li><b>Unreadable curve.</b> Form axis labelled 50 / 70 / 90 on every lane, a dashed gold ceiling line, a value badge on the today line, and a legend that states the scale in words.</li>
+      <li><b>Status chips state a condition, not an action.</b> Every chip now ends in a verb: "Taper late · Fix it", "No peak · Plan one", "Suggested · Accept".</li>
+      <li><b>Two mental models.</b> The race list drives the board: hovering a race highlights its column, "Peak here" writes into the lane. One model, two entry points.</li>
+      <li><b>Assistant unexplained.</b> The banner states the reasoning (terrain, spacing, prize money) and the cost of declining (no rider above 78).</li>
+      <li><b>No consequence shown.</b> The strip under the board converts a peak into start-line form and a finishing-odds delta.</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

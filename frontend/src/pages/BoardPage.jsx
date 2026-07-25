@@ -7,7 +7,7 @@ import { getWizardBackState, canResumeNegotiation, shouldAutoOpenSetupWizard } f
 import { getCountryDisplay } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import BoardEmptyState from "../components/BoardEmptyState";
 import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
 import SponsorOfferModal from "../components/SponsorOfferModal";
@@ -3080,6 +3080,8 @@ export default function BoardPage() {
         offers={sponsorState?.offers ?? []}
         pendingVariant={sponsorState?.pendingVariant}
         upcomingSeasonNumber={sponsorState?.upcomingSeasonNumber}
+        stageCounts={sponsorState?.stageCounts ?? null}
+        teamDivision={sponsorState?.teamDivision ?? null}
         onAccept={handleAcceptSponsor}
         accepting={accepting}
       />

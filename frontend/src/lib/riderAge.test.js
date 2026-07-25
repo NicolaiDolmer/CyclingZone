@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getRiderAge, ageBadgeKey, isU23, isU25, ageForSeason } from "./riderAge.js";
+import {
+  getRiderAge, ageBadgeKey, isU23, isU25, ageForSeason,
+  isRetirementRisk, retirementRiskBadgeKey, RETIREMENT_WARNING_AGE,
+} from "./riderAge.js";
 
 // Fast referencepunkt så testen er deterministisk uafhængigt af kørselsdato.
 const NOW = new Date("2026-06-15T12:00:00Z");
@@ -100,4 +103,51 @@ test("isU25 — robust ved manglende fødselsdato/ugyldigt referenceår", () => 
   assert.equal(isU25(undefined, 2026), false);
   assert.equal(isU25("2010-06-15", null), false);
   assert.equal(isU25("2010-06-15", NaN), false);
+});
+
+// #2943: pensions-risiko-varsel til køberen — grænsen er windowStartAge (36,
+// SSOT backend/lib/riderProgression.js PROGRESSION_CONFIG.retirement) minus ét
+// sæson-varsel (noticeSeasons=1) = 35. Bekræfter selve konstanten, ikke bare
+// et hardkodet tal, så testen brister hvis nogen ændrer duplikatet uden at
+// opdatere kommentaren/SSOT-referencen.
+test("RETIREMENT_WARNING_AGE — afledt af windowStartAge(36) − noticeSeasons(1)", () => {
+  assert.equal(RETIREMENT_WARNING_AGE, 35);
+});
+
+test("isRetirementRisk — boundary: 34 er IKKE risiko, 35 ER risiko", () => {
+  assert.equal(isRetirementRisk("1992-01-01", NOW), false); // 34
+  assert.equal(isRetirementRisk("1991-01-01", NOW), true);  // 35
+});
+
+test("isRetirementRisk — sand hele pensions-vinduet ud (36-40) og derover", () => {
+  assert.equal(isRetirementRisk("1990-01-01", NOW), true); // 36 (windowStartAge)
+  assert.equal(isRetirementRisk("1986-01-01", NOW), true); // 40 (guaranteedAge)
+  assert.equal(isRetirementRisk("1980-01-01", NOW), true); // 46
+});
+
+test("isRetirementRisk — robust ved manglende fødselsdato", () => {
+  assert.equal(isRetirementRisk(null, NOW), false);
+  assert.equal(isRetirementRisk(undefined, NOW), false);
+});
+
+test("retirementRiskBadgeKey — 'retireRisk' fra 35 år, ellers null", () => {
+  assert.equal(retirementRiskBadgeKey({ birthdate: "1991-01-01" }, NOW), "retireRisk"); // 35
+  assert.equal(retirementRiskBadgeKey({ birthdate: "1992-01-01" }, NOW), null);         // 34
+});
+
+test("retirementRiskBadgeKey — robust ved manglende rytter/fødselsdato", () => {
+  assert.equal(retirementRiskBadgeKey(null, NOW), null);
+  assert.equal(retirementRiskBadgeKey({}, NOW), null);
+  assert.equal(retirementRiskBadgeKey({ birthdate: null }, NOW), null);
+});
+
+// Aldrig overlap med u23/u25-badget — de to klassifikationer er gensidigt
+// udelukkende i praksis (ung vs. gammel), men koden bør ikke selv antage det.
+test("retirementRiskBadgeKey og ageBadgeKey er aldrig samtidig sat", () => {
+  const oldRider = { birthdate: "1985-01-01" }; // 41
+  assert.equal(ageBadgeKey(oldRider, NOW), null);
+  assert.equal(retirementRiskBadgeKey(oldRider, NOW), "retireRisk");
+  const youngRider = { birthdate: "2010-01-01" }; // 16
+  assert.equal(ageBadgeKey(youngRider, NOW), "u23");
+  assert.equal(retirementRiskBadgeKey(youngRider, NOW), null);
 });

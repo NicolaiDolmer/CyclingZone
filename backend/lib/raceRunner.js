@@ -72,6 +72,7 @@ import { captureException } from "./sentry.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
@@ -650,11 +651,21 @@ async function loadStartFieldRiderIds({ supabase, raceId }) {
 //      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
 //      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
 export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
-  const { data: teams, error: teamErr } = await supabase
-    .from("teams")
-    .select("id, is_test_account, is_frozen, league_division_id")
-    .or("is_test_account.is.null,is_test_account.eq.false");
-  if (teamErr) throw new Error(`teams: ${teamErr.message}`);
+  // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
+  // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
+  // fetchAllRows; stabilt .order("id") som tiebreak.
+  let teams;
+  try {
+    teams = await fetchAllRows(() => (
+      supabase
+        .from("teams")
+        .select("id, is_test_account, is_frozen, league_division_id")
+        .or("is_test_account.is.null,is_test_account.eq.false")
+        .order("id", { ascending: true })
+    ));
+  } catch (teamErr) {
+    throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
+  }
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
   const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
@@ -1194,9 +1205,28 @@ export async function simulateRace({
 
   // Idempotent PR. ETAPE — spejler pcmResultsImport: slet kun de etaper denne
   // afvikling faktisk dækker, så en gen-afvikling ikke wiper andre etaper.
+  //
+  // #2898: eksplicit error-tjek er PÅKRÆVET her. Fejler denne delete tavst (fx et
+  // statement timeout under samtidige etaper — netop det Sentry fangede i
+  // CYCLINGZONE-3D/3E), ville applyRaceResults nedenfor indsætte de nye rækker
+  // OVEN PÅ de gamle race_results — dublerede points_earned og dobbelt
+  // prize_money (prizePayoutEngine.js). Abort FØR insert, ingen tavs fortsættelse.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
   if (stagesInRun.length) {
-    await supabase.from("race_results").delete().eq("race_id", race.id).in("stage_number", stagesInRun);
+    const { error: deleteError } = await supabase
+      .from("race_results")
+      .delete()
+      .eq("race_id", race.id)
+      .in("stage_number", stagesInRun);
+    if (deleteError) {
+      const err = new Error(
+        `race_results delete failed for race ${race.id} (stages ${stagesInRun.join(",")}) — ` +
+          `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
+      );
+      console.error(`  ⚠️  ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "race-results-delete" }, raceId: race.id });
+      throw err;
+    }
   }
 
   const applied = await applyRaceResults({
@@ -1223,7 +1253,21 @@ export async function simulateRace({
   if (v3 && moments.length) {
     await persistStageMoments({ supabase, race, moments, stageNumbers: stages.map((s) => s.stage_number || 1) });
   }
-  await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+  // #2898: race_results er allerede skrevet på dette tidspunkt — recovery-logikken
+  // (fx den stage-scheduler-baserede retry-sti #2878) læner sig på at status='completed'
+  // er pålideligt sat. Et tavst-fejlet update ville efterlade løbet stående som
+  // "ikke afviklet" trods skrevne resultater → et gen-forsøg ville forsøge at
+  // afvikle igen oven på allerede skrevne race_results. Tjek + kast.
+  const { error: statusError } = await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+  if (statusError) {
+    const err = new Error(
+      `Failed to mark race ${race.id} as completed after results were persisted — results ARE written, ` +
+        `only the status flag failed: ${statusError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "race-status-completed" }, raceId: race.id });
+    throw err;
+  }
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });

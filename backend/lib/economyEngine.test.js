@@ -129,19 +129,57 @@ function createSeasonEndSupabase({
       if (table === "season_standings") {
         return {
           select(columns) {
+            if (columns === "team_id, division, rank_in_division, total_points") {
+              // #2951 · loadSponsorStandingsContextForSeason — pagineret via
+              // fetchAllRows (.order("id").range()), ingen sekundær sortering.
+              return {
+                eq(column, value) {
+                  assert.equal(column, "season_id");
+                  return {
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          const data = clone(state.standings).filter(row => row.season_id === value);
+                          return Promise.resolve({
+                            data: data.slice(from, to + 1),
+                            error: null,
+                          });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "*, team:team_id(*)");
             return {
               eq(column, value) {
                 assert.equal(column, "season_id");
                 assert.equal(value, state.season.id);
                 return {
+                  // #2951 · processSeasonEnd/repairSeasonEndFinanceAndBoard pagineres nu
+                  // via fetchAllRows: total_points DESC + .order("id") som stabilt
+                  // tiebreak, derefter .range() pr. side.
                   order(orderColumn, orderOptions) {
                     assert.equal(orderColumn, "total_points");
                     assert.deepEqual(orderOptions, { ascending: false });
-                    return Promise.resolve({
-                      data: clone(state.standings),
-                      error: null,
-                    });
+                    return {
+                      order(secondOrderColumn, secondOrderOptions) {
+                        assert.equal(secondOrderColumn, "id");
+                        assert.deepEqual(secondOrderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({
+                              data: clone(state.standings).slice(from, to + 1),
+                              error: null,
+                            });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -176,6 +214,22 @@ function createSeasonEndSupabase({
                       );
                       assert.equal(innerVal, false);
                       return makeChain();
+                    },
+                    // #2951 · loadHumanSeasonEndTeams pagineres nu via fetchAllRows
+                    // (.order("id").range()); andre kaldere (processSeasonStart,
+                    // rebalanceDivisions) awaiter kæden direkte uden .order() og
+                    // rammer derfor stadig teamsResult-thenable'en ovenfor uændret.
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          return Promise.resolve({
+                            data: teamsResult.data.slice(from, to + 1),
+                            error: teamsResult.error,
+                          });
+                        },
+                      };
                     },
                   });
                   return makeChain();
@@ -300,12 +354,22 @@ function createSeasonEndSupabase({
                 eq(column, value) {
                   assert.equal(column, "season_id");
                   assert.equal(value, state.season.id);
-                  return Promise.resolve({
-                    data: clone(state.inserts.board_plan_snapshots)
-                      .filter(row => row.season_id === value)
-                      .map(row => ({ team_id: row.team_id, board_id: row.board_id })),
-                    error: null,
-                  });
+                  const data = clone(state.inserts.board_plan_snapshots)
+                    .filter(row => row.season_id === value)
+                    .map(row => ({ team_id: row.team_id, board_id: row.board_id }));
+                  // #2951 · repairSeasonEndFinanceAndBoard's dedup-tjek pagineres nu
+                  // via fetchAllRows (.order("id").range()).
+                  return {
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                        },
+                      };
+                    },
+                  };
                 },
               };
             }
@@ -433,10 +497,22 @@ function createSeasonEndSupabase({
               in(column, values) {
                 assert.equal(column, "team_id");
                 assert.deepEqual(values, [state.team.id]);
-                return Promise.resolve({
-                  data: [clone(state.board)],
-                  error: null,
-                });
+                // #2951 · loadHumanSeasonEndTeams pagineres nu via fetchAllRows
+                // (.order("id").range()).
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({
+                          data: [clone(state.board)].slice(from, to + 1),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -469,7 +545,19 @@ function createSeasonEndSupabase({
                       const data = state.inserts.finance_transactions
                         .filter(row => Object.entries(filters).every(([k, v]) => row[k] === v))
                         .map(row => ({ team_id: row.team_id }));
-                      return Promise.resolve({ data, error: null });
+                      // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                      // fetchAllRows (.order("id").range()).
+                      return {
+                        order(orderColumn, orderOptions) {
+                          assert.equal(orderColumn, "id");
+                          assert.deepEqual(orderOptions, { ascending: true });
+                          return {
+                            range(from, to) {
+                              return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                            },
+                          };
+                        },
+                      };
                     },
                   };
                 },
@@ -608,7 +696,7 @@ function createSeasonEndSupabase({
   };
 }
 
-function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
+function createStandingsSupabase({ teams, races, results, liveTeams = null, penalties = [] }) {
   const state = {
     teams: clone(teams),
     races: clone(races),
@@ -617,6 +705,7 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
     // (select("id") før upsert) ser denne liste, mens den indledende teams-læsning
     // ser den fulde. Default = samme liste (intet slettet).
     liveTeams: clone(liveTeams ?? teams),
+    penalties: clone(penalties),
     upserts: [],
   };
 
@@ -640,10 +729,23 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
               };
             }
             assert.equal(columns, "id, division, league_division_id");
-            return Promise.resolve({
-              data: clone(state.teams),
-              error: null,
-            });
+            // #2962 · updateStandings' initielle teams-load pagineres nu via
+            // fetchAllRows (.order("id").range()) — samme klasse som
+            // race_results/season_standings-penalty-selectet nedenfor.
+            return {
+              order(orderColumn, orderOptions) {
+                assert.equal(orderColumn, "id");
+                assert.deepEqual(orderOptions, { ascending: true });
+                return {
+                  range(from, to) {
+                    return Promise.resolve({
+                      data: clone(state.teams).slice(from, to + 1),
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -703,8 +805,21 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null }) {
                 return {
                   in(_col2, _vals) {
                     // S-03: updateStandings henter penalty_points for at rank-justere.
-                    // Test har ingen pre-existing penalty rows, så returnér tomt sæt.
-                    return Promise.resolve({ data: [], error: null });
+                    // #2962: pagineres nu via fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({
+                              data: clone(state.penalties).slice(from, to + 1),
+                              error: null,
+                            });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -896,7 +1011,11 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
     allRiders.push({ id: `r${i}`, team_id: "team-b", salary: 100 });
   }
 
-  let rangeCallCount = 0;
+  // #2951 · teams/board_profiles var deferred i #2907-PR-bodyen ("langt under
+  // loftet i dag, samme langsommere driver") — nu også pagineret. rangeCallCounts
+  // tæller .range()-kald pr. tabel, så testen kan bevise at ALLE tre queries
+  // reelt går gennem fetchAllRows, ikke kun riders.
+  const rangeCallCounts = { teams: 0, riders: 0, board_profiles: 0 };
   const supabase = {
     from(table) {
       if (table === "teams") {
@@ -908,13 +1027,25 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
                   eq() {
                     return {
                       eq() {
-                        return Promise.resolve({
-                          data: [
-                            { id: "team-a", is_ai: false, is_bank: false, is_frozen: false },
-                            { id: "team-b", is_ai: false, is_bank: false, is_frozen: false },
-                          ],
-                          error: null,
-                        });
+                        return {
+                          order(orderColumn, orderOptions) {
+                            assert.equal(orderColumn, "id");
+                            assert.deepEqual(orderOptions, { ascending: true });
+                            return {
+                              range(from, to) {
+                                rangeCallCounts.teams += 1;
+                                const allTeams = [
+                                  { id: "team-a", is_ai: false, is_bank: false, is_frozen: false },
+                                  { id: "team-b", is_ai: false, is_bank: false, is_frozen: false },
+                                ];
+                                return Promise.resolve({
+                                  data: allTeams.slice(from, to + 1),
+                                  error: null,
+                                });
+                              },
+                            };
+                          },
+                        };
                       },
                     };
                   },
@@ -937,7 +1068,7 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
                     assert.deepEqual(orderOptions, { ascending: true });
                     return {
                       range(from, to) {
-                        rangeCallCount += 1;
+                        rangeCallCounts.riders += 1;
                         return Promise.resolve({
                           data: allRiders.slice(from, to + 1),
                           error: null,
@@ -956,7 +1087,18 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
           select() {
             return {
               in() {
-                return Promise.resolve({ data: [], error: null });
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        rangeCallCounts.board_profiles += 1;
+                        return Promise.resolve({ data: [].slice(from, to + 1), error: null });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -968,7 +1110,9 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
 
   const teams = await loadHumanSeasonEndTeams(supabase);
 
-  assert.equal(rangeCallCount >= 2, true, "skal hente mindst 2 sider (1500 ryttere > page-size)");
+  assert.equal(rangeCallCounts.riders >= 2, true, "skal hente mindst 2 sider (1500 ryttere > page-size)");
+  assert.ok(rangeCallCounts.teams >= 1, "teams skal hentes via fetchAllRows (range())");
+  assert.ok(rangeCallCounts.board_profiles >= 1, "board_profiles skal hentes via fetchAllRows (range())");
   const teamA = teams.find(t => t.id === "team-a");
   const teamB = teams.find(t => t.id === "team-b");
   assert.equal(teamA.riders.length, pageSize, "team-a (side 1) skal have alle sine ryttere");
@@ -2115,6 +2259,41 @@ test("updateStandings paginerer race_results forbi 1000-row-loftet", async () =>
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 2500); // alle sider talt
 });
 
+test("#2962: updateStandings paginerer det INDLEDENDE teams-select forbi 1000-row-loftet (legacy-fallback-sti)", async () => {
+  // 1500 hold — uden paginering ville kun de første 1000 optræde i upsert'et,
+  // og standings for de sidste 500 hold ville aldrig blive skrevet (samme
+  // klasse som race_results-testen ovenfor, blot på den INDLEDENDE teams-load).
+  const teams = [];
+  for (let i = 0; i < 1500; i += 1) teams.push({ id: `team-${i}`, division: 3 });
+
+  const supabase = createStandingsSupabase({ teams, races: [], results: [] });
+  const summary = await updateStandings("season-1", null, { supabase });
+
+  assert.equal(summary.rowsUpdated, 1500, "alle 1500 hold, ikke kun de første 1000, skal skrives til standings");
+  assert.equal(supabase.state.upserts[0].rows.length, 1500);
+});
+
+test("#2962: updateStandings paginerer season_standings-penalty-selectet forbi 1000-row-loftet", async () => {
+  // 1500 hold, alle med 0 point — ét hold (team-1499, index 1499) har en
+  // eksisterende penalty_points-række, der ligger PÅ SIDE 2 (>1000) af det
+  // pagineret penalty-select. Uden paginering ville penaltyen aldrig blive
+  // set, og team-1499 ville uretmæssigt beholde rank_in_division=1 (i stedet
+  // for sidstepladsen, som penaltyen retmæssigt sender det til).
+  const teams = [];
+  const penalties = [];
+  for (let i = 0; i < 1500; i += 1) {
+    teams.push({ id: `team-${i}`, division: 3, league_division_id: 1 });
+    penalties.push({ team_id: `team-${i}`, penalty_points: i === 1499 ? 500 : 0 });
+  }
+
+  const supabase = createStandingsSupabase({ teams, races: [], results: [], penalties });
+  await updateStandings("season-1", null, { supabase });
+
+  const rows = supabase.state.upserts[0].rows;
+  const penalized = rows.find(r => r.team_id === "team-1499");
+  assert.equal(penalized.rank_in_division, 1500, "penaltyen fra side 2 af det pagineret select skal sende holdet sidst");
+});
+
 test("updateStandings filtrerer hold slettet under recalc fra upsert (#2389, Sentry CYCLINGZONE-2F)", async () => {
   // team-b slettes (AI-trim) mellem den indledende teams-læsning og upsert'et —
   // uden filteret ville HELE upsert'et FK-fejle og abortere løbets finalization.
@@ -2362,7 +2541,19 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
                     const data = financeRows
                       .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
                       .map(r => ({ team_id: r.team_id }));
-                    return Promise.resolve({ data, error: null });
+                    // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                    // fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -2786,6 +2977,11 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
 function createSeasonStartSupabase({
   season,
   team,
+  // #2962 · forward-guard: eksplicit teams-array (>1000 rækker) for at bevise
+  // pagineringen behandler ALLE hold, ikke kun de første 1000. De fleste tests
+  // bruger stadig singular `team` (bagudkompatibelt — teams-selectet returnerer
+  // så bare det ene hold).
+  teams: teamsOverride = null,
   prevSeasonId = null,
   prevStandings = [],
   activeContract = null,
@@ -2796,14 +2992,18 @@ function createSeasonStartSupabase({
 } = {}) {
   const state = {
     season: clone(season),
-    team: clone(team),
+    // #2962 · team er valgfri når `teams`-array-overriden bruges (forward-guard).
+    team: team ? clone(team) : null,
     activeContract: clone(activeContract),
     financeRows: [],
     usedIdempotencyKeys: new Set(),
   };
+  state.teams = teamsOverride
+    ? clone(teamsOverride).map(t => ({ ...t, board_profiles: t.board_profiles || [] }))
+    : (state.team ? [state.team] : []);
 
   // Embed board_profiles direkte på holdet (som processSeasonStart forventer)
-  state.team.board_profiles = state.team.board_profiles || [];
+  if (state.team) state.team.board_profiles = state.team.board_profiles || [];
 
   return {
     state,
@@ -2815,7 +3015,11 @@ function createSeasonStartSupabase({
       }
       if (simulateIdempotency && key) state.usedIdempotencyKeys.add(key);
       state.financeRows.push({ ...params.p_finance_payload, team_id: params.p_team_id });
-      return Promise.resolve({ data: (state.team.balance ?? 0) + params.p_delta, error: null });
+      // #2962 · multi-team forward-guard-scenarier har intet singular state.team —
+      // slå balancen op i state.teams pr. team_id i stedet (fallback til state.team
+      // for de mange eksisterende enkelt-hold-tests).
+      const rpcTeam = state.team ?? state.teams.find(t => t.id === params.p_team_id);
+      return Promise.resolve({ data: (rpcTeam?.balance ?? 0) + params.p_delta, error: null });
     },
     from(table) {
       if (table === "seasons") {
@@ -2861,7 +3065,19 @@ function createSeasonStartSupabase({
               eq(col, val) {
                 assert.equal(col, "season_id");
                 const rows = val === prevSeasonId ? clone(prevStandings) : [];
-                return Promise.resolve({ data: rows, error: null });
+                // #2951 · loadSponsorStandingsContextForSeason pagineres nu via
+                // fetchAllRows (.order("id").range()).
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -2873,9 +3089,21 @@ function createSeasonStartSupabase({
           select(columns) {
             assert.equal(columns, "*, board_profiles(*)");
             // Returnerer en thenable der svarer til .eq("is_ai", false).eq("is_frozen", false)
-            const result = { data: [clone(state.team)], error: null };
+            const rows = clone(state.teams);
+            const result = { data: rows, error: null };
             const chain = Object.assign(Promise.resolve(result), {
               eq(_col, _val) { return chain; },
+              // #2962 · processSeasonStart's teams-select pagineres nu via
+              // fetchAllRows (.order("id").range()).
+              order(orderColumn, orderOptions) {
+                assert.equal(orderColumn, "id");
+                assert.deepEqual(orderOptions, { ascending: true });
+                return {
+                  range(from, to) {
+                    return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+                  },
+                };
+              },
             });
             return chain;
           },
@@ -3036,6 +3264,41 @@ test("processSeasonStart clamper FINAL sponsor-payout til gross_sponsor × MAX_B
     expectedCeiling,
     `Sponsor payout skal clampes til round(gross_sponsor ${gross} × MAX_BOARD_MODIFIER ${MAX_BOARD_MODIFIER}) = ${expectedCeiling} — fik ${sponsorRow.amount}`
   );
+});
+
+test("#2962: processSeasonStart paginerer sin egen teams-select forbi 1000-row-loftet", async () => {
+  // 1200 hold — uden paginering ville kun de første 1000 hold få sponsor/parachute-
+  // behandling, og de sidste 200 hold ville stille springe sæson-start-cashflowet
+  // over (ingen fejl, bare fravær — samme klasse som #2907/#2932).
+  const seasonId = "season-2962";
+  const teamCount = 1200;
+  const teams = [];
+  for (let i = 0; i < teamCount; i += 1) {
+    teams.push({
+      id: `team-${i}`,
+      name: `Team ${i}`,
+      is_ai: false,
+      is_frozen: false,
+      division: 3,
+      balance: 500_000,
+      sponsor_income: 200_000,
+      board_profiles: [],
+    });
+  }
+
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    teams,
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  assert.equal(outcome.sponsor.length, teamCount, "alle 1200 hold, ikke kun de første 1000, skal have sponsor-resultat");
+  const uniqueTeams = new Set(supabase.state.financeRows.map(r => r.team_id));
+  assert.equal(uniqueTeams.size, teamCount, "alle 1200 hold skal have modtaget en finance-row (sponsor)");
 });
 
 // ─── #1980 Nedrykningsfaldskærm ───────────────────────────────────────────────
@@ -4273,7 +4536,19 @@ test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] fi
                     const data = financeRows
                       .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
                       .map(r => ({ team_id: r.team_id }));
-                    return Promise.resolve({ data, error: null });
+                    // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                    // fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -4932,7 +5207,9 @@ test("#1441 A1: defaultRunSeasonPayroll aggregate-summary indeholder facility_up
       return {
         select() {
           return {
-            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+            // #2951 · loadHumanSeasonEndTeams's teams-query pagineres nu via
+            // fetchAllRows (.order("id").range()).
+            eq() { return { eq() { return { eq() { return { order() { return { range() { return Promise.resolve({ data: [], error: null }); } }; } }; } }; } }; },
           };
         },
       };
@@ -4968,7 +5245,9 @@ test("#2357: defaultRunSeasonPayroll læser facilities_enabled fra app_config (f
       return {
         select() {
           return {
-            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+            // #2951 · loadHumanSeasonEndTeams's teams-query pagineres nu via
+            // fetchAllRows (.order("id").range()).
+            eq() { return { eq() { return { eq() { return { order() { return { range() { return Promise.resolve({ data: [], error: null }); } }; } }; } }; } }; },
           };
         },
       };
@@ -5122,4 +5401,345 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
 
   assert.ok(counter.count >= 1, "fail-safe default skal bygge pulje-træet som før #2851");
   assert.equal(supabase.state.season.status, "completed");
+});
+
+// ─── #2912/#2919/#2920 · Gælds-/pengemotor-cluster ────────────────────────────
+//
+// Fælles mock: ét D3-hold (loft 600k), dækning af de tabeller
+// processTeamSeasonPayroll rører, plus et notifications-spor og en DB-agtig
+// håndhævelse af uniq_finance_idempotency_key (23505 på gentaget nøgle).
+function createDebtClusterSupabase({ teamId, balance = 999_999, enforceIdempotency = false }) {
+  const financeRows = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const notifications = [];
+  const usedIdempotencyKeys = new Set();
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      const key = params.p_finance_payload?.idempotency_key;
+      if (enforceIdempotency && key) {
+        if (usedIdempotencyKeys.has(key)) {
+          // Spejler uniq_finance_idempotency_key: hele transaktionen rulles
+          // tilbage, hverken balance eller ledger-row ændres.
+          return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+        }
+        usedIdempotencyKeys.add(key);
+      }
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                    return Promise.resolve({ data: { balance }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) };
+            }
+            return { in: () => Promise.resolve({ data: [], error: null }) };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                riderUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "transfer_listings") {
+        return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
+      }
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) { notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+        };
+      }
+      throw new Error(`Unexpected table in debt-cluster test (${teamId}): ${table}`);
+    },
+  };
+
+  return { supabase, financeRows, teamUpdates, riderUpdates, notifications };
+}
+
+test("#2912 · rentekapitaliseringen alene må ikke skubbe et hold over gældsloftet (ingen frysning)", async () => {
+  const teamId = "team-interest-pushed-over";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // D3-loft = 600k. Gælden EFTER renten er 700k, men 150k af den er netop
+  // kapitaliseret i denne kørsel, så gælden holdet selv byggede op er 550k og
+  // altså UNDER loftet. Før #2912 blev holdet frosset her, tavst.
+  const team = {
+    id: teamId,
+    name: "Interest Victim D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 0,
+    transfer_frozen: false,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2912-grace", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({
+      charged: [{ loan_id: "loan-1", interest: 150_000, skipped: false }],
+    }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.ok(breachUpdate, "breach-opdateringen skal stadig skrives");
+  assert.equal(breachUpdate.payload.debt_breach_streak, 0, "renten alene må ikke tælle som et brud");
+  assert.equal(breachUpdate.payload.transfer_frozen, false, "holdet må ikke fryses af motorens egen rente");
+  assert.equal(ctx.notifications.length, 0, "ingen frysning = ingen frysnings-besked");
+});
+
+test("#2912 · gæld over loftet UDEN renten fryser stadig og sender nu en besked til holdet", async () => {
+  const teamId = "team-genuinely-over";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // 700k gæld hvoraf 50k er denne sæsons rente: 650k basisgæld > 600k loft, så
+  // bruddet er ægte og uafhængigt af renten.
+  const team = {
+    id: teamId,
+    name: "Genuinely Broke D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 0,
+    transfer_frozen: false,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2912-breach", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({
+      charged: [{ loan_id: "loan-1", interest: 50_000, skipped: false }],
+    }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.equal(breachUpdate.payload.debt_breach_streak, 1, "ægte brud skal tælle");
+  assert.equal(breachUpdate.payload.transfer_frozen, true, "ægte brud fryser stadig transfers");
+
+  assert.equal(ctx.notifications.length, 1, "frysningen må ikke længere være tavs (#2912)");
+  assert.equal(ctx.notifications[0].type, "board_critical");
+  assert.equal(ctx.notifications[0].metadata.titleCode, "notif.debtCeilingFreeze.title");
+  assert.equal(ctx.notifications[0].metadata.messageCode, "notif.debtCeilingFreeze.message");
+  // Beskeden citerer det mål frysningen faktisk blev truffet på (rente-eksklusivt).
+  assert.equal(ctx.notifications[0].metadata.messageParams.debt, 650_000);
+  assert.equal(ctx.notifications[0].metadata.messageParams.ceiling, 600_000);
+});
+
+test("#2912 · et hold der allerede er frosset får ikke samme frysnings-besked igen", async () => {
+  const teamId = "team-still-frozen";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Still Frozen D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: true, // frosset sidste sæson, ved det godt
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2912-repeat", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.notifications.length, 0, "kun overgangen til frosset notificeres, ikke hver sæson");
+});
+
+test("#2919 · gældsgrenen må ikke ophæve nødlåns-grenens frysning i samme kørsel", async () => {
+  const teamId = "team-two-branches";
+  // balance 0 + løn > 0 giver shortfall, nødlån og streak 1+1 = 2, altså freeze
+  // i gren 2b.
+  const ctx = createDebtClusterSupabase({ teamId, balance: 0 });
+
+  const team = {
+    id: teamId,
+    name: "Two Branch FC",
+    division: 3,
+    balance: 0,
+    emergency_loan_streak: 1,
+    debt_breach_streak: 0,
+    transfer_frozen: false, // stale in-memory-snapshot: gren 2b sætter true i DB
+    riders: [{ id: "rider-1", salary: 50_000 }],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2919", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    // UNDER D3-loftet, så gældsgrenen rammer sin else-gren (nulstil + optø).
+    getTotalDebt: async () => 100_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const freezeUpdate = ctx.teamUpdates.find(u => u.payload.transfer_frozen === true);
+  assert.ok(freezeUpdate, "nødlåns-eskaleringen skal fryse holdet");
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.ok(breachUpdate, "gældsgrenen skal stadig skrive sin opdatering");
+  assert.equal(breachUpdate.payload.debt_breach_streak, 0, "gælden er under loftet, så streak nulstilles");
+  assert.equal(
+    breachUpdate.payload.transfer_frozen,
+    true,
+    "strengeste tilstand vinder: gældsgrenen må ikke optø nødlåns-frysningen (#2919)",
+  );
+
+  // Rækkefølgen betyder noget: den SIDSTE skrivning er den der lander i DB.
+  const lastFrozenWrite = [...ctx.teamUpdates].reverse().find(u => "transfer_frozen" in u.payload);
+  assert.equal(lastFrozenWrite.payload.transfer_frozen, true, "sidste skrivning må ikke være false");
+
+  // Kun nødlåns-eskaleringens egen besked, ingen dublet fra gældsgrenen.
+  assert.equal(ctx.notifications.length, 1);
+  assert.equal(ctx.notifications[0].metadata.titleCode, "notif.emergencyLoanEscalation.title");
+});
+
+test("#2919 · et hold uden frysning i kørslen optøs stadig når gælden er under loftet", async () => {
+  const teamId = "team-real-recovery";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Real Recovery FC",
+    division: 3,
+    balance: 999_999,
+    emergency_loan_streak: 0,
+    debt_breach_streak: 1,
+    transfer_frozen: true, // frosset sidste sæson
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2919-recovery", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 100_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.equal(breachUpdate.payload.debt_breach_streak, 0);
+  assert.equal(
+    breachUpdate.payload.transfer_frozen,
+    false,
+    "recovery-stien skal bevares: uden frysning i kørslen optøs holdet",
+  );
+});
+
+test("#2920 · forced_debt_sale bærer en idempotency-nøgle (samme mønster som de øvrige penge-callsites)", async () => {
+  const teamId = "team-forced-key";
+  const seasonId = "season-2920";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Forced Key D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1, // bliver streak 2, altså tvangssalg
+    transfer_frozen: false,
+    riders: [
+      { id: "rider-a", firstname: "Sold", lastname: "Rider", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const forcedSaleRows = ctx.financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 1);
+  assert.equal(
+    forcedSaleRows[0].idempotency_key,
+    `forced_debt_sale:${teamId}:${seasonId}:rider-a`,
+    "nøglen skal være <type>:<team>:<season>:<rider> så flere salg i samme sæson kan skelnes",
+  );
+});
+
+test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () => {
+  const teamId = "team-forced-double-run";
+  const seasonId = "season-2920-rerun";
+  // Delt idempotency-state mellem de to kørsler (som en rigtig DB).
+  const ctx = createDebtClusterSupabase({ teamId, enforceIdempotency: true });
+
+  const makeTeam = () => ({
+    id: teamId,
+    name: "Double Run D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1,
+    transfer_frozen: false,
+    riders: [
+      { id: "rider-a", firstname: "Sold", lastname: "Twice", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  });
+
+  const deps = {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  };
+
+  // Kørsel 1 + kørsel 2 (cron-genkørsel af samme sæson, samme roster-snapshot).
+  await processTeamSeasonPayroll(makeTeam(), seasonId, deps);
+  await processTeamSeasonPayroll(makeTeam(), seasonId, deps);
+
+  const forcedSaleRows = ctx.financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 1, "præcis én forced_debt_sale-postering trods to kørsler");
+
+  // Dispositionen køres heller ikke igen: rytteren flyttes kun i den kørsel der
+  // faktisk bogførte pengene.
+  assert.equal(ctx.riderUpdates.length, 1, "rytteren må ikke dispositioneres to gange");
 });

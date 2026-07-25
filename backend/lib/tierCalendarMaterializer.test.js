@@ -26,6 +26,9 @@ function makeSupabase(initial = {}) {
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       order() { return builder; },
+      // #2962 · materializeTierCalendars' teams-select pagineres nu via fetchAllRows
+      // (.order("id").range()) — mocken slicer den filtrerede tabel som en enkelt side.
+      range(from, to) { return Promise.resolve({ data: rows().filter(matches).slice(from, to + 1), error: null }); },
       maybeSingle() { return Promise.resolve({ data: rows().filter(matches)[0] ?? null, error: null }); },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];

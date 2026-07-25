@@ -335,8 +335,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
   // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
   // #1980: +season_parachute; #2744-B: +contract_expiry_release;
-  // #2748: +retirement_release = 15
-  assert.equal(result.log.length, 15);
+  // #2748: +retirement_release; #2948: +sponsor_season_objectives = 16
+  assert.equal(result.log.length, 16);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -347,26 +347,32 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[3].updated, true);
   assert.equal(result.log[4].phase, "insert_next_transfer_window");
   assert.equal(result.log[4].inserted, true);
-  assert.equal(result.log[5].phase, "sponsor_contracts_renewal");
-  assert.equal(result.log[5].teams, 1);
-  assert.equal(result.log[6].phase, "contract_expiry_release");
-  assert.equal(result.log[6].candidates, 0);
-  assert.equal(result.log[7].phase, "sponsor_payout");
-  assert.equal(result.log[7].count, 1);
-  assert.equal(result.log[8].phase, "season_payroll");
-  assert.equal(result.log[8].teams_processed, 1);
-  assert.equal(result.log[8].salary_count, 0);
-  assert.equal(result.log[9].phase, "season_parachute");
-  assert.equal(result.log[9].count, 0);
-  assert.equal(result.log[9].total, 0);
-  assert.equal(result.log[10].phase, "retirement_release");
-  assert.equal(result.log[10].candidates, 0);
-  assert.equal(result.log[11].phase, "admin_log");
-  assert.equal(result.log[11].inserted, true);
-  assert.equal(result.log[12].phase, "discord_broadcast");
-  assert.equal(result.log[12].sent, true);
-  assert.equal(result.log[13].phase, "season_started_notifications");
-  assert.equal(result.log[14].phase, "contract_expiring_notifications");
+  // #2948: sæsonmåls-bonusser evalueres FØR kontrakt-fornyelsen (klausulen sidder
+  // på den stadig-aktive kontrakt). Ingen sponsor_contracts seedet i denne mock
+  // → default-implementeringen (ikke stubbet) rammer 0 kontrakter med klausulen.
+  assert.equal(result.log[5].phase, "sponsor_season_objectives");
+  assert.equal(result.log[5].evaluated, 0);
+  assert.equal(result.log[5].paid, 0);
+  assert.equal(result.log[6].phase, "sponsor_contracts_renewal");
+  assert.equal(result.log[6].teams, 1);
+  assert.equal(result.log[7].phase, "contract_expiry_release");
+  assert.equal(result.log[7].candidates, 0);
+  assert.equal(result.log[8].phase, "sponsor_payout");
+  assert.equal(result.log[8].count, 1);
+  assert.equal(result.log[9].phase, "season_payroll");
+  assert.equal(result.log[9].teams_processed, 1);
+  assert.equal(result.log[9].salary_count, 0);
+  assert.equal(result.log[10].phase, "season_parachute");
+  assert.equal(result.log[10].count, 0);
+  assert.equal(result.log[10].total, 0);
+  assert.equal(result.log[11].phase, "retirement_release");
+  assert.equal(result.log[11].candidates, 0);
+  assert.equal(result.log[12].phase, "admin_log");
+  assert.equal(result.log[12].inserted, true);
+  assert.equal(result.log[13].phase, "discord_broadcast");
+  assert.equal(result.log[13].sent, true);
+  assert.equal(result.log[14].phase, "season_started_notifications");
+  assert.equal(result.log[15].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 

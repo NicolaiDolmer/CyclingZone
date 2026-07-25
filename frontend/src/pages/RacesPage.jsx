@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";

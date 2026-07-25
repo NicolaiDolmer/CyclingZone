@@ -200,6 +200,7 @@
       "loanInterest": "Lånerenter"
     },
     "sponsorDetail": {
+      "contract": "Kontrakt med {sponsor}: garanteret base {base}, løbsdags-indtægt oveni",
       "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",
       "intro": "Introsæson: variabel sponsor starter fra sæson 2",
       "fallback": "Fallback: mangler standings for forrige sæson"

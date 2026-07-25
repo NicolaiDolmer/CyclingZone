@@ -9,7 +9,7 @@
 // først, men den parallelle mobile-struktur blev glemt.
 //
 // Scan-scope: filer hvis navn matcher Nav/Sidebar-mønstret, ELLER importerer
-// NavLink fra react-router-dom (= sandsynligvis nav-komponent).
+// NavLink fra react-router (= sandsynligvis nav-komponent).
 // Detection: `label:\s*["']<non-empty>["']` — hardkodede label-strings i objekter.
 //
 // Brug:

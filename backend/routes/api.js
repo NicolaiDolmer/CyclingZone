@@ -171,8 +171,10 @@ import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayout
 import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
 import {
   getActiveContract,
+  getPendingContract,
   getNegotiationState,
   acceptOffer,
+  loadSeasonStageCounts,
 } from "../lib/sponsorContractsService.js";
 import {
   resolveActiveSeason as resolveFacilitySeason,
@@ -6689,6 +6691,13 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       1,
       Math.min(5, Number.parseInt(req.query?.seasonsAhead ?? "1", 10) || 1)
     );
+    // #2948: prognosen skal bruge kontrakt-grenen når en kontrakt findes —
+    // ellers afviger den ~20 mio. samlet fra den faktiske udbetaling (#2926).
+    const [forecastActiveContract, forecastPendingContract] = await Promise.all([
+      getActiveContract({ supabase, teamId }),
+      getPendingContract({ supabase, teamId }),
+    ]);
+
     const multi = computeMultiSeasonForecast({
       team,
       boardModifier,
@@ -6701,6 +6710,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       lastSeasonStandings,
       realizedSeasonPrize,
       seasonsAhead,
+      activeContract: forecastActiveContract,
+      pendingContract: forecastPendingContract,
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
@@ -8979,23 +8990,60 @@ async function resolveCurrentSeasonNumber() {
   return s?.number ?? 1;
 }
 
-// GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null).
+// GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null) +
+// akkumuleret sponsorindtjening siden kontraktstart (#2948: kontraktpanelet
+// viser hvad aftalen faktisk har givet, pr. kilde).
 router.get("/sponsor/contract", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const contract = await getActiveContract({ supabase, teamId: req.team.id });
-    res.json({ contract });
+
+    let earnings = null;
+    if (contract) {
+      const { data: rows, error: txError } = await supabase
+        .from("finance_transactions")
+        .select("type, amount")
+        .eq("team_id", req.team.id)
+        .in("type", [
+          "sponsor",
+          "sponsor_race_day",
+          "sponsor_result_bonus",
+          "sponsor_signing_bonus",
+          "sponsor_objective_bonus",
+        ])
+        .gte("created_at", contract.created_at);
+      if (txError) throw txError;
+      earnings = { base: 0, raceDays: 0, results: 0, signing: 0, objective: 0, total: 0 };
+      for (const r of rows || []) {
+        const amount = Number(r.amount) || 0;
+        if (r.type === "sponsor") earnings.base += amount;
+        else if (r.type === "sponsor_race_day") earnings.raceDays += amount;
+        else if (r.type === "sponsor_result_bonus") earnings.results += amount;
+        else if (r.type === "sponsor_signing_bonus") earnings.signing += amount;
+        else if (r.type === "sponsor_objective_bonus") earnings.objective += amount;
+        earnings.total += amount;
+      }
+    }
+    res.json({ contract, earnings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/sponsor/offers — forhandlings-tilstand for den kommende sæson:
-// { negotiable, upcomingSeasonNumber, offers, pendingVariant }.
+// { negotiable, upcomingSeasonNumber, offers, pendingVariant, stageCounts,
+//   teamDivision }. stageCounts (#2862): etapetal pr. tier for den kommende
+// sæson så UI'et kan vise projicerede totaler pr. division — data fra
+// kalenderen, ikke hardcodes.
 router.get("/sponsor/offers", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const currentSeasonNumber = await resolveCurrentSeasonNumber();
     const state = await getNegotiationState({ supabase, teamId: req.team.id, currentSeasonNumber });
-    res.json(state);
+    let stageCounts = null;
+    if (state.negotiable) {
+      const counts = await loadSeasonStageCounts({ supabase, seasonNumber: state.upcomingSeasonNumber });
+      stageCounts = { byTier: counts.byTier, fallbackDays: counts.fallbackDays };
+    }
+    res.json({ ...state, stageCounts, teamDivision: req.team.division ?? null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -9610,16 +9658,23 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
   try {
     const { seasonId } = req.params;
 
-    const [teams, standingsRes, loansRes] = await Promise.all([
+    // #2951: season_standings (367/1000 rækker 25/7, samme klasse som #2907/
+    // #2932) og loans (global .eq(status,"active"), ikke team-scopet — vokser
+    // med aktive lån på tværs af ALLE hold) pagineret via fetchAllRows.
+    const [teams, standings, loanData] = await Promise.all([
       loadHumanSeasonEndTeams(supabase),
-      supabase.from("season_standings").select("*").eq("season_id", seasonId),
-      supabase.from("loans").select("team_id, amount_remaining, interest_rate").eq("status", "active"),
+      fetchAllRows(() => supabase
+        .from("season_standings")
+        .select("*")
+        .eq("season_id", seasonId)
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
+        .from("loans")
+        .select("team_id, amount_remaining, interest_rate")
+        .eq("status", "active")
+        .order("id", { ascending: true })),
     ]);
 
-    if (standingsRes.error) throw standingsRes.error;
-    if (loansRes.error) throw loansRes.error;
-    const standings = standingsRes.data || [];
-    const loanData = loansRes.data || [];
     const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
 
     res.json({ preview });
@@ -10161,7 +10216,7 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
       { count: postNull },
       { count: postPopulated },
       { count: totalTx },
-      { data: humanTeams },
+      humanTeams,
     ] = await Promise.all([
       supabase
         .from("finance_transactions")
@@ -10179,23 +10234,29 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
         .gte("created_at", PHASE_B_DEPLOY_CUTOFF)
         .not("actor_type", "is", null),
       supabase.from("finance_transactions").select("id", { count: "exact", head: true }),
-      supabase
+      // #2962: humanTeams (160 rækker 25/7, #2951-klasse) — pagineret via fetchAllRows.
+      fetchAllRows(() => supabase
         .from("teams")
         .select("id, balance")
         .not("user_id", "is", null)
         .eq("is_ai", false)
-        .eq("is_bank", false),
+        .eq("is_bank", false)
+        .order("id", { ascending: true })),
     ]);
 
     const teamIds = (humanTeams || []).map((t) => t.id);
     let driftTeams = 0;
     let maxDrift = 0;
     if (teamIds.length > 0) {
-      const { data: txRows, error: txErr } = await supabase
+      // #2962: AKTIV bug, ikke kun forebyggende — 5212 finance_transactions-rækker
+      // for menneskehold målt 25/7 (5,2x over 1000-loftet). Naivt .in() truncerede
+      // stille drift-beregningen til kun de første 1000 rækker. Pagineret via
+      // fetchAllRows; .order("id") som stabilt tiebreak.
+      const txRows = await fetchAllRows(() => supabase
         .from("finance_transactions")
         .select("team_id, amount")
-        .in("team_id", teamIds);
-      if (txErr) throw txErr;
+        .in("team_id", teamIds)
+        .order("id", { ascending: true }));
       const sumByTeam = new Map();
       for (const row of txRows || []) {
         sumByTeam.set(row.team_id, (sumByTeam.get(row.team_id) || 0) + (row.amount || 0));

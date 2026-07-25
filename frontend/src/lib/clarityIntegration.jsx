@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { useConsent } from "./consent.jsx";
 import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";

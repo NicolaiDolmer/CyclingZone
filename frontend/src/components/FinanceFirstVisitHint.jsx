@@ -5,7 +5,7 @@
 // Tour-targets (data-tour) matcher tourSteps i FinancePage. Knappen "Vis mig rundt"
 // starter tour og dismisser kortet i samme handling.
 
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button, CoinIcon, ArrowUpIcon, ArrowDownIcon, AlertTriangleIcon, XIcon } from "./ui";
 

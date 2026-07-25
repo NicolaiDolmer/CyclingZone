@@ -1,37 +1,70 @@
 {
   "tab": "Sponsor",
   "cta": {
-    "title": "Vælg din sponsor for sæson {season}",
-    "body": "En ny sponsoraftale er på bordet. Sammenlign tilbuddene og lås din opbakning for den kommende sæson.",
+    "title": "Vælg din sponsor til sæson {season}",
+    "body": "Fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Sammenlign aftalerne og sikr din opbakning.",
     "button": "Se tilbud",
-    "pendingTitle": "Sponsor valgt for sæson {season}",
-    "pendingBody": "Du har valgt en aftale for den kommende sæson. Du kan stadig skifte til et andet tilbud.",
+    "pendingTitle": "Sponsor valgt til sæson {season}",
+    "pendingBody": "Du har underskrevet en aftale for den kommende sæson. Du kan stadig skifte til et andet tilbud indtil sæsonen starter.",
     "changeButton": "Skift valg"
   },
   "offers": {
-    "title": "Sponsortilbud",
-    "subtitle": "Vælg en sponsoraftale for sæson {season}. Kontrakten løber fra starten af den sæson.",
+    "title": "Vælg din sponsor",
+    "subtitle": "Fem sponsorer, fem måder at tjene på i sæson {season}.",
+    "unitDefinition": "1 løbsdag = én etape dit hold stiller til start i.",
+    "divisionPicker": "Se indtjening for en division",
+    "divisionPill": "Division {division} · {count} løbsdage",
+    "deadline": "Dit valg låses når sæson {season} starter. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig.",
     "empty": "Der er ingen tilbud lige nu. En ny aftale kan forhandles, når den nuværende kontrakt skal fornyes.",
     "choose": "Vælg",
-    "pending": "Valgt"
+    "pending": "Valgt",
+    "reviewSign": "Gennemgå og underskriv",
+    "confirmBody": "Underskriv med {sponsor} i {count, plural, one {# sæson} other {# sæsoner}}? Du kan ændre dit valg indtil sæson {season} starter.",
+    "signDeal": "Underskriv aftale",
+    "cancel": "Annullér",
+    "guaranteedShare": "{pct} % af aftalen er garanteret",
+    "boardNote": "Bestyrelsens tilfredshed justerer den garanterede udbetaling med op til ±20 %. Bonusser udbetales løbende."
   },
   "variant": {
+    "safe": "Den sikre aftale",
+    "loyal": "Den loyale aftale",
+    "racing": "Løbsaftalen",
+    "results": "Resultataftalen",
+    "ambition": "Ambitionsaftalen",
     "predictable": "Stabil bagmand",
     "activity": "Løbsdags-bagmand",
     "long": "Langsigtet partner"
   },
+  "clause": {
+    "signing": "{amount} CZ$ underskriftsbonus, udbetales med det samme",
+    "stageWin": "{amount} CZ$ pr. etapesejr",
+    "podium": "{amount} CZ$ pr. podieplads (2.–3.)",
+    "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.). Bonusloft: {cap} CZ$",
+    "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning"
+  },
   "field": {
-    "guaranteedBase": "Garanteret grundbeløb",
+    "guaranteedBase": "Garanteret",
     "perRaceDay": "Pr. løbsdag",
+    "projectedMax": "Maks (alle {count} løbsdage)",
     "length": "Længde",
     "seasons": "{count, plural, one {# sæson} other {# sæsoner}}"
   },
   "contract": {
     "title": "Nuværende sponsor",
-    "loading": "Henter sponsorkontrakt",
-    "error": "Kunne ikke hente din sponsorkontrakt. Prøv igen.",
+    "loading": "Indlæser sponsorkontrakt",
+    "errorTitle": "Kunne ikke indlæse din sponsorkontrakt",
+    "error": "Intet er gået tabt, og din kontrakt er i god behold. Prøv igen.",
+    "retry": "Prøv igen",
     "none": "Ingen aktiv sponsorkontrakt.",
     "runsThrough": "Løber sæson {season} ud",
-    "sponsorName": "Sponsor"
+    "sponsorName": "Sponsor",
+    "clausesTitle": "Bonusklausuler",
+    "earningsTitle": "Tjent på denne kontrakt",
+    "earningsBase": "Sæsonstart",
+    "earningsSigning": "Underskriftsbonus",
+    "earningsRaceDays": "Løbsdage",
+    "earningsResults": "Resultatbonusser",
+    "earningsObjective": "Sæsonmål",
+    "earningsTotal": "I alt"
   }
 }

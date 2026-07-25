@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { formatNumber } from "../lib/intl";
+import { fetchAllRows } from "../lib/supabasePagination";
 import {
   TrophyIcon, LightningIcon, CrownIcon, PageLoader,
   PageHeader, Section, SectionHeader, DataTable, EmptyState, ErrorState, Button,
@@ -50,9 +51,20 @@ export default function HallOfFamePage() {
     setError(null);
     const [hofRes, standingsRes, managersRes] = await Promise.all([
       supabase.from("hall_of_fame").select("*, team:team_id(id, name)").order("value", { ascending: false }),
-      supabase.from("season_standings")
+      // #2962: helt ufiltreret season_standings-select (ingen season_id) — siden
+      // viser BEVIDST på tværs af alle sæsoner (all-time top-5-fallback + division-
+      // historik-tabbet grupperer selv pr. sæson), så et season_id-scope ville
+      // fjerne data i stedet for at pagineres. S2-transitionen 26/7 fordobler
+      // tabellen (~369 → ~738 rækker 25/7) — under 1000-loftet i dag, men vokser
+      // med hver signup/sæson. Pagineret via fetchAllRows for at holde klassen tom
+      // FØR den rammer loftet; total_points-sortering er ikke DB-kritisk (siden
+      // resorterer selv client-side), så .order("id") alene er nok som stabilt
+      // paginerings-tiebreak.
+      fetchAllRows(() => supabase.from("season_standings")
         .select("*, team:team_id(id, name, is_ai), season:season_id(number)")
-        .order("total_points", { ascending: false }),
+        .order("id", { ascending: true }))
+        .then(data => ({ data, error: null }))
+        .catch(error => ({ data: null, error })),
       supabase.from("teams")
         .select("id, name, division, manager_name, user:user_id(id, username, level, xp, role)")
         .eq("is_ai", false)

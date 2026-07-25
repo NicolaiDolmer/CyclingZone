@@ -6,7 +6,7 @@ import { initSentry } from "./lib/sentry.jsx";
 import { installChunkReloadHandlers } from "./lib/chunkErrors.js";
 import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import i18n from "./i18n";
 import "./index.css";
 // #2047: flag-icons-CSS (~ukomprimeret sprite) importeres IKKE længere globalt her.

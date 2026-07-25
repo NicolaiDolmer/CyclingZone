@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";

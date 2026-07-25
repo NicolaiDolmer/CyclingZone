@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";

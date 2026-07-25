@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
@@ -14,7 +14,7 @@ import {
   Tabs, TabList, Tab,
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
-  ClipboardIcon, PodiumIcon, BellIcon,
+  ClipboardIcon, PodiumIcon, BellIcon, SearchIcon,
   ChevronRightIcon, ChevronDownIcon, InfoIcon,
 } from "../components/ui";
 
@@ -64,6 +64,10 @@ const TYPE_CONFIG = {
   emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
   loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/finance" },
   board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/board" },
+  // #2945: mission-fund har intet riderId → falder tilbage til /scouting.
+  // target-undersøgelser SÆTTER metadata.riderId → den generiske #1486-regel
+  // (linje ~484) overstyrer dette link med /riders/:riderId automatisk.
+  scout_report_ready:        { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };

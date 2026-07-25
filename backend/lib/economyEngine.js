@@ -125,16 +125,36 @@ function throwIfSupabaseError(error, message) {
   }
 }
 
+// #2951: fetchAllRows (supabasePagination.js) kaster på fejl i stedet for at
+// returnere { data, error } — denne wrapper normaliserer fejlbeskeden til
+// SAMME "${message}: ${error.message}"-format som throwIfSupabaseError, så
+// alle de nyligt-paginerede kaldsteder i denne fil bevarer deres oprindelige
+// fejltekst uændret for kaldere/tests.
+async function fetchAllRowsOrThrow(buildQuery, message) {
+  try {
+    return await fetchAllRows(buildQuery);
+  } catch (error) {
+    throw new Error(`${message}: ${error.message}`, { cause: error });
+  }
+}
+
 export async function loadHumanSeasonEndTeams(supabaseClient) {
-  const { data: teams, error: teamsError } = await supabaseClient
-    .from("teams")
-    .select("*")
-    // #1077 · ekskludér bank-pseudo-holdet (is_ai:false, is_bank:true) fra
-    // økonomi-processering — samme diskriminator som cron.js:89 og /deadline-day.
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
-  throwIfSupabaseError(teamsError, "Could not load human teams for season end");
+  // #2951 (opfølgning på #2907/#2932): teams-filtret er på 156 menneskehold
+  // 25/7 og vokser med hver signup — samme vækstdriver, langsommere end riders,
+  // men samme bug-klasse hvis den passerer 1000 rækker. Pagineret via
+  // fetchAllRows for at holde klassen tom (.claude/learnings/2026-07-25-
+  // postgrest-1000-cap-class-bug.md).
+  const teams = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("teams")
+      .select("*")
+      // #1077 · ekskludér bank-pseudo-holdet (is_ai:false, is_bank:true) fra
+      // økonomi-processering — samme diskriminator som cron.js:89 og /deadline-day.
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .order("id", { ascending: true })
+  ), "Could not load human teams for season end");
 
   const teamIds = (teams || []).map(team => team.id).filter(Boolean);
   if (teamIds.length === 0) return [];
@@ -144,30 +164,24 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   // første side, så payroll og bestyrelsesdom kørte på ~38% af feltet for hold
   // hvis ryttere faldt uden for side 1 (ingen fejl, ingen nulrække — ingenting).
   // fetchAllRows paginerer; .order("id") gør siderne stabile (supabasePagination.js).
-  //
-  // board_profiles (435 rækker, 25/7) og teams-filtret ovenfor (156 rækker) er
-  // IKKE pagineret her — begge er langt under 1000 og vokser med samme,
-  // langsommere driver (antal hold, ikke antal ryttere pr. hold). Se PR for #2907
-  // for fuld liste af andre unpaginerede season-end-queries fundet i samme sweep.
-  let riders;
-  try {
-    riders = await fetchAllRows(() => (
-      supabaseClient
-        .from("riders")
-        // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
-        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
-        .in("team_id", teamIds)
-        .order("id", { ascending: true })
-    ));
-  } catch (error) {
-    throw new Error(`Could not load riders for season end: ${error.message}`, { cause: error });
-  }
+  const riders = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("riders")
+      // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
+      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
+      .in("team_id", teamIds)
+      .order("id", { ascending: true })
+  ), "Could not load riders for season end");
 
-  const boardsRes = await supabaseClient
-    .from("board_profiles")
-    .select("*")
-    .in("team_id", teamIds);
-  throwIfSupabaseError(boardsRes.error, "Could not load board profiles for season end");
+  // #2951: board_profiles var 435/1000 rækker 25/7 (43,5%, samme team-count-
+  // driver som teams-queryen ovenfor) — deferred i #2907-PR-bodyen, nu pagineret.
+  const boardsData = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("board_profiles")
+      .select("*")
+      .in("team_id", teamIds)
+      .order("id", { ascending: true })
+  ), "Could not load board profiles for season end");
 
   const ridersByTeam = new Map();
   for (const rider of riders || []) {
@@ -177,7 +191,7 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   }
 
   const boardsByTeam = new Map();
-  for (const board of boardsRes.data || []) {
+  for (const board of boardsData || []) {
     if (!board.team_id) continue;
     if (!boardsByTeam.has(board.team_id)) boardsByTeam.set(board.team_id, []);
     boardsByTeam.get(board.team_id).push(board);
@@ -230,13 +244,18 @@ export async function processSeasonStart(seasonId, deps = {}) {
     seasonNumber
   );
 
-  const { data: teams } = await supabaseClient
-    .from("teams")
-    .select("*, board_profiles(*)")
-    // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
+  // #2962: egen teams-query (156 rækker 25/7, samme vækstdriver som resten af
+  // #2951-klassen) — deferred i PR #2961-bodyen, nu pagineret via fetchAllRows.
+  const teams = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("teams")
+      .select("*, board_profiles(*)")
+      // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .order("id", { ascending: true })
+  ), "Could not load teams for season start");
 
   // S-02e · Lag 5 sponsor-pullout: load aktive pullouts FØR vi expirer dem.
   // Pullout oprettes ved sæson-end af forrige sæson (expires_at_season_id = X)
@@ -655,7 +674,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //     gentagne nødlån er i praksis samme signal (hold der ikke kan stå på egne
   //     ben), bare en anden trigger end gælds-LOFT-brud. emergency_loan_streak er
   //     en separat tæller (nulstilles når en sæson IKKE kræver nødlån).
+  //
+  // #2919 · `frozenEarlierThisRun` er run-lokal "strengeste tilstand vinder"-
+  //     hukommelse. `team` er et in-memory-snapshot fra loadHumanSeasonEndTeams
+  //     og opdateres IKKE af de UPDATE's vi skriver undervejs, så gældsgrenen
+  //     (2c) læste `team.transfer_frozen === false` og skrev false igen — den
+  //     ophævede nødlåns-frysningen i samme kørsel og gjorde #2301's eskalering
+  //     virkningsløs. Flaget kan kun sættes, aldrig ryddes: en senere gren må
+  //     aldrig optø et hold en tidligere gren har frosset.
   const EMERGENCY_LOAN_ESCALATION_STREAK = 2;
+  let frozenEarlierThisRun = false;
   const previousEmergencyLoanStreak = team.emergency_loan_streak || 0;
   const emergencyLoanStreak = emergencyLoanAmount > 0 ? previousEmergencyLoanStreak + 1 : 0;
   if (emergencyLoanStreak !== previousEmergencyLoanStreak) {
@@ -671,6 +699,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .update({ transfer_frozen: true })
       .eq("id", team.id);
     throwIfSupabaseError(freezeError, `Could not freeze transfers for team ${team.id} (emergency loan escalation)`);
+    frozenEarlierThisRun = true;
     console.log(`  🔴🔴 ${team.name}: emergency_loan_streak=${emergencyLoanStreak} (>= ${EMERGENCY_LOAN_ESCALATION_STREAK}) — the board freezes transfers`);
     await notifyManager(team.id, "board_critical",
       "The board freezes transfers",
@@ -695,10 +724,26 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   if (debtCeiling != null) {
     const currentDebt = await getTotalDebtFn(team.id, supabaseClient);
 
-    let breachStreak = team.debt_breach_streak || 0;
-    let transferFrozen = team.transfer_frozen || false;
+    // #2912 · Loftet måles på gælden EKSKLUSIVE den rente trin 1 lige har
+    //     kapitaliseret. Målte vi på den rå `currentDebt`, kunne motorens egen
+    //     bogføring skubbe et hold der lå under loftet i går over grænsen i dag
+    //     og fryse det samme sekund, uden at holdet havde foretaget sig noget.
+    //     Prod 25/7: 11 af 29 gældsatte hold brød loftet FØRST efter renten.
+    //     Med eksklusionen får holdet den sæson renten koster dem til at
+    //     reagere; næste sæson indgår renten fuldt i basisgælden og tæller med,
+    //     så eskaleringen ikke kan udskydes i det uendelige.
+    //     Bemærk asymmetrien (bevidst): LÅNE-headroom (createEmergencyLoan /
+    //     createLoan) måles fortsat på den rå gæld, så ingen kan låne sig over
+    //     loftet. Kun STRAFFEN (fryse + tvangssalg) bruger det rente-eksklusive
+    //     mål, fordi man ikke bør straffes for motorens egen kapitalisering.
+    const interestExcludedDebt = Math.max(0, currentDebt - loanInterestTotal);
 
-    if (currentDebt > debtCeiling) {
+    let breachStreak = team.debt_breach_streak || 0;
+    // #2919: baseline OR'es med run-lokal frysning (nødlåns-eskaleringen ovenfor).
+    let transferFrozen = team.transfer_frozen || frozenEarlierThisRun || false;
+    const alreadyFrozenBeforeDebtBranch = transferFrozen;
+
+    if (interestExcludedDebt > debtCeiling) {
       breachStreak += 1;
       transferFrozen = true; // streak >= 1 → fryser transfer
 
@@ -710,12 +755,15 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         //   3. luk åbne transfer_listings for rytteren
         const sortedRiders = [...(team.riders || [])]
           .sort((a, b) => (b.market_value || 0) - (a.market_value || 0));
-        let runningDebt = currentDebt;
+        // #2912: loopets stop-kriterium bruger SAMME mål som bruddet blev
+        // erklæret på (rente-eksklusivt). Ellers ville vi sælge ryttere for at
+        // ramme et strengere mål end det der udløste tvangssalget.
+        let runningDebt = interestExcludedDebt;
         for (const rider of sortedRiders) {
           if (runningDebt <= debtCeiling) break;
           const credit = rider.market_value || 0;
 
-          await creditTeam(
+          const forcedSaleCredit = await creditTeam(
             team.id,
             credit,
             "forced_debt_sale",
@@ -725,6 +773,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             seasonId,
             supabaseClient,
             {
+              // #2920: forced_debt_sale var den ENESTE penge-callsite uden
+              // idempotency-beskyttelse — en cron-genkørsel af sæson-start
+              // kunne bogføre samme tvangssalg to gange. Nøglen følger samme
+              // mønster som de øvrige callsites i denne fil (salary/upkeep/
+              // academy_drift osv.): `<type>:<team>:<season>` plus rytter-id,
+              // fordi ét hold kan have FLERE tvangssalg i samme sæson og
+              // hvert salg skal kunne bogføres én (og kun én) gang.
+              // idempotent: true → DB'ens 23505 fra uniq_finance_idempotency_key
+              // ruller stille tilbage i stedet for at kaste og vælte payroll.
+              idempotent: true,
               metadata: {
                 code: "tx.forcedDebtSale",
                 params: { riderName: `${rider.firstname} ${rider.lastname}` },
@@ -734,9 +792,19 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
                 reasonCode: FINANCE_REASON.SQUAD_AUTO_SALE,
                 relatedEntityType: FINANCE_RELATED_ENTITY.SEASON,
                 relatedEntityId: seasonId || null,
+                idempotencyKey: `forced_debt_sale:${team.id}:${seasonId}:${rider.id}`,
               },
             }
           );
+
+          // Krediteringen blev afvist som dublet → salget ER allerede bogført i
+          // en tidligere kørsel. Spring resten af dispositionen over: et nyt
+          // afdrag med "provenu" der aldrig blev krediteret ville slette gæld
+          // uden penge bag.
+          if (forcedSaleCredit?.skipped) {
+            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip`);
+            continue;
+          }
 
           const { error: riderUpdateError } = await supabaseClient
             .from("riders")
@@ -765,15 +833,19 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           if (credit > 0) {
             await repayLoansFromForcedSaleFn(team.id, credit, supabaseClient, seasonId);
           }
-          runningDebt = await getTotalDebtFn(team.id, supabaseClient);
+          // #2912: samme rente-eksklusive mål som stop-kriteriet ovenfor.
+          runningDebt = Math.max(0, (await getTotalDebtFn(team.id, supabaseClient)) - loanInterestTotal);
 
           console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}, gæld nu ${runningDebt}`);
         }
       }
     } else {
-      // Under ceiling → nulstil streak + ophæv freeze
+      // Under ceiling → nulstil streak + ophæv freeze.
+      // #2919: freeze ophæves KUN hvis ingen tidligere gren i samme kørsel har
+      // frosset holdet. Nødlåns-eskaleringen (2b) og gældsloftet deler kolonne;
+      // den strengeste tilstand skal vinde, uanset gren-rækkefølge.
       breachStreak = 0;
-      transferFrozen = false;
+      transferFrozen = frozenEarlierThisRun;
     }
 
     const { error: breachUpdateError } = await supabaseClient
@@ -781,6 +853,24 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .update({ debt_breach_streak: breachStreak, transfer_frozen: transferFrozen })
       .eq("id", team.id);
     throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
+
+    // #2912 · Frysningen var 100% tavs: holdet opdagede den først når det
+    // prøvede at handle. Notificér på selve OVERGANGEN til frosset, så et hold
+    // der bliver ved med at bryde loftet ikke får samme besked hver sæson, og
+    // så nødlåns-eskaleringens egen besked (2b) ikke dubleres.
+    if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
+      await notifyManager(team.id, "board_critical",
+        "Transfers frozen: debt over the cap",
+        `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingFreeze.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingFreeze.message",
+          messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
+        }
+      );
+    }
 
     console.log(`  📊 ${team.name}: debt_breach_streak=${breachStreak}, transfer_frozen=${transferFrozen}`);
   }
@@ -992,11 +1082,15 @@ async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber
   throwIfSupabaseError(previousSeasonError, "Could not load previous season for sponsor calculation");
   if (!previousSeason?.id) return buildSponsorStandingsContext([]);
 
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("team_id, division, rank_in_division, total_points")
-    .eq("season_id", previousSeason.id);
-  throwIfSupabaseError(standingsError, "Could not load previous standings for sponsor calculation");
+  // #2951: season_standings er på 367/1000 rækker 25/7 og vokser med hver
+  // signup (samme klasse som #2907/#2932) — pagineret via fetchAllRows.
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("team_id, division, rank_in_division, total_points")
+      .eq("season_id", previousSeason.id)
+      .order("id", { ascending: true })
+  ), "Could not load previous standings for sponsor calculation");
 
   return buildSponsorStandingsContext(standings || []);
 }
@@ -1025,12 +1119,17 @@ function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
 // ─── Division Bonuses ────────────────────────────────────────────────────────
 
 export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
-  const { data: existingRows, error: existingError } = await supabaseClient
-    .from("finance_transactions")
-    .select("team_id")
-    .eq("season_id", seasonId)
-    .eq("type", "bonus");
-  throwIfSupabaseError(existingError, "Could not check existing division bonuses");
+  // #2951: dedup-tjek mod finance_transactions — bundet af team-count pr.
+  // sæson (≤367/1000 25/7), samme driver som season_standings. Pagineret via
+  // fetchAllRows for at holde 1000-loft-klassen tom.
+  const existingRows = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("finance_transactions")
+      .select("team_id")
+      .eq("season_id", seasonId)
+      .eq("type", "bonus")
+      .order("id", { ascending: true })
+  ), "Could not check existing division bonuses");
 
   const alreadyPaid = new Set((existingRows || []).map(r => r.team_id));
 
@@ -1088,12 +1187,18 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   const currentSeasonNumber = currentSeason?.number ?? 1;
 
   // Get final standings
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("*, team:team_id(*)")
-    .eq("season_id", seasonId)
-    .order("total_points", { ascending: false });
-  throwIfSupabaseError(standingsError, "Could not load season standings for season end");
+  // #2951: season_standings er på 367/1000 rækker 25/7 og vokser med hver
+  // signup — pagineret via fetchAllRows. Sorteringen (total_points DESC) er
+  // IKKE unik, så et sekundært .order("id") tiebreak er nødvendigt for at
+  // sider ikke overlapper/springer rækker over ved lige points.
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("*, team:team_id(*)")
+      .eq("season_id", seasonId)
+      .order("total_points", { ascending: false })
+      .order("id", { ascending: true })
+  ), "Could not load season standings for season end");
 
   if (!standings?.length) {
     console.warn("  ⚠️  No standings found for season");
@@ -1210,18 +1315,27 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   // Repair-funktionen reparerer derfor nu kun board-snapshots og division-side-
   // effects, ikke finance-rows. Salary-repair (for historiske sæsoner der
   // sluttede før flytningen) håndteres separat via dedikeret script om nødvendigt.
-  const { data: existingSnapshots, error: snapshotCountError } = await supabaseClient
-    .from("board_plan_snapshots")
-    .select("team_id, board_id")
-    .eq("season_id", seasonId);
-  throwIfSupabaseError(snapshotCountError, "Could not check existing board snapshots");
+  // #2951: dedup-tjek mod board_plan_snapshots — 0 rækker 25/7 (ingen sæson
+  // har endnu afsluttet), men vokser med team-count × plan-lifecycle-events.
+  // Pagineret via fetchAllRows for at holde 1000-loft-klassen tom.
+  const existingSnapshots = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("board_plan_snapshots")
+      .select("team_id, board_id")
+      .eq("season_id", seasonId)
+      .order("id", { ascending: true })
+  ), "Could not check existing board snapshots");
 
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("*, team:team_id(*)")
-    .eq("season_id", seasonId)
-    .order("total_points", { ascending: false });
-  throwIfSupabaseError(standingsError, "Could not load season standings for season-end repair");
+  // #2951: samme season_standings-pagineringsbehov som processSeasonEnd
+  // ovenfor (367/1000 rækker 25/7, .order("id") som stabilt tiebreak).
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("*, team:team_id(*)")
+      .eq("season_id", seasonId)
+      .order("total_points", { ascending: false })
+      .order("id", { ascending: true })
+  ), "Could not load season standings for season-end repair");
   if (!standings?.length) throw new Error("No standings found for season-end repair");
 
   const teams = await loadHumanSeasonEndTeams(supabaseClient);
@@ -2030,12 +2144,19 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     }
   }
 
-  const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
-    supabaseClient.from("teams").select("id, division, league_division_id"),
+  // #2962: ufiltreret teams-select i legacy-fallback-stien (RPC-stien er allerede
+  // pagineret via #2391) — 369 rækker 25/7, samme #2951-klasse. Pagineret via
+  // fetchAllRows; kun aktiv når recompute_season_standings-RPC'en mangler.
+  const [teams, { data: races, error: racesError }] = await Promise.all([
+    fetchAllRowsOrThrow(() => (
+      supabaseClient
+        .from("teams")
+        .select("id, division, league_division_id")
+        .order("id", { ascending: true })
+    ), "Could not load teams for standings recalculation"),
     supabaseClient.from("races").select("id").eq("season_id", seasonId),
   ]);
 
-  if (teamsError) throw new Error(teamsError.message);
   if (racesError) throw new Error(racesError.message);
 
   const teamStats = {};
@@ -2105,12 +2226,16 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   const teamIds = Object.keys(teamStats);
   const penaltyByTeamId = new Map();
   if (teamIds.length > 0) {
-    const { data: penaltyRows, error: penaltyError } = await supabaseClient
-      .from("season_standings")
-      .select("team_id, penalty_points")
-      .eq("season_id", seasonId)
-      .in("team_id", teamIds);
-    if (penaltyError) throw new Error(penaltyError.message);
+    // #2962: penalty-select bundet af teamIds.length (≤369 25/7, samme driver som
+    // teams-selectet ovenfor) — deferred i PR #2961-bodyen, nu pagineret.
+    const penaltyRows = await fetchAllRowsOrThrow(() => (
+      supabaseClient
+        .from("season_standings")
+        .select("team_id, penalty_points")
+        .eq("season_id", seasonId)
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })
+    ), "Could not load penalty points for standings recalculation");
     for (const row of penaltyRows || []) {
       penaltyByTeamId.set(row.team_id, row.penalty_points || 0);
     }

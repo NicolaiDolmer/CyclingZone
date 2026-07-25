@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { makeEngagementTracker, sendBeacon } from "../lib/trafficBeacon.js";
 
 // Måler den logget-UD cold-population (logget-ind måles via player_events, #2040).

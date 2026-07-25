@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -79,14 +79,21 @@ export default function FinanceForecastCard({
   const netAccent =
     forecast.projected_net >= 0 ? "text-cz-success" : "text-cz-danger";
   const sponsorBreakdown = forecast.inputs?.sponsor_breakdown;
-  const sponsorDetail = sponsorBreakdown?.mode === "variable"
-    ? t("forecast.sponsorDetail.variable", {
+  // #2948: en aktiv/pending kontrakt vinder over intro/variable-modellen — vis
+  // kontraktens garanterede base i stedet for fallback-teksten.
+  const sponsorDetail = sponsorBreakdown?.mode === "contract"
+    ? t("forecast.sponsorDetail.contract", {
+        sponsor: sponsorBreakdown.sponsor_name ?? "",
         base: formatNumber(sponsorBreakdown.base),
-        variable: formatNumber(sponsorBreakdown.variable),
       })
-    : sponsorBreakdown?.mode === "intro"
-      ? t("forecast.sponsorDetail.intro")
-      : t("forecast.sponsorDetail.fallback");
+    : sponsorBreakdown?.mode === "variable"
+      ? t("forecast.sponsorDetail.variable", {
+          base: formatNumber(sponsorBreakdown.base),
+          variable: formatNumber(sponsorBreakdown.variable),
+        })
+      : sponsorBreakdown?.mode === "intro"
+        ? t("forecast.sponsorDetail.intro")
+        : t("forecast.sponsorDetail.fallback");
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">

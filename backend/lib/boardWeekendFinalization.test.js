@@ -643,7 +643,10 @@ test("#2932: riders/board_profiles/loans pagineres forbi 1000-row-loftet (samme 
   }
 
   const supabase = makeFakeSupabase(state);
-  const rangeCallsByTable = trackRangeCalls(supabase, ["board_profiles", "riders", "loans"]);
+  // #2951 · teams/season_standings var deferred i #2932-PR-bodyen ("under
+  // loftet i dag, samme udskydelse") — nu også pagineret. Tracket sammen med
+  // de tre allerede-pagineret tabeller for at bevise klassen er tom i denne fil.
+  const rangeCallsByTable = trackRangeCalls(supabase, ["teams", "season_standings", "board_profiles", "riders", "loans"]);
   const compute = stubComputeUpdate({ newSatisfaction: 45, newModifier: 1.0 });
 
   const summary = await processBoardWeekendFinalization({
@@ -673,6 +676,10 @@ test("#2932: riders/board_profiles/loans pagineres forbi 1000-row-loftet (samme 
   // rå .select().in() der stille kunne trunkere ved en fremtidig vækst.
   assert.ok(rangeCallsByTable.board_profiles >= 1, "board_profiles skal hentes via fetchAllRows (range())");
   assert.ok(rangeCallsByTable.loans >= 1, "loans skal hentes via fetchAllRows (range())");
+  // #2951 · teams (153/1000 25/7) og season_standings (367/1000 25/7) var
+  // BEVIDST udskudt i #2932-PR-bodyen — nu pagineret via samme fetchAllRows-sti.
+  assert.ok(rangeCallsByTable.teams >= 1, "teams skal hentes via fetchAllRows (range())");
+  assert.ok(rangeCallsByTable.season_standings >= 1, "season_standings skal hentes via fetchAllRows (range())");
 });
 
 test("#2932: fejl i pagineret riders-load kaster med samme besked-format som før", async () => {
