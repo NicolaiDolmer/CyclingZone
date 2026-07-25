@@ -15,6 +15,35 @@
     "active": "Igang",
     "scheduled": "Kommende"
   },
+  "honours": {
+    "heading": "Sæsonens kåringer",
+    "metaFinal": "Sæson {number} · endelig",
+    "metaProvisional": "Foreløbig",
+    "title": {
+      "points": "Verdensmester",
+      "wins": "Europamester"
+    },
+    "leader": {
+      "points": "Fører på point",
+      "wins": "Fører på sejre"
+    },
+    "unit": {
+      "points": "point",
+      "wins": "sejre"
+    },
+    "tieBreak": {
+      "points": "Lige på point. Rytteren der står først alfabetisk får titlen.",
+      "wins": "Lige på sejre. Point afgør titlen."
+    },
+    "note": "Sejre tæller etape, samlet klassement, endagsløb, pointtrøje, bjergtrøje og ungdomstrøje, samme total som Sejre-kolonnen på rytter-ranglisten.",
+    "noRider": "Ingen rytter kvalificerede sig.",
+    "noTeam": "Intet hold",
+    "empty": {
+      "title": "Ingen kåringer endnu",
+      "body": "Ryttere optjener point og sejre når sæsonens løb er kørt."
+    },
+    "error": "Kunne ikke indlæse sæsonens kåringer."
+  },
   "winners": {
     "prize": { "title": "Præmie-leader", "secondary": "+{amount} tjent", "empty": "Ingen præmier endnu" },
     "transfer": { "title": "Største transfer", "fallback": "Transfer", "empty": "Ingen transfers" },

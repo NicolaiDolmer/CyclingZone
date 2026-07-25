@@ -10,6 +10,8 @@ import {
 } from "../../src/preview/seedData.js";
 import {
   parseTable,
+  parseRpc,
+  rpcResponse,
   wantsObject,
   restRows,
   restObject,
@@ -67,6 +69,10 @@ export async function installNetworkMocks(page) {
 
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method())) {
+      // #2863: samme rækkefølge som installPreviewMock — seedede RPC'er svares
+      // før den generiske mutations-linje, så e2e og preview ser det samme.
+      const rpcPayload = rpcResponse(parseRpc(request.url()));
+      if (rpcPayload !== undefined) return json(route, rpcPayload);
       return json(route, wantsObject(accept) ? {} : []);
     }
 

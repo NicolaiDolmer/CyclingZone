@@ -53,6 +53,10 @@ export const RIVAL_TEAM = {
 export const ACTIVE_SEASON = {
   id: "season-e2e",
   season_number: 1,
+  // #2863: `number` er kolonnenavnet i seasons-tabellen; `season_number` er den
+  // form embeds andre steder i seedet bruger. Uden `number` rendrede /seasons
+  // sin overskrift som "Season " med et tomt tal på enhver preview.
+  number: 1,
   name: "Sæson 1",
   status: "active",
   started_at: "2026-05-01T00:00:00.000Z",
@@ -1026,4 +1030,32 @@ export const SEED_TRAINING = {
   smartDefaultFocus: { "rider-2": "vo2max" },
   weekPlan: null,
   riderWeekPlans: {},
+};
+
+// ── #2863 · Sæsonens kåringer (get_season_honours-RPC) ───────────────────────
+// Payloaden fra public.get_season_honours(p_season_id): to top-5-lister, points
+// og wins, allerede sorteret af serveren. Tallene serialiseres som STRENGE
+// ligesom PostgREST gør med bigint, så preview/e2e faktisk afprøver den
+// coercion normalizeHonours laver (uden den ville "9" > "28" sortere som tekst).
+//
+// Formen efterligner sæson 1 med vilje på to punkter, fordi det er dér den er
+// nem at bygge forkert:
+//   1. flest point er en AI-ejet rytter → AI-badget skal være synligt i kåringen
+//   2. toppen af sejrs-listen er DELT (11 og 11) → tie-break-noten skal vises
+// De to øverste peger på rigtige seed-ryttere, så navnene kan klikkes igennem.
+export const SEED_SEASON_HONOURS = {
+  points: [
+    { rider_id: "rider-2", firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, is_ai: true, points: "3412", wins: "8" },
+    { rider_id: "rider-1", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, is_ai: false, points: "2988", wins: "11" },
+    { rider_id: "rider-honours-3", firstname: "Luca", lastname: "Bernasconi", nationality_code: "ch", team_id: "team-honours-3", team_name: "Preview Continental", is_ai: false, points: "2455", wins: "6" },
+    { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
+    { rider_id: "rider-honours-5", firstname: "Timo", lastname: "Vogel", nationality_code: "de", team_id: "team-honours-5", team_name: "Nordwind Pro", is_ai: true, points: "1877", wins: "3" },
+  ],
+  wins: [
+    { rider_id: "rider-1", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, is_ai: false, points: "2988", wins: "11" },
+    { rider_id: "rider-honours-6", firstname: "Nils", lastname: "Ostergaard", nationality_code: "no", team_id: "team-honours-6", team_name: "Fjord Cycling", is_ai: false, points: "1640", wins: "11" },
+    { rider_id: "rider-2", firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, is_ai: true, points: "3412", wins: "8" },
+    { rider_id: "rider-honours-3", firstname: "Luca", lastname: "Bernasconi", nationality_code: "ch", team_id: "team-honours-3", team_name: "Preview Continental", is_ai: false, points: "2455", wins: "6" },
+    { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
+  ],
 };

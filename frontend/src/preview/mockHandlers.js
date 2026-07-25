@@ -33,6 +33,7 @@ import {
   SEED_PROJECTION,
   SEED_MANAGER_TRANSFERS,
   seedManagerAchievements,
+  SEED_SEASON_HONOURS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -46,6 +47,29 @@ export function parseTable(requestUrl) {
   const url = new URL(requestUrl);
   const parts = url.pathname.split("/").filter(Boolean);
   return parts[parts.length - 1];
+}
+
+// #2863: PostgREST-RPC'er er POST mod /rest/v1/rpc/<navn>. Både preview-mocken
+// og Playwright-fixturen svarede før med `{}`/`[]` på ENHVER POST mod /rest/v1,
+// hvilket betød at en RPC-drevet flade var usynlig på preview. Returnerer null
+// for alt der ikke er en rpc-sti, så kaldere kan falde tilbage til den gamle
+// mutations-adfærd uændret.
+export function parseRpc(requestUrl) {
+  const url = new URL(requestUrl);
+  const match = url.pathname.match(/\/rest\/v1\/rpc\/([^/]+)\/?$/);
+  return match ? match[1] : null;
+}
+
+// undefined = "denne RPC har ingen mock" → kalderen falder tilbage til sin
+// eksisterende POST-adfærd. Kun RPC'er der driver en synlig flade seedes her.
+export function rpcResponse(name) {
+  switch (name) {
+    // #2863 sæsonens kåringer på /seasons.
+    case "get_season_honours":
+      return SEED_SEASON_HONOURS;
+    default:
+      return undefined;
+  }
 }
 
 export function restRows(table, requestUrl = "") {

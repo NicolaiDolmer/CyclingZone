@@ -5,7 +5,7 @@
 // Interceptoren må ALDRIG kaste: enhver umatchet route eller fejl falder tilbage
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
-import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
@@ -72,6 +72,10 @@ export function installPreviewMock() {
       // Supabase REST (PostgREST).
       if (/\/rest\/v1\//.test(url)) {
         if (["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
+          // #2863: en RPC med seed-data svares FØR den generiske mutations-linje,
+          // ellers ville enhver RPC-drevet flade stå tom på preview.
+          const rpcPayload = rpcResponse(parseRpc(url));
+          if (rpcPayload !== undefined) return jsonResponse(rpcPayload);
           // Optimistisk mutation: ét objekt eller tomt array afhængig af Prefer/Accept.
           return jsonResponse(wantsObject(accept) ? {} : []);
         }
