@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.55",
+    "version": "7.57",
     "date": "2026-07-25",
     "label": "Beta",
     "changes": [
@@ -17,10 +17,52 @@ export const PATCHES = [
           "body": "Board, Inbox, Season planner, Scouting, Club, Compare riders, Roadmap, Strategy, Academy and the privacy pages now use the same page header, cards, loading and error states as the rest of the app. Compare riders had no loading screen at all, and several pages failed silently instead of telling you something went wrong. Five markings were also quietly broken and now work: the gold highlight on an auction you are leading, the gold edge on a transfer offer waiting for your answer, the icons on the season planner, the engine icons in the roadmap history, and a set of buttons in the admin panel. Status colours are now one single colour across the whole app instead of each page mixing its own. The ability columns on Riders and My team sit closer together so more of them fit on screen, the season planner shows more riders at once, and the squad list drops the value arrow and the potential label to make room for what you actually scan for."
         },
         "da": {
-          "title": "De sidste sider er flyttet over på det fælles layout, og fem markeringer der aldrig blev vist er rettet",
-          "body": "Bestyrelse, Indbakke, Sæsonplanlægger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlæsning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlæsningsskærm, og flere sider fejlede tavst i stedet for at fortælle dig at noget gik galt. Fem markeringer var også i stilhed i stykker og virker nu: den gyldne fremhævning på en auktion du fører, den gyldne kant på et bytte-tilbud der venter på dit svar, ikonerne i sæsonplanlæggeren, motor-ikonerne i roadmap-historikken og en række knapper i admin-panelet. Statusfarver er nu én farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne på Ryttere og Mit Hold står tættere, så flere af dem er på skærmen ad gangen, sæsonplanlæggeren viser flere ryttere på én gang, og truppen har droppet værdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
+          "title": "De sidste sider er flyttet over pÃ¥ det fÃ¦lles layout, og fem markeringer der aldrig blev vist er rettet",
+          "body": "Bestyrelse, Indbakke, SÃ¦sonplanlÃ¦gger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlÃ¦sning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlÃ¦sningsskÃ¦rm, og flere sider fejlede tavst i stedet for at fortÃ¦lle dig at noget gik galt. Fem markeringer var ogsÃ¥ i stilhed i stykker og virker nu: den gyldne fremhÃ¦vning pÃ¥ en auktion du fÃ¸rer, den gyldne kant pÃ¥ et bytte-tilbud der venter pÃ¥ dit svar, ikonerne i sÃ¦sonplanlÃ¦ggeren, motor-ikonerne i roadmap-historikken og en rÃ¦kke knapper i admin-panelet. Statusfarver er nu Ã©n farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne pÃ¥ Ryttere og Mit Hold stÃ¥r tÃ¦ttere, sÃ¥ flere af dem er pÃ¥ skÃ¦rmen ad gangen, sÃ¦sonplanlÃ¦ggeren viser flere ryttere pÃ¥ Ã©n gang, og truppen har droppet vÃ¦rdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
         },
         "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.56",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season recap now loads in a moment instead of stalling",
+          "body": "The season page used to pull every single race result of the season into your browser before it could show anything, which got slower the further into the season we came, and could time out entirely on a full season. The totals are now worked out on the server and sent as one small summary. Same standings, same prize leader, same stage-win king, same progression graph, just quick. This matters most right after the season ends, when everyone opens the recap at once."
+        },
+        "da": {
+          "title": "Sæson-opsamlingen henter nu på et øjeblik i stedet for at hakke",
+          "body": "Sæsonsiden hentede før hvert eneste løbsresultat fra hele sæsonen ned i din browser, før den kunne vise noget. Det blev langsommere jo længere ind i sæsonen vi kom, og kunne give op helt på en fuld sæson. Nu regnes tallene ud på serveren og sendes som én lille opsummering. Samme stilling, samme præmiefører, samme etapesejrskonge, samme udviklingsgraf — bare hurtigt. Det betyder mest lige efter sæsonen slutter, hvor alle åbner opsamlingen på én gang."
+        },
+        "refs": [2891]
+      }
+    ]
+  },
+  {
+    "version": "7.55",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Counter-offers on a swap sent the money the wrong way",
+          "body": "If someone offered you a swap and you replied with a counter-offer, the cash amount was reversed on its way out. The field says positive means you receive, but the offer that reached the other manager said you would pay that amount instead. Only counter-offers from the side that received the original offer were affected, and only the direction, never the amount. It now sends exactly what the field says. Thank you to the manager who reported this through the in-game feedback button and spotted it before the deal went through."
+        },
+        "da": {
+          "title": "Modtilbud på en byttehandel sendte pengene den forkerte vej",
+          "body": "Hvis nogen tilbød dig en byttehandel, og du svarede med et modtilbud, blev kontantbeløbet vendt om på vej ud. Feltet siger at positivt betyder at du modtager, men tilbuddet der nåede frem til den anden manager sagde at du ville betale beløbet i stedet. Det ramte kun modtilbud fra den part der havde modtaget det oprindelige tilbud, og kun retningen, aldrig beløbet. Nu sendes præcis det feltet siger. Tak til den manager der rapporterede det gennem feedback-knappen i spillet og opdagede det, før handlen blev gennemført."
+        },
+        "refs": [2843]
       }
     ]
   },
@@ -18064,7 +18106,7 @@ export const PATCHES = [
         "audience": "player",
         "da": {
           "title": "Verificeret runtime via Claude Preview",
-          "body": "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt. Fx `bg-cz-info-bg` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt"
+          "body": "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt. Fx `bg-cz-info-bg0/20` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt"
         }
       },
       {

@@ -100,6 +100,38 @@ test("permission denied er IKKE transient", () => {
   );
 });
 
+// CYCLINGZONE-3D/3E (24/7): Postgres CANCELLEREDE statementet efter 8 s under
+// samtidige etape-afviklinger. Et cancelleret statement er altid rullet tilbage,
+// så et retry er sikkert — og manglende retry kostede en etapes berigelse permanent.
+test("Postgres statement timeout er transient (CYCLINGZONE-3D/3E)", () => {
+  assert.equal(
+    isTransientSupabaseError({ message: "canceling statement due to statement timeout" }),
+    true
+  );
+});
+
+test("statement timeout genkendes på Postgres-koden 57014 alene", () => {
+  // Beskeden kan variere med version/lokalisering — koden er det stabile signal.
+  assert.equal(isTransientSupabaseError({ code: "57014", message: "afbrudt" }), true);
+});
+
+test("lock timeout er transient (55P03 + besked)", () => {
+  assert.equal(isTransientSupabaseError({ code: "55P03", message: "lock ikke ledig" }), true);
+  assert.equal(
+    isTransientSupabaseError({ message: "canceling statement due to lock timeout" }),
+    true
+  );
+});
+
+test("statement-timeout-klassificeringen rammer ikke andre Postgres-fejl", () => {
+  // Afgrænsning: 57014 må ikke smitte af på nabo-koder eller på 'timeout' i fritekst.
+  assert.equal(isTransientSupabaseError({ code: "57P01", message: "admin shutdown" }), false);
+  assert.equal(
+    isTransientSupabaseError({ message: 'column "timeout" does not exist' }),
+    false
+  );
+});
+
 // ── toSupabaseError ──────────────────────────────────────────────────────────
 
 test("toSupabaseError giver et Error med normaliseret besked", () => {
@@ -160,6 +192,21 @@ test("ikke-transient plain Supabase-objekt bobler op som rigtigt Error med code"
       return true;
     }
   );
+});
+
+test("retry'er statement timeout og lykkes på 2. forsøg (CYCLINGZONE-3D/3E)", async () => {
+  let attempts = 0;
+  const result = await withSupabaseRetry(
+    async () => {
+      attempts++;
+      // Supabase returnerer plain { message, code } — ikke et Error.
+      if (attempts === 1) throw { message: "canceling statement due to statement timeout", code: "57014" };
+      return { rows_updated: 367 };
+    },
+    { retries: 2, sleepFn: async () => {} }
+  );
+  assert.deepEqual(result, { rows_updated: 367 });
+  assert.equal(attempts, 2, "presset er kortvarigt — ét retry er typisk nok");
 });
 
 test("giver op efter retries og kaster normaliseret besked", async () => {

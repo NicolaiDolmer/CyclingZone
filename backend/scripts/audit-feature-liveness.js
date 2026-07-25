@@ -90,9 +90,27 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // player_feedback: in-game kontakt-/feedback-knap (#2602) shippet 18/7 — 0 rows er
-  // forventet indtil første spiller-indsendelse. Fjern entry når tabellen har rows.
-  "player_feedback",
+  // email_log (#2725/#2853): retention-loopet er merged men DORMANT by design.
+  // emailLoopFlag.js tolker et fravær af app_config.email_loop_enabled som "off"
+  // (fail-safe), og flaget er aldrig blevet oprettet — bekræftet i prod 25/7:
+  // `select count(*) from app_config where key='email_loop_enabled'` = 0, og
+  // email_log har 0 rows nogensinde. Det er altså IKKE drift: alle tre sweeps
+  // no-op'er internt indtil flaget flippes.
+  // BLOKERET PÅ EJER: 3 tekstgodkendelser + RESEND_API_KEY + EMAIL_UNSUB_SECRET
+  // i Railway (#2853). Ejer-beslutning 25/7: skal ordnes "indenfor et par dage".
+  // FJERN ENTRY når flaget flippes til dry_run/on — så SKAL tabellen have rows,
+  // og Detector A er igen den rigtige vagt for at loopet faktisk sender.
+  "email_log",
+  // race_stage_passages (#2811): Sub-2's passage-persistens. Skrive-stien i
+  // raceRunner.js er reviewet, men tabellen kan først få rows efter første
+  // S2-etape (27/7) — sæson 1 kørte på den gamle sti. Bevidst tom indtil da.
+  // FJERN ENTRY efter første S2-etapedag; er den stadig tom dér, er #2811's
+  // åbne spørgsmål besvaret med et NEJ og det er en ægte bug.
+  "race_stage_passages",
+  // (player_feedback (#2602) fjernet 23/7: første spillerindsendelse landede 23/7
+  // 12:07 CEST — skrive-stien er bevist levende, så Detector A overvåger tabellen
+  // normalt igen. NB: der findes stadig INGEN læse-flade for indsendelserne, se
+  // #2842 — auditen dækker at de ANKOMMER, ikke at de bliver læst.)
   // Race v3-tabeller (race_simulation_rider_scores / race_stage_roles / race_incidents)
   // fjernet fra whitelisten 13/7 efter foerste v3-loebsdag: race_engine_v3_scoring='on'
   // (flippet 12/7 aften), foerste live v2-run 13/7 11:00 CEST stemplede 168 score-rows
