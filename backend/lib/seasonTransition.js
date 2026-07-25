@@ -781,7 +781,16 @@ export async function transitionToNextSeason({
         dryRun: true,
       });
     } catch (err) {
+      // Previewet må aldrig fejle på carry-over-probens konto — men fejlen må
+      // heller ikke være usynlig: præcis denne kode kører for alvor få minutter
+      // senere, og ejeren bruger tallet som go/no-go-gate før cutoveren. Derfor
+      // både i svaret (så det ses i dialogen), i loggen og i Sentry.
       carryOverPreview = { error: err.message };
+      console.error("season-transition preview: carry-over-probe fejlede:", err?.message || err);
+      captureException(err, {
+        tags: { phase: "manager_setup_carry_over", stage: "preview" },
+        extra: { fromSeasonId, toSeasonId: plan.to_season.id },
+      });
     }
     return { ok: true, dryRun: true, plan, carryOverPreview };
   }
