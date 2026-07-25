@@ -9,7 +9,7 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePill
 //   numeric,      // true → højrestillet font-data tabular
 //   sticky,       // true → pinned første kolonne (opak bg + 1px højre-rule)
 //   render,       // (row, i) => node — celleindhold
-//   subline,      // kun sticky: (row, i) => node — 10.5px uppercase underlinje
+//   subline,      // kun sticky: (row, i) => node — text-3xs uppercase underlinje
 //   sublineIndent,// kun sticky: true → pl-[17px] så underlinjen flugter forbi JerseyDot
 //   fold,         // true → skjules ≤640px og foldes ind i sticky-cellens underlinje
 //   foldValue,    // (row) => string — tekstværdi til mobil-fold (default row[key])
@@ -105,7 +105,7 @@ export function DataTable({
   );
 }
 
-// Sticky-celle: navnelinje 13.5/500 + 10.5px uppercase underlinje. På mobil
+// Sticky-celle: navnelinje 13.5/500 + text-3xs uppercase underlinje. På mobil
 // foldes `fold`-kolonnernes værdier ind forrest i underlinjen (" · "-adskilt).
 function renderStickyCell(col, row, i, foldCols) {
   const primary = col.render ? col.render(row, i) : row[col.key];
@@ -121,7 +121,7 @@ function renderStickyCell(col, row, i, foldCols) {
       </span>
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block whitespace-nowrap font-data text-[10.5px] uppercase tracking-[.05em] text-cz-3 ${indent}`}
+          className={`mt-0.5 block whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">
@@ -136,7 +136,7 @@ function renderStickyCell(col, row, i, foldCols) {
   );
 }
 
-// 9px uppercase zone-/status-pill — samme recipe overalt hvor rækker danner
+// text-3xs uppercase zone-/status-pill — samme recipe overalt hvor rækker danner
 // zoner (standings-zoner, listings der lukker, "New" osv.).
 export function ZonePill({ tone = "neutral", className = "", children }) {
   return <span className={`${zonePillClass(tone)} ${className}`}>{children}</span>;

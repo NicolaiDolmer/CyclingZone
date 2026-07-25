@@ -58,7 +58,7 @@ export default function SponsorOfferModal({
                     <p className="text-cz-3 text-xs mt-0.5 truncate">{offer.sponsorName}</p>
                   </div>
                   {selected && (
-                    <span className="flex-shrink-0 px-2 py-0.5 rounded-full border border-cz-accent-t/40 text-cz-accent-t text-[10px] font-medium uppercase tracking-wider">
+                    <span className="flex-shrink-0 px-2 py-0.5 rounded-full border border-cz-accent-t/40 text-cz-accent-t text-3xs font-medium uppercase tracking-wider">
                       {t("offers.pending")}
                     </span>
                   )}

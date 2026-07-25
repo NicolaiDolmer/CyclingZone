@@ -240,7 +240,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 border-l border-t border-cz-border">
             {WEEKDAY_KEYS.map((k) => (
               <div key={k} className="border-r border-cz-border bg-cz-subtle px-2 py-1.5 text-center">
-                <span className="font-data text-[10px] font-bold uppercase tracking-[0.14em] text-cz-3">{t(`weekday.${k}`)}</span>
+                <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t(`weekday.${k}`)}</span>
               </div>
             ))}
           </div>
@@ -267,7 +267,7 @@ export default function CalendarPage() {
       {/* Legend + filter */}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-cz-border pt-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <span className="font-data text-[10px] font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
+          <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
           {LEGEND_BUCKETS.map((b) => (
             <span key={b} className="flex items-center gap-1.5 text-cz-2">
               <TerrainGlyph bucket={b} className="text-cz-2" />
@@ -353,7 +353,7 @@ function DayCell({ cell, entries, todayISO, t }) {
       <div className="mb-1 flex items-center justify-between">
         <span className={`font-data text-xs tabular-nums ${isToday ? "font-bold text-cz-1" : "text-cz-3"}`}>{cell.day}</span>
         {isToday && (
-          <span className="font-data text-[8px] font-bold uppercase tracking-[0.12em] text-cz-on-accent bg-cz-accent px-1 py-px rounded-cz">
+          <span className="font-data text-3xs font-bold uppercase tracking-[0.12em] text-cz-on-accent bg-cz-accent px-1 py-px rounded-cz">
             {t("today")}
           </span>
         )}
@@ -363,7 +363,7 @@ function DayCell({ cell, entries, todayISO, t }) {
           <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
         ))}
         {overflow > 0 && (
-          <p className="px-0.5 text-[10px] text-cz-3">{t("moreRaces", { count: overflow })}</p>
+          <p className="px-0.5 text-3xs text-cz-3">{t("moreRaces", { count: overflow })}</p>
         )}
       </div>
     </div>
@@ -396,10 +396,10 @@ function StageChip({ ev, t }) {
     >
       <div className="flex items-center gap-1.5">
         <TerrainGlyph bucket={ev.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
-        <span className={`truncate text-[11px] font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
+        <span className={`truncate text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </div>
       {secondLine && (
-        <p className={`mt-0.5 truncate text-[9px] tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
+        <p className={`mt-0.5 truncate text-3xs tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
           {secondLine}
         </p>
       )}

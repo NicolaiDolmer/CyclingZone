@@ -25,7 +25,7 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
       className="flex flex-col bg-cz-card border border-cz-border rounded-cz overflow-hidden mt-4 md:mt-0"
     >
       <div className="px-4 py-3 border-b border-cz-border bg-cz-subtle">
-        <h3 className="text-[11px] uppercase tracking-widest text-cz-3 font-medium">
+        <h3 className="text-2xs uppercase tracking-widest text-cz-3 font-medium">
           {t("feed.title")}
         </h3>
       </div>
@@ -46,7 +46,7 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-cz-1 text-xs font-medium truncate">{riderName}</p>
-                      <p className="text-cz-3 text-[10px] mt-0.5">
+                      <p className="text-cz-3 text-3xs mt-0.5">
                         {isMine ? t("feed.yourBid") : t("feed.counterBid")}
                         {" · "}
                         {formatRelativeTime(e.ts)}

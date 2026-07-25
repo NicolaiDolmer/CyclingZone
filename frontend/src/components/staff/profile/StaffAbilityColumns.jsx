@@ -6,7 +6,7 @@ import Tooltip from "../../ui/Tooltip.jsx";
 function AbilityRow({ label, value }) {
   return (
     <div className="flex items-center gap-[9px] py-[3.5px]">
-      <span className="flex-1 min-w-0 text-[11.5px] text-cz-2 truncate">{label}</span>
+      <span className="flex-1 min-w-0 text-2xs text-cz-2 truncate">{label}</span>
       <span className="font-mono tabular-nums font-bold text-[12.5px] text-right flex-none min-w-[19px]"
         style={{ color: statColor(value) }}>
         {Number.isFinite(value) ? value : "—"}
@@ -35,7 +35,7 @@ export default function StaffAbilityColumns({ profile }) {
                 {t(`columns.${col.key}`)}
               </h3>
             )}
-            <span className="font-mono text-[9.5px] text-cz-3 ms-auto">{col.axisKeys.length}</span>
+            <span className="font-mono text-3xs text-cz-3 ms-auto">{col.axisKeys.length}</span>
           </div>
           {col.axisKeys.map((axis) => (
             <AbilityRow key={axis} label={t(`axes.${axis}`)} value={ab[col.source]?.[axis]} />

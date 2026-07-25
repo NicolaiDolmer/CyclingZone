@@ -84,8 +84,8 @@ function TierCard({ tier, highlighted = false }) {
               <span className="text-cz-3 text-xs font-normal ms-1">{tier.priceSuffix}</span>
             )}
           </div>
-          {tier.perDay && <div className="text-cz-3 font-data text-[11px] tabular-nums">{tier.perDay}</div>}
-          {tier.altYear && <div className="text-cz-3 font-data text-[11px] tabular-nums">{tier.altYear}</div>}
+          {tier.perDay && <div className="text-cz-3 font-data text-2xs tabular-nums">{tier.perDay}</div>}
+          {tier.altYear && <div className="text-cz-3 font-data text-2xs tabular-nums">{tier.altYear}</div>}
         </div>
       </div>
       <p className="text-cz-3 text-xs uppercase tracking-wider">{tier.tagline}</p>

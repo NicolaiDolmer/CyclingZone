@@ -35,7 +35,7 @@ const ZONES = {
 
 export function thClass({ numeric = false, sticky = false } = {}) {
   const base =
-    "whitespace-nowrap bg-cz-card px-4 py-3 font-data text-[11px] font-semibold uppercase tracking-[.06em] text-cz-3";
+    "whitespace-nowrap bg-cz-card px-4 py-3 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -78,8 +78,8 @@ export function mergeRowProps(zone, rowProps) {
   return { ...rest, className: [base, extra].filter(Boolean).join(" ") };
 }
 
-// 9px uppercase zone-/status-pill (radius 4px, tone-bg + tone-tekst).
+// text-3xs uppercase zone-/status-pill (radius 4px, tone-bg + tone-tekst).
 export function zonePillClass(tone = "neutral") {
   const toneCls = ZONES[tone]?.pill ?? "bg-cz-subtle text-cz-2";
-  return `inline-block whitespace-nowrap rounded px-1.5 py-0.5 font-data text-[9px] font-bold uppercase tracking-[.06em] ${toneCls}`;
+  return `inline-block whitespace-nowrap rounded px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.06em] ${toneCls}`;
 }

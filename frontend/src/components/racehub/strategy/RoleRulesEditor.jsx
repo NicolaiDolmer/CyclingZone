@@ -19,7 +19,7 @@ export default function RoleRulesEditor({ roster, value, onChange }) {
   return (
     <section className="border border-cz-border rounded-cz bg-cz-card p-4 mb-4">
       <h2 className="text-sm font-semibold text-cz-1">{t("strategy.roleRules.title")}</h2>
-      <p className="text-[11px] text-cz-3 mt-0.5 mb-3">{t("strategy.roleRules.help")}</p>
+      <p className="text-2xs text-cz-3 mt-0.5 mb-3">{t("strategy.roleRules.help")}</p>
       <div className="space-y-1">
         {roster.map((r) => (
           <div key={r.id} className="flex items-center gap-2 px-2 py-1">

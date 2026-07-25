@@ -40,7 +40,7 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
           {t("profile.overview.physio.title")}
         </h3>
         {Number.isFinite(Number(weight)) && (
-          <span className="text-[10.5px] text-cz-3 font-mono tabular-nums">
+          <span className="text-3xs text-cz-3 font-mono tabular-nums">
             {t("profile.overview.physio.weight", { kg: Math.round(Number(weight)) })}
           </span>
         )}
@@ -49,12 +49,12 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
       <div className="flex flex-col gap-[11px]">
         {STAT_DEFS.map((s) => (
           <div key={s.key} className="flex items-baseline justify-between gap-2">
-            <span className="text-[11.5px] text-cz-2">{s.label}</span>
+            <span className="text-2xs text-cz-2">{s.label}</span>
             <div className="flex items-baseline gap-1.5">
               <span className="font-mono tabular-nums font-bold text-[15px] text-cz-1">
                 {fmt(physiology[s.key], s.digits, i18n.language)}
               </span>
-              <span className="text-[10px] text-cz-3">{s.unit}</span>
+              <span className="text-3xs text-cz-3">{s.unit}</span>
             </div>
           </div>
         ))}
@@ -63,7 +63,7 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
       <button
         type="button"
         onClick={onGoFysiologi}
-        className="mt-3 inline-flex items-center gap-1.5 py-1 text-[11.5px] font-semibold text-cz-accent-t hover:underline bg-transparent border-0"
+        className="mt-3 inline-flex items-center gap-1.5 py-1 text-2xs font-semibold text-cz-accent-t hover:underline bg-transparent border-0"
       >
         {t("profile.overview.physio.link")}
       </button>

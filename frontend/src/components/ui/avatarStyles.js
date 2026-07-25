@@ -4,7 +4,7 @@ const AVATAR_BASE =
   "bg-cz-subtle text-cz-2 ring-1 ring-cz-border font-data font-semibold uppercase";
 
 const AVATAR_SIZES = {
-  sm: "h-7 w-7 text-[10px]",
+  sm: "h-7 w-7 text-3xs",
   md: "h-9 w-9 text-xs",
   lg: "h-12 w-12 text-sm",
 };

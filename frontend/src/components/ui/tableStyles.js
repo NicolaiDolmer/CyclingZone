@@ -1,4 +1,4 @@
-const HEADER = "px-3 py-2 font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3";
+const HEADER = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3";
 const CELL = "px-3 py-2.5 text-sm text-cz-1 border-t border-cz-border";
 
 export function cellClass({ numeric = false, header = false } = {}) {

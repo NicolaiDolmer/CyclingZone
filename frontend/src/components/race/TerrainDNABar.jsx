@@ -12,7 +12,7 @@ export default function TerrainDNABar({ demandVector, max = 5 }) {
   const pct = (w) => Math.round(w * 100);
   return (
     <div>
-      <p className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold mb-1.5">
+      <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold mb-1.5">
         {t("detail.terrainDna.label")}
       </p>
       <div
@@ -29,7 +29,7 @@ export default function TerrainDNABar({ demandVector, max = 5 }) {
           />
         ))}
       </div>
-      <p className="text-cz-2 text-[11px] font-mono mt-1.5 leading-relaxed">
+      <p className="text-cz-2 text-2xs font-mono mt-1.5 leading-relaxed">
         {demands.map((d, i) => (
           <span key={d.ability} className={i === 0 ? "text-cz-accent-t font-semibold" : ""}>
             {i > 0 && " · "}

@@ -223,7 +223,7 @@ function HealthView({ getAuth, onMsg }) {
               <dd className="font-mono text-cz-2">{data.finance_null_actor_type.total}</dd>
             </div>
           </dl>
-          <p className="text-cz-3 text-[11px] mt-2">
+          <p className="text-cz-3 text-2xs mt-2">
             Cutoff: {fmtDate(data.deploy_cutoff)} (07d Fase B deploy)
           </p>
         </div>
@@ -251,7 +251,7 @@ function HealthView({ getAuth, onMsg }) {
               <dd className="font-mono text-cz-2">{data.balance_drift.teams_checked}</dd>
             </div>
           </dl>
-          <p className="text-cz-3 text-[11px] mt-2">
+          <p className="text-cz-3 text-2xs mt-2">
             Invariant: teams.balance = {formatCz(data.balance_drift.starting_balance)} + Σ finance_transactions.amount
           </p>
         </div>
@@ -409,8 +409,8 @@ function OverviewView({ getAuth, onMsg }) {
                 <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50">
                   <td className="px-3 py-2 text-cz-1 font-medium">
                     {r.name}
-                    {r.is_ai && <span className="ms-2 text-[10px] text-cz-3 uppercase">AI</span>}
-                    {r.is_frozen && <span className="ms-2 text-[10px] text-cz-warning uppercase">frosset</span>}
+                    {r.is_ai && <span className="ms-2 text-3xs text-cz-3 uppercase">AI</span>}
+                    {r.is_frozen && <span className="ms-2 text-3xs text-cz-warning uppercase">frosset</span>}
                   </td>
                   <td className="px-3 py-2 text-cz-2">D{r.division}</td>
                   <td className="px-3 py-2 text-right font-mono text-cz-1">{formatCz(r.balance)}</td>
@@ -424,7 +424,7 @@ function OverviewView({ getAuth, onMsg }) {
                       <button
                         onClick={() => toggleFreeze(r)}
                         disabled={busy}
-                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all disabled:opacity-50 ${
+                        className={`px-2 py-1 rounded text-2xs font-medium border transition-all disabled:opacity-50 ${
                           r.is_frozen
                             ? "bg-cz-subtle text-cz-success border-cz-success/40 hover:bg-cz-success/10"
                             : "bg-cz-subtle text-cz-warning border-cz-warning/40 hover:bg-cz-warning/10"
@@ -436,7 +436,7 @@ function OverviewView({ getAuth, onMsg }) {
                         {busy ? "..." : r.is_frozen ? "Optø" : "Frys"}
                       </button>
                     ) : (
-                      <span className="text-cz-3 text-[11px]">—</span>
+                      <span className="text-cz-3 text-2xs">—</span>
                     )}
                   </td>
                 </tr>
@@ -506,7 +506,7 @@ function TransactionDetailModal({ tx, onClose }) {
                 <dd className="text-cz-1 break-all">
                   {value}
                   {rawValue && rawValue !== value && (
-                    <span className="ms-2 text-cz-3 text-[10px] font-mono" title="Teknisk værdi i databasen">
+                    <span className="ms-2 text-cz-3 text-3xs font-mono" title="Teknisk værdi i databasen">
                       ({rawValue})
                     </span>
                   )}
@@ -745,7 +745,7 @@ function AdminLogDetailModal({ entry, onClose }) {
           <dt className="text-cz-3 sm:text-right">Handling</dt>
           <dd className="text-cz-1">
             {adminActionLabel(entry.action_type)}
-            <span className="ms-2 text-cz-3 text-[10px]" title="Teknisk værdi">({entry.action_type})</span>
+            <span className="ms-2 text-cz-3 text-3xs" title="Teknisk værdi">({entry.action_type})</span>
           </dd>
           <dt className="text-cz-3 sm:text-right">Admin (bruger-ID)</dt>
           <dd className="text-cz-1 break-all">{entry.admin_user_id}</dd>
@@ -758,7 +758,7 @@ function AdminLogDetailModal({ entry, onClose }) {
         </dl>
         <div className="border-t border-cz-border pt-3">
           <p className="text-cz-3 text-xs mb-1">Tekniske detaljer (JSON)</p>
-          <pre className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-[11px] text-cz-1 font-mono overflow-x-auto">
+          <pre className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-2xs text-cz-1 font-mono overflow-x-auto">
 {entry.meta ? JSON.stringify(entry.meta, null, 2) : "(tom)"}
           </pre>
         </div>
@@ -896,8 +896,8 @@ function AdminLogView({ getAuth, onMsg }) {
                 <td className="px-3 py-2 text-cz-2 whitespace-nowrap">{fmtDate(entry.created_at)}</td>
                 <td className="px-3 py-2 text-cz-1" title={entry.action_type}>{adminActionLabel(entry.action_type)}</td>
                 <td className="px-3 py-2 text-cz-2 truncate max-w-[460px]">{entry.description}</td>
-                <td className="px-3 py-2 text-cz-3 hidden md:table-cell font-mono text-[11px]">{entry.target_team_id?.slice(0, 8) || "—"}</td>
-                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px]">{entry.target_rider_id?.slice(0, 8) || "—"}</td>
+                <td className="px-3 py-2 text-cz-3 hidden md:table-cell font-mono text-2xs">{entry.target_team_id?.slice(0, 8) || "—"}</td>
+                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-2xs">{entry.target_rider_id?.slice(0, 8) || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1018,7 +1018,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
         </span>
       </div>
 
-      <p className="text-cz-3 text-[11px]">
+      <p className="text-cz-3 text-2xs">
         Klik en række for at drille ned i Transaktioner-fanen med samme udløser + kilde + tidsvindue.
       </p>
 

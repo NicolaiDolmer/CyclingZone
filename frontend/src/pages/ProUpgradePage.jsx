@@ -127,7 +127,7 @@ export default function ProUpgradePage() {
                 {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
               </div>
               {seatsLeft > 0 && (
-                <p className="mt-0.5 text-[11px] text-cz-3">{t("founderSeatsRemaining", { remaining: seatsLeft })}</p>
+                <p className="mt-0.5 text-2xs text-cz-3">{t("founderSeatsRemaining", { remaining: seatsLeft })}</p>
               )}
               <p className="mt-3 text-sm leading-relaxed text-cz-2">{t("founderExplainer")}</p>
             </Section>
@@ -167,7 +167,7 @@ export default function ProUpgradePage() {
                     >
                       <div className="font-data text-xs uppercase tracking-wider text-cz-3">{t(plan.key)}</div>
                       <div className="font-data mt-1 text-2xl tabular-nums text-cz-1">{t(plan.priceKey)}</div>
-                      {plan.noteKey && <div className="mt-0.5 text-[11px] text-cz-3">{t(plan.noteKey)}</div>}
+                      {plan.noteKey && <div className="mt-0.5 text-2xs text-cz-3">{t(plan.noteKey)}</div>}
                     </button>
                   );
                 })}

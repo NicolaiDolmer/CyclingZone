@@ -176,13 +176,13 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
       </svg>
       <div className="flex gap-3.5 flex-wrap mt-2">
         {seriesByKey.map((s) => (
-          <span key={s.key} className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+          <span key={s.key} className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-[3px] rounded-sm" style={{ backgroundColor: s.color }} aria-hidden="true" />
             {s.label}
           </span>
         ))}
         {hasProj && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+          <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
             {t("profile.development.projection.legend")}
           </span>
@@ -279,7 +279,7 @@ function ReadingCard({ viewer, growth, primaryLabel, t }) {
   const key = `profile.development.reading.${viewer === "own" ? "own" : "scouting"}.${rising ? "rising" : "flat"}`;
   return (
     <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
-      <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.development.reading.title")}
       </span>
       <p className="mt-[7px] mb-0 text-[12.5px] text-cz-2 leading-[1.55]">
@@ -297,7 +297,7 @@ function LogCard({ viewer, entries, t }) {
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
           {t("profile.development.log.title")}
         </h3>
-        <span className="text-[10.5px] text-cz-3">{t("profile.development.log.hint")}</span>
+        <span className="text-3xs text-cz-3">{t("profile.development.log.hint")}</span>
       </div>
 
       {viewer !== "own" ? (
@@ -312,7 +312,7 @@ function LogCard({ viewer, entries, t }) {
                   : t("season.row", { n: e.season })}
               </span>
               {e.plan && (
-                <span className="inline-flex items-center font-mono text-[10px] font-bold tracking-[0.03em] px-2 py-[2px] rounded-full bg-cz-accent/[.12] text-cz-accent-t">
+                <span className="inline-flex items-center font-mono text-3xs font-bold tracking-[0.03em] px-2 py-[2px] rounded-full bg-cz-accent/[.12] text-cz-accent-t">
                   {t(`profile.training.focus.${e.plan.focus}`)}
                   {e.plan.intensity ? ` · ${t(`training.intensity_${e.plan.intensity}`)}` : ""}
                 </span>
@@ -323,12 +323,12 @@ function LogCard({ viewer, entries, t }) {
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-[7px]">
               {e.gains.map((g) => (
-                <span key={g.ability} className="inline-flex items-center gap-[5px] text-[11px] px-2 py-[2px] rounded-full bg-cz-subtle border border-cz-border text-cz-1">
+                <span key={g.ability} className="inline-flex items-center gap-[5px] text-2xs px-2 py-[2px] rounded-full bg-cz-subtle border border-cz-border text-cz-1">
                   {t(`racePreview.derived.${g.ability}`)}
                   <b className="font-mono tabular-nums text-cz-success">+{g.delta}</b>
                 </span>
               ))}
-              <span className="text-[11px] text-cz-3">
+              <span className="text-2xs text-cz-3">
                 {e.gainDays > 0
                   ? t("profile.development.log.note", { days: e.gainDays, window: HISTORY_DAYS })
                   : t("profile.development.log.noTraining")}

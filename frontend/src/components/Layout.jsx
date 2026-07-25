@@ -181,7 +181,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
         <span className="truncate">{label}</span>
       </span>
       {showBadge && (
-        <span className="bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
+        <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
           {unread > 9 ? "9+" : unread}
         </span>
       )}
@@ -212,7 +212,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <div className="min-w-0">
           <Wordmark forceDark className="h-5 w-auto" alt="" />
           <div className="flex items-center gap-1.5 mt-1">
-            <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
+            <p className="text-cz-sidebar-3 text-3xs truncate">{team?.name || "…"}</p>
             {/* Founder-badge er permanent status, selv efter subscription-udløb (#1903);
                 plain Pro-badge kræver stadig aktiv Pro. */}
             {(isPro || isFounder) && <ProBadge isFounder={isFounder} />}
@@ -223,12 +223,12 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
       {balance != null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+          <p className="text-3xs text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
           {team?.division != null && (
-            <p className="text-cz-sidebar-3 text-[10px] mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
+            <p className="text-cz-sidebar-3 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
         </div>
       )}
@@ -238,7 +238,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <div className="px-4 py-2 border-b border-cz-sidebar-border">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-cz-success" />
-            <span className="text-cz-sidebar-3 text-[10px]">{t("sidebar.onlineNow", { count: onlineCount })}</span>
+            <span className="text-cz-sidebar-3 text-3xs">{t("sidebar.onlineNow", { count: onlineCount })}</span>
           </span>
         </div>
       )}
@@ -253,7 +253,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               <button
                 onClick={() => toggleGroup(group.key)}
                 className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
+                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
                   {group.label}
                 </span>
                 <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -298,7 +298,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       <div className="border-t border-cz-sidebar-border px-4 py-3 flex items-center justify-between gap-2">
         <button
           onClick={signOut}
-          className="inline-flex items-center gap-1 text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
+          className="inline-flex items-center gap-1 text-2xs text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
           <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {logoutLabel}
         </button>
         <LanguageSwitcher />
@@ -563,7 +563,7 @@ export default function Layout() {
             <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
               <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
+                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}

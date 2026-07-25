@@ -25,7 +25,7 @@ const DESKTOP_ONLY = "hidden sm:block";
 function DateCell({ race, seasonLabel }) {
   const dateText = race.date ? formatDate(race.date, null, { day: "numeric", month: "short" }) : "-";
   return (
-    <span className={`${DESKTOP_ONLY} font-mono tabular-nums text-[11px] text-cz-3 whitespace-nowrap`}>
+    <span className={`${DESKTOP_ONLY} font-mono tabular-nums text-2xs text-cz-3 whitespace-nowrap`}>
       {seasonLabel ? `${seasonLabel} · ${dateText}` : dateText}
     </span>
   );
@@ -41,7 +41,7 @@ function PosCell({ rank, sub = false }) {
 
 function PrizeCell({ prize, sub = false }) {
   return (
-    <span className={`font-mono tabular-nums text-right whitespace-nowrap ${sub ? "text-[11px]" : "text-[11.5px]"} ${prize > 0 ? "text-cz-success" : "text-cz-3"}`}>
+    <span className={`font-mono tabular-nums text-right whitespace-nowrap ${sub ? "text-2xs" : "text-2xs"} ${prize > 0 ? "text-cz-success" : "text-cz-3"}`}>
       {prize > 0 ? `+${formatNumber(prize)}` : "-"}
     </span>
   );
@@ -53,11 +53,11 @@ function PrizeCell({ prize, sub = false }) {
 function SubRow({ raceId, stage, label, rank, points, prize }) {
   return (
     <div className={`${GRID} py-1.5 bg-cz-subtle`}>
-      <RaceLink id={raceId} stage={stage} className="text-[11.5px] text-cz-2 truncate pl-5 sm:col-start-2 hover:text-cz-accent-t transition-colors">{label}</RaceLink>
+      <RaceLink id={raceId} stage={stage} className="text-2xs text-cz-2 truncate pl-5 sm:col-start-2 hover:text-cz-accent-t transition-colors">{label}</RaceLink>
       <span className={DESKTOP_ONLY} />
       <span className={DESKTOP_ONLY} />
       <PosCell rank={rank} sub />
-      <span className="font-mono tabular-nums text-[11px] text-cz-3 text-right">{points > 0 ? formatNumber(points) : "-"}</span>
+      <span className="font-mono tabular-nums text-2xs text-cz-3 text-right">{points > 0 ? formatNumber(points) : "-"}</span>
       <PrizeCell prize={prize} sub />
     </div>
   );
@@ -100,7 +100,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
     // Suffiks-konvention som resten af appen (formatCz/Historik): "1.490 CZ$".
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const th = "font-mono text-[9px] font-semibold uppercase tracking-[0.05em] text-cz-3";
+  const th = "font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-cz-3";
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -118,7 +118,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                 type="button"
                 aria-pressed={season === opt.n}
                 onClick={() => setSeason(opt.n)}
-                className={`min-h-[44px] px-3.5 py-1 rounded-md text-[11.5px] font-semibold transition-colors
+                className={`min-h-[44px] px-3.5 py-1 rounded-md text-2xs font-semibold transition-colors
                   ${season === opt.n ? "bg-cz-card text-cz-1 border border-cz-border" : "border border-transparent text-cz-3 hover:text-cz-1"}`}
               >
                 {opt.label}
@@ -130,7 +130,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
           {totalDefs.map((d) => (
             <div key={d.key}>
               <div className={`font-mono tabular-nums text-xl font-bold ${d.tone ?? "text-cz-1"}`}>{d.value}</div>
-              <div className="text-[10px] text-cz-3 uppercase tracking-[0.05em]">{t(`profile.results.totals.${d.key}`)}</div>
+              <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t(`profile.results.totals.${d.key}`)}</div>
             </div>
           ))}
         </div>
@@ -175,7 +175,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                       onClick={() => setExpanded((prev) => ({ ...prev, [race.raceId]: !prev[race.raceId] }))}
                       className="flex items-center justify-center min-w-[44px] min-h-[44px] -my-2.5 -ms-2 flex-shrink-0 text-cz-3 hover:text-cz-1 transition-colors motion-reduce:transition-none cursor-pointer"
                     >
-                      <span className={`text-[9px] transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
+                      <span className={`text-3xs transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
                     </button>
                   )}
                   <RaceLink
@@ -185,12 +185,12 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                     {race.name ?? t("results.fallbackDash")}
                   </RaceLink>
                 </span>
-                <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-[10px] font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
+                <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
                   {race.raceClass ?? "-"}
                 </span>
-                <span className={`${DESKTOP_ONLY} text-[11.5px] text-cz-2 whitespace-nowrap overflow-hidden text-ellipsis`}>{terrainText}</span>
+                <span className={`${DESKTOP_ONLY} text-2xs text-cz-2 whitespace-nowrap overflow-hidden text-ellipsis`}>{terrainText}</span>
                 <PosCell rank={race.finalRank} />
-                <span className="font-mono tabular-nums text-[11.5px] text-cz-2 text-right">{race.points > 0 ? formatNumber(race.points) : "-"}</span>
+                <span className="font-mono tabular-nums text-2xs text-cz-2 text-right">{race.points > 0 ? formatNumber(race.points) : "-"}</span>
                 <PrizeCell prize={race.prize} />
               </>
             );
@@ -212,7 +212,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
           })
         )}
       </div>
-      <p className="m-0 text-[11px] text-cz-3">{t("profile.results.expandHint")}</p>
+      <p className="m-0 text-2xs text-cz-3">{t("profile.results.expandHint")}</p>
     </div>
   );
 }

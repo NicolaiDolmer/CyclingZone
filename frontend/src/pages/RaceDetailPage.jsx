@@ -171,9 +171,9 @@ function countdownText(date, nowMs, t) {
 function HeroStatBlock({ label, value, sub, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
-      {sub && <div className="font-data text-[11px] text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
+      {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
     </div>
   );
 }
@@ -569,7 +569,7 @@ export default function RaceDetailPage() {
               <div className="flex items-center gap-2 flex-wrap mt-2.5">
                 {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
                 <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
-                <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                   {race.race_type === "stage_race" ? t("raceType.stages", { count: race.stages }) : t("raceType.oneDayShort")}
                   {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
                 </span>
@@ -598,7 +598,7 @@ export default function RaceDetailPage() {
             {scheduledStageNums.length > 1 && (() => {
               const counts = bucketCounts(stageProfiles);
               return counts.length ? (
-                <p className="text-cz-3 text-[11px]">
+                <p className="text-cz-3 text-2xs">
                   <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
                   {" "}
                   {counts.map((c, i) => (
@@ -886,7 +886,7 @@ function StoryTagBadges({ moments, riderId, stageNumber, t }) {
         <span
           key={tag.moment_key}
           title={t(`detail.storyTags.${tag.moment_key}.tooltip`)}
-          className="inline-flex items-center rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-cz-3"
+          className="inline-flex items-center rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide text-cz-3"
         >
           {t(`detail.storyTags.${tag.moment_key}.label`)}
         </span>
@@ -988,7 +988,7 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
                 {jerseys.map(j => (
                   <div key={j.dayType}
                     className="flex items-center gap-2 rounded-full border border-cz-border bg-cz-subtle ps-2 pe-3 py-1">
-                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                    <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full"
                       style={{ backgroundColor: j.bg, color: j.fg }}>
                       {t(`detail.jersey.${j.dayType}`)}
                     </span>
@@ -1023,7 +1023,7 @@ function PassageList({ groups, t }) {
       <div className="space-y-4">
         {groups.map((g) => (
           <div key={`${g.waypoint_kind}:${g.waypoint_index}`}>
-            <p className="text-cz-3 text-[11px] mb-1">
+            <p className="text-cz-3 text-2xs mb-1">
               <span className="uppercase tracking-wide font-semibold text-cz-2">
                 {t(`detail.passages.${g.waypoint_kind}`)}
               </span>
@@ -1068,7 +1068,7 @@ function ResultEntityCell({ row, highlightWinner, t, moments, stageNumber }) {
           {entity.name || "—"}
         </TeamLink>
         {isWinner && (
-          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-cz-accent-t"
+          <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide text-cz-accent-t"
             aria-label={t("detail.team.winner")}>
             <FlagIcon size={11} aria-hidden="true" />{t("detail.team.winner")}
           </span>

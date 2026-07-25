@@ -38,7 +38,7 @@ function achievementLabel(t, a) {
 
 function TeamBadge({ name, fallback }) {
   return (
-    <span className="font-mono text-[10px] font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
+    <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
       {name ?? fallback}
     </span>
   );
@@ -47,7 +47,7 @@ function TeamBadge({ name, fallback }) {
 function AchievementChip({ label, highlight = false }) {
   return (
     <span
-      className={`font-mono text-[10.5px] font-semibold tracking-[0.02em] px-1.5 py-[2px] rounded whitespace-nowrap
+      className={`font-mono text-3xs font-semibold tracking-[0.02em] px-1.5 py-[2px] rounded whitespace-nowrap
         ${highlight ? "bg-cz-accent/10 text-cz-accent-t" : "bg-cz-subtle text-cz-2"}`}
     >
       {label}
@@ -103,7 +103,7 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
     { key: "points", value: formatNumber(totals.points) },
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const tileLabel = "text-[10px] text-cz-3 uppercase tracking-[0.05em]";
+  const tileLabel = "text-3xs text-cz-3 uppercase tracking-[0.05em]";
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -122,7 +122,7 @@ export default function RiderPalmaresTab({ seasonRows, loadFailed = false }) {
         {jerseyDayLines.length > 0 && (
           <div className="mt-3 pt-3 border-t border-cz-border flex flex-col gap-1">
             {jerseyDayLines.map((d) => (
-              <p key={d.k} className="m-0 text-[11px] text-cz-2 font-mono tabular-nums">
+              <p key={d.k} className="m-0 text-2xs text-cz-2 font-mono tabular-nums">
                 {t(`profile.palmares.jerseyDayLine.${d.k}`, { n: d.n })}
               </p>
             ))}

@@ -43,7 +43,7 @@ export default function PoolPicker({ pools = [], selected, ownPoolId, lockTier =
               <button key={p.id} type="button" onClick={() => onSelect(p.id)} aria-selected={active}
                 className={`px-3 py-1.5 rounded-cz text-xs font-medium border transition-colors inline-flex items-center gap-1.5 ${active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40" : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
                 {poolLabel(p)}
-                {isOwn && <span className="text-[9px] uppercase tracking-wide text-cz-accent-t">· {t("browse.you")}</span>}
+                {isOwn && <span className="text-3xs uppercase tracking-wide text-cz-accent-t">· {t("browse.you")}</span>}
               </button>
             );
           })}

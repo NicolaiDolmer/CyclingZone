@@ -114,11 +114,11 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
         <ClockIcon size={16} className="text-cz-accent-t flex-shrink-0" />
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm leading-tight">{t("detail.stageSchedule.title")}</h2>
-          <p className="text-cz-3 text-[11px] leading-tight">{t("detail.stageSchedule.subtitle")}</p>
+          <p className="text-cz-3 text-2xs leading-tight">{t("detail.stageSchedule.subtitle")}</p>
         </div>
         {nextStage && (
           <div className="ms-auto text-right flex-shrink-0">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider leading-none">{t("detail.stageSchedule.nextStageLabel")}</p>
+            <p className="text-cz-3 text-3xs uppercase tracking-wider leading-none">{t("detail.stageSchedule.nextStageLabel")}</p>
             <p className="text-cz-accent-t font-mono text-xs font-bold mt-0.5 tabular-nums whitespace-nowrap">
               {countdownText(nextStage.date, nowMs, t)}
             </p>
@@ -149,7 +149,7 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
               </span>
 
               {s.status === "done" ? (
-                <span className="text-[10px] uppercase tracking-wider text-cz-3 font-medium flex-shrink-0">
+                <span className="text-3xs uppercase tracking-wider text-cz-3 font-medium flex-shrink-0">
                   {t("detail.stageSchedule.done")}
                 </span>
               ) : (
@@ -157,7 +157,7 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
                   <span className={`text-sm tabular-nums ${isNext ? "text-cz-1 font-semibold" : "text-cz-2"}`}>
                     {timeLabel}
                   </span>
-                  <span className="text-cz-3 text-[11px] ms-1.5">{dayLabel}</span>
+                  <span className="text-cz-3 text-2xs ms-1.5">{dayLabel}</span>
                 </span>
               )}
             </li>
@@ -165,7 +165,7 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
         })}
       </ul>
 
-      <p className="px-4 py-2 border-t border-cz-border text-cz-3 text-[10px]">
+      <p className="px-4 py-2 border-t border-cz-border text-cz-3 text-3xs">
         {t("detail.stageSchedule.timezoneNote")}
       </p>
     </div>

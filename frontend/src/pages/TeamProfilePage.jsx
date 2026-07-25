@@ -54,9 +54,9 @@ const TABS = ["squad", "results", "palmares", "transfers", "club"];
 function HeroStatBlock({ label, value, sub, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
-      {sub && <div className="font-data text-[11px] text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
+      {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
     </div>
   );
 }
@@ -267,13 +267,13 @@ export default function TeamProfilePage() {
                 <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   {isMyTeam && <CategoryTag>{t("profile.yourTeam")}</CategoryTag>}
-                  <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                  <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                     {t("profile.division", { n: team.division })}
                   </span>
                   {team.manager_name && (
                     <>
-                      <span className="text-cz-3 text-[11px]" aria-hidden="true">·</span>
-                      <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                      <span className="text-cz-3 text-2xs" aria-hidden="true">·</span>
+                      <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                         {t("profile.managerLabel", { name: team.manager_name })}
                       </span>
                       <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />

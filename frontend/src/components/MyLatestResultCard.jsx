@@ -95,7 +95,7 @@ export default function MyLatestResultCard({ data }) {
         <div className="flex items-center gap-2 min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.myResult.title")}</h2>
           {race && isNew && (
-            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 flex-shrink-0">
+            <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 flex-shrink-0">
               {t("dashboard:cards.myResult.newBadge")}
             </span>
           )}

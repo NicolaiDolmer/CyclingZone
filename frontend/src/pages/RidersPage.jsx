@@ -95,7 +95,7 @@ function AbilityLegend({ t, tRider }) {
         aria-expanded={open}
         className="inline-flex items-center gap-1.5 text-cz-3 hover:text-cz-2 text-xs transition-colors"
       >
-        <span className="font-mono text-[10px] border border-cz-border rounded px-1" aria-hidden="true">?</span>
+        <span className="font-mono text-3xs border border-cz-border rounded px-1" aria-hidden="true">?</span>
         {t("abilityLegend.toggle")}
         {open ? <ChevronUpIcon size={12} aria-hidden="true" /> : <ChevronDownIcon size={12} aria-hidden="true" />}
       </button>
@@ -104,7 +104,7 @@ function AbilityLegend({ t, tRider }) {
           grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
           {STATS.map(({ key, label }) => (
             <div key={key} className="flex items-baseline gap-2 text-xs min-w-0">
-              <dt className="font-mono text-[10px] text-cz-accent-t/80 w-9 flex-shrink-0">{label}</dt>
+              <dt className="font-mono text-3xs text-cz-accent-t/80 w-9 flex-shrink-0">{label}</dt>
               <dd className="text-cz-2 truncate">{tRider(`racePreview.derived.${key}`)}</dd>
             </div>
           ))}
@@ -138,7 +138,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
   return (
     <div className="sm:hidden flex items-end gap-2 mb-3">
       <label className="flex-1 min-w-0">
-        <span className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
+        <span className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
         <Select size="sm" value={sort} onChange={e => onSort(e.target.value)} className="w-full">
           {options.map(({ key, label }) => (
             <option key={key} value={key}>{label}</option>

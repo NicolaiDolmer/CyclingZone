@@ -20,7 +20,7 @@ export default function LegacyStageProfileCard({ profile, stageLabel }) {
     <div className="bg-cz-card border border-cz-border rounded-cz p-4 flex items-center gap-4">
       <StageProfileSilhouette profileType={profile.profile_type} />
       <div className="min-w-0">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">
+        <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold">
           {stageLabel || t("detail.stageProfile.label")}
         </p>
         <p className="text-cz-1 text-sm font-semibold leading-tight">
@@ -29,7 +29,7 @@ export default function LegacyStageProfileCard({ profile, stageLabel }) {
             <span className="text-cz-3 font-normal"> · {t(`detail.${finaleKey}`)}</span>
           )}
         </p>
-        <p className="text-cz-3 text-[11px] mt-0.5">{t("detail.stageProfile.note")}</p>
+        <p className="text-cz-3 text-2xs mt-0.5">{t("detail.stageProfile.note")}</p>
       </div>
     </div>
   );

@@ -41,7 +41,7 @@ function Row({ label, value, accent, detail }) {
     <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
       <div className="min-w-0 pr-3">
         <p className="text-cz-2 text-xs">{label}</p>
-        {detail && <p className="text-cz-3 text-[11px] mt-0.5 truncate">{detail}</p>}
+        {detail && <p className="text-cz-3 text-2xs mt-0.5 truncate">{detail}</p>}
       </div>
       <p className={`font-mono text-sm font-bold ${accent}`}>
         {formatSigned(value)}
@@ -204,7 +204,7 @@ export default function FinanceForecastCard({
                       <td className="py-1 pe-2 text-cz-1 font-medium">
                         S{row.season_number}
                         {row.is_estimate && (
-                          <span className="text-cz-3 text-[10px] ms-1" title={t("forecast.multiSeason.estimateTooltip")}>{t("forecast.multiSeason.estimateMark")}</span>
+                          <span className="text-cz-3 text-3xs ms-1" title={t("forecast.multiSeason.estimateTooltip")}>{t("forecast.multiSeason.estimateMark")}</span>
                         )}
                       </td>
                       <td className="py-1 px-2 text-end font-mono text-cz-success">
@@ -250,7 +250,7 @@ export default function FinanceForecastCard({
               </tfoot>
             </table>
           </div>
-          <p className="text-cz-3 text-[11px] mt-2">
+          <p className="text-cz-3 text-2xs mt-2">
             {t("forecast.multiSeason.estimateNote")}
           </p>
         </div>
@@ -303,7 +303,7 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium ${tier.badge}`}
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-3xs font-medium ${tier.badge}`}
         title={tier.summary}
       >
         <span aria-hidden="true" className={`inline-block w-1.5 h-1.5 rounded-full ${tier.dot}`} />

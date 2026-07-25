@@ -69,10 +69,10 @@ function AchievementBadge({ achievement }) {
         opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <p className="text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : title}</p>
         {(!isLocked || !achievement.is_secret) && (
-          <p className="text-cz-2 text-[10px] mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-cz-2 text-3xs mt-0.5 leading-relaxed">{description}</p>
         )}
         {achievement.unlocked_at && (
-          <p className="text-cz-accent-t/60 text-[9px] mt-1">
+          <p className="text-cz-accent-t/60 text-3xs mt-1">
             {formatDate(achievement.unlocked_at)}
           </p>
         )}
@@ -105,7 +105,7 @@ function AchievementProgress({ achievement }) {
 function HeroStatBlock({ label, value, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
     </div>
   );
@@ -243,7 +243,7 @@ export default function ManagerProfilePage() {
                   {isOwnProfile && (
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
-                  <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                  <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                     {t("manager.managerPrefix")} {user.username} · {t("manager.division", { n: team.division })}
                   </span>
                 </div>
@@ -350,7 +350,7 @@ export default function ManagerProfilePage() {
                           {(() => {
                             const ageTier = ageBadgeKey(r);
                             return ageTier ? (
-                              <span className="text-[9px] bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
+                              <span className="text-3xs bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
                             ) : null;
                           })()}
                         </Td>
@@ -425,7 +425,7 @@ export default function ManagerProfilePage() {
                     </div>
                     {inProgress.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
-                        <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("manager.inProgress")}</p>
+                        <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("manager.inProgress")}</p>
                         {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
                       </div>
                     )}

@@ -413,7 +413,7 @@ export default function ProfilePage() {
                 <p className={`text-sm font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>
                   {t(`appearance.${value}Label`)}
                 </p>
-                <p className="text-cz-3 text-[11px] mt-0.5 leading-snug">{t(`appearance.${value}Hint`)}</p>
+                <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{t(`appearance.${value}Hint`)}</p>
               </button>
             );
           })}
@@ -622,7 +622,7 @@ export default function ProfilePage() {
               <div className={dmStatus.dm_enabled ? "space-y-3" : "space-y-3 opacity-50"}>
                 {DM_PREF_GROUPS.map(({ group, keys }) => (
                   <div key={group}>
-                    <p className="text-cz-3 text-[11px] font-semibold mb-1.5">{t(`discord.prefs.group.${group}`)}</p>
+                    <p className="text-cz-3 text-2xs font-semibold mb-1.5">{t(`discord.prefs.group.${group}`)}</p>
                     <div className="space-y-2">
                       {keys.map(key => (
                         <div key={key} className="flex items-start justify-between gap-3">

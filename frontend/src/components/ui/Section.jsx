@@ -32,7 +32,7 @@ export function SectionHeader({ title, as: Heading = "h2", action = null, meta =
       <Heading className="text-[15px] font-semibold text-cz-1">{title}</Heading>
       {action}
       {!action && meta && (
-        <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">{meta}</span>
+        <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">{meta}</span>
       )}
     </div>
   );

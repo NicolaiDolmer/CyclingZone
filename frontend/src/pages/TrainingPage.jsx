@@ -50,7 +50,7 @@ function MiniBar({ value, color, label }) {
       <div className="flex-1 h-1.5 bg-cz-subtle rounded-cz-pill overflow-hidden">
         <div className={`h-full rounded-cz-pill transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[10px] font-mono text-cz-3 w-6 text-right">{pct}</span>
+      <span className="text-3xs font-mono text-cz-3 w-6 text-right">{pct}</span>
     </div>
   );
 }
@@ -66,8 +66,8 @@ function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
   return (
     <div className="min-w-[96px]" title={toGoLabel({ pct: 100 - info.pct, ability: abilityLabel })}>
       <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-[11px] text-cz-2 truncate">{abilityLabel}</span>
-        <span className={`text-[10px] font-mono ${near ? "text-cz-success" : "text-cz-3"}`}>{info.pct}%</span>
+        <span className="text-2xs text-cz-2 truncate">{abilityLabel}</span>
+        <span className={`text-3xs font-mono ${near ? "text-cz-success" : "text-cz-3"}`}>{info.pct}%</span>
       </div>
       <div className="h-1.5 bg-cz-subtle rounded-cz overflow-hidden">
         <div
@@ -412,7 +412,7 @@ export default function TrainingPage() {
                 kan se hvem der kører sit eget program uden at åbne panelet. */}
             {hasOwnWeekPlan && (
               <span
-                className="inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
+                className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
                 title={t("individualWeekPlanBadgeTitle")}
               >
                 {t("individualWeekPlanBadge")}
@@ -422,7 +422,7 @@ export default function TrainingPage() {
           <button
             type="button"
             onClick={() => toggleRiderWeekPlan(rider.id)}
-            className="mt-0.5 text-[10px] text-cz-3 hover:text-cz-accent underline decoration-dotted"
+            className="mt-0.5 text-3xs text-cz-3 hover:text-cz-accent underline decoration-dotted"
           >
             {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
           </button>
@@ -481,13 +481,13 @@ export default function TrainingPage() {
               smart-mode og dailyTraining.js' resolveProgram — INGEN frontend-dublet
               af type→fokus-mappingen). */}
           {!plan?.focus && smartDefaultFocus[rider.id] && (
-            <div className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3">
+            <div className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3">
               {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
             </div>
           )}
           {(currentTrainability === "limited" || currentTrainability === "blocked") && (
             <span
-              className={`ms-1 inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill border ${
+              className={`ms-1 inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border ${
                 currentTrainability === "blocked"
                   ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
                   : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
@@ -499,7 +499,7 @@ export default function TrainingPage() {
           )}
           {/* #2465: fejl-overflade for denne rytters seneste fokus/intensitet/clear-handling. */}
           {planActionError?.riderId === rider.id && (
-            <div role="alert" className="mt-0.5 text-[10px] text-cz-danger">
+            <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
               {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
             </div>
           )}
@@ -542,7 +542,7 @@ export default function TrainingPage() {
               fulde forklaring som title-tooltip i stedet. */}
           {teamRhythmActive && (
             <div
-              className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3"
+              className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
               title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
             >
               {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
@@ -559,7 +559,7 @@ export default function TrainingPage() {
             /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
                kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
             <span
-              className="font-data text-[10px] uppercase tracking-[.06em] text-cz-3 cursor-help"
+              className="font-data text-3xs uppercase tracking-[.06em] text-cz-3 cursor-help"
               title={t("focusCappedTitle")}
             >
               {t("focusCapped")}
@@ -574,7 +574,7 @@ export default function TrainingPage() {
           )}
           {todayGainsByRider[rider.id] > 0 && (
             <div className="mt-0.5">
-              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-success-bg text-cz-success border border-cz-success/30">
+              <span className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-success-bg text-cz-success border border-cz-success/30">
                 {t("gainedToday", { count: todayGainsByRider[rider.id] })}
               </span>
             </div>
@@ -595,14 +595,14 @@ export default function TrainingPage() {
         <td className={tdClass({})}>
           <div className="flex flex-wrap gap-1">
             {injured && (
-              <span className="text-[10px] px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
+              <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
                 {daysLeft === 1
                   ? t("injured", { days: daysLeft })
                   : t("injured_plural", { days: daysLeft })}
               </span>
             )}
             {highRisk && (
-              <span className="text-[10px] px-2 py-0.5 rounded-cz-pill bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
+              <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
                 {t("injuryRisk")}
               </span>
             )}
@@ -624,7 +624,7 @@ export default function TrainingPage() {
                   const current = riderWeekDraftFor(rider.id)[weekday]?.intensity ?? "normal";
                   return (
                     <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="font-data text-[10px] uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
                       <div className="w-[92px]">
                         <Select
                           size="sm"
@@ -820,7 +820,7 @@ export default function TrainingPage() {
                   const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
                   return (
                     <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="font-data text-[10px] uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
                       <div className="w-[92px]">
                         <Select
                           size="sm"
@@ -980,10 +980,10 @@ export default function TrainingPage() {
                           <Fragment key={group.type}>
                             <tr className="bg-cz-subtle/60">
                               <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
-                                <span className="font-data text-[11px] font-semibold uppercase tracking-[.06em] text-cz-2">
+                                <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
                                   {groupLabel(group.type)}
                                 </span>
-                                <span className="ms-2 font-data text-[11px] text-cz-3">
+                                <span className="ms-2 font-data text-2xs text-cz-3">
                                   {t("groupCount", { n: group.riders.length })}
                                 </span>
                               </td>
@@ -1018,17 +1018,17 @@ export default function TrainingPage() {
                 <div className="font-data text-lg font-bold tabular-nums text-cz-1">
                   {summary.trained}<span className="text-cz-3 text-sm font-normal"> / {summary.total}</span>
                 </div>
-                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryTrained")}</div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryTrained")}</div>
               </div>
               <div className="px-5 py-3">
                 <div className={`font-data text-lg font-bold tabular-nums ${summary.breakthroughs > 0 ? "text-cz-success" : "text-cz-1"}`}>
                   {summary.breakthroughs}
                 </div>
-                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryBreakthroughs")}</div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryBreakthroughs")}</div>
               </div>
               <div className="px-5 py-3">
                 <div className="font-data text-lg font-bold tabular-nums text-cz-1">{summary.peakForm}</div>
-                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryPeakForm")}</div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryPeakForm")}</div>
               </div>
             </div>
 
@@ -1061,7 +1061,7 @@ export default function TrainingPage() {
                             {row.name}
                           </RiderLink>
                           {row.injured && (
-                            <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
+                            <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
                               {row.injury_days === 1
                                 ? t("injured", { days: row.injury_days })
                                 : t("injured_plural", { days: row.injury_days })}
@@ -1106,7 +1106,7 @@ export default function TrainingPage() {
                             {row.status === "under" && (
                               <span className="text-cz-danger text-xs">{t("flatDay")}</span>
                             )}
-                            <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                            <span className={`text-2xs font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
                               {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
                             </span>
                           </div>

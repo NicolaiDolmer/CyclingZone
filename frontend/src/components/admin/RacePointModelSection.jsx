@@ -14,7 +14,7 @@ function MasterCard({ t, titleKey, rts, anchorOf, setAnchor, anchorEdits }) {
           const dirty = anchorEdits[rt.key] !== undefined;
           return (
             <label key={rt.key} className="flex flex-col gap-1">
-              <span className="text-cz-3 text-[10px] leading-tight">
+              <span className="text-cz-3 text-3xs leading-tight">
                 {t(`racePoints.resultTypes.${rt.key}`, { defaultValue: rt.label })}
               </span>
               <input
@@ -263,7 +263,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
                   if (isMasterCell(c.key, rt.key)) {
                     return (
                       <td key={rt.key} className="px-2 py-2 text-center">
-                        <span className="text-cz-3 text-[10px] uppercase tracking-wide" title={t("racePoints.model.masterBadge")}>
+                        <span className="text-cz-3 text-3xs uppercase tracking-wide" title={t("racePoints.model.masterBadge")}>
                           ★ {previewRank1(c.key, rt.key)}
                         </span>
                       </td>
@@ -280,13 +280,13 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
                             step="0.1"
                             value={fmtPct(factorOf(c.key, rt.key))}
                             onChange={(e) => setFactorPct(c.key, rt.key, e.target.value)}
-                            className={`w-14 bg-cz-card border rounded px-1 py-0.5 text-[11px] font-mono text-center focus:outline-none
+                            className={`w-14 bg-cz-card border rounded px-1 py-0.5 text-2xs font-mono text-center focus:outline-none
                               ${dirty ? "border-cz-warn/60 text-cz-warn" : "border-cz-border text-cz-1 focus:border-cz-accent/60"}`}
                             aria-label={`${c.label} ${rt.label} %`}
                           />
-                          <span className="text-cz-3 text-[10px]">%</span>
+                          <span className="text-cz-3 text-3xs">%</span>
                         </div>
-                        <span className="text-cz-3 text-[10px] font-mono" title={t("racePoints.model.previewHint")}>
+                        <span className="text-cz-3 text-3xs font-mono" title={t("racePoints.model.previewHint")}>
                           → {previewRank1(c.key, rt.key)}
                         </span>
                       </div>

@@ -16,7 +16,7 @@ export default function CaptainBoard({ roster, value, onChange }) {
   return (
     <section className="border border-cz-border rounded-cz bg-cz-card p-4 mb-4">
       <h2 className="text-sm font-semibold text-cz-1">{t("strategy.captains.title")}</h2>
-      <p className="text-[11px] text-cz-3 mt-0.5 mb-3">{t("strategy.captains.help")}</p>
+      <p className="text-2xs text-cz-3 mt-0.5 mb-3">{t("strategy.captains.help")}</p>
 
       <div className="grid sm:grid-cols-2 gap-3">
         {TERRAIN_BUCKETS.map((bucket) => {
@@ -27,11 +27,11 @@ export default function CaptainBoard({ roster, value, onChange }) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-cz-2">{t(`strategy.buckets.${bucket}`)}</span>
                 <button type="button" onClick={() => setBucket(bucket, autoSuggestCaptains(roster, bucket))}
-                  className="text-[11px] text-cz-accent-t hover:underline">{t("strategy.captains.suggest")}</button>
+                  className="text-2xs text-cz-accent-t hover:underline">{t("strategy.captains.suggest")}</button>
               </div>
 
               {list.length === 0 ? (
-                <p className="text-[11px] text-cz-3 italic mb-2">{t("strategy.captains.empty")}</p>
+                <p className="text-2xs text-cz-3 italic mb-2">{t("strategy.captains.empty")}</p>
               ) : (
                 <ol className="space-y-1 mb-2">
                   {list.map((id, i) => {
@@ -39,7 +39,7 @@ export default function CaptainBoard({ roster, value, onChange }) {
                     if (!r) return null;
                     return (
                       <li key={id} className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-cz-3 w-4">{t("strategy.captains.rank", { n: i + 1 })}</span>
+                        <span className="font-mono text-3xs text-cz-3 w-4">{t("strategy.captains.rank", { n: i + 1 })}</span>
                         <span className="text-xs text-cz-1 truncate flex-1">{r.name}</span>
                         <FitBar score={r.suitabilities?.[bucket]} />
                         <span className="flex items-center gap-0.5">

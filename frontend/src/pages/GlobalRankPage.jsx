@@ -132,18 +132,18 @@ export default function GlobalRankPage() {
             <MovementBadge movement={row.movement} t={t} />
             <TeamLink id={row.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{row.name}</TeamLink>
             {isMe && (
-              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase"
                 style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
                 {t("youBadge")}
               </span>
             )}
             {row.is_ai && (
-              <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-[9px] font-medium uppercase text-cz-3">
+              <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-3xs font-medium uppercase text-cz-3">
                 {t("aiBadge")}
               </span>
             )}
             {row.is_rookie && (
-              <span className="shrink-0 rounded border border-cz-accent/30 px-1 py-0.5 text-[9px] font-medium uppercase text-cz-accent-t">
+              <span className="shrink-0 rounded border border-cz-accent/30 px-1 py-0.5 text-3xs font-medium uppercase text-cz-accent-t">
                 {t("rookieBadge")}
               </span>
             )}
@@ -186,7 +186,7 @@ export default function GlobalRankPage() {
       {myRow && (
         <Card className="mb-4 px-4 py-3.5 flex items-center gap-4 flex-wrap"
           style={{ boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" }}>
-          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+          <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
             {t("youBadge")}
           </span>

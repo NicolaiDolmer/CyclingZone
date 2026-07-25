@@ -19,7 +19,7 @@ export default function RiderValueTrendBadge({ window: windowData, size = "sm", 
   const Icon = direction === "up" ? ArrowUpIcon : ArrowDownIcon;
   const tone = direction === "up" ? "text-cz-success" : "text-cz-danger";
   const iconSize = size === "xs" ? 10 : 12;
-  const textSize = size === "xs" ? "text-[10px]" : "text-[11px]";
+  const textSize = size === "xs" ? "text-3xs" : "text-2xs";
   const value = formatNumber(windowData.delta, { signDisplay: "exceptZero" });
   const label = t("profile.hero.valueTrend", { value, days: windowData.actualDaysAgo });
   const title = t("profile.hero.valueTrendTitle", { date: formatDate(windowData.snapshotDate) });

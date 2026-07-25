@@ -39,7 +39,7 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
             : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
       >
-        {t("controls.statsToggleButton")} {count > 0 && <span className="text-[11px] font-mono ms-1">({count}/{total})</span>}
+        {t("controls.statsToggleButton")} {count > 0 && <span className="text-2xs font-mono ms-1">({count}/{total})</span>}
       </button>
 
       {open && (

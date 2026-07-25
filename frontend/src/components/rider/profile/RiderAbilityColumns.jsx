@@ -41,7 +41,7 @@ function AbilityRow({ label, value, progressFraction, showProgress, progressHint
   const pct = showProgress ? Math.round(frac * 100) : 0;
   return (
     <div className="flex items-center gap-[9px] py-[3.5px]">
-      <span className="flex-1 min-w-0 text-[11.5px] text-cz-2 truncate">{label}</span>
+      <span className="flex-1 min-w-0 text-2xs text-cz-2 truncate">{label}</span>
       <div
         className="relative flex-none w-11 h-1 bg-cz-subtle rounded-full overflow-hidden"
         title={showProgress ? progressHint : undefined}
@@ -77,7 +77,7 @@ export default function RiderAbilityColumns({ abilities, progressByKey = {}, isO
               <h3 className="font-display text-base leading-none tracking-[0.03em] uppercase text-cz-1 m-0">
                 {t(`stats.categories.${cat.key}`)}
               </h3>
-              <span className="font-mono text-[9.5px] text-cz-3 ms-auto">
+              <span className="font-mono text-3xs text-cz-3 ms-auto">
                 {t("profile.overview.skillCount", { count: cat.keys.length })}
               </span>
             </div>
@@ -97,7 +97,7 @@ export default function RiderAbilityColumns({ abilities, progressByKey = {}, isO
 
       {/* Legend — de to bjælke/tal-betydninger holdt visuelt adskilt (spec). -mt-1
           trækker den tæt op under grid'et som en caption (design: margin-top -4px). */}
-      <div className="-mt-1 flex items-center gap-1.5 flex-wrap text-[10.5px] text-cz-3">
+      <div className="-mt-1 flex items-center gap-1.5 flex-wrap text-3xs text-cz-3">
         <span>{t("profile.overview.legend.level")}</span>
         <span aria-hidden="true">·</span>
         <span className="inline-flex items-center gap-1.5">

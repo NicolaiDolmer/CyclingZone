@@ -43,7 +43,7 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {} }) {
   return (
     <div className="min-w-0">
-      <p className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
+      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
       <div
         className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`}
         {...valueProps}
@@ -127,7 +127,7 @@ export default function RiderProfileHero({
             <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
               {(rider.firstname?.[0] ?? "")}{(rider.lastname?.[0] ?? "")}
             </span>
-            <span className="font-data text-[9px] uppercase tracking-[.14em] text-cz-3">{t("profile.hero.photoFallback")}</span>
+            <span className="font-data text-3xs uppercase tracking-[.14em] text-cz-3">{t("profile.hero.photoFallback")}</span>
           </div>
           <div className="min-w-0">
             {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
@@ -142,14 +142,14 @@ export default function RiderProfileHero({
                 : <CategoryTag>{typeLabel}</CategoryTag>}
               {divisionLabel && (
                 <span
-                  className="text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-cz-pill text-white"
+                  className="text-3xs uppercase font-bold tracking-wide px-2 py-0.5 rounded-cz-pill text-white"
                   style={{ backgroundColor: DIVISION_CHIP }}
                 >
                   {divisionLabel}
                 </span>
               )}
               {isU23 && <CategoryTag>{t("header.u23")}</CategoryTag>}
-              <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
+              <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
                 {rider.nationality_code && (
                   <span className="inline-flex items-center gap-1 normal-case">
                     <Flag code={rider.nationality_code} /> {rider.nationality_code}
@@ -167,7 +167,7 @@ export default function RiderProfileHero({
               <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
                 <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
                 {isAiTeam && (
-                  <span className="text-[9px] uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz">
+                  <span className="text-3xs uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded-cz">
                     {t("profile.hero.aiTag")}
                   </span>
                 )}

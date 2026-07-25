@@ -17,7 +17,7 @@ export default function PreviewDiff({ diff, roster, raceNames = {} }) {
         <p className="text-xs text-cz-3 italic mt-2">{t("strategy.preview.none")}</p>
       ) : (
         <>
-          <p className="text-[11px] text-cz-2 mt-1 mb-3">{t("strategy.preview.summary", summary)}</p>
+          <p className="text-2xs text-cz-2 mt-1 mb-3">{t("strategy.preview.summary", summary)}</p>
           <ul className="space-y-2">
             {changed.map(([raceId, d]) => (
               <li key={raceId} className="text-xs border-l-2 border-cz-border pl-2">

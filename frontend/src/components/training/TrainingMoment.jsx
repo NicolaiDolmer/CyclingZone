@@ -46,7 +46,7 @@ export default function TrainingMoment({ latestRun, isToday, progressByRider, pa
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3 sm:px-5 sm:py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-cz-3 mb-1">
+      <p className="text-2xs font-semibold uppercase tracking-wide text-cz-3 mb-1">
         {t(isToday ? "momentLabelToday" : "momentLabelLatest")}
       </p>
       <p className="text-sm sm:text-base text-cz-1 leading-relaxed">{body}</p>

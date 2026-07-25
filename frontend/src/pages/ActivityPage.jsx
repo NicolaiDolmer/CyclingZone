@@ -94,7 +94,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
     <div
       className="flex items-center gap-3 py-[13px] hover:bg-cz-subtle transition-colors cursor-pointer"
       onClick={onClick}>
-      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap flex-shrink-0 ${badgeCls}`}>
+      <span className={`text-3xs px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap flex-shrink-0 ${badgeCls}`}>
         {badge}
       </span>
       <div className="flex-1 min-w-0">
@@ -102,7 +102,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
           className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
           {rider}
         </RiderLink>
-        {detail && <p className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3 truncate">{detail}</p>}
+        {detail && <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3 truncate">{detail}</p>}
       </div>
       {children}
       {amount != null && (
@@ -498,10 +498,10 @@ export default function ActivityPage() {
                         </RiderLink>
                         <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
                       </div>
-                      <p className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
+                      <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
                     </div>
                     {inAuction && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
+                      <span className="text-3xs px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
                         {t("badge.inAuction")}
                       </span>
                     )}

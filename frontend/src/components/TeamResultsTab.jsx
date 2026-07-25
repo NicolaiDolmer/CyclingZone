@@ -206,7 +206,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
                       <p className="text-cz-1">{r.race?.name || "—"}</p>
                     )}
                     {seasonFilter === "all" && r.race?.season?.number != null && (
-                      <p className="text-cz-3 text-[10px]">{t("results.seasonRow", { n: r.race.season.number })}</p>
+                      <p className="text-cz-3 text-3xs">{t("results.seasonRow", { n: r.race.season.number })}</p>
                     )}
                   </td>
                   <td className="py-2 pe-3 text-cz-2 whitespace-nowrap">{typeLabel(r, t)}</td>
@@ -230,7 +230,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
                     {formatNumber(r.points_earned || 0)}
                   </td>
                   <td className="py-2 text-right font-mono text-cz-2 whitespace-nowrap">
-                    {formatNumber(r.prize_money || 0)} <span className="text-cz-3 text-[10px]">CZ$</span>
+                    {formatNumber(r.prize_money || 0)} <span className="text-cz-3 text-3xs">CZ$</span>
                   </td>
                 </tr>
               ))}
@@ -239,7 +239,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
               <tr className="border-t border-cz-border">
                 <td colSpan={4} className="py-2 text-cz-2 font-medium">{t("results.total", { count: filtered.length })}</td>
                 <td className="py-2 text-right font-mono font-bold text-cz-accent-t whitespace-nowrap">{formatNumber(totals.points)}</td>
-                <td className="py-2 text-right font-mono text-cz-2 whitespace-nowrap">{formatNumber(totals.prize)} <span className="text-cz-3 text-[10px]">CZ$</span></td>
+                <td className="py-2 text-right font-mono text-cz-2 whitespace-nowrap">{formatNumber(totals.prize)} <span className="text-cz-3 text-3xs">CZ$</span></td>
               </tr>
             </tfoot>
           </table>

@@ -714,7 +714,7 @@ export default function DashboardPage() {
         <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border
+            <span className={`text-3xs px-1.5 py-0.5 rounded-full font-medium border
               ${seasonInfo.status === "active" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
               : seasonInfo.status === "upcoming" ? "bg-cz-info-bg text-cz-info border-cz-info/30"
               : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
@@ -803,8 +803,8 @@ export default function DashboardPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-cz-1 text-sm truncate">{a.rider?.firstname} {a.rider?.lastname}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          {isWinning && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded-full">{t("dashboard:cards.auctions.winning")}</span>}
-                          {isSelling && !isWinning && <span className="text-[9px] bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-full">{t("dashboard:cards.auctions.selling")}</span>}
+                          {isWinning && <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded-full">{t("dashboard:cards.auctions.winning")}</span>}
+                          {isSelling && !isWinning && <span className="text-3xs bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-full">{t("dashboard:cards.auctions.selling")}</span>}
                         </div>
                       </div>
                       <div className="text-right ms-3">
@@ -857,7 +857,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-cz-accent-t font-mono text-sm">{formatNumber(o.counter_amount || o.offer_amount)} CZ$</p>
-                      <span className={`text-[9px] ${needsAction ? "text-cz-warning" : "text-cz-3"}`}>
+                      <span className={`text-3xs ${needsAction ? "text-cz-warning" : "text-cz-3"}`}>
                         {needsAction
                           ? t("dashboard:cards.transfers.needsAction")
                           : t("dashboard:cards.transfers.active")}
@@ -900,14 +900,14 @@ export default function DashboardPage() {
                     {/* #1828: et igangværende etapeløb vises "Live" + etape-fremdrift i stedet for datoen. */}
                     {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live" ? (
                       <span className="inline-flex flex-col items-end gap-0.5">
-                        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+                        <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
                           {t("dashboard:cards.races.live")}
                           {race.race_type === "stage_race" && (
                             <span className="font-mono normal-case tracking-normal">{race.stages_completed}/{race.stages}</span>
                           )}
                         </span>
                         {nextStageByRace[race.id] && (
-                          <span className="text-[10px] text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
+                          <span className="text-3xs text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
                         )}
                       </span>
                     ) : nextStageByRace[race.id]
@@ -1005,17 +1005,17 @@ export default function DashboardPage() {
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
                       <div key={category.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <p className="text-cz-3 text-[10px] uppercase tracking-wider truncate">{resolveCategoryLabel(t, category)}</p>
+                          <p className="text-cz-3 text-3xs uppercase tracking-wider truncate">{resolveCategoryLabel(t, category)}</p>
                           <span className="flex items-center gap-1 flex-shrink-0">
                             {category.score_pct > 100 && (
                               <span
-                                className="text-[9px] font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
+                                className="text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
                                 title={t("dashboard:cards.board.exceedsTitle")}
                               >
                                 ✓ {t("dashboard:cards.board.exceeds")}
                               </span>
                             )}
-                            <span className="text-cz-2 text-[10px] font-mono">{Math.min(100, category.score_pct)}%</span>
+                            <span className="text-cz-2 text-3xs font-mono">{Math.min(100, category.score_pct)}%</span>
                           </span>
                         </div>
                         <div className="bg-cz-subtle rounded-full h-1.5">

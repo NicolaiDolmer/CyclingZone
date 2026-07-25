@@ -75,7 +75,7 @@ function EventCell({ row, t }) {
         <>
           {link({ id: row.team_id, name: row.team_name }, t("bids.row.teamFallback"))}
           <span className="text-cz-3"> {t("profile.history.bidBy")}</span>
-          {row.is_proxy && <span className="text-cz-3 text-[10px]"> · {t("bids.row.autoBidTag")}</span>}
+          {row.is_proxy && <span className="text-cz-3 text-3xs"> · {t("bids.row.autoBidTag")}</span>}
         </>
       );
     case "transfer":
@@ -131,7 +131,7 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
     );
   }
 
-  const th = "font-mono text-[9px] font-semibold uppercase tracking-[0.05em] text-cz-3";
+  const th = "font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-cz-3";
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className={`${GRID} py-2 border-b border-cz-border`}>
@@ -144,10 +144,10 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
         const amount = historyRowAmount(row);
         return (
           <div key={`${row.kind}-${row.date}-${i}`} className={`${GRID} py-2.5 ${i > 0 ? "border-t border-cz-border" : ""}`}>
-            <span className="font-mono tabular-nums text-[11px] text-cz-3 whitespace-nowrap">
+            <span className="font-mono tabular-nums text-2xs text-cz-3 whitespace-nowrap">
               {row.date ? formatDate(row.date, null, { day: "2-digit", month: "2-digit", year: "2-digit" }) : t("history.fallbackDash")}
             </span>
-            <span className={`inline-flex justify-self-start font-mono text-[9px] font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-cz-subtle border border-cz-border whitespace-nowrap ${CHIP_TONE[row.kind] ?? "text-cz-2"}`}>
+            <span className={`inline-flex justify-self-start font-mono text-3xs font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-cz-subtle border border-cz-border whitespace-nowrap ${CHIP_TONE[row.kind] ?? "text-cz-2"}`}>
               {chipLabel(row.kind, row, t)}
             </span>
             <span className="text-[12.5px] leading-snug min-w-0 truncate">

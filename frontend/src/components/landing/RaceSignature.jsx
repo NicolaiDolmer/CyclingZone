@@ -68,7 +68,7 @@ export default function RaceSignature() {
     <figure className="m-0 border border-cz-border bg-cz-card">
       {/* Header-stribe */}
       <figcaption className="flex items-center justify-between gap-3 border-b border-cz-border px-4 py-2.5">
-        <span className="font-data text-[11px] uppercase tracking-[0.18em] text-cz-3">
+        <span className="font-data text-2xs uppercase tracking-[0.18em] text-cz-3">
           {t("signature.kicker")}
         </span>
         <span className="flex items-center gap-1.5 text-cz-2">
@@ -101,11 +101,11 @@ export default function RaceSignature() {
         {/* Profil-metadata */}
         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 border-t border-cz-border pt-3">
           <div className="flex items-center justify-between">
-            <dt className="text-[11px] uppercase tracking-wider text-cz-3">{t("signature.distanceLabel")}</dt>
+            <dt className="text-2xs uppercase tracking-wider text-cz-3">{t("signature.distanceLabel")}</dt>
             <dd className="font-data text-xs font-semibold text-cz-1">{t("signature.distanceValue")}</dd>
           </div>
           <div className="flex items-center justify-between">
-            <dt className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-cz-3">
+            <dt className="flex items-center gap-1 text-2xs uppercase tracking-wider text-cz-3">
               <FlagIcon size={12} className="text-cz-3" />
               {t("signature.climbLabel")}
             </dt>
@@ -117,10 +117,10 @@ export default function RaceSignature() {
       {/* Samlet stilling */}
       <div className="mt-4 border-t border-cz-border px-4 py-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="font-data text-[11px] uppercase tracking-[0.18em] text-cz-3">
+          <span className="font-data text-2xs uppercase tracking-[0.18em] text-cz-3">
             {t("signature.classificationTitle")}
           </span>
-          <span className="font-data text-[11px] uppercase tracking-wider text-cz-3">{t("signature.gapHeader")}</span>
+          <span className="font-data text-2xs uppercase tracking-wider text-cz-3">{t("signature.gapHeader")}</span>
         </div>
         <ol className="flex flex-col">
           {CLASSIFICATION.map((row) => (
@@ -131,7 +131,7 @@ export default function RaceSignature() {
               <span className="font-data w-4 text-right text-xs tabular-nums text-cz-3">{row.pos}</span>
               <JerseyChip jersey={row.jersey} label={row.jersey ? jerseyLabel[row.jersey] : undefined} />
               <span className="flex-1 truncate text-sm text-cz-1">{row.rider}</span>
-              <span className="font-data text-[11px] uppercase tracking-wider text-cz-3">{row.team}</span>
+              <span className="font-data text-2xs uppercase tracking-wider text-cz-3">{row.team}</span>
               <span
                 className={
                   "font-data w-12 text-right text-xs tabular-nums " +
@@ -143,7 +143,7 @@ export default function RaceSignature() {
             </li>
           ))}
         </ol>
-        <p className="mt-2.5 text-[11px] leading-relaxed text-cz-3">{t("signature.sampleNote")}</p>
+        <p className="mt-2.5 text-2xs leading-relaxed text-cz-3">{t("signature.sampleNote")}</p>
       </div>
     </figure>
   );

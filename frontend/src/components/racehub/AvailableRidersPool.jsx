@@ -30,12 +30,12 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
   return (
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
-        <span className="text-[11px] uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
+        <span className="text-2xs uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
         {/* #1919: "Auto-udfyld"-labelen var en død <span> (Clarity dead-clicks) — den er nu
             selve den primære knap (udfyld manglende), så begge handlinger er ægte knapper. */}
         <span className="flex items-center gap-1.5">
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
-            className="text-[11px] uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
+            className="text-2xs uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           <button type="button" onClick={() => onClearSquad?.("day")} disabled={busy}
             className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearDay")}</button>
@@ -78,7 +78,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
                 {r.name} <span className="font-mono text-cz-3">{r.form ?? "—"}</span>
               </button>
               {boundRace && (
-                <span className="pl-1.5 text-[9px] text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
+                <span className="pl-1.5 text-3xs text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
                   <LockIcon size={9} aria-hidden="true" />{t("racehub.boundNamed", { race: boundRace })}
                 </span>
               )}
@@ -90,7 +90,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
           );
         })}
       </div>
-      <p className="px-3 pb-2 text-[10px] text-cz-3 flex items-center gap-1">
+      <p className="px-3 pb-2 text-3xs text-cz-3 flex items-center gap-1">
         <LockIcon size={10} aria-hidden="true" /> {t("racehub.pool.bound")}
       </p>
     </div>

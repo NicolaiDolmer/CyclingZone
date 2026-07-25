@@ -33,7 +33,7 @@ export default function TeamCell({
       <span
         title={pendingTitle || undefined}
         aria-label={pendingTitle || undefined}
-        className="inline-flex items-center gap-1 rounded bg-cz-accent/15 px-1.5 py-0.5 text-[10px] leading-none text-cz-accent-t"
+        className="inline-flex items-center gap-1 rounded bg-cz-accent/15 px-1.5 py-0.5 text-3xs leading-none text-cz-accent-t"
       >
         <span aria-hidden="true">→</span>
         <TeamLink id={pendingTeam.id} stopPropagation={stopPropagation} className="font-semibold hover:underline">

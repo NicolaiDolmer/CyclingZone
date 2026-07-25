@@ -61,11 +61,11 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index
             <span className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate">{teamName}</span>
           )}
           {index != null && total != null && (
-            <span className="font-mono tabular-nums text-[11px] text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+            <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
               {index} / {total}
             </span>
           )}
-          <span className="hidden md:inline text-cz-3 text-[10px] uppercase tracking-[0.12em] font-semibold flex-shrink-0">
+          <span className="hidden md:inline text-cz-3 text-3xs uppercase tracking-[0.12em] font-semibold flex-shrink-0">
             {t("profile.switcher.hint")}
           </span>
         </div>

@@ -24,7 +24,7 @@ export default function RiderTypeBadge({ primaryType, secondaryType, size = "sm"
     ? t("badge.ariaLabel", { primary: primaryLabel, secondary: secondaryLabel })
     : t("badge.ariaLabelSingle", { primary: primaryLabel });
 
-  const text = size === "sm" ? "text-[10px]" : "text-xs";
+  const text = size === "sm" ? "text-3xs" : "text-xs";
   const pad = size === "sm" ? "px-1.5 py-0.5" : "px-2 py-1";
 
   return (

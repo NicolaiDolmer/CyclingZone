@@ -31,7 +31,7 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
     <div className="absolute z-dropdown mt-1 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 min-w-[230px]">
       <p className="text-xs text-cz-3 px-2 py-1">{t("racehub.popover.title")}</p>
       {targets.length === 0 && blocked.length === 0 && <p className="text-xs text-cz-3 px-2 py-1.5">{t("racehub.popover.none")}</p>}
-      {targets.length > 0 && <p className="text-[10px] uppercase tracking-wide text-cz-success px-2 pt-1 pb-0.5">{t("racehub.popover.availableGroup")}</p>}
+      {targets.length > 0 && <p className="text-3xs uppercase tracking-wide text-cz-success px-2 pt-1 pb-0.5">{t("racehub.popover.availableGroup")}</p>}
       {targets.map(({ c, fit, understaffed, compat }) => (
         <button
           key={c.id}
@@ -42,23 +42,23 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
           <span className="min-w-0">
             <span className="block text-sm text-cz-1 truncate">{c.name}</span>
             {compat && (
-              <span className="block text-[10px] text-cz-success truncate">
+              <span className="block text-3xs text-cz-success truncate">
                 {Number.isFinite(compat.gameDay)
                   ? t("racehub.popover.compatibleHint", { race: compat.name, day: compat.gameDay })
                   : t("racehub.popover.compatibleHintNoDay", { race: compat.name })}
               </span>
             )}
-            {understaffed && <span className="text-[10px] text-cz-warning">{t("racehub.popover.understaffed")}</span>}
+            {understaffed && <span className="text-3xs text-cz-warning">{t("racehub.popover.understaffed")}</span>}
           </span>
           <FitBar score={fit} />
         </button>
       ))}
-      {blocked.length > 0 && <p className="text-[10px] uppercase tracking-wide text-cz-danger px-2 pt-2 pb-0.5">{t("racehub.popover.blockedGroup")}</p>}
+      {blocked.length > 0 && <p className="text-3xs uppercase tracking-wide text-cz-danger px-2 pt-2 pb-0.5">{t("racehub.popover.blockedGroup")}</p>}
       {blocked.map(({ c, conflict }) => (
         <div key={c.id} className="flex w-full items-start gap-2 px-2 py-1.5 text-cz-3">
           <span className="min-w-0">
             <span className="block text-sm truncate">{c.name}</span>
-            <span className="text-[10px] flex items-center gap-1">
+            <span className="text-3xs flex items-center gap-1">
               <LockIcon size={10} aria-hidden="true" />{t("racehub.popover.blockedReason", { race: conflict.name })}
             </span>
           </span>

@@ -42,9 +42,9 @@ test("SectionAction: 12px/500 accent-t + chevron 13px", () => {
   assert.match(src, /ChevronRightIcon size=\{13\}/);
 });
 
-test("DataTable: sticky-underlinje 10.5px uppercase + mobil-fold + sort-aria", () => {
+test("DataTable: sticky-underlinje text-3xs uppercase + mobil-fold + sort-aria", () => {
   const src = read("DataTable.jsx");
-  assert.match(src, /text-\[10\.5px\] uppercase/);
+  assert.match(src, /text-3xs uppercase/);
   assert.match(src, /text-\[13\.5px\] font-medium/);
   assert.match(src, /hidden sm:table-cell/, "fold-kolonner skjules ≤640px");
   assert.match(src, /sm:hidden/, "foldede værdier vises kun i mobil-underlinjen");

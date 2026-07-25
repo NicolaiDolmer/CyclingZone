@@ -56,7 +56,7 @@ function DayRiderTable({ rows, t, tRider }) {
                     {row.name}
                   </RiderLink>
                   {row.injured && (
-                    <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
+                    <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
                       {row.injury_days === 1
                         ? t("injured", { days: row.injury_days })
                         : t("injured_plural", { days: row.injury_days })}
@@ -86,7 +86,7 @@ function DayRiderTable({ rows, t, tRider }) {
                   <div className="flex flex-col gap-0.5">
                     {row.status === "over" && <span className="text-cz-success text-xs">{t("sharpDay")}</span>}
                     {row.status === "under" && <span className="text-cz-danger text-xs">{t("flatDay")}</span>}
-                    <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                    <span className={`text-2xs font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
                       {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
                     </span>
                   </div>
@@ -114,11 +114,11 @@ function DayCard({ run, t, tRider }) {
       >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-semibold text-cz-1">{formatDate(run.tick_date)}</span>
-          <span className="text-[11px] px-2 py-0.5 rounded-cz bg-cz-subtle text-cz-3 border border-cz-border">
+          <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-subtle text-cz-3 border border-cz-border">
             {executedByLabel(run.executed_by, t)}
           </span>
           {run.bonus_applied && (
-            <span className="text-[11px] px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+            <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
               {t("bonusApplied")}
             </span>
           )}

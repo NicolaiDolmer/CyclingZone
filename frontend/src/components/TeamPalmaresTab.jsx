@@ -43,14 +43,14 @@ async function loadTeamPalmares(teamId) {
 function MovementBadge({ movement, t }) {
   if (movement === "promoted") {
     return (
-      <span className="font-mono text-[10px] font-bold px-1.5 py-[2px] rounded bg-cz-success-bg text-cz-success whitespace-nowrap">
+      <span className="font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-success-bg text-cz-success whitespace-nowrap">
         {"↑ "}{t("profile.palmares.movementPromoted")}
       </span>
     );
   }
   if (movement === "relegated") {
     return (
-      <span className="font-mono text-[10px] font-bold px-1.5 py-[2px] rounded bg-cz-danger-bg text-cz-danger whitespace-nowrap">
+      <span className="font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-danger-bg text-cz-danger whitespace-nowrap">
         {"↓ "}{t("profile.palmares.movementRelegated")}
       </span>
     );
@@ -127,7 +127,7 @@ export default function TeamPalmaresTab({ teamId }) {
     { key: "bestResult", value: bestResultValue },
     { key: "honours", value: honours.length },
   ];
-  const tileLabel = "text-[10px] text-cz-3 uppercase tracking-[0.05em]";
+  const tileLabel = "text-3xs text-cz-3 uppercase tracking-[0.05em]";
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -168,7 +168,7 @@ export default function TeamPalmaresTab({ teamId }) {
                   <td className="py-2 px-4">
                     <span className="text-cz-1 font-semibold">{t("profile.seasonLabel", { n: row.season.number })}</span>
                     {row.season.status === "active" && (
-                      <span className="ms-2 text-[9px] px-1.5 py-0.5 rounded-full bg-cz-success-bg text-cz-success border border-cz-success/30">
+                      <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-full bg-cz-success-bg text-cz-success border border-cz-success/30">
                         {t("profile.seasonOngoing")}
                       </span>
                     )}
@@ -177,7 +177,7 @@ export default function TeamPalmaresTab({ teamId }) {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-cz-1 whitespace-nowrap">{t("profile.division", { n: row.division })}</span>
                       {row.pool?.label && (
-                        <span className="font-mono text-[10px] font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
+                        <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
                           {row.pool.label}
                         </span>
                       )}
@@ -222,7 +222,7 @@ export default function TeamPalmaresTab({ teamId }) {
                 </span>
                 <div className="flex items-center gap-2">
                   {entry.season_number != null && (
-                    <span className="text-cz-3 text-[10px]">{t("profile.seasonLabel", { n: entry.season_number })}</span>
+                    <span className="text-cz-3 text-3xs">{t("profile.seasonLabel", { n: entry.season_number })}</span>
                   )}
                   <span className="font-mono tabular-nums font-bold text-cz-accent-t">{formatNumber(entry.value)}</span>
                 </div>

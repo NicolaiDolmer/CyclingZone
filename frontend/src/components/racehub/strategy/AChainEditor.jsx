@@ -12,7 +12,7 @@ export default function AChainEditor({ roster, value, onChange }) {
   return (
     <section className="border border-cz-border rounded-cz bg-cz-card p-4 mb-4">
       <h2 className="text-sm font-semibold text-cz-1">{t("strategy.aChain.title")}</h2>
-      <p className="text-[11px] text-cz-3 mt-0.5 mb-3">{t("strategy.aChain.help")}</p>
+      <p className="text-2xs text-cz-3 mt-0.5 mb-3">{t("strategy.aChain.help")}</p>
 
       {value.length === 0 ? (
         <p className="text-xs text-cz-3 italic mb-3">{t("strategy.aChain.empty")}</p>
@@ -23,9 +23,9 @@ export default function AChainEditor({ roster, value, onChange }) {
             if (!r) return null;
             return (
               <li key={id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-cz-subtle">
-                <span className="font-mono text-[11px] text-cz-3 w-5 text-right tabular-nums">{i + 1}</span>
+                <span className="font-mono text-2xs text-cz-3 w-5 text-right tabular-nums">{i + 1}</span>
                 <span className="text-xs text-cz-1 truncate flex-1">{r.name}</span>
-                {Number.isFinite(r.overall) && <span className="font-mono text-[11px] text-cz-2 tabular-nums">{r.overall}</span>}
+                {Number.isFinite(r.overall) && <span className="font-mono text-2xs text-cz-2 tabular-nums">{r.overall}</span>}
                 <span className="flex items-center gap-0.5">
                   <button type="button" aria-label={t("strategy.aChain.up")} disabled={i === 0}
                     onClick={() => onChange(moveInList(value, i, -1))}

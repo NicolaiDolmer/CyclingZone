@@ -54,7 +54,7 @@ export default function RiderBadges({ badges = [], className = "" }) {
         key={key}
         aria-label={full}
         title={full}
-        className={`inline-flex items-center justify-center text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 ${TONE[def.tone]} ${className}`}
+        className={`inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 ${TONE[def.tone]} ${className}`}
       >
         {label}
       </span>

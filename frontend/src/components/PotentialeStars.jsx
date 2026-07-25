@@ -76,7 +76,7 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
           <Star key={i} idSuffix={`${uid}r${i}`} fillFraction={s.certain} softFraction={s.uncertain}
             tone={tone} softTone={softTone} emptyTone={emptyTone} />
         ))}
-        {showLabel && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
+        {showLabel && <span className="ms-1.5 text-3xs font-medium text-cz-3 whitespace-nowrap">{label}</span>}
       </span>
     );
   }
@@ -99,7 +99,7 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
         <Star key={i} idSuffix={`${uid}e${i}`} fillFraction={fillFraction}
           tone={tone} emptyTone={emptyTone} />
       ))}
-      {showLabel && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
+      {showLabel && <span className="ms-1.5 text-3xs font-medium text-cz-3 whitespace-nowrap">{label}</span>}
     </span>
   );
 }

@@ -139,7 +139,7 @@ function AppErrorFallback({ error, eventId, resetError }) {
               )}
             </div>
             {ENABLED && eventId && (
-              <p className="font-mono text-[11px] text-cz-3">
+              <p className="font-mono text-2xs text-cz-3">
                 {copy.event}: {eventId}
               </p>
             )}

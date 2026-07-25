@@ -69,7 +69,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
           {t("profile.overview.radar.title")}
         </h3>
-        <span className="text-[10.5px] text-cz-3">{t("profile.overview.radar.subtitle")}</span>
+        <span className="text-3xs text-cz-3">{t("profile.overview.radar.subtitle")}</span>
       </div>
 
       <svg viewBox="0 0 280 230" className="block w-full max-w-[430px] h-auto mx-auto mt-0.5" aria-hidden="true">
@@ -104,7 +104,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
       </svg>
 
       <div className="flex gap-3.5 flex-wrap justify-center mt-1">
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+        <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
           <span className="w-3 h-[3px] rounded-sm bg-cz-accent-t" aria-hidden="true" />
           {t("profile.overview.radar.legendNow")}
         </span>
@@ -116,7 +116,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           viser bedste type + link til Scouting; overall-potentialet står i hero'en.
           Tilføjes når per-type potentiale-data findes (talentspejder). */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
-        <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] text-cz-3">
+        <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
           {t("profile.overview.radar.bestAs")}
         </span>
         <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${bestKey}`)}</span>
@@ -126,7 +126,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           <button
             type="button"
             onClick={onGoScouting}
-            className="ms-auto py-1 -my-1 text-[11px] text-cz-accent-t hover:underline"
+            className="ms-auto py-1 -my-1 text-2xs text-cz-accent-t hover:underline"
           >
             {t("profile.overview.radar.allTypes")}
           </button>

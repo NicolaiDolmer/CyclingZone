@@ -174,7 +174,7 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
         {/* #2465: kort retningsforklaring pr. rolle — hvad vælger jeg egentlig? */}
         <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           {ROLE_OPTIONS.map((r) => (
-            <div key={r} className="flex items-baseline gap-1 text-[10.5px] leading-snug">
+            <div key={r} className="flex items-baseline gap-1 text-3xs leading-snug">
               <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(ROLE_LABEL_KEY[r])}:</dt>
               <dd className="m-0 text-cz-3">{t(ROLE_HELP_KEY[r])}</dd>
             </div>
@@ -214,7 +214,7 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
                       {t("stageTactics.stageCol", { number: sn })}
                     </span>
                     {profileByStage[sn] && (
-                      <span className="block text-[10px] font-normal normal-case text-cz-3 mt-0.5">
+                      <span className="block text-3xs font-normal normal-case text-cz-3 mt-0.5">
                         {t(`strategy.buckets.${bucket}`)}
                       </span>
                     )}
@@ -256,7 +256,7 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
                           value={cell.race_role}
                           disabled={saving}
                           onChange={(e) => updateCell(sn, rider.rider_id, { race_role: e.target.value })}
-                          className="bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-[11px] text-cz-1 disabled:opacity-50"
+                          className="bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-2xs text-cz-1 disabled:opacity-50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{t(ROLE_LABEL_KEY[r])}</option>
@@ -267,7 +267,7 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
                           value={cell.effort}
                           disabled={saving}
                           onChange={(e) => updateCell(sn, rider.rider_id, { effort: e.target.value })}
-                          className="bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-[11px] text-cz-1 disabled:opacity-50"
+                          className="bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-2xs text-cz-1 disabled:opacity-50"
                         >
                           {EFFORT_OPTIONS.map((ef) => (
                             <option key={ef} value={ef}>{t(`stageTactics.effort.${ef}`)}</option>

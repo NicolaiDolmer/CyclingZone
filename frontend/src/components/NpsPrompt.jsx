@@ -73,7 +73,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                 </button>
               ))}
             </div>
-            <div className="flex justify-between text-[10px] text-cz-3 mt-1 px-0.5">
+            <div className="flex justify-between text-3xs text-cz-3 mt-1 px-0.5">
               <span>{t("nps.scaleLow")}</span>
               <span>{t("nps.scaleHigh")}</span>
             </div>

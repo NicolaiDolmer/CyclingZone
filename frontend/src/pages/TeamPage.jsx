@@ -381,7 +381,7 @@ function OwnAuctionBadge({ auction }) {
       to="/auctions?tab=my-situation"
       onClick={e => e.stopPropagation()}
       title={t("team:squad.ownAuctionTooltip", { price: formatNumber(auction.current_price), timeLeft })}
-      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
     >
       {t("rider:badges.label.auction")}
       <span className="font-mono normal-case tracking-normal">{formatNumber(auction.current_price)}</span>

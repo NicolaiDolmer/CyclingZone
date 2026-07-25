@@ -33,7 +33,7 @@ export default function StageWaypointReadout({ waypoint, passages, stageNumber, 
     return (
       <div className="border-t border-cz-border mt-2 pt-2">
         <p className="text-cz-1 text-sm font-semibold truncate">{waypointTitle(waypoint, t)}</p>
-        <p className="text-cz-2 text-[11px] font-mono">{waypointMeta(waypoint, t)}</p>
+        <p className="text-cz-2 text-2xs font-mono">{waypointMeta(waypoint, t)}</p>
       </div>
     );
   }
@@ -47,16 +47,16 @@ export default function StageWaypointReadout({ waypoint, passages, stageNumber, 
     <div className="border-t border-cz-border mt-2 pt-2 flex justify-between gap-4 flex-wrap">
       <div className="min-w-0">
         <p className="text-cz-1 text-sm font-semibold truncate">{title}</p>
-        <p className="text-cz-2 text-[11px] font-mono">{meta}</p>
+        <p className="text-cz-2 text-2xs font-mono">{meta}</p>
       </div>
       <div className="text-end min-w-[9rem]">
-        <p className="text-cz-3 text-[9px] uppercase tracking-wider font-semibold mb-0.5">
+        <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold mb-0.5">
           {results.length ? t("detail.route.result") : t("detail.route.atStake")}
         </p>
         {results.length ? (
           <ul>
             {results.map((r) => (
-              <li key={`${r.rider_id}-${r.passage_rank}`} className="text-cz-1 text-[11px] leading-relaxed">
+              <li key={`${r.rider_id}-${r.passage_rank}`} className="text-cz-1 text-2xs leading-relaxed">
                 {r.passage_rank}.{" "}
                 <RiderLink id={r.rider_id} className="hover:text-cz-accent-t transition-colors">
                   {r.rider_name || "—"}
@@ -70,7 +70,7 @@ export default function StageWaypointReadout({ waypoint, passages, stageNumber, 
             ))}
           </ul>
         ) : (
-          <p className="text-cz-2 text-[11px] font-mono">
+          <p className="text-cz-2 text-2xs font-mono">
             {waypoint.kind === "kom"
               ? t("detail.route.komPoints", { count: waypoint.points })
               : t("detail.route.greenPoints", { count: waypoint.points })}

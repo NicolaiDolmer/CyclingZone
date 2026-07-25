@@ -85,14 +85,14 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     <span
       role="alert"
       title={t([`rider:scouting.scoutErrors.${scoutError}`, "rider:scouting.scoutFailed"])}
-      className="text-[10px] font-bold text-cz-danger"
+      className="text-3xs font-bold text-cz-danger"
     >
       !
     </span>
   );
 
   const pendingBadge = scoutSystemEnabled && pending && (
-    <span className="text-[11px] text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
+    <span className="text-2xs text-cz-3 whitespace-nowrap" title={t("rider:scouting.pendingTitle")}>
       {t("rider:scouting.pendingShort", { minutes: targetEtaMinutes })}
     </span>
   );
@@ -103,7 +103,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
       onClick={handleScout}
       disabled={!canScout}
       title={remaining <= 0 ? t("rider:scouting.noSlots") : t("rider:scouting.scoutTitle")}
-      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
     >
       {busy ? (
         t("rider:scouting.scouting")
@@ -144,7 +144,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     <span className="inline-flex items-center gap-2 flex-wrap">
       <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} large={large} labelAsTitle={labelAsTitle} />
       {!hideLevel && level > 0 && (
-        <span className="text-[10px] font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
+        <span className="text-3xs font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
           {level}/{maxLevel}
         </span>
       )}

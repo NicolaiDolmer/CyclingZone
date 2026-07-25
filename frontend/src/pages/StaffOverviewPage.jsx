@@ -129,7 +129,7 @@ export default function StaffOverviewPage() {
           <span>{row.name}</span>
           {row.teamId === myTeamId && (
             <span
-              className="ms-2 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+              className="ms-2 shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase"
               style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}
             >
               {t("table.mine")}

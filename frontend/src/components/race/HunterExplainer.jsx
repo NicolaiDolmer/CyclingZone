@@ -24,8 +24,8 @@ export default function HunterExplainer({ riders = [], profileType = null, final
   return (
     <section className="bg-cz-subtle border-t border-cz-border px-4 py-3">
       <h3 className="text-xs font-semibold text-cz-1">{t("racehub.hunterExplainer.title")}</h3>
-      <p className="text-[11px] leading-snug text-cz-3 mt-1">{t("racehub.hunterExplainer.body")}</p>
-      <p className="text-[11px] leading-snug mt-1.5">
+      <p className="text-2xs leading-snug text-cz-3 mt-1">{t("racehub.hunterExplainer.body")}</p>
+      <p className="text-2xs leading-snug mt-1.5">
         <span className="text-cz-3">{t("racehub.breakawayStrength.label")}: </span>
         <span className={`font-semibold ${STRENGTH_CLASS[strength]}`}>
           {t(`racehub.breakawayStrength.${strength}`)}
@@ -34,14 +34,14 @@ export default function HunterExplainer({ riders = [], profileType = null, final
       </p>
 
       <div className="mt-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-cz-3">{t("racehub.hunterExplainer.candidatesTitle")}</p>
+        <p className="text-3xs uppercase tracking-wide text-cz-3">{t("racehub.hunterExplainer.candidatesTitle")}</p>
         {candidates.length === 0 ? (
-          <p className="text-[11px] text-cz-3 mt-1">{t("racehub.hunterExplainer.noCandidates")}</p>
+          <p className="text-2xs text-cz-3 mt-1">{t("racehub.hunterExplainer.noCandidates")}</p>
         ) : (
           <>
             <ul className="mt-1 space-y-0.5">
               {candidates.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2 text-[11px]">
+                <li key={r.id} className="flex items-center justify-between gap-2 text-2xs">
                   <span className={`truncate ${r.id === hunterId ? "text-cz-accent-t font-medium" : "text-cz-1"}`}>{r.name}</span>
                   <span className="font-mono tabular-nums text-cz-2 flex-shrink-0">
                     {t("racehub.hunterExplainer.aggression")} {r.aggression}
@@ -49,7 +49,7 @@ export default function HunterExplainer({ riders = [], profileType = null, final
                 </li>
               ))}
             </ul>
-            <p className="text-[10px] text-cz-3 mt-1">{t("racehub.hunterExplainer.candidatesHint")}</p>
+            <p className="text-3xs text-cz-3 mt-1">{t("racehub.hunterExplainer.candidatesHint")}</p>
           </>
         )}
       </div>

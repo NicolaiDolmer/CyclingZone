@@ -10,7 +10,7 @@ import { staffSpecializationHeadline } from "../../../lib/staffAbilities.js";
 function HeroStat({ label, value }) {
   return (
     <div className="min-w-0">
-      <p className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
+      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
       <div className="font-data leading-tight text-cz-1 tabular-nums text-[20px] font-[650]">{value}</div>
     </div>
   );
@@ -38,7 +38,7 @@ export default function StaffProfileHero({ profile, actions = null }) {
           <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
             {initialsFrom(profile.name)}
           </span>
-          <span className="font-data text-[9px] uppercase tracking-[.14em] text-cz-3">{t("hero.photoFallback")}</span>
+          <span className="font-data text-3xs uppercase tracking-[.14em] text-cz-3">{t("hero.photoFallback")}</span>
         </div>
         <div className="min-w-0">
           {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
@@ -47,7 +47,7 @@ export default function StaffProfileHero({ profile, actions = null }) {
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             <CategoryTag>{t(`roles.${profile.role}`)}</CategoryTag>
             {headline && (
-              <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">{headline}</span>
+              <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">{headline}</span>
             )}
           </div>
         </div>
