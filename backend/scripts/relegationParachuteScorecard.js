@@ -189,6 +189,9 @@ async function main() {
   console.log(
     `HEADLINE: formel-gate ${allPass ? "✅ PASS" : "❌ FAIL"} · likviditets-bane-gate ${trajPass ? "✅ PASS" : "❌ FAIL"}`
   );
+  // #2854 (backwards-check): headline-verdicten skal også nå exit-koden — ellers
+  // ser en caller/CI succes på en kørsel der printede FAIL.
+  process.exitCode = allPass && trajPass ? 0 : 1;
 }
 
 main().catch((e) => {

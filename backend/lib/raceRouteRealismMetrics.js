@@ -77,29 +77,88 @@ export function scoreGrandTour(stages) {
 // Et løb med mindst så mange etaper scores mod GT-båndet.
 export const GRAND_TOUR_MIN_STAGES = 21;
 
+// Tre udfald — "kunne ikke vurderes" er BEVIDST forskelligt fra både GO og NO-GO.
+// Et scorecard der siger GO på et grundlag det ikke har målt er værre end intet
+// scorecard (#2854), så tavs mangel på evidens må aldrig kollapse til GO.
+export const VERDICT = Object.freeze({ GO: "GO", NO_GO: "NO-GO", UNKNOWN: "UKENDT" });
+export const EXIT_CODE = Object.freeze({ [VERDICT.GO]: 0, [VERDICT.NO_GO]: 1, [VERDICT.UNKNOWN]: 2 });
+
+// En tier er GATET når #2755 faktisk sætter mindst ét mål for den. Tier 1-2 står
+// eksplicit med lutter null (bevidst u-gated) → "ikke gatet", ikke "grøn".
+// En tier der slet IKKE står i TIER_TARGETS er noget ingen har taget stilling til
+// → ikke-vurderet (ikke tavst grøn).
+export function tierGateState(tier) {
+  const targets = TIER_TARGETS[tier];
+  if (!targets) return "undefined";
+  return Object.values(targets).some((v) => v != null) ? "gated" : "advisory";
+}
+
+// GT-detektion: arketypen er sandheden, etape-antallet er kun signalet. Et løb
+// med grand_tour-arketype og < 21 genererede etaper er derfor IKKE "ingen GT" —
+// det er en GT vi ikke kan måle, og skal rapporteres som sådan.
+const isGrandTourArchetype = (race) => race?.terrain_archetype === "grand_tour";
+
 /**
  * Sæson-aggregat: samler tier-scores + GT-scores til ét resultat + én verdict.
  * Ren funktion — scorecard-scriptet leverer de (regenererede) løb pr. tier.
  *
- * @param {Array<{tier:number, races:Array<{race_type,stages,name?}>}>} tierEntries
+ * GO kræver at hver gatet delscore KØRTE og bestod. En delscore der fejlede →
+ * NO-GO. En delscore der ikke kunne beregnes (ingen løb, ukendt tier, en GT der
+ * ikke kan måles, en generator-fejl) → UKENDT. Et konkret båndbrud vinder over
+ * UKENDT, fordi det er det mere specifikke og handlebare signal — men begge
+ * lister printes altid.
+ *
+ * @param {Array<{tier:number, races:Array<{race_type,stages,name?,terrain_archetype?}>, errors?:string[]}>} tierEntries
  */
-export function scoreSeason(tierEntries) {
+export function scoreSeason(tierEntries = []) {
   const tiers = [];
-  let allPass = true;
+  const failures = [];
+  const unassessed = [];
+  const advisories = [];
+  let gatedTiersEvaluated = 0;
+  let grandToursEvaluated = 0;
 
-  for (const { tier, races = [] } of tierEntries) {
+  for (const { tier, races = [], errors = [] } of tierEntries) {
+    for (const e of errors) unassessed.push(`tier ${tier}: ${e}`);
+
+    const gateState = tierGateState(tier);
+    if (gateState === "undefined") unassessed.push(`tier ${tier}: ingen mål defineret i TIER_TARGETS — tieren er aldrig blevet vurderet`);
+
     const score = scoreTier(tier, races);
-    allPass = allPass && score.pass;
+    if (races.length === 0) {
+      // 0 løb er ikke et båndbrud — det er fravær af evidens.
+      unassessed.push(`tier ${tier}: 0 løb at score`);
+    } else if (gateState === "gated") {
+      gatedTiersEvaluated += 1;
+      for (const f of score.failures) failures.push(`tier ${tier}: ${f}`);
+    }
+    if (score.distanceOutliers > 0) advisories.push(`tier ${tier}: ${score.distanceOutliers} etape(r) udenfor WT-distancebåndet (advisory — gater ikke)`);
 
     const grandTours = [];
     for (const r of races) {
       const stages = Array.isArray(r.stages) ? r.stages : [];
-      if (stages.length < GRAND_TOUR_MIN_STAGES) continue;
-      grandTours.push({ name: r.name ?? null, stageCount: stages.length, ...scoreGrandTour(stages) });
+      const label = r.name ? `«${r.name}»` : "(uden navn)";
+      if (stages.length < GRAND_TOUR_MIN_STAGES) {
+        if (isGrandTourArchetype(r)) unassessed.push(`tier ${tier}: GT ${label} har kun ${stages.length} etaper — GT-båndet kan ikke vurderes`);
+        continue;
+      }
+      const gt = { name: r.name ?? null, stageCount: stages.length, ...scoreGrandTour(stages) };
+      grandTours.push(gt);
+      grandToursEvaluated += 1;
+      // GT-båndet gater uanset tier: de 3 S2-GT'er ligger i den u-gatede tier 1.
+      for (const f of gt.failures) failures.push(`tier ${tier}: GT ${label}: ${f}`);
     }
 
-    tiers.push({ tier, raceCount: races.length, score, grandTours });
+    tiers.push({ tier, gateState, raceCount: races.length, score, grandTours });
   }
 
-  return { tiers, verdict: allPass ? "GO" : "NO-GO", exitCode: allPass ? 0 : 1 };
+  if (tierEntries.length === 0) unassessed.push("ingen tiers at score — kalenderen gav 0 løb");
+  else if (gatedTiersEvaluated === 0) unassessed.push("ingen gatet tier blev evalueret — gaten målte reelt intet");
+
+  const verdict = failures.length ? VERDICT.NO_GO : unassessed.length ? VERDICT.UNKNOWN : VERDICT.GO;
+  return {
+    tiers, failures, unassessed, advisories,
+    gatedTiersEvaluated, grandToursEvaluated,
+    verdict, exitCode: EXIT_CODE[verdict],
+  };
 }
