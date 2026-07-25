@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
@@ -830,7 +830,7 @@ function MarketRow({
         {/* #2849 bølge 2: rå box-shadow fjernet — .sticky-name-cell (index.css)
             giver allerede opak cellebund; border-r er den ene hairline-rule
             (cz-table-recipen), samme fix som AuctionsPage bølge 1. */}
-        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border">
+        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-table-col border-r border-cz-border">
           <div className="flex items-center gap-2">
             {/* #2451: markering til bulk-prisredigering — kun egne listinger kan
                 bulk-redigeres, så checkboxen findes kun for dem. Ligger i selve
@@ -1659,13 +1659,13 @@ export default function TransfersPage() {
                 <div className={WRAP}>
                   <div className="overflow-auto max-h-[calc(100vh-260px)]">
                     <table data-sortable className="w-full text-xs">
-                      <thead className="sticky top-0 z-20 bg-cz-card">
+                      <thead className="sticky top-0 z-table-head bg-cz-card">
                         <tr className="border-b border-cz-border">
                           {/* Nation-kolonnen er bevidst ikke sorterbar (rent visuelt flag, ingen
                               entydig "bedste" nation) — resten af kolonnerne er via SortableTh. */}
                           <th className={`px-2 py-3 text-left text-cz-3 w-12 hidden sm:table-cell ${MARKET_TH_BASE}`}>{t("marketRow.nation")}</th>
                           <SortableTh sortKey="rider" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className={`px-3 py-3 text-left w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
+                            className={`px-3 py-3 text-left w-40 sticky left-0 z-table-head bg-cz-card border-r border-cz-border ${MARKET_TH_BASE}`}>
                             {t("marketRow.rider")}
                           </SortableTh>
                           <SortableTh sortKey="seller" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}

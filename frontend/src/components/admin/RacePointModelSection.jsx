@@ -300,7 +300,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       </div>
 
       {/* Sticky action bar */}
-      <div className="mt-4 sticky bottom-2 z-10 flex items-center justify-end gap-3 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
+      <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-3 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
         {dirtyCount > 0 && (
           <>
             <span className="text-cz-warn text-xs me-auto">{t("racePoints.model.dirty", { count: dirtyCount })}</span>

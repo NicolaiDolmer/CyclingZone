@@ -12,7 +12,7 @@
 // fanen (lib/riderResultsTab.js groupRiderRaces) — ingen dublet-fetch.
 
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { groupRiderRaces } from "../../../lib/riderResultsTab.js";
 import { buildTrophyCase, careerTotals, seasonHonours } from "../../../lib/riderPalmares.js";
 import { formatNumber } from "../../../lib/intl.js";

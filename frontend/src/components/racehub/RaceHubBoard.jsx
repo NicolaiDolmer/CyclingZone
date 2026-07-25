@@ -6,7 +6,7 @@
 // #1823: alle mutationer tjekker res.ok, viser en mappet fejlbesked (toast), og
 // re-henter board'et bagefter (server-sandhed = optimistisk rollback ved fejl).
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
@@ -435,7 +435,7 @@ export default function RaceHubBoard() {
       </div>
       {/* Ejer 28/6: eksplicit Gem (ingen auto-save). Sticky dirty-bar med Gem/Kassér + forlad-vagt. */}
       {isDirty && (
-        <div className="sticky top-2 z-10 mb-3 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/40 bg-cz-accent/10 px-3 py-2">
+        <div className="sticky top-2 z-sticky mb-3 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/40 bg-cz-accent/10 px-3 py-2">
           <span className="text-xs text-cz-1">{t("racehub.unsaved", { count: dirtyColumns.length })}</span>
           <span className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={discardAll} disabled={busy}>{t("racehub.discard")}</Button>

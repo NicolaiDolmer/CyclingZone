@@ -28,6 +28,8 @@ import { statColor } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
+import RiderBadges from "../RiderBadges";
+import { retirementRiskBadgeKey } from "../../../lib/riderAge";
 import { AlertTriangleIcon, CategoryTag, StarIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
@@ -159,6 +161,10 @@ export default function RiderProfileHero({
                 {rider.height != null && <span>{t("header.heightCm", { height: rider.height })}</span>}
                 {rider.weight != null && <span>{t("header.weightKg", { weight: rider.weight })}</span>}
               </span>
+              {/* #2943: samme pensions-risiko-badge/mønster som auktionsfladen
+                  (RiderBadges/retirementRiskBadgeKey) — diskret advarsel, ikke
+                  en spærre. Uafhængig af U23-tagget ovenfor (aldrig begge). */}
+              <RiderBadges badges={[retirementRiskBadgeKey(rider)]} />
             </div>
 
             {/* Hold (+ AI-tag) — kun når switcher-baren ikke allerede bærer

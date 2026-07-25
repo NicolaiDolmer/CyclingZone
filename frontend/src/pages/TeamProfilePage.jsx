@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
@@ -364,7 +364,7 @@ export default function TeamProfilePage() {
                           <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                             className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
                           <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
+                            className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-sticky bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
                           {/* #1755: Status sortérbar (alders-tier) + Alder/Type som egne
                               sorterbare kolonner — på linje med eget hold (#1482/#1674). */}
                           <SortTh sortKey="is_u25" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
@@ -390,7 +390,7 @@ export default function TeamProfilePage() {
                             <td className="px-2 py-2.5 hidden sm:table-cell">
                               <NationCell code={r.nationality_code} />
                             </td>
-                            <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
+                            <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-sticky border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <RiderLink id={r.id} stopPropagation
                                   className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">

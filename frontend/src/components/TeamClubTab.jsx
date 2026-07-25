@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { EmptyState, Card } from "./ui";
 import { useTeamPublicProfile } from "../lib/useTeamPublicProfile";
 import { TRACK_ORDER, formatTrackEffect } from "../lib/facilityDisplay";

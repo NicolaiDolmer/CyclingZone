@@ -28,6 +28,9 @@ function makeSupabase(canned = {}) {
       in() { return b; },
       or() { return b; },
       order() { return b; },
+      // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
+      // (.order("id").range()) — mocken slicer den cannede tabel som en enkelt side.
+      range(from, to) { return Promise.resolve({ data: (canned[table] || []).slice(from, to + 1), error: null }); },
       maybeSingle() {
         return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null });
       },

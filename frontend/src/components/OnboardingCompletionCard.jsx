@@ -3,7 +3,7 @@
 // bare ved completion. Nu får manager en eksplicit "du er klar"-marker + pegning på næste
 // fase. Dismiss persisteres i localStorage cz-dashboard-onboarding-completion-dismissed.
 
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
 // #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop).

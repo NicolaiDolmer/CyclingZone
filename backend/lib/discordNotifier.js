@@ -18,6 +18,8 @@ import { isDmTypeEnabled } from "./discordDmPrefs.js";
 import { resolveDmRecipient } from "./discordDmRecipient.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 import { recordDmAttempt } from "./discordDmRateGuard.js";
+import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
+import { serializeByUrl } from "./discordWebhookQueue.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -126,31 +128,67 @@ export async function getResultWebhooks(leagueDivisionId) {
 }
 
 /**
- * Send a Discord webhook message
+ * Send a Discord webhook message.
+ *
+ * #2882: leveringen (inkl. retry på 429/5xx/netværksfejl, respekterer
+ * Discords retry_after) og pr.-URL-serialisering bor i discordWebhookDelivery.js
+ * + discordWebhookQueue.js — se de moduler for rod-årsag + design-valg. Denne
+ * funktion er stadig tynd: den beholder sit oprindelige signatur
+ * (`sendWebhook(url, payload)`) for de ~10 eksisterende kaldere, og tilføjer et
+ * valgfrit 3. argument (`fetchFn`/`sleepFn`/`captureExceptionFn`) KUN til test-
+ * injektion — ingen produktions-kalder sætter det.
+ *
+ * @param {string} webhookUrl
+ * @param {object} payload
+ * @param {{fetchFn?: typeof fetch, sleepFn?: Function, captureExceptionFn?: Function}} [opts]
  */
-export async function sendWebhook(webhookUrl, payload) {
+export async function sendWebhook(webhookUrl, payload, {
+  fetchFn = fetch,
+  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  captureExceptionFn = sentryCapture,
+} = {}) {
   if (!webhookUrl) return;
   try {
     const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
-    const res = await fetch(safeWebhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      console.error(`Discord webhook failed: ${res.status} ${await res.text()}`);
-      // #2395: en 4xx (≠429) = webhooken er død/fejlkonfigureret (slettet kanal,
-      // forkert id) — en PERSISTENT fejl der ellers tavst stopper alle resultat-
-      // posteringer. 429 (rate limit) + 5xx = transient → kun log.
-      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        sentryCapture(new Error(`Discord webhook ${res.status} (persistent config/routing error)`), {
-          tags: { lib: "discordNotifier", status: String(res.status) },
+    // #2882: kø'et pr. URL, så samtidige kaldere (overlappende cron-ticks,
+    // parallelle admin-kald) aldrig sender en byge af POSTs til SAMME webhook —
+    // forskellige URLs (gruppe- vs. tier-samlekanal) kører stadig uafhængigt.
+    const result = await serializeByUrl(safeWebhookUrl, () =>
+      attemptWebhookDelivery({ webhookUrl: safeWebhookUrl, payload, fetchFn, sleepFn })
+    );
+    if (!result.ok) {
+      const statusLabel = result.status ?? "network";
+      console.error(
+        `Discord webhook failed after ${result.attempts} attempt(s): ${statusLabel} ${result.error}`
+      );
+      if (result.failure?.kind === "permanent") {
+        // #2395: en 4xx (≠429) = webhooken er død/fejlkonfigureret (slettet kanal,
+        // forkert id) — en PERSISTENT fejl der ellers tavst stopper alle resultat-
+        // posteringer.
+        captureExceptionFn(new Error(`Discord webhook ${result.status} (persistent config/routing error)`), {
+          tags: { lib: "discordNotifier", status: String(result.status) },
         });
+      } else {
+        // #2882: retryable fejl (429 rate-limit / 5xx / netværk) overlevede ALLE
+        // forsøg attemptWebhookDelivery gjorde (evt. `deferred` hvis Discords
+        // retry_after oversteg inline-loftet). Dette er PRÆCIS den klasse fejl
+        // der før forsvandt tavst med kun console.error — root-cause for 24/7-
+        // hændelsen hvor 1 af 4 tier-3-resultatposter manglede. Capture ALTID,
+        // så et tabt resultat aldrig igen kun findes i (roterede) Railway-logs.
+        captureExceptionFn(
+          new Error(`Discord webhook dropped after ${result.attempts} attempt(s): ${statusLabel} (${result.failure?.reason || "unknown"})`),
+          {
+            tags: { lib: "discordNotifier", status: String(statusLabel), reason: result.failure?.reason || "unknown" },
+            extra: { attempts: result.attempts, deferred: !!result.failure?.deferred },
+          }
+        );
       }
     }
   } catch (err) {
-    // best-effort: et transient netværks-/socket-hikke på én webhook-post må ikke
-    // vælte kalderen, og er ikke capture-værdigt (#2395).
+    // best-effort: fejl i selve URL-safety-tjekket (assertDiscordWebhookUrl)
+    // lander her og må ikke vælte kalderen. Den egentlige HTTP-levering
+    // (inkl. retry på 429/5xx/netværk) sker i attemptWebhookDelivery ovenfor
+    // og kaster IKKE — den slags fejl rammer derfor ikke denne catch længere.
     console.error("Discord webhook error:", err.message);
   }
 }

@@ -33,6 +33,8 @@ export function computeFinanceForecast({
   lastSeasonStanding = null,
   lastSeasonStandings = [],
   realizedSeasonPrize = 0,
+  activeContract = null,
+  pendingContract = null,
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -46,11 +48,23 @@ export function computeFinanceForecast({
   const divisionStandings = resolvedLastStanding
     ? sponsorContext.divisionStandingsByDivision.get(resolvedLastStanding.division) || []
     : [];
+  // #2948 (rodårsag bag ~20 mio.-afvigelsen i #2926): prognosen skal bruge samme
+  // kontrakt-gren som den faktiske udbetaling. For target-sæsonen gælder: et
+  // pending valg der starter dér vinder; ellers en aktiv kontrakt der stadig er
+  // låst i target-sæsonen; ellers falder computeSponsorForSeason tilbage til
+  // intro/variable som før.
+  const contractForSeason =
+    pendingContract && pendingContract.start_season === seasonNumber
+      ? pendingContract
+      : activeContract && activeContract.expires_after_season >= seasonNumber
+        ? activeContract
+        : null;
   const sponsorBreakdown = computeSponsorForSeason({
     seasonNumber,
     team,
     lastSeasonStanding: resolvedLastStanding,
     divisionStandings,
+    activeContract: contractForSeason,
   });
   const projectedSponsor = Math.round(sponsorBreakdown.gross_sponsor * boardModifier * pulloutFactor);
 
@@ -305,6 +319,8 @@ export function computeMultiSeasonForecast({
   lastSeasonStandings = [],
   realizedSeasonPrize = 0,
   seasonsAhead = 1,
+  activeContract = null,
+  pendingContract = null,
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
   const forecasts = [];
@@ -338,6 +354,8 @@ export function computeMultiSeasonForecast({
       // #981: gulvet gælder alle sæsoner — status-quo-antagelsen er at samme
       // roster bevarer den indtjeningsevne den allerede har bevist i år.
       realizedSeasonPrize,
+      activeContract,
+      pendingContract,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;

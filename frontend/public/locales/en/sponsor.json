@@ -2,36 +2,69 @@
   "tab": "Sponsor",
   "cta": {
     "title": "Choose your sponsor for season {season}",
-    "body": "A new sponsor deal is on the table. Compare the offers and lock in your backing for the upcoming season.",
+    "body": "Five sponsors are at the table, each with its own way of paying you. Compare the deals and lock in your backing.",
     "button": "View offers",
     "pendingTitle": "Sponsor selected for season {season}",
-    "pendingBody": "You have chosen a deal for the upcoming season. You can still switch to a different offer.",
+    "pendingBody": "You have signed a deal for the upcoming season. You can still switch to a different offer until the season starts.",
     "changeButton": "Change choice"
   },
   "offers": {
-    "title": "Sponsor offers",
-    "subtitle": "Choose a sponsor deal for season {season}. The contract runs from the start of that season.",
+    "title": "Choose your sponsor",
+    "subtitle": "Five sponsors, five ways to earn in season {season}.",
+    "unitDefinition": "1 race day = one stage your team starts.",
+    "divisionPicker": "Project earnings for a division",
+    "divisionPill": "Division {division} · {count} race days",
+    "deadline": "Your choice locks when season {season} starts. If you don't choose, the club signs the 1-season safe deal for you.",
     "empty": "No offers are available right now. A new deal can be negotiated once the current contract is up for renewal.",
     "choose": "Choose",
-    "pending": "Selected"
+    "pending": "Selected",
+    "reviewSign": "Review & sign",
+    "confirmBody": "Sign with {sponsor} for {count, plural, one {# season} other {# seasons}}? You can change your pick until season {season} starts.",
+    "signDeal": "Sign deal",
+    "cancel": "Cancel",
+    "guaranteedShare": "{pct}% of the deal is guaranteed",
+    "boardNote": "Board satisfaction adjusts the guaranteed payout by up to ±20%. Bonuses are paid as they happen."
   },
   "variant": {
+    "safe": "The safe deal",
+    "loyal": "The loyal deal",
+    "racing": "The racing deal",
+    "results": "The results deal",
+    "ambition": "The ambition deal",
     "predictable": "Steady backer",
     "activity": "Race-day backer",
     "long": "Long-term partner"
   },
+  "clause": {
+    "signing": "{amount} CZ$ signing bonus, paid up front",
+    "stageWin": "{amount} CZ$ per stage win",
+    "podium": "{amount} CZ$ per podium (2nd–3rd)",
+    "podiumCapped": "{amount} CZ$ per podium (2nd–3rd). Bonus cap: {cap} CZ$",
+    "seasonObjective": "Finish top half of your division: {amount} CZ$ at season end"
+  },
   "field": {
-    "guaranteedBase": "Guaranteed base",
+    "guaranteedBase": "Guaranteed",
     "perRaceDay": "Per race day",
+    "projectedMax": "Max (all {count} race days)",
     "length": "Length",
     "seasons": "{count, plural, one {# season} other {# seasons}}"
   },
   "contract": {
     "title": "Current sponsor",
     "loading": "Loading sponsor contract",
-    "error": "Could not load your sponsor contract. Please try again.",
+    "errorTitle": "Couldn't load your sponsor contract",
+    "error": "Nothing was lost and your contract is safe. Try again.",
+    "retry": "Try again",
     "none": "No active sponsor contract.",
     "runsThrough": "Runs through season {season}",
-    "sponsorName": "Sponsor"
+    "sponsorName": "Sponsor",
+    "clausesTitle": "Bonus clauses",
+    "earningsTitle": "Earned on this contract",
+    "earningsBase": "Season start",
+    "earningsSigning": "Signing bonus",
+    "earningsRaceDays": "Race days",
+    "earningsResults": "Result bonuses",
+    "earningsObjective": "Season objective",
+    "earningsTotal": "Total"
   }
 }

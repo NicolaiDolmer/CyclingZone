@@ -82,6 +82,10 @@
       "title": "The board freezes transfers",
       "message": "Your team has needed an emergency loan {streak} seasons in a row. The board freezes transfers until your finances stabilize."
     },
+    "debtCeilingFreeze": {
+      "title": "Transfers frozen: debt over the cap",
+      "message": "Your debt of {debt} CZ$ is over your division cap of {ceiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale."
+    },
     "loanPaidOff": {
       "title": "✅ Loan repaid",
       "message": "Congratulations! You've fully repaid your loan."
@@ -182,6 +186,18 @@
     "watchlistDeparted": {
       "title": "Rider has left the game",
       "message": "{rider} has left the game and was removed from your watchlist."
+    },
+    "scoutReportReady": {
+      "target": {
+        "title": "Scouting report ready",
+        "message": "Your level {level} investigation of {rider} is ready. View the report."
+      },
+      "mission": {
+        "title": "Scouting mission ready",
+        "messageSingle": "Your scouting mission found {count} rider. View the shortlist.",
+        "messageMulti": "Your scouting mission found {count} riders. View the shortlist.",
+        "messageEmpty": "Your scouting mission is complete. No matching riders were found this time."
+      }
     },
     "auctionCancelledRetired": {
       "title": "Auction cancelled: rider retired",

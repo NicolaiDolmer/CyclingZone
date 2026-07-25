@@ -6,6 +6,7 @@
 // importerer allerede fra scoutAssignmentService, så den modsatte retning ville
 // være et cirkulært import.
 import { SCOUT_JOB_CONFIG } from "./scoutEngine.js";
+import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 
 // scout_actions op til assignmentens target_level (bevarer den eksisterende
 // level=COUNT-derivation fra scouting.js). Genberegner behovet fra DB hver gang
@@ -31,7 +32,11 @@ async function insertTargetActions({ supabase, assignment }) {
 // Sweep-stien (uændret adfærd ift. før #2644-flytningen hertil): actions først,
 // derefter status→completed. Dobbeltkørsel afskærmes af sweepens team-dags-mutex
 // (scout_sweep_runs), ikke her.
-export async function completeTargetAssignment({ supabase, assignment }) {
+//
+// #2945: notify() kaldes EFTER status→completed er bekræftet — notifyScoutReportReady
+// isolerer selv sine fejl (fanger, logger, Sentry, kaster aldrig), så en
+// notifikationsfejl aldrig kan vælte selve fuldførelsen. `notify` injicérbar for test.
+export async function completeTargetAssignment({ supabase, assignment, notify = notifyScoutReportReady }) {
   await insertTargetActions({ supabase, assignment });
 
   const { error: updErr } = await supabase
@@ -43,6 +48,8 @@ export async function completeTargetAssignment({ supabase, assignment }) {
     })
     .eq("id", assignment.id);
   if (updErr) throw new Error(`scout_assignments update: ${updErr.message}`);
+
+  await notify({ supabase, assignment: { ...assignment, status: "completed" } });
 }
 
 // Lazy-stien (kaldes ved hver visning af Scouting-centralen): claim FØRST via
@@ -55,6 +62,7 @@ export async function lazyCompleteDueTargetAssignments({
   teamId,
   now = new Date(),
   etaMinutes = SCOUT_JOB_CONFIG.target.etaMinutes,
+  notify = notifyScoutReportReady, // #2945, injicérbar for test
 }) {
   const dueBefore = new Date(now.getTime() - etaMinutes * 60_000).toISOString();
   const { data: due, error } = await supabase
@@ -82,6 +90,9 @@ export async function lazyCompleteDueTargetAssignments({
     if (!claimed || claimed.length === 0) continue;
 
     await insertTargetActions({ supabase, assignment });
+    // #2945: dette er hovedstien (#2644 ~30 min) — kaldt inde i en GET-request,
+    // så notify() må ALDRIG kaste (notifyScoutReportReady isolerer selv sine fejl).
+    await notify({ supabase, assignment: { ...assignment, status: "completed" }, now });
     completed += 1;
   }
   return { completed };

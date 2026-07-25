@@ -10,7 +10,7 @@ import {
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";

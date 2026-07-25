@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -46,7 +46,7 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { riderOverallRating } from "../lib/riderRating";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, retirementRiskBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
@@ -227,7 +227,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       {/* #2849 bølge 1: rå box-shadow erstattet af 1px border-rule (border-r) —
           .auction-rider-cell giver opak cellebund (index.css), så kolonner
           bag den ikke skinner igennem ved horisontal scroll. */}
-      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-10 border-r border-cz-border ${imWinning ? "auction-rider-cell-winning" : ""}`}>
+      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-table-col border-r border-cz-border ${imWinning ? "auction-rider-cell-winning" : ""}`}>
         <div className="flex items-center gap-2">
           {r?.id && (
             <WatchlistStar
@@ -279,7 +279,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               {t("auctions:badge.flash")}
             </span>
           )}
-          <RiderBadges badges={[ageBadgeKey(r)]} />
+          {/* #2943: pensions-risiko-advarsel til KØBEREN før bud (alder ≥35,
+              retirementRiskBadgeKey) — samme badge-kolonne/RiderBadges-mønster
+              som alders-badget lige ovenfor. Advarsel, ikke blokering. */}
+          <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
           {auction.is_youth && (
             <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
@@ -372,7 +375,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Byd */}
       {/* Samme border-rule-erstatning som rytter-cellen ovenfor. */}
-      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
+      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-table-col min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           roomBlocked ? (
             <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
@@ -556,7 +559,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
-              <RiderBadges badges={[ageBadgeKey(r)]} />
+              {/* #2943: samme pensions-risiko-badge som AuctionRow (desktop). */}
+              <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
               {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
@@ -1654,11 +1658,11 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
   return (
     // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
     // er nu den eneste adskillelse, jf. cz-table-recipen.
-    <thead className="sticky top-0 z-20 bg-cz-card">
+    <thead className="sticky top-0 z-table-head bg-cz-card">
       <tr className="border-b border-cz-border">
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
-          className={`px-3 py-3 text-left sticky left-0 z-30 bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
+          className={`px-3 py-3 text-left sticky left-0 z-table-head bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
         {/* #228: Nation — samme sorterbare mønster som ryttersiden (NationCell). */}
         <SortTh sortKey="nationality_code" sort={activeSort("nationality_code") ? "nationality_code" : riderFiltersSort}
           sortDir={activeSortDir("nationality_code")} onSort={handleSort}
@@ -1713,7 +1717,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         ))}
         {/* Sticky bud-kolonne: 1px border-rule (border-l) erstatter den rå
             skygge; .auction-bid-cell giver opak cellebund (index.css). */}
-        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-30 border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
+        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-table-head border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
       </tr>
     </thead>
   );

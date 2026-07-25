@@ -82,6 +82,10 @@
       "title": "Bestyrelsen fryser transfers",
       "message": "Dit hold har haft brug for et nødlån {streak} sæsoner i træk. Bestyrelsen fryser transfers indtil din økonomi stabiliseres."
     },
+    "debtCeilingFreeze": {
+      "title": "Transfers frosset: gæld over loftet",
+      "message": "Din gæld på {debt} CZ$ er over divisionsloftet på {ceiling} CZ$. Bestyrelsen fryser transfers, indtil du er under loftet igen. Betal gæld af eller sælg ryttere inden næste sæson, ellers gennemtvinger bestyrelsen et salg."
+    },
     "loanPaidOff": {
       "title": "✅ Lån tilbagebetalt",
       "message": "Tillykke! Du har fuldt tilbagebetalt dit lån."
@@ -182,6 +186,18 @@
     "watchlistDeparted": {
       "title": "Rytter har forladt spillet",
       "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
+    },
+    "scoutReportReady": {
+      "target": {
+        "title": "Spejderrapport klar",
+        "message": "Din niveau {level}-undersøgelse af {rider} er klar. Se rapporten."
+      },
+      "mission": {
+        "title": "Spejdermission klar",
+        "messageSingle": "Din spejdermission fandt {count} rytter. Se listen.",
+        "messageMulti": "Din spejdermission fandt {count} ryttere. Se listen.",
+        "messageEmpty": "Din spejdermission er afsluttet. Ingen matchende ryttere blev fundet denne gang."
+      }
     },
     "auctionCancelledRetired": {
       "title": "Auktion annulleret: rytter pensioneret",

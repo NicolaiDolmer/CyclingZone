@@ -6,7 +6,7 @@
 // "how do I X"; this page is the source of truth for limits, rates and formulas.
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";

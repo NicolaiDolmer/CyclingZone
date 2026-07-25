@@ -31,6 +31,9 @@ function makeSupabase(canned = {}) {
       is() { return b; },
       order() { return b; },
       gte() { return b; },
+      // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
+      // (.order("id").range()) — mocken slicer den cannede tabel som en enkelt side.
+      range(from, to) { return Promise.resolve({ data: (canned[table] || []).slice(from, to + 1), error: null }); },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
       then(resolve, reject) { return Promise.resolve({ data: canned[table] || [], error: null }).then(resolve, reject); },
     };
@@ -144,6 +147,36 @@ test("fillMissingTeamEntries: felt-cap vælger de STÆRKESTE hold (top base_valu
   assert.ok(!teamIds.has("t-1"), "næstsvageste hold t-1 skal cappes væk");
   assert.ok(teamIds.has("t-25"), "stærkeste hold t-25 skal være med");
   assert.ok(teamIds.has("t-2"), "grænse-hold t-2 (lige inden for top-24) skal være med");
+});
+
+test("#2962: fillMissingTeamEntries paginerer teams-selectet forbi 1000-row-loftet", async () => {
+  // 1100 hold i puljen med STIGENDE base_value (index = styrke) — de 24 stærkeste
+  // (t-1076..t-1099) ligger PÅ SIDE 2 (>1000) af det pagineret teams-select. Uden
+  // fetchAllRows ville kun de første 1000 rækker (t-0..t-999, de SVAGESTE) nogensinde
+  // være synlige for felt-cap-logikken, og feltet ville fejlagtigt bestå af de 24
+  // svageste hold i stedet for de 24 stærkeste.
+  const poolId = 100;
+  const teamsInPool = Array.from({ length: 1100 }, (_, i) => ({
+    id: `t-${i}`,
+    base_value: 1000 + i * 100,
+  }));
+  const state = buildPoolState({ poolId, teamsInPool });
+  const supabase = makeSupabase(state);
+
+  const rows = await fillMissingTeamEntries({
+    supabase,
+    race: { id: "race-paginate", league_division_id: poolId },
+    stages: [],
+    existingEntries: [],
+    persist: false,
+  });
+
+  const teamIds = new Set(rows.map((r) => r.team_id));
+  assert.equal(teamIds.size, POOL_TARGET_SIZE, `feltet skal cappes til ${POOL_TARGET_SIZE} hold`);
+  for (let i = 1100 - POOL_TARGET_SIZE; i < 1100; i += 1) {
+    assert.ok(teamIds.has(`t-${i}`), `t-${i} (top-${POOL_TARGET_SIZE} styrke, side 2 af pagineringen) skal være med`);
+  }
+  assert.ok(!teamIds.has("t-0"), "t-0 (svageste, side 1) skal IKKE være med");
 });
 
 test("fillMissingTeamEntries: uden race.league_division_id (ingen pulje) — felt-cap gælder stadig, global pulje", async () => {

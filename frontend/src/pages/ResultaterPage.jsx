@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";

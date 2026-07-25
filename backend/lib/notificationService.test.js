@@ -10,6 +10,9 @@ const {
   WATCHLIST_DEPARTED_TYPE,
   emitStageResultNotifications,
   STAGE_RESULT_TYPE,
+  buildScoutReportReadyNotification,
+  notifyScoutReportReady,
+  SCOUT_REPORT_READY_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -511,4 +514,132 @@ test("#2523 emitStageResult: manglende race.id eller stageNumber giver nul-stats
   assert.equal(fetched, false);
   assert.deepEqual(statsNoStage, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
   assert.equal(calls.length, 0);
+});
+
+// ─── #2945 · buildScoutReportReadyNotification + notifyScoutReportReady ──────
+
+test("buildScoutReportReadyNotification (target): korrekt type, related_id, riderId-metadata + i18n-koder", () => {
+  const assignment = { id: "as-1", team_id: "team-1", kind: "target", rider_id: "rider-1", target_level: 2 };
+  const payload = buildScoutReportReadyNotification({ assignment, riderName: "Tadej Pogačar" });
+
+  assert.equal(payload.type, SCOUT_REPORT_READY_TYPE);
+  assert.equal(payload.type, "scout_report_ready");
+  assert.equal(payload.relatedId, "as-1", "related_id = assignment.id → idempotent per rapport");
+  assert.equal(payload.metadata.riderId, "rider-1", "riderId sat → frontend deep-linker til rytterprofilen (#1486)");
+  assert.equal(payload.metadata.kind, "target");
+  assert.equal(payload.metadata.level, 2);
+  assert.equal(payload.metadata.titleCode, "notif.scoutReportReady.target.title");
+  assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.target.message");
+  assert.deepEqual(payload.metadata.messageParams, { rider: "Tadej Pogačar", level: 2 });
+  assert.match(payload.message, /Tadej Pogačar/, "EN-first fallback-message indeholder rytternavnet");
+  assert.match(payload.message, /level 2/);
+});
+
+test("buildScoutReportReadyNotification (target): manglende riderName falder tilbage til generisk EN-tekst", () => {
+  const assignment = { id: "as-2", team_id: "team-1", kind: "target", rider_id: "rider-2", target_level: 1 };
+  const payload = buildScoutReportReadyNotification({ assignment, riderName: null });
+  assert.match(payload.message, /the rider/);
+  assert.deepEqual(payload.metadata.messageParams, { rider: "the rider", level: 1 });
+});
+
+test("buildScoutReportReadyNotification (mission): ingen riderId-metadata → frontend falder tilbage til /scouting", () => {
+  const assignment = {
+    id: "m-1", team_id: "team-1", kind: "mission",
+    result: { shortlist: ["r1", "r2", "r3"], top_rider_id: "r1" },
+  };
+  const payload = buildScoutReportReadyNotification({ assignment });
+
+  assert.equal(payload.type, "scout_report_ready");
+  assert.equal(payload.relatedId, "m-1");
+  assert.equal(payload.metadata.riderId, undefined, "mission har intet riderId — link falder tilbage til config.link");
+  assert.equal(payload.metadata.kind, "mission");
+  assert.equal(payload.metadata.shortlistCount, 3);
+  assert.equal(payload.metadata.titleCode, "notif.scoutReportReady.mission.title");
+  assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.mission.messageMulti");
+  assert.match(payload.message, /found 3 riders/);
+});
+
+test("buildScoutReportReadyNotification (mission): entals-variant ved præcis 1 rytter i shortlisten", () => {
+  const assignment = { id: "m-2", team_id: "team-1", kind: "mission", result: { shortlist: ["r1"], top_rider_id: "r1" } };
+  const payload = buildScoutReportReadyNotification({ assignment });
+  assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.mission.messageSingle");
+  assert.match(payload.message, /found 1 rider\. /);
+});
+
+test("buildScoutReportReadyNotification (mission): tom shortlist → messageEmpty, ingen '0 riders'-tekst", () => {
+  const assignment = { id: "m-3", team_id: "team-1", kind: "mission", result: { shortlist: [], top_rider_id: null } };
+  const payload = buildScoutReportReadyNotification({ assignment });
+  assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.mission.messageEmpty");
+  assert.match(payload.message, /No matching riders/);
+});
+
+test("notifyScoutReportReady: leverer via notifyTeamOwner (teamId → user_id-opslag)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const assignment = { id: "as-1", team_id: "team-1", kind: "target", rider_id: "rider-1", target_level: 1 };
+  const fetchRiderName = async () => "Wout van Aert";
+
+  const result = await notifyScoutReportReady({ supabase, assignment, fetchRiderName });
+  assert.deepEqual(result, { delivered: true, deduped: false });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].user_id, "user-1");
+  assert.equal(supabase.state.inserts[0].type, "scout_report_ready");
+  assert.equal(supabase.state.inserts[0].related_id, "as-1");
+});
+
+// #2945 accept-kriterium: "en rapport må aldrig give to notifikationer".
+test("notifyScoutReportReady: IDEMPOTENS — samme assignment kaldt to gange giver KUN én notifikations-række (dedup)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const assignment = { id: "as-1", team_id: "team-1", kind: "target", rider_id: "rider-1", target_level: 2 };
+  const fetchRiderName = async () => "Tadej Pogačar";
+
+  // Simulerer en dobbeltkørsel af SAMME assignment (fx en genkørt cron-tick, eller
+  // et race mellem lazy-completion og natsweepet der begge forsøger at fuldføre
+  // den samme række) — samme related_id (assignment.id) + samme besked.
+  // NB: createNotificationSupabase's insert() hardcoder created_at til
+  // "2026-04-22T10:00:00.000Z" (samme mock som resten af filens dedup-test) —
+  // `now` skal derfor ligge inden for 24t af DEN dato, ikke den faktiske #2945-dato.
+  const first = await notifyScoutReportReady({
+    supabase, assignment, fetchRiderName, now: new Date("2026-04-22T10:00:00.000Z"),
+  });
+  assert.deepEqual(first, { delivered: true, deduped: false });
+
+  const second = await notifyScoutReportReady({
+    supabase, assignment, fetchRiderName, now: new Date("2026-04-22T10:05:00.000Z"),
+  });
+  assert.deepEqual(second, { delivered: false, deduped: true, reason: "recent_duplicate" });
+
+  assert.equal(supabase.state.inserts.length, 1, "ingen ekstra notifikations-række ved dedup");
+});
+
+test("notifyScoutReportReady: to FORSKELLIGE ryttere/assignments dedup'er IKKE mod hinanden", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const fetchRiderName = async ({ riderId }) => (riderId === "rider-1" ? "Tadej Pogačar" : "Wout van Aert");
+
+  await notifyScoutReportReady({
+    supabase, fetchRiderName,
+    assignment: { id: "as-1", team_id: "team-1", kind: "target", rider_id: "rider-1", target_level: 1 },
+  });
+  await notifyScoutReportReady({
+    supabase, fetchRiderName,
+    assignment: { id: "as-2", team_id: "team-1", kind: "target", rider_id: "rider-2", target_level: 1 },
+  });
+
+  assert.equal(supabase.state.inserts.length, 2, "forskellig related_id (assignment.id) → begge leveres");
+});
+
+test("notifyScoutReportReady: manglende assignment.id/team_id er et no-op (missing_assignment)", async () => {
+  const supabase = createNotificationSupabase();
+  const result = await notifyScoutReportReady({ supabase, assignment: { kind: "target" } });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "missing_assignment" });
+  assert.equal(supabase.state.inserts.length, 0);
+});
+
+test("notifyScoutReportReady: en fejlende fetchRiderName isoleres (fanges, kaster ikke) — rapport-fuldførelsen må aldrig væltes", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const assignment = { id: "as-1", team_id: "team-1", kind: "target", rider_id: "rider-1", target_level: 1 };
+  const fetchRiderName = async () => { throw new Error("boom"); };
+
+  const result = await notifyScoutReportReady({ supabase, assignment, fetchRiderName });
+  assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
+  assert.equal(supabase.state.inserts.length, 0);
 });

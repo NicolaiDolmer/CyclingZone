@@ -1,61 +1,200 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import Modal from "./ui/Modal.jsx";
+import Button from "./ui/Button.jsx";
+import {
+  BikeIcon,
+  BriefcaseIcon,
+  ClockIcon,
+  CoinIcon,
+  FlagIcon,
+  LockIcon,
+  PodiumIcon,
+  TeamIcon,
+  TrophyIcon,
+} from "./ui/icons/index.jsx";
 
-// #1663 · Sponsor-tilbuds-modal (præsentationel, henter ikke selv data).
-// Vises fra Board-fladen (I-b). Forhandlingen sker her; valg propageres via
-// onAccept(variant). Den rige header ligger i children, så aria-labelledby
-// peger paa dens egen titel-h2 i stedet for primitivens title-prop.
+// #1663/#2948 · Sponsor-tilbuds-modal (præsentationel, henter ikke selv data).
+// Vises fra Board-fladen. 5 arketype-kort med bonusklausuler, divisionsvælger
+// med løbsdage (#2862), deadline-banner + default-regel (#1778/#2914) og
+// Review & sign-bekræftelse (ejer-godkendt mockup 25/7). Valg propageres via
+// onAccept(variant) efter eksplicit bekræftelse.
+
+const VARIANT_ICONS = {
+  safe: LockIcon,
+  loyal: BriefcaseIcon,
+  racing: BikeIcon,
+  results: TrophyIcon,
+  ambition: FlagIcon,
+  // Legacy-varianter (før #2948) — vises hvis en gammel offers-payload rammer UI'et.
+  predictable: LockIcon,
+  activity: BikeIcon,
+  long: BriefcaseIcon,
+};
+
+const CLAUSE_ICONS = {
+  signing: CoinIcon,
+  stage_win: TrophyIcon,
+  podium: PodiumIcon,
+  season_objective: FlagIcon,
+};
+
+// Klausul-rendering: results_cap er ikke sin egen linje — den flettes ind i
+// stage_win/podium-linjernes cap-tekst.
+function clauseLines(clauses, t) {
+  const cap = (clauses || []).find((c) => c.type === "results_cap");
+  return (clauses || [])
+    .filter((c) => c.type !== "results_cap")
+    .map((c) => {
+      const amount = formatNumber(c.amount);
+      if (c.type === "signing") return { type: c.type, text: t("clause.signing", { amount }) };
+      if (c.type === "stage_win") return { type: c.type, text: t("clause.stageWin", { amount }) };
+      if (c.type === "podium") {
+        return {
+          type: c.type,
+          text: cap
+            ? t("clause.podiumCapped", { amount, cap: formatNumber(cap.amount) })
+            : t("clause.podium", { amount }),
+        };
+      }
+      if (c.type === "season_objective") {
+        return { type: c.type, text: t("clause.seasonObjective", { amount }) };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
 export default function SponsorOfferModal({
   open,
   onClose,
   offers = [],
   pendingVariant = null,
   upcomingSeasonNumber,
+  stageCounts = null,
+  teamDivision = null,
   onAccept,
   accepting = false,
 }) {
   const { t } = useTranslation("sponsor");
+  const [confirming, setConfirming] = useState(null);
+
+  const divisions = useMemo(
+    () => Object.keys(stageCounts?.byTier || {}).map(Number).sort((a, b) => a - b),
+    [stageCounts]
+  );
+  const [selectedDivision, setSelectedDivision] = useState(null);
+  const activeDivision =
+    selectedDivision ?? (divisions.includes(Number(teamDivision)) ? Number(teamDivision) : divisions[0] ?? null);
+  const raceDays =
+    (activeDivision != null ? stageCounts?.byTier?.[activeDivision] : null) ??
+    stageCounts?.fallbackDays ??
+    null;
+
+  const confirmingOffer = offers.find((o) => o.variant === confirming) || null;
+
+  function projections(offer) {
+    // Nye tilbud (#2948) bærer frosne andele → projicér mod valgt divisions
+    // etapetal. Legacy-payloads uden andele viser blot den lagrede rate.
+    const fraction = Number(offer.guaranteedFraction);
+    const share = Number(offer.raceDayShare);
+    if (!(fraction > 0) || !Number.isFinite(share) || !(Number(raceDays) > 0)) {
+      return { rate: offer.perRaceDayRate ?? 0, max: null };
+    }
+    const target = Math.round(offer.guaranteedBase / fraction);
+    const raceDayPool = Math.round(target * share);
+    const clauses = offer.clauses || [];
+    const signing = Number(clauses.find((c) => c.type === "signing")?.amount) || 0;
+    const cap = Number(clauses.find((c) => c.type === "results_cap")?.amount) || 0;
+    const objective = Number(clauses.find((c) => c.type === "season_objective")?.amount) || 0;
+    return {
+      rate: Math.round(raceDayPool / Number(raceDays)),
+      max: offer.guaranteedBase + raceDayPool + signing + cap + objective,
+    };
+  }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="xl"
       closeLabel={t("offers.choose")}
       ariaLabelledby="sponsor-offer-modal-title"
     >
-      <div className="mb-4">
-        <h2
-          id="sponsor-offer-modal-title"
-          className="font-display text-2xl leading-none tracking-[.01em] text-cz-1"
-        >
-          {t("offers.title")}
-        </h2>
-        <p className="mt-1.5 text-sm text-cz-2">
-          {t("offers.subtitle", { season: upcomingSeasonNumber })}
-        </p>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2
+            id="sponsor-offer-modal-title"
+            className="font-display text-2xl leading-none tracking-[.01em] text-cz-1"
+          >
+            {t("offers.title")}
+          </h2>
+          <p className="mt-1.5 text-sm text-cz-2">
+            {t("offers.subtitle", { season: upcomingSeasonNumber })}{" "}
+            <span className="text-cz-3">{t("offers.unitDefinition")}</span>
+          </p>
+        </div>
+        {divisions.length > 1 && (
+          <div className="flex gap-1.5" role="group" aria-label={t("offers.divisionPicker")}>
+            {divisions.map((d) => {
+              const active = d === activeDivision;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDivision(d)}
+                  className={`px-2.5 py-1 rounded-cz border text-xs tabular-nums transition-colors ${
+                    active
+                      ? "border-cz-accent-t text-cz-accent-t"
+                      : "border-cz-border text-cz-2 hover:border-cz-3"
+                  }`}
+                >
+                  {t("offers.divisionPill", { division: d, count: stageCounts?.byTier?.[d] ?? 0 })}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-4 flex items-center gap-2 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2">
+        <ClockIcon size={15} className="flex-shrink-0 text-cz-2" aria-hidden="true" />
+        <p className="text-xs text-cz-2">{t("offers.deadline", { season: upcomingSeasonNumber })}</p>
       </div>
 
       {offers.length === 0 ? (
         <p className="text-cz-3 text-sm">{t("offers.empty")}</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {offers.map((offer) => {
             const selected = pendingVariant === offer.variant;
+            const Icon = VARIANT_ICONS[offer.variant] ?? BriefcaseIcon;
+            const { rate, max } = projections(offer);
+            const lines = clauseLines(offer.clauses, t);
+            const fractionPct = Number(offer.guaranteedFraction) > 0
+              ? Math.round(Number(offer.guaranteedFraction) * 100)
+              : null;
             return (
               <div
                 key={offer.variant}
-                className={`bg-cz-card border rounded-cz p-5 flex flex-col gap-3 ${
+                className={`bg-cz-card border rounded-cz p-4 flex flex-col gap-2.5 ${
                   selected ? "border-cz-accent-t" : "border-cz-border"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-cz-1 font-semibold text-sm leading-tight">
-                      {t(`variant.${offer.variant}`, { defaultValue: offer.variant })}
-                    </p>
-                    <p className="text-cz-3 text-xs mt-0.5 truncate">{offer.sponsorName}</p>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-cz-subtle flex items-center justify-center">
+                      <Icon size={16} className="text-cz-2" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-cz-1 font-semibold text-sm leading-tight truncate">
+                        {offer.sponsorName}
+                      </p>
+                      <p className="text-cz-3 text-xs mt-0.5">
+                        {t(`variant.${offer.variant}`, { defaultValue: offer.variant })}
+                      </p>
+                    </div>
                   </div>
                   {selected && (
                     <span className="flex-shrink-0 px-2 py-0.5 rounded-full border border-cz-accent-t/40 text-cz-accent-t text-3xs font-medium uppercase tracking-wider">
@@ -64,6 +203,16 @@ export default function SponsorOfferModal({
                   )}
                 </div>
 
+                {fractionPct !== null && (
+                  <div
+                    className="h-1 rounded-full bg-cz-subtle overflow-hidden"
+                    role="img"
+                    aria-label={t("offers.guaranteedShare", { pct: fractionPct })}
+                  >
+                    <div className="h-full bg-cz-accent" style={{ width: `${fractionPct}%` }} />
+                  </div>
+                )}
+
                 <dl className="flex flex-col gap-1.5 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-cz-3">{t("field.guaranteedBase")}</dt>
@@ -71,8 +220,16 @@ export default function SponsorOfferModal({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-cz-3">{t("field.perRaceDay")}</dt>
-                    <dd className="font-mono text-cz-1">{formatNumber(offer.perRaceDayRate)} CZ$</dd>
+                    <dd className="font-mono text-cz-1">{formatNumber(rate)} CZ$</dd>
                   </div>
+                  {max !== null && (
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-cz-3">
+                        {t("field.projectedMax", { count: Number(raceDays) || 0 })}
+                      </dt>
+                      <dd className="font-mono text-cz-1 font-semibold">{formatNumber(max)} CZ$</dd>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-cz-3">{t("field.length")}</dt>
                     <dd className="font-mono text-cz-1">
@@ -81,19 +238,67 @@ export default function SponsorOfferModal({
                   </div>
                 </dl>
 
-                <button
-                  type="button"
-                  onClick={() => onAccept?.(offer.variant)}
+                {lines.length > 0 && (
+                  <ul className="flex flex-col gap-1">
+                    {lines.map((line) => {
+                      const ClauseIcon = CLAUSE_ICONS[line.type] ?? CoinIcon;
+                      return (
+                        <li key={line.type} className="flex items-start gap-1.5 text-xs text-cz-1">
+                          <ClauseIcon size={13} className="mt-0.5 flex-shrink-0 text-cz-accent-t" aria-hidden="true" />
+                          <span>{line.text}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-auto"
                   disabled={accepting}
-                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz hover:brightness-110 disabled:opacity-50 transition-all"
+                  onClick={() => setConfirming(offer.variant)}
                 >
-                  {t("offers.choose")}
-                </button>
+                  {t("offers.reviewSign")}
+                </Button>
               </div>
             );
           })}
         </div>
       )}
+
+      {confirmingOffer && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-cz border border-cz-accent-t/40 bg-cz-subtle px-4 py-3">
+          <p className="text-sm text-cz-1">
+            {t("offers.confirmBody", {
+              sponsor: confirmingOffer.sponsorName,
+              count: confirmingOffer.lengthSeasons,
+              season: upcomingSeasonNumber,
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" disabled={accepting} onClick={() => setConfirming(null)}>
+              {t("offers.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={accepting}
+              onClick={() => {
+                onAccept?.(confirmingOffer.variant);
+                setConfirming(null);
+              }}
+            >
+              {t("offers.signDeal")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <p className="mt-4 flex items-center gap-1.5 text-xs text-cz-3">
+        <TeamIcon size={13} className="flex-shrink-0" aria-hidden="true" />
+        {t("offers.boardNote")}
+      </p>
     </Modal>
   );
 }
