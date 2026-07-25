@@ -73,6 +73,20 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "The guided tour no longer disappears on training and squad selection",
+          "body": "New managers get a four-step checklist on the dashboard with a \"Show me how\" button under it. That button only ever worked on two of the four steps: on daily training and on picking a squad for a race it simply vanished, with no explanation, on exactly the two steps that need the most explaining. Both now have their own tour. Training walks you through choosing a focus per rider, running the day's session and reading the bar that shows how close a rider is to his next whole point. Races walks you through the race columns and what the rider counter means, entering riders from the pool, and where your standing team strategy lives."
+        },
+        "da": {
+          "title": "Den guidede rundvisning forsvinder ikke længere på træning og holdudtagelse",
+          "body": "Nye managere får en tjekliste med fire trin på dashboardet og en \"Vis mig hvordan\"-knap under den. Den knap virkede kun på to af de fire trin: på daglig træning og på holdudtagelse til et løb forsvandt den bare, uden forklaring, på præcis de to trin der kræver mest forklaring. Begge har nu deres egen rundvisning. Træning viser dig hvordan du vælger fokus pr. rytter, kører dagens pas og aflæser baren der viser hvor tæt en rytter er på sit næste hele point. Løb viser dig løbs-kolonnerne og hvad rytter-tælleren betyder, hvordan du udtager ryttere fra puljen, og hvor din faste holdstrategi bor."
+        },
+        "refs": [2819]
+      },
+      {
+        "category": "fixed",
         "audience": "internal",
         "topic": "Security",
         "en": {

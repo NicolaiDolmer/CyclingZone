@@ -3,11 +3,15 @@
 
 const STORAGE_KEY = "cz-onboarding-tour-step";
 
-// Onboarding step keys → tour pages (#2288: first_training_run/first_squad_selected
-// har ingen dedikeret guidet tour endnu — "Show me how"-linket springes blot over
-// for de trin, se OnboardingProgressCard's tourPage-fallback).
+// Onboarding step keys → tour pages. #2819: alle 4 trin er nu mappet. Før havde
+// first_training_run/first_squad_selected ingen tour, og "Show me how"-knappen
+// forsvandt tavst på præcis de to mest jargon-tunge trin (træningsfokus,
+// holdudtagelse). Tilføj ALDRIG et trin her uden at mounte <OnboardingTour> med
+// matchende data-tour-ankre på siden — knappen ville så føre til en tom tour.
 export const TOUR_PAGE_BY_STEP = {
   first_bid_placed: "auctions",
+  first_training_run: "training",
+  first_squad_selected: "races",
   board_plan_set: "board",
 };
 

@@ -28,7 +28,8 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
   }
   const isLocked = (riderId) => !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId }));
   return (
-    <div className="border border-cz-border rounded-cz bg-cz-subtle">
+    /* #2819: tour-anker — trin 2 i /races-rundvisningen peger på puljen. */
+    <div data-tour="races-pool" className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
         <span className="text-2xs uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
         {/* #1919: "Auto-udfyld"-labelen var en død <span> (Clarity dead-clicks) — den er nu

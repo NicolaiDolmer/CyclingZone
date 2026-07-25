@@ -33,7 +33,10 @@ function RoleBadge({ t, role }) {
   );
 }
 
-export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false }) {
+// #2819: dataTour sættes kun på brættets FØRSTE kolonne, så onboarding-touren
+// på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
+// AuctionsPage's data-tour="auctions-bid-input").
+export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, dataTour }) {
   const { t } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
@@ -74,6 +77,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
   const acceptsDrop = !locked && !column.withdrawn;
   return (
     <div
+      data-tour={dataTour}
       className={`border rounded-cz bg-cz-card flex flex-col transition-colors ${dragOver && acceptsDrop ? "border-cz-accent" : "border-cz-border"}`}
       onDragOver={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
       onDragLeave={() => setDragOver(false)}

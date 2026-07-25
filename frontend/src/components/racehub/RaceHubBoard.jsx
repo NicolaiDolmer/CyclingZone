@@ -429,7 +429,8 @@ export default function RaceHubBoard() {
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
         <span className="flex items-baseline gap-3">
-          <Link to="/races/strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
+          {/* #2819: tour-anker — sidste trin i /races-rundvisningen peger på taktik-linket. */}
+          <Link to="/races/strategy" data-tour="races-strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
           <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
         </span>
       </div>
@@ -466,7 +467,7 @@ export default function RaceHubBoard() {
             </div>
           )}
           {multiDay ? (
-            dayGroups.map((g) => (
+            dayGroups.map((g, gi) => (
               <div key={g.gameDay ?? "no-day"} className="mb-4">
                 {g.gameDay != null && (
                   // Gruppen defineres af den delte binding-dag (start). Et etapeløbs fulde span
@@ -476,20 +477,22 @@ export default function RaceHubBoard() {
                   </p>
                 )}
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {g.columns.map((c) => (
+                  {g.columns.map((c, ci) => (
                     <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                       onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                      raceV3Enabled={!!data.race_v3_enabled} />
+                      raceV3Enabled={!!data.race_v3_enabled}
+                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} />
                   ))}
                 </div>
               </div>
             ))
           ) : (
             <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {effectiveColumns.map((c) => (
+              {effectiveColumns.map((c, ci) => (
                 <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                   onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                  raceV3Enabled={!!data.race_v3_enabled} />
+                  raceV3Enabled={!!data.race_v3_enabled}
+                  dataTour={ci === 0 ? "races-column" : undefined} />
               ))}
             </div>
           )}

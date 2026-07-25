@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams, Link } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { racesForPool } from "../lib/racesByPool";
@@ -59,6 +60,30 @@ const RACE_STATUS_OPTIONS = [
 ];
 
 const VALID_TABS = ["calendar", "library", "world", "points"];
+
+// #2819 — guidet tour på /races (aktiveres fra dashboardets "Show me how" når
+// onboarding-trin 3, first_squad_selected, er næste trin). Ankrene bor i Race Hub-
+// brættet (kalender-fanen): første løbs-kolonne → ledige-ryttere-puljen → taktik-
+// linket. Samme mønster som AuctionsPage's getAuctionsTourSteps.
+function getRacesTourSteps(t) {
+  return [
+    {
+      target: "[data-tour='races-column']",
+      title: t("tour.pickRace.title"),
+      body: t("tour.pickRace.body"),
+    },
+    {
+      target: "[data-tour='races-pool']",
+      title: t("tour.pickRiders.title"),
+      body: t("tour.pickRiders.body"),
+    },
+    {
+      target: "[data-tour='races-strategy']",
+      title: t("tour.tactics.title"),
+      body: t("tour.tactics.body"),
+    },
+  ];
+}
 
 // Sorterbare kolonner i løbs-bibliotek + verdens-katalog (klient-side, delt
 // useSortState/sortRows). Tekst-kolonner starter stigende; sæson/etaper (tal)
@@ -122,6 +147,8 @@ function RaceCardRouteThumbnail({ race, profiles }) {
 
 export default function RacesPage() {
   const { t } = useTranslation("races");
+  // #2819: guidet rundvisning for onboarding-trin 3 (first_squad_selected).
+  const racesTourSteps = useMemo(() => getRacesTourSteps(t), [t]);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -342,6 +369,10 @@ export default function RacesPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto">
+      {/* #2819: ankrene bor i Race Hub-brættet på kalender-fanen — touren mountes
+          uanset fane, og OnboardingTour's egen "target ikke fundet"-fallback giver
+          en escape hvis manageren står på en anden fane. */}
+      <OnboardingTour pageKey="races" steps={racesTourSteps} />
       <PageHeader
         title={t("title")}
         subtitle={

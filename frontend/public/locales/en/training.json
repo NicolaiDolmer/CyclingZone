@@ -138,5 +138,19 @@
   "momentRest_0": "Recovery day across the roster: no sessions logged, legs get the rest instead.",
   "momentRest_1": "Full rest for the squad today, tomorrow's training starts from fresher legs.",
   "momentRest_2": "Quiet at the training base today: everyone's on a rest day.",
-  "momentRest_3": "The whole roster took it easy today, recovery over output."
+  "momentRest_3": "The whole roster took it easy today, recovery over output.",
+  "tour": {
+    "focus": {
+      "title": "Pick what each rider trains",
+      "body": "The focus decides which abilities grow fastest. Match it to the rider's type: a focus his type is weak in barely moves, no matter the intensity. Leave it blank and your assistant picks one that fits."
+    },
+    "runToday": {
+      "title": "Train once a day",
+      "body": "Press this and the squad trains with a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus. Hard intensity gains more but leaves riders tired for their next race."
+    },
+    "nextUp": {
+      "title": "Where the training shows up",
+      "body": "This bar is how close the rider is to his next whole +1 in the focus ability. Nothing changes on his card until it fills, so read the bar, not the day. That +1 is what he takes into his next race."
+    }
+  }
 }

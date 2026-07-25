@@ -17,6 +17,7 @@ import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, isFocusFullyCapped, todayGainTotal, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
@@ -38,6 +39,30 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../comp
 // Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed (tal,
 // desc-først: "hvem er mest træt/i bedst form?" med ét klik).
 const ROSTER_DESC_FIRST = new Set(["form", "fatigue"]);
+
+// #2819 — guidet tour på /training (aktiveres fra dashboardets "Show me how" når
+// onboarding-trin 2, first_training_run, er næste trin). Samme mønster som
+// AuctionsPage's getAuctionsTourSteps: bygges via t() ved render-tid så sproget
+// følger brugerens locale. Ankrene sidder på første roster-række + dagens knap.
+function getTrainingTourSteps(t) {
+  return [
+    {
+      target: "[data-tour='training-focus']",
+      title: t("tour.focus.title"),
+      body: t("tour.focus.body"),
+    },
+    {
+      target: "[data-tour='training-run-today']",
+      title: t("tour.runToday.title"),
+      body: t("tour.runToday.body"),
+    },
+    {
+      target: "[data-tour='training-next-up']",
+      title: t("tour.nextUp.title"),
+      body: t("tour.nextUp.body"),
+    },
+  ];
+}
 
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
@@ -84,6 +109,9 @@ export default function TrainingPage() {
   const tRider = useTranslation("rider").t;
 
   const tTypes = useTranslation("riderTypes").t;
+
+  // #2819: guidet rundvisning for onboarding-trin 2 (first_training_run).
+  const trainingTourSteps = useMemo(() => getTrainingTourSteps(t), [t]);
 
   const training = useTraining();
   const {
@@ -338,7 +366,9 @@ export default function TrainingPage() {
   }
 
   // Én roster-række (genbruges af både flad liste og type-grupperet visning).
-  function renderRosterRow(rider) {
+  // #2819: isFirst markerer den øverste synlige roster-række som tour-anker
+  // (samme mønster som AuctionsPage's isFirst → data-tour="auctions-bid-input").
+  function renderRosterRow(rider, isFirst = false) {
     const plan = planFor(rider.id);
     const cond = condition[rider.id] ?? {};
     const daysLeft = injuryDaysLeft(cond.injured_until, today);
@@ -437,7 +467,7 @@ export default function TrainingPage() {
             fokus-labels (før: max-w-[150px] klippede til "Thr…"), clear-knap er
             et rigtigt XIcon-ghost-target på samme linje (før: løst "×"-glyf-
             tegn under selecten — anti-slop). */}
-        <td className={tdClass({})}>
+        <td className={tdClass({})} data-tour={isFirst ? "training-focus" : undefined}>
           <div className="flex items-center gap-1">
             <div className="w-[184px]">
               <Select
@@ -554,7 +584,7 @@ export default function TrainingPage() {
             ALLE står på livstidsloftet får en "færdigudviklet"-markering i stedet
             for en død bar, og dagens vundne point vises som "+N i dag" så en
             netop-wrappet bar ikke læses som nul fremgang. */}
-        <td className={tdClass({})}>
+        <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
           {isFocusFullyCapped(plan?.focus, capped[rider.id]) ? (
             /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
                kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
@@ -725,19 +755,24 @@ export default function TrainingPage() {
 
   return (
     <div className="mx-auto max-w-[1600px]">
+      <OnboardingTour pageKey="training" steps={trainingTourSteps} />
       <PageHeader
         title={t("title")}
         subtitle={headerStatus}
         actions={
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={handleRunToday}
-            disabled={!enabled || !!todayRun || running}
-          >
-            {running ? t("loading") : t("trainToday")}
-          </Button>
+          /* #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
+             <Button>, så ankeret overlever uanset om Button videresender data-*. */
+          <span data-tour="training-run-today" className="inline-flex">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleRunToday}
+              disabled={!enabled || !!todayRun || running}
+            >
+              {running ? t("loading") : t("trainToday")}
+            </Button>
+          </span>
         }
       />
 
@@ -976,7 +1011,7 @@ export default function TrainingPage() {
                   </thead>
                   <tbody>
                     {groupByType
-                      ? groups.map((group) => (
+                      ? groups.map((group, gi) => (
                           <Fragment key={group.type}>
                             <tr className="bg-cz-subtle/60">
                               <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
@@ -988,10 +1023,10 @@ export default function TrainingPage() {
                                 </span>
                               </td>
                             </tr>
-                            {sortRoster(group.riders).map((rider) => renderRosterRow(rider))}
+                            {sortRoster(group.riders).map((rider, ri) => renderRosterRow(rider, gi === 0 && ri === 0))}
                           </Fragment>
                         ))
-                      : sortRoster(riders).map((rider) => renderRosterRow(rider))}
+                      : sortRoster(riders).map((rider, ri) => renderRosterRow(rider, ri === 0))}
                   </tbody>
                 </table>
               </div>
