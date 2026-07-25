@@ -90,9 +90,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // player_feedback: in-game kontakt-/feedback-knap (#2602) shippet 18/7 — 0 rows er
-  // forventet indtil første spiller-indsendelse. Fjern entry når tabellen har rows.
-  "player_feedback",
+  // (player_feedback (#2602) fjernet 23/7: første spillerindsendelse landede 23/7
+  // 12:07 CEST — skrive-stien er bevist levende, så Detector A overvåger tabellen
+  // normalt igen. NB: der findes stadig INGEN læse-flade for indsendelserne, se
+  // #2842 — auditen dækker at de ANKOMMER, ikke at de bliver læst.)
   // Race v3-tabeller (race_simulation_rider_scores / race_stage_roles / race_incidents)
   // fjernet fra whitelisten 13/7 efter foerste v3-loebsdag: race_engine_v3_scoring='on'
   // (flippet 12/7 aften), foerste live v2-run 13/7 11:00 CEST stemplede 168 score-rows
