@@ -352,10 +352,17 @@ test("sendWebhook — 429 overlever alle forsøg → synlig Sentry-capture (var 
 // rammer tier-samlekanalen inden for samme sekund) må aldrig sendes som en
 // samtidig byge — serializeByUrl skal tvinge dem efter hinanden.
 test("sendWebhook — to samtidige kald mod samme URL sendes sekventielt, ikke som byge", async () => {
-  const starts = [];
+  // Deterministisk overlap-detektion frem for wall-clock-måling: ms-baserede
+  // asserts flaker på belastede CI-runnere (fik 14ms hvor 15 var krævet, 25/7).
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let posts = 0;
   const fetchFn = async () => {
-    starts.push(Date.now());
-    await new Promise((r) => setTimeout(r, 15));
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    posts += 1;
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight -= 1;
     return { ok: true, status: 204, text: async () => "{}", headers: { get: () => null } };
   };
   const captureExceptionFn = makeCaptureSpy();
@@ -365,8 +372,8 @@ test("sendWebhook — to samtidige kald mod samme URL sendes sekventielt, ikke s
     sendWebhook(RESULT_WEBHOOK, { embeds: [{ title: "Pulje B" }] }, { fetchFn, sleepFn: noSleep, captureExceptionFn }),
   ]);
 
-  assert.equal(starts.length, 2);
-  // Den 2. POST må ikke starte før den 1. (som tager 15ms) er færdig.
-  assert.ok(starts[1] - starts[0] >= 15, `forventede >=15ms mellem POSTs, fik ${starts[1] - starts[0]}ms`);
+  assert.equal(posts, 2);
+  // Den 2. POST må ikke starte mens den 1. stadig er i flight.
+  assert.equal(maxInFlight, 1, `forventede sekventiel afsendelse (max 1 i flight), fik ${maxInFlight} samtidige`);
   assert.equal(captureExceptionFn.calls.length, 0);
 });
