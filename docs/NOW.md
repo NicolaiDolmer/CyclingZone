@@ -23,7 +23,7 @@
 
 > **Åbne ejer-beslutninger:** #2699 akademi-overflow · #2697 scout-slot · #2670 ROI-loft · #2452/#2176 (når v4 kan måles). **Ejer-klik:** #929+#2258 OTP+leaked-pw · #2588 · #2680.
 
-> **🤖 Working agent:** Fable-orkestrator AKTIV 25/7 (bølge 2): #2883 planner-S2 + #2918 auktions-guard i gang; PR #2939 (#2896 terræn), #2940 (#2880 z-index), #2941 (#2889/#2915 hjælp) i CI. Drejebogs-query #2918 rettet på main. **Næste session: SØNDAGENS CUTOVER-VAGT** — drejebogen skridt 0-8; kræver ejer-go på endelig #2851-liste (~17:30) + #2700-varsel lørdag aften. Princip: parallelisér udførelse, serialisér dømmekraft.
+> **🤖 Working agent:** Ingen aktiv session. **Bølge 1+2 afsluttet 25/7 (16 PR'er merged):** P0-bølgen (se 🩺 ovenfor) + bølge 2: #2896 terræn-nøgler (PR #2939, +CI-guard) · #2880/#2165/#2603 én z-index-skala (PR #2940) · #2883 planner-S2-banner + silent-fail-hardening (PR #2942) · #2889/#2915 hjælp: penge ved skiftet + bund 4 (PR #2941) · #2918 auktions-pensions-guard (PR #2947) + drejebogs-query rettet · audit-checket grønt igen (PR #2937 fjernede dødt endpoint). **Næste session: SØNDAGENS CUTOVER-VAGT** — drejebogen skridt 0-8; kræver ejer-go på endelig #2851-liste (~17:30) + #2700-varsel lørdag aften.
 
 ## Standing context (forever-relaunch)
 
