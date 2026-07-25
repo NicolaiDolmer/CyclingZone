@@ -66,7 +66,7 @@ export function rankTeamsGlobally({ teams, standings }) {
  */
 export function snakeAssign(orderedItems, pools) {
   const P = pools.length;
-  if (!P) throw new Error("snakeAssign: mindst én pulje kræves");
+  if (!P) throw new Error("snakeAssign: at least one pool required");
   return orderedItems.map((item, i) => {
     const row = Math.floor(i / P);
     const col = i % P;
@@ -108,11 +108,11 @@ export function distributeCompression(rankedTeams, pools, {
   const d2Pools = byTier.get(2) || [];
   const d3Pools = byTier.get(3) || [];
   const d4Pools = (byTier.get(4) || []).slice(0, d4PoolCount);
-  if (d2Pools.length !== 2) throw new Error(`distributeCompression: forventede 2 tier 2-puljer, fandt ${d2Pools.length}`);
-  if (d3Pools.length !== 4) throw new Error(`distributeCompression: forventede 4 tier 3-puljer, fandt ${d3Pools.length}`);
-  if (d4Pools.length < 1) throw new Error("distributeCompression: ingen tier 4-puljer til rest-fordeling");
-  if (d2Capacity % d2Pools.length !== 0) throw new Error(`d2Capacity ${d2Capacity} deler ikke ${d2Pools.length} puljer ligeligt`);
-  if (d3Capacity % d3Pools.length !== 0) throw new Error(`d3Capacity ${d3Capacity} deler ikke ${d3Pools.length} puljer ligeligt`);
+  if (d2Pools.length !== 2) throw new Error(`distributeCompression: expected 2 tier 2 pools, found ${d2Pools.length}`);
+  if (d3Pools.length !== 4) throw new Error(`distributeCompression: expected 4 tier 3 pools, found ${d3Pools.length}`);
+  if (d4Pools.length < 1) throw new Error("distributeCompression: no tier 4 pools for remainder distribution");
+  if (d2Capacity % d2Pools.length !== 0) throw new Error(`d2Capacity ${d2Capacity} does not divide evenly across ${d2Pools.length} pools`);
+  if (d3Capacity % d3Pools.length !== 0) throw new Error(`d3Capacity ${d3Capacity} does not divide evenly across ${d3Pools.length} pools`);
 
   const ranked = [...(rankedTeams || [])];
   const segments = [
