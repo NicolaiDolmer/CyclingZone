@@ -5743,3 +5743,753 @@ test("#2920 · dobbeltkørsel bogfører IKKE tvangssalget to gange", async () =>
   // faktisk bogførte pengene.
   assert.equal(ctx.riderUpdates.length, 1, "rytteren må ikke dispositioneres to gange");
 });
+
+// ─── #2976 · Tvangssalg + varsel må ikke være tavse ───────────────────────────
+//
+// Tvangssalget (breach-streak >= 2) tog holdets dyreste rytter uden at sende
+// noget som helst: manageren opdagede tabet ved selv at kigge på truppen.
+// #2912 gav frysningen en besked, men KUN på overgangen til frosset — et hold
+// der allerede var frosset (typisk af nødlåns-eskaleringen) løb derfor hele
+// vejen fra første brud til tvangssalg i fuldstændig stilhed.
+//
+// Kontrakt der testes her:
+//   1. tvangssalg  → salgs-besked der navngiver rytteren
+//   2. første brud → varsel FØR straffen, også når holdet allerede er frosset
+//   3. præcis ÉN besked pr. kørsel (salget erstatter frysnings-beskeden)
+//   4. cron-genkørsel sender ikke salgs-beskeden igen
+
+test("#2976 · tvangssalget navngiver rytteren i en besked til manageren", async () => {
+  const teamId = "team-2976-sale";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Forced Sale D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1, // → streak 2 → tvangssalg
+    transfer_frozen: true, // allerede frosset af sidste sæsons brud
+    riders: [
+      { id: "rider-a", firstname: "Marco", lastname: "Pantani", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-sale", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    // 700k > D3-loft 600k → brud; efter salget er gælden 200k.
+    getTotalDebt: (() => {
+      let calls = 0;
+      return async () => (calls++ === 0 ? 700_000 : 200_000);
+    })(),
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 500_000, loans: [] }),
+  });
+
+  assert.equal(ctx.riderUpdates.length, 1, "rytteren skal faktisk være solgt");
+
+  assert.equal(ctx.notifications.length, 1, "tvangssalget må ikke længere være tavst (#2976)");
+  const notif = ctx.notifications[0];
+  assert.equal(notif.type, "board_critical");
+  assert.equal(notif.metadata.titleCode, "notif.debtCeilingForcedSale.title");
+  assert.equal(notif.metadata.messageCode, "notif.debtCeilingForcedSale.message");
+  // Hvilken rytter, hvorfor, hvad koster det, hvor står holdet nu.
+  assert.equal(notif.metadata.messageParams.riders, "Marco Pantani");
+  assert.equal(notif.metadata.messageParams.proceeds, 500_000);
+  assert.equal(notif.metadata.messageParams.debt, 700_000, "beskeden citerer det tal bruddet blev erklæret på");
+  assert.equal(notif.metadata.messageParams.ceiling, 600_000);
+  assert.equal(notif.metadata.messageParams.streak, 2);
+  assert.equal(notif.metadata.messageParams.remainingDebt, 200_000);
+  // EN-first fallback (frontend renderer locale-aware via metadata-koderne).
+  assert.match(notif.message, /Marco Pantani/);
+});
+
+test("#2976 · flere salg i samme kørsel giver ÉN besked med alle ryttere", async () => {
+  const teamId = "team-2976-multi";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Fire Sale D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: true,
+    riders: [
+      { id: "rider-a", firstname: "Top", lastname: "Earner", market_value: 300_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+      { id: "rider-b", firstname: "Second", lastname: "Best", market_value: 200_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  // Første salg rækker ikke under loftet, andet gør.
+  const debts = [900_000, 700_000, 500_000];
+  let call = 0;
+
+  await processTeamSeasonPayroll(team, "season-2976-multi", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => debts[Math.min(call++, debts.length - 1)],
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.riderUpdates.length, 2, "begge ryttere skal være solgt");
+  assert.equal(ctx.notifications.length, 1, "to salg er én begivenhed for manageren, ikke to beskeder");
+  assert.equal(
+    ctx.notifications[0].metadata.messageParams.riders,
+    "Top Earner, Second Best",
+    "begge navne skal med, dyreste først",
+  );
+  assert.equal(ctx.notifications[0].metadata.messageParams.proceeds, 500_000);
+});
+
+test("#2976 · salgs-beskeden erstatter frysnings-beskeden (ingen dublet i samme kørsel)", async () => {
+  const teamId = "team-2976-no-dupe";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  const team = {
+    id: teamId,
+    name: "Unfrozen Then Sold D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: false, // frysningen er en OVERGANG i denne kørsel
+    riders: [
+      { id: "rider-a", firstname: "Only", lastname: "Asset", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-no-dupe", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.notifications.length, 1, "både frysning og salg i samme kørsel = én besked");
+  assert.equal(
+    ctx.notifications[0].metadata.titleCode,
+    "notif.debtCeilingForcedSale.title",
+    "salget er overskriften; frysningen nævnes inde i samme besked",
+  );
+});
+
+test("#2976 · varsel FØR straffen: et allerede frosset hold får sidste varsel ved første brud", async () => {
+  const teamId = "team-2976-warning";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // Den tidligere tavse vej: holdet er frosset af nødlåns-eskaleringen (#2301),
+  // så #2912's frysnings-besked fyrer ikke (ingen overgang). Uden #2976 fik
+  // holdet derfor INTET at vide før dets dyreste rytter forsvandt sæsonen efter.
+  const team = {
+    id: teamId,
+    name: "Already Frozen D3",
+    division: 3,
+    balance: 999_999,
+    emergency_loan_streak: 0,
+    debt_breach_streak: 0, // → streak 1, altså sæsonen FØR tvangssalget
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-warning", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  const breachUpdate = ctx.teamUpdates.find(u => u.id === teamId && "debt_breach_streak" in u.payload);
+  assert.equal(breachUpdate.payload.debt_breach_streak, 1, "dette er første brud, ikke tvangssalgs-sæsonen");
+  assert.equal(ctx.riderUpdates.length, 0, "ingen rytter må sælges ved streak 1");
+
+  assert.equal(ctx.notifications.length, 1, "varslet må ikke afhænge af om frysningen er en overgang (#2976)");
+  const notif = ctx.notifications[0];
+  assert.equal(notif.type, "board_critical");
+  assert.equal(notif.metadata.titleCode, "notif.debtCeilingFinalWarning.title");
+  assert.equal(notif.metadata.messageCode, "notif.debtCeilingFinalWarning.message");
+  assert.equal(notif.metadata.messageParams.debt, 700_000);
+  assert.equal(notif.metadata.messageParams.ceiling, 600_000);
+});
+
+test("#2976 · et hold der er dybt i brud får ikke varslet igen hver sæson", async () => {
+  const teamId = "team-2976-no-nag";
+  const ctx = createDebtClusterSupabase({ teamId });
+
+  // streak 2 → 3 uden ryttere at sælge: intet nyt er sket, så ingen besked.
+  const team = {
+    id: teamId,
+    name: "Chronic D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 2,
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, "season-2976-no-nag", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  });
+
+  assert.equal(ctx.notifications.length, 0, "ingen ny begivenhed = ingen ny besked");
+});
+
+test("#2976 · cron-genkørsel sender ikke salgs-beskeden to gange", async () => {
+  const teamId = "team-2976-rerun";
+  const seasonId = "season-2976-rerun";
+  // Delt idempotency-state mellem kørslerne, som en rigtig DB.
+  const ctx = createDebtClusterSupabase({ teamId, enforceIdempotency: true });
+
+  const rider = { id: "rider-a", firstname: "Sold", lastname: "Once", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId };
+  const deps = {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 0, loans: [] }),
+  };
+
+  // Kørsel 1: salget bogføres og manageren får beskeden.
+  await processTeamSeasonPayroll(
+    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 1, transfer_frozen: true, riders: [rider] },
+    seasonId,
+    deps,
+  );
+  assert.equal(ctx.notifications.length, 1, "kørsel 1 skal sende salgs-beskeden");
+  assert.equal(ctx.notifications[0].metadata.titleCode, "notif.debtCeilingForcedSale.title");
+
+  // Kørsel 2: worst case for dublet-risikoen — krediteringen afvises af
+  // idempotency-nøglen mens rytteren stadig ligger i snapshottet. Beskeden må
+  // ikke sendes igen, og "vi solgte X" må slet ikke gentages for en rytter der
+  // ikke forlod holdet i denne kørsel.
+  await processTeamSeasonPayroll(
+    { id: teamId, name: "Rerun D3", division: 3, balance: 999_999, debt_breach_streak: 2, transfer_frozen: true, riders: [rider] },
+    seasonId,
+    deps,
+  );
+
+  assert.equal(ctx.financeRows.filter(r => r.type === "forced_debt_sale").length, 1);
+  assert.equal(ctx.notifications.length, 1, "genkørslen må ikke sende salgs-beskeden igen (#2976)");
+});
+
+test("#2976 · alle nye notifikations-koder findes i BÅDE en og da backendMessages", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+
+  const LOCALES = join(import.meta.dirname, "..", "..", "frontend", "public", "locales");
+  const flatten = (lang) => {
+    const out = new Set();
+    (function walk(o, p) {
+      for (const [k, v] of Object.entries(o)) {
+        const key = p ? `${p}.${k}` : k;
+        if (v && typeof v === "object") walk(v, key);
+        else out.add(key);
+      }
+    })(JSON.parse(readFileSync(join(LOCALES, lang, "backendMessages.json"), "utf8")), "");
+    return out;
+  };
+
+  const EN = flatten("en");
+  const DA = flatten("da");
+  const CODES = [
+    "notif.debtCeilingForcedSale.title",
+    "notif.debtCeilingForcedSale.message",
+    "notif.debtCeilingFinalWarning.title",
+    "notif.debtCeilingFinalWarning.message",
+  ];
+
+  assert.deepEqual(CODES.filter(c => !EN.has(c)), [], "manglende EN-nøgler");
+  assert.deepEqual(CODES.filter(c => !DA.has(c)), [], "manglende DA-nøgler");
+
+  // Tone-guard (#2948): ingen em-dash i player-facing copy.
+  for (const lang of ["en", "da"]) {
+    const raw = readFileSync(join(LOCALES, lang, "backendMessages.json"), "utf8");
+    const notif = JSON.parse(raw).notif;
+    for (const key of ["debtCeilingForcedSale", "debtCeilingFinalWarning"]) {
+      assert.ok(!notif[key].title.includes("—"), `${lang}.${key}.title må ikke indeholde em-dash`);
+      assert.ok(!notif[key].message.includes("—"), `${lang}.${key}.message må ikke indeholde em-dash`);
+    }
+  }
+});
+
+// ─── #2976 · En fejlet notifikation må aldrig koste de øvrige hold sæsonskiftet ─
+//
+// Kald-kæden har INGEN per-hold-grænse:
+//   seasonTransition.transitionToNextSeason (fase 6)
+//     → processSeasonStart → defaultRunSeasonPayroll
+//       → `for (team of teams) await processTeamSeasonPayroll(...)`  ← intet try/catch
+//
+// Kastede notifyManager videre, ville ét holds DB-hikke afbryde payroll for de
+// resterende hold OG resten af transitionen (fase 7+ kører aldrig) — efter at
+// pengene var bogført. notifyManagerSafe fanger, logger, capturer til Sentry og
+// fortsætter.
+
+// Multi-hold-mock til defaultRunSeasonPayroll: dækker den pagineredede
+// loadHumanSeasonEndTeams-kæde plus de tabeller payroll rører pr. hold.
+// `failNotificationForUserIds` gør notifications.insert til en DB-fejl for
+// udvalgte brugere, præcis som en rigtig insert-fejl ville se ud.
+function createMultiTeamPayrollSupabase({ teams, failNotificationForUserIds = [], totalDebt = 700_000 }) {
+  const notifications = [];
+  const teamUpdates = [];
+  const financeRows = [];
+  const fail = new Set(failNotificationForUserIds);
+
+  const page = (rows) => ({ range: () => Promise.resolve({ data: rows, error: null }) });
+
+  const supabase = {
+    rpc(_name, params) {
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            // loadHumanSeasonEndTeams: .select("*").eq×3.order().range()
+            if (columns === "*") {
+              return { eq: () => ({ eq: () => ({ eq: () => ({ order: () => page(teams) }) }) }) };
+            }
+            // Per-hold-reads: balance (løn/negativ rente) + user_id (notifikation).
+            return {
+              eq(_col, teamId) {
+                return {
+                  single() {
+                    if (columns === "user_id") return Promise.resolve({ data: { user_id: `user-${teamId}` }, error: null });
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(_col, teamId) {
+                teamUpdates.push({ id: teamId, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) };
+            }
+            return { in: () => ({ order: () => page([]) }) };
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === "board_profiles") {
+        return { select: () => ({ in: () => ({ order: () => page([]) }) }) };
+      }
+      if (table === "loans") {
+        // getTotalDebt (ægte loanEngine-funktion, ikke stubbet i loop-stien).
+        return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [{ amount_remaining: totalDebt }], error: null }) }) }) };
+      }
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) {
+            if (fail.has(row.user_id)) {
+              // Sådan ser en rigtig PostgREST-insert-fejl ud: notifyUser kaster
+              // på `{ error }`, den kommer ikke som en JS-exception.
+              return Promise.resolve({ data: null, error: { code: "23514", message: "notifications_type_check violation" } });
+            }
+            notifications.push(row);
+            return Promise.resolve({ data: row, error: null });
+          },
+        };
+      }
+      throw new Error(`Unexpected table in multi-team payroll test: ${table}`);
+    },
+  };
+
+  return { supabase, notifications, teamUpdates, financeRows };
+}
+
+test("#2976 · en fejlende notifikation afbryder ikke payroll for de øvrige hold", async () => {
+  // Tre hold der alle rammer varsel-grenen (streak 0→1, allerede frosset).
+  // Hold 2's notifikations-insert fejler. Uden notifyManagerSafe ville hold 3
+  // aldrig blive behandlet, og fase 7+ af sæsonskiftet ville aldrig køre.
+  const teams = ["team-1", "team-2", "team-3"].map(id => ({
+    id,
+    name: `Team ${id}`,
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 0,
+    transfer_frozen: true,
+    emergency_loan_streak: 0,
+  }));
+
+  const ctx = createMultiTeamPayrollSupabase({ teams, failNotificationForUserIds: ["user-team-2"] });
+  const captured = [];
+
+  const { summary, results } = await defaultRunSeasonPayroll(ctx.supabase, "season-2976-resilience", {
+    facilitiesEnabled: false,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  // 1. Kørslen gennemføres — det er hele pointen.
+  assert.equal(summary.teams_processed, 3, "alle tre hold skal behandles trods fejlen på hold 2");
+  assert.equal(results.length, 3);
+
+  // 2. Pengelogikken kørte for ALLE hold, også det hvis besked fejlede.
+  for (const id of ["team-1", "team-2", "team-3"]) {
+    const update = ctx.teamUpdates.find(u => u.id === id && "debt_breach_streak" in u.payload);
+    assert.ok(update, `hold ${id} skal have fået sin breach-opdatering skrevet`);
+    assert.equal(update.payload.debt_breach_streak, 1, `hold ${id}: streak skal være talt op`);
+  }
+
+  // 3. De hold hvis besked kunne leveres, fik den.
+  assert.equal(ctx.notifications.length, 2, "hold 1 og 3 skal have fået deres varsel");
+  assert.deepEqual(
+    ctx.notifications.map(n => n.user_id).sort(),
+    ["user-team-1", "user-team-3"],
+  );
+
+  // 4. Fejlen blev IKKE slugt: præcis én capture, med hold-id og besked-type.
+  assert.equal(captured.length, 1, "den tabte besked skal være rapporteret til Sentry");
+  assert.equal(captured[0].context.teamId, "team-2");
+  assert.equal(captured[0].context.messageCode, "notif.debtCeilingFinalWarning.message");
+  assert.equal(captured[0].context.sourcePath, "processTeamSeasonPayroll.debtCeilingFinalWarning");
+  assert.equal(captured[0].context.seasonId, "season-2976-resilience");
+  assert.equal(captured[0].context.tags.cron, "season-payroll");
+  assert.equal(captured[0].context.tags.notification_type, "board_critical");
+  assert.match(captured[0].error.message, /notifications_type_check/);
+});
+
+test("#2976 · tvangssalget står ved magt selv om salgs-beskeden fejler", async () => {
+  // Værst tænkelige rækkefølge: pengene er bogført og rytteren flyttet, og SÅ
+  // fejler beskeden. At kaste her ville hverken give rytteren tilbage eller
+  // levere beskeden — det ville kun koste de resterende hold deres sæsonskifte.
+  const teamId = "team-2976-notify-fails";
+  const ctx = createDebtClusterSupabase({ teamId });
+  const captured = [];
+
+  // Gør notifications.insert til en fejl (mocken accepterer ellers alt).
+  const baseFrom = ctx.supabase.from.bind(ctx.supabase);
+  ctx.supabase.from = (table) => {
+    if (table !== "notifications") return baseFrom(table);
+    const q = {
+      eq() { return q; }, gte() { return q; }, order() { return q; },
+      is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+    };
+    return {
+      select() { return q; },
+      insert() { return Promise.resolve({ data: null, error: { message: "connection reset" } }); },
+    };
+  };
+
+  const team = {
+    id: teamId,
+    name: "Notify Fails D3",
+    division: 3,
+    balance: 999_999,
+    debt_breach_streak: 1,
+    transfer_frozen: true,
+    riders: [
+      { id: "rider-a", firstname: "Still", lastname: "Sold", market_value: 500_000, salary: 0, ai_team_id: "ai-1", team_id: teamId },
+    ],
+  };
+
+  // Må ikke reject'e.
+  await processTeamSeasonPayroll(team, "season-2976-notify-fails", {
+    supabase: ctx.supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 700_000,
+    repayLoansFromForcedSale: async () => ({ totalRepaid: 500_000, loans: [] }),
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  assert.equal(ctx.financeRows.filter(r => r.type === "forced_debt_sale").length, 1, "salget skal stadig være bogført");
+  assert.equal(ctx.riderUpdates.length, 1, "rytteren skal stadig være flyttet");
+  assert.equal(captured.length, 1, "den tabte salgs-besked skal være rapporteret");
+  assert.equal(captured[0].context.messageCode, "notif.debtCeilingForcedSale.message");
+  assert.equal(captured[0].context.teamId, teamId);
+});
+
+// ─── #2976 · Samme graense i SAESON-SLUT-vejen ────────────────────────────────
+//
+// Soendagens cutover har to kald-kaeder, og de deler defekten:
+//
+//   A) POST /api/admin/seasons/:id/end -> processSeasonEnd
+//        -> for (team of teams) await processTeamSeasonEnd(...)    <- 0 try/catch
+//        -> for (division of 1..MAX) await processDivisionEnd(...) <- 0 try/catch
+//   B) transitionToNextSeason (fase 6) -> processSeasonStart -> payroll (daekket ovenfor)
+//
+// I (A) er indsatsen hoejere end en manglende besked: en throw midt i
+// divisions-loopet efterlader op/nedrykningen HALVT anvendt.
+
+// Multi-hold-mock for processSeasonEnd. Samme princip som
+// createMultiTeamPayrollSupabase, men for de tabeller saeson-slut roerer.
+function createMultiTeamSeasonEndSupabase({ teams, boards, standings, failNotificationForUserIds = [] }) {
+  const notifications = [];
+  const boardUpdates = [];
+  const fail = new Set(failNotificationForUserIds);
+
+  // Kaedebar query-stub. Saeson-slut rammer den samme tabel med flere forskellige
+  // former (fetchAllRows-paginering via .range(), direkte await, .limit(),
+  // .single()), saa stubben svarer paa dem alle:
+  //   .range()  → `rangeRows`  (pagineret laesning)
+  //   await     → `awaitRows`  (boardGoalContext's Promise.all-queries)
+  const chain = (rangeRows = [], awaitRows = []) => {
+    const q = {
+      select: () => q, eq: () => q, in: () => q, lte: () => q, gte: () => q,
+      is: () => q, not: () => q, order: () => q,
+      limit: () => Promise.resolve({ data: awaitRows, error: null }),
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      range: () => Promise.resolve({ data: rangeRows, error: null }),
+      then: (res, rej) => Promise.resolve({ data: awaitRows, error: null }).then(res, rej),
+    };
+    return q;
+  };
+
+  const supabase = {
+    rpc() { return Promise.resolve({ data: 0, error: null }); },
+    from(table) {
+      switch (table) {
+        case "seasons":
+          return {
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { number: 5 }, error: null }) }) }),
+            update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          };
+        case "season_standings":
+          // .range() → slutstillingen; direkte await → boardGoalContext's
+          // pulje-optaelling (tom er fint, den paavirker kun maal-konteksten).
+          return chain(standings, []);
+        case "teams":
+          return {
+            select(columns) {
+              if (columns === "user_id") {
+                return { eq: (_c, teamId) => ({ single: () => Promise.resolve({ data: { user_id: `user-${teamId}` }, error: null }) }) };
+              }
+              return chain(teams, teams);
+            },
+            update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          };
+        case "riders":
+          return chain([], []);
+        case "board_profiles":
+          return {
+            select: () => chain(boards, boards),
+            update(payload) {
+              return {
+                eq(_c, boardId) {
+                  boardUpdates.push({ id: boardId, payload: { ...payload } });
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        case "board_plan_snapshots":
+          return { select: () => chain([], []), upsert: () => Promise.resolve({ error: null }) };
+        case "loans":
+          // .select("id", { count: "exact", head: true }).eq().eq() → { count }
+          return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) }) };
+        case "finance_transactions":
+          // .range(): alle hold markeret som "bonus allerede udbetalt", saa
+          // payDivisionBonuses ikke krediterer og testen holder fokus paa
+          // notifikations-graensen. await: boardGoalContext's transfer-balance.
+          return chain(teams.map(t => ({ team_id: t.id })), []);
+        case "race_results":
+          return chain([], []);
+        case "notifications": {
+          const q = {
+            eq() { return q; }, gte() { return q; }, order() { return q; },
+            is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+          };
+          return {
+            select() { return q; },
+            insert(row) {
+              if (fail.has(row.user_id)) {
+                return Promise.resolve({ data: null, error: { code: "23514", message: "notifications_type_check violation" } });
+              }
+              notifications.push(row);
+              return Promise.resolve({ data: row, error: null });
+            },
+          };
+        }
+        default:
+          throw new Error(`Unexpected table in multi-team season-end test: ${table}`);
+      }
+    },
+  };
+
+  return { supabase, notifications, boardUpdates };
+}
+
+test("#2976 · en fejlende bestyrelses-besked afbryder ikke sæson-slut for de øvrige hold", async () => {
+  // Tre hold med en 3-årsplan midtvejs → hver rammer boardMidReview-beskeden.
+  // Hold 2's insert fejler. Uden notifyManagerSafe ville hold 3 aldrig få sin
+  // bestyrelsesdom, og op/nedrykningen bagefter ville aldrig køre.
+  const ids = ["team-1", "team-2", "team-3"];
+  const teams = ids.map(id => ({
+    id,
+    name: `Season End ${id}`,
+    is_ai: false,
+    user_id: `user-${id}`,
+    balance: 500,
+    sponsor_income: 200,
+    division: 3,
+  }));
+  const boards = ids.map(id => ({
+    id: `board-${id}`,
+    team_id: id,
+    plan_type: "3yr",
+    focus: "balanced",
+    satisfaction: 50,
+    budget_modifier: 1.0,
+    current_goals: [],
+    seasons_completed: 0, // → seasonsCompleted 1 = floor(3/2) → mid-review
+    cumulative_stage_wins: 0,
+    cumulative_gc_wins: 0,
+    plan_start_sponsor_income: 200,
+  }));
+  const standings = ids.map((id, i) => ({
+    season_id: "season-5",
+    team_id: id,
+    division: 3,
+    league_division_id: null,
+    total_points: 50 - i,
+    rank_in_division: i + 2,
+    stage_wins: 0,
+    gc_wins: 0,
+    team: { id, is_ai: false },
+  }));
+
+  const ctx = createMultiTeamSeasonEndSupabase({
+    teams, boards, standings,
+    failNotificationForUserIds: ["user-team-2"],
+  });
+  const captured = [];
+
+  await processSeasonEnd("season-5", {
+    supabase: ctx.supabase,
+    ...baseDeps(),
+    boardTestMode: false,
+    // Divisions-flytningen dækkes af sin egen test nedenfor.
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  // 1. Alle tre hold fik deres bestyrelsesdom skrevet — også hold 2.
+  for (const id of ids) {
+    assert.ok(
+      ctx.boardUpdates.find(u => u.id === `board-${id}`),
+      `hold ${id} skal have fået sin board_profiles-opdatering`,
+    );
+  }
+
+  // 2. De hold hvis besked kunne leveres, fik den.
+  assert.equal(ctx.notifications.length, 2, "hold 1 og 3 skal have fået deres halvvejsevaluering");
+  assert.deepEqual(
+    ctx.notifications.map(n => n.user_id).sort(),
+    ["user-team-1", "user-team-3"],
+  );
+
+  // 3. Fejlen blev rapporteret, ikke slugt.
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].context.teamId, "team-2");
+  assert.equal(captured[0].context.messageCode, "notif.boardMidReview.message");
+  assert.equal(captured[0].context.sourcePath, "processTeamSeasonEnd.boardMidReview");
+  assert.equal(captured[0].context.tags.notification_type, "board_update");
+});
+
+test("#2976 · en fejlende oprykkerbesked må ikke efterlade pyramiden halvt flyttet", async () => {
+  // To puljer i div 2, hver med 3 hold → top 2 rykker op fra hver pulje (4 i alt).
+  // Beskeden fejler for den første oprykker. Uden notifyManagerSafe ville de tre
+  // resterende hold aldrig få deres division skrevet: nogle flyttet, andre ikke.
+  const divisionUpdates = [];
+  const notifications = [];
+
+  const mkStanding = (teamId, poolId, rank) => ({
+    season_id: "season-5",
+    team_id: teamId,
+    division: 2,
+    league_division_id: poolId,
+    rank_in_division: rank,
+    team: { id: teamId, is_ai: false },
+  });
+  const standings = [
+    mkStanding("a1", "pool-a", 1), mkStanding("a2", "pool-a", 2), mkStanding("a3", "pool-a", 3),
+    mkStanding("b1", "pool-b", 1), mkStanding("b2", "pool-b", 2), mkStanding("b3", "pool-b", 3),
+  ];
+
+  const supabase = {
+    from(table) {
+      if (table === "teams") {
+        return {
+          select: () => ({ eq: (_c, teamId) => ({ single: () => Promise.resolve({ data: { user_id: `user-${teamId}` }, error: null }) }) }),
+          update(payload) {
+            return {
+              eq(_c, teamId) {
+                divisionUpdates.push({ teamId, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) {
+            if (row.user_id === "user-a1") {
+              return Promise.resolve({ data: null, error: { message: "connection reset" } });
+            }
+            notifications.push(row);
+            return Promise.resolve({ data: row, error: null });
+          },
+        };
+      }
+      throw new Error(`Unexpected table in division-end test: ${table}`);
+    },
+  };
+
+  const captured = [];
+  // childrenOf → [] slår relegation fra; testen handler om oprykningsloopet.
+  const poolTree = { parentOf: () => "pool-parent", childrenOf: () => [], byId: new Map() };
+
+  await processDivisionEnd(standings, 2, "season-5", 5, {
+    supabase,
+    poolTree,
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  // Alle fire oprykkere skal have fået deres division skrevet.
+  assert.deepEqual(
+    divisionUpdates.map(u => u.teamId).sort(),
+    ["a1", "a2", "b1", "b2"],
+    "oprykningen må ikke stoppe ved det hold hvis besked fejlede",
+  );
+  for (const u of divisionUpdates) {
+    assert.equal(u.payload.division, 1, "alle fire skal flyttes til div 1");
+  }
+
+  assert.equal(notifications.length, 3, "de tre øvrige oprykkere skal have fået deres besked");
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].context.teamId, "a1");
+  assert.equal(captured[0].context.sourcePath, "processDivisionEnd.divisionPromoted");
+  assert.equal(captured[0].context.messageCode, "notif.divisionPromoted.message");
+});

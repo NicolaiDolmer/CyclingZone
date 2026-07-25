@@ -548,6 +548,11 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       facilitiesEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
+      // #2976 · observabilitets-seam for notifyManagerSafe. Uden den kan en
+      // fejlet notifikation ikke asserteres fra loop-niveau, og det er præcis
+      // loop-niveauet der beviser at ét holds fejl ikke koster de øvrige deres
+      // sæsonskifte.
+      captureException: deps.captureException,
     });
     results.push(payroll);
   }
@@ -701,7 +706,10 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     throwIfSupabaseError(freezeError, `Could not freeze transfers for team ${team.id} (emergency loan escalation)`);
     frozenEarlierThisRun = true;
     console.log(`  🔴🔴 ${team.name}: emergency_loan_streak=${emergencyLoanStreak} (>= ${EMERGENCY_LOAN_ESCALATION_STREAK}) — the board freezes transfers`);
-    await notifyManager(team.id, "board_critical",
+    // #2976: notifikationen må ikke kunne vælte payroll for de resterende hold.
+    // Pengene (nødlånet) er allerede bogført og frysningen allerede skrevet på
+    // dette punkt, så en throw redder ingenting.
+    await notifyManagerSafe(team.id, "board_critical",
       "The board freezes transfers",
       `Your team has needed an emergency loan ${emergencyLoanStreak} seasons in a row. The board freezes transfers until your finances stabilize.`,
       { supabase: supabaseClient },
@@ -710,7 +718,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         titleParams: {},
         messageCode: "notif.emergencyLoanEscalation.message",
         messageParams: { streak: emergencyLoanStreak },
-      }
+      },
+      { sourcePath: "processTeamSeasonPayroll.emergencyLoanEscalation", seasonId, captureException: deps.captureException }
     );
   }
 
@@ -742,6 +751,12 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     // #2919: baseline OR'es med run-lokal frysning (nødlåns-eskaleringen ovenfor).
     let transferFrozen = team.transfer_frozen || frozenEarlierThisRun || false;
     const alreadyFrozenBeforeDebtBranch = transferFrozen;
+
+    // #2976 · Notifikations-materiale for tvangssalget. Samles i loopet og
+    // afsendes ÉN gang efter breach-opdateringen (ét hold kan miste flere
+    // ryttere i samme kørsel; det er én begivenhed for manageren, ikke N).
+    const forcedSaleRiderNames = [];
+    let debtAfterForcedSales = interestExcludedDebt;
 
     if (interestExcludedDebt > debtCeiling) {
       breachStreak += 1;
@@ -802,7 +817,10 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           // afdrag med "provenu" der aldrig blev krediteret ville slette gæld
           // uden penge bag.
           if (forcedSaleCredit?.skipped) {
-            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip`);
+            // #2976: bevidst UDEN notifikation. Skip'et betyder at pengene er
+            // bogført mens dispositionen ikke nåede igennem, altså at rytteren
+            // stadig står på holdet. "Vi solgte X" ville være usandt her.
+            console.warn(`  ↩️  ${team.name}: forced_debt_sale for ${rider.firstname} ${rider.lastname} allerede bogført (sæson ${seasonId}) — skip (ingen salgs-notifikation)`);
             continue;
           }
 
@@ -822,6 +840,9 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
 
           forcedSaleCount += 1;
           forcedSaleTotal += credit;
+          // #2976: kun ryttere der FAKTISK forlod holdet i denne kørsel nævnes
+          // i beskeden.
+          forcedSaleRiderNames.push(`${rider.firstname} ${rider.lastname}`);
 
           // #2303: provenuet afdrager lånene DIREKTE (ældste lån først) i
           // stedet for det gamle runningDebt-estimat (der aldrig rørte
@@ -835,6 +856,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           }
           // #2912: samme rente-eksklusive mål som stop-kriteriet ovenfor.
           runningDebt = Math.max(0, (await getTotalDebtFn(team.id, supabaseClient)) - loanInterestTotal);
+          // #2976: beskeden skal kunne fortælle hvor holdet står EFTER salget.
+          debtAfterForcedSales = runningDebt;
 
           console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}, gæld nu ${runningDebt}`);
         }
@@ -854,12 +877,48 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       .eq("id", team.id);
     throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
 
-    // #2912 · Frysningen var 100% tavs: holdet opdagede den først når det
-    // prøvede at handle. Notificér på selve OVERGANGEN til frosset, så et hold
-    // der bliver ved med at bryde loftet ikke får samme besked hver sæson, og
-    // så nødlåns-eskaleringens egen besked (2b) ikke dubleres.
-    if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
-      await notifyManager(team.id, "board_critical",
+    // #2912/#2976 · Gældseskaleringen sender PRÆCIS ÉN besked pr. kørsel, valgt
+    // efter hvad der faktisk skete. Grenene er gensidigt udelukkende, så et hold
+    // aldrig får både "vi solgte" og "vi frøs" for samme begivenhed:
+    //
+    //   1. Tvangssalg gennemført  → salgs-beskeden (den vigtigste, nævner også
+    //      frysningen, så frysnings-beskeden ville være redundant).
+    //   2. Overgang til frosset   → frysnings-beskeden (#2912). Den advarer selv
+    //      om det kommende tvangssalg.
+    //   3. Første brud, men holdet var allerede frosset (typisk af nødlåns-
+    //      eskaleringen i 2b, eller en frysning fra sidste sæson) → sidste
+    //      varsel (#2976). Uden denne gren var netop DENNE vej helt tavs frem
+    //      til tvangssalget: streak 0→1 gav ingen besked fordi frysningen ikke
+    //      var en overgang, og streak 1→2 solgte rytteren uden forvarsel.
+    //
+    // Alle tre kald går gennem notifyManagerSafe: en fejlet afsendelse logges
+    // højlydt og captures til Sentry, men afbryder ALDRIG kørslen. Pengene er
+    // allerede bogført når vi når hertil, og payroll-loopet i
+    // defaultRunSeasonPayroll har ingen per-hold-grænse — en throw ville koste
+    // de resterende hold deres sæsonskifte for at redde én besked.
+    if (forcedSaleRiderNames.length > 0) {
+      const riders = forcedSaleRiderNames.join(", ");
+      await notifyManagerSafe(team.id, "board_critical",
+        "The board forced a sale",
+        `Your debt of ${interestExcludedDebt} CZ$ stayed over your division cap of ${debtCeiling} CZ$ for ${breachStreak} seasons in a row, so the board sold ${riders} for ${forcedSaleTotal} CZ$ and put the money straight into your loans. Your debt is now ${debtAfterForcedSales} CZ$ and transfers stay frozen until you are back under the cap. If you are still over it at the next season change, the board will sell again. Repay loans, sell riders yourself, or cut wages before then.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingForcedSale.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingForcedSale.message",
+          messageParams: {
+            riders,
+            proceeds: forcedSaleTotal,
+            debt: interestExcludedDebt,
+            ceiling: debtCeiling,
+            streak: breachStreak,
+            remainingDebt: debtAfterForcedSales,
+          },
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingForcedSale", seasonId, captureException: deps.captureException }
+      );
+    } else if (transferFrozen && !alreadyFrozenBeforeDebtBranch) {
+      await notifyManagerSafe(team.id, "board_critical",
         "Transfers frozen: debt over the cap",
         `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale.`,
         { supabase: supabaseClient },
@@ -868,7 +927,21 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           titleParams: {},
           messageCode: "notif.debtCeilingFreeze.message",
           messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
-        }
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingFreeze", seasonId, captureException: deps.captureException }
+      );
+    } else if (breachStreak === 1) {
+      await notifyManagerSafe(team.id, "board_critical",
+        "One season before a forced sale",
+        `Your debt of ${interestExcludedDebt} CZ$ is over your division cap of ${debtCeiling} CZ$, and transfers are already frozen. If you are still over the cap at the next season change, the board will sell your most valuable riders to close the gap. Repay loans, sell riders yourself, or cut wages before then.`,
+        { supabase: supabaseClient },
+        {
+          titleCode: "notif.debtCeilingFinalWarning.title",
+          titleParams: {},
+          messageCode: "notif.debtCeilingFinalWarning.message",
+          messageParams: { debt: interestExcludedDebt, ceiling: debtCeiling },
+        },
+        { sourcePath: "processTeamSeasonPayroll.debtCeilingFinalWarning", seasonId, captureException: deps.captureException }
       );
     }
 
@@ -1250,6 +1323,10 @@ export async function processSeasonEnd(seasonId, deps = {}) {
         supabase: supabaseClient,
         now: notificationNow,
         poolTree,
+        // #2976 · observabilitets-seam for notifyManagerSafe (samme mønster som
+        // defaultRunSeasonPayroll). En fejlet op/nedryknings-besked må ikke
+        // efterlade pyramiden halvt flyttet.
+        captureException: deps.captureException,
       });
     }
 
@@ -1631,7 +1708,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // feedback.headline/summary stammer fra boardEngine.evaluateBoardSeason
       // og er stadig DA-narrative — full board-feedback-i18n er ude af #666's
       // scope (spawnes som follow-up).
-      await notifyManager(
+      await notifyManagerSafe(
         team.id,
         "board_update",
         "Board plan expired",
@@ -1646,7 +1723,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
             summary: feedback.summary,
             satisfaction: newSatisfaction,
           },
-        }
+        },
+        { sourcePath: "processTeamSeasonEnd.boardPlanExpired", seasonId, captureException: deps.captureException }
       );
 
       // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
@@ -1703,7 +1781,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           : newSatisfaction >= 40
           ? "The board is moderately pleased with your progress."
           : "The board is worried about your progress in the plan.";
-        await notifyManager(
+        await notifyManagerSafe(
           team.id,
           "board_update",
           "Mid-plan review",
@@ -1718,13 +1796,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
               summary: feedback.summary,
               satisfaction: newSatisfaction,
             },
-          }
+          },
+          { sourcePath: "processTeamSeasonEnd.boardMidReview", seasonId, captureException: deps.captureException }
         );
       } else {
         const planLabelKey = planLabelKey_(board.plan_type);
         const delta = newSatisfaction - anchorSatisfaction;
         const planLabelEn = { "1yr": "1-year plan", "3yr": "3-year plan", "5yr": "5-year plan" }[board.plan_type] || "plan";
-        await notifyManager(
+        await notifyManagerSafe(
           team.id,
           "board_update",
           "Season report",
@@ -1742,7 +1821,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
               satisfaction: newSatisfaction,
               delta,
             },
-          }
+          },
+          { sourcePath: "processTeamSeasonEnd.boardSeasonReport", seasonId, captureException: deps.captureException }
         );
       }
     }
@@ -1767,7 +1847,15 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
         boardTestMode,
         now: deps.now ?? new Date(),
-        notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
+        // #2976: evaluateAndApplyConsequences kalder notify ÉN gang pr. anvendt
+        // konsekvens-lag. Kastede notifikationen, ville de resterende lag
+        // (fyring, budget-nedskæring) aldrig blive anvendt for dette hold, og
+        // catch'en nedenfor ville rapportere det som "board consequences
+        // failed" selv om konsekvensen faktisk lykkedes. Begge dele forkerte.
+        notify: ({ type, title, message, metadata }) => notifyManagerSafe(
+          team.id, type, title, message, notificationDeps, metadata ?? null,
+          { sourcePath: "processTeamSeasonEnd.boardConsequences", seasonId, captureException: deps.captureException },
+        ),
       });
     } catch (error) {
       // #2389 A2: en tavs fejl her betyder at en reel spil-konsekvens (fyring,
@@ -2030,7 +2118,10 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
           // allerede havde titleCode/messageCode — EN-first fallback + i18n-koder
           // så EN-brugere ikke længere får rå dansk tekst (frontend-nøglerne
           // notif.divisionPromoted.* fandtes allerede, ubrugte, i backendMessages.json).
-          await notifyManager(
+          // #2976: divisionen ER allerede flyttet ovenfor. Kastede beskeden,
+          // ville resten af op/nedrykningen udeblive og efterlade pyramiden
+          // halvt flyttet — værre end en manglende lykønskning.
+          await notifyManagerSafe(
             s.team_id, "board_update", "Promoted! 🎉",
             `Congratulations! Your team moves up to Division ${division - 1}.`, notificationDeps,
             {
@@ -2038,7 +2129,8 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
               titleParams: {},
               messageCode: "notif.divisionPromoted.message",
               messageParams: { division: division - 1 },
-            }
+            },
+            { sourcePath: "processDivisionEnd.divisionPromoted", seasonId, captureException: deps.captureException }
           );
           promoted++;
         }
@@ -2064,7 +2156,7 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
             .update({ division: division + 1, league_division_id: dest })
             .eq("id", s.team_id);
           throwIfSupabaseError(error, `Could not relegate team ${s.team_id}`);
-          await notifyManager(
+          await notifyManagerSafe(
             s.team_id, "board_update", "Relegation",
             `Your team drops to Division ${division + 1}.`, notificationDeps,
             {
@@ -2072,7 +2164,8 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
               titleParams: {},
               messageCode: "notif.divisionRelegated.message",
               messageParams: { division: division + 1 },
-            }
+            },
+            { sourcePath: "processDivisionEnd.divisionRelegated", seasonId, captureException: deps.captureException }
           );
           relegated++;
         }
@@ -2404,6 +2497,69 @@ async function notifyManager(teamId, type, title, message, deps = {}, metadata =
     metadata,
     now: deps.now,
   });
+}
+
+/**
+ * #2976 · Notifikations-afsendelse der ALDRIG afbryder pengelogikken.
+ *
+ * BEGGE kald-kæder i søndagens cutover har INGEN per-hold-grænse:
+ *
+ *   A) Sæson-SLUT — POST /api/admin/seasons/:id/end (api.js)
+ *        → processSeasonEnd
+ *          → for (team of teams) await processTeamSeasonEnd(...)   ← 0 try/catch
+ *          → for (division of 1..MAX) await processDivisionEnd(...) ← 0 try/catch
+ *
+ *   B) Sæson-START — seasonTransition.transitionToNextSeason (fase 6)
+ *        → processSeasonStart
+ *          → defaultRunSeasonPayroll
+ *            → for (team of teams) await processTeamSeasonPayroll(...) ← 0 try/catch
+ *
+ * En kastet notifikationsfejl for ÉT hold (DB-hikke, netværk, hold uden
+ * user_id) ville derfor afbryde resten af den kørsel: i (A) mister de
+ * resterende hold deres bestyrelsesdom, og en fejl i divisions-loopet
+ * efterlader op/nedrykningen HALVT anvendt (nogle hold flyttet, andre ikke);
+ * i (B) mister de resterende hold deres payroll og fase 7+ kører aldrig.
+ *
+ * Fælles for alle callsites: notifikationen sendes EFTER at den tilstand den
+ * beskriver er skrevet (penge bogført, plan opdateret, division flyttet). At
+ * kaste redder derfor ingenting — det bytter "én manglende besked" for "halvt
+ * gennemført sæsonskifte".
+ *
+ * Fejlen sluges ikke: den logges højlydt til cron-loggen og captures til Sentry
+ * med hold-id + besked-type, så en systematisk fejl (fx en notifikationstype
+ * der mangler i notifications_type_check) er synlig med det samme.
+ *
+ * Samme forsvar som squadEnforcement.processSquadEnforcementCron's per-hold
+ * try/catch + captureException.
+ *
+ * Returnerer true hvis beskeden blev afsendt, false hvis den fejlede.
+ */
+async function notifyManagerSafe(teamId, type, title, message, deps = {}, metadata = null, context = {}) {
+  try {
+    await notifyManager(teamId, type, title, message, deps, metadata);
+    return true;
+  } catch (error) {
+    const capture = context.captureException ?? captureException;
+    console.error(
+      `  ❌ [economy] NOTIFIKATION FEJLEDE (${context.sourcePath || "unknown"}) for hold ${teamId}`
+        + ` · type=${type} code=${metadata?.messageCode ?? "n/a"} · ${error?.message || error}`
+        + " — payroll fortsætter, beskeden er tabt for dette hold",
+    );
+    try {
+      capture(error, {
+        tags: { cron: "season-payroll", notification_type: type },
+        teamId,
+        messageCode: metadata?.messageCode ?? null,
+        sourcePath: context.sourcePath ?? null,
+        seasonId: context.seasonId ?? null,
+      });
+    } catch (captureError) {
+      // Sentry må heller ikke kunne vælte kørslen. console.error ovenfor er
+      // allerede skrevet, så fejlen er ikke tavs.
+      console.error(`  ❌ [economy] captureException fejlede selv: ${captureError?.message || captureError}`);
+    }
+    return false;
+  }
 }
 
 // #666: build per-plan-type i18n key (1yr/3yr/5yr) — used in board notifications

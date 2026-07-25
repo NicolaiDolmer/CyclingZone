@@ -86,6 +86,14 @@
       "title": "Transfers frozen: debt over the cap",
       "message": "Your debt of {debt} CZ$ is over your division cap of {ceiling} CZ$. The board freezes transfers until you are back under the cap. Repay debt or sell riders before the next season, or the board will force a sale."
     },
+    "debtCeilingFinalWarning": {
+      "title": "One season before a forced sale",
+      "message": "Your debt of {debt} CZ$ is over your division cap of {ceiling} CZ$, and transfers are already frozen. If you are still over the cap at the next season change, the board will sell your most valuable riders to close the gap. Repay loans, sell riders yourself, or cut wages before then."
+    },
+    "debtCeilingForcedSale": {
+      "title": "The board forced a sale",
+      "message": "Your debt of {debt} CZ$ stayed over your division cap of {ceiling} CZ$ for {streak} seasons in a row, so the board sold {riders} for {proceeds} CZ$ and put the money straight into your loans. Your debt is now {remainingDebt} CZ$ and transfers stay frozen until you are back under the cap. If you are still over it at the next season change, the board will sell again. Repay loans, sell riders yourself, or cut wages before then."
+    },
     "loanPaidOff": {
       "title": "✅ Loan repaid",
       "message": "Congratulations! You've fully repaid your loan."
