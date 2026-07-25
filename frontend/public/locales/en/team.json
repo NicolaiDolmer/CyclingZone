@@ -40,6 +40,8 @@
     "headers": {
       "nation": "Nation",
       "rider": "Rider",
+      "rating": "Rating",
+      "ratingTitle": "Overall rating 1-99, weighted for the rider's type.",
       "value": "Value",
       "salary": "Salary",
       "potential": "Potential",
@@ -48,8 +50,14 @@
       "type": "Type",
       "contract": "Contract",
       "contractValue": "Expires after S{season}",
+      "contractShort": "S{season}",
       "action": "Action"
     },
+    "mode": {
+      "overview": "Overview",
+      "abilities": "Abilities"
+    },
+    "count": "{count, plural, one {1 rider} other {# riders}}",
     "actionButton": "Sell / Auction",
     "ownAuctionTooltip": "In auction · highest bid {price} CZ$ · ends in {timeLeft}"
   },

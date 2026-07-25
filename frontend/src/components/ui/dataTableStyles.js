@@ -38,9 +38,27 @@ const ZONES = {
 // 28px brede med 32px luft imellem sig, hvilket spreder rytterdatabasen og
 // truppen ud og gør dem svære at skanne på tværs. Navn/hold/status-kolonner
 // beholder px-4 — dér ER luften det der adskiller læsbar tekst.
-export function thClass({ numeric = false, sticky = false, compact = false } = {}) {
+// #2906 (ejer-feedback 25/7): `dense` halverer den LODRETTE cellepolstring
+// (py-[13px] -> py-[7px], header py-3 -> py-2) for tabeller hvor rækketallet er
+// det der tæller — truppen viser 30 ryttere, og ~48px rækker gav ~1450px side.
+// Opt-in pr. tabel, så T2's default-rytme (13px) er uændret alle andre steder.
+
+// Vandret gutter i tre trin (bredest → smallest):
+//   default  px-4 — tekstkolonner; luften ER det der adskiller ordene
+//   compact  px-2 — kolonner der bærer ét kort tal/element (#2849 bølge 6)
+//   tight    px-1 — en MATRIX af tal-celler, hvor nabo-cellerne skal læses
+//                   som én blok (de 15 evner). Ejer-feedback 25/7 på #2888/#2906:
+//                   px-2 stod stadig "for langt fra hinanden". Selve tal-badgen
+//                   har sin egen baggrund, så adskillelsen kommer fra farven,
+//                   ikke fra luften. `tight` vinder over `compact`.
+function gutter(compact, tight) {
+  if (tight) return "px-1";
+  return compact ? "px-2" : "px-4";
+}
+
+export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false } = {}) {
   const base =
-    `whitespace-nowrap bg-cz-card ${compact ? "px-2" : "px-4"} py-3 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
+    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -48,7 +66,7 @@ export function thClass({ numeric = false, sticky = false, compact = false } = {
 
 // Zone-kanter (2px semi-opaque separator) ERSTATTER den ordinære 1px toplinje
 // på boundary-rækken — to border-top-utilities på samme celle er udefineret.
-export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false, compact = false } = {}) {
+export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false, compact = false, tight = false, dense = false } = {}) {
   const z = ZONES[zone];
   const rules = [
     z && edgeTop ? z.edgeTop : "border-t border-cz-border",
@@ -56,7 +74,7 @@ export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop 
   ];
   const bg = z ? (sticky ? z.stickyCell : z.cell) : sticky ? "bg-cz-card group-hover:bg-cz-subtle" : "";
   return [
-    `${compact ? "px-2" : "px-4"} py-[13px] text-sm text-cz-1`,
+    `${gutter(compact, tight)} ${dense ? "py-[7px]" : "py-[13px]"} text-sm text-cz-1`,
     numeric ? "text-right font-data tabular-nums" : "text-left",
     sticky ? STICKY : "",
     bg,

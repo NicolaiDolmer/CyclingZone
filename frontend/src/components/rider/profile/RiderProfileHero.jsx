@@ -24,7 +24,7 @@
 import { useTranslation } from "react-i18next";
 import { Flag } from "../../Flag";
 import TeamLink from "../../TeamLink";
-import { statColor } from "../../../lib/statColor";
+import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
@@ -226,10 +226,12 @@ export default function RiderProfileHero({
           value={hasRating ? (
             /* Farveplade (ejer-feedback): samme statColor-skala som ability-tallene
                — genindfører det gamle designs instant-signal i systemets sprog.
-               Hex + "29" = 16% alpha-baggrund af samme farve. */
+               #2888/#2906: selve style-udtrykket er nu den delte statPlateStyle,
+               så heroen, personale-heroen og trup-tabellen ikke kan drifte fra
+               hinanden (samme 16%-alpha-plade var kopieret tre steder). */
             <span
               className="inline-flex items-center justify-center min-w-[38px] h-[30px] px-2 rounded-cz"
-              style={{ color: statColor(overallRating), backgroundColor: `${statColor(overallRating)}29` }}
+              style={statPlateStyle(overallRating)}
             >
               {overallRating}
             </span>
