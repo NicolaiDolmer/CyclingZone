@@ -74,6 +74,15 @@ function createIdempotencySupabase({
           return {
             select(_columns) {
               const filters = {};
+              const filteredRows = () => {
+                let rows = state.financeRows;
+                if (filters.season_id) rows = rows.filter((r) => r.season_id === filters.season_id);
+                if (filters.type) rows = rows.filter((r) => r.type === filters.type);
+                if (filters.team_id) rows = rows.filter((r) => r.team_id === filters.team_id);
+                if (filters.related_loan_id) rows = rows.filter((r) => r.related_loan_id === filters.related_loan_id);
+                if (filters.type__in) rows = rows.filter((r) => filters.type__in.includes(r.type));
+                return rows;
+              };
               const query = {
                 eq(col, val) {
                   filters[col] = val;
@@ -83,14 +92,16 @@ function createIdempotencySupabase({
                   filters[`${col}__in`] = vals;
                   return query;
                 },
+                // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                // fetchAllRows (.order("id").range()).
+                order(_col, _opts) {
+                  return query;
+                },
+                range(from, to) {
+                  return Promise.resolve({ data: filteredRows().slice(from, to + 1), error: null });
+                },
                 then(resolve, reject) {
-                  let rows = state.financeRows;
-                  if (filters.season_id) rows = rows.filter((r) => r.season_id === filters.season_id);
-                  if (filters.type) rows = rows.filter((r) => r.type === filters.type);
-                  if (filters.team_id) rows = rows.filter((r) => r.team_id === filters.team_id);
-                  if (filters.related_loan_id) rows = rows.filter((r) => r.related_loan_id === filters.related_loan_id);
-                  if (filters.type__in) rows = rows.filter((r) => filters.type__in.includes(r.type));
-                  return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+                  return Promise.resolve({ data: filteredRows(), error: null }).then(resolve, reject);
                 },
               };
               return query;
@@ -622,14 +633,24 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
               eq(column, value) {
                 assert.equal(column, "season_id");
                 assert.equal(value, "season-1");
-                return Promise.resolve({
-                  data: [
-                    { team_id: "team-1", division: 3, total_points: 120, rank_in_division: 2 },
-                    { team_id: "team-top", division: 3, total_points: 180, rank_in_division: 1 },
-                    { team_id: "team-low", division: 3, total_points: 60, rank_in_division: 3 },
-                  ],
-                  error: null,
-                });
+                const data = [
+                  { team_id: "team-1", division: 3, total_points: 120, rank_in_division: 2 },
+                  { team_id: "team-top", division: 3, total_points: 180, rank_in_division: 1 },
+                  { team_id: "team-low", division: 3, total_points: 60, rank_in_division: 3 },
+                ];
+                // #2951 · loadSponsorStandingsContextForSeason pagineres nu via
+                // fetchAllRows (.order("id").range()).
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                      },
+                    };
+                  },
+                };
               },
             };
           },

@@ -125,16 +125,36 @@ function throwIfSupabaseError(error, message) {
   }
 }
 
+// #2951: fetchAllRows (supabasePagination.js) kaster på fejl i stedet for at
+// returnere { data, error } — denne wrapper normaliserer fejlbeskeden til
+// SAMME "${message}: ${error.message}"-format som throwIfSupabaseError, så
+// alle de nyligt-paginerede kaldsteder i denne fil bevarer deres oprindelige
+// fejltekst uændret for kaldere/tests.
+async function fetchAllRowsOrThrow(buildQuery, message) {
+  try {
+    return await fetchAllRows(buildQuery);
+  } catch (error) {
+    throw new Error(`${message}: ${error.message}`, { cause: error });
+  }
+}
+
 export async function loadHumanSeasonEndTeams(supabaseClient) {
-  const { data: teams, error: teamsError } = await supabaseClient
-    .from("teams")
-    .select("*")
-    // #1077 · ekskludér bank-pseudo-holdet (is_ai:false, is_bank:true) fra
-    // økonomi-processering — samme diskriminator som cron.js:89 og /deadline-day.
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
-  throwIfSupabaseError(teamsError, "Could not load human teams for season end");
+  // #2951 (opfølgning på #2907/#2932): teams-filtret er på 156 menneskehold
+  // 25/7 og vokser med hver signup — samme vækstdriver, langsommere end riders,
+  // men samme bug-klasse hvis den passerer 1000 rækker. Pagineret via
+  // fetchAllRows for at holde klassen tom (.claude/learnings/2026-07-25-
+  // postgrest-1000-cap-class-bug.md).
+  const teams = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("teams")
+      .select("*")
+      // #1077 · ekskludér bank-pseudo-holdet (is_ai:false, is_bank:true) fra
+      // økonomi-processering — samme diskriminator som cron.js:89 og /deadline-day.
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .order("id", { ascending: true })
+  ), "Could not load human teams for season end");
 
   const teamIds = (teams || []).map(team => team.id).filter(Boolean);
   if (teamIds.length === 0) return [];
@@ -144,30 +164,24 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   // første side, så payroll og bestyrelsesdom kørte på ~38% af feltet for hold
   // hvis ryttere faldt uden for side 1 (ingen fejl, ingen nulrække — ingenting).
   // fetchAllRows paginerer; .order("id") gør siderne stabile (supabasePagination.js).
-  //
-  // board_profiles (435 rækker, 25/7) og teams-filtret ovenfor (156 rækker) er
-  // IKKE pagineret her — begge er langt under 1000 og vokser med samme,
-  // langsommere driver (antal hold, ikke antal ryttere pr. hold). Se PR for #2907
-  // for fuld liste af andre unpaginerede season-end-queries fundet i samme sweep.
-  let riders;
-  try {
-    riders = await fetchAllRows(() => (
-      supabaseClient
-        .from("riders")
-        // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
-        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
-        .in("team_id", teamIds)
-        .order("id", { ascending: true })
-    ));
-  } catch (error) {
-    throw new Error(`Could not load riders for season end: ${error.message}`, { cause: error });
-  }
+  const riders = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("riders")
+      // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
+      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
+      .in("team_id", teamIds)
+      .order("id", { ascending: true })
+  ), "Could not load riders for season end");
 
-  const boardsRes = await supabaseClient
-    .from("board_profiles")
-    .select("*")
-    .in("team_id", teamIds);
-  throwIfSupabaseError(boardsRes.error, "Could not load board profiles for season end");
+  // #2951: board_profiles var 435/1000 rækker 25/7 (43,5%, samme team-count-
+  // driver som teams-queryen ovenfor) — deferred i #2907-PR-bodyen, nu pagineret.
+  const boardsData = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("board_profiles")
+      .select("*")
+      .in("team_id", teamIds)
+      .order("id", { ascending: true })
+  ), "Could not load board profiles for season end");
 
   const ridersByTeam = new Map();
   for (const rider of riders || []) {
@@ -177,7 +191,7 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   }
 
   const boardsByTeam = new Map();
-  for (const board of boardsRes.data || []) {
+  for (const board of boardsData || []) {
     if (!board.team_id) continue;
     if (!boardsByTeam.has(board.team_id)) boardsByTeam.set(board.team_id, []);
     boardsByTeam.get(board.team_id).push(board);
@@ -992,11 +1006,15 @@ async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber
   throwIfSupabaseError(previousSeasonError, "Could not load previous season for sponsor calculation");
   if (!previousSeason?.id) return buildSponsorStandingsContext([]);
 
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("team_id, division, rank_in_division, total_points")
-    .eq("season_id", previousSeason.id);
-  throwIfSupabaseError(standingsError, "Could not load previous standings for sponsor calculation");
+  // #2951: season_standings er på 367/1000 rækker 25/7 og vokser med hver
+  // signup (samme klasse som #2907/#2932) — pagineret via fetchAllRows.
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("team_id, division, rank_in_division, total_points")
+      .eq("season_id", previousSeason.id)
+      .order("id", { ascending: true })
+  ), "Could not load previous standings for sponsor calculation");
 
   return buildSponsorStandingsContext(standings || []);
 }
@@ -1025,12 +1043,17 @@ function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
 // ─── Division Bonuses ────────────────────────────────────────────────────────
 
 export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
-  const { data: existingRows, error: existingError } = await supabaseClient
-    .from("finance_transactions")
-    .select("team_id")
-    .eq("season_id", seasonId)
-    .eq("type", "bonus");
-  throwIfSupabaseError(existingError, "Could not check existing division bonuses");
+  // #2951: dedup-tjek mod finance_transactions — bundet af team-count pr.
+  // sæson (≤367/1000 25/7), samme driver som season_standings. Pagineret via
+  // fetchAllRows for at holde 1000-loft-klassen tom.
+  const existingRows = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("finance_transactions")
+      .select("team_id")
+      .eq("season_id", seasonId)
+      .eq("type", "bonus")
+      .order("id", { ascending: true })
+  ), "Could not check existing division bonuses");
 
   const alreadyPaid = new Set((existingRows || []).map(r => r.team_id));
 
@@ -1088,12 +1111,18 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   const currentSeasonNumber = currentSeason?.number ?? 1;
 
   // Get final standings
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("*, team:team_id(*)")
-    .eq("season_id", seasonId)
-    .order("total_points", { ascending: false });
-  throwIfSupabaseError(standingsError, "Could not load season standings for season end");
+  // #2951: season_standings er på 367/1000 rækker 25/7 og vokser med hver
+  // signup — pagineret via fetchAllRows. Sorteringen (total_points DESC) er
+  // IKKE unik, så et sekundært .order("id") tiebreak er nødvendigt for at
+  // sider ikke overlapper/springer rækker over ved lige points.
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("*, team:team_id(*)")
+      .eq("season_id", seasonId)
+      .order("total_points", { ascending: false })
+      .order("id", { ascending: true })
+  ), "Could not load season standings for season end");
 
   if (!standings?.length) {
     console.warn("  ⚠️  No standings found for season");
@@ -1210,18 +1239,27 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   // Repair-funktionen reparerer derfor nu kun board-snapshots og division-side-
   // effects, ikke finance-rows. Salary-repair (for historiske sæsoner der
   // sluttede før flytningen) håndteres separat via dedikeret script om nødvendigt.
-  const { data: existingSnapshots, error: snapshotCountError } = await supabaseClient
-    .from("board_plan_snapshots")
-    .select("team_id, board_id")
-    .eq("season_id", seasonId);
-  throwIfSupabaseError(snapshotCountError, "Could not check existing board snapshots");
+  // #2951: dedup-tjek mod board_plan_snapshots — 0 rækker 25/7 (ingen sæson
+  // har endnu afsluttet), men vokser med team-count × plan-lifecycle-events.
+  // Pagineret via fetchAllRows for at holde 1000-loft-klassen tom.
+  const existingSnapshots = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("board_plan_snapshots")
+      .select("team_id, board_id")
+      .eq("season_id", seasonId)
+      .order("id", { ascending: true })
+  ), "Could not check existing board snapshots");
 
-  const { data: standings, error: standingsError } = await supabaseClient
-    .from("season_standings")
-    .select("*, team:team_id(*)")
-    .eq("season_id", seasonId)
-    .order("total_points", { ascending: false });
-  throwIfSupabaseError(standingsError, "Could not load season standings for season-end repair");
+  // #2951: samme season_standings-pagineringsbehov som processSeasonEnd
+  // ovenfor (367/1000 rækker 25/7, .order("id") som stabilt tiebreak).
+  const standings = await fetchAllRowsOrThrow(() => (
+    supabaseClient
+      .from("season_standings")
+      .select("*, team:team_id(*)")
+      .eq("season_id", seasonId)
+      .order("total_points", { ascending: false })
+      .order("id", { ascending: true })
+  ), "Could not load season standings for season-end repair");
   if (!standings?.length) throw new Error("No standings found for season-end repair");
 
   const teams = await loadHumanSeasonEndTeams(supabaseClient);
