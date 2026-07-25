@@ -77,14 +77,11 @@ function createMockSupabase(initialState = {}) {
       is(col, val) {
         return chain(table, { ...filters, [col]: val }, orderBy, limit);
       },
-      // #2916 · carry-over-fasen bruger .in() + .range() (paginering via
-      // fetchAllRows). Uden dem kunne fasen ikke køre i mocken.
+      // #2916 · carry-over-fasen bruger .in() (hold-chunkede rytter-loads).
+      // .range() findes allerede ovenfor fra #2926's paginerings-støtte — den
+      // deferred variant er den rigtige, fordi den også respekterer .order().
       in(col, vals) {
-        return chain(table, { ...filters, [col]: { __in: new Set(vals) } }, orderBy, limit);
-      },
-      range(from, to) {
-        const rows = (state[table] || []).filter((row) => matchesFilters(row, filters));
-        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+        return chain(table, { ...filters, [col]: { __in: new Set(vals) } }, orderBy, limit, range);
       },
       order(col, opts) {
         return chain(table, filters, { col, asc: opts?.ascending ?? true }, limit);
@@ -313,7 +310,7 @@ test("buildTransitionPlan — managerens pending valg aktiveres og bærer basen"
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
     teams: [
-      { id: "team-1", name: "Picked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-1", name: "Picked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
     ],
     season_standings: [
       { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
@@ -344,7 +341,7 @@ test("buildTransitionPlan — låst flersæsons kontrakt beholdes (pending for e
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
     teams: [
-      { id: "team-1", name: "Locked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-1", name: "Locked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
     ],
     season_standings: [
       { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
@@ -377,7 +374,7 @@ test("buildTransitionPlan — signing-bonus på et pending 'loyal'-valg rapporte
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
     teams: [
-      { id: "team-1", name: "Loyal Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-1", name: "Loyal Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
     ],
     season_standings: [
       { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
@@ -404,10 +401,10 @@ test("buildTransitionPlan — realistisk blanding (låst + valgt + kontraktfri) 
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-06-22", end_date: null }],
     teams: [
-      { id: "t-locked", name: "Locked", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
-      { id: "t-expiring", name: "Expiring", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
-      { id: "t-picked", name: "Picked", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false },
-      { id: "t-silent", name: "Silent", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t-locked", name: "Locked", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "t-expiring", name: "Expiring", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "t-picked", name: "Picked", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "t-silent", name: "Silent", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
     ],
     season_standings: [
       { season_id: "season-1", team_id: "t-locked", division: 3, total_points: 400, rank_in_division: 1 },
