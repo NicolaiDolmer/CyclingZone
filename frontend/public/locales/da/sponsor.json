@@ -10,7 +10,7 @@
   },
   "offers": {
     "title": "Vælg din sponsor",
-    "subtitle": "Fem sponsorer, fem måder at tjene på — sæson {season}.",
+    "subtitle": "Fem sponsorer, fem måder at tjene på i sæson {season}.",
     "unitDefinition": "1 løbsdag = én etape dit hold stiller til start i.",
     "divisionPicker": "Se indtjening for en division",
     "divisionPill": "Division {division} · {count} løbsdage",
@@ -39,7 +39,7 @@
     "signing": "{amount} CZ$ underskriftsbonus, udbetales med det samme",
     "stageWin": "{amount} CZ$ pr. etapesejr",
     "podium": "{amount} CZ$ pr. podieplads (2.–3.)",
-    "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.) — bonusloft {cap} CZ$",
+    "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.). Bonusloft: {cap} CZ$",
     "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning"
   },
   "field": {
@@ -53,7 +53,7 @@
     "title": "Nuværende sponsor",
     "loading": "Indlæser sponsorkontrakt",
     "errorTitle": "Kunne ikke indlæse din sponsorkontrakt",
-    "error": "Intet er gået tabt — din kontrakt er i god behold. Prøv igen.",
+    "error": "Intet er gået tabt, og din kontrakt er i god behold. Prøv igen.",
     "retry": "Prøv igen",
     "none": "Ingen aktiv sponsorkontrakt.",
     "runsThrough": "Løber sæson {season} ud",
