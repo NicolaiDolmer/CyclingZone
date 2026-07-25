@@ -20,6 +20,13 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 const economySource = readFileSync(resolve(__dirname, "./economyEngine.js"), "utf8");
+const humanFilterSource = readFileSync(resolve(__dirname, "./humanTeamFilter.js"), "utf8");
+
+// #2852 · diskriminatoren blev centraliseret i humanTeamFilter.js. En hold-query
+// opfylder invarianten enten ved at chaine .eq()'erne selv ELLER ved at kalde den
+// fælles helper — og helperen selv hærdes af sin egen test nedenfor.
+const HUMAN_FILTER_PATTERN =
+  /applyHumanTeamFilter\(|\.eq\("is_ai",\s*false\)[\s\S]*\.eq\("is_bank",\s*false\)[\s\S]*\.eq\("is_frozen",\s*false\)/;
 
 // ── Invariant 1: bank ekskluderet fra økonomi-processering ──────────────────
 
@@ -29,8 +36,8 @@ test("loadHumanSeasonEndTeams ekskluderer bank-holdet (#1077)", () => {
   const block = economySource.slice(start, start + 800);
   assert.match(
     block,
-    /\.eq\("is_ai",\s*false\)[\s\S]*\.eq\("is_bank",\s*false\)[\s\S]*\.eq\("is_frozen",\s*false\)/,
-    "season-end team-filter skal chaine is_ai + is_bank + is_frozen",
+    HUMAN_FILTER_PATTERN,
+    "season-end team-filter skal chaine is_ai + is_bank + is_frozen (eller bruge applyHumanTeamFilter)",
   );
 });
 
@@ -43,9 +50,22 @@ test("processSeasonStart ekskluderer bank-holdet (#1077)", () => {
   const block = economySource.slice(start, end === -1 ? start + 2000 : end);
   assert.match(
     block,
-    /\.eq\("is_ai",\s*false\)[\s\S]*\.eq\("is_bank",\s*false\)[\s\S]*\.eq\("is_frozen",\s*false\)/,
-    "season-start team-filter skal chaine is_ai + is_bank + is_frozen",
+    HUMAN_FILTER_PATTERN,
+    "season-start team-filter skal chaine is_ai + is_bank + is_frozen (eller bruge applyHumanTeamFilter)",
   );
+});
+
+// #2852 · helperen er nu den ENE kilde til diskriminatoren, så den skal hærdes
+// direkte: fjerner nogen et flag her, falder alle økonomi-/notifikations-stier
+// samtidig — præcis den drift der lod test-kontiene få sponsor-payout.
+test("applyHumanTeamFilter dækker alle fire flag (#2852)", () => {
+  for (const flag of ["is_ai", "is_bank", "is_frozen", "is_test_account"]) {
+    assert.match(
+      humanFilterSource,
+      new RegExp(`"${flag}"`),
+      `humanTeamFilter.js skal filtrere på ${flag}`,
+    );
+  }
 });
 
 // ── Invariant 2: de fire /board-handlere guarder is_ai/is_bank/is_frozen ────
