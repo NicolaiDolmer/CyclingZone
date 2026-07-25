@@ -211,7 +211,8 @@
         "cobbled_classic": "Brosten",
         "puncheur": "Bakket",
         "hilly_classic": "Bakket",
-        "mountain_classic": "Bjerg"
+        "mountain_classic": "Bjerg",
+        "itt_classic": "Enkeltstart"
       },
       "stagesCount": "{n} etaper",
       "stageRow": "Etape {n}",

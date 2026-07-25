@@ -18,6 +18,8 @@ on:
       - 'scripts/i18n-check-lib-strings.mjs'
       - 'scripts/i18n-check-leaks.mjs'
       - 'scripts/i18n-leaks-baseline.json'
+      - 'scripts/i18n-check-terrain-coverage.mjs'
+      - 'scripts/i18n-check-terrain-coverage.test.mjs'
       - 'scripts/tone-check-em-dash.mjs'
       - 'scripts/tone-check-em-dash.test.mjs'
       - 'frontend/index.html'
@@ -124,6 +126,31 @@ jobs:
 
       - name: Run i18n lib-strings guard
         run: node scripts/i18n-check-lib-strings.mjs
+
+  terrain-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED (Refs #2896) — forward-guard for dynamisk-byggede terræn-i18n-nøgler
+    # (t(`terrain.${x}`)), som key-coverage IKKE ser: en nøgle der mangler
+    # SYMMETRISK i en+da er usynlig for en-vs-da-diffen (#2896 — "sprint" manglede
+    # i begge sprog efter #2605s flat→sprint-rename, 145/455 sæson-2-løb ramt).
+    # Tjekker CALENDAR_TERRAIN_BUCKETS (raceCalendar.js) mod planner.json og
+    # ARCHETYPE_PROFILES kind:"single" (raceStageProfileGenerator.js) mod
+    # rider.json — begge generator-kilder, ikke kun locale-filerne selv.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Test terrain-coverage guard
+        run: node --test scripts/i18n-check-terrain-coverage.test.mjs
+
+      - name: Run i18n terrain-coverage guard
+        run: node scripts/i18n-check-terrain-coverage.mjs
 
   leak-check:
     runs-on: ubuntu-latest

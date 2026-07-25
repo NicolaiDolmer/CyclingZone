@@ -211,7 +211,8 @@
         "cobbled_classic": "Cobbles",
         "puncheur": "Hilly",
         "hilly_classic": "Hilly",
-        "mountain_classic": "Mountain"
+        "mountain_classic": "Mountain",
+        "itt_classic": "Time trial"
       },
       "stagesCount": "{n} stages",
       "stageRow": "Stage {n}",
