@@ -227,7 +227,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       {/* #2849 bølge 1: rå box-shadow erstattet af 1px border-rule (border-r) —
           .auction-rider-cell giver opak cellebund (index.css), så kolonner
           bag den ikke skinner igennem ved horisontal scroll. */}
-      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-10 border-r border-cz-border ${imWinning ? "auction-rider-cell-winning" : ""}`}>
+      <td className={`auction-rider-cell px-3 py-1.5 min-w-[160px] sticky left-0 z-table-col border-r border-cz-border ${imWinning ? "auction-rider-cell-winning" : ""}`}>
         <div className="flex items-center gap-2">
           {r?.id && (
             <WatchlistStar
@@ -372,7 +372,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Byd */}
       {/* Samme border-rule-erstatning som rytter-cellen ovenfor. */}
-      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
+      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-table-col min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           roomBlocked ? (
             <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
@@ -1654,11 +1654,11 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
   return (
     // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
     // er nu den eneste adskillelse, jf. cz-table-recipen.
-    <thead className="sticky top-0 z-20 bg-cz-card">
+    <thead className="sticky top-0 z-table-head bg-cz-card">
       <tr className="border-b border-cz-border">
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
-          className={`px-3 py-3 text-left sticky left-0 z-30 bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
+          className={`px-3 py-3 text-left sticky left-0 z-table-head bg-cz-card border-r border-cz-border ${TH_BASE}`}>{t("table.rider")}</SortTh>
         {/* #228: Nation — samme sorterbare mønster som ryttersiden (NationCell). */}
         <SortTh sortKey="nationality_code" sort={activeSort("nationality_code") ? "nationality_code" : riderFiltersSort}
           sortDir={activeSortDir("nationality_code")} onSort={handleSort}
@@ -1713,7 +1713,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         ))}
         {/* Sticky bud-kolonne: 1px border-rule (border-l) erstatter den rå
             skygge; .auction-bid-cell giver opak cellebund (index.css). */}
-        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-30 border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
+        <th className={`auction-bid-cell px-3 py-3 text-left text-cz-3 sticky right-0 z-table-head border-l border-cz-border ${TH_BASE}`}>{t("table.bid")}</th>
       </tr>
     </thead>
   );
