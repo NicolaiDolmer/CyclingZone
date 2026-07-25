@@ -4,6 +4,83 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.59",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Terrain names show as words again, not raw codes",
+          "body": "The most common terrain in the season 2 calendar showed up as the raw code terrain.sprint in the season planner, and a newer race type showed a raw code on rider result lists. Both are translated properly now, and a new automatic check compares the game's terrain types against the translations so this class of gap cannot slip through again."
+        },
+        "da": {
+          "title": "Terrænnavne vises som ord igen, ikke rå koder",
+          "body": "Det mest almindelige terræn i sæson 2-kalenderen blev vist som den rå kode terrain.sprint i sæsonplanlæggeren, og en nyere løbstype viste en rå kode på rytteres resultatlister. Begge oversættes nu korrekt, og et nyt automatisk tjek sammenligner spillets terræntyper med oversættelserne, så den slags huller ikke kan slippe igennem igen."
+        },
+        "refs": [2896]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Sticky headers no longer cover the mobile menu and popups",
+          "body": "The app had two competing layering systems, so sticky page content could draw itself on top of the mobile navigation and dialog windows. Everything now sits on one shared layering scale: menus above page content, dialogs above menus, notifications on top. Reported by three managers in two days, and thank you for that."
+        },
+        "da": {
+          "title": "Faste sidehoveder lægger sig ikke længere over mobilmenuen og popups",
+          "body": "Appen havde to konkurrerende lag-systemer, så fast sideindhold kunne tegne sig oven på mobilnavigationen og dialogvinduer. Alt ligger nu på én fælles lag-skala: menuer over sideindhold, dialoger over menuer, notifikationer øverst. Rapporteret af tre managere på to dage, og tak for det."
+        },
+        "refs": [2880]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season planner tells you when the next season opens for planning",
+          "body": "Several managers could not find their way to planning season 2. The planner now shows a clear banner when the next season is ready, with a one-click switch, and the season selector has a visible label. A silent data error that could hide the season selector entirely is also fixed and monitored."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren fortæller dig når næste sæson åbner for planlægning",
+          "body": "Flere managere kunne ikke finde vej til at planlægge sæson 2. Planlæggeren viser nu et tydeligt banner når næste sæson er klar, med ét-kliks skift, og sæson-vælgeren har fået en synlig label. En tavs datafejl der helt kunne skjule sæson-vælgeren er også rettet og overvåges."
+        },
+        "refs": [2883]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help now explains what happens to your money at the season change",
+          "body": "A new FAQ entry walks through the money flow at the season change: sponsor renewal first, then sponsor payout, then salaries, loan interest and upkeep, all at the start of the new season. A help text that said the bottom 2 teams are relegated per group is also corrected: it is the bottom 4."
+        },
+        "da": {
+          "title": "Hjælpen forklarer nu hvad der sker med dine penge ved sæsonskiftet",
+          "body": "Et nyt FAQ-punkt gennemgår pengestrømmen ved sæsonskiftet: sponsor-fornyelse først, så sponsor-udbetaling, derefter lønninger, lånerenter og driftsomkostninger, alt sammen ved den nye sæsons start. En hjælpetekst der sagde at bund 2 rykker ned pr. pulje er også rettet: det er bund 4."
+        },
+        "refs": [2889]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Auctions on retired riders now cancel instead of completing",
+          "body": "An auction on a rider who retires at the season change could still complete, charging the buyer for a rider who can never race. Such auctions are now cancelled automatically, nobody is charged, and both parties are notified."
+        },
+        "da": {
+          "title": "Auktioner på pensionerede ryttere annulleres nu i stedet for at gennemføres",
+          "body": "En auktion på en rytter der pensionerer sig ved sæsonskiftet kunne stadig gennemføres, så køberen betalte for en rytter der aldrig kan køre løb. Sådanne auktioner annulleres nu automatisk, ingen bliver trukket, og begge parter får besked."
+        },
+        "refs": [2918]
+      }
+    ]
+  },
+  {
     "version": "7.58",
     "date": "2026-07-25",
     "label": "Beta",
