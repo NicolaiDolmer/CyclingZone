@@ -2545,19 +2545,24 @@ async function notifyManagerSafe(teamId, type, title, message, deps = {}, metada
         + ` · type=${type} code=${metadata?.messageCode ?? "n/a"} · ${error?.message || error}`
         + " — payroll fortsætter, beskeden er tabt for dette hold",
     );
-    try {
-      capture(error, {
-        tags: { cron: "season-payroll", notification_type: type },
-        teamId,
-        messageCode: metadata?.messageCode ?? null,
-        sourcePath: context.sourcePath ?? null,
-        seasonId: context.seasonId ?? null,
-      });
-    } catch (captureError) {
-      // Sentry må heller ikke kunne vælte kørslen. console.error ovenfor er
-      // allerede skrevet, så fejlen er ikke tavs.
-      console.error(`  ❌ [economy] captureException fejlede selv: ${captureError?.message || captureError}`);
-    }
+    // Ingen indre try/catch omkring capture: den ville være en svalgt catch
+    // (lint:catches, #2395) mod en fejltilstand der ikke kan opstå. Hele
+    // capture-kæden er allerede total:
+    //   - sentry.js captureException: `if (!enabled) return` → ren no-op når
+    //     Sentry ikke er initialiseret (tests, lokal kørsel)
+    //   - toSentryError: har sin egen try/catch om JSON.stringify
+    //   - normalizeSupabaseErrorMessage: `typeof message !== "string"` guard,
+    //     derefter kun regex/streng-operationer
+    //   - Sentry.captureException: fanger internt i SDK'en
+    // console.error ovenfor er desuden skrevet FØR dette kald, så selv i et
+    // umuligt worst case er fejlen allerede synlig i cron-loggen.
+    capture(error, {
+      tags: { cron: "season-payroll", notification_type: type },
+      teamId,
+      messageCode: metadata?.messageCode ?? null,
+      sourcePath: context.sourcePath ?? null,
+      seasonId: context.seasonId ?? null,
+    });
     return false;
   }
 }
