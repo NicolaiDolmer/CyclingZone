@@ -78,7 +78,7 @@
       "earlier": "Tidligere løb",
       "showAll": "Vis alle {count}",
       "showLess": "Vis færre",
-      "season": "Sæsonen til dato",
+      "season": "Denne sæson",
       "seasonRaces": "{count, plural, one {# løb} other {# løb}}",
       "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
       "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",

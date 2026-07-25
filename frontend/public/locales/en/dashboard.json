@@ -78,7 +78,7 @@
       "earlier": "Earlier races",
       "showAll": "Show all {count}",
       "showLess": "Show less",
-      "season": "Season to date",
+      "season": "This season",
       "seasonRaces": "{count, plural, one {# race} other {# races}}",
       "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
       "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",

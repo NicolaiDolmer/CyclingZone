@@ -175,6 +175,31 @@ export default function MyLatestResultCard({ data }) {
         </div>
       ) : (
         <>
+          {/* #2886 — sæsonen til dato ØVERST, som issuet foreskriver: den er
+              rammen om resten af kortet ("hvor står jeg?"), ikke facit efter
+              detaljerne. Labelen er kort ("Denne sæson") og spejler
+              "Dette løb"-labelen længere nede, så de to talpar aldrig kan
+              forveksles. */}
+          {seasonTotals && (
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-2 pb-3 mb-3 border-b border-cz-border">
+              {/* Løbstallet hører til rammen (hvor meget sæson er der bag
+                  tallene?), ikke til halen: målt på 360px endte det ellers som
+                  et løsrevet element efter præmiepengene på linje 2. */}
+              <span className={META_LABEL}>{t("dashboard:cards.myResult.season")}</span>
+              <span className="text-3xs text-cz-3">
+                {t("dashboard:cards.myResult.seasonRaces", { count: seasonTotals.races })}
+              </span>
+              <span className="text-xs text-cz-3">
+                {t("dashboard:cards.myResult.points")}{" "}
+                <span className="font-data font-bold text-cz-1 tabular-nums">{formatNumber(seasonTotals.points)}</span>
+              </span>
+              <span className="text-xs text-cz-3">
+                {t("dashboard:cards.myResult.prize")}{" "}
+                <span className="font-data font-bold text-cz-accent-t tabular-nums">{formatNumber(seasonTotals.prize_money)} CZ$</span>
+              </span>
+            </div>
+          )}
+
           <p className="text-cz-3 text-xs mb-3">
             {race.name}
             {" · "}
@@ -287,25 +312,6 @@ export default function MyLatestResultCard({ data }) {
                   <HistoryRow key={h.race_id} entry={h} t={t} />
                 ))}
               </ul>
-            </div>
-          )}
-
-          {/* #2886 — sæson til dato. Står i bund som summen af listen ovenfor,
-              samme placering som holdsidens resultattabel-total. */}
-          {seasonTotals && (
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-3 pt-3 border-t border-cz-border">
-              <span className={META_LABEL}>{t("dashboard:cards.myResult.season")}</span>
-              <span className="text-xs text-cz-3">
-                {t("dashboard:cards.myResult.points")}{" "}
-                <span className="font-data font-bold text-cz-1 tabular-nums">{formatNumber(seasonTotals.points)}</span>
-              </span>
-              <span className="text-xs text-cz-3">
-                {t("dashboard:cards.myResult.prize")}{" "}
-                <span className="font-data font-bold text-cz-accent-t tabular-nums">{formatNumber(seasonTotals.prize_money)} CZ$</span>
-              </span>
-              <span className="text-3xs text-cz-3">
-                {t("dashboard:cards.myResult.seasonRaces", { count: seasonTotals.races })}
-              </span>
             </div>
           )}
         </>

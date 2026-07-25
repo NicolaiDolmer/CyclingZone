@@ -40,6 +40,18 @@ test("#2886 begge nye sektioner er betingede — et svar uden historik renderer 
   assert.match(source, /\{seasonTotals && \(/, "sæson-totalen skal kun rendere når serveren har leveret den");
 });
 
+// Ejer-beslutning 2026-07-25: sæson-totalen står ØVERST (rammen om kortet),
+// ikke i bunden som facit. Rækkefølgen er en bevidst beslutning, ikke en
+// tilfældighed — lås den, ellers glider den tilbage ved næste refaktorering.
+test("#2886 sæson-totalen står ØVERST: før løbsnavnet, før historikken", () => {
+  const season = source.indexOf("{seasonTotals && (");
+  const raceLine = source.indexOf("{race.name}");
+  const history = source.indexOf("{history.length > 0 && (");
+  assert.ok(season !== -1 && raceLine !== -1 && history !== -1, "alle tre blokke skal findes");
+  assert.ok(season < raceLine, "sæson-blokken skal rendere før løbsnavnet");
+  assert.ok(raceLine < history, "historikken skal fortsat ligge under det seneste løb");
+});
+
 test("#2886 historikken foldes ved 5 rækker med en show all/show less-toggle", () => {
   assert.match(source, /const COLLAPSED_HISTORY_ROWS = 5;/);
   assert.match(
