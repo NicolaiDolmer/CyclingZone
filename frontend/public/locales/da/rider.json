@@ -653,6 +653,7 @@
     "minBid": "Min. bud: {amount} CZ$",
     "errorFallback": "Buddet kunne ikke placeres",
     "proxyErrorFallback": "Fejl ved sæt autobud",
+    "proxyRemoveErrorFallback": "Autobud-loftet kunne ikke fjernes. Det er stadig aktivt.",
     "proxy": {
       "display": "Autobud: max {amount} CZ$",
       "edit": "Ændr",
@@ -738,6 +739,8 @@
       "newContract": "Ny kontrakt",
       "newContractValue": "Til og med sæson {season}",
       "confirm": "Bekræft forlængelse",
+      "loadingTerms": "Henter vilkår…",
+      "working": "Forlænger…",
       "success": "Kontrakt forlænget.",
       "errorPrefix": "Kunne ikke forlænge:"
     },
@@ -750,6 +753,8 @@
       "freeHint": "Rytteren er uden kontrakt, så der er intet buyout-gebyr.",
       "cannotAfford": "Du har ikke råd til buyout-gebyret.",
       "confirm": "Fyr rytter",
+      "loadingTerms": "Henter vilkår…",
+      "working": "Fyrer…",
       "cancel": "Annullér",
       "success": "Rytter fyret.",
       "errorPrefix": "Kunne ikke fyre:"

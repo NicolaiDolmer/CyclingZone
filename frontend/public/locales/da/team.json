@@ -101,6 +101,8 @@
       "newContractLabel": "Ny kontrakt",
       "newContractValue": "Udløber efter S{season}",
       "confirmButton": "Forlæng kontrakt",
+      "loadingTermsButton": "Henter vilkår…",
+      "workingButton": "Forlænger…",
       "successMsg": "Kontrakt forlænget."
     },
     "demote": {

@@ -63,6 +63,48 @@ export const PATCHES = [
           "body": "En managers profilside, herunder sider for AI-styrede hold du når via transfer-historikken, kunne fejle ved indlæsning hvis noget af holdets data manglede. Den viser nu siden normalt, med en tom-tilstand hvor data mangler."
         },
         "refs": [2876]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Buttons that refused to work now tell you why",
+          "body": "The Bid button and the Save button in the auto-bid box went grey and silent whenever your amount was below the current minimum bid. Nothing explained that, so the click just seemed to do nothing. This happened most often when you reopened the auto-bid box on an auction whose price had risen past the limit you saved earlier, because the box fills in your old limit. Both buttons now stay clickable and show the exact amount you need to reach. Removing an auto-bid limit also shows that it is working, and tells you if it failed instead of leaving the limit quietly in place."
+        },
+        "da": {
+          "title": "Knapper der nægtede at virke fortæller nu hvorfor",
+          "body": "Byd-knappen og Gem-knappen i autobud-boksen blev grå og tavse hvis dit beløb lå under det aktuelle minimumsbud. Intet forklarede det, så klikket så bare ud som om det ikke gjorde noget. Det skete oftest når du åbnede autobud-boksen igen på en auktion hvor prisen var steget forbi det loft du gemte tidligere, fordi boksen udfylder dit gamle loft. Begge knapper kan nu klikkes og viser præcis hvilket beløb du skal op på. At fjerne et autobud-loft viser nu også at det er i gang, og siger til hvis det fejlede i stedet for at lade loftet blive stående i stilhed."
+        },
+        "refs": [2719, 2254]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Extending a contract shows that it is working",
+          "body": "When you opened the extend panel on a rider, the app fetched the renegotiated salary in the background while the confirm button sat there greyed out without a word. If that fetch was slow, the button looked ready but did nothing. The panel now shows a spinner and says whether it is loading the terms or running the extension, the button cannot fire twice, and the terms are refetched next time so you never confirm against an old salary. The same fix is on the squad page."
+        },
+        "da": {
+          "title": "Forlængelse af en kontrakt viser nu at den arbejder",
+          "body": "Når du åbnede forlæng-panelet på en rytter, hentede appen den genforhandlede løn i baggrunden mens bekræft-knappen stod grå uden et ord. Var hentningen langsom, så knappen klar ud men gjorde ingenting. Panelet viser nu en spinner og fortæller om det er vilkårene der hentes eller forlængelsen der kører, knappen kan ikke udløses to gange, og vilkårene hentes forfra næste gang så du aldrig bekræfter mod en gammel løn. Samme rettelse er lavet på trup-siden."
+        },
+        "refs": [2718]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "A facility purchase or plan renewal that fails now says so",
+          "body": "Buying or upgrading a facility closed the dialog whether or not the purchase went through, so a rejected purchase looked exactly like a completed one. Renewing a board plan had the same problem and no working indicator at all. Both now keep you informed: the dialog stays open with the reason if the purchase is refused, and the renew button shows that it is running and reports a failure instead of staying quiet."
+        },
+        "da": {
+          "title": "Et facilitetskøb eller en planfornyelse der fejler siger nu til",
+          "body": "Køb eller opgradering af en facilitet lukkede dialogen uanset om købet gik igennem, så et afvist køb så præcis ud som et gennemført. Fornyelse af en bestyrelsesplan havde samme problem og slet ingen indikator for at den arbejdede. Begge holder dig nu orienteret: dialogen bliver stående med årsagen hvis købet afvises, og forny-knappen viser at den kører og melder fejl i stedet for at tie."
+        },
+        "refs": [2718, 2719]
       }
     ]
   },

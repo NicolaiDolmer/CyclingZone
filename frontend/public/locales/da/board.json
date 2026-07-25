@@ -381,6 +381,7 @@
     "seasonGoalsLabel": "Sæsonmål",
     "outlookHeading": "Bestyrelsens vurdering",
     "renew": "Forny plan (status quo)",
+    "renewing": "Fornyer…",
     "renewLocked": "Genforhandling er låst resten af sæsonen.",
     "standingHeading": "Status",
     "negotiationOrder": "Planer forhandles længst først: 5 → 3 → 1 år."
@@ -1172,6 +1173,7 @@
   },
   "errors": {
     "loginRequired": "Du skal være logget ind.",
-    "requestFallback": "Kunne ikke sende bestyrelsesforespørgslen."
+    "requestFallback": "Kunne ikke sende bestyrelsesforespørgslen.",
+    "renewFallback": "Planen kunne ikke fornys. Intet blev ændret."
   }
 }

@@ -22,6 +22,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import { cycleSortState } from "../lib/riderSort";
 import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
@@ -93,9 +94,18 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
       // #2007: delt body-løs POST-helper (riderContractActions.js).
       const { ok, data } = await postRiderContractAction(rider.id, path);
       if (ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
-    } catch {
+      else {
+        setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
+        // #2718: en afvist kontrakt-handling var kun synlig i UI'et — nu tælles
+        // den også i Sentry, så vi kan se HVOR tit spillere bliver afvist.
+        reportActionFailure(`rider_${path.replace(/-/g, "_")}`, {
+          reason: data?.errorCode || data?.error,
+          context: { riderId: rider.id },
+        });
+      }
+    } catch (cause) {
       setMsgOk(false); setMsg(t("auth:error.connectionFailed"));
+      reportActionFailure(`rider_${path.replace(/-/g, "_")}`, { cause, context: { riderId: rider.id } });
     } finally {
       setLoading(false);
     }
@@ -271,9 +281,15 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                       </div>
                     )}
                   </div>
+                  {/* #2718: mens tilbuddet hentes var knappen disabled og tavs —
+                      samme døde klik som på rytterprofilen. Nu spinner + label. */}
                   <Button onClick={() => postRiderAction("extend-contract", "actionModal.extend.successMsg")}
-                    disabled={loading || !extendQuote} className="w-full">
-                    {loading ? t("actionModal.loadingShort") : t("actionModal.extend.confirmButton")}
+                    loading={loading || !extendQuote} className="w-full">
+                    {loading
+                      ? t("actionModal.extend.workingButton")
+                      : !extendQuote
+                        ? t("actionModal.extend.loadingTermsButton")
+                        : t("actionModal.extend.confirmButton")}
                   </Button>
                 </>
               )}

@@ -371,6 +371,20 @@ tr:hover .sticky-name-cell {
   .cz-chip-pulse { animation: none; }
 }
 
+/* #2718/#2719: puls-kvittering naar spilleren klikker et BLOKERET kontrol-element.
+   Noten (BlockedNote) gen-monteres via key og blinker kort, saa klikket faar et
+   svar i stedet for at foeles doedt. Diskret opacity-blink; INGEN glow (D-MOTION).
+   prefers-reduced-motion slaar pulsen fra (spec A6, hard krav) — begrundelsen
+   staar stadig som statisk tekst, saa informationen gaar aldrig tabt. */
+@keyframes cz-blocked-pulse {
+  0%, 100% { opacity: 1; }
+  30%      { opacity: .3; }
+}
+.cz-blocked-note { animation: cz-blocked-pulse .4s var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .cz-blocked-note { animation: none; }
+}
+
 /* ProgressMeter-fyld (#671 Plan 2c). Glidende bredde-overgang; INGEN glow.
    prefers-reduced-motion slaar overgangen fra (spec A6, hard krav). */
 .cz-progress-fill { transition: width var(--dur-slow) var(--ease); }

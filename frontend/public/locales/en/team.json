@@ -101,6 +101,8 @@
       "newContractLabel": "New contract",
       "newContractValue": "Expires after S{season}",
       "confirmButton": "Extend contract",
+      "loadingTermsButton": "Loading terms…",
+      "workingButton": "Extending…",
       "successMsg": "Contract extended."
     },
     "demote": {

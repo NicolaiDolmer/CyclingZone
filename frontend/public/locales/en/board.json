@@ -381,6 +381,7 @@
     "seasonGoalsLabel": "Season targets",
     "outlookHeading": "The board's assessment",
     "renew": "Renew plan (status quo)",
+    "renewing": "Renewing…",
     "renewLocked": "Renegotiation is locked for the rest of the season.",
     "standingHeading": "Standing",
     "negotiationOrder": "Plans are negotiated longest-first: 5 → 3 → 1 years."
@@ -1172,6 +1173,7 @@
   },
   "errors": {
     "loginRequired": "You must be logged in.",
-    "requestFallback": "Could not send the board request."
+    "requestFallback": "Could not send the board request.",
+    "renewFallback": "The plan could not be renewed. Nothing was changed."
   }
 }
