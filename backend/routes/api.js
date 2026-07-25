@@ -351,7 +351,7 @@ import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
-import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows } from "../lib/myTeamLatestResult.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
@@ -8734,6 +8734,18 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
 // rækkerne trimmes til top-10 + udbrud (trimRecapRows) før de sendes. Selve
 // recap-fortællingen bygges CLIENT-side af den eksisterende buildRaceRecap()
 // (frontend/src/lib/raceRecap.js) — ingen dubleret fortælle-logik her.
+//
+// #2886 (spillerønske, Discord 24/7): svaret bærer nu også `history` (de
+// foregående løb i sæsonen med bedste placering + point + præmiepenge) og
+// `season_totals` (akkumuleret point/præmie til dato). Begge kommer fra ÉN
+// aggregerende RPC — se MY_TEAM_SEASON_RACES_LIMIT nedenfor.
+//
+// Loftet er bevidst: en division kører max 46 løb pr. sæson (prod 25/7), så 20
+// dækker de seneste ~5 ugers løb — rigeligt til et dashboard-kort — mens
+// payloaden holdes under ~3 kB. Sæson-totalerne beregnes i RPC'en over ALLE
+// holdets løb (før LIMIT), så loftet aldrig kan gøre "sæson til dato" forkert.
+const MY_TEAM_SEASON_RACES_LIMIT = 20;
+
 router.get("/dashboard/my-latest-result", requireAuth, cached({
   namespace: "dashboard-my-latest-result",
   ttlMs: CACHE_TTL.dashboardMyLatestResult,
@@ -8777,7 +8789,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     const raceMeta = raceMetaById.get(raceId);
     const finalStage = raceMeta.stages ?? 1;
 
-    const [myRowsRes, recapRowsRes, incidentsRes] = await Promise.all([
+    const [myRowsRes, recapRowsRes, incidentsRes, seasonRacesRes] = await Promise.all([
       supabase
         .from("race_results")
         .select("result_type, stage_number, rank, finish_time, points_earned, prize_money, rider_id, rider_name, rider:rider_id(id, firstname, lastname, nationality_code)")
@@ -8796,12 +8808,38 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         .from("race_incidents")
         .select("stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(firstname, lastname)")
         .eq("race_id", raceId),
+      // #2886: sæson-historik + akkumulerede totaler i ÉT aggregerende kald.
+      // Aggregeringen SKAL blive i Postgres: et etableret hold har 1.400-4.300
+      // race_results-rækker i sæsonen, og at hente dem alle og gruppere pr. løb
+      // i Node er samme mønster som gav ~8s Consecutive-HTTP i #2692.
+      supabase.rpc("dashboard_my_team_season_races", {
+        p_team_id: req.team.id,
+        p_season_id: season.id,
+        p_league_division_id: req.team.league_division_id ?? null,
+        p_limit: MY_TEAM_SEASON_RACES_LIMIT,
+      }),
     ]);
     if (myRowsRes.error) throw myRowsRes.error;
     if (recapRowsRes.error) throw recapRowsRes.error;
     // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
     // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
     const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+
+    // #2886 historik-fejl kastes — MED én snæver undtagelse: "funktionen findes
+    // ikke" (PostgREST PGRST202 / Postgres 42883) i vinduet mellem merge og
+    // anvendt migration. Den gren degraderer til INGEN historik (history: [],
+    // season_totals: null → sektionerne skjules), i stedet for at 500'e og
+    // dermed fjerne HELE det eksisterende seneste-løb-kort. Alt andet (timeout,
+    // permission, SQL-fejl) kastes som ægte fejl — ingen tavs `|| []`.
+    if (seasonRacesRes.error) {
+      const code = seasonRacesRes.error.code;
+      if (code !== "PGRST202" && code !== "42883") throw seasonRacesRes.error;
+      captureException(seasonRacesRes.error);
+    }
+    const { history, season_totals } = buildSeasonHistory({
+      rows: seasonRacesRes.error ? [] : (seasonRacesRes.data || []),
+      latestRaceId: raceId,
+    });
 
     const { placements, stage_wins, totals } = summarizeTeamRace({
       raceMeta,
@@ -8826,6 +8864,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       placements,
       stage_wins,
       totals,
+      // #2886: de foregående løb (uden det viste) + sæson til dato.
+      history,
+      season_totals,
       recap: {
         results: trimRecapRows(recapRowsRes.data || []),
         incidents,

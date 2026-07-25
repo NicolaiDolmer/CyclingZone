@@ -14,13 +14,32 @@ import { supabase } from "../lib/supabase";
 // display-font som rytter-profilen), resten kompakt, plus løbs-recap-momentet
 // fra den eksisterende buildRaceRecap() og totaler (point/præmie).
 //
+// #2886 (spillerønske, Discord 24/7 — "Any chance we can get the results like
+// that more than just the last race?"): kortet viser nu også de FOREGÅENDE løb i
+// sæsonen (bedste placering + point + præmiepenge pr. løb) og en sæson-total i
+// bunden. Formatet er bevidst det samme som det roste: placering + point + penge
+// i ét blik, ikke en fuld resultattabel. Aggregeringen sker i Postgres
+// (dashboard_my_team_season_races), ikke her.
+//
 // data-kontrakt (GET /api/dashboard/my-latest-result):
 //   null      → fetch ikke landet (eller fejlet) → render intet (ingen død boks)
 //   race:null → holdet har ingen finaliserede løb endnu → empty state m. kalender-CTA
-//   ellers    → { race: { ..., seen }, placements, stage_wins, totals, recap }
+//   ellers    → { race: { ..., seen }, placements, stage_wins, totals,
+//                 history: [{ race_id, name, best_rank, points, prize_money }],
+//                 season_totals: { points, prize_money, races } | null,
+//                 recap }
+//   history: [] / season_totals: null → sektionerne udelades (fx før RPC-
+//   migrationen er anvendt) uden at røre det oprindelige seneste-løb-kort.
 
 const API = import.meta.env.VITE_API_URL;
 const MAX_SECONDARY_ROWS = 4;
+// Foldet historik: 5 rækker holder kortet på dashboard-højde; resten er ét klik
+// væk (samme "Show all N"-idiom som løbssidens resultattabeller, #2081).
+const COLLAPSED_HISTORY_ROWS = 5;
+
+// Meta-label-opskriften fra docs/design/PAGE_TEMPLATES.md (card meta label:
+// data-font, text-2xs, uppercase, tracking .08em, --text-3).
+const META_LABEL = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 
 function placementName(p) {
   if (p.firstname || p.lastname) return `${p.firstname ?? ""} ${p.lastname ?? ""}`.trim();
@@ -66,9 +85,40 @@ function useSeenBadge(race) {
   return isNew;
 }
 
+// #2886 — én række pr. tidligere løb: bedste placering, løbsnavn, point og
+// præmiepenge. Tallene står i en fast højre-kolonne (point over præmie) så de
+// flugter lodret på tværs af rækker og aldrig konkurrerer med løbsnavnet om
+// pladsen: på 320px mobil truncater navnet i stedet for at skubbe tal ud i
+// vandret scroll (54,9% af besøg er mobil).
+function HistoryRow({ entry, t }) {
+  return (
+    <li className="flex items-center gap-3 py-1.5 border-b border-cz-border last:border-0">
+      <span className="font-data text-xs w-8 text-right text-cz-3 tabular-nums flex-shrink-0">
+        {entry.best_rank != null ? `#${entry.best_rank}` : "—"}
+      </span>
+      <Link
+        to={`/races/${entry.race_id}`}
+        state={{ from: "dashboard" }}
+        className="flex-1 min-w-0 text-cz-2 text-sm hover:text-cz-accent-t transition-colors truncate"
+      >
+        {entry.name || "—"}
+      </Link>
+      <span className="flex-shrink-0 text-right leading-tight">
+        <span className="block font-data text-xs font-bold text-cz-1 tabular-nums">
+          {t("dashboard:cards.myResult.pointsShort", { value: formatNumber(entry.points) })}
+        </span>
+        <span className="block font-data text-3xs text-cz-3 tabular-nums">
+          {formatNumber(entry.prize_money)} CZ$
+        </span>
+      </span>
+    </li>
+  );
+}
+
 export default function MyLatestResultCard({ data }) {
   const { t } = useTranslation(["dashboard", "races"]);
   const isNew = useSeenBadge(data?.race);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   // Recap-momentet genbruger den eksisterende fortælle-logik + races-namespacets
   // oversættelser 1:1 (ingen dublerede strenge). Backend har trimmet rækkerne
@@ -85,7 +135,15 @@ export default function MyLatestResultCard({ data }) {
 
   if (!data) return null;
 
-  const { race, placements = [], stage_wins: stageWins = 0, totals } = data;
+  const {
+    race,
+    placements = [],
+    stage_wins: stageWins = 0,
+    totals,
+    history = [],
+    season_totals: seasonTotals = null,
+  } = data;
+  const visibleHistory = historyExpanded ? history : history.slice(0, COLLAPSED_HISTORY_ROWS);
 
   return (
     <Card className="p-5 mb-4">
@@ -183,7 +241,11 @@ export default function MyLatestResultCard({ data }) {
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-cz-border">
+          {/* Totalerne for DETTE løb. Meta-labelen er ny med #2886: uden den
+              stod to identiske "Points / Prize money"-par i samme kort (løbet og
+              sæsonen) uden at sige hvad der var hvad. */}
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-3 pt-3 border-t border-cz-border">
+            <span className={META_LABEL}>{t("dashboard:cards.myResult.thisRace")}</span>
             {stageWins > 0 && (
               <span className="text-xs text-cz-1 font-medium">
                 {t("dashboard:cards.myResult.stageWins", { count: stageWins })}
@@ -191,15 +253,61 @@ export default function MyLatestResultCard({ data }) {
             )}
             <span className="text-xs text-cz-3">
               {t("dashboard:cards.myResult.points")}{" "}
-              <span className="font-mono font-bold text-cz-1">{formatNumber(totals?.points || 0)}</span>
+              <span className="font-data font-bold text-cz-1 tabular-nums">{formatNumber(totals?.points || 0)}</span>
             </span>
             {(totals?.prize_money || 0) > 0 && (
               <span className="text-xs text-cz-3">
                 {t("dashboard:cards.myResult.prize")}{" "}
-                <span className="font-mono font-bold text-cz-accent-t">{formatNumber(totals.prize_money)} CZ$</span>
+                <span className="font-data font-bold text-cz-accent-t tabular-nums">{formatNumber(totals.prize_money)} CZ$</span>
               </span>
             )}
           </div>
+
+          {/* #2886 — de foregående løb. Det viste løb er allerede filtreret fra
+              server-side, så listen starter ved løbet FØR det. */}
+          {history.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-cz-border">
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className={META_LABEL}>{t("dashboard:cards.myResult.earlier")}</span>
+                {history.length > COLLAPSED_HISTORY_ROWS && (
+                  <button
+                    type="button"
+                    onClick={() => setHistoryExpanded((v) => !v)}
+                    aria-expanded={historyExpanded}
+                    className="text-xs font-medium text-cz-accent-t hover:underline flex-shrink-0"
+                  >
+                    {historyExpanded
+                      ? t("dashboard:cards.myResult.showLess")
+                      : t("dashboard:cards.myResult.showAll", { count: history.length })}
+                  </button>
+                )}
+              </div>
+              <ul className="flex flex-col">
+                {visibleHistory.map((h) => (
+                  <HistoryRow key={h.race_id} entry={h} t={t} />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* #2886 — sæson til dato. Står i bund som summen af listen ovenfor,
+              samme placering som holdsidens resultattabel-total. */}
+          {seasonTotals && (
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-3 pt-3 border-t border-cz-border">
+              <span className={META_LABEL}>{t("dashboard:cards.myResult.season")}</span>
+              <span className="text-xs text-cz-3">
+                {t("dashboard:cards.myResult.points")}{" "}
+                <span className="font-data font-bold text-cz-1 tabular-nums">{formatNumber(seasonTotals.points)}</span>
+              </span>
+              <span className="text-xs text-cz-3">
+                {t("dashboard:cards.myResult.prize")}{" "}
+                <span className="font-data font-bold text-cz-accent-t tabular-nums">{formatNumber(seasonTotals.prize_money)} CZ$</span>
+              </span>
+              <span className="text-3xs text-cz-3">
+                {t("dashboard:cards.myResult.seasonRaces", { count: seasonTotals.races })}
+              </span>
+            </div>
+          )}
         </>
       )}
     </Card>

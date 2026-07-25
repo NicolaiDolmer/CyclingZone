@@ -73,6 +73,13 @@
       "moreRiders": "+{count, plural, one {# rytter mere} other {# ryttere mere}}",
       "points": "Point",
       "prize": "Præmiepenge",
+      "pointsShort": "{value} pt",
+      "thisRace": "Dette løb",
+      "earlier": "Tidligere løb",
+      "showAll": "Vis alle {count}",
+      "showLess": "Vis færre",
+      "season": "Sæsonen til dato",
+      "seasonRaces": "{count, plural, one {# løb} other {# løb}}",
       "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
       "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",
       "emptyCta": "Åbn løbskalenderen →"
