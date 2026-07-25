@@ -145,12 +145,6 @@
       "colour": 1,
       "emoji": 0
     },
-    "frontend/src/components/admin/shared/AdminTabs.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
-    },
     "frontend/src/components/admin/shared/seasonEndedToast.js": {
       "hex": 0,
       "slop": 0,

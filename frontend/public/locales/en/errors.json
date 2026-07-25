@@ -166,6 +166,12 @@
     "feedback_invalid_category": "Invalid category",
     "feedback_message_required": "Message is required",
     "feedback_message_too_long": "Message is too long",
-    "feedback_insert_failed": "Could not submit feedback"
+    "feedback_insert_failed": "Could not submit feedback",
+    "feedback_missing_id": "Missing feedback id",
+    "feedback_invalid_status": "Invalid status",
+    "feedback_not_found": "Feedback not found",
+    "feedback_reply_required": "Reply is required",
+    "feedback_reply_too_long": "Reply is too long",
+    "feedback_already_replied": "This message has already been answered"
   }
 }

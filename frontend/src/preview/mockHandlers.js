@@ -231,7 +231,10 @@ export function managerProfile(teamId) {
   };
 }
 
-export function apiResponse(pathname) {
+// `search` er valgfri (default "") så eksisterende kaldesteder — Playwright-
+// fixtures og de øvrige preview-ruter — er uændrede. Kun ruter der faktisk
+// filtrerer server-side (feedback-indbakken) læser den.
+export function apiResponse(pathname, search = "") {
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
   if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
@@ -410,5 +413,61 @@ export function apiResponse(pathname) {
   if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
 
+  // #2842 admin-feedback-indbakke. Uden en seed her ville fladen stå tom på
+  // preview, og ejeren kunne ikke se den før den var live (det har bidt før).
+  // Indholdet er OPDIGTET — ægte indsendelser er fritekst fra spillere og hører
+  // ikke til i et committed seed.
+  if (pathname.endsWith("/api/admin/feedback")) return feedbackInboxResponse(search);
+
   return {};
 }
+
+// Filtrerer på status/kategori som den ægte route gør, så preview-fladen ikke
+// viser "Nye 1" ved siden af tre rækker.
+function feedbackInboxResponse(search) {
+  const params = new URLSearchParams(search || "");
+  const status = params.get("status");
+  const category = params.get("category");
+  const items = SEED_FEEDBACK_INBOX.items.filter(
+    (i) => (!status || i.status === status) && (!category || i.category === category)
+  );
+  return { ...SEED_FEEDBACK_INBOX, items };
+}
+
+// Bevidst kun ét "svaret"-eksempel, så både den ubesvarede og den besvarede
+// tilstand er synlig i preview uden at man skal skifte filter.
+const SEED_FEEDBACK_INBOX = {
+  items: [
+    {
+      id: "fb-3", seq: 3, created_at: "2026-07-25T18:42:00.000Z",
+      category: "bug", status: "new",
+      message: "The transfer summary says cash payment positive means I receive money, but my balance went down after I accepted an offer. Either the label is backwards or the payment is.",
+      page_path: "/transfers", viewport: "1440x900",
+      reply_message: null, replied_at: null,
+      user: { id: "u-3", username: "Bergfahrer", email: "bergfahrer@example.com" },
+      team: { id: "team-3", name: "Alpenwerk Pro" },
+    },
+    {
+      id: "fb-2", seq: 2, created_at: "2026-07-24T09:15:00.000Z",
+      category: "idea", status: "in_progress",
+      message: "Would love to be able to compare two riders side by side before bidding. Right now I have to open two tabs and flip between them during the auction.",
+      page_path: "/auctions", viewport: "390x844",
+      reply_message: null, replied_at: null,
+      user: { id: "u-2", username: "Domestique", email: "domestique@example.com" },
+      team: { id: "team-2", name: "Nordkap Cycling" },
+    },
+    {
+      id: "fb-1", seq: 1, created_at: "2026-07-22T20:03:00.000Z",
+      category: "feedback", status: "closed",
+      message: "Really enjoying the season calendar. One thing: the race list does not make it obvious which races my riders are already entered in.",
+      page_path: "/races", viewport: "1280x800",
+      reply_message: "Good catch. Entered races now show a jersey marker in the race list, shipping with this week's patch.",
+      replied_at: "2026-07-23T07:30:00.000Z",
+      user: { id: "u-1", username: "Rouleur", email: "rouleur@example.com" },
+      team: null,
+    },
+  ],
+  next_cursor: null,
+  limit: 25,
+  counts: { new: 1, in_progress: 1, closed: 1, total: 3 },
+};

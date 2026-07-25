@@ -117,6 +117,12 @@ import {
 import { syncAllDivisionRoles } from "../lib/discordRoleSync.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
 import {
+  listFeedbackInbox,
+  getFeedbackCounts,
+  setFeedbackStatus,
+  replyToFeedback,
+} from "../lib/feedbackInbox.js";
+import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
   computeContractExtension,
@@ -10560,7 +10566,11 @@ router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
   }).select("id").single();
 
   if (error) {
+    // #2842: en fejlende feedback-skrivning forsvandt tidligere i konsollen —
+    // ingen Sentry, ingen Discord (mirroret kører først EFTER insert), så en
+    // spiller kunne få "kunne ikke sende" uden at nogen nogensinde så hvorfor.
     console.error("[feedback] insert failed:", error.message);
+    captureException(error);
     return res.status(500).json({ error: "Could not submit feedback", errorCode: "feedback_insert_failed" });
   }
 
@@ -10574,6 +10584,58 @@ router.post("/feedback", requireAuth, feedbackLimiter, async (req, res) => {
   }).catch(err => console.error("[feedback] discord mirror failed:", err.message));
 
   res.json({ ok: true, id: data.id });
+});
+
+// ── Admin-indbakke (#2842) ───────────────────────────────────────────────────
+// player_feedback er default-deny for anon/authenticated (RLS ENABLED, nul
+// policies + REVOKE ALL i database/2026-07-26-player-feedback-inbox.sql), så
+// læsning KAN kun ske via service-role. Derfor requireAdmin på alle tre:
+// indsendelserne er fritekst fra spillere og kan indeholde personoplysninger.
+
+// GET /api/admin/feedback — keyset-pagineret indbakke (nyeste først).
+router.get("/admin/feedback", requireAdmin, async (req, res) => {
+  try {
+    const { status, category, limit, cursor } = req.query;
+    const [page, counts] = await Promise.all([
+      listFeedbackInbox({ supabase, status, category, limit, cursor }),
+      getFeedbackCounts({ supabase }),
+    ]);
+    res.json({ ...page, counts });
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/feedback/:id/status — triage new → in_progress → closed.
+router.patch("/admin/feedback/:id/status", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await setFeedbackStatus({
+      supabase,
+      id: req.params.id,
+      status: req.body?.status,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/feedback/:id/reply — svar spilleren som in-app-notifikation.
+router.post("/admin/feedback/:id/reply", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await replyToFeedback({
+      supabase,
+      id: req.params.id,
+      adminUserId: req.user.id,
+      reply: req.body?.reply,
+    });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

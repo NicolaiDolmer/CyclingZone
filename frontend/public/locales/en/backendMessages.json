@@ -62,6 +62,11 @@
     }
   },
   "notif": {
+    "admin": {
+      "feedbackReply": {
+        "title": "Reply to your message"
+      }
+    },
     "loanCreatedShort": {
       "title": "Loan created",
       "message": "You took out a short-term loan of {principal} CZ$. Fee: {fee} CZ$. Total repayment: {totalOwed} CZ$."

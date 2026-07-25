@@ -166,6 +166,12 @@
     "feedback_invalid_category": "Ugyldig kategori",
     "feedback_message_required": "Besked er påkrævet",
     "feedback_message_too_long": "Beskeden er for lang",
-    "feedback_insert_failed": "Kunne ikke sende feedback"
+    "feedback_insert_failed": "Kunne ikke sende feedback",
+    "feedback_missing_id": "Manglende feedback-id",
+    "feedback_invalid_status": "Ugyldig status",
+    "feedback_not_found": "Feedback ikke fundet",
+    "feedback_reply_required": "Svar er påkrævet",
+    "feedback_reply_too_long": "Svaret er for langt",
+    "feedback_already_replied": "Denne besked er allerede besvaret"
   }
 }
