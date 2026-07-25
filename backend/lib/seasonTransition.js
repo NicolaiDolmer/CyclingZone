@@ -86,6 +86,16 @@ async function getMaterializeTierCalendars() {
   return materializeTierCalendarsImpl;
 }
 
+// #2910 + #2911 · Lazy import (samme mønster som ovenstående) — sæsonstart-hooksene
+// er flag-gatede og fail-safe OFF, så modulet loades kun når transitionen kører.
+let runSeasonStartHooksImpl;
+async function getRunSeasonStartHooks() {
+  if (!runSeasonStartHooksImpl) {
+    runSeasonStartHooksImpl = (await import("./seasonStartHooks.js")).runSeasonStartHooks;
+  }
+  return runSeasonStartHooksImpl;
+}
+
 let runRaceEntryGeneratorImpl;
 async function getRunRaceEntryGenerator() {
   if (!runRaceEntryGeneratorImpl) {
@@ -1056,6 +1066,22 @@ export async function transitionToNextSeason({
       extra: { fromSeasonId, toSeasonNumber: plan.to_season.number },
     });
   }
+
+  // ─── #2910 + #2911 · SÆSONSTART-HOOKS (ENESTE KALDEPUNKT) ──────────────────
+  // To flag-gatede mekanikker der begge er fail-safe OFF (= nuværende adfærd):
+  //   season_fatigue_reset_enabled   → sæsonskifte-restitution (#2910)
+  //   season_academy_intake_enabled  → sæson-optagelse til akademiet (#2911)
+  // Al logik bor i backend/lib/seasonStartHooks.js + de to nye moduler; her står
+  // KUN kaldet, så filen kan rebases uden konflikt. Kører EFTER retirement_release
+  // (progression + akademi-graduering er afsluttet, så optagelsen ser den rigtige
+  // bestand) og FØR kalender/entry-generatoren. Kaster aldrig.
+  const runSeasonStartHooksFn = deps.runSeasonStartHooks ?? (await getRunSeasonStartHooks());
+  log.push(...(await runSeasonStartHooksFn({
+    supabase,
+    now: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
+    toSeasonNumber: plan.to_season.number,
+  })));
+  // ─── slut #2910 + #2911 ────────────────────────────────────────────────────
 
   // #1704 · Per-division-kalender (forever). Gated bag auto_calendar_enabled (fail-safe OFF):
   // uden flaget sker INTET, så en buggy auto-kalender aldrig spammer en live sæson
