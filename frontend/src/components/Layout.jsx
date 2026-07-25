@@ -530,12 +530,22 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-cz-body flex">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-overlay">
+      {/* Desktop sidebar — persistent nav chrome (like MobileQuickNav), NOT a
+          transient overlay: it's always mounted, main content is pushed right
+          via md:ms-52 so nothing legitimately competes with it spatially.
+          z-overlay is reserved for dismissible layers (the mobile drawer
+          below, backdrops, tours) — giving the static sidebar that tier
+          buried anything portaled near it (#2880 CI regression: the
+          LanguageSwitcher's portaled dropdown, anchored inside this sidebar's
+          footer, uses a fixed z-index and was left below it). z-nav keeps the
+          sidebar above sticky page content while staying under dropdown-tier
+          portals/modals/toasts. */}
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-nav">
         <SidebarContent {...sidebarProps} onNav={() => {}} />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — genuinely transient/dismissible (backdrop +
+          click-away), so z-overlay is correct here. */}
       {mobileOpen && (
         <div className="fixed inset-0 z-overlay md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />

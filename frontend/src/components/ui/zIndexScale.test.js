@@ -59,6 +59,46 @@ test("#2880: ingen raw z-index på fixed-elementer uden om token-skalaen", () =>
   );
 });
 
+// #2880 follow-up (CI-caught regression, same PR): the first guard above only
+// scans `className` text for the word `fixed` — it MISSED LanguageSwitcher.jsx,
+// which sets `position: "fixed"` via an inline `style={{...}}` prop (portaled
+// dropdown, needed for viewport-flip positioning) while its raw z-index lived
+// in a separate `className`. That dropdown lost to the desktop sidebar once
+// the sidebar was migrated to a token, because raw z-50 < any 1000+ token.
+// This guard closes that gap: find `position: "fixed"` inside an OPEN
+// `style={{` block, then look forward (same tag, stopping at the next `<`) for
+// a `className` carrying a raw z-index.
+test("#2880: ingen raw z-index på position:fixed sat via inline style (LanguageSwitcher-klassen)", () => {
+  const offenders = [];
+  for (const file of walk(srcRoot)) {
+    const src = readFileSync(file, "utf8");
+    const styleFixedRe = /position:\s*["']fixed["']/g;
+    let m;
+    while ((m = styleFixedRe.exec(src))) {
+      const before = src.slice(Math.max(0, m.index - 200), m.index);
+      const styleOpenIdx = before.lastIndexOf("style={{");
+      if (styleOpenIdx === -1) continue; // not actually inside a style prop
+      if (before.slice(styleOpenIdx).includes("}}")) continue; // that style block already closed — unrelated match
+
+      const styleCloseIdx = src.indexOf("}}", m.index);
+      if (styleCloseIdx === -1) continue;
+      const forward = src.slice(styleCloseIdx, styleCloseIdx + 1000);
+      const nextTagIdx = forward.indexOf("<");
+      const scope = nextTagIdx === -1 ? forward : forward.slice(0, nextTagIdx);
+      const classMatch = scope.match(/className\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\})/);
+      const value = classMatch ? (classMatch[1] ?? classMatch[2] ?? "") : "";
+      if (RAW_Z.test(value)) {
+        offenders.push(`${file.slice(srcRoot.length).replace(/\\/g, "/")}: style position:fixed + className "${value.trim().replace(/\s+/g, " ").slice(0, 90)}"`);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `position:"fixed" sat via inline style skal STADIG bruge token-skalaen (z-dropdown/z-sticky/z-nav/z-overlay/z-modal/z-toast) i className — ikke kun Tailwind-klassen \`fixed\` (#2880):\n${offenders.join("\n")}`,
+  );
+});
+
 test("tailwind.config.js zIndex-skalaen er de 6 kanoniske lag i stigende rækkefølge", () => {
   const tw = readFileSync(join(srcRoot, "..", "tailwind.config.js"), "utf8");
   const m = tw.match(/zIndex:\s*\{([^}]*)\}/);
