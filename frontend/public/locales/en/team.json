@@ -108,6 +108,8 @@
   "profile": {
     "back": "← Back",
     "notFound": "Team not found",
+    "loadError": { "message": "Couldn't load the team. Nothing was lost. Try again.", "retry": "Try again" },
+    "tabsAriaLabel": "Team profile sections",
     "yourTeam": "Your team",
     "managerLabel": "Manager: {name}",
     "division": "Division {n}",
@@ -203,8 +205,9 @@
     "errorDescription": "Staff and facilities couldn't be loaded right now."
   },
   "manager": {
-    "back": "← Back",
+    "back": "Back",
     "notFound": "Team not found",
+    "loadError": { "message": "Couldn't load this manager's profile. Nothing was lost. Try again.", "retry": "Try again" },
     "yourTeam": "Your team",
     "managerPrefix": "Manager:",
     "division": "Division {n}",

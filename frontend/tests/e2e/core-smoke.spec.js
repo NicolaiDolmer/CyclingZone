@@ -141,6 +141,30 @@ const TRANSLATED_PAGE_SMOKE = [
     da: [/aldrig/i, /Online nu/],
     rawKeys: ["team:profile.managerLabel", "profile.managerLabel", "time.never"],
   },
+  // #2849 bølge 4-regression: help/rules/patchnotes lazy-loades via HttpBackend
+  // (INLINE_EXEMPT). Uden `partialBundledLanguages: true` kalder i18next ALDRIG
+  // backenden når `resources` er sat inline → namespaces "loader" som tomme,
+  // `ready` flipper true og siderne renderer rå nøgler (help crashede på
+  // returnObjects). Slap gennem lokalt fordi INGEN spec asserterede indhold på
+  // de tre sider — disse tre entries er guarden mod hele klassen.
+  {
+    path: "/help",
+    en: [/Everything you need to know about Cycling Zone Manager/i, /Getting started/i],
+    da: [/Alt du skal vide om Cycling Zone Manager/i, /Kom i gang/i],
+    rawKeys: ["help:page.title", "page.subtitle", "sections.start.label"],
+  },
+  {
+    path: "/rules",
+    en: [/limits, rates and formulas/i, /Squad cap/i],
+    da: [/grænser, satser og formler/i, /Trup-loft|Truploft|Truppens/i],
+    rawKeys: ["rules:page.title", "page.intro", "sections.squad.label"],
+  },
+  {
+    path: "/patch-notes",
+    en: [/What's new in Cycling Zone Manager/i],
+    da: [/Hvad er nyt i Cycling Zone Manager/i],
+    rawKeys: ["patchnotes:title", "search.placeholder", "category.all"],
+  },
 ];
 
 async function forceEnglish(page) {

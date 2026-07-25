@@ -1882,9 +1882,19 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
             .update({ division: division - 1, league_division_id: parentPoolId })
             .eq("id", s.team_id);
           throwIfSupabaseError(error, `Could not promote team ${s.team_id}`);
+          // #2164: var hardkodet dansk (ingen metadata) mens relegation nedenfor
+          // allerede havde titleCode/messageCode — EN-first fallback + i18n-koder
+          // så EN-brugere ikke længere får rå dansk tekst (frontend-nøglerne
+          // notif.divisionPromoted.* fandtes allerede, ubrugte, i backendMessages.json).
           await notifyManager(
-            s.team_id, "board_update", "Oprykket! 🎉",
-            `Tillykke! Dit hold rykker op til Division ${division - 1}`, notificationDeps
+            s.team_id, "board_update", "Promoted! 🎉",
+            `Congratulations! Your team moves up to Division ${division - 1}.`, notificationDeps,
+            {
+              titleCode: "notif.divisionPromoted.title",
+              titleParams: {},
+              messageCode: "notif.divisionPromoted.message",
+              messageParams: { division: division - 1 },
+            }
           );
           promoted++;
         }
@@ -1953,20 +1963,41 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   // og migration-apply, hvor recompute_season_standings endnu ikke findes (PGRST202).
   // Semantik er beviseligt ækvivalent (verificeret read-only mod prod, se migrationen).
   if (!deps.forceLegacy && typeof supabaseClient.rpc === "function") {
-    const { data, error } = await supabaseClient.rpc("recompute_season_standings", { p_season_id: seasonId });
-    if (!error) {
+    // withSupabaseRetry (CYCLINGZONE-3D, 24/7): recompute'en er en fuld re-derivation
+    // fra race_results — inhærent idempotent, så et retry er sikkert. Under samtidige
+    // etape-afviklinger kan den sprænge de 8 s statement_timeout; uden retry kastede
+    // det op i simulateStageByIndex og afbrød etapens berigelse (runs/moments/
+    // incidents + træthed) PERMANENT, fordi stages_completed allerede var bumpet.
+    let data;
+    let rpcSucceeded = false;
+    try {
+      data = await withSupabaseRetry(async () => {
+        const { data: rpcData, error } = await supabaseClient.rpc(
+          "recompute_season_standings",
+          { p_season_id: seasonId }
+        );
+        // Den RÅ fejl kastes ind i retry-laget, så transient-detekteringen kan se
+        // Postgres-koden (57014) — ikke-transiente fejl kastes videre med det samme.
+        if (error) throw error;
+        return rpcData;
+      });
+      rpcSucceeded = true;
+    } catch (error) {
+      // Fald KUN tilbage hvis funktionen ikke findes endnu (migration ikke anvendt).
+      // Enhver ANDEN fejl er en ægte fejl og skal kastes — en brudt RPC må ikke
+      // maskeres tavst af den langsomme fallback.
+      const functionMissing = error.code === "PGRST202"
+        || /recompute_season_standings/.test(error.message || "");
+      if (!functionMissing) throw error;
+      console.warn("  ⚠️  recompute_season_standings RPC mangler — falder tilbage til Node-recompute (#2391; anvend migrationen)");
+    }
+
+    if (rpcSucceeded) {
       const rowsUpdated = Number(data?.rows_updated) || 0;
       const teamsWithPoints = data?.teams_with_points == null ? null : Number(data.teams_with_points);
       console.log(`  📊 Standings recalculated (RPC) for ${rowsUpdated} teams${raceId ? ` after race ${raceId}` : ""}`);
       return { rowsUpdated, teamsWithPoints };
     }
-    // Fald KUN tilbage hvis funktionen ikke findes endnu (migration ikke anvendt).
-    // Enhver ANDEN fejl er en ægte fejl og skal kastes — en brudt RPC må ikke
-    // maskeres tavst af den langsomme fallback.
-    const functionMissing = error.code === "PGRST202"
-      || /recompute_season_standings/.test(error.message || "");
-    if (!functionMissing) throw new Error(error.message);
-    console.warn("  ⚠️  recompute_season_standings RPC mangler — falder tilbage til Node-recompute (#2391; anvend migrationen)");
   }
 
   const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([

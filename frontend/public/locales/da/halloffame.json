@@ -36,5 +36,8 @@
     "gcContender": "GC Contender",
     "grandTour": "Grand Tour",
     "legend": "Legende"
-  }
+  },
+  "loadError": "Kunne ikke indlæse Hall of Fame. Prøv igen.",
+  "retry": "Prøv igen",
+  "noManagers": "Ingen managers endnu"
 }

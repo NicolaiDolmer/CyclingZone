@@ -19,6 +19,21 @@ import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
+import {
+  PageHeader, Card, Section, SectionHeader, Button, Select, Checkbox,
+  PageLoader, EmptyState, ChevronDownIcon, TeamIcon, XIcon,
+} from "../components/ui";
+import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
+
+// #2849 bølge 4 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
+// PageHeader-recipe (status i subtitle, "Train today" som sidens ene gold CTA),
+// max-w-[1600px]-container, PageLoader ved initial load, kanonisk Section/Card-chrome
+// for de to accordions + recovery-note, ui/DataTable-recepten (dataTableStyles: WRAP/
+// SCROLLER/thClass/tdClass/trClass) på begge tabeller. Roster-tabellen bruger dataTableStyles-
+// chrome i stedet for <DataTable> direkte, fordi den har multi-select-checkbox +
+// group-header-rækker + en per-rytter udvidelig ugeplan-række, som DataTable's
+// 1-række-pr-row-kolonnemodel ikke understøtter. Ren layout-migrering — INGEN ændringer
+// i fetches/beregninger/save-handlers/state-maskiner (useTraining/useTrainingHistory uændret).
 
 // Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed (tal,
 // desc-først: "hvem er mest træt/i bedst form?" med ét klik).
@@ -32,8 +47,8 @@ function MiniBar({ value, color, label }) {
   const pct = Math.max(0, Math.min(100, value ?? 0));
   return (
     <div className="flex items-center gap-1.5 min-w-[80px]" title={`${label}: ${pct}`}>
-      <div className="flex-1 h-1.5 bg-cz-subtle rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      <div className="flex-1 h-1.5 bg-cz-subtle rounded-cz-pill overflow-hidden">
+        <div className={`h-full rounded-cz-pill transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-[10px] font-mono text-cz-3 w-6 text-right">{pct}</span>
     </div>
@@ -370,23 +385,25 @@ export default function TrainingPage() {
 
     return (
       <Fragment key={rider.id}>
-      <tr className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
+      <tr className={`${trClass(null)} ${isSelected ? "bg-cz-accent/5" : ""}`}>
         {/* Multi-select — sticky sammen med navnekolonnen (#2446), fast w-10 så
             offsettet på navnekolonnen (left-10) matcher præcis. */}
-        <td className="px-2 py-3 w-10 sticky-name-cell sticky left-0 z-10">
+        <td className="border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-sticky">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={() => toggleSelect(rider.id)}
             aria-label={`${t("selectAll")} — ${rider.firstname} ${rider.lastname}`}
-            className="accent-cz-accent"
+            className="h-4 w-4 rounded-[3px] accent-cz-accent"
           />
         </td>
 
         {/* Navn — sticky ved horisontal scroll (#2446), så rytter-identiteten aldrig
             forsvinder når man scroller ud til fokus/intensitet-kolonnerne. Samme
-            opskrift som RidersPage/TeamPage (.sticky-name-cell). */}
-        <td className="px-4 py-3 sticky-name-cell sticky left-10 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
+            opskrift som RidersPage/TeamPage (.sticky-name-cell). Ingen rå skygge-klasse
+            (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
+            border-r ER den kanoniske sticky-first-column-recipe (T2). */}
+        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
           <div className="flex items-center gap-1.5">
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
@@ -395,7 +412,7 @@ export default function TrainingPage() {
                 kan se hvem der kører sit eget program uden at åbne panelet. */}
             {hasOwnWeekPlan && (
               <span
-                className="inline-block text-[10px] px-1.5 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
+                className="inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
                 title={t("individualWeekPlanBadgeTitle")}
               >
                 {t("individualWeekPlanBadge")}
@@ -412,57 +429,65 @@ export default function TrainingPage() {
         </td>
 
         {/* Ryttertype */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </td>
 
-        {/* Fokus */}
-        <td className="px-4 py-3">
-          <select
-            value={plan?.focus ?? ""}
-            disabled={busy}
-            aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
-            onChange={(e) => {
-              const newFocus = e.target.value;
-              if (!newFocus) return;
-              handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
-            }}
-            className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
-          >
-            <option value="">—</option>
-            {TRAINING_FOCUS_KEYS.map((k) => {
-              const level = riderTrainability[k];
-              const marker = level ? t(`trainability_${level}`) : "";
-              return (
-                <option key={k} value={k}>
-                  {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
-                </option>
-              );
-            })}
-          </select>
-          {plan?.focus && (
-            <button
-              type="button"
-              onClick={() => handleClearPlan(rider.id)}
-              disabled={busy}
-              className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
-              title={tRider("training.remove")}
-            >
-              ×
-            </button>
-          )}
+        {/* Fokus. Ejer-kvalitetspas 24/7 (#2849): select bred nok til fulde
+            fokus-labels (før: max-w-[150px] klippede til "Thr…"), clear-knap er
+            et rigtigt XIcon-ghost-target på samme linje (før: løst "×"-glyf-
+            tegn under selecten — anti-slop). */}
+        <td className={tdClass({})}>
+          <div className="flex items-center gap-1">
+            <div className="w-[184px]">
+              <Select
+                size="sm"
+                value={plan?.focus ?? ""}
+                disabled={busy}
+                aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
+                onChange={(e) => {
+                  const newFocus = e.target.value;
+                  if (!newFocus) return;
+                  handlePlanChange(rider.id, newFocus, plan?.intensity ?? "normal");
+                }}
+              >
+                <option value="">—</option>
+                {TRAINING_FOCUS_KEYS.map((k) => {
+                  const level = riderTrainability[k];
+                  const marker = level ? t(`trainability_${level}`) : "";
+                  return (
+                    <option key={k} value={k}>
+                      {tRider(`training.focus_${k}`)}{marker ? ` (${marker})` : ""}
+                    </option>
+                  );
+                })}
+              </Select>
+            </div>
+            {plan?.focus && (
+              <button
+                type="button"
+                onClick={() => handleClearPlan(rider.id)}
+                disabled={busy}
+                className="inline-flex h-6 w-6 flex-none items-center justify-center rounded-cz text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-danger disabled:opacity-40"
+                title={tRider("training.remove")}
+                aria-label={tRider("training.remove")}
+              >
+                <XIcon size={12} aria-hidden="true" />
+              </button>
+            )}
+          </div>
           {/* #1894 variant 1: for ryttere UDEN plan, vis hvilket fokus assistenten
               rent faktisk træner dem med (backend-leveret, samme regel som bulk-
               smart-mode og dailyTraining.js' resolveProgram — INGEN frontend-dublet
               af type→fokus-mappingen). */}
           {!plan?.focus && smartDefaultFocus[rider.id] && (
-            <div className="mt-0.5 text-[10px] text-cz-3">
+            <div className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3">
               {t("smartFocusHint", { focus: tRider(`training.focus_${smartDefaultFocus[rider.id]}`) })}
             </div>
           )}
           {(currentTrainability === "limited" || currentTrainability === "blocked") && (
             <span
-              className={`ms-1 inline-block text-[10px] px-1.5 py-0.5 rounded-full border ${
+              className={`ms-1 inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill border ${
                 currentTrainability === "blocked"
                   ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
                   : "bg-cz-warning/10 text-cz-warning border-cz-warning/20"
@@ -481,12 +506,12 @@ export default function TrainingPage() {
         </td>
 
         {/* Intensitet */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           {plan?.focus ? (
             <div
               role="group"
               aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
-              className="inline-flex rounded border border-cz-border overflow-hidden"
+              className="inline-flex rounded-cz border border-cz-border overflow-hidden"
             >
               {TRAINING_INTENSITIES.map((k) => (
                 <button
@@ -512,9 +537,15 @@ export default function TrainingPage() {
               kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
               Uden dette forsvandt hele forklaringen for ryttere uden eget fokus, som
               stille fulgte holdrytmen uden nogen synlig grund. */}
+          {/* Ejer-kvalitetspas 24/7: den fulde kilde-forklaring gentaget som prosa
+              under HVER række var visuel støj — kompakt T2-meta-linje med den
+              fulde forklaring som title-tooltip i stedet. */}
           {teamRhythmActive && (
-            <div className="mt-0.5 text-[10px] text-cz-3">
-              {t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+            <div
+              className="mt-1 font-data text-[10px] uppercase tracking-[.06em] text-cz-3"
+              title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+            >
+              {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
             </div>
           )}
         </td>
@@ -523,10 +554,12 @@ export default function TrainingPage() {
             ALLE står på livstidsloftet får en "færdigudviklet"-markering i stedet
             for en død bar, og dagens vundne point vises som "+N i dag" så en
             netop-wrappet bar ikke læses som nul fremgang. */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           {isFocusFullyCapped(plan?.focus, capped[rider.id]) ? (
+            /* Ejer-kvalitetspas 24/7: var en stor grå pill der dominerede
+               kolonnen — nu stille T2-meta-tekst m. forklaring i tooltip. */
             <span
-              className="inline-block text-[10px] px-1.5 py-0.5 rounded-full border bg-cz-subtle text-cz-2 border-cz-border"
+              className="font-data text-[10px] uppercase tracking-[.06em] text-cz-3 cursor-help"
               title={t("focusCappedTitle")}
             >
               {t("focusCapped")}
@@ -541,7 +574,7 @@ export default function TrainingPage() {
           )}
           {todayGainsByRider[rider.id] > 0 && (
             <div className="mt-0.5">
-              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-cz-success-bg text-cz-success border border-cz-success/30">
+              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-success-bg text-cz-success border border-cz-success/30">
                 {t("gainedToday", { count: todayGainsByRider[rider.id] })}
               </span>
             </div>
@@ -549,27 +582,27 @@ export default function TrainingPage() {
         </td>
 
         {/* Form */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           <MiniBar value={cond.form} color="bg-cz-info" label={t("form")} />
         </td>
 
         {/* Træthed */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           <MiniBar value={cond.fatigue} color="bg-cz-warning" label={t("fatigue")} />
         </td>
 
         {/* Status: skadet / høj risiko */}
-        <td className="px-4 py-3">
+        <td className={tdClass({})}>
           <div className="flex flex-wrap gap-1">
             {injured && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
+              <span className="text-[10px] px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
                 {daysLeft === 1
                   ? t("injured", { days: daysLeft })
                   : t("injured_plural", { days: daysLeft })}
               </span>
             )}
             {highRisk && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
+              <span className="text-[10px] px-2 py-0.5 rounded-cz-pill bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
                 {t("injuryRisk")}
               </span>
             )}
@@ -580,10 +613,10 @@ export default function TrainingPage() {
       {/* #1895 PR 2: individuel ugeplan-flade — udvidet inline-række under rytteren.
           Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
       {isExpanded && (
-        <tr className="border-b border-cz-border last:border-0 bg-cz-subtle/40">
-          <td colSpan={ROSTER_COLS} className="px-4 py-3">
+        <tr className="bg-cz-subtle/40">
+          <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-3">
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-cz-3 leading-relaxed">
+              <p className="text-[13px] text-cz-3 leading-relaxed">
                 {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -591,40 +624,44 @@ export default function TrainingPage() {
                   const current = riderWeekDraftFor(rider.id)[weekday]?.intensity ?? "normal";
                   return (
                     <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] uppercase text-cz-3">{t(`weekday_${weekday}`)}</span>
-                      <select
-                        value={current}
-                        disabled={savingRiderPlan}
-                        aria-label={`${t("individualWeekPlanTitle")} — ${t(`weekday_${weekday}`)} — ${rider.firstname} ${rider.lastname}`}
-                        onChange={(e) => setRiderWeekDraftDay(rider.id, weekday, e.target.value)}
-                        className="bg-cz-card border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
-                      >
-                        {TRAINING_INTENSITIES.map((k) => (
-                          <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                        ))}
-                      </select>
+                      <span className="font-data text-[10px] uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <div className="w-[92px]">
+                        <Select
+                          size="sm"
+                          value={current}
+                          disabled={savingRiderPlan}
+                          aria-label={`${t("individualWeekPlanTitle")} — ${t(`weekday_${weekday}`)} — ${rider.firstname} ${rider.lastname}`}
+                          onChange={(e) => setRiderWeekDraftDay(rider.id, weekday, e.target.value)}
+                        >
+                          {TRAINING_INTENSITIES.map((k) => (
+                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
                   );
                 })}
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => handleSaveRiderWeekPlan(rider.id)}
                   disabled={savingRiderPlan}
-                  className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                 >
                   {savingRiderPlan ? t("loading") : t("individualWeekPlanSave")}
-                </button>
+                </Button>
                 {hasOwnWeekPlan && (
-                  <button
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="sm"
                     onClick={() => handleRemoveRiderWeekPlan(rider.id)}
                     disabled={savingRiderPlan}
-                    className="text-xs text-cz-3 hover:text-cz-danger disabled:opacity-40"
                   >
                     {t("individualWeekPlanRemove")}
-                  </button>
+                  </Button>
                 )}
                 {riderWeekMsgMap[rider.id] && (
                   <span className={`text-xs ${riderWeekMsgMap[rider.id].type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
@@ -669,428 +706,423 @@ export default function TrainingPage() {
     }
   }
 
+  // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
+  // ÉT sted i stedet for inline i JSX'en. Ren tekst/farve-mapping, ingen ny logik.
+  const headerStatus = todayRun
+    ? <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
+    : !enabled
+      ? <span className="italic">{t("disabledNote")}</span>
+      : t("notTrainedYetToday");
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-[1600px]">
+        <PageHeader title={t("title")} />
+        <PageLoader />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-        <div className="flex items-center gap-3">
-          {todayRun ? (
-            <span className="text-sm text-cz-success font-medium">{trainedTodayLabel()}</span>
-          ) : !enabled ? (
-            <span className="text-sm text-cz-3 italic">{t("disabledNote")}</span>
-          ) : (
-            <span className="text-sm text-cz-3">{t("notTrainedYetToday")}</span>
-          )}
-          <button
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader
+        title={t("title")}
+        subtitle={headerStatus}
+        actions={
+          <Button
             type="button"
+            variant="primary"
+            size="sm"
             onClick={handleRunToday}
             disabled={!enabled || !!todayRun || running}
-            className="px-4 py-2 rounded-lg bg-cz-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
             {running ? t("loading") : t("trainToday")}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      {runError && (
-        <p className="text-cz-danger text-sm">{runError}</p>
-      )}
+      <div className="space-y-6">
+        {runError && (
+          <p className="text-cz-danger text-sm">{runError}</p>
+        )}
 
-      {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
-          seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
-          ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
-      {!isLoading && (
+        {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
+            seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
+            ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
         <TrainingMoment
           latestRun={latestRun}
           isToday={latestIsToday}
           progressByRider={progress}
           pastRuns={pastRuns}
         />
-      )}
 
-      {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
-          nu gælder fra i morgen + at form/træthed kun rykker ved det daglige tick.
-          Fjerner "fokus blev ikke gemt"/"træthed fryser"-forvirringen. */}
-      {todayRun && (
-        <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-4 py-2.5">
-          <p className="text-sm text-cz-2 leading-relaxed">{t("tickModelDone")}</p>
-        </div>
-      )}
-
-      {/* Daglig recovery-forklaring (#1676) — svarer "Får man energi tilbage hver dag?" */}
-      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-cz-2 mb-1">
-          {t("recoveryNoteTitle")}
-        </p>
-        <p className="text-sm text-cz-3 leading-relaxed">{t("recoveryNote")}</p>
-      </div>
-
-      {/* Fokus-guide (#1908) — hvad træner hvert fokus. Svarer den gentagne spiller-
-          forvirring ("Teknik = brosten? Aero = nedkørsel?"). Bygges fra den delte
-          TRAINING_FOCUS_ABILITIES + eksisterende i18n, så det aldrig driver fra motoren. */}
-      <details className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
-        <summary className="text-xs font-semibold uppercase tracking-wide text-cz-2 cursor-pointer select-none">
-          {t("focusGuideTitle")}
-        </summary>
-        <p className="text-sm text-cz-3 leading-relaxed mt-2">{t("focusGuideIntro")}</p>
-        <ul className="mt-2 space-y-1">
-          {TRAINING_FOCUS_KEYS.map((k) => (
-            <li key={k} className="text-sm text-cz-2">
-              <span className="font-medium text-cz-1">{tRider(`training.focus_${k}`)}:</span>{" "}
-              <span className="text-cz-3">
-                {(TRAINING_FOCUS_ABILITIES[k] ?? [])
-                  .map((a) => tRider(`racePreview.derived.${a}`))
-                  .join(" · ")}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
-        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideGating")}</p>
-      </details>
-
-      {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
-          ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
-          Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag. */}
-      <details className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
-        <summary className="text-xs font-semibold uppercase tracking-wide text-cz-2 cursor-pointer select-none">
-          {t("weekRhythmTitle")}
-        </summary>
-        <p className="text-sm text-cz-3 leading-relaxed mt-2">{t("weekRhythmIntro")}</p>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {WEEKDAY_KEYS.map((weekday) => {
-            const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
-            return (
-              <div key={weekday} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] uppercase text-cz-3">{t(`weekday_${weekday}`)}</span>
-                <select
-                  value={current}
-                  disabled={savingWeekPlan}
-                  aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
-                  onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
-                  className="bg-cz-card border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
-                >
-                  {TRAINING_INTENSITIES.map((k) => (
-                    <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                  ))}
-                </select>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSaveWeekPlan}
-            disabled={savingWeekPlan}
-            className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
-          </button>
-          {weekPlan && (
-            <button
-              type="button"
-              onClick={handleResetWeekPlan}
-              disabled={savingWeekPlan}
-              className="text-xs text-cz-3 hover:text-cz-danger disabled:opacity-40"
-            >
-              {t("weekRhythmResetButton")}
-            </button>
-          )}
-          {weekPlanMsg && (
-            <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
-              {weekPlanMsg.text}
-            </span>
-          )}
-        </div>
-
-        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
-      </details>
-
-      {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
-      {!isLoading && riders.length > 0 && (
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <label className="inline-flex items-center gap-2 text-xs text-cz-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={groupByType}
-              onChange={(e) => setGroupByType(e.target.checked)}
-              className="accent-cz-accent"
-            />
-            {t("groupByType")}
-          </label>
-        </div>
-      )}
-
-      {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
-      {!isLoading && selected.size > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
-
-          <select
-            value={bulkFocus}
-            disabled={bulkApplying}
-            aria-label={t("bulkSetFocus")}
-            onChange={(e) => setBulkFocus(e.target.value)}
-            className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
-          >
-            <option value="">{t("bulkSetFocus")}</option>
-            <option value="smart">{t("bulkSmartFocusOption")}</option>
-            {TRAINING_FOCUS_KEYS.map((k) => (
-              <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
-            ))}
-          </select>
-
-          <div role="group" aria-label={t("bulkIntensity")} className="inline-flex rounded border border-cz-border overflow-hidden">
-            {TRAINING_INTENSITIES.map((k) => (
-              <button
-                key={k}
-                type="button"
-                disabled={bulkApplying}
-                onClick={() => setBulkIntensity(k)}
-                aria-pressed={bulkIntensity === k}
-                className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                  bulkIntensity === k ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
-                }`}
-              >
-                {tRider(`training.intensity_${k}`)}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleBulkApply}
-            disabled={bulkApplying || !bulkFocus}
-            className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
-          </button>
-
-          <button
-            type="button"
-            onClick={clearSelection}
-            disabled={bulkApplying}
-            className="text-xs text-cz-3 hover:text-cz-1 disabled:opacity-40"
-          >
-            {t("bulkClear")}
-          </button>
-
-          {bulkMsg && (
-            <span
-              className={`text-xs ${
-                bulkMsg.type === "ok" ? "text-cz-success" : bulkMsg.type === "partial" ? "text-cz-warning" : "text-cz-danger"
-              }`}
-            >
-              {bulkMsg.text}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Rosterbord */}
-      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : riders.length === 0 ? (
-          <div className="text-center py-10 text-cz-3 text-sm">{t("noRiders")}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-sortable>
-              <thead>
-                <tr className="border-b border-cz-border">
-                  {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
-                      offsettet på navne-kolonnen (left-10) matcher præcis. */}
-                  <th className="px-2 py-3 text-left w-10 sticky left-0 z-30 bg-cz-card">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      aria-label={t("selectAll")}
-                      className="accent-cz-accent"
-                    />
-                  </th>
-                  <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                    className="px-4 py-3 text-left font-medium text-xs uppercase sticky left-10 z-30 bg-cz-card border-r border-cz-border">
-                    {t("colRider")}
-                  </SortTh>
-                  <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                    className="px-4 py-3 text-left font-medium text-xs uppercase">
-                    {t("colType")}
-                  </SortTh>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    {tRider("training.focus")}
-                  </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    {tRider("training.intensity")}
-                  </th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    {t("colNextUp")}
-                  </th>
-                  <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                    className="px-4 py-3 text-left font-medium text-xs uppercase">
-                    {t("form")}
-                  </SortTh>
-                  <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                    className="px-4 py-3 text-left font-medium text-xs uppercase">
-                    {t("fatigue")}
-                  </SortTh>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    {t("colStatus")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupByType
-                  ? groups.map((group) => (
-                      <Fragment key={group.type}>
-                        <tr className="bg-cz-subtle/60 border-b border-cz-border">
-                          <td colSpan={ROSTER_COLS} className="px-4 py-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-cz-2">
-                              {groupLabel(group.type)}
-                            </span>
-                            <span className="ms-2 text-[11px] text-cz-3">
-                              {t("groupCount", { n: group.riders.length })}
-                            </span>
-                          </td>
-                        </tr>
-                        {sortRoster(group.riders).map((rider) => renderRosterRow(rider))}
-                      </Fragment>
-                    ))
-                  : sortRoster(riders).map((rider) => renderRosterRow(rider))}
-              </tbody>
-            </table>
+        {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
+            nu gælder fra i morgen + at form/træthed kun rykker ved det daglige tick.
+            Fjerner "fokus blev ikke gemt"/"træthed fryser"-forvirringen. */}
+        {todayRun && (
+          <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-4 py-2.5">
+            <p className="text-sm text-cz-2 leading-relaxed">{t("tickModelDone")}</p>
           </div>
         )}
-      </div>
 
-      {/* Rapport fra seneste kørsel */}
-      {todayRun?.report && (
-        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-cz-1">{t("report")}</h2>
-            {todayRun.bonus_applied && (
-              <span className="text-xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
-                {t("bonusApplied")}
-              </span>
-            )}
-          </div>
+        {/* Daglig recovery-forklaring (#1676) — svarer "Får man energi tilbage hver dag?" */}
+        <Section>
+          <SectionHeader title={t("recoveryNoteTitle")} />
+          <p className="text-sm text-cz-2 leading-relaxed">{t("recoveryNote")}</p>
+        </Section>
 
-          {/* Dags-opsummering (payoff, holdniveau) */}
-          <div className="grid grid-cols-3 divide-x divide-cz-border border-b border-cz-border">
-            <div className="px-5 py-3">
-              <div className="text-lg font-bold text-cz-1">
-                {summary.trained}<span className="text-cz-3 text-sm font-normal"> / {summary.total}</span>
-              </div>
-              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryTrained")}</div>
+        {/* Fokus-guide (#1908) — hvad træner hvert fokus. Svarer den gentagne spiller-
+            forvirring ("Teknik = brosten? Aero = nedkørsel?"). Bygges fra den delte
+            TRAINING_FOCUS_ABILITIES + eksisterende i18n, så det aldrig driver fra motoren.
+            Native <details>/<summary> (samme "group-open:"-mønster som LandingPage's FAQ)
+            — bevarer collapse-adfærd + tilgængelighed uden ekstra React-state, men på
+            kanonisk Card-chrome i stedet for browser-default disclosure-udseende. */}
+        <Card className="overflow-hidden">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <span className="text-[15px] font-semibold text-cz-1">{t("focusGuideTitle")}</span>
+              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+              <p className="text-sm text-cz-3 leading-relaxed">{t("focusGuideIntro")}</p>
+              <ul className="mt-2 space-y-1">
+                {TRAINING_FOCUS_KEYS.map((k) => (
+                  <li key={k} className="text-sm text-cz-2">
+                    <span className="font-medium text-cz-1">{tRider(`training.focus_${k}`)}:</span>{" "}
+                    <span className="text-cz-3">
+                      {(TRAINING_FOCUS_ABILITIES[k] ?? [])
+                        .map((a) => tRider(`racePreview.derived.${a}`))
+                        .join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
+              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideGating")}</p>
             </div>
-            <div className="px-5 py-3">
-              <div className={`text-lg font-bold ${summary.breakthroughs > 0 ? "text-cz-success" : "text-cz-1"}`}>
-                {summary.breakthroughs}
-              </div>
-              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryBreakthroughs")}</div>
-            </div>
-            <div className="px-5 py-3">
-              <div className="text-lg font-bold text-cz-1">{summary.peakForm}</div>
-              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryPeakForm")}</div>
-            </div>
-          </div>
+          </details>
+        </Card>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-sort-exempt="Per-koersel traeningsrapport i rapport-orden">
-              <thead>
-                <tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.focus")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.intensity")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colNextUp")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colGains")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colResult")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(todayRun.report.riders ?? []).map((row) => {
-                  const jumps = breakthroughJumps(row);
-                  const breakthrough = isBreakthrough(row);
-                  const fatigueDelta = row.fatigue_delta ?? 0;
-                  const fatigueSign = fatigueDelta > 0 ? "+" : "";
-                  const prog = focusProgress(row.focus, progress[row.rider_id]);
+        {/* Ugentlig træningsrytme (#1895 PR 1) — holdets ønskede intensitet pr.
+            ugedag. Rører ALDRIG fokus (bor kun i training_plans + smartDefaultFocus).
+            Hold uden gemt rytme = flad "normal" hver dag = bit-identisk med i dag. */}
+        <Card className="overflow-hidden">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
+              <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-cz-border px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+              <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {WEEKDAY_KEYS.map((weekday) => {
+                  const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
                   return (
-                    <tr
-                      key={row.rider_id}
-                      className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
-                    >
-                      <td className="px-4 py-2.5">
-                        <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
-                          {row.name}
-                        </RiderLink>
-                        {row.injured && (
-                          <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-cz-danger-bg text-cz-danger">
-                            {row.injury_days === 1
-                              ? t("injured", { days: row.injury_days })
-                              : t("injured_plural", { days: row.injury_days })}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-cz-2">
-                        {row.focus ? tRider(`training.focus_${row.focus}`) : "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-cz-2">
-                        {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
-                      </td>
-                      {/* Progress mod næste +1 (anticipation efter kørsel) */}
-                      <td className="px-4 py-2.5">
-                        <FocusProgress
-                          info={prog}
-                          emptyLabel={row.intensity === "rest" ? t("restDay") : t("noFocus")}
-                          tRider={tRider}
-                          toGoLabel={(o) => t("toGo", o)}
-                        />
-                      </td>
-                      {/* Gevinster — gennembrud vist som faktisk tal-spring */}
-                      <td className="px-4 py-2.5">
-                        {jumps.length > 0 ? (
-                          <span className="text-cz-success text-xs font-medium">
-                            {jumps.map((j) => (
-                              j.from != null && j.to != null
-                                ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
-                                : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
-                            )).join(", ")}
-                          </span>
-                        ) : (
-                          <span className="text-cz-3 text-xs">{t("noGains")}</span>
-                        )}
-                      </td>
-                      {/* Result — dagsform + trætheds-delta (erstatter rå score) */}
-                      <td className="px-4 py-2.5">
-                        <div className="flex flex-col gap-0.5">
-                          {row.status === "over" && (
-                            <span className="text-cz-success text-xs">{t("sharpDay")}</span>
-                          )}
-                          {row.status === "under" && (
-                            <span className="text-cz-danger text-xs">{t("flatDay")}</span>
-                          )}
-                          <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
-                            {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
+                    <div key={weekday} className="flex flex-col items-center gap-1">
+                      <span className="font-data text-[10px] uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                      <div className="w-[92px]">
+                        <Select
+                          size="sm"
+                          value={current}
+                          disabled={savingWeekPlan}
+                          aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
+                          onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
+                        >
+                          {TRAINING_INTENSITIES.map((k) => (
+                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
 
-      {/* Træningsrapport-historik (#1533) — seneste 30 dage */}
-      <TrainingHistory history={history} />
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
+                  {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
+                </Button>
+                {weekPlan && (
+                  <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
+                    {t("weekRhythmResetButton")}
+                  </Button>
+                )}
+                {weekPlanMsg && (
+                  <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                    {weekPlanMsg.text}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
+            </div>
+          </details>
+        </Card>
+
+        {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
+        {riders.length > 0 && (
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Checkbox
+              checked={groupByType}
+              onChange={(e) => setGroupByType(e.target.checked)}
+              label={t("groupByType")}
+            />
+          </div>
+        )}
+
+        {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
+        {selected.size > 0 && (
+          <Card className="p-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
+
+            <div className="w-48">
+              <Select
+                size="sm"
+                value={bulkFocus}
+                disabled={bulkApplying}
+                aria-label={t("bulkSetFocus")}
+                onChange={(e) => setBulkFocus(e.target.value)}
+              >
+                <option value="">{t("bulkSetFocus")}</option>
+                <option value="smart">{t("bulkSmartFocusOption")}</option>
+                {TRAINING_FOCUS_KEYS.map((k) => (
+                  <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
+                ))}
+              </Select>
+            </div>
+
+            <div role="group" aria-label={t("bulkIntensity")} className="inline-flex rounded-cz border border-cz-border overflow-hidden">
+              {TRAINING_INTENSITIES.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  disabled={bulkApplying}
+                  onClick={() => setBulkIntensity(k)}
+                  aria-pressed={bulkIntensity === k}
+                  className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
+                    bulkIntensity === k ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
+                  }`}
+                >
+                  {tRider(`training.intensity_${k}`)}
+                </button>
+              ))}
+            </div>
+
+            <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkFocus}>
+              {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
+            </Button>
+
+            <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>
+              {t("bulkClear")}
+            </Button>
+
+            {bulkMsg && (
+              <span
+                className={`text-xs ${
+                  bulkMsg.type === "ok" ? "text-cz-success" : bulkMsg.type === "partial" ? "text-cz-warning" : "text-cz-danger"
+                }`}
+              >
+                {bulkMsg.text}
+              </span>
+            )}
+          </Card>
+        )}
+
+        {/* Rosterbord (T2 wide-data-recipe: dataTableStyles-chrome i stedet for
+            <DataTable> direkte — checkbox-multiselect + sticky navnekolonne kræver 2
+            forskellige sticky-offsets (left-0/left-10), og group-header-rækker +
+            udvidelig ugeplan-række pr. rytter passer ikke DataTable's 1-række-pr-row-
+            model. Se HallOfFamePage/StaffOverviewPage for de to varianter af recepten.) */}
+        {riders.length === 0 ? (
+          <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
+        ) : (
+          <>
+            <div className={WRAP}>
+              <div className={SCROLLER}>
+                <table className={TABLE} data-sortable>
+                  <thead>
+                    <tr>
+                      {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
+                          offsettet på navne-kolonnen (left-10) matcher præcis. */}
+                      <th className={`${thClass({})} sticky-name-cell sticky left-0 z-sticky w-10`}>
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t("selectAll")}
+                          className="h-4 w-4 rounded-[3px] accent-cz-accent"
+                        />
+                      </th>
+                      <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({})} sticky-name-cell sticky left-10 z-sticky border-r border-cz-border`}>
+                        {t("colRider")}
+                      </SortTh>
+                      <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={thClass({})}>
+                        {t("colType")}
+                      </SortTh>
+                      <th className={thClass({})}>{tRider("training.focus")}</th>
+                      <th className={thClass({})}>{tRider("training.intensity")}</th>
+                      <th className={thClass({})}>{t("colNextUp")}</th>
+                      <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={thClass({})}>
+                        {t("form")}
+                      </SortTh>
+                      <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={thClass({})}>
+                        {t("fatigue")}
+                      </SortTh>
+                      <th className={thClass({})}>{t("colStatus")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupByType
+                      ? groups.map((group) => (
+                          <Fragment key={group.type}>
+                            <tr className="bg-cz-subtle/60">
+                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
+                                <span className="font-data text-[11px] font-semibold uppercase tracking-[.06em] text-cz-2">
+                                  {groupLabel(group.type)}
+                                </span>
+                                <span className="ms-2 font-data text-[11px] text-cz-3">
+                                  {t("groupCount", { n: group.riders.length })}
+                                </span>
+                              </td>
+                            </tr>
+                            {sortRoster(group.riders).map((rider) => renderRosterRow(rider))}
+                          </Fragment>
+                        ))
+                      : sortRoster(riders).map((rider) => renderRosterRow(rider))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className={COUNT}>{t("groupCount", { n: riders.length })}</div>
+          </>
+        )}
+
+        {/* Rapport fra seneste kørsel */}
+        {todayRun?.report && (
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+            <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-cz-1">{t("report")}</h2>
+              {todayRun.bonus_applied && (
+                <span className="text-xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+                  {t("bonusApplied")}
+                </span>
+              )}
+            </div>
+
+            {/* Dags-opsummering (payoff, holdniveau) */}
+            <div className="grid grid-cols-3 divide-x divide-cz-border border-b border-cz-border">
+              <div className="px-5 py-3">
+                <div className="font-data text-lg font-bold tabular-nums text-cz-1">
+                  {summary.trained}<span className="text-cz-3 text-sm font-normal"> / {summary.total}</span>
+                </div>
+                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryTrained")}</div>
+              </div>
+              <div className="px-5 py-3">
+                <div className={`font-data text-lg font-bold tabular-nums ${summary.breakthroughs > 0 ? "text-cz-success" : "text-cz-1"}`}>
+                  {summary.breakthroughs}
+                </div>
+                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryBreakthroughs")}</div>
+              </div>
+              <div className="px-5 py-3">
+                <div className="font-data text-lg font-bold tabular-nums text-cz-1">{summary.peakForm}</div>
+                <div className="font-data text-[11px] uppercase tracking-[.06em] text-cz-3">{t("summaryPeakForm")}</div>
+              </div>
+            </div>
+
+            <div className={SCROLLER}>
+              <table className={TABLE} data-sort-exempt="Per-koersel traeningsrapport i rapport-orden">
+                <thead>
+                  <tr>
+                    <th className={thClass({ sticky: true })}>{t("colRider")}</th>
+                    <th className={thClass({})}>{tRider("training.focus")}</th>
+                    <th className={thClass({})}>{tRider("training.intensity")}</th>
+                    <th className={thClass({})}>{t("colNextUp")}</th>
+                    <th className={thClass({})}>{t("colGains")}</th>
+                    <th className={thClass({})}>{t("colResult")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(todayRun.report.riders ?? []).map((row) => {
+                    const jumps = breakthroughJumps(row);
+                    const breakthrough = isBreakthrough(row);
+                    const fatigueDelta = row.fatigue_delta ?? 0;
+                    const fatigueSign = fatigueDelta > 0 ? "+" : "";
+                    const prog = focusProgress(row.focus, progress[row.rider_id]);
+                    return (
+                      <tr
+                        key={row.rider_id}
+                        className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+                      >
+                        <td className={tdClass({ sticky: true })}>
+                          <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
+                            {row.name}
+                          </RiderLink>
+                          {row.injured && (
+                            <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
+                              {row.injury_days === 1
+                                ? t("injured", { days: row.injury_days })
+                                : t("injured_plural", { days: row.injury_days })}
+                            </span>
+                          )}
+                        </td>
+                        <td className={tdClass({})}>
+                          {row.focus ? tRider(`training.focus_${row.focus}`) : "—"}
+                        </td>
+                        <td className={tdClass({})}>
+                          {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
+                        </td>
+                        {/* Progress mod næste +1 (anticipation efter kørsel) */}
+                        <td className={tdClass({})}>
+                          <FocusProgress
+                            info={prog}
+                            emptyLabel={row.intensity === "rest" ? t("restDay") : t("noFocus")}
+                            tRider={tRider}
+                            toGoLabel={(o) => t("toGo", o)}
+                          />
+                        </td>
+                        {/* Gevinster — gennembrud vist som faktisk tal-spring */}
+                        <td className={tdClass({})}>
+                          {jumps.length > 0 ? (
+                            <span className="text-cz-success text-xs font-medium">
+                              {jumps.map((j) => (
+                                j.from != null && j.to != null
+                                  ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
+                                  : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
+                              )).join(", ")}
+                            </span>
+                          ) : (
+                            <span className="text-cz-3 text-xs">{t("noGains")}</span>
+                          )}
+                        </td>
+                        {/* Result — dagsform + trætheds-delta (erstatter rå score) */}
+                        <td className={tdClass({})}>
+                          <div className="flex flex-col gap-0.5">
+                            {row.status === "over" && (
+                              <span className="text-cz-success text-xs">{t("sharpDay")}</span>
+                            )}
+                            {row.status === "under" && (
+                              <span className="text-cz-danger text-xs">{t("flatDay")}</span>
+                            )}
+                            <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                              {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Træningsrapport-historik (#1533) — seneste 30 dage */}
+        <TrainingHistory history={history} />
+      </div>
     </div>
   );
 }

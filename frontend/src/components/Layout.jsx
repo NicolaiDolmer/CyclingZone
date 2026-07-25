@@ -38,11 +38,23 @@ const API = import.meta.env.VITE_API_URL;
 // på store skærme (flip-blocker for peak_planner beta→on).
 // "/staff" tilføjet per #2450 — personale-oversigten på tværs af hold har samme
 // tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner"]);
-// Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
-// ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
-// trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
-const WIDE_CONTENT_PREFIXES = ["/teams/"];
+// "/global-rank" tilføjet per #2849 bølge 3 — T2 wide data-side (rank-tabellen
+// cappes per-side på max-w-[1600px] ligesom /races).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/global-rank"]);
+// #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
+// hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
+// indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
+// for disse ruter (før: RaceDetail kompenserede med negative margins og bleedte
+// kun til content-boksens kant). "/races/strategy" er IKKE T3 og undtages.
+// Bølge 5: de fire profil-sider (/riders/:id, /teams/:id, /managers/:teamId,
+// /staff/:id) migreret til T3 — /teams/ flyttet hertil fra det tidligere
+// WIDE_CONTENT_PREFIXES (#1675), som dermed udgik. Prefixerne matcher kun
+// detalje-ruterne: list-siderne (/riders, /staff, …) er exact-paths uden slash.
+const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/"];
+const FULL_BLEED_EXCLUDE = new Set(["/races/strategy"]);
+function isFullBleedRoute(pathname) {
+  return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p)) && !FULL_BLEED_EXCLUDE.has(pathname);
+}
 
 function buildBottomItems(t) {
   return [
@@ -327,8 +339,7 @@ export default function Layout() {
   const { enabled: peakPlannerEnabled } = usePlanner();
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
-  const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
-    || WIDE_CONTENT_PREFIXES.some(p => location.pathname.startsWith(p));
+  const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -560,7 +571,13 @@ export default function Layout() {
           </div>
         </div>
 
-        <div className={`p-4 md:p-6 pb-24 md:pb-10 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
+        {/* #2849 bølge 4: kanonisk side-padding jf. PAGE_TEMPLATES.md — pt-7 px-8
+            pb-16 på desktop, 16px sider på mobil. pb-24 på mobil er IKKE spec-drift:
+            den clearer den fixede MobileQuickNav-bar. T3-full-bleed-ruter får ingen
+            padding/cap — siden ejer selv hero-bleed + indre containere. */}
+        <div className={isFullBleedRoute(location.pathname)
+          ? ""
+          : `pt-4 px-4 pb-24 md:pt-7 md:px-8 md:pb-16 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
           <Outlet />
         </div>
       </main>

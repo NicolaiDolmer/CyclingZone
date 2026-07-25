@@ -8,8 +8,10 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
-import { Card, Button, EmptyState, GavelIcon, PageLoader } from "../components/ui";
-import SortableTh from "../components/ui/SortableTh.jsx";
+import {
+  Card, Button, EmptyState, ErrorState, GavelIcon,
+  PageHeader, Section, SkeletonLines, Table, Tr, Th, Td,
+} from "../components/ui";
 import { useSortState } from "../lib/useTableSort.js";
 import { resolveAuctionHistorySort, DEFAULT_AUCTION_HISTORY_SORT } from "../lib/auctionHistorySort.js";
 
@@ -51,6 +53,10 @@ export default function AuctionHistoryPage() {
   const { t } = useTranslation(["auctions", "common"]);
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
+  // #2849 bølge 2: terminal, retry-bar fejl-state — samme mønster som
+  // AuctionsPage (#1350), så en fejlet historik-fetch viser canonical ErrorState
+  // i stedet for at ligne en tom historik.
+  const [loadError, setLoadError] = useState(false);
   const [myTeamId, setMyTeamId] = useState(null);
   const [filter, setFilter] = useState("all"); // all | won | sold | lost
   const [page, setPage] = useState(1);
@@ -84,6 +90,7 @@ export default function AuctionHistoryPage() {
   async function loadAuctions() {
     if (!myTeamId) return;
     setLoading(true);
+    setLoadError(false);
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
@@ -116,7 +123,15 @@ export default function AuctionHistoryPage() {
     }
     query = query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
-    const { data, count } = await query;
+    // #2849 bølge 2: samme fejl-diskriminator som resten af koden ({data,error}
+    // i stedet for kastet exception) — supabase returnerer error i stedet for at
+    // reject'e, så den skal læses eksplicit for ikke at ligne en tom historik.
+    const { data, count, error } = await query;
+    if (error) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
     const rows = data || [];
     setAuctions(rows);
     setTotal(count || 0);
@@ -200,27 +215,34 @@ export default function AuctionHistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1 mb-3">{t("common:nav.item.auctions")}</h1>
-        <div className="flex gap-2">
-          <NavLink to="/auctions" end
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                isActive
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t("history.tabActive")}
-          </NavLink>
-          <NavLink to="/auctions/history"
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                isActive
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t("history.tabHistory", { count: total })}
-          </NavLink>
-        </div>
-      </div>
+      {/* #2849 bølge 2: DEN kanoniske sidehoved-recipe (T1). Aktiv/Historik-
+          faner bevares uændret i actions-slotten — samme bevidste afvigelse fra
+          actions-kontraktens "max 1 select + 1 knap" som AuctionsPage (bølge 1),
+          for ikke at opfinde et nyt navigations-mønster i denne bølge. */}
+      <PageHeader
+        title={t("common:nav.item.auctions")}
+        subtitle={t("auctions:history.subtitle")}
+        actions={
+          <>
+            <NavLink to="/auctions" end
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  isActive
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {t("history.tabActive")}
+            </NavLink>
+            <NavLink to="/auctions/history"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  isActive
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {t("history.tabHistory", { count: total })}
+            </NavLink>
+          </>
+        }
+      />
 
       {/* My stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -255,7 +277,18 @@ export default function AuctionHistoryPage() {
       </div>
 
       {loading ? (
-        <PageLoader />
+        // #2849 bølge 2: canonical loading-state — chrome (Section) renderer altid,
+        // kun body swapper; aldrig en spinner inde i et kort.
+        <Section><SkeletonLines lines={6} /></Section>
+      ) : loadError ? (
+        // #2849 bølge 2: canonical error-state, samme genbrugte kopi som
+        // AuctionsPage's loadError (#1350) — retry er altid secondary sm.
+        <Section role="alert">
+          <ErrorState
+            description={t("auctions:loadError.message")}
+            action={<Button size="sm" variant="secondary" onClick={loadAuctions}>{t("auctions:loadError.retry")}</Button>}
+          />
+        </Section>
       ) : auctions.length === 0 ? (
         <EmptyState
           icon={<GavelIcon size={28} aria-hidden="true" />}
@@ -268,23 +301,22 @@ export default function AuctionHistoryPage() {
         />
       ) : (
         <Card className="overflow-hidden">
-          <table data-sortable className="w-full text-sm">
+          <Table data-sortable>
             <thead>
-              <tr className="border-b border-cz-border">
-                <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colNation")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("table.rider")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colStatus")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("table.seller")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colWinner")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colBids")}</th>
-                <SortableTh sortKey="current_price" sort={sort} sortDir={sortDir} onSort={handleSort}
-                  className="px-4 py-3 text-right font-medium text-xs uppercase">
+              <tr>
+                <Th className="hidden sm:table-cell">{t("history.colNation")}</Th>
+                <Th>{t("table.rider")}</Th>
+                <Th className="hidden sm:table-cell">{t("history.colStatus")}</Th>
+                <Th className="hidden sm:table-cell">{t("table.seller")}</Th>
+                <Th className="hidden sm:table-cell">{t("history.colWinner")}</Th>
+                <Th numeric className="hidden md:table-cell">{t("history.colBids")}</Th>
+                <Th numeric sortKey="current_price" sort={sort} sortDir={sortDir} onSort={handleSort}>
                   {t("history.colPrice")}
-                </SortableTh>
-                <SortableTh sortKey="actual_end" sort={sort} sortDir={sortDir} onSort={handleSort}
-                  className="px-4 py-3 text-right font-medium text-xs uppercase hidden md:table-cell">
+                </Th>
+                <Th numeric sortKey="actual_end" sort={sort} sortDir={sortDir} onSort={handleSort}
+                  className="hidden md:table-cell">
                   {t("history.colTime")}
-                </SortableTh>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -295,14 +327,14 @@ export default function AuctionHistoryPage() {
                 const iSelf = isSelfPurchase(a, myTeamId);
                 const bids = bidStats[a.id];
                 return (
-                  <tr key={a.id}
-                    className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
+                  <Tr key={a.id}
+                    className={`cursor-pointer
                       ${iSelf ? "bg-cz-subtle/40" : iWon ? "bg-cz-success-bg0/3" : iSold && !noSale ? "bg-cz-info-bg0/3" : ""}`}
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
-                    <td className="px-2 py-3 hidden sm:table-cell">
+                    <Td className="hidden sm:table-cell">
                       <NationCell code={a.rider?.nationality_code} />
-                    </td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td>
                       <RiderLink id={a.rider?.id} stopPropagation
                         className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                         {a.rider?.firstname} {a.rider?.lastname}
@@ -311,8 +343,8 @@ export default function AuctionHistoryPage() {
                         value: formatNumber(a.rider?.market_value),
                         salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
                       })}</p>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
+                    </Td>
+                    <Td className="hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
                         <RiderBadges badges={[
                           ageBadgeKey(a.rider),
@@ -320,51 +352,51 @@ export default function AuctionHistoryPage() {
                           !iSelf && iSold && !noSale && "sold",
                         ]} />
                       </div>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
+                    </Td>
+                    <Td className="hidden sm:table-cell">
                       <TeamLink id={a.seller?.id} stopPropagation className="text-cz-2">{a.seller?.name || "—"}</TeamLink>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
+                    </Td>
+                    <Td className="hidden sm:table-cell">
                       {noSale ? (
                         <span className="text-cz-3 text-xs">{t("history.noBids")}</span>
                       ) : (
                         <TeamLink id={a.winner?.id} stopPropagation className="text-cz-2">{a.winner?.name || "—"}</TeamLink>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right hidden md:table-cell whitespace-nowrap">
+                    </Td>
+                    <Td numeric className="hidden md:table-cell whitespace-nowrap">
                       {bids && bids.bids > 0 ? (
                         <>
-                          <span className="font-mono text-cz-2 text-sm">{t("history.bidsCount", { count: bids.bids })}</span>
+                          <span className="text-cz-2">{t("history.bidsCount", { count: bids.bids })}</span>
                           <span className="block text-cz-3 text-xs mt-0.5">{t("history.bidsUniqueBidders", { count: bids.bidders })}</span>
                         </>
                       ) : (
                         <span className="text-cz-3 text-xs">{t("history.noBids")}</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </Td>
+                    <Td numeric>
                       {noSale ? (
                         <span className="text-cz-3 text-xs">—</span>
                       ) : iSelf ? (
                         // #244: self-purchase = ingen netto-flow (selv→selv).
                         // Vis neutral pris uden +/- prefix og uden danger/success-farve.
-                        <span className="font-mono font-bold text-cz-2">
+                        <span className="font-bold text-cz-2">
                           {formatNumber(a.current_price)} CZ$
                         </span>
                       ) : (
-                        <span className={`font-mono font-bold
+                        <span className={`font-bold
                           ${iWon ? "text-cz-danger" : iSold ? "text-cz-success" : "text-cz-accent-t"}`}>
                           {iWon ? "-" : iSold ? "+" : ""}{formatNumber(a.current_price)} CZ$
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right text-cz-3 text-xs hidden md:table-cell">
+                    </Td>
+                    <Td numeric className="hidden md:table-cell text-cz-3 text-xs">
                       {timeAgo(a.actual_end, t)}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
             </tbody>
-          </table>
+          </Table>
 
           {/* Pagination */}
           {total > PER_PAGE && (

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { assessTransitionReadiness } from "./seasonTransitionReadiness.js";
+import { assessSeasonEndBlockers, assessTransitionReadiness } from "./seasonTransitionReadiness.js";
 
 // ─── Mock Supabase ────────────────────────────────────────────────────────────
 // Dækker præcis de fire queries assessTransitionReadiness laver:
@@ -259,4 +259,87 @@ test("assessTransitionReadiness — query-fejl på auktions-count kaster (fail-c
     () => assessTransitionReadiness({ supabase: broken, fromSeasonId: FROM_SEASON_ID }),
     /Kunne ikke tælle auktioner/,
   );
+});
+
+// ============================================================
+// #2805 — assessSeasonEndBlockers: spærre for "Afslut sæson"
+// mod uafviklede løb. pending_race_results fanger kun løb der
+// VENTER på behandling — et løb der aldrig startede har ingen
+// række der og passerede tavst før denne spærre.
+// ============================================================
+
+function createSeasonEndMock({ unfinishedRaceCount = 0, lastStageAt = null, racesError = null, stageError = null } = {}) {
+  return {
+    from(table) {
+      if (table === "races") {
+        const chain = {
+          eq: () => chain,
+          neq: () => ({ then: (resolve) => resolve({ data: null, count: unfinishedRaceCount, error: racesError }) }),
+        };
+        return { select: () => chain };
+      }
+      if (table === "race_stage_schedule") {
+        const chain = {
+          eq: () => chain,
+          neq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: () => Promise.resolve({
+            data: stageError ? null : (lastStageAt ? { scheduled_at: lastStageAt } : null),
+            error: stageError,
+          }),
+        };
+        return { select: () => chain };
+      }
+      throw new Error(`Uventet tabel i season-end-mock: ${table}`);
+    },
+  };
+}
+
+test("assessSeasonEndBlockers — 0 uafviklede løb = ikke blokeret (sæson 0 / færdigkørt sæson)", async () => {
+  const supabase = createSeasonEndMock({ unfinishedRaceCount: 0 });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, false);
+  assert.equal(result.unfinished_races, 0);
+  assert.equal(result.detail, null);
+});
+
+test("assessSeasonEndBlockers — uafviklede løb blokerer med antal + sidste etape-dato", async () => {
+  const supabase = createSeasonEndMock({ unfinishedRaceCount: 76, lastStageAt: "2026-07-26T17:00:00+00:00" });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true);
+  assert.equal(result.unfinished_races, 76);
+  assert.equal(result.last_unfinished_stage_at, "2026-07-26T17:00:00+00:00");
+  assert.match(result.detail, /76 løb er ikke afviklet/);
+  assert.match(result.detail, /2026-07-26T17:00:00/);
+});
+
+test("assessSeasonEndBlockers — uafviklet løb UDEN schedule-rækker blokerer stadig (dato udelades)", async () => {
+  const supabase = createSeasonEndMock({ unfinishedRaceCount: 3, lastStageAt: null });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true);
+  assert.equal(result.last_unfinished_stage_at, null);
+  assert.match(result.detail, /3 løb er ikke afviklet/);
+  assert.doesNotMatch(result.detail, /planlagt til/);
+});
+
+test("assessSeasonEndBlockers — query-fejl på races-count kaster (fail-closed)", async () => {
+  const supabase = createSeasonEndMock({ racesError: { message: "boom" } });
+  await assert.rejects(
+    () => assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID }),
+    /Kunne ikke tælle uafviklede løb/,
+  );
+});
+
+test("assessSeasonEndBlockers — query-fejl på etape-lookup kaster (fail-closed)", async () => {
+  const supabase = createSeasonEndMock({ unfinishedRaceCount: 5, stageError: { message: "boom" } });
+  await assert.rejects(
+    () => assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID }),
+    /Kunne ikke finde sidste uafviklede etape/,
+  );
+});
+
+test("assessSeasonEndBlockers — kræver supabase + seasonId", async () => {
+  await assert.rejects(() => assessSeasonEndBlockers({ seasonId: FROM_SEASON_ID }), /Supabase client required/);
+  await assert.rejects(() => assessSeasonEndBlockers({ supabase: createSeasonEndMock() }), /seasonId required/);
 });

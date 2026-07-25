@@ -1,5 +1,5 @@
 {
-  "title": "Race Calendar",
+  "title": "Løbskalender",
   "eyebrow": "Sæson {number} · {days} løbsdage",
   "eyebrowNoDays": "Sæson {number}",
   "loadingAria": "Indlæser løbskalender",
@@ -65,5 +65,10 @@
   },
   "moreRaces": "+{count} flere",
   "prevMonth": "Forrige måned",
-  "nextMonth": "Næste måned"
+  "nextMonth": "Næste måned",
+  "error": {
+    "title": "Kunne ikke hente kalenderen",
+    "description": "Noget gik galt under indlæsning af løbskalenderen. Prøv igen om lidt.",
+    "retry": "Prøv igen"
+  }
 }

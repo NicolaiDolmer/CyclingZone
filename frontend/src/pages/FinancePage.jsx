@@ -177,7 +177,9 @@ export default function FinancePage() {
         .eq("team_id", teamData.id),
       // #986: alle holdets sæsoner til Historik-fanens sæsonvælger (erstatter det
       // tidligere statiske "aktiv sæson"-opslag til sæsonrapport-linket).
-      supabase.from("seasons").select("id, number, status").order("number", { ascending: false }),
+      // #2763: sæson 0 (bogførings-sæson, 0 løb) filtreres ud — samme diskriminator
+      // som #2600 (.gt("number", 0)).
+      supabase.from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: false }),
     ]);
 
     const allSeasons = seasonsRes.data || [];

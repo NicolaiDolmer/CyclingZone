@@ -1,0 +1,63 @@
+-- #2764 — auto-prize sweep statement timeout (Sentry CYCLINGZONE-3B, 20/7 20:21 CEST).
+--
+-- ROD-ÅRSAG (EXPLAIN ANALYZE + hypopg mod prod, 23/7, read-only): getSeasonPrizePreview
+-- (backend/lib/prizePayoutEngine.js:35) paginerer race_results via fetchAllRows
+-- (OFFSET/LIMIT, ~1000 rækker/side). Query'en filtrerer `prize_money > 0`, men
+-- INGEN eksisterende index understøtter det prædikat — planlæggeren falder
+-- tilbage til (Parallel) Seq Scan af HELE race_results-tabellen (415.892 rækker
+-- i dag, på tværs af ALLE sæsoner — tabellen prunes aldrig), selvom kun 19.533
+-- rækker (4,7%) matcher prædikatet. Denne fulde tabel-scanning betales PÅ NY for
+-- hver af de ~20 sider én sweep-kørsel paginerer igennem (målt: sæson 1 alene har
+-- 325 completed løb / 19.046 præmie-rækker), og omkostningen vokser ubegrænset
+-- med race_results' totale størrelse for hver fremtidig sæson — derfor ejerens
+-- vurdering "det vil eskalere når sæsonen vokser" (issue-kommentar 23/7).
+--
+-- Verificeret med hypopg (read-only, ingen skrivning — hypotetiske indexes lever
+-- kun i den aktuelle session, ingen DDL blev kørt mod prod): en covering partial
+-- index på (id) INCLUDE (race_id, team_id, prize_money) WHERE prize_money > 0
+-- dropper plan-cost fra ~13.831 til ~4.428 for samme side (OFFSET 18.000) —
+-- planen skifter fra "Parallel Seq Scan + heap-fetches" til en ren Index Only
+-- Scan, der kun besøger de 19.5k relevante rækker i stedet for alle 415.9k.
+-- INCLUDE-kolonnerne dækker PRÆCIS getSeasonPrizePreview's SELECT-liste
+-- (race_id, team_id, prize_money), så scanningen aldrig behøver et heap-opslag.
+--
+-- Bevidst IKKE valgt: (a) blot forhøje statement_timeout for cron-stien —
+-- ville skjule symptomet uden at røre den underliggende O(tabelstørrelse)-
+-- omkostning, som vokser hver sæson; (b) omskrive fetchAllRows til keyset-
+-- paginering — delt helper brugt af mange callsites, unødigt risikabelt når
+-- indexet alene retter den målte flaskehals.
+--
+-- IDEMPOTENT: CREATE INDEX IF NOT EXISTS. Ingen data ændres — kun en ny index.
+-- Ikke CONCURRENTLY (samme konvention som øvrige migrationer i denne mappe,
+-- fx 2026-07-22-race-passages.sql): tabellen er lille nok (415.9k rækker) til
+-- at et kort SHARE-lock under index-byg er uden praktisk driftspåvirkning.
+--
+-- Rollback: DROP INDEX IF EXISTS idx_race_results_prize_id;
+
+CREATE INDEX IF NOT EXISTS idx_race_results_prize_id
+  ON race_results (id)
+  INCLUDE (race_id, team_id, prize_money)
+  WHERE prize_money > 0;
+
+-- =============================================================================
+-- Post-verify (kør manuelt eller lad CI's db-health-tjek dække det)
+-- =============================================================================
+--
+-- 1) Indexet findes:
+--    SELECT indexname FROM pg_indexes WHERE tablename = 'race_results'
+--      AND indexname = 'idx_race_results_prize_id';
+--    → forventet: 1 række.
+--
+-- 2) Planlæggeren bruger indexet til getSeasonPrizePreview's kerne-query
+--    (erstat <season_id> med en reel sæson-uuid):
+--    EXPLAIN SELECT race_id, team_id, prize_money FROM race_results
+--      WHERE race_id IN (SELECT id FROM races WHERE season_id = '<season_id>'
+--        AND status = 'completed')
+--      AND prize_money > 0 ORDER BY id ASC LIMIT 1000;
+--    → forventet: "Index Only Scan using idx_race_results_prize_id" et sted i planen
+--      (ikke "Seq Scan on race_results").
+--
+-- 3) Ingen regression i selve præmie-tallene (indexet ændrer kun access-path,
+--    aldrig resultatet):
+--    SELECT count(*) FROM race_results WHERE prize_money > 0;
+--    → forventet: uændret fra før migration (~19.533, vokser med nye løb).

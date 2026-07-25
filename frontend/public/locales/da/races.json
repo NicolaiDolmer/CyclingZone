@@ -208,6 +208,8 @@
     "young": "Unge"
   },
   "points": {
+    "loadError": "Kunne ikke indlæse pointtabellen. Prøv igen.",
+    "retry": "Prøv igen",
     "title": "Point- og præmieoversigt",
     "subtitle": "Sådan beregnes dine løbspræmier fra dine placeringer",
     "help": "Hjælp & Regler",
@@ -408,6 +410,16 @@
     "action": "Sæt din opstilling"
   },
   "detail": {
+    "loadError": {
+      "message": "Løbet kunne ikke indlæses. Intet gik tabt. Prøv igen.",
+      "retry": "Prøv igen"
+    },
+    "stat": {
+      "status": "Status",
+      "stages": "Etaper",
+      "season": "Sæson",
+      "nextStage": "Næste etape"
+    },
     "backToLibrary": "← Løbsbibliotek",
     "back": "← Tilbage",
     "raceDnaLabel": "Dette løb:",
@@ -456,6 +468,7 @@
       "team": "Holdkonkurrence"
     },
     "classTab": {
+      "ariaLabel": "Klassement",
       "stage": "Etape",
       "gc": "Samlet",
       "points": "Point",
@@ -588,6 +601,10 @@
     }
   },
   "history": {
+    "loadError": {
+      "message": "Kunne ikke hente løbshistorikken. Prøv igen.",
+      "retry": "Prøv igen"
+    },
     "backToLibrary": "← Løbsbibliotek",
     "editionsCount": "{count, plural, one {# udgave} other {# udgaver}}",
     "editions": "Udgaver",

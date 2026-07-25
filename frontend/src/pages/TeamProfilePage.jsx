@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -11,6 +11,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
+import { initialsFrom } from "../components/ui/avatarStyles.js";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { sortRidersForTable } from "../lib/riderTableSort";
 import { cycleSortState } from "../lib/riderSort";
@@ -20,7 +21,20 @@ import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
 import TeamPalmaresTab from "../components/TeamPalmaresTab";
 import TeamClubTab from "../components/TeamClubTab";
-import { PageLoader } from "../components/ui";
+import {
+  PageLoader,
+  Button,
+  CategoryTag,
+  Section,
+  SectionHeader,
+  EmptyState,
+  ErrorState,
+  Tabs,
+  TabList,
+  Tab,
+  TeamIcon,
+} from "../components/ui";
+import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 // #1997 holdside-slice: "palmares" tilføjet efter "results" (spejler rytterprofilens
@@ -33,6 +47,19 @@ const TABS = ["squad", "results", "palmares", "transfers", "club"];
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
 // labels = STATS[i].label (ABILITY_SHORT, oversættes ikke, jf. #487).
 // #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
+
+// #2849 bølge 5: T3 hero stat-blok — samme opskrift som RaceDetailPage (bølge 3):
+// label 10px uppercase · value 20px/650 data-font tabular · optional 11px sub.
+// Sidste blok i rækken udelader højre-rule (spec: "24px padding/margin"-adskillelse).
+function HeroStatBlock({ label, value, sub, last = false }) {
+  return (
+    <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
+      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
+      {sub && <div className="font-data text-[11px] text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
+    </div>
+  );
+}
 
 export default function TeamProfilePage() {
   const { id } = useParams();
@@ -50,6 +77,10 @@ export default function TeamProfilePage() {
   // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for vis/skjul-toggles.
   const [squadView, setSquadView] = useState("current");
   const [loading, setLoading] = useState(true);
+  // #2849 bølge 5: adskiller "holdet findes ikke" fra "hentningen fejlede" — samme
+  // ærlig-degraderings-mønster som RaceDetailPage (bølge 3): en ægte query-/netværks-
+  // fejl får en ErrorState med retry i stedet for den misvisende "not found"-besked.
+  const [loadError, setLoadError] = useState(false);
   const [myTeamId, setMyTeamId] = useState(null);
   const [tableSort, setTableSort] = useState({ key: "market_value", dir: "desc" });
   // #824: ranglistens holdnavn-link åbner resultat-tabben direkte via ?tab=results.
@@ -69,6 +100,7 @@ export default function TeamProfilePage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setLoading(false); return; }
@@ -99,6 +131,16 @@ export default function TeamProfilePage() {
       supabase.from("global_rank_mv").select("global_rank, global_points").eq("team_id", id).maybeSingle(),
     ]);
 
+    // #2849 bølge 5: en ægte query-/netværksfejl (error != null) er noget andet end
+    // en gyldig "holdet findes ikke" — kun sidstnævnte er notFound; førstnævnte får
+    // en retry-mulighed (samme skelnen som RaceDetailPage, bølge 3).
+    if (teamRes.error) {
+      console.warn("TeamProfilePage: teams fetch failed:", teamRes.error.message);
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+
     setGlobalRank(globalRankRes?.data?.global_rank != null ? globalRankRes.data : null);
     setTeam(teamRes.data);
     const lastSeen = teamRes.data?.manager?.last_seen || null;
@@ -116,11 +158,38 @@ export default function TeamProfilePage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // #2849 bølge 5c: T3-kort-anatomi (ejer-revision 24/7) — hero'en er et kort
+  // med back-link OVER sig, ikke et full-bleed-bånd. Layout's full-bleed-route-
+  // bucket giver stadig ingen padding/cap, så loading/fejl/not-found-grenene
+  // sætter selv den samme ydre max-w-5xl-container som happy-path'en.
   if (loading) return (
-    <PageLoader />
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <PageLoader />
+    </div>
   );
 
-  if (!team) return <div className="text-center py-16 text-cz-3">{t("profile.notFound")}</div>;
+  if (loadError) return (
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <button type="button" onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+        {t("profile.back")}
+      </button>
+      <ErrorState
+        description={t("profile.loadError.message")}
+        action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("profile.loadError.retry")}</Button>}
+      />
+    </div>
+  );
+
+  if (!team) return (
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <button type="button" onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+        {t("profile.back")}
+      </button>
+      <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.notFound")} />
+    </div>
+  );
 
   const currentRiders = riders.filter(r => !r._isIncoming);
   const incomingRiders = riders.filter(r => r._isIncoming);
@@ -140,233 +209,233 @@ export default function TeamProfilePage() {
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
 
-  // #1675: squad-fanen viser en bred trup-tabel (15 evne-kolonner) — den bruger fuld
-  // content-bredde (Layout giver /teams/:id max-w-full, samme som "/team"). Header,
-  // sæson-boks, tabs + resultat-/transfer-faner cappes til en læsbar kolonne.
-  const isSquadTab = activeTab === "squad";
+  // #2849 bølge 5: hero stat-række — de fire altid-kendte holdtal + (hvis en
+  // sæsonplacering findes) point/etapesejre/GC-sejre. Erstatter de to separate
+  // håndrullede kort ("Header"-statistik + "Season standing") fra før-T3-versionen.
+  const statBlocks = [
+    { label: t("profile.statRidersNow"), value: String(currentRiders.length) },
+    { label: t("profile.statIncoming"), value: String(incomingRiders.length) },
+    { label: t("profile.statOutgoing"), value: String(outgoingRiders.length) },
+    { label: t("profile.statTeamValue"), value: `${formatNumber(totalValue)} CZ$` },
+    ...(standing ? [
+      {
+        label: t("profile.seasonPoints"),
+        value: String(formatNumber(standing.total_points) || 0),
+        sub: standing.season?.number != null
+          ? `${t("profile.seasonLabel", { n: standing.season.number })}${
+              standing.season.status ? ` · ${standing.season.status === "active" ? t("profile.seasonOngoing") : t("profile.seasonFinished")}` : ""
+            }`
+          : null,
+      },
+      { label: t("profile.seasonStageWins"), value: String(standing.stage_wins || 0) },
+      { label: t("profile.seasonGcWins"), value: String(standing.gc_wins || 0) },
+    ] : []),
+  ];
+
+  const TAB_LABELS = {
+    squad: t("profile.tabSquad", { count: currentRiders.length }),
+    results: t("profile.tabResults"),
+    palmares: t("profile.tabPalmares"),
+    transfers: t("profile.tabTransfers"),
+    club: t("profile.tabClub"),
+  };
+
   return (
-    <div className={isSquadTab ? "max-w-full" : "max-w-4xl mx-auto"}>
-      <button onClick={() => navigate(-1)}
-        className="text-cz-2 hover:text-cz-1 text-sm mb-5 flex items-center gap-2 transition-colors">
-        {t("profile.back")}
-      </button>
+    <div>
+      {/* #2849 bølge 5c: ejer-revision 24/7 (2. iteration) — hero'en er et KORT
+          igen, ikke et full-bleed-bånd. Guldlinjen (T3-signatur) følger kortets
+          afrundede topkant, back-linket ligger over kortet, og tabs står under
+          kortet på sidens baggrund (rytterprofil-mønstret, RiderStatsPage). */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <button type="button" onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          {t("profile.back")}
+        </button>
 
-      {/* Header */}
-      <div className="bg-cz-card border border-cz-border rounded-cz p-6 mb-4 max-w-4xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-1 flex-wrap">
-              <h1 className="text-xl font-bold text-cz-1">{team.name}</h1>
-              {isMyTeam && <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">{t("profile.yourTeam")}</span>}
-            </div>
-            {team.manager_name && (
-              <p className="text-cz-2 text-sm flex items-center gap-2">
-                <span>{t("profile.managerLabel", { name: team.manager_name })}</span>
-                <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
-              </p>
-            )}
-            <p className="text-cz-2 text-sm flex items-center gap-2 flex-wrap">
-              <span>{t("profile.division", { n: team.division })}</span>
-              {/* #2453: Global Rank-placering — skjult for inaktive managere (globalRank=null). */}
-              {globalRank && (
-                <button onClick={() => navigate("/global-rank")}
-                  className="text-xs font-mono font-bold text-cz-accent-t hover:underline">
-                  {tGR("title")} #{globalRank.global_rank}
-                </button>
-              )}
-            </p>
-          </div>
-
-        </div>
-
-        <div className="grid grid-cols-4 gap-3 mt-5">
-          {[
-            { label: t("profile.statRidersNow"), value: currentRiders.length },
-            { label: t("profile.statIncoming"), value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-cz-success" : "text-cz-1" },
-            { label: t("profile.statOutgoing"), value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-cz-danger" : "text-cz-1" },
-            { label: t("profile.statTeamValue"), value: `${formatNumber(totalValue)} CZ$`, color: "text-cz-accent-t" }, // value shown, balance hidden
-          ].map(s => (
-            <div key={s.label} className="bg-cz-subtle rounded-lg p-3 text-center">
-              <p className="text-cz-3 text-[9px] uppercase tracking-wider mb-1">{s.label}</p>
-              <p className={`font-mono font-bold text-sm ${s.color || "text-cz-1"}`}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Season standing */}
-      {standing && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4 max-w-4xl">
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <h2 className="text-cz-1 font-semibold text-sm">{t("profile.seasonResults")}</h2>
-            {/* #1095: tydeliggør HVILKEN sæson resultaterne gælder + om den er afsluttet */}
-            {standing.season?.number != null && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle border border-cz-border text-cz-2">
-                {t("profile.seasonLabel", { n: standing.season.number })}
-              </span>
-            )}
-            {standing.season?.status && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                standing.season.status === "active"
-                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                {standing.season.status === "active" ? t("profile.seasonOngoing") : t("profile.seasonFinished")}
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: t("profile.seasonPoints"), value: formatNumber(standing.total_points) || 0, color: "text-cz-accent-t" },
-              { label: t("profile.seasonStageWins"), value: standing.stage_wins || 0 },
-              { label: t("profile.seasonGcWins"), value: standing.gc_wins || 0 },
-            ].map(s => (
-              <div key={s.label} className="bg-cz-subtle rounded-lg p-3 text-center">
-                <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
-                <p className={`font-mono font-bold text-lg ${s.color || "text-cz-1"}`}>{s.value}</p>
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+            <div className="min-w-0 flex items-start gap-4 sm:gap-5">
+              {/* Identitets-slot (hold → initialer; hold får ikke fotos, så
+                  ingen "PHOTO"-label — kun rytter/staff-slottet bærer den). */}
+              <div className="mt-1 w-20 h-20 sm:w-24 sm:h-24 flex-none bg-cz-subtle border border-cz-border rounded-cz flex items-center justify-center">
+                <span aria-hidden="true" className="font-display text-[26px] sm:text-[30px] leading-none text-cz-2">
+                  {initialsFrom(team.name)}
+                </span>
               </div>
+              <div className="min-w-0">
+                {/* Holdnavnet FØRST (sidens vigtigste ord) — tags/meta UNDER navnet. */}
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  {isMyTeam && <CategoryTag>{t("profile.yourTeam")}</CategoryTag>}
+                  <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                    {t("profile.division", { n: team.division })}
+                  </span>
+                  {team.manager_name && (
+                    <>
+                      <span className="text-cz-3 text-[11px]" aria-hidden="true">·</span>
+                      <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                        {t("profile.managerLabel", { name: team.manager_name })}
+                      </span>
+                      <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            {globalRank && (
+              <div className="flex gap-2 flex-none">
+                <Button size="sm" variant="secondary" onClick={() => navigate("/global-rank")}>
+                  {tGR("title")} #{globalRank.global_rank}
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
+            {statBlocks.map((b, i) => (
+              <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
             ))}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4 max-w-4xl">
-        {[
-          { key: "squad", label: t("profile.tabSquad", { count: currentRiders.length }) },
-          { key: "results", label: t("profile.tabResults") },
-          { key: "palmares", label: t("profile.tabPalmares") },
-          { key: "transfers", label: t("profile.tabTransfers") },
-          { key: "club", label: t("profile.tabClub") },
-        ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${activeTab === tab.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {tab.label}
-          </button>
-        ))}
+        {/* Tabs UNDER kortet på sidens baggrund — TabList bærer sin egen
+            hairline-bundrule (tabsStyles.js); ingen -mb-px-fusion mod kortet. */}
+        <Tabs value={activeTab} onChange={setActiveTab} className="mt-5">
+          <TabList label={t("profile.tabsAriaLabel")}>
+            {TABS.map(key => (
+              <Tab key={key} value={key}>{TAB_LABELS[key]}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
       </div>
 
-      {activeTab === "results" && (
-        <TeamResultsTab teamId={id} isOwnTeam={isMyTeam} />
-      )}
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
+        <div className="flex flex-col gap-[14px]">
 
-      {/* #1997 holdside-slice — sæson-for-sæson-historik, karrieretotaler + æresliste. */}
-      {activeTab === "palmares" && (
-        <TeamPalmaresTab teamId={id} />
-      )}
+          {activeTab === "results" && (
+            <TeamResultsTab teamId={id} isOwnTeam={isMyTeam} />
+          )}
 
-      {activeTab === "transfers" && (
-        <TeamTransferHistoryTab teamId={id} />
-      )}
+          {/* #1997 holdside-slice — sæson-for-sæson-historik, karrieretotaler + æresliste. */}
+          {activeTab === "palmares" && (
+            <TeamPalmaresTab teamId={id} />
+          )}
 
-      {activeTab === "club" && (
-        <TeamClubTab teamId={id} />
-      )}
+          {activeTab === "transfers" && (
+            <TeamTransferHistoryTab teamId={id} />
+          )}
 
-      {/* Squad with FM toggle */}
-      {activeTab === "squad" && (
-      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-        <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-cz-1 font-semibold text-sm">{t("profile.squadTitle", { count: currentRiders.length })}</h2>
-          {hasTransfers && (
-            <div className="flex rounded-lg border border-cz-border overflow-hidden">
-              {[
-                { key: "current",  label: t("profile.viewCurrent",  { count: currentRiders.length }) },
-                { key: "upcoming", label: t("profile.viewUpcoming", { count: upcomingCount }) },
-              ].map(v => (
-                <button key={v.key} onClick={() => setSquadView(v.key)}
-                  className={`px-2.5 py-1 text-xs font-medium transition-all
-                    ${squadView === v.key
-                      ? "bg-cz-accent/10 text-cz-accent-t"
-                      : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-                  {v.label}
-                </button>
-              ))}
-            </div>
+          {activeTab === "club" && (
+            <TeamClubTab teamId={id} />
+          )}
+
+          {/* Squad with FM toggle */}
+          {activeTab === "squad" && (
+            <Section>
+              <SectionHeader
+                title={t("profile.squadTitle", { count: currentRiders.length })}
+                action={hasTransfers && (
+                  <div className="flex rounded-cz border border-cz-border overflow-hidden">
+                    {[
+                      { key: "current",  label: t("profile.viewCurrent",  { count: currentRiders.length }) },
+                      { key: "upcoming", label: t("profile.viewUpcoming", { count: upcomingCount }) },
+                    ].map(v => (
+                      <button key={v.key} type="button" onClick={() => setSquadView(v.key)}
+                        className={`px-2.5 py-1 text-xs font-medium transition-all
+                          ${squadView === v.key
+                            ? "bg-cz-accent/10 text-cz-accent-t"
+                            : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              />
+              {squadView === "upcoming" && hasTransfers && (
+                <p className="text-cz-3 text-xs mb-3">{t("profile.viewUpcomingHint")}</p>
+              )}
+              {displayRiders.length === 0 ? (
+                <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.noRiders")} />
+              ) : (
+                <div className={WRAP}>
+                  <div className={SCROLLER}>
+                    <table data-sortable className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-cz-border">
+                          <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
+                          <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
+                          {/* #1755: Status sortérbar (alders-tier) + Alder/Type som egne
+                              sorterbare kolonner — på linje med eget hold (#1482/#1674). */}
+                          <SortTh sortKey="is_u25" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</SortTh>
+                          <SortTh sortKey="birthdate" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-3 py-3 text-center font-medium uppercase hidden sm:table-cell">{t("profile.thAge")}</SortTh>
+                          <SortTh sortKey="primary_type" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-3 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thType")}</SortTh>
+                          <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                            className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
+                          {STATS.map(({ key, label }) => (
+                            <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                              className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayRiders.map(r => (
+                          <tr key={r.id}
+                            className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
+                              ${r._isIncoming ? "bg-cz-success-bg0/3" : r._isOutgoing ? "bg-cz-danger-bg0/3" : ""}`}
+                            onClick={() => navigate(`/riders/${r.id}`)}>
+                            <td className="px-2 py-2.5 hidden sm:table-cell">
+                              <NationCell code={r.nationality_code} />
+                            </td>
+                            <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <RiderLink id={r.id} stopPropagation
+                                  className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+                                  {r.firstname} {r.lastname}
+                                </RiderLink>
+                                {/* #1531: skade-badge inline på mobil (Status-kolonnen er skjult <sm). */}
+                                {isRiderInjured(r.injured_until) && (
+                                  <span className="sm:hidden">
+                                    <RiderBadges badges={["injured"]} />
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 hidden sm:table-cell">
+                              <div className="flex flex-wrap items-center gap-1">
+                                {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
+                                <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                              </div>
+                            </td>
+                            {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}
+                            <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
+                            <td className="px-3 py-2.5 hidden sm:table-cell">
+                              <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
+                              {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
+                            </td>
+                            {STATS.map(({ key }) => (
+                              <td key={key} className="px-1.5 py-2.5 text-center">
+                                <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
+                                  {r[key] || "—"}
+                                </span>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </Section>
           )}
         </div>
-        {squadView === "upcoming" && hasTransfers && (
-          <p className="px-5 py-2 text-cz-3 text-xs border-b border-cz-border">{t("profile.viewUpcomingHint")}</p>
-        )}
-        {displayRiders.length === 0 ? (
-          <div className="text-center py-12 text-cz-3"><p>{t("profile.noRiders")}</p></div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table data-sortable className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-cz-border">
-                  <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
-                  <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
-                  {/* #1755: Status sortérbar (alders-tier) + Alder/Type som egne
-                      sorterbare kolonner — på linje med eget hold (#1482/#1674). */}
-                  <SortTh sortKey="is_u25" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</SortTh>
-                  <SortTh sortKey="birthdate" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-3 py-3 text-center font-medium uppercase hidden sm:table-cell">{t("profile.thAge")}</SortTh>
-                  <SortTh sortKey="primary_type" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thType")}</SortTh>
-                  <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
-                  {STATS.map(({ key, label }) => (
-                    <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                      className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayRiders.map(r => (
-                  <tr key={r.id}
-                    className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
-                      ${r._isIncoming ? "bg-cz-success-bg0/3" : r._isOutgoing ? "bg-cz-danger-bg0/3" : ""}`}
-                    onClick={() => navigate(`/riders/${r.id}`)}>
-                    <td className="px-2 py-2.5 hidden sm:table-cell">
-                      <NationCell code={r.nationality_code} />
-                    </td>
-                    <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <RiderLink id={r.id} stopPropagation
-                          className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                          {r.firstname} {r.lastname}
-                        </RiderLink>
-                        {/* #1531: skade-badge inline på mobil (Status-kolonnen er skjult <sm). */}
-                        {isRiderInjured(r.injured_until) && (
-                          <span className="sm:hidden">
-                            <RiderBadges badges={["injured"]} />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 hidden sm:table-cell">
-                      <div className="flex flex-wrap items-center gap-1">
-                        {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
-                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
-                      </div>
-                    </td>
-                    {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}
-                    <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
-                    <td className="px-3 py-2.5 hidden sm:table-cell">
-                      <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                      {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
-                    </td>
-                    {STATS.map(({ key }) => (
-                      <td key={key} className="px-1.5 py-2.5 text-center">
-                        <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                          {r[key] || "—"}
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
-      )}
     </div>
   );
 }

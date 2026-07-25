@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -14,9 +14,11 @@ import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
-import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { StarIcon, ExchangeIcon, CheckIcon, PageLoader, ToastViewport } from "../components/ui";
+import {
+  ExchangeIcon, CheckIcon, PageLoader, ToastViewport,
+  PageHeader, Button, DataTable, EmptyState, StarIcon, FilterIcon,
+} from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -25,7 +27,9 @@ import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSel
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
-// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
+// #2849 bølge 2: tabellen migreret til den kanoniske DataTable (T2 wide-data,
+// docs/design/PAGE_TEMPLATES.md) — sorterings-UI leveres nu af DataTable selv,
+// så den lokale SortTh-header er væk; cyklus-logikken (handleSort) er uændret.
 
 const PAGE_SIZE = 50;
 // Matches ToastViewport's default auto-dismiss duration (#2467).
@@ -194,211 +198,210 @@ export default function WatchlistPage() {
     <PageLoader />
   );
 
-  return (
-    <div className="max-w-full">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-          <p className="text-cz-3 text-sm">
-            {t("subtitle", { count: entries.length })}
-          </p>
+  // #2849 bølge 2 — kolonne-definitioner til den kanoniske DataTable. Sticky
+  // navnecelle (rytter) + resten som almindelige/fold-kolonner (T2-recepten).
+  // Compare/stjerne/note/handling er interaktive og foldes IKKE ind i mobil-
+  // underlinjen (giver ikke mening som tekst) — de forbliver almindelige
+  // kolonner der scroller vandret bag den pinnede navnekolonne.
+  const columns = [
+    {
+      key: "nation", header: t("thNation"), fold: true, sortKey: "nationality_code",
+      foldValue: (entry) => entry.rider.nationality_code ? entry.rider.nationality_code.toUpperCase() : null,
+      render: (entry) => <NationCell code={entry.rider.nationality_code} />,
+    },
+    {
+      key: "rider", header: t("thRider"), sticky: true, sortKey: "firstname",
+      render: (entry) => (
+        <RiderNameCell id={entry.rider.id} firstname={entry.rider.firstname} lastname={entry.rider.lastname} />
+      ),
+    },
+    {
+      key: "compare",
+      header: (
+        <span title={t("compareTooltip")} className="flex justify-center">
+          <ExchangeIcon size={14} aria-hidden="true" className="text-cz-3" />
+        </span>
+      ),
+      render: (entry) => (
+        <CompareToggle
+          active={compareIds.includes(entry.rider.id)}
+          disabled={compareIds.length >= MAX_COMPARE}
+          onToggle={() => toggleCompare(entry.rider.id)}
+        />
+      ),
+    },
+    {
+      key: "star", header: "",
+      render: (entry) => <WatchlistStar active onToggle={() => removeFromWatchlist(entry.rider.id)} />,
+    },
+    {
+      key: "team", header: t("thTeam"), fold: true, sortKey: "team_id",
+      foldValue: (entry) => entry.rider.team?.name || t("teamFree"),
+      render: (entry) => <TeamCell team={entry.rider.team} freeLabel={t("teamFree")} />,
+    },
+    {
+      key: "badges", header: t("thBadges"), fold: true, sortKey: "is_u25",
+      render: (entry) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <RiderBadges badges={[ageBadgeKey(entry.rider)]} />
         </div>
-        <button onClick={() => navigate("/riders")}
-          className="px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("addRiders")}
-        </button>
-      </div>
+      ),
+    },
+    {
+      key: "age", header: t("thAge"), fold: true, numeric: true, sortKey: "birthdate",
+      foldValue: (entry) => String(getRiderAge(entry.rider.birthdate) ?? "—"),
+      render: (entry) => getRiderAge(entry.rider.birthdate) ?? "—",
+    },
+    {
+      key: "type", header: t("thType"), fold: true, sortKey: "primary_type",
+      render: (entry) => <RiderTypeBadge primaryType={entry.rider.primary_type} secondaryType={entry.rider.secondary_type} />,
+    },
+    {
+      key: "value", header: t("thValue"), numeric: true, sortKey: "value",
+      render: (entry) => (
+        <span className="font-bold text-cz-accent-t">
+          {formatCz(getRiderMarketValue(entry.rider)).replace(" CZ$", "")}
+        </span>
+      ),
+    },
+    {
+      key: "salary", header: t("thSalary"), numeric: true, sortKey: "salary",
+      render: (entry) => formatNumber(getRiderSalary(entry.rider)),
+    },
+    {
+      key: "potential", header: t("thPotential"), sortKey: "_scoutMid",
+      render: (entry) => <ScoutablePotentiale rider={entry.rider} scouting={scouting} />,
+    },
+    ...STATS.map(({ key, label }) => ({
+      key, header: label, numeric: true, sortKey: key,
+      render: (entry) => (
+        <span
+          className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded"
+          style={statStyle(entry.rider[key] || 0)}
+        >
+          {entry.rider[key] || "—"}
+        </span>
+      ),
+    })),
+    {
+      key: "note", header: t("thNote"),
+      render: (entry) => (
+        editingNote === entry.id ? (
+          <div className="flex gap-1">
+            <input type="text" value={noteText} onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && saveNote(entry.id)}
+              className="flex-1 bg-cz-subtle border border-cz-border rounded px-2 py-1
+                text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
+              autoFocus placeholder={t("notePlaceholder")} aria-label={t("notePlaceholder")} />
+            <button onClick={() => saveNote(entry.id)} aria-label={t("common:a11y.saveNote")}
+              className="text-cz-success text-xs px-1"><CheckIcon size={14} aria-hidden="true" /></button>
+          </div>
+        ) : (
+          <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}
+            className="text-cz-3 hover:text-cz-2 text-xs truncate max-w-24 block mx-auto transition-colors">
+            {entry.note || t("addNote")}
+          </button>
+        )
+      ),
+    },
+    {
+      key: "action", header: t("thAction"),
+      render: (entry) => {
+        const r = entry.rider;
+        const isFree = !r.team_id;
+        const inAuction = auctionRiderIds.has(r.id);
+        return (
+          <div className="flex items-center justify-center gap-1.5">
+            {inAuction ? (
+              <span className="text-[10px] px-2 py-0.5 rounded border font-medium uppercase
+                bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap">
+                {t("inAuction")}
+              </span>
+            ) : isFree ? (
+              <Button variant="secondary" size="sm" onClick={() => startAuction(r)} className="whitespace-nowrap">
+                {t("startAuction")}
+              </Button>
+            ) : (
+              <span className="text-cz-3 text-xs">—</span>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader
+        title={t("title")}
+        subtitle={t("subtitle", { count: entries.length })}
+        // #2849 bølge 2: kun ÉN gold primary-knap pr. view — når ønskelisten er
+        // tom, er EmptyState'ens egen CTA den ene primary, så header-knappen
+        // udelades i stedet for at duplikere den (samme mål, to gold-knapper).
+        actions={entries.length > 0 ? (
+          <Button variant="primary" size="sm" onClick={() => navigate("/riders")}>
+            {t("addRiders")}
+          </Button>
+        ) : null}
+      />
 
       {actionError && (
-        <div role="alert" className="mb-4 px-4 py-2.5 rounded-lg bg-cz-danger/10 border border-cz-danger/30 text-cz-danger text-sm">
+        <div role="alert" className="mb-4 rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-4 py-2.5 text-sm text-cz-danger">
           {actionError}
         </div>
       )}
 
       {entries.length === 0 ? (
-        <div className="text-center py-20 text-cz-3">
-          <StarIcon className="w-14 h-14 mx-auto mb-4 text-cz-3" />
-          <p className="text-lg font-medium text-cz-3">{t("emptyTitle")}</p>
-          <p className="text-sm mt-2">{t("emptyBody")}</p>
-          <button onClick={() => navigate("/riders")}
-            className="mt-5 px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110">
-            {t("emptyCta")}
-          </button>
-        </div>
+        <EmptyState
+          icon={<StarIcon size={26} aria-hidden="true" />}
+          title={t("emptyTitle")}
+          description={t("emptyBody")}
+          action={<Button size="sm" onClick={() => navigate("/riders")}>{t("emptyCta")}</Button>}
+        />
       ) : (
         <>
-          <div className="max-w-[1600px]">
-            <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
-          </div>
+          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
 
-          {/* Table */}
-          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-            <div className="overflow-auto max-h-[calc(100vh-220px)]">
-              <table data-sortable className="w-full text-xs">
-                <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
-                  <tr className="border-b border-cz-border">
-                    <SortTh sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thNation")}</SortTh>
-                    <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("thRider")}</SortTh>
-                    <th className="px-1 py-3 w-8" title={t("compareTooltip")}>
-                      <ExchangeIcon size={14} aria-hidden="true" className="mx-auto text-cz-3" />
-                    </th>
-                    <th className="px-2 py-3 w-8" />
-                    {/* #1755: Hold + Status sortérbare (var døde headers) — universel
-                        sortering på linje med rytterdatabasen/holdsiden. */}
-                    <SortTh sortKey="team_id" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</SortTh>
-                    <SortTh sortKey="is_u25" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</SortTh>
-                    {/* #1755: Alder + Type vises + sorteres som de øvrige rytter-oversigter. */}
-                    <SortTh sortKey="birthdate" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thAge")}</SortTh>
-                    <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thType")}</SortTh>
-                    <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
-                    <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-right font-medium">{t("thSalary")}</SortTh>
-                    <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium">{t("thPotential")}</SortTh>
-                    {STATS.map(({ key, label }) => (
-                      <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
-                        className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
-                    ))}
-                    <th className="px-3 py-3 text-center text-cz-3">{t("thNote")}</th>
-                    <th className="px-3 py-3 text-center text-cz-3">{t("thAction")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={13 + STATS.length} className="px-3 py-12 text-center">
-                        <p className="text-cz-3 text-sm">{t("common:controls.noFilterResults")}</p>
-                        <button onClick={riderFilters.onReset}
-                          className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-                            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-                          {t("common:controls.clearFilters")}
-                        </button>
-                      </td>
-                    </tr>
-                  )}
-                  {visible.map(entry => {
-                    const r = entry.rider;
-                    const isFree = !r.team_id;
-                    const inAuction = auctionRiderIds.has(r.id);
-                    const compareActive = compareIds.includes(r.id);
-                    return (
-                      <tr key={entry.id} className={`border-b border-cz-border hover:bg-cz-subtle ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
-                        <td className="px-2 py-2.5 hidden sm:table-cell">
-                          <NationCell code={r.nationality_code} />
-                        </td>
-                        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                          <RiderNameCell id={r.id} firstname={r.firstname} lastname={r.lastname}
-                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left" />
-                        </td>
-                        <td className="px-1 py-2.5 w-8">
-                          <CompareToggle active={compareActive}
-                            disabled={compareIds.length >= MAX_COMPARE}
-                            onToggle={() => toggleCompare(r.id)} />
-                        </td>
-                        <td className="px-2 py-2.5 w-8">
-                          <WatchlistStar active onToggle={() => removeFromWatchlist(r.id)} />
-                        </td>
-                        <td className="px-3 py-2.5 hidden sm:table-cell">
-                          <TeamCell team={r.team} freeLabel={t("teamFree")} />
-                        </td>
-                        <td className="px-3 py-2.5 hidden sm:table-cell">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <RiderBadges badges={[ageBadgeKey(r)]} />
-                          </div>
-                        </td>
-                        {/* #1755: numerisk alder + ryttertype som egne celler (matcher /riders). */}
-                        <td className="px-3 py-2.5 hidden sm:table-cell text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
-                        <td className="px-3 py-2.5 hidden sm:table-cell">
-                          <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                          {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-cz-2 font-mono">
-                          {formatNumber(getRiderSalary(r))}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <ScoutablePotentiale rider={r} scouting={scouting} />
-                        </td>
-                        {STATS.map(({ key }) => (
-                          <td key={key} className="px-1.5 py-2.5 text-center">
-                            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                              {r[key] || "—"}
-                            </span>
-                          </td>
-                        ))}
-                        <td className="px-3 py-2.5 text-center max-w-28">
-                          {editingNote === entry.id ? (
-                            <div className="flex gap-1">
-                              <input type="text" value={noteText} onChange={e => setNoteText(e.target.value)}
-                                onKeyDown={e => e.key === "Enter" && saveNote(entry.id)}
-                                className="flex-1 bg-cz-subtle border border-cz-border rounded px-2 py-1
-                                  text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
-                                autoFocus placeholder={t("notePlaceholder")} aria-label={t("notePlaceholder")} />
-                              <button onClick={() => saveNote(entry.id)} aria-label={t("common:a11y.saveNote")}
-                                className="text-cz-success text-xs px-1"><CheckIcon size={14} aria-hidden="true" /></button>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}
-                              className="text-cz-3 hover:text-cz-2 text-xs truncate max-w-24 block mx-auto transition-colors">
-                              {entry.note || t("addNote")}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {inAuction ? (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase
-                                bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap">
-                                {t("inAuction")}
-                              </span>
-                            ) : isFree ? (
-                              <button onClick={() => startAuction(r)}
-                                className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-                                  rounded text-xs hover:bg-cz-accent/10 transition-all whitespace-nowrap">
-                                {t("startAuction")}
-                              </button>
-                            ) : (
-                              <span className="text-cz-3 text-xs">—</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<FilterIcon size={26} aria-hidden="true" />}
+              title={t("common:controls.noFilterResults")}
+              action={
+                <Button variant="secondary" size="sm" onClick={riderFilters.onReset}>
+                  {t("common:controls.clearFilters")}
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <DataTable
+                label={t("title")}
+                columns={columns}
+                rows={visible}
+                rowKey={(entry) => entry.id}
+                sort={sort}
+                sortDir={sortDir}
+                onSort={handleSort}
+                count={t("pagination", {
+                  from: total === 0 ? 0 : pageStart + 1,
+                  to: Math.min(pageStart + PAGE_SIZE, total),
+                  total: formatNumber(total),
+                })}
+              />
 
-          {/* Pagination */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-            <span className="text-cz-3 text-xs">
-              {t("pagination", { from: total === 0 ? 0 : pageStart + 1, to: Math.min(pageStart + PAGE_SIZE, total), total: formatNumber(total) })}
-            </span>
-            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-              <button disabled={safePage <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
-                  hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-                {t("prev")}
-              </button>
-              <button disabled={safePage >= pageCount}
-                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
-                className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
-                  hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-                {t("next")}
-              </button>
-            </div>
-          </div>
+              {/* Pagination */}
+              <div className="mt-3 flex justify-end gap-2">
+                <Button variant="secondary" size="sm" disabled={safePage <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}>
+                  {t("prev")}
+                </Button>
+                <Button variant="secondary" size="sm" disabled={safePage >= pageCount}
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}>
+                  {t("next")}
+                </Button>
+              </div>
+            </>
+          )}
         </>
       )}
 

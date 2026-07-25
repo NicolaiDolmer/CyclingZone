@@ -29,6 +29,21 @@ const CF_CODE_LABEL_RE = /Error code\s+(\d{3})/i;
 const TRANSIENT_NETWORK_RE =
   /\b(ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|EPIPE)\b|fetch failed|socket hang up|network\s?error|terminated/i;
 
+// Postgres statement/lock-timeout (Sentry 24/7, CYCLINGZONE-3D/3E). Backenden går
+// gennem PostgREST's `authenticator`-rolle, som har statement_timeout=8s + lock_timeout=8s.
+// Når flere løb afvikler samme etape på samme scheduler-tick, kører flere fulde
+// standings-recomputes (seq scan over race_results, 458k rækker pr. 25/7) samtidig →
+// enkelte kald sprænger de 8 s og Postgres CANCELLER statementet.
+//
+// Et cancelleret statement er ALTID rullet tilbage (ingen delvis effekt), og begge
+// call-sites bag withSupabaseRetry er idempotente (paginerede reads + samme-payload
+// PATCHes). Derfor er et retry både sikkert og næsten altid nok: presset er kortvarigt.
+// Uden denne klassificering kastede withSupabaseRetry med det samme — og i race-motoren
+// afbrød det etapens berigelse (runs/moments/incidents + træthed) PERMANENT.
+const TRANSIENT_DB_TIMEOUT_RE = /canceling statement due to (statement|lock) timeout/i;
+// 57014 = query_canceled, 55P03 = lock_not_available (Postgres-klasse 57/55).
+const TRANSIENT_DB_TIMEOUT_CODES = new Set(["57014", "55P03"]);
+
 function extractMessage(error) {
   if (error == null) return "";
   if (typeof error === "string") return error;
@@ -65,8 +80,14 @@ export function normalizeSupabaseErrorMessage(message) {
 
 // True hvis fejlen er et transient gateway-/netværks-hikke det er værd at retry'e.
 export function isTransientSupabaseError(error) {
+  // Postgres-koden tjekkes FØR beskeden: PostgREST sender 57014 med en besked der
+  // kan variere med lokalisering/version, så koden er det stabile signal.
+  const code = error && typeof error === "object" ? error.code : null;
+  if (code != null && TRANSIENT_DB_TIMEOUT_CODES.has(String(code))) return true;
+
   const message = extractMessage(error);
   if (!message) return false;
+  if (TRANSIENT_DB_TIMEOUT_RE.test(message)) return true;
   if (looksLikeHtmlErrorPage(message)) {
     // Cloudflare 5xx (502/504/520-525) = gateway/origin nede → transient.
     const code = (message.match(CF_TITLE_RE) || message.match(CF_CODE_LABEL_RE) || [])[1];

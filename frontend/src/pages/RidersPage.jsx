@@ -18,6 +18,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
+import { getCountryCode3 } from "../lib/countryUtils";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
@@ -26,9 +27,23 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
-import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon, PageLoader } from "../components/ui";
+import {
+  ExchangeIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  Select,
+  Button,
+  PageHeader,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  SkeletonLines,
+  BikeIcon,
+} from "../components/ui";
+import { WRAP } from "../components/ui/dataTableStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -61,8 +76,9 @@ function buildRidersTourSteps(t) {
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-// #1755: SortTh er nu en delt komponent (components/rider/RiderSortTh) så alle
-// rytter-oversigter deler præcis samme sorterbare-header-adfærd + retnings-ikon.
+// #2849 bølge 2: DataTable's indbyggede sortable-header (sortKey/onSort) afløser
+// den tidligere delte SortTh-komponent på denne side — samme cyklus-logik
+// (cycleSortState), blot trigget af DataTable i stedet for en per-kolonne <th>.
 
 // #1592: nye spillere kan ikke afkode de 15 evne-koder (CLM/TT/FLT/…) i kolonne-
 // overskrifterne, og det blokerer det første rytter-valg. Hver stat-header får en
@@ -99,12 +115,12 @@ function AbilityLegend({ t, tRider }) {
 }
 
 // Mobil-sorterings-kontrol (#9): på mobil er de fleste sortérbare kolonne-headers
-// skjult (`hidden sm:table-cell`), så Nation/Hold/Status/Type ikke kan sorteres.
+// skjult (DataTable's `fold`), så Nation/Hold/Status/Type ikke kan sorteres.
 // Denne select + retnings-toggle eksponerer NØJAGTIG de samme sort-nøgler som
-// desktop-SortTh'erne og skriver til samme filters.sort/sort_dir via handleSort —
+// desktop-headerne og skriver til samme filters.sort/sort_dir via handleSort —
 // ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
 function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
-  // Samme nøgler + rækkefølge som desktop-headers (RidersPage tabel-thead).
+  // Samme nøgler + rækkefølge som desktop-kolonnerne (RidersPage's `columns`).
   // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
   // korte evne-labels (oversættes ikke, jf. #487).
   const baseOptions = [
@@ -153,72 +169,17 @@ function StatBar({ value }) {
   );
 }
 
-function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, t }) {
-  // #1029 affordance: hele rækken er ét klikmål (navigerer til rytter-detalje).
-  // Data-cellerne (stjerner, stat-bjælker) er rent display — kun de eksplicitte
-  // knapper (Compare/Watchlist) + interne links (navn/hold) stopper propagation.
-  return (
-    <tr onClick={() => onSelect(rider)}
-      className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
-      <td className="px-2 py-2.5 w-12 hidden sm:table-cell">
-        <NationCell code={rider.nationality_code} />
-      </td>
-      <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-        <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation />
-      </td>
-      <td className="px-1 py-2.5 w-8">
-        <CompareToggle active={compareActive} disabled={compareDisabled} onToggle={() => onToggleCompare(rider.id)} />
-      </td>
-      <td className="px-2 py-2.5 w-8">
-        <WatchlistStar active={watchlist.has(rider.id)} onToggle={() => onToggleWatchlist(rider.id)} />
-      </td>
-      <td className="px-3 py-2.5 hidden sm:table-cell">
-        {/* #950: parkeret handel → vis kommende hold som "på vej til holdskifte"-chip */}
-        <TeamCell team={rider.team} freeLabel={t("table.teamFree")}
-          pendingTeam={rider.pending_team}
-          pendingTitle={rider.pending_team ? t("table.pendingTransfer", { team: rider.pending_team.name }) : ""}
-          stopPropagation />
-      </td>
-      {/* #1537: Status (badges) og ryttertype delt i hver sin kolonne — som
-          holdsiden (#1482), så begge kan sorteres uafhængigt. */}
-      <td className="px-3 py-2.5 hidden sm:table-cell">
-        <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[ageBadgeKey(rider), isInAuction && "auction"]} />
-        </div>
-      </td>
-      {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
-      <td className="px-3 py-2.5 hidden sm:table-cell text-cz-2 font-mono text-xs">{getRiderAge(rider.birthdate) ?? "—"}</td>
-      <td className="px-3 py-2.5 hidden sm:table-cell">
-        <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
-      </td>
-      <td className="px-3 py-2.5 text-right">
-        <span className="text-cz-accent-t font-mono text-sm font-bold">
-          {formatNumber(getRiderMarketValue(rider))}
-        </span>
-      </td>
-      <td className="px-3 py-2.5 text-right">
-        <span className="text-cz-2 font-mono text-sm">
-          {formatNumber(getRiderSalary(rider))}
-        </span>
-      </td>
-      {statCols.map(({ key }) => (
-        <td key={key} className="px-1.5 py-2.5 w-14">
-          <StatBar value={rider[key]} />
-        </td>
-      ))}
-    </tr>
-  );
-}
-
 export default function RidersPage() {
   const { t } = useTranslation("riders");
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
+  const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [watchlist, setWatchlist] = useState(new Set());
   const [activeAuctionRiders, setActiveAuctionRiders] = useState(new Set());
   const [userId, setUserId] = useState(null);
@@ -307,7 +268,7 @@ export default function RidersPage() {
   }
 
   async function loadRiders({ silent = false } = {}) {
-    if (!silent) setLoading(true);
+    if (!silent) { setLoading(true); setError(null); }
     // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
     const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
@@ -320,8 +281,15 @@ export default function RidersPage() {
       setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
     } catch (err) {
       console.error("loadRiders failed:", err.message);
-      setRiders([]);
-      setTotal(0);
+      // #2849 bølge 2 (audit-fund): en fejlet HOVED-fetch (ikke-silent) surfaces nu
+      // som ErrorState i stedet for en tavst tømt liste. Den stille realtime-refetch
+      // (silent=true, se herunder) logger fortsat kun — en transient hikke i den
+      // skal ikke erstatte en allerede-vist liste med en fejlflade.
+      if (!silent) {
+        setRiders([]);
+        setTotal(0);
+        setError(err);
+      }
     } finally {
       setLoading(false);
     }
@@ -375,27 +343,160 @@ export default function RidersPage() {
     setFilters(f => ({ ...f, sort: next.sort, sort_dir: next.dir, page: 1 }));
   }
 
+  // #2849 bølge 2 — DataTable-kolonner (T2 wide-data-recipe). Sticky navnekolonne
+  // + fold-kolonner (Nation/Hold/Status/Alder/Type skjules ≤640px og foldes ind i
+  // navnecellens underlinje i stedet for at forsvinde sporløst som før). Compare/
+  // watchlist forbliver egne, altid-synlige kolonner (ikke fold — de er aktive
+  // kontroller, ikke sekundær tekst). Numerik (alder/værdi/løn/evner) højrestilles
+  // tabular via DataTable's numeric-flag.
+  const columns = [
+    {
+      key: "nation",
+      header: t("table.nation"),
+      sortKey: "nationality_code",
+      fold: true,
+      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
+      render: (r) => <NationCell code={r.nationality_code} />,
+    },
+    {
+      key: "name",
+      header: t("table.rider"),
+      sticky: true,
+      sortKey: "firstname",
+      render: (r) => (
+        <RiderNameCell
+          id={r.id}
+          firstname={r.firstname}
+          lastname={r.lastname}
+          stopPropagation
+          className="text-cz-1 hover:text-cz-accent-t transition-colors"
+        />
+      ),
+    },
+    {
+      key: "compare",
+      header: (
+        <span className="flex justify-center" title={t("table.compareTooltip")}>
+          <ExchangeIcon size={14} aria-hidden="true" />
+        </span>
+      ),
+      render: (r) => (
+        <CompareToggle
+          active={compareIds.includes(r.id)}
+          disabled={compareIds.length >= MAX_COMPARE}
+          onToggle={() => toggleCompare(r.id)}
+        />
+      ),
+    },
+    {
+      key: "watchlist",
+      header: null,
+      render: (r) => (
+        <WatchlistStar active={watchlist.has(r.id)} onToggle={() => toggleWatchlist(r.id)} />
+      ),
+    },
+    {
+      key: "team",
+      header: t("table.team"),
+      sortKey: "team_id",
+      fold: true,
+      foldValue: (r) => r.team?.name || t("table.teamFree"),
+      render: (r) => (
+        <TeamCell
+          team={r.team}
+          freeLabel={t("table.teamFree")}
+          pendingTeam={r.pending_team}
+          pendingTitle={r.pending_team ? t("table.pendingTransfer", { team: r.pending_team.name }) : ""}
+          stopPropagation
+        />
+      ),
+    },
+    // #1537: Status (badges) og ryttertype delt i hver sin kolonne — som
+    // holdsiden (#1482), så begge kan sorteres uafhængigt.
+    {
+      key: "badges",
+      header: t("table.badges"),
+      sortKey: "is_u25",
+      fold: true,
+      foldValue: (r) => {
+        const keys = [ageBadgeKey(r), activeAuctionRiders.has(r.id) && "auction"].filter(Boolean);
+        return keys.map((k) => tRider(`badges.label.${k}`)).join("/");
+      },
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <RiderBadges badges={[ageBadgeKey(r), activeAuctionRiders.has(r.id) && "auction"]} />
+        </div>
+      ),
+    },
+    // #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier).
+    {
+      key: "age",
+      header: t("table.age"),
+      sortKey: "birthdate",
+      numeric: true,
+      fold: true,
+      foldValue: (r) => String(getRiderAge(r.birthdate) ?? "—"),
+      render: (r) => <span className="text-cz-2 text-xs">{getRiderAge(r.birthdate) ?? "—"}</span>,
+    },
+    {
+      key: "type",
+      header: t("table.type"),
+      sortKey: "primary_type",
+      fold: true,
+      foldValue: (r) => {
+        if (!r.primary_type) return "";
+        const primary = tTypes(`types.${r.primary_type}`);
+        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
+        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+      },
+      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
+    },
+    // #1537: Potentiale-kolonnen fjernet — potentiale skjules helt i visningen (doctrine #1138).
+    {
+      key: "value",
+      header: t("table.value"),
+      sortKey: "value",
+      numeric: true,
+      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
+    },
+    {
+      key: "salary",
+      header: t("table.salary"),
+      sortKey: "salary",
+      numeric: true,
+      render: (r) => <span className="text-cz-2">{formatNumber(getRiderSalary(r))}</span>,
+    },
+    ...visibleStatCols.map(({ key, label }) => ({
+      key,
+      header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
+      sortKey: key,
+      numeric: true,
+      render: (r) => <StatBar value={r[key]} />,
+    })),
+  ];
+
   return (
-    <div className="max-w-full">
+    <div className="mx-auto max-w-[1600px]">
       <OnboardingTour pageKey="riders" steps={ridersTourSteps} />
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("page.subtitle", { count: formatNumber(total) })}</p>
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <StatsToggle
-            visibleStats={visibleStats}
-            onToggleStat={toggleStat}
-            onShowAll={showAll}
-            onHideAll={hideAll}
-          />
-          <Link to="/watchlist" data-tour="riders-watchlist"
-            className="flex-1 sm:flex-none text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-              rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
-            {t("page.watchlistLink", { count: watchlist.size })}
-          </Link>
-        </div>
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle", { count: formatNumber(total) })} />
+
+      {/* #2849 bølge 2 — kolonnevalg (StatsToggle) + watchlist-genvej hører ikke til
+          PageHeader's action-cluster-kontrakt (maks 1 Select sm + 1 primær Button sm,
+          intet andet). Flyttet til en let værktøjslinje under headeren — samme
+          mønster som Standings' Compare-knap i filter-bar-rækken (#2849 bølge 1).
+          Ingen adfærd ændret, kun placering. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        <StatsToggle
+          visibleStats={visibleStats}
+          onToggleStat={toggleStat}
+          onShowAll={showAll}
+          onHideAll={hideAll}
+        />
+        <Link to="/watchlist" data-tour="riders-watchlist"
+          className="inline-flex items-center justify-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+            rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
+          {t("page.watchlistLink", { count: watchlist.size })}
+        </Link>
       </div>
 
       {showEmptyState && myTeam && (
@@ -406,7 +507,7 @@ export default function RidersPage() {
         />
       )}
 
-      <div data-tour="riders-filters" className="max-w-[1600px]">
+      <div data-tour="riders-filters">
         <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} showAiToggle={true} />
       </div>
 
@@ -414,7 +515,16 @@ export default function RidersPage() {
       <AbilityLegend t={t} tRider={tRider} />
 
       {loading ? (
-        <PageLoader />
+        <div className={`${WRAP} p-5`}>
+          <SkeletonLines lines={6} />
+        </div>
+      ) : error ? (
+        // #2849 bølge 2 (audit-fund): tidligere tavs fejl-degradering (console.error
+        // + tom liste) — en fejlet hoved-fetch viser nu ErrorState med retry.
+        <ErrorState
+          title={t("loadError")}
+          action={<Button size="sm" variant="secondary" onClick={() => loadRiders()}>{t("retry")}</Button>}
+        />
       ) : (
         <>
           {/* #9: mobil-sortering — desktop sorterer via kolonne-headers, men de
@@ -426,84 +536,36 @@ export default function RidersPage() {
             statCols={visibleStatCols}
             t={t}
           />
-        <Card data-tour="riders-list" className="overflow-hidden">
-          <div className="overflow-auto max-h-[calc(100vh-220px)]">
-            <table data-sortable className="w-full text-xs">
-              <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
-                <tr className="border-b border-cz-border">
-                  <SortTh sortKey="nationality_code" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-2 py-3 text-left font-medium uppercase tracking-wider w-12 hidden sm:table-cell">{t("table.nation")}</SortTh>
-                  <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
-                  <th className="px-1 py-3 w-8 text-cz-3" title={t("table.compareTooltip")}>
-                    <ExchangeIcon size={14} className="mx-auto" aria-hidden="true" />
-                  </th>
-                  <th className="px-2 py-3 w-8" />
-                  {/* #1537: Hold sortérbar (grupperer ryttere pr. hold; fri agenter
-                      i den ene ende) — var en død header før. */}
-                  <SortTh sortKey="team_id" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.team")}</SortTh>
-                  {/* #1537: Status sortérbar på alders-tier (U25-talenter samles) +
-                      ryttertype som egen sortérbar kolonne (delt fra Status). */}
-                  <SortTh sortKey="is_u25" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.badges")}</SortTh>
-                  <SortTh sortKey="birthdate" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.age")}</SortTh>
-                  <SortTh sortKey="primary_type" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.type")}</SortTh>
-                  <SortTh sortKey="value" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
-                  <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>
-                  {/* #1537: Potentiale-kolonnen fjernet — potentiale skjules helt i
-                      visningen (doctrine #1138). */}
-                  {visibleStatCols.map(({ key, label }) => (
-                    <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                      title={tRider(`racePreview.derived.${key}`)}
-                      className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {riders.length === 0 ? (
-                  <tr>
-                    <td colSpan={10 + visibleStatCols.length} className="px-3 py-12 text-center">
-                      <p className="text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</p>
-                      <button onClick={onReset}
-                        className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-                          rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
-                        {tCommon("controls.clearFilters")}
-                      </button>
-                    </td>
-                  </tr>
-                ) : riders.map(r => (
-                  <RiderRow key={r.id} rider={r}
-                    statCols={visibleStatCols}
-                    onSelect={r => navigate(`/riders/${r.id}`)}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    isInAuction={activeAuctionRiders.has(r.id)}
-                    compareActive={compareIds.includes(r.id)}
-                    compareDisabled={compareIds.length >= MAX_COMPARE}
-                    onToggleCompare={toggleCompare}
-                    t={t} />
-                ))}
-              </tbody>
-            </table>
+          <div data-tour="riders-list">
+            {riders.length === 0 ? (
+              <EmptyState
+                icon={<BikeIcon size={26} aria-hidden="true" />}
+                title={tCommon("controls.noFilterResults")}
+                action={<Button size="sm" onClick={onReset}>{tCommon("controls.clearFilters")}</Button>}
+              />
+            ) : (
+              <DataTable
+                label={t("page.title")}
+                columns={columns}
+                rows={riders}
+                rowKey={(r) => r.id}
+                rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
+                sort={filters.sort}
+                sortDir={filters.sort_dir}
+                onSort={handleSort}
+                count={t("pagination.showing", {
+                  from: Math.min((filters.page - 1) * 50 + 1, total),
+                  to: Math.min(filters.page * 50, total),
+                  total: formatNumber(total),
+                })}
+              />
+            )}
           </div>
-        </Card>
         </>
       )}
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-        <span className="text-cz-3 text-xs">
-          {t("pagination.showing", {
-            from: Math.min((filters.page - 1) * 50 + 1, total),
-            to: Math.min(filters.page * 50, total),
-            total: formatNumber(total),
-          })}
-        </span>
+      <div className="flex justify-end mt-4">
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
           <button disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}

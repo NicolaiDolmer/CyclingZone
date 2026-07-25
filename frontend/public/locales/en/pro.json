@@ -8,7 +8,6 @@
   "semiannualPrice": "265 kr",
   "semiannualNote": "≈44 kr/mo · save ~10%",
   "cta": "Continue to payment",
-  "loginFirst": "Log in to upgrade",
   "error": "Could not start checkout. Please try again.",
   "alreadyPro": "You're Pro. Thank you for backing Cycling Zone.",
   "alreadyFounder": "You're a Founder. Thank you for backing Cycling Zone from the start.",
@@ -17,5 +16,10 @@
   "founderSeatsRemaining": "{remaining} seats left",
   "founderSeatsFull": "All Founder seats are taken. New subscribers still get full Pro.",
   "founderExplainer": "The first 50 paying subscribers become Founders. Founders keep a permanent Founder badge, even if the subscription later lapses.",
-  "fairnessNote": "Never pay-to-win: money buys depth, comfort and cosmetics, never a competitive edge."
+  "fairnessNote": "Never pay-to-win: money buys depth, comfort and cosmetics, never a competitive edge.",
+  "choosePlan": "Choose your plan",
+  "loadError": {
+    "message": "We couldn't load your subscription details. Nothing was lost and your account is unaffected.",
+    "retry": "Try again"
+  }
 }

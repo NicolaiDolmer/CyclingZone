@@ -28,6 +28,7 @@
   "page": {
     "back": "← Back",
     "notFound": "Rider not found",
+    "retry": "Try again",
     "loadingAria": "Loading rider"
   },
   "header": {
@@ -162,7 +163,6 @@
       "contract": "Contract",
       "contractSeason": "Season {season}",
       "aiTag": "AI",
-      "winsOn": "Wins on",
       "valueTrend": "{value} last {days} days",
       "valueTrendTitle": "Value change since {date}"
     },

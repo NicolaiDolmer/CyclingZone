@@ -58,11 +58,13 @@ import {
   closePrevTransferWindow,
   computeSeasonUuid,
   computeTransferWindowUuid,
+  emitSeasonEndedNotifications,
   insertTransferWindowIfMissing,
   resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import {
+  assessSeasonEndBlockers,
   assessTransitionReadiness,
   formatForceOverrideDescription,
   TRANSITION_BLOCKED_ERROR,
@@ -7432,6 +7434,20 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       }
     }
 
+    // #2805 · Spærre mod uafviklede løb. pending_race_results-checket ovenfor
+    // fanger kun resultater der VENTER på behandling — et løb der aldrig er
+    // startet har ingen række der. Uden denne kontrol ville et for tidligt klik
+    // droppe alle resterende løb permanent og beregne op/nedrykning på en
+    // ufuldstændig slutstilling (irreversibelt). Ingen force-bypass — bevidst.
+    const seasonEndBlockers = await assessSeasonEndBlockers({ supabase, seasonId });
+    if (seasonEndBlockers.blocked) {
+      return res.status(400).json({
+        error: seasonEndBlockers.detail,
+        unfinished_races: seasonEndBlockers.unfinished_races,
+        last_unfinished_stage_at: seasonEndBlockers.last_unfinished_stage_at,
+      });
+    }
+
     // #532 — skip processSeasonEnd for sæson 0 (open-beta-fase uden løb/standings/lønninger).
     // seasonTransition-engine har samme special-case (se backend/lib/seasonTransition.js linje 17-21).
     // Hvis vi kører processSeasonEnd på sæson 0 ville ensureSeasonStandings oprette 24 tomme
@@ -7470,10 +7486,31 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
 
     notifySeasonEvent({ type: "season_ended", seasonNumber: season.number }).catch(() => {});
 
+    // #2745 · in-app season_ended-notifikationer til menneske-managers. Tidligere
+    // fik managers KUN Discord-broadcast; frontend havde fuld rendering for typen
+    // (NotificationsPage), men ingen kode indsatte nogensinde en season_ended-row
+    // (prod-audit 23/7: 0 rækker nogensinde). Additiv + isoleret: en fejl her må
+    // ikke vælte selve sæson-afslutningen (samme disciplin som Discord-broadcast
+    // ovenfor og season_started-notifikationerne i seasonTransition.js).
+    let seasonEndedNotifications = { skipped: true, reason: "failed" };
+    try {
+      seasonEndedNotifications = await emitSeasonEndedNotifications({
+        supabase,
+        endedSeason: { id: endedSeason.id, number: endedSeason.number },
+      });
+    } catch (notifErr) {
+      console.error("season_ended in-app notifications failed:", notifErr?.message || notifErr);
+      captureException(notifErr, {
+        tags: { phase: "season_ended_notifications" },
+        extra: { season_id: endedSeason.id, season_number: endedSeason.number },
+      });
+    }
+
     res.json({
       success: true,
       season_id: endedSeason.id,
       number: endedSeason.number,
+      season_ended_notifications: seasonEndedNotifications,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

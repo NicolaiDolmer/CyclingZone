@@ -6,6 +6,10 @@
 
 Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · SQL/migrationer: Claude applier selv post-merge under [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
 
+## Page templates (binding — ejer-godkendt 23/7, #2849)
+
+Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md): T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). Opfind ALDRIG nyt sidehoved, container-bredde, card-padding eller loading/empty/error-markup — komponér opskrifterne derfra. Én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
+
 ## Auto-loaded (intet at gøre)
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~2.800 tok pr. 2026-06-25, re-trimmet fra 3.600). Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).

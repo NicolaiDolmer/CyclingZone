@@ -1,1 +1,35 @@
-{}
+{
+  "title": "Patch notes",
+  "subtitle": "Nyt i Cycling Zone Manager",
+  "search": {
+    "ariaLabel": "Søg i opdateringer",
+    "placeholder": "Søg i opdateringer…"
+  },
+  "filter": {
+    "ariaLabel": "Filtrér efter kategori"
+  },
+  "category": {
+    "all": "Alle",
+    "new": "Nyt",
+    "improved": "Forbedringer",
+    "fixed": "Fejlrettelser"
+  },
+  "newBadge": "Ny",
+  "fallbackLang": {
+    "da": "dansk",
+    "en": "engelsk"
+  },
+  "loadError": "Kunne ikke indlæse opdateringer",
+  "loadErrorBody": "Intet er gået tabt. Prøv at genindlæse siden.",
+  "retry": "Prøv igen",
+  "loading": {
+    "label": "Indlæser opdateringer"
+  },
+  "empty": {
+    "title": "Ingen opdateringer matcher",
+    "description": "Prøv et andet søgeord eller en anden kategori."
+  },
+  "footer": {
+    "hiddenNote": "Interne og tekniske noter vises ikke på denne side."
+  }
+}

@@ -8,6 +8,7 @@ import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../../components/ui/SortableTh.jsx";
+import { formatSeasonEndedToast } from "../../components/admin/shared/seasonEndedToast.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -111,8 +112,10 @@ export default function AdminSeasonTab() {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
-      if (res.ok) showMsg(`✅ ${action === "start" ? "Sæson startet" : "Sæson afsluttet"}`);
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      if (res.ok) {
+        if (action === "end") showMsg(...formatSeasonEndedToast(data.season_ended_notifications));
+        else showMsg("✅ Sæson startet");
+      } else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
       loadData();
     } catch (e) {
       showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");

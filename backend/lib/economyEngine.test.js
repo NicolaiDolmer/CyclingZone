@@ -2066,6 +2066,35 @@ test("updateStandings falder tilbage til Node-recompute når RPC'en mangler (PGR
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 20);
 });
 
+test("updateStandings retry'er et statement timeout og lykkes (CYCLINGZONE-3D)", async () => {
+  // 24/7: recompute'en sprængte de 8 s statement_timeout under samtidige etape-
+  // afviklinger. Fejlen boblede op i simulateStageByIndex EFTER stages_completed var
+  // bumpet → etapens runs/moments/incidents + træthed blev aldrig skrevet (verificeret:
+  // Tour des Fjords etape 4 har 117 resultater men 0 runs). Recompute'en er en fuld
+  // re-derivation og dermed idempotent, så et retry er sikkert.
+  let calls = 0;
+  const supabase = {
+    rpc(_name, _params) {
+      calls++;
+      if (calls === 1) {
+        return Promise.resolve({
+          data: null,
+          error: { code: "57014", message: "canceling statement due to statement timeout" },
+        });
+      }
+      return Promise.resolve({ data: { rows_updated: 42, teams_with_points: 17 }, error: null });
+    },
+    from() {
+      throw new Error("et transient timeout må ikke sende os ned i den langsomme Node-fallback");
+    },
+  };
+
+  const summary = await updateStandings("season-9", "race-x", { supabase });
+
+  assert.equal(calls, 2, "første kald timeout'ede, andet lykkedes");
+  assert.deepEqual(summary, { rowsUpdated: 42, teamsWithPoints: 17 });
+});
+
 test("updateStandings kaster ved en ÆGTE RPC-fejl (ikke missing-function) (#2391)", async () => {
   // En brudt RPC (fx en constraint-violation) må ALDRIG maskeres tavst af den
   // langsomme fallback — kun missing-function (PGRST202) udløser fallback.

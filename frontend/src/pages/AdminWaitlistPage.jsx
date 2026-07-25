@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Select from "../components/ui/Select";
+import { Table, Tr, Td } from "../components/ui/Table";
+import SortableTh from "../components/ui/SortableTh";
+import PageLoader from "../components/ui/PageLoader";
+import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
+import { DownloadIcon, InfoIcon, CheckIcon } from "../components/ui/icons";
 
 const INTEREST_LABELS = {
   very: "Meget interesseret",
@@ -58,6 +67,10 @@ const INTENT_SCORE_TOOLTIP =
   "very + pro_analyst=4 base, very + supporter=3 base, maybe + paid=2, " +
   "maybe + free_only=1, unsure=1. +1 hvis follow-up-consent.";
 
+// Kanonisk table-header-typografi (tableStyles.js HEADER, minus farve — SortableTh
+// styrer selv --text-3/--accent-t-farven ud fra aktiv sort-kolonne).
+const TH_CLASS = "px-3 py-2 font-data text-[11px] font-semibold uppercase tracking-[.1em]";
+
 function scoreBucket(score) {
   if (score == null) return "low";
   if (score >= 4) return "high";
@@ -103,24 +116,22 @@ function buildCsv(rows) {
 
 function KpiCard({ label, value, sub }) {
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+    <Card className="p-4">
       <p className="text-cz-3 text-xs uppercase tracking-wide">{label}</p>
-      <p className="text-cz-1 text-2xl font-bold mt-1">{value}</p>
+      <p className="text-cz-1 text-2xl font-bold font-data tabular-nums mt-1">{value}</p>
       {sub && <p className="text-cz-3 text-xs mt-1">{sub}</p>}
-    </div>
+    </Card>
   );
 }
 
-function SortableHeader({ label, sortKey, currentSort, onSort }) {
-  const active = currentSort.key === sortKey;
-  const arrow = active ? (currentSort.dir === "asc" ? "▲" : "▼") : "";
+function FilterSelect({ label, value, onChange, options }) {
   return (
-    <th
-      className="text-left text-cz-3 text-xs font-medium px-3 py-2 cursor-pointer select-none hover:text-cz-1"
-      onClick={() => onSort(sortKey)}
-    >
-      {label} <span className="text-cz-accent">{arrow}</span>
-    </th>
+    <div>
+      <label className="block text-cz-3 text-xs mb-1">{label}</label>
+      <Select size="sm" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </Select>
+    </div>
   );
 }
 
@@ -233,18 +244,14 @@ export default function AdminWaitlistPage() {
   }
 
   if (adminStatus === "checking") {
-    return (
-      <div className="min-h-[40vh] flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoader label="Tjekker adgang" minHeight="40vh" />;
   }
   if (adminStatus === "not_admin") {
     return <Navigate to="/dashboard" replace />;
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
@@ -252,27 +259,27 @@ export default function AdminWaitlistPage() {
           <p className="text-cz-3 text-sm">Intent-scoring + lead-prioritering. Refs sprint-validation #363.</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={loadRows}
-            disabled={loading}
-            className="px-3 py-2 bg-cz-subtle border border-cz-border rounded-lg text-cz-1 text-sm hover:bg-cz-card disabled:opacity-50"
-          >
-            {loading ? "Henter..." : "↻ Genindlæs"}
-          </button>
-          <button
+          <Button variant="secondary" size="sm" onClick={loadRows} loading={loading}>
+            Genindlæs
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleExportCsv}
             disabled={!sortedRows.length}
-            className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50"
+            iconLeft={<DownloadIcon size={14} aria-hidden="true" />}
           >
-            ⬇ CSV ({sortedRows.length})
-          </button>
+            CSV ({sortedRows.length})
+          </Button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-cz-danger-bg0/20 border border-cz-danger/30 text-cz-danger rounded-lg p-3 text-sm">
-          ❌ {error}
-        </div>
+        <ErrorState
+          title="Kunne ikke hente waitlist"
+          description={error}
+          action={<Button variant="secondary" size="sm" onClick={loadRows}>Prøv igen</Button>}
+        />
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -292,7 +299,7 @@ export default function AdminWaitlistPage() {
           value={pct(kpis.proAnalyst, kpis.total)}
           sub={`${kpis.proAnalyst} af ${kpis.total}`}
         />
-        <div className="bg-cz-card border border-cz-border rounded-cz p-4 col-span-2 md:col-span-1">
+        <Card className="p-4 col-span-2 md:col-span-1">
           <p className="text-cz-3 text-xs uppercase tracking-wide">Top 3 kilder</p>
           {kpis.topSources.length === 0 ? (
             <p className="text-cz-3 text-sm mt-2">Ingen data endnu</p>
@@ -301,15 +308,15 @@ export default function AdminWaitlistPage() {
               {kpis.topSources.map(([src, count]) => (
                 <li key={src} className="text-cz-1 text-sm flex justify-between">
                   <span className="truncate me-2">{src}</span>
-                  <span className="text-cz-accent font-bold">{count}</span>
+                  <span className="text-cz-accent-t font-bold font-data tabular-nums">{count}</span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+      <Card className="p-4">
         <p className="text-cz-3 text-xs uppercase tracking-wide mb-3">Filtre</p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <FilterSelect label="Interesseniveau" value={filterInterest} onChange={setFilterInterest} options={INTEREST_OPTIONS} />
@@ -324,76 +331,93 @@ export default function AdminWaitlistPage() {
         <p className="text-cz-3 text-xs mt-1 italic">
           Conversion-rate fra survey-respondenter kommer med #364 (kræver krydsreference mellem tabeller).
         </p>
-      </div>
+      </Card>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-        <div className="overflow-x-auto">
-          <table data-sortable className="w-full text-sm">
-            <thead className="bg-cz-subtle border-b border-cz-border">
-              <tr>
-                <SortableHeader label="Kontakt" sortKey="email" currentSort={sort} onSort={handleSort} />
-                <SortableHeader label="Interesse" sortKey="interest_level" currentSort={sort} onSort={handleSort} />
-                <SortableHeader label="Tier" sortKey="preferred_tier" currentSort={sort} onSort={handleSort} />
-                <th
-                  className="text-left text-cz-3 text-xs font-medium px-3 py-2 cursor-pointer select-none hover:text-cz-1"
-                  onClick={() => handleSort("intent_score")}
-                  title={INTENT_SCORE_TOOLTIP}
-                >
-                  Score <span className="text-cz-accent">{sort.key === "intent_score" ? (sort.dir === "asc" ? "▲" : "▼") : ""}</span>
-                  <span className="text-cz-3 ms-1 cursor-help" title={INTENT_SCORE_TOOLTIP}>ⓘ</span>
-                </th>
-                <SortableHeader label="Follow-up" sortKey="follow_up_consent" currentSort={sort} onSort={handleSort} />
-                <SortableHeader label="Kilde" sortKey="source" currentSort={sort} onSort={handleSort} />
-                <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={handleSort} />
-                <SortableHeader label="Oprettet" sortKey="created_at" currentSort={sort} onSort={handleSort} />
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={8} className="text-cz-3 text-sm text-center py-8">Henter...</td></tr>
-              )}
-              {!loading && sortedRows.length === 0 && (
-                <tr><td colSpan={8} className="text-cz-3 text-sm text-center py-8">Ingen signups matcher filtrene.</td></tr>
-              )}
-              {!loading && sortedRows.map(r => (
-                <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
-                  <td className="px-3 py-2 text-cz-1">
-                    {r.email && <p className="truncate max-w-[200px]" title={r.email}>{r.email}</p>}
-                    {r.discord_handle && <p className="text-cz-3 text-xs truncate max-w-[200px]" title={r.discord_handle}>@{r.discord_handle}</p>}
-                  </td>
-                  <td className="px-3 py-2 text-cz-1">{INTEREST_LABELS[r.interest_level] || r.interest_level}</td>
-                  <td className="px-3 py-2 text-cz-1 whitespace-nowrap">{TIER_LABELS[r.preferred_tier] || r.preferred_tier}</td>
-                  <td className="px-3 py-2 text-cz-1 font-bold" title={INTENT_SCORE_TOOLTIP}>
-                    <span className={
-                      (r.intent_score || 0) >= 4 ? "text-cz-success" :
-                      (r.intent_score || 0) >= 2 ? "text-cz-1" : "text-cz-3"
-                    }>{r.intent_score ?? "—"}</span>
-                  </td>
-                  <td className="px-3 py-2 text-cz-1">{r.follow_up_consent ? "✓" : "—"}</td>
-                  <td className="px-3 py-2 text-cz-1 truncate max-w-[140px]" title={r.source || ""}>{r.source || "—"}</td>
-                  <td className="px-3 py-2 text-cz-1">{STATUS_LABELS[r.status] || r.status}</td>
-                  <td className="px-3 py-2 text-cz-3 text-xs whitespace-nowrap">{formatDate(r.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FilterSelect({ label, value, onChange, options }) {
-  return (
-    <div>
-      <label className="block text-cz-3 text-xs mb-1">{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent"
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      <Card className="overflow-hidden">
+        <Table data-sortable>
+          <thead className="bg-cz-subtle border-b border-cz-border">
+            <tr>
+              <SortableTh sortKey="email" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Kontakt
+              </SortableTh>
+              <SortableTh sortKey="interest_level" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Interesse
+              </SortableTh>
+              <SortableTh sortKey="preferred_tier" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Tier
+              </SortableTh>
+              <SortableTh
+                sortKey="intent_score"
+                sort={sort.key}
+                sortDir={sort.dir}
+                onSort={handleSort}
+                title={INTENT_SCORE_TOOLTIP}
+                className={`${TH_CLASS} text-right`}
+              >
+                Score
+                <span className="ms-1 inline-flex align-middle text-cz-3" title={INTENT_SCORE_TOOLTIP}>
+                  <InfoIcon size={11} aria-hidden="true" />
+                </span>
+              </SortableTh>
+              <SortableTh sortKey="follow_up_consent" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Follow-up
+              </SortableTh>
+              <SortableTh sortKey="source" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Kilde
+              </SortableTh>
+              <SortableTh sortKey="status" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Status
+              </SortableTh>
+              <SortableTh sortKey="created_at" sort={sort.key} sortDir={sort.dir} onSort={handleSort} className={`${TH_CLASS} text-left`}>
+                Oprettet
+              </SortableTh>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <Tr>
+                <Td colSpan={8} className="py-8">
+                  <PageLoader label="Henter signups" minHeight="80px" />
+                </Td>
+              </Tr>
+            )}
+            {!loading && sortedRows.length === 0 && (
+              <Tr>
+                <Td colSpan={8} className="py-4">
+                  <EmptyState
+                    title="Ingen signups matcher filtrene"
+                    description="Justér filtrene ovenfor for at se flere resultater."
+                  />
+                </Td>
+              </Tr>
+            )}
+            {!loading && sortedRows.map(r => (
+              <Tr key={r.id}>
+                <Td>
+                  {r.email && <p className="truncate max-w-[200px]" title={r.email}>{r.email}</p>}
+                  {r.discord_handle && <p className="text-cz-3 text-xs truncate max-w-[200px]" title={r.discord_handle}>@{r.discord_handle}</p>}
+                </Td>
+                <Td>{INTEREST_LABELS[r.interest_level] || r.interest_level}</Td>
+                <Td className="whitespace-nowrap">{TIER_LABELS[r.preferred_tier] || r.preferred_tier}</Td>
+                <Td numeric title={INTENT_SCORE_TOOLTIP}>
+                  <span className={
+                    (r.intent_score || 0) >= 4 ? "text-cz-success font-bold" :
+                    (r.intent_score || 0) >= 2 ? "text-cz-1 font-bold" : "text-cz-3 font-bold"
+                  }>{r.intent_score ?? "—"}</span>
+                </Td>
+                <Td>
+                  {r.follow_up_consent
+                    ? <CheckIcon size={14} className="text-cz-success" title="Ja" />
+                    : <span className="text-cz-3">—</span>}
+                </Td>
+                <Td className="truncate max-w-[140px]" title={r.source || ""}>{r.source || "—"}</Td>
+                <Td>{STATUS_LABELS[r.status] || r.status}</Td>
+                <Td className="text-cz-3 text-xs whitespace-nowrap">{formatDate(r.created_at)}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
     </div>
   );
 }

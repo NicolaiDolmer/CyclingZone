@@ -208,6 +208,8 @@
     "young": "Youth"
   },
   "points": {
+    "loadError": "Couldn't load the points table. Please try again.",
+    "retry": "Try again",
     "title": "Points & prize overview",
     "subtitle": "How your race prizes are calculated from your placements",
     "help": "Help & Rules",
@@ -408,6 +410,16 @@
     "action": "Set your line-up"
   },
   "detail": {
+    "loadError": {
+      "message": "Couldn't load the race. Nothing was lost. Try again.",
+      "retry": "Try again"
+    },
+    "stat": {
+      "status": "Status",
+      "stages": "Stages",
+      "season": "Season",
+      "nextStage": "Next stage"
+    },
     "backToLibrary": "← Race library",
     "back": "← Back",
     "raceDnaLabel": "This race:",
@@ -456,6 +468,7 @@
       "team": "Team classification"
     },
     "classTab": {
+      "ariaLabel": "Classification",
       "stage": "Stage",
       "gc": "Overall",
       "points": "Points",
@@ -588,6 +601,10 @@
     }
   },
   "history": {
+    "loadError": {
+      "message": "Could not load the race history. Please try again.",
+      "retry": "Try again"
+    },
     "backToLibrary": "← Race library",
     "editionsCount": "{count, plural, one {# edition} other {# editions}}",
     "editions": "Editions",

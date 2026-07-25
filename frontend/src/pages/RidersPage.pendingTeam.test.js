@@ -25,10 +25,14 @@ test("RidersPage-select joiner pending-holdet (#950)", () => {
 });
 
 test("RidersPage giver pending-holdet videre til TeamCell (#950)", () => {
+  // #2849 bølge 2: rytter-parameteren i DataTable's team-kolonne hedder nu `r`
+  // (kolonne-config-konventionen, ikke RiderRow's `rider`) — regex er param-navn-
+  // agnostisk så den ikke driver med stilistiske omdøbninger, kun med selve
+  // wiring'en (pending_team skal videre til TeamCell som pendingTeam-prop).
   assert.match(
     ridersPageSource,
-    /pendingTeam=\{rider\.pending_team\}/,
-    "RiderRow skal sende rider.pending_team som pendingTeam-prop til TeamCell",
+    /pendingTeam=\{\w+\.pending_team\}/,
+    "team-kolonnens render skal sende <rytter>.pending_team som pendingTeam-prop til TeamCell",
   );
 });
 

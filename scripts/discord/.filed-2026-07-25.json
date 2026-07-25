@@ -1,0 +1,167 @@
+[
+  {
+    "key": "standings-pool-empty",
+    "action": "create",
+    "title": "[bug/HØJ] Standings: pulje-sub-fanen viser \"No data\" — <select> giver string, pulje-id er integer (regression fra #2864)",
+    "labels": [
+      "bug",
+      "type:bug",
+      "priority:high",
+      "claude:todo",
+      "cat:bug"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2879"
+  },
+  {
+    "key": "z-index-scales",
+    "action": "create",
+    "title": "[bug/HØJ] To konkurrerende z-index-skalaer: sticky-indhold lægger sig oven på mobilmenuen og modalerne",
+    "labels": [
+      "bug",
+      "type:bug",
+      "priority:high",
+      "claude:todo",
+      "cat:bug"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2880"
+  },
+  {
+    "key": "academy-promote-contract-reset",
+    "action": "create",
+    "title": "[bug/HØJ] Promovering fra akademiet nulstiller en eksisterende kontrakt (sæson 3 → sæson 2) og overskriver lønnen",
+    "labels": [
+      "bug",
+      "type:bug",
+      "priority:high",
+      "claude:todo",
+      "backend-only",
+      "cat:bug"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2881"
+  },
+  {
+    "key": "discord-result-post-dropped",
+    "action": "create",
+    "title": "[bug] Discord-resultatposter tabes tavst ved rate-limit — 1 af 4 D3-puljer manglede i både samle- og gruppekanal",
+    "labels": [
+      "bug",
+      "type:bug",
+      "priority:med",
+      "claude:todo",
+      "backend-only",
+      "cat:bug"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2882"
+  },
+  {
+    "key": "season-planner-unusable",
+    "action": "create",
+    "title": "[ux/HØJ] Sæsonplanlæggeren er ubrugelig for de mest aktive testere — kan ikke skifte 1→2 toppe, hitboxes rammer ikke, kan ikke planlægge sæson 2",
+    "labels": [
+      "type:feature",
+      "priority:high",
+      "claude:todo",
+      "needs-design",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2883"
+  },
+  {
+    "key": "auction-duration-antisnipe",
+    "action": "create",
+    "title": "[feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vinduet gør ryttere usælgelige)",
+    "labels": [
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "claude:todo",
+      "needs-decision",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2884"
+  },
+  {
+    "key": "sell-to-ai-after-failed-auctions",
+    "action": "create",
+    "title": "[feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan komme af med nogen",
+    "labels": [
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "claude:todo",
+      "needs-decision",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2885"
+  },
+  {
+    "key": "team-results-history-widget",
+    "action": "create",
+    "title": "[feature] \"How your team did\": vis flere løb end det seneste — point og præmiepenge over tid",
+    "labels": [
+      "enhancement",
+      "type:feature",
+      "priority:med",
+      "claude:todo",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2886"
+  },
+  {
+    "key": "sports-director-decline-and-pool",
+    "action": "create",
+    "title": "[feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den decline?) + for lille udvalg at vælge fra",
+    "labels": [
+      "type:investigation",
+      "priority:med",
+      "claude:todo",
+      "needs-decision",
+      "cat:balance"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2887"
+  },
+  {
+    "key": "team-page-density",
+    "action": "create",
+    "title": "[ux] Holdsiden: fjern potentiale-teksten, vis rating som tal, og gør stats læsbare uden at scrolle",
+    "labels": [
+      "type:feature",
+      "priority:med",
+      "claude:todo",
+      "needs-design",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2888"
+  },
+  {
+    "key": "help-season-economy-timing",
+    "action": "create",
+    "title": "[help] Hvornår starter og slutter sæsonen økonomisk? (løn, sponsorpenge) — ubesvaret spørgsmål 2 dage før cutover",
+    "labels": [
+      "documentation",
+      "type:docs",
+      "priority:med",
+      "claude:todo",
+      "cat:user-feature"
+    ],
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2889"
+  },
+  {
+    "key": "cmt-2165",
+    "action": "comment",
+    "target": "#2165",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2165#issuecomment-5077663742"
+  },
+  {
+    "key": "cmt-2603",
+    "action": "comment",
+    "target": "#2603",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2603#issuecomment-5077663823"
+  },
+  {
+    "key": "cmt-2862",
+    "action": "comment",
+    "target": "#2862",
+    "url": "https://github.com/NicolaiDolmer/CyclingZone/issues/2862#issuecomment-5077663885"
+  }
+]

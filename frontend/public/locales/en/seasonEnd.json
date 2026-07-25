@@ -4,7 +4,7 @@
   "subtitle": "{status} · calendar, final standings and season winners",
   "statusOngoing": "Ongoing",
   "statusCompleted": "Completed",
-  "financeReport": "📊 Finance report",
+  "financeReport": "Finance report",
   "seasonOption": "Season {number} · {status}",
   "empty": {
     "title": "No results yet",
@@ -22,7 +22,7 @@
     "stageKing": { "title": "Stage king", "secondary": "{count, plural, one {# stage win} other {# stage wins}}", "empty": "No stages raced" }
   },
   "calendar": {
-    "heading": "📅 Calendar · {count} races",
+    "heading": "Calendar · {count} races",
     "expectedTotal": "Total expected pool for the season:",
     "expectedTotalTooltip": "Live-calculated sum of the expected pool for all the season's races",
     "summary": "{completed} completed · {scheduled} upcoming",
@@ -42,5 +42,7 @@
   "you": "You",
   "promotion": "↑ Up",
   "relegation": "↓ Down",
-  "myProgression": "Your team's points progression"
+  "myProgression": "Your team's points progression",
+  "loadError": "Couldn't load the season. Please try again.",
+  "retry": "Try again"
 }

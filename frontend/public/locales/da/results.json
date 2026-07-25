@@ -23,5 +23,8 @@
   "points": "{count} pt",
   "seeAllStandings": "Se hele ranglisten →",
   "seeAllRiders": "Se alle ryttere →",
-  "emptyNoResults": "Ingen løbsresultater importeret endnu denne sæson"
+  "emptyNoResults": "Ingen løbsresultater importeret endnu denne sæson",
+  "loadError": "Resultater kunne ikke indlæses",
+  "loadErrorBody": "Intet gik tabt. Prøv at indlæse siden igen.",
+  "retry": "Prøv igen"
 }

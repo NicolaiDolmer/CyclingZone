@@ -5,7 +5,9 @@
     "searchPlaceholder": "Search help and FAQ...",
     "searchResults": {
       "sectionsHeading": "Sections",
-      "faqHeading": "FAQ"
+      "faqHeading": "FAQ",
+      "emptyTitle": "No matches",
+      "emptyDescription": "Try a different search term."
     },
     "faqLabel": "FAQ",
     "faqHeading": "Frequently asked questions"
@@ -1100,6 +1102,10 @@
     "whyReportFaq": {
       "q": "How can I see why a result happened?",
       "a": "Race pages explain notable outcomes in plain language, not just numbers. Small badges next to a rider's name flag things like a helper who sacrificed his own placing for the captain, a pre-stage favorite who had an off day, or a rider who timed his form peak perfectly. A 'The bigger picture' block on the stage page adds a sentence for bigger swings, like a change of overall leader. The exact numbers behind a result stay hidden; only the story is shown."
+    },
+    "contractExpiryRetirementFaq": {
+      "q": "What happens to expiring contracts and older riders at the season change?",
+      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8 riders needed to race, counting expiring contracts and retirement risk together."
     },
     "staffReleaseFaq": {
       "q": "How do I release staff, and what does it cost?",

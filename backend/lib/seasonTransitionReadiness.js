@@ -118,6 +118,65 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   return { ready: failed_critical.length === 0, checks, failed_critical };
 }
 
+/**
+ * #2805 — Spærre for "Afslut sæson" (POST /admin/seasons/:id/end).
+ *
+ * Season-end beregner op/nedrykning + divisionsbonusser på season_standings og
+ * er irreversibel (transition afviser bagefter at season-end genkøres). Ruten
+ * tjekkede hidtil kun pending_race_results — men et løb der ALDRIG er afviklet
+ * har ingen række der og passerede tavst. Et for tidligt klik ville droppe alle
+ * resterende løb permanent (stage-scheduleren ser kun den aktive sæson) og
+ * afgøre op/nedrykning på en ufuldstændig slutstilling.
+ *
+ * Kontrakten er samme semantik som all_races_completed i transition-gaten
+ * ovenfor: HVERT løb i sæsonen skal have status='completed' — også løb med
+ * scheduled_at i fremtiden (det er netop det for-tidlige-klik-scenarie).
+ * Sæson 0 (ingen løb) passerer naturligt med count 0.
+ *
+ * BEVIDST ingen force-bypass: transition-endpointets force må heller ikke
+ * kunne slå denne klasse af kontrol fra (issue-krav). Et permanent brudt løb
+ * skal repareres/annulleres i admin, ikke forbi-klikkes.
+ */
+export async function assessSeasonEndBlockers({ supabase, seasonId } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!seasonId) throw new Error("seasonId required");
+
+  const { count, error: racesError } = await supabase
+    .from("races")
+    .select("id", { count: "exact", head: true })
+    .eq("season_id", seasonId)
+    .neq("status", "completed");
+  if (racesError) throw new Error(`Kunne ikke tælle uafviklede løb: ${racesError.message}`);
+
+  const unfinishedRaces = count || 0;
+  if (unfinishedRaces === 0) {
+    return { blocked: false, unfinished_races: 0, last_unfinished_stage_at: null, detail: null };
+  }
+
+  // Sidste planlagte etape blandt de uafviklede løb — til en fejlbesked admin
+  // kan handle på ("vent til efter X"). Løb uden schedule-rækker giver null.
+  const { data: lastStage, error: stageError } = await supabase
+    .from("race_stage_schedule")
+    .select("scheduled_at, races!inner(season_id, status)")
+    .eq("races.season_id", seasonId)
+    .neq("races.status", "completed")
+    .order("scheduled_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (stageError) throw new Error(`Kunne ikke finde sidste uafviklede etape: ${stageError.message}`);
+
+  const lastAt = lastStage?.scheduled_at ?? null;
+  return {
+    blocked: true,
+    unfinished_races: unfinishedRaces,
+    last_unfinished_stage_at: lastAt,
+    detail:
+      `Sæsonen kan ikke afsluttes: ${unfinishedRaces} løb er ikke afviklet endnu` +
+      (lastAt ? ` (sidste etape er planlagt til ${lastAt})` : "") +
+      `. Op/nedrykning beregnes på slutstillingen — afvent at alle løb er kørt.`,
+  };
+}
+
 // Admin-vendte strenge samlet her — filen er EXEMPT i i18n-leak-guarden:
 // admin-UI er DA-only-konvention (ikke player-facing), og admin_log er internt.
 export const TRANSITION_BLOCKED_ERROR = "Sæson-transition blokeret: readiness-gaten er rød";

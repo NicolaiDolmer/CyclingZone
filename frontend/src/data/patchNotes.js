@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "7.47",
-    "date": "2026-07-23",
+    "version": "7.55",
+    "date": "2026-07-25",
     "label": "Beta",
     "changes": [
       {
@@ -21,6 +21,216 @@ export const PATCHES = [
           "body": "Hvis nogen tilbød dig en byttehandel, og du svarede med et modtilbud, blev kontantbeløbet vendt om på vej ud. Feltet siger at positivt betyder at du modtager, men tilbuddet der nåede frem til den anden manager sagde at du ville betale beløbet i stedet. Det ramte kun modtilbud fra den part der havde modtaget det oprindelige tilbud, og kun retningen, aldrig beløbet. Nu sendes præcis det feltet siger. Tak til den manager der rapporterede det gennem feedback-knappen i spillet og opdagede det, før handlen blev gennemført."
         },
         "refs": [2843]
+      }
+    ]
+  },
+  {
+    "version": "7.54",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Profile pages got a new header card, and the rider filters match the rest of the app",
+          "body": "Rider, team, manager, staff and race pages now open with the same header card: a gold top line, the name up top, key numbers at a glance, and tabs right below. The rider rating now carries the same colour scale as the ability numbers. The rider filter panel across the market pages now uses the app's shared inputs and chips, and a few stray emoji were removed from buttons. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Profilsiderne har fået et nyt topkort, og rytterfiltrene matcher resten af appen",
+          "body": "Rytter-, hold-, manager-, staff- og løbssiderne åbner nu med samme topkort: en guldlinje øverst, navnet i toppen, nøgletal med det samme og faner lige under. Rytterens rating har nu samme farveskala som evne-tallene. Rytterfilter-panelet på markedssiderne bruger appens fælles felter og chips, og et par løsrevne emoji er fjernet fra knapper. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.53",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Training, help, rules, patch notes and Pro pages now share the same visual language",
+          "body": "The last pages outside the shared design now follow the same page layout as the rest of the app: one header style, one card style, and clear loading and error states. Help and rules got a section menu that works on mobile, the training tables scroll inside their own box on small screens, and page spacing is now consistent across the whole app. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Trænings-, hjælp-, regel-, patch note- og Pro-siderne deler nu samme visuelle sprog",
+          "body": "De sidste sider uden for det fælles design følger nu samme sideopbygning som resten af appen: én header-stil, én kort-stil og tydelige indlæsnings- og fejltilstande. Hjælp og regler har fået en sektionsmenu der virker på mobil, træningstabellerne scroller i deres egen boks på små skærme, og sideafstanden er nu ens i hele appen. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.52",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Season and results pages now share the same visual language",
+          "body": "Results, calendar, global rank, race history, race points, season overview and the race detail page now follow the same page layout as the rest of the app. The race detail page got a new header band with key facts at a glance, wide tables now scroll inside their own box on mobile instead of stretching the page, and every page shows a clear message with a retry button if data fails to load. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Sæson- og resultatsiderne deler nu samme visuelle sprog",
+          "body": "Resultater, kalender, global rangliste, løbshistorik, løbspoint, sæsonoverblik og løbets detaljeside følger nu samme sideopbygning som resten af appen. Løbets detaljeside har fået et nyt topbånd med nøgletal, brede tabeller scroller nu i deres egen boks på mobil i stedet for at strække siden, og alle sider viser en tydelig besked med en prøv-igen-knap hvis data ikke kan hentes. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.51",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "The market pages now share the same visual language",
+          "body": "Riders, transfers, watchlist, activity, auction history, rider rankings and the staff overview now follow the same page layout as the rest of the app: one header style, one table style with a pinned name column that folds extra columns in on mobile, and clearer messages when a list is empty or fails to load. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Markedssiderne deler nu samme visuelle sprog",
+          "body": "Ryttere, transfers, ønskeliste, aktivitet, auktionshistorik, rytterrangliste og personale-oversigten følger nu samme sideopbygning som resten af appen: én header-stil, én tabel-stil med fastlåst navnekolonne der folder ekstra kolonner ind på mobil, og tydeligere beskeder når en liste er tom eller ikke kan hentes. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.50",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Dashboard, standings, team, auctions and races share one visual language",
+          "body": "The five most used pages now follow the same page layout: one header style, one card style, and one table style with a pinned name column that works better on mobile. Promotion and relegation zones in the standings are easier to read, and nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Dashboard, stilling, hold, auktioner og løb deler nu ét visuelt sprog",
+          "body": "De fem mest brugte sider følger nu samme sideopbygning: én header-stil, én kort-stil og én tabel-stil med fastlåst navnekolonne, der fungerer bedre på mobil. Op- og nedrykningszoner i stillingen er lettere at læse, og intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.49",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Cleaner empty, error and loading states",
+          "body": "Empty and error messages across the app now share one calmer look, and error messages tell you what is safe. This is the first step of a visual pass that will make every page feel like one game."
+        },
+        "da": {
+          "title": "Pænere tomme-, fejl- og loading-tilstande",
+          "body": "Tomme- og fejlbeskeder i hele appen deler nu ét roligere udtryk, og fejlbeskeder fortæller dig hvad der er sikkert. Det er første skridt i en visuel gennemgang, der får alle sider til at føles som ét spil."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
+    "version": "7.48",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "You now get a notification when the season ends",
+          "body": "When the season wraps up, you get an inbox notification that links straight to the final standings, promotions and relegations of the season that just ended. The first one arrives when season 1 closes."
+        },
+        "da": {
+          "title": "Du får nu en besked når sæsonen slutter",
+          "body": "Når sæsonen er slut, får du en besked i indbakken med direkte link til den endelige stilling, oprykning og nedrykning for den netop afsluttede sæson. Den første kommer når sæson 1 lukkes."
+        },
+        "refs": [2745]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Promotion message in your own language, and Season 0 cleaned up",
+          "body": "The promotion notification was stuck in Danish for everyone; it now follows your language, like the relegation message always did. We also removed a leftover 'Season 0' from three season pickers."
+        },
+        "da": {
+          "title": "Oprykningsbeskeden på dit eget sprog, og Sæson 0 ryddet op",
+          "body": "Oprykningsbeskeden var låst til dansk for alle; nu følger den dit sprog, ligesom nedrykningsbeskeden altid har gjort. Vi har også fjernet et efterladt 'Sæson 0' fra tre sæson-vælgere."
+        },
+        "refs": [2833, 2763]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Every rider now shows a salary in the squad view",
+          "body": "Around half of all riders on manager teams had no salary stored, so the squad view showed a blank and payday deducted too little. Their salaries are now set with the same formula the game uses when a rider is signed, and the upcoming season's payroll will deduct the right amounts."
+        },
+        "da": {
+          "title": "Alle ryttere viser nu en løn i truppen",
+          "body": "Omkring halvdelen af alle ryttere på managerhold havde ingen løn gemt, så truppen viste et tomt felt, og lønningsdagen trak for lidt. Deres løn er nu sat med samme formel som spillet bruger, når en rytter signeres, og den kommende sæsons payroll trækker de rigtige beløb."
+        },
+        "refs": [2746]
+      }
+    ]
+  },
+  {
+    "version": "7.47",
+    "date": "2026-07-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Mountain classics arrive in Divisions 2 and 3",
+          "body": "Four of the toughest hilly one-day races have been upgraded to true mountain classics: Limburgse Klassieker in Division 2, and Brabantse Klassieker, Trofeo Ligure and Classique de la Drôme in Division 3. Every division now has a mountain classic in each pool, so climbers outside the top flight finally have a one-day race to build their season around. The new routes take effect from season 2."
+        },
+        "da": {
+          "title": "Bjergklassikere kommer til Division 2 og 3",
+          "body": "Fire af de hårdeste bakkede endagsløb er opgraderet til ægte bjergklassikere: Limburgse Klassieker i Division 2 samt Brabantse Klassieker, Trofeo Ligure og Classique de la Drôme i Division 3. Alle divisioner har nu en bjergklassiker i hver pulje, så klatrere uden for den bedste række endelig har et endagsløb at bygge sæsonen om. De nye ruter gælder fra sæson 2."
+        },
+        "refs": [2755]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Sales are blocked if they would leave you unable to race",
+          "body": "Before you sell, release or list a rider for auction, the game now checks your squad's worst case: expiring contracts and retirement risk are counted together, and any deal that could leave your team below the 8 riders needed to race is blocked with a clear explanation. Above that line you trade as freely as before."
+        },
+        "da": {
+          "title": "Salg blokeres hvis de ville efterlade dig ude af stand til at stille hold",
+          "body": "Før du sælger, frigiver eller sætter en rytter på auktion, tjekker spillet nu din trups værste tilfælde: udløbende kontrakter og pensionsrisiko regnes sammen, og en handel der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, blokeres med en klar forklaring. Over den grænse handler du lige så frit som før."
+        },
+        "refs": [2700, 2748]
       }
     ]
   },

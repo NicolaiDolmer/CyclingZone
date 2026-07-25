@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { PageLoader, EmptyState, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
+import { PageLoader, PageHeader, EmptyState, ErrorState, Button, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import {
   buildMonthGrid,
@@ -41,6 +41,11 @@ export default function CalendarPage() {
   const { t, i18n } = useTranslation("calendar");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  // #2849 bølge 3 — kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en);
+  // fanger kun UDFALDET af det uændrede fetch-kald, rører ikke selve query'en
+  // (kalender-performance er #2861). retryTick re-trigger'er samme effekt uændret.
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const [tab, setTab] = useState("mine");
   const [division, setDivision] = useState(null); // null = all divisions
   const [mineOnly, setMineOnly] = useState(false);
@@ -55,6 +60,7 @@ export default function CalendarPage() {
       try {
         if (!API) { setLoading(false); return; }
         setLoading(true);
+        setFetchFailed(false);
         const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
         const res = await fetch(`${API}/api/races/calendar${qs}`, { headers: await authHeaders() });
         const json = await res.json();
@@ -69,13 +75,13 @@ export default function CalendarPage() {
         const monthForToday = months.find((m) => `${m.year}-${String(m.month).padStart(2, "0")}` === todayYM);
         setCursor(monthForToday || months[0] || ymOfToday());
       } catch {
-        if (alive) setData(null);
+        if (alive) { setData(null); setFetchFailed(true); }
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, [seasonNumber]);
+  }, [seasonNumber, retryTick]);
 
   const todayISO = useMemo(() => copenhagenTodayISO(), []);
 
@@ -116,12 +122,23 @@ export default function CalendarPage() {
 
   if (!data?.season) {
     return (
-      <div className="mx-auto max-w-4xl">
-        <CalendarHeader
-          t={t} season={null} division={division} onDivision={setDivision} data={data}
+      <div className="mx-auto max-w-[1600px]">
+        <PageHeader title={t("title")} />
+        <CalendarFilters
+          t={t} division={division} onDivision={setDivision} data={data}
           availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
         />
-        {seasonNumber != null ? (
+        {fetchFailed ? (
+          <ErrorState
+            title={t("error.title")}
+            description={t("error.description")}
+            action={
+              <Button size="sm" variant="secondary" onClick={() => setRetryTick((n) => n + 1)}>
+                {t("error.retry")}
+              </Button>
+            }
+          />
+        ) : seasonNumber != null ? (
           <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("notGenerated.title", { number: seasonNumber })} description={t("notGenerated.desc")} />
         ) : (
           <EmptyState icon={<CalendarIcon size={32} aria-hidden="true" />} title={t("noSeason.title")} description={t("noSeason.desc")} />
@@ -133,13 +150,19 @@ export default function CalendarPage() {
   const monthLabel = cursor ? formatMonth(cursor, i18n.language) : "";
   const divisionTree = data.divisions || [];
 
+  const eyebrow = data.season
+    ? (data.season.raceDaysTotal
+        ? t("eyebrow", { number: data.season.number, days: data.season.raceDaysTotal })
+        : t("eyebrowNoDays", { number: data.season.number }))
+    : null;
+
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div className="mx-auto max-w-[1600px]">
+      <PageHeader title={t("title")} subtitle={eyebrow} />
       {/* Header-divisionsvælgeren skifter til Divisioner-tabben, så valget altid har en effekt
           (ellers var den virkningsløs på Mit hold / Alle hold — CodeRabbit #14). */}
-      <CalendarHeader
+      <CalendarFilters
         t={t}
-        season={data.season}
         division={division}
         onDivision={(v) => { setDivision(v); setTab("divisions"); }}
         data={data}
@@ -208,24 +231,31 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Weekday header */}
-      <div className="grid grid-cols-7 border-l border-t border-cz-border">
-        {WEEKDAY_KEYS.map((k) => (
-          <div key={k} className="border-r border-cz-border bg-cz-subtle px-2 py-1.5 text-center">
-            <span className="font-data text-[10px] font-bold uppercase tracking-[0.14em] text-cz-3">{t(`weekday.${k}`)}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Month grid */}
-      <div className="border-l border-cz-border">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7">
-            {week.map((cell, ci) => (
-              <DayCell key={ci} cell={cell} entries={cell ? byDate.get(cell.iso) : null} todayISO={todayISO} t={t} />
+      {/* Wide grid content scrolls inside its own container — the page body must
+          never scroll horizontally on mobile (7 columns need a real minimum width
+          to stay legible; audit #2849 flagged this grid as missing an overflow-wrap). */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[630px]">
+          {/* Weekday header */}
+          <div className="grid grid-cols-7 border-l border-t border-cz-border">
+            {WEEKDAY_KEYS.map((k) => (
+              <div key={k} className="border-r border-cz-border bg-cz-subtle px-2 py-1.5 text-center">
+                <span className="font-data text-[10px] font-bold uppercase tracking-[0.14em] text-cz-3">{t(`weekday.${k}`)}</span>
+              </div>
             ))}
           </div>
-        ))}
+
+          {/* Month grid */}
+          <div className="border-l border-cz-border">
+            {weeks.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7">
+                {week.map((cell, ci) => (
+                  <DayCell key={ci} cell={cell} entries={cell ? byDate.get(cell.iso) : null} todayISO={todayISO} t={t} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {stageEvents.length === 0 && (
@@ -260,55 +290,46 @@ export default function CalendarPage() {
   );
 }
 
-// ── header ───────────────────────────────────────────────────────────────────
-
-function CalendarHeader({ t, season, division, onDivision, data, availableSeasons = [], seasonNumber = null, onSeasonChange }) {
+// ── filters ──────────────────────────────────────────────────────────────────
+// #2849 bølge 3 — season/division-vælgerne levede tidligere INDE i den håndrullede
+// editorial header (h1 text-[2.75rem] + eyebrow). Header-teksten selv flyttede til
+// PageHeader (kanonisk recipe); dette er kun de to filter-selects, T2's
+// "op til 3 selects"-filterbar-slot (docs/design/PAGE_TEMPLATES.md).
+function CalendarFilters({ t, division, onDivision, data, availableSeasons = [], seasonNumber = null, onSeasonChange }) {
   const divisionTree = data?.divisions || [];
-  const eyebrow = season
-    ? (season.raceDaysTotal
-        ? t("eyebrow", { number: season.number, days: season.raceDaysTotal })
-        : t("eyebrowNoDays", { number: season.number }))
-    : "";
+  if (availableSeasons.length <= 1 && divisionTree.length === 0) return null;
   return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
-        {eyebrow && (
-          <p className="font-data text-[11px] font-semibold uppercase tracking-[0.16em] text-cz-3">{eyebrow}</p>
-        )}
-        <h1 className="font-display text-[2.75rem] leading-[0.95] uppercase tracking-wide text-cz-1">{t("title")}</h1>
-      </div>
-      <div className="flex items-center gap-2">
-        {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
-            (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
-        {availableSeasons.length > 1 && (
-          <Select
-            size="sm"
-            value={seasonNumber ?? ""}
-            onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
-            className="w-24"
-            aria-label={t("seasonMenu.label")}
-          >
-            {availableSeasons.map((s) => (
-              <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
-            ))}
-          </Select>
-        )}
-        {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
-        {divisionTree.length > 0 && (
-          <Select
-            size="sm"
-            value={division ?? ""}
-            onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
-            className="w-40"
-            aria-label={t("divisionMenu.label")}
-          >
-            <option value="">{t("divisionMenu.all")}</option>
-            {divisionTree.map((d) => (
-              <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
-            ))}
-          </Select>
-        )}
-      </div>
+    <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+      {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
+          (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
+      {availableSeasons.length > 1 && (
+        <Select
+          size="sm"
+          value={seasonNumber ?? ""}
+          onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
+          className="w-24"
+          aria-label={t("seasonMenu.label")}
+        >
+          {availableSeasons.map((s) => (
+            <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
+          ))}
+        </Select>
+      )}
+      {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
+      {divisionTree.length > 0 && (
+        <Select
+          size="sm"
+          value={division ?? ""}
+          onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
+          className="w-40"
+          aria-label={t("divisionMenu.label")}
+        >
+          <option value="">{t("divisionMenu.all")}</option>
+          {divisionTree.map((d) => (
+            <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
+          ))}
+        </Select>
+      )}
     </div>
   );
 }
@@ -332,7 +353,7 @@ function DayCell({ cell, entries, todayISO, t }) {
       <div className="mb-1 flex items-center justify-between">
         <span className={`font-data text-xs tabular-nums ${isToday ? "font-bold text-cz-1" : "text-cz-3"}`}>{cell.day}</span>
         {isToday && (
-          <span className="font-data text-[8px] font-bold uppercase tracking-[0.12em] text-cz-on-accent bg-cz-accent px-1 py-px rounded-[2px]">
+          <span className="font-data text-[8px] font-bold uppercase tracking-[0.12em] text-cz-on-accent bg-cz-accent px-1 py-px rounded-cz">
             {t("today")}
           </span>
         )}
@@ -368,7 +389,7 @@ function StageChip({ ev, t }) {
       data-testid="calendar-race-chip"
       aria-label={t("chip.openRace", { name: ev.name })}
       title={a11yLabel}
-      className={`block rounded-[3px] border px-1.5 py-1 leading-tight transition-colors
+      className={`block rounded-cz border px-1.5 py-1 leading-tight transition-colors
         ${mine
           ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
           : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"}`}

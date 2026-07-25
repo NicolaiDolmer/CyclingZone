@@ -96,6 +96,7 @@
   "planActionError_auth": "Your session expired. Sign in again.",
   "planActionError_network": "Connection failed. Check your network and try again.",
   "weekRhythmBonusNote": "The rhythm is a default: it only applies to riders without their own focus/intensity or individual weekly plan, and it never touches focus. The manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
+  "weekRhythmTodayShort": "Today: {intensity}",
   "weekRhythmTodayHint": "today: {intensity} (team weekly rhythm)",
   "weekRhythmTodayHintOwn": "today: {intensity} (own weekly plan)",
   "weekRhythmTodayHintPlan": "today: {intensity} (this rider's own setting, overrides team rhythm)",

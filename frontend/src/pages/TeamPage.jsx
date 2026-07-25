@@ -25,12 +25,20 @@ import { resolveApiError } from "../lib/apiError";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, Button, Input, BikeIcon, PageLoader } from "../components/ui";
+import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { WRAP, SCROLLER, TABLE, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 // #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
+
+// #2849 bølge 1: SortTh styrer selv sin farve (aktiv/hover-tekst) — thClass'
+// indbyggede text-cz-3 ville kollidere med den på samme element, så vi
+// strippers den her og lader SortTh vinde over farven.
+function sortableThClass(opts) {
+  return thClass(opts).replace(/\btext-cz-3\b\s*/, "").trim();
+}
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive }) {
   const { t } = useTranslation("team");
@@ -485,142 +493,174 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
       {displayRiders.length === 0 ? (
         riders.length === 0 ? (
           /* #1569: ægte tom trup (ny spiller) — gør blindgyden guidende med en
-             primær CTA til markedet, så "hvad gør jeg nu?" har et svar. */
-          <div className="text-center py-16 text-cz-3">
-            <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
-            <p className="text-cz-2 font-medium">{t("squad.emptyState")}</p>
-            <p className="mt-1 text-sm">{t("squad.emptyStateBody")}</p>
-            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
-              <Link to="/riders" className={`${buttonClass({ variant: "primary", size: "sm" })} inline-flex`}>
-                {t("squad.emptyStateCta")}
-              </Link>
-              <Link to="/auctions" className={`${buttonClass({ variant: "secondary", size: "sm" })} inline-flex`}>
-                {t("squad.emptyStateCtaAuctions")}
-              </Link>
-            </div>
-          </div>
+             primær CTA til markedet, så "hvad gør jeg nu?" har et svar.
+             #2849 bølge 1: kanonisk EmptyState — action-slotten har undtagelsesvis
+             to knapper (marked + auktioner) i stedet for T2-reglens ÉN, fordi
+             begge CTA'er er del af godkendt scope (#1569) og dækkes af den
+             colocated emptySquadCta-test. */
+          <EmptyState
+            icon={<BikeIcon size={26} aria-hidden="true" />}
+            title={t("squad.emptyState")}
+            description={t("squad.emptyStateBody")}
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Link to="/riders" className={`${buttonClass({ variant: "primary", size: "sm" })} inline-flex`}>
+                  {t("squad.emptyStateCta")}
+                </Link>
+                <Link to="/auctions" className={`${buttonClass({ variant: "secondary", size: "sm" })} inline-flex`}>
+                  {t("squad.emptyStateCtaAuctions")}
+                </Link>
+              </div>
+            }
+          />
         ) : (
           /* Trup har ryttere, men den valgte visning/filter er tom. */
-          <div className="text-center py-16 text-cz-3">
-            <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
-            <p>{t("squad.emptyView")}</p>
-          </div>
+          <EmptyState icon={<BikeIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />
         )
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table data-sortable className="w-full text-xs">
+        /* #2849 bølge 1: DataTable-komponenten kan ikke udtrykke denne tabel —
+           hele rækken navigerer til rytterprofilen ved klik (#1796, forhindrer
+           "døde klik" på værdi-/potentiale-cellerne), og DataTable har intet
+           onRowClick-hook. Vi beholder derfor custom tabel-markup, men
+           genbruger WRAP/SCROLLER/thClass/tdClass/trClass fra dataTableStyles.js
+           så tabellen deler chrome (sticky-kolonne, borders, zone-tints) med
+           den kanoniske DataTable. Den rå shadow-[10px_0_16px_-16px_…] på
+           navnekolonnen er erstattet af recipe'ens 1px højre-rule + opak
+           cellebund (tdClass({ sticky: true })). Ind-/udgående ryttere bruger
+           nu zone-tint-recipen (success/danger) i stedet for den tidligere ad
+           hoc bg-cz-success-bg0/3-opacity. Mobil-fold (sekundære kolonner ind
+           i sticky-underlinjen) er ikke implementeret — tabellen scroller
+           horisontalt som før migreringen. */
+        <div className={WRAP}>
+          <div className={SCROLLER}>
+            <table data-sortable className={TABLE}>
               <thead>
-                <tr className="border-b border-cz-border">
+                <tr>
                   {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}
                   <SortTh sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</SortTh>
+                    className={sortableThClass({})}>{t("squad.headers.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
+                    className={sortableThClass({ sticky: true })}>{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium">{t("squad.headers.value")}</SortTh>
+                    className={sortableThClass({ numeric: true })}>{t("squad.headers.value")}</SortTh>
                   {/* #1131: Løn-kolonnen var eneste døde header i rækken (1.385 dead clicks
                       i Clarity 5/6-12/6) — sortérbar nu, samme som på /riders. */}
                   <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium">{t("squad.headers.salary")}</SortTh>
+                    className={sortableThClass({ numeric: true })}>{t("squad.headers.salary")}</SortTh>
                   <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
+                    className={sortableThClass({})}>{t("squad.headers.potential")}</SortTh>
                   {/* #1482: status/badges, ryttertype og kontraktudløb som egne
                       kolonner (Discord-feedback) — U25/ind/ud flyttet ud af navne-cellen. */}
-                  <th className="px-3 py-3 text-left text-cz-3 font-medium">{t("squad.headers.badges")}</th>
+                  <th className={thClass({})}>{t("squad.headers.badges")}</th>
                   <SortTh sortKey="birthdate" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-center font-medium">{t("squad.headers.age")}</SortTh>
+                    className={sortableThClass({ numeric: true })}>{t("squad.headers.age")}</SortTh>
                   <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
+                    className={sortableThClass({})}>{t("squad.headers.type")}</SortTh>
                   <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium">{t("squad.headers.contract")}</SortTh>
+                    className={sortableThClass({})}>{t("squad.headers.contract")}</SortTh>
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                       title={tRider(`racePreview.derived.${key}`)}
-                      className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
+                      className={sortableThClass({ numeric: true })}>{label}</SortTh>
                   ))}
-                  <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.action")}</th>
+                  <th className={thClass({})}>{t("squad.headers.action")}</th>
                 </tr>
               </thead>
               <tbody>
-                {displayRiders.map(r => (
-                  <tr key={r.id}
-                    onClick={() => navigate(`/riders/${r.id}`)}
-                    className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors
-                      ${r._isIncoming  ? "bg-cz-success-bg0/3"  :
-                        r._isOutgoing  ? "bg-cz-danger-bg0/3"    : ""}`}>
-                    <td className="px-2 py-2.5">
-                      <NationCell code={r.nationality_code} />
-                    </td>
-                    <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
-                        {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
-                        <RiderLink id={r.id} stopPropagation
-                          className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
-                          {r.firstname} {r.lastname}
-                        </RiderLink>
-                        {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen. */}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="text-cz-accent-t font-mono text-sm font-bold">
-                        {formatNumber(getRiderMarketValue(r))}
-                      </div>
-                      {/* #2499: kompakt delta-pil under værdien — inline-notation
-                          for at undgå en ekstra kolonne i en allerede tæt tabel. */}
-                      <RiderValueTrendBadge
-                        window={pickBestValueTrendWindow(valueTrends[r.id]?.windows)}
-                        size="xs"
-                        className="justify-end mt-0.5"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
-                    <td className="px-3 py-2.5">
-                      <ScoutablePotentiale rider={r} scouting={scouting} />
-                    </td>
-                    {/* #1482: Status — alder + ind-/udgående som skanbare badges.
-                        #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
-                        {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
-                        {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
-                      </div>
-                    </td>
-                    {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
-                    <td className="px-3 py-2.5 text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
-                    {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
-                    <td className="px-3 py-2.5">
-                      <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                    </td>
-                    {/* #1482: Kontraktudløb i egen kolonne (sæson-number, "—" hvis ukendt). */}
-                    <td className="px-3 py-2.5 text-cz-2 text-xs whitespace-nowrap">
-                      {r.contract_end_season != null
-                        ? t("squad.headers.contractValue", { season: r.contract_end_season })
-                        : "—"}
-                    </td>
-                    {STATS.map(({ key }) => (
-                      <td key={key} className="px-1.5 py-2.5 text-center">
-                        <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                          {r[key] || "-"}
+                {displayRiders.map((r, i) => {
+                  // #2849 bølge 1: zone-tint-recipen (success/danger) erstatter den
+                  // tidligere ad hoc bg-cz-success-bg0/3-opacity for ind-/udgående ryttere.
+                  const zone = r._isIncoming ? "success" : r._isOutgoing ? "danger" : null;
+                  const prevZone = i > 0 ? (displayRiders[i - 1]._isIncoming ? "success" : displayRiders[i - 1]._isOutgoing ? "danger" : null) : null;
+                  const nextZone = i < displayRiders.length - 1 ? (displayRiders[i + 1]._isIncoming ? "success" : displayRiders[i + 1]._isOutgoing ? "danger" : null) : null;
+                  const edgeTop = Boolean(zone) && i > 0 && prevZone !== zone;
+                  const edgeBottom = Boolean(zone) && i < displayRiders.length - 1 && nextZone !== zone;
+                  const z = { zone, edgeTop, edgeBottom };
+                  return (
+                    <tr key={r.id}
+                      onClick={() => navigate(`/riders/${r.id}`)}
+                      className={`${trClass(zone)} cursor-pointer`}>
+                      <td className={tdClass(z)}>
+                        <NationCell code={r.nationality_code} />
+                      </td>
+                      <td className={tdClass({ ...z, sticky: true })}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
+                          {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
+                          <RiderLink id={r.id} stopPropagation
+                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
+                            {r.firstname} {r.lastname}
+                          </RiderLink>
+                          {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen. */}
+                        </div>
+                      </td>
+                      <td className={tdClass({ ...z, numeric: true })}>
+                        <div className="text-cz-accent-t font-mono text-sm font-bold">
+                          {formatNumber(getRiderMarketValue(r))}
+                        </div>
+                        {/* #2499: kompakt delta-pil under værdien — inline-notation
+                            for at undgå en ekstra kolonne i en allerede tæt tabel. */}
+                        <RiderValueTrendBadge
+                          window={pickBestValueTrendWindow(valueTrends[r.id]?.windows)}
+                          size="xs"
+                          className="justify-end mt-0.5"
+                        />
+                      </td>
+                      <td className={tdClass({ ...z, numeric: true })}>
+                        <span className="text-cz-2 font-mono">{r.salary || 0}</span>
+                      </td>
+                      <td className={tdClass(z)}>
+                        <ScoutablePotentiale rider={r} scouting={scouting} />
+                      </td>
+                      {/* #1482: Status — alder + ind-/udgående som skanbare badges.
+                          #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
+                      <td className={tdClass(z)}>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                          {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
+                          {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
+                        </div>
+                      </td>
+                      {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
+                      <td className={tdClass({ ...z, numeric: true })}>
+                        <span className="text-cz-2 font-mono">{getRiderAge(r.birthdate) ?? "—"}</span>
+                      </td>
+                      {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
+                      <td className={tdClass(z)}>
+                        <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
+                      </td>
+                      {/* #1482: Kontraktudløb i egen kolonne (sæson-number, "—" hvis ukendt). */}
+                      <td className={tdClass(z)}>
+                        <span className="text-cz-2 text-xs whitespace-nowrap">
+                          {r.contract_end_season != null
+                            ? t("squad.headers.contractValue", { season: r.contract_end_season })
+                            : "—"}
                         </span>
                       </td>
-                    ))}
-                    <td className="px-3 py-2.5 text-center">
-                      {!r._isIncoming && (
-                        <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
-                          className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
-                          {t("squad.actionButton")}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      {STATS.map(({ key }) => (
+                        <td key={key} className={tdClass({ ...z, numeric: true })}>
+                          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
+                            {r[key] || "-"}
+                          </span>
+                        </td>
+                      ))}
+                      <td className={tdClass(z)}>
+                        {!r._isIncoming && (
+                          <div className="text-center">
+                            <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
+                              className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
+                              {t("squad.actionButton")}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );
@@ -845,26 +885,25 @@ export function TeamPage() {
   ];
 
   return (
-    // #1186: fuld bredde på desktop — trup-tabellens 15 evne-kolonner var klemt i max-w-5xl.
-    // Layout.jsx' WIDE_CONTENT_ROUTES giver /team full-bleed wrapper (#1027-mønstret).
-    <div className="max-w-full">
-      <div className="mb-5">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-cz-1">{team?.name || t("page.fallbackTitle")}</h1>
-        </div>
-        {team?.manager_name && (
-          <p className="text-cz-2 text-sm mt-0.5">{t("page.managerLabel", { name: team.manager_name })}</p>
-        )}
-        <div className="flex gap-4 mt-1 flex-wrap text-sm">
-          <span className="text-cz-accent-t font-mono font-bold" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
-          <span className="text-cz-3" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</span>
-          <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
-          {academyCount > 0 && <span className="text-cz-3 text-xs" title={t("page.academyCapTooltip", { cap: squadCap })}>{t("page.academyCount", { count: academyCount })}</span>}
-          {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
-          {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
-          <span className="text-cz-3" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
-          <span className="text-cz-3">{t("page.teamValue", { value: formatNumber(totalValue) })}</span>
-        </div>
+    // #2849 bølge 1: T2 wide-data-container (docs/design/PAGE_TEMPLATES.md) —
+    // afløser #1186's ad hoc max-w-full; trup-tabellens 15 evne-kolonner har
+    // stadig brug for bredden, nu inden for den kanoniske 1600px-cap.
+    <div className="max-w-[1600px] mx-auto">
+      <PageHeader
+        title={team?.name || t("page.fallbackTitle")}
+        subtitle={team?.manager_name ? t("page.managerLabel", { name: team.manager_name }) : undefined}
+      />
+      {/* Stats-linje (balance/division/cap/løn/værdi) er ikke del af PageHeader-
+          recipen (kun titel/subtitle/actions) — forbliver som eget meta-afsnit. */}
+      <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm">
+        <span className="text-cz-accent-t font-mono font-bold" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
+        <span className="text-cz-3" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</span>
+        <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
+        {academyCount > 0 && <span className="text-cz-3 text-xs" title={t("page.academyCapTooltip", { cap: squadCap })}>{t("page.academyCount", { count: academyCount })}</span>}
+        {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
+        {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
+        <span className="text-cz-3" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
+        <span className="text-cz-3">{t("page.teamValue", { value: formatNumber(totalValue) })}</span>
       </div>
 
       {/* #2183: tydelig indikator når egne ryttere er under aktiv auktion — manageren

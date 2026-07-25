@@ -463,7 +463,15 @@ export default function NotificationsPage() {
                             // #1952: resultat-notifikation deep-linker direkte til løbets resultatside
                             : n.type === "race_result" && (n.metadata?.raceId || n.related_id)
                               ? `/races/${n.metadata?.raceId || n.related_id}`
-                              : config.link;
+                              // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
+                              // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette
+                              // pegede beskeden på det generiske /seasons, som defaulter til den
+                              // AKTIVE (nye, tomme) sæson lige efter en transition — stik modsat af
+                              // hvad beskeden faktisk handler om. /seasons/:seasonId er allerede
+                              // wired til at vise netop dén sæsons opsamling/stilling.
+                              : n.type === "season_ended" && n.related_id
+                                ? `/seasons/${n.related_id}`
+                                : config.link;
                         if (link) navigate(link);
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center

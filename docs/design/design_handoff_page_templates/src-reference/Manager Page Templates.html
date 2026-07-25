@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Cycling Zone · Manager page templates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/colors.css">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/typography.css">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/base.css">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/components/components.css">
+<link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/_ds_bundle.js"></script>
+<style>
+body{position:relative;width:2760px;height:3120px;margin:0;background:transparent}
+a{color:rgb(var(--accent-t))}a:hover{color:rgb(var(--accent-t));text-decoration:underline}
+.tpl-frame{position:absolute;background:var(--bg-body);outline:1px solid rgba(14,15,21,.18);overflow:hidden}
+.cv-sec{position:absolute;font-family:var(--font-display);font-size:28px;letter-spacing:.02em;color:#22212b;text-transform:uppercase;line-height:1}
+.cv-cap{position:absolute;font-family:var(--font-data);line-height:1.45}
+.cv-cap b{display:block;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#22212b}
+.cv-cap span{display:block;font-size:11px;color:rgba(14,15,21,.6);font-weight:450}
+/* Sidebar nav item (from the manager-app kit) */
+.cz-nav-item{position:relative;display:flex;align-items:center;justify-content:space-between;width:calc(100% - 16px);margin:0 8px;padding:8px 12px;border-radius:8px;font-size:13px;border:0;cursor:pointer;text-align:left;font-family:var(--font-body);background:transparent;color:var(--text-sidebar-2);font-weight:400;transition:background .15s var(--ease),color .15s var(--ease)}
+.cz-nav-item:hover{background:var(--bg-sidebar-hover);color:var(--text-sidebar-1)}
+.cz-nav-item.is-active{background:rgb(var(--accent) / .12);color:rgb(var(--accent));font-weight:500}
+.cz-nav-item__left{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.cz-nav-item__bullet{width:6px;height:6px;border-radius:50%;flex:none;background:var(--text-sidebar-3)}
+.cz-nav-item.is-active .cz-nav-item__bullet{background:rgb(var(--accent))}
+.cz-nav-item__label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cz-nav-item__badge{background:rgb(var(--accent));color:var(--on-accent);font-size:9px;font-weight:800;padding:2px 6px;border-radius:9999px;line-height:1;flex:none}
+/* Wide-data table: sticky rider column + zone tints (standings recipe) */
+.tpl-table{min-width:1120px}
+.tpl-table--m{min-width:700px}
+.tpl-table th,.tpl-table td{background:var(--bg-card)}
+.tpl-table .tpl-row--up>td{background:var(--success-bg)}
+.tpl-table .tpl-row--end>td{background:var(--danger-bg)}
+.tpl-table .tpl-zone-bottom>td{border-bottom:2px solid rgb(var(--success) / .4)}
+.tpl-table .tpl-zone-top>td{border-top:2px solid rgb(var(--danger) / .4)}
+.tpl-stick{position:sticky;left:0;z-index:2;border-right:1px solid var(--border)}
+th.tpl-stick{z-index:3}
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#0e0f15"></rect><text x="50" y="58" font-family="Arial Narrow, sans-serif" font-size="30" font-weight="bold" fill="#e8c547" text-anchor="middle">CZ</text><rect x="30" y="66" width="40" height="3" fill="#e8c547"></rect><rect x="30" y="72" width="26" height="3" fill="#f4f2ec"></rect></svg></template>
+<div class="cv-sec" style="left:60px;top:28px">01 · Desktop templates — canonical header: Option A (decided)</div>
+<div class="cv-cap" style="left:60px;top:78px;width:1200px"><b>Template 1 · Standard content page — header “App standard” ✓</b><span>Inter Tight 20/700 + 13px muted sub · action cluster: one select + one primary · content column 896px · section cards pad 20 · one section-header recipe (15/600 + quiet meta)</span></div>
+<div class="cv-cap" style="left:1420px;top:78px;width:1200px"><b>Template 2 · Wide data page — Riders (transfer market)</b><span>Full-bleed, capped 1600px · filter bar same cap · sticky rider column · uppercase tracked labels · tabular numerics · zone row tints = standings promotion/relegation recipe</span></div>
+<div class="tpl-frame" id="f-t1a" data-screen-label="T1 Board — standard content" style="left:60px;top:140px;width:1280px;height:880px"></div>
+<div class="tpl-frame" id="f-t2" data-screen-label="T2 Riders — wide data" style="left:1420px;top:140px;width:1280px;height:900px"></div>
+
+<div class="cv-sec" style="left:60px;top:1164px">02 · Profile + mobile 375</div>
+<div class="cv-cap" style="left:60px;top:1214px;width:1200px"><b>Template 3 · Profile / detail page — Rider</b><span>Hero band on card surface: avatar + tags + Bebas name + stat row (hairline dividers) · gold underline tabs sit on the band edge · tabbed content 1024px · same section-card recipe</span></div>
+<div class="cv-cap" style="left:1420px;top:1214px;width:375px"><b>Template 1 · 375</b><span>Pad 16 · cluster wraps under title · same section recipe</span></div>
+<div class="cv-cap" style="left:1875px;top:1214px;width:375px"><b>Template 2 · 375</b><span>Age/type fold into rider cell · name pinned, numerics scroll</span></div>
+<div class="tpl-frame" id="f-t3" data-screen-label="T3 Rider profile" style="left:60px;top:1276px;width:1280px;height:920px"></div>
+<div class="tpl-frame" id="f-m1" data-screen-label="T1 mobile 375" style="left:1420px;top:1276px;width:375px;height:812px"></div>
+<div class="tpl-frame" id="f-m2" data-screen-label="T2 mobile 375" style="left:1875px;top:1276px;width:375px;height:812px"></div>
+
+<div class="cv-sec" style="left:60px;top:2296px">03 · Canonical states</div>
+<div class="cv-cap" style="left:60px;top:2346px;width:1200px"><b>States sheet — loading / empty / error inside a section card</b><span>Replaces the 5+ hand-rolled variants · chrome renders, body swaps</span></div>
+<div class="tpl-frame" id="f-states" data-screen-label="Canonical states sheet" style="left:60px;top:2408px;width:1280px;height:620px"></div>
+
+<script type="text/babel" src="tpl-shared.jsx"></script>
+<script type="text/babel" src="tpl-frames.jsx"></script>
+<script type="text/babel" src="tpl-mobile-states.jsx"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "gate": { "title": "Ikke tilgængelig endnu", "description": "Staff-området er ikke åbnet endnu." },
   "missing": { "title": "Staff ikke fundet", "description": "Denne chef er ikke på dit hold." },
   "roles": { "training": "Sportsdirektør", "scouting": "Chefscout", "medical": "Holdlæge", "academy": "Akademichef", "commercial": "Kommerciel direktør" },
-  "hero": { "tier": "Tier {tier}", "salary": "{amount} CZ$/sæson", "ratingEyebrow": "Rating /99", "specHeadline": "Bedst til {axis}" },
+  "hero": { "tierLabel": "Tier", "salaryLabel": "Løn", "salary": "{amount} CZ$/sæson", "ratingEyebrow": "Rating /99", "specHeadline": "Bedst til {axis}", "photoFallback": "Foto" },
   "tabs": { "overview": "Overblik", "effect": "Effekt", "history": "Historik" },
   "columns": {
     "dimensions": "Coaching", "levels": "Trænings-gruppe-fokus", "roleSkills": "Rolle-evner",

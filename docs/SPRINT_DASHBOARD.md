@@ -5,7 +5,7 @@
 > **I dag:** 2026-05-19 (**Sprint Day 2**)
 > **Sidste opdatering:** 2026-05-19 (Session A status-synk — issue-tabel + Uge 1 checkboxes afstemt mod faktisk GitHub-state; metrics-baseline stadig fra 2026-05-18 13:11 UTC)
 >
-> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Overordnet styring og agentroller → [`MASTER_PLAN.md`](MASTER_PLAN.md).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).
+> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Overordnet styring → [`MASTERPLAN.md`](MASTERPLAN.md) (MASTER_PLAN.md er superseded, #2827).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).
 >
 > **Status-note 2026-05-19 (Session A — [#497](https://github.com/NicolaiDolmer/CyclingZone/issues/497)):** Issue-tabel synkroniseret mod GitHub: 7 sprint-issues (#359-#364, #367) blev lukket 16-18 maj, men dashboard stod stadig ⏳ — nu rettet til ✅ med close-dato. #476/#479/#497 tilføjet til tabellen. Eneste åbne tekniske sprint-issues er nu #366 (PatchNotes fair freemium — venter på naming), #472 (recruitment drafts), #473 (skills mockup), #476 (metrics-snapshot automation), #479 (mobile perf), #497 (denne session).
 

@@ -9,7 +9,21 @@ import StageRoleMatrix from "../components/race/StageRoleMatrix.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
-import { FlagIcon, PageLoader } from "../components/ui";
+import {
+  FlagIcon,
+  PageLoader,
+  Button,
+  CategoryTag,
+  Section,
+  SectionStack,
+  SectionHeader,
+  EmptyState,
+  ErrorState,
+  Tabs,
+  TabList,
+  Tab,
+} from "../components/ui";
+import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -39,6 +53,14 @@ import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.js
 // korrekt "+0:00" for hele feltet (s.t.). Gamle PCM-importerede løb har tom
 // finish_time → gap-kolonnen vises kun når data findes. (V2 efter launch: pr.-
 // etape-klassement-snapshots + bonussekunder.)
+//
+// #2849 bølge 3: migreret til T3 (profil/detail-skabelonen, docs/design/
+// PAGE_TEMPLATES.md) — hero-bånd (tilbage-link → kategori-tags/meta → titel →
+// primary-CTA → stat-række) + max-w-5xl indhold. FØRSTE T3-migrering i repoet.
+// StageStripe (etape-navigation) migreres BEVIDST IKKE til ui/Tabs — den bærer
+// terræn-/tids-information pr. etape som almindelige tekst-faner ville tabe;
+// se PR-beskrivelsen for begrundelsen. classTab-under-fanerne (stage/gc/points/
+// mountain/young/team, fast kardinalitet 6) migreres derimod til ui/Tabs.
 
 // De endelige klassementer ("Samlet"-fanen), i visnings-rækkefølge.
 // Label kommer fra t(`detail.classification.${key}`).
@@ -143,6 +165,19 @@ function countdownText(date, nowMs, t) {
   return `${t("detail.stageSchedule.countdownPrefix")} ${segments.join(" ")}`;
 }
 
+// #2849 bølge 3 — T3 hero stat-blok (label 10px uppercase · value 20px/650
+// data-font tabular · optional 11px sub). Sidste blok i rækken udelader
+// højre-rule (spec: "24px padding/margin"-adskillelse mellem blokke).
+function HeroStatBlock({ label, value, sub, last = false }) {
+  return (
+    <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
+      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
+      {sub && <div className="font-data text-[11px] text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
+    </div>
+  );
+}
+
 export default function RaceDetailPage() {
   const { t, i18n } = useTranslation("races");
   const { raceId } = useParams();
@@ -158,6 +193,11 @@ export default function RaceDetailPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // #2849 bølge 3: adskiller "løbet findes ikke" fra "hentningen fejlede" —
+  // tidligere blev BEGGE vist som "Race not found" uden nogen retry-mulighed,
+  // hvilket skjulte en ægte netværks-/query-fejl bag en misvisende besked
+  // (audit-fund: silent degradation on fetch error).
+  const [loadError, setLoadError] = useState(false);
   const [teamFilter, setTeamFilter] = useState("all"); // "all" | "mine" | teamId
   const [myTeamId, setMyTeamId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,6 +221,7 @@ export default function RaceDetailPage() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     setNotFound(false);
+    setLoadError(false);
 
     const { data: raceRow, error } = await supabase
       .from("races")
@@ -188,7 +229,16 @@ export default function RaceDetailPage() {
       .eq("id", raceId)
       .single();
 
-    if (error || !raceRow) {
+    // #2849 bølge 3: en ægte query-/netværksfejl (error != null) er noget andet
+    // end en gyldig "løbet findes ikke" (error null, raceRow null — fx forkert
+    // id). Kun sidstnævnte er notFound; førstnævnte får en retry-mulighed.
+    if (error) {
+      console.warn("RaceDetailPage: races fetch failed:", error.message);
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+    if (!raceRow) {
       setNotFound(true);
       setLoading(false);
       return;
@@ -439,195 +489,261 @@ export default function RaceDetailPage() {
     return () => cancelAnimationFrame(id);
   }, [loading, location.hash]);
 
+  // #2849 bølge 3: hero-CTA'en ("Set your line-up") scroller til samme anker som
+  // #selection-dybt-linket ovenfor — samme mål, blot udløst af et klik i stedet
+  // for en URL-hash ved load.
+  const scrollToSelection = useCallback(() => {
+    document.getElementById("race-selection-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
+  // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
+  // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
   if (loading) return (
-    <PageLoader />
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <PageLoader />
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
+      <ErrorState
+        description={t("detail.loadError.message")}
+        action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("detail.loadError.retry")}</Button>}
+      />
+    </div>
   );
 
   if (notFound) return (
-    <div className="max-w-4xl mx-auto">
-      <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
-      <div className="text-center py-16 text-cz-3">
-        <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
-        <p>{t("empty.raceNotFound")}</p>
-      </div>
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
+      <EmptyState icon={<FlagIcon size={26} aria-hidden="true" />} title={t("empty.raceNotFound")} />
     </div>
   );
 
   const hasAnyResults = results.length > 0;
+  const ds = deriveRaceStatus(race.status, race.stages_completed, race.stages);
+
+  // #2849 bølge 3: hero stat-række — statisk sammensat efter hvad der findes
+  // (stage-only felter udelades for endagsløb, næste-etape kun mens scheduled).
+  // Sidste blok markeres `last` (ingen højre-rule) af render-loopet nedenfor.
+  const statBlocks = [
+    {
+      label: t("detail.stat.status"),
+      value: t(`status.${ds}`),
+      sub: ds === "live" && race.race_type === "stage_race"
+        ? t("liveProgress", { done: race.stages_completed ?? 0, total: race.stages })
+        : null,
+    },
+    ...(race.race_type === "stage_race" ? [{ label: t("detail.stat.stages"), value: String(race.stages) }] : []),
+    ...(race.season?.number != null ? [{ label: t("detail.stat.season"), value: String(race.season.number) }] : []),
+    ...(race.status === "scheduled" && nextStart ? [{
+      label: t("detail.stat.nextStage"),
+      value: formatStageTime(nextStart.date, locale),
+      sub: countdownText(nextStart.date, nowMs, t),
+    }] : []),
+  ];
 
   return (
     // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
     // browser-oversættere der muterer tekst-noderne er samme crash-klasse som de
     // Sentry-dokumenterede NotFoundError-flader. Se PR #2272.
-    <div translate="no" className="max-w-4xl mx-auto space-y-5">
-      {/* Header */}
-      <div>
-        <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{backLabel}</Link>
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl font-bold text-cz-1">{race.name}</h1>
-          {(() => {
-            // Visnings-status (#1828): igangværende etapeløb vises "Live" + etape-fremdrift.
-            const ds = deriveRaceStatus(race.status, race.stages_completed, race.stages);
-            return (
-              <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border
-                ${ds === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                  : ds === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                {t(`status.${ds}`)}
-                {ds === "live" && race.race_type === "stage_race" && (
-                  <span className="font-mono normal-case tracking-normal">· {t("liveProgress", { done: race.stages_completed ?? 0, total: race.stages })}</span>
-                )}
-              </span>
-            );
-          })()}
-        </div>
-        <p className="text-cz-3 text-sm">
-          {race.race_type === "stage_race"
-            ? t("raceType.stageRaceWithStages", { count: race.stages })
-            : t("raceType.oneDay")}
-          {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
-        </p>
-        {race.status === "scheduled" && nextStart && (
-          <p className="text-cz-accent-t text-xs font-mono mt-1 tabular-nums">
-            {t("detail.stageSchedule.nextStageLabel")}: {formatStageTime(nextStart.date, locale)} · {countdownText(nextStart.date, nowMs, t)}
-          </p>
+    <div translate="no">
+      {/* #2849 bølge 5c: T3-revision (ejer 24/7, 2. iteration) — hero'en er et KORT,
+          ikke et full-bleed bånd. Layout's full-bleed-route-bucket giver stadig denne
+          rute ingen padding/cap; siden ejer selv back-link + kort-ramme + indre
+          max-w-5xl. Løb har ingen portrætter → intet identitets-slot (spec: entity
+          pages without portraits omit the slot). Navn FØRST, tags/meta UNDER (samme
+          princip som RiderProfileHero: navnet er sidens vigtigste ord, tags er
+          metadata). */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          {backLabel}
+        </Link>
+
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+            <div className="min-w-0">
+              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{race.name}</h1>
+              <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
+                <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
+                <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                  {race.race_type === "stage_race" ? t("raceType.stages", { count: race.stages }) : t("raceType.oneDayShort")}
+                  {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
+                </span>
+              </div>
+            </div>
+            {race.status === "scheduled" && (
+              <div className="flex gap-2 flex-none">
+                <Button size="sm" onClick={scrollToSelection}>{t("discoverCta.action")}</Button>
+              </div>
+            )}
+          </div>
+          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
+            {statBlocks.map((b, i) => (
+              <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
+            ))}
+          </div>
+        </section>
+
+        {/* StageStripe: placeret mellem kort og indhold (ikke i kortets bund) — den er
+            sidens primære sub-navigation for etapeløb (kommende-etape-vælger eller
+            Overall/etape-N), samme position som RiderProfileTabs indtager under
+            rytterkortet. Migreres BEVIDST ikke til tekst-faner (bærer terræn-/
+            tidsinformation pr. etape som ui/Tabs ville tabe — se filens toppkommentar). */}
+        {race.status === "scheduled" && (
+          <div className="mt-5 flex flex-col gap-3">
+            {scheduledStageNums.length > 1 && (() => {
+              const counts = bucketCounts(stageProfiles);
+              return counts.length ? (
+                <p className="text-cz-3 text-[11px]">
+                  <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
+                  {" "}
+                  {counts.map((c, i) => (
+                    <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
+                  ))}
+                </p>
+              ) : null;
+            })()}
+            <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
+          </div>
+        )}
+        {hasAnyResults && isStageRace && (
+          <div className="mt-5">
+            <StageStripe
+              stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
+              activeStage={activeTab === "samlet" ? "overall" : Number(activeTab.slice("stage-".length))}
+              showOverall
+              onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
+            />
+          </div>
         )}
       </div>
 
-      {/* S4: kommende løb — race-DNA-gestalt + etape-stribe + valgt-etape-panel
-          (silhuet + finale-markør + terrain-DNA). Erstatter de stablede profilkort
-          + det separate skema-kort (tider foldet ind i striben). Degraderer pænt
-          hvis profilen mangler (gamle/PCM-løb → StageDetailPanel renderer intet). */}
-      {race.status === "scheduled" && (
-        <div className="space-y-3">
-          {scheduledStageNums.length > 1 && (() => {
-            const counts = bucketCounts(stageProfiles);
-            return counts.length ? (
-              <p className="text-cz-3 text-[11px]">
-                <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
-                {" "}
-                {counts.map((c, i) => (
-                  <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
-                ))}
-              </p>
-            ) : null;
-          })()}
-          <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
-          <StageDetailPanel
-            profile={profileByStage[scheduledStage]}
-            stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-          />
-        </div>
-      )}
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
+        <div className="flex flex-col gap-[14px]">
 
-      {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
-          race-engine-flaget (renderer intet når backend siger enabled=false).
-          S4: per-etape rute-match mod den valgte etape.
-          #2288 F: id'et er scroll-målet for /races/:id#selection-dybt-links.
-          #2637: panelet vises nu OGSÅ mens løbet er "live" (0 < stages_completed <
-          stages) — status forbliver 'scheduled' hele afviklingen (#1825). Tidligere
-          skjulte vi hele panelet bag en statisk "trup låst"-besked her, så en skadet
-          rytter der blev udtaget FØR skaden ikke kunne fjernes midt i etapeløbet
-          (Discord-bug). Panelet selv forhindrer stadig TILFØJELSER til en frosset
-          trup (frozen-bevidst disabled-logik); kun fjernelse er tilladt, og backend
-          accepterer nu en ren fjernelse selv når stages_completed>0. */}
-      {race.status === "scheduled" && (
-        <div id="race-selection-anchor">
-          {/* Sub-4 (#2448): ruten SKAL være synlig mens man udtager — man udtager
-              til et parcours, ikke til et navn. Kompakt tier: bånd, kategori-chips,
-              km-akse og race-read, men ingen højdeakse eller navne (pladsen bruges
-              på selve udtagelsen). Ingen rutedata → intet kort, panelet står som før. */}
-          {hasRouteData(profileByStage[scheduledStage]) && (
-            <div className="mb-3">
-              <StageProfileCard
-                profile={profileByStage[scheduledStage]}
-                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-                tier="compact"
+          {/* S4: kommende løb — valgt-etape-panel (silhuet + finale-markør + terrain-
+              DNA). StageStripe + race-DNA-linjen flyttet op under kortet (se ovenfor).
+              Degraderer pænt hvis profilen mangler (gamle/PCM-løb → StageDetailPanel
+              renderer intet). */}
+          {race.status === "scheduled" && (
+            <StageDetailPanel
+              profile={profileByStage[scheduledStage]}
+              stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+            />
+          )}
+
+          {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
+              race-engine-flaget (renderer intet når backend siger enabled=false).
+              S4: per-etape rute-match mod den valgte etape.
+              #2288 F: id'et er scroll-målet for /races/:id#selection-dybt-links +
+              hero-CTA'en ovenfor.
+              #2637: panelet vises nu OGSÅ mens løbet er "live" (0 < stages_completed <
+              stages) — status forbliver 'scheduled' hele afviklingen (#1825). Tidligere
+              skjulte vi hele panelet bag en statisk "trup låst"-besked her, så en skadet
+              rytter der blev udtaget FØR skaden ikke kunne fjernes midt i etapeløbet
+              (Discord-bug). Panelet selv forhindrer stadig TILFØJELSER til en frosset
+              trup (frozen-bevidst disabled-logik); kun fjernelse er tilladt, og backend
+              accepterer nu en ren fjernelse selv når stages_completed>0. */}
+          {race.status === "scheduled" && (
+            <div id="race-selection-anchor" className="flex flex-col gap-3">
+              {/* Sub-4 (#2448): ruten SKAL være synlig mens man udtager — man udtager
+                  til et parcours, ikke til et navn. Kompakt tier: bånd, kategori-chips,
+                  km-akse og race-read, men ingen højdeakse eller navne (pladsen bruges
+                  på selve udtagelsen). Ingen rutedata → intet kort, panelet står som før. */}
+              {hasRouteData(profileByStage[scheduledStage]) && (
+                <StageProfileCard
+                  profile={profileByStage[scheduledStage]}
+                  stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                  tier="compact"
+                />
+              )}
+              <RaceSelectionPanel
+                raceId={race.id}
+                selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
+                selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
+                selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
+                selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
               />
             </div>
           )}
-          <RaceSelectionPanel
-            raceId={race.id}
-            selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
-            selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
-            selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
-            selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
-          />
-        </div>
-      )}
 
-      {/* #2034 (Race Engine v3 S3): etape-taktik pr. rytter/etape. Vises BÅDE
-          når løbet endnu ikke er startet OG mens det er live — taktik-skift
-          undervejs (roller/effort for KOMMENDE etaper) er hele pointen, og
-          lineup-frysningen ovenfor gælder kun startfeltet. Komponenten gater
-          selv på race-engine-v3-scoring-flaget og på om holdet har ryttere i
-          løbet (renderer intet ellers). */}
-      {race.status === "scheduled" && race.race_type === "stage_race" && race.stages > 1 && (
-        <StageRoleMatrix
-          raceId={race.id}
-          profileByStage={profileByStage}
-          gcRows={liveStandings?.byType?.gc ?? []}
-        />
-      )}
+          {/* #2034 (Race Engine v3 S3): etape-taktik pr. rytter/etape. Vises BÅDE
+              når løbet endnu ikke er startet OG mens det er live — taktik-skift
+              undervejs (roller/effort for KOMMENDE etaper) er hele pointen, og
+              lineup-frysningen ovenfor gælder kun startfeltet. Komponenten gater
+              selv på race-engine-v3-scoring-flaget og på om holdet har ryttere i
+              løbet (renderer intet ellers). */}
+          {race.status === "scheduled" && race.race_type === "stage_race" && race.stages > 1 && (
+            <StageRoleMatrix
+              raceId={race.id}
+              profileByStage={profileByStage}
+              gcRows={liveStandings?.byType?.gc ?? []}
+            />
+          )}
 
-      {!hasAnyResults && race.status !== "scheduled" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
-          <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
-          <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
-        </div>
-      )}
+          {!hasAnyResults && race.status !== "scheduled" && (
+            <EmptyState icon={<FlagIcon size={28} aria-hidden="true" />} title={t("empty.noResultsImportedRace")} />
+          )}
 
-      {hasAnyResults && isStageRace && (
-        <>
-          {/* S4: visuel etape-stribe erstatter tekst-fanerne — ét navigations-mønster
-              på kommende OG kørte løb (terræn synligt pr. etape før klik). */}
-          <StageStripe
-            stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
-            activeStage={activeTab === "samlet" ? "overall" : Number(activeTab.slice("stage-".length))}
-            showOverall
-            onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
-          />
+          {hasAnyResults && isStageRace && (
+            <div className="flex flex-col gap-[14px]">
+              {/* Etape-stribe (Overall/etape-N) sidder nu under kortet, se ovenfor. */}
+              {teamFilterBar}
 
-          {teamFilterBar}
-
-          {activeTab === "samlet" && (
-            <div className="space-y-5">
-              <RaceRecap results={results} scopeType="overall" incidents={incidents} />
-              <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
-              <DnfSection incidents={incidents} scopeType="overall" t={t} />
-              {liveStandings
-                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />
-                : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />}
+              {activeTab === "samlet" && (
+                <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
+                  <SectionStack>
+                    {liveStandings
+                      ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />
+                      : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} moments={moments} />}
+                  </SectionStack>
+                  <SectionStack>
+                    <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+                    <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
+                    <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                  </SectionStack>
+                </div>
+              )}
+              {stageNumbers.map(n => activeTab === `stage-${n}` && (
+                <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
+                  filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
+                  moments={moments} riderNameById={riderNameById} passages={passages} t={t} />
+              ))}
             </div>
           )}
-          {stageNumbers.map(n => activeTab === `stage-${n}` && (
-            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
-              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
-              moments={moments} riderNameById={riderNameById} passages={passages} t={t} />
-          ))}
-        </>
-      )}
 
-      {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
-      {hasAnyResults && !isStageRace && (
-        <div className="space-y-5">
-          <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
-          <RaceRecap results={results} scopeType="overall" incidents={incidents} />
-          <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
-          <DnfSection incidents={incidents} scopeType="overall" t={t} />
-          {teamFilterBar}
-          <ResultTable
-            title={t("detail.tableResult")}
-            rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
-            highlightTeamId={resolvedTeamFilter}
-            moments={moments}
-            stageNumber={1}
-          />
-          {finalByType.team?.length > 0 && (
-            <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} />
+          {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
+          {hasAnyResults && !isStageRace && (
+            <div className="flex flex-col gap-[14px]">
+              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
+              {teamFilterBar}
+              <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
+                <SectionStack>
+                  <ResultTable
+                    title={t("detail.tableResult")}
+                    rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+                    highlightTeamId={resolvedTeamFilter}
+                    moments={moments}
+                    stageNumber={1}
+                  />
+                  {finalByType.team?.length > 0 && (
+                    <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} />
+                  )}
+                </SectionStack>
+                <SectionStack>
+                  <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+                  <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
+                  <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                </SectionStack>
+              </div>
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -644,11 +760,13 @@ function RaceRecap({ results, scopeType, stageNumber, incidents }) {
   );
   if (!moments.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
-        <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("detail.recap.title")}</p>
-      </div>
+    <Section>
+      <SectionHeader title={
+        <span className="inline-flex items-center gap-2">
+          <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
+          {t("detail.recap.title")}
+        </span>
+      } />
       <ul className="space-y-1.5">
         {moments.map((m, i) => (
           <li key={`${m.key}-${i}`} className="text-cz-1 text-sm leading-relaxed">
@@ -656,7 +774,7 @@ function RaceRecap({ results, scopeType, stageNumber, incidents }) {
           </li>
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }
 
@@ -676,8 +794,8 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
   if (!rows.length) return null;
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
-      <p className="text-cz-2 text-xs uppercase tracking-wider mb-2 font-semibold">{t("detail.incidents.title")}</p>
+    <Section>
+      <SectionHeader title={t("detail.incidents.title")} />
       <ul className="space-y-1.5">
         {rows.map((inc) => {
           const name = inc.rider ? `${inc.rider.firstname ?? ""} ${inc.rider.lastname ?? ""}`.trim() : null;
@@ -694,7 +812,7 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
           );
         })}
       </ul>
-    </div>
+    </Section>
   );
 }
 
@@ -737,17 +855,19 @@ function WhyPanel({ moments, stageNumber, mode = "full", riderNameById, t }) {
   if (!rendered.length) return null;
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
-        <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("detail.why.title")}</p>
-      </div>
+    <Section>
+      <SectionHeader title={
+        <span className="inline-flex items-center gap-2">
+          <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
+          {t("detail.why.title")}
+        </span>
+      } />
       <ul className="space-y-1.5">
         {rendered.map((r) => (
           <li key={r.key} className="text-cz-1 text-sm leading-relaxed">{r.text}</li>
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }
 
@@ -779,18 +899,16 @@ function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-8 text-center text-cz-3 text-sm">
-      {t("detail.noOverall")}
-    </div>
+    <EmptyState title={t("detail.noOverall")} />
   );
   return (
-    <div className="space-y-5">
+    <SectionStack>
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(finalByType[c.key]);
         if (!rows?.length) return null;
         return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
       })}
-    </div>
+    </SectionStack>
   );
 }
 
@@ -800,17 +918,17 @@ function OverallTab({ finalByType, filterRows, myTeamId, moments }) {
 function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
   const { t } = useTranslation("races");
   return (
-    <div className="space-y-5">
-      <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
-        <p className="text-sm font-semibold text-cz-1">{t("detail.liveStandings.title", { number: stage })}</p>
-        <p className="text-xs text-cz-3 mt-0.5">{t("detail.liveStandings.note")}</p>
-      </div>
+    <SectionStack>
+      <Section>
+        <SectionHeader title={t("detail.liveStandings.title", { number: stage })} />
+        <p className="text-[13px] text-cz-2">{t("detail.liveStandings.note")}</p>
+      </Section>
       {CLASSIFICATIONS.map(c => {
         const rows = filterRows(byType[c.key]);
         if (!rows?.length) return null;
         return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} moments={moments} />;
       })}
-    </div>
+    </SectionStack>
   );
 }
 
@@ -838,49 +956,56 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
     : `${t(`detail.classTab.${classTab}`)} — ${t("detail.liveStandings.title", { number: stage })}`;
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-[14px]">
       <StageProfileSlot profile={profile} passages={passages} tier="full" />
-      <RaceRecap results={results} scopeType="stage" stageNumber={stage} incidents={incidents} />
-      <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
-      <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
-      {jerseys.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-4">
-          <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
-          <div className="flex flex-wrap gap-2">
-            {jerseys.map(j => (
-              <div key={j.dayType}
-                className="flex items-center gap-2 rounded-full border border-cz-border bg-cz-subtle ps-2 pe-3 py-1">
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
-                  style={{ backgroundColor: j.bg, color: j.fg }}>
-                  {t(`detail.jersey.${j.dayType}`)}
-                </span>
-                <RiderLink id={j.holder.rider?.id}
-                  className="text-cz-1 text-xs font-medium hover:text-cz-accent-t transition-colors">
-                  {j.holder.rider?.nationality_code && (
-                    <Flag code={j.holder.rider.nationality_code} className="me-1" />
-                  )}
-                  {riderName(j.holder)}
-                </RiderLink>
+
+      {/* #2849 bølge 5c: klassement-sub-faner flyttet ud af SectionStack — sidder nu
+          flush på sidens baggrund (ikke i en card-kolonne), samme border-b + guld-
+          underline-opskrift som RiderProfileTabs (delt Tabs/TabList/Tab-komponent,
+          tabsStyles.js — identisk recipe, intet nyt CSS). #2081: samme etape,
+          forskellig klassement-linse. Fast kardinalitet (6) → ui/Tabs (#2849 bølge 3). */}
+      <Tabs value={classTab} onChange={setClassTab}>
+        <TabList label={t("detail.classTab.ariaLabel")}>
+          {STAGE_CLASS_TABS.map(key => (
+            <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
+          ))}
+        </TabList>
+      </Tabs>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
+        <SectionStack>
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
+          {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
+        </SectionStack>
+        <SectionStack>
+          <RaceRecap results={results} scopeType="stage" stageNumber={stage} incidents={incidents} />
+          <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
+          <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
+          {jerseys.length > 0 && (
+            <Section>
+              <SectionHeader title={t("detail.jerseysAfterStage")} />
+              <div className="flex flex-wrap gap-2">
+                {jerseys.map(j => (
+                  <div key={j.dayType}
+                    className="flex items-center gap-2 rounded-full border border-cz-border bg-cz-subtle ps-2 pe-3 py-1">
+                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: j.bg, color: j.fg }}>
+                      {t(`detail.jersey.${j.dayType}`)}
+                    </span>
+                    <RiderLink id={j.holder.rider?.id}
+                      className="text-cz-1 text-xs font-medium hover:text-cz-accent-t transition-colors">
+                      {j.holder.rider?.nationality_code && (
+                        <Flag code={j.holder.rider.nationality_code} className="me-1" />
+                      )}
+                      {riderName(j.holder)}
+                    </RiderLink>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* #2081: klassement-sub-faner — samme etape, forskellig klassement-linse. */}
-      <div className="flex gap-1.5 flex-wrap">
-        {STAGE_CLASS_TABS.map(key => (
-          <button key={key} type="button" onClick={() => setClassTab(key)}
-            aria-pressed={classTab === key}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
-              ${classTab === key ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2 hover:text-cz-1"}`}>
-            {t(`detail.classTab.${key}`)}
-          </button>
-        ))}
+            </Section>
+          )}
+        </SectionStack>
       </div>
-
-      <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
-      {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
     </div>
   );
 }
@@ -893,8 +1018,8 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
 const PASSAGE_TOP_N = 3;
 function PassageList({ groups, t }) {
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
-      <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.passages.title")}</p>
+    <Section>
+      <SectionHeader title={t("detail.passages.title")} />
       <div className="space-y-4">
         {groups.map((g) => (
           <div key={`${g.waypoint_kind}:${g.waypoint_index}`}>
@@ -925,7 +1050,7 @@ function PassageList({ groups, t }) {
           </div>
         ))}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -964,6 +1089,11 @@ function ResultEntityCell({ row, highlightWinner, t, moments, stageNumber }) {
   );
 }
 
+// #2849 bølge 3 — kanonisk section-card header (SectionHeader) + WRAP/SCROLLER
+// (dataTableStyles) i stedet for en bespoke border-b-header og `overflow-hidden`
+// UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
+// et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
+// mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
 function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10, moments = [], stageNumber = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
@@ -977,56 +1107,60 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   const collapsible = rows.length > defaultLimit;
   const visibleRows = collapsible && !expanded ? rows.slice(0, defaultLimit) : rows;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-      <div className="px-4 py-3 border-b border-cz-border flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
-        {collapsible && (
+    <Section>
+      <SectionHeader
+        title={title}
+        action={collapsible && (
           <button type="button" onClick={() => setExpanded(e => !e)}
             aria-pressed={expanded}
-            className="text-xs text-cz-accent-t hover:underline shrink-0">
+            className="text-xs font-medium text-cz-accent-t hover:underline shrink-0">
             {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
           </button>
         )}
-      </div>
+      />
       {rows.length === 0 ? (
-        <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("detail.noResults")}</div>
+        <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
       ) : (
-        <table data-sort-exempt="Loebsresultat, sorteret paa placering (rank)" className="w-full text-sm">
-          <tbody className="divide-y divide-cz-border">
-            {visibleRows.map(r => {
-              const isWinner = highlightWinner && r.rank === 1;
-              const isMyTeam = highlightTeamId != null && String(r.team_id) === String(highlightTeamId);
-              return (
-              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}>
-                <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
-                <td className="px-2 py-2">
-                  <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} moments={moments} stageNumber={stageNumber} />
-                </td>
-                {showTeamCol && (
-                  <td className="px-2 py-2 text-cz-3 text-xs">
-                    {resultEntity(r).kind === "rider" && (
-                      <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                        {r.rider?.team?.name || r.team_name || t("common.free")}
-                      </TeamLink>
+        <div className={WRAP}>
+          <div className={SCROLLER}>
+            <table data-sort-exempt="Loebsresultat, sorteret paa placering (rank)" className="w-full text-sm">
+              <tbody className="divide-y divide-cz-border">
+                {visibleRows.map(r => {
+                  const isWinner = highlightWinner && r.rank === 1;
+                  const isMyTeam = highlightTeamId != null && String(r.team_id) === String(highlightTeamId);
+                  return (
+                  <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}>
+                    <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
+                    <td className="px-2 py-2">
+                      <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} moments={moments} stageNumber={stageNumber} />
+                    </td>
+                    {showTeamCol && (
+                      <td className="px-2 py-2 text-cz-3 text-xs">
+                        {resultEntity(r).kind === "rider" && (
+                          <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
+                            {r.rider?.team?.name || r.team_name || t("common.free")}
+                          </TeamLink>
+                        )}
+                      </td>
                     )}
-                  </td>
-                )}
-                {showTime && (
-                  <td className="px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
-                    {r.finish_time || ""}
-                  </td>
-                )}
-                {showPoints && (
-                  <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap">
-                    {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
-                  </td>
-                )}
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    {showTime && (
+                      <td className="px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
+                        {r.finish_time || ""}
+                      </td>
+                    )}
+                    {showPoints && (
+                      <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap">
+                        {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
+                      </td>
+                    )}
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </div>
+    </Section>
   );
 }
