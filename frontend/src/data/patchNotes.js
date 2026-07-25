@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.54",
+    "date": "2026-07-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Profile pages got a new header card, and the rider filters match the rest of the app",
+          "body": "Rider, team, manager, staff and race pages now open with the same header card: a gold top line, the name up top, key numbers at a glance, and tabs right below. The rider rating now carries the same colour scale as the ability numbers. The rider filter panel across the market pages now uses the app's shared inputs and chips, and a few stray emoji were removed from buttons. Nothing about how the pages work has changed."
+        },
+        "da": {
+          "title": "Profilsiderne har fået et nyt topkort, og rytterfiltrene matcher resten af appen",
+          "body": "Rytter-, hold-, manager-, staff- og løbssiderne åbner nu med samme topkort: en guldlinje øverst, navnet i toppen, nøgletal med det samme og faner lige under. Rytterens rating har nu samme farveskala som evne-tallene. Rytterfilter-panelet på markedssiderne bruger appens fælles felter og chips, og et par løsrevne emoji er fjernet fra knapper. Intet i sidernes funktion er ændret."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.53",
     "date": "2026-07-24",
     "label": "Beta",

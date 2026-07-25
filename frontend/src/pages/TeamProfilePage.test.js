@@ -60,5 +60,7 @@ test("TeamProfilePage har 'club' i TABS og rendrer TeamClubTab med teamId (#2601
   assert.match(source, /const TABS = \[[^\]]*"club"[^\]]*\]/, "TABS skal inkludere 'club'");
   assert.match(source, /import TeamClubTab from "\.\.\/components\/TeamClubTab"/);
   assert.match(source, /activeTab === "club" && \(\s*<TeamClubTab teamId=\{id\} \/>/);
-  assert.match(source, /key: "club", label: t\("profile\.tabClub"\)/);
+  // #2849 bølge 5: fane-listen blev data-drevet (TAB_LABELS-objekt renderet via
+  // ui/Tabs) i stedet for et inline {key,label}-array — samme label-nøgle, ny form.
+  assert.match(source, /club: t\("profile\.tabClub"\)/);
 });

@@ -28,6 +28,7 @@
   "page": {
     "back": "← Tilbage",
     "notFound": "Rytter ikke fundet",
+    "retry": "Prøv igen",
     "loadingAria": "Indlæser rytter"
   },
   "header": {
@@ -162,7 +163,6 @@
       "contract": "Kontrakt",
       "contractSeason": "Sæson {season}",
       "aiTag": "AI",
-      "winsOn": "Vinder på",
       "valueTrend": "{value} seneste {days} dage",
       "valueTrendTitle": "Værdiændring siden {date}"
     },

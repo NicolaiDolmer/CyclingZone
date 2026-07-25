@@ -3,7 +3,13 @@ import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Select from "../components/ui/Select";
 import { Table, Tr, Th, Td } from "../components/ui/Table";
+import PageLoader from "../components/ui/PageLoader";
+import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
+import { DownloadIcon, RefreshIcon } from "../components/ui/icons";
 
 // Signup-attribution dashboard (#679). The signup_attribution table is
 // service_role-only (RLS, no policies), so this page can't read Supabase
@@ -63,7 +69,7 @@ function BreakdownCard({ title, items, total, max = 12 }) {
     <Card className="p-4">
       <p className="text-cz-3 text-xs uppercase tracking-wide mb-3">{title}</p>
       {items.length === 0 ? (
-        <p className="text-cz-3 text-sm">Ingen data endnu.</p>
+        <EmptyState title="Ingen data endnu" description="Ingen signups i denne kanal endnu." />
       ) : (
         <>
           <Table data-sort-exempt="Attribution-breakdown, server-aggregeret top-N">
@@ -158,16 +164,12 @@ export default function AdminAttributionPage() {
   }
 
   if (adminStatus === "checking") {
-    return (
-      <div className="min-h-[40vh] flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoader label="Tjekker adgang" minHeight="40vh" />;
   }
   if (adminStatus === "not_admin") return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
@@ -177,34 +179,36 @@ export default function AdminAttributionPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <select
-            value={limit}
-            onChange={e => setLimit(Number(e.target.value))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent"
-          >
+          <Select size="sm" value={limit} onChange={e => setLimit(Number(e.target.value))}>
             {LIMIT_OPTIONS.map(n => <option key={n} value={n}>Seneste {n}</option>)}
-          </select>
-          <button
+          </Select>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={loadData}
-            disabled={loading}
-            className="px-3 py-2 bg-cz-subtle border border-cz-border rounded-lg text-cz-1 text-sm hover:bg-cz-card disabled:opacity-50"
+            loading={loading}
+            iconLeft={<RefreshIcon size={14} aria-hidden="true" />}
           >
-            {loading ? "Henter..." : "Genindlæs"}
-          </button>
-          <button
+            Genindlæs
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleExportCsv}
             disabled={!rows.length}
-            className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50"
+            iconLeft={<DownloadIcon size={14} aria-hidden="true" />}
           >
             Eksportér CSV ({rows.length})
-          </button>
+          </Button>
         </div>
       </div>
 
       {error && (
-        <Card className="p-3 border-cz-danger/30">
-          <p className="text-cz-danger text-sm">{error === "Admin only" ? "403 — du er ikke admin." : error}</p>
-        </Card>
+        <ErrorState
+          title="Kunne ikke hente attribution-data"
+          description={error === "Admin only" ? "403 — du er ikke admin." : error}
+          action={<Button variant="secondary" size="sm" onClick={loadData}>Prøv igen</Button>}
+        />
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -265,10 +269,21 @@ export default function AdminAttributionPage() {
           </thead>
           <tbody>
             {loading && (
-              <Tr><Td colSpan={7} className="text-center text-cz-3 py-8">Henter...</Td></Tr>
+              <Tr>
+                <Td colSpan={7} className="py-8">
+                  <PageLoader label="Henter signups" minHeight="80px" />
+                </Td>
+              </Tr>
             )}
             {!loading && rows.length === 0 && (
-              <Tr><Td colSpan={7} className="text-center text-cz-3 py-8">Ingen signups registreret endnu.</Td></Tr>
+              <Tr>
+                <Td colSpan={7} className="py-4">
+                  <EmptyState
+                    title="Ingen signups registreret endnu"
+                    description="Signups vises her, når de første brugere opretter et hold."
+                  />
+                </Td>
+              </Tr>
             )}
             {!loading && rows.map(r => (
               <Tr key={r.user_id}>

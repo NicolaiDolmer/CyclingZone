@@ -17,7 +17,6 @@
   "thTeam": "Manager & team",
   "thDivision": "Division",
   "thScore": "Points",
-  "thMovement": "Move",
   "newBadge": "NEW",
   "newBadgeTooltip": "No previous weekly snapshot yet, shown after next week's update.",
   "movementUpTooltip": "Up {n} place(s) since last week",

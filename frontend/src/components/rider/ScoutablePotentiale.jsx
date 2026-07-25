@@ -31,7 +31,10 @@ import { potentialLabelKey } from "../../lib/scouting";
 // #2796: `labelAsTitle` videresendes til PotentialeStars — tætte tabel-celler
 // (akademi-rosteret) viser stjernerne alene og lægger den kvalitative label i
 // tooltip'en. Default false, så alle eksisterende kald-sites er uændrede.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false }) {
+// #2849 bølge 5 (ejer-feedback): `hideLevel` skjuler scouting-niveau-badgen
+// ("2/3") — hero-stat-rækken viser kun stjernerne; niveauet hører til i
+// scouting-fanen. Opt-in, eksisterende kald-sites uændrede.
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = false, hideLevel = false }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -140,7 +143,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   return (
     <span className="inline-flex items-center gap-2 flex-wrap">
       <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} large={large} labelAsTitle={labelAsTitle} />
-      {level > 0 && (
+      {!hideLevel && level > 0 && (
         <span className="text-[10px] font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
           {level}/{maxLevel}
         </span>

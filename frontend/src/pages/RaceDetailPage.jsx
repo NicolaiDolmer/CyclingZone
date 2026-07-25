@@ -497,16 +497,17 @@ export default function RaceDetailPage() {
   }, []);
 
   // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
-  // sætter derfor selv side-padding (#2849 bølge 4).
+  // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
+  // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
   if (loading) return (
-    <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8">
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <PageLoader />
     </div>
   );
 
   if (loadError) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
-      <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
       <ErrorState
         description={t("detail.loadError.message")}
         action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("detail.loadError.retry")}</Button>}
@@ -515,8 +516,8 @@ export default function RaceDetailPage() {
   );
 
   if (notFound) return (
-    <div className="max-w-4xl mx-auto pt-8 px-4 md:px-8">
-      <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
+    <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
       <EmptyState icon={<FlagIcon size={26} aria-hidden="true" />} title={t("empty.raceNotFound")} />
     </div>
   );
@@ -549,17 +550,23 @@ export default function RaceDetailPage() {
     // browser-oversættere der muterer tekst-noderne er samme crash-klasse som de
     // Sentry-dokumenterede NotFoundError-flader. Se PR #2272.
     <div translate="no">
-      {/* T3 hero-bånd — --bg-card + 1px bundrule. Layout's full-bleed-route-bucket
-          (#2849 bølge 4) giver denne rute ingen padding/cap, så båndet bleeder ægte
-          edge-to-edge (til sidebar-kanten); siden ejer selv indre max-w-5xl + padding. */}
-      <div className="bg-cz-card border-b border-cz-border">
-        <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8">
-          <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3.5">
-            {backLabel}
-          </Link>
+      {/* #2849 bølge 5c: T3-revision (ejer 24/7, 2. iteration) — hero'en er et KORT,
+          ikke et full-bleed bånd. Layout's full-bleed-route-bucket giver stadig denne
+          rute ingen padding/cap; siden ejer selv back-link + kort-ramme + indre
+          max-w-5xl. Løb har ingen portrætter → intet identitets-slot (spec: entity
+          pages without portraits omit the slot). Navn FØRST, tags/meta UNDER (samme
+          princip som RiderProfileHero: navnet er sidens vigtigste ord, tags er
+          metadata). */}
+      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+        <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          {backLabel}
+        </Link>
+
+        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{race.name}</h1>
+              <div className="flex items-center gap-2 flex-wrap mt-2.5">
                 {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
                 <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
                 <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
@@ -567,7 +574,6 @@ export default function RaceDetailPage() {
                   {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
                 </span>
               </div>
-              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{race.name}</h1>
             </div>
             {race.status === "scheduled" && (
               <div className="flex gap-2 flex-none">
@@ -580,36 +586,54 @@ export default function RaceDetailPage() {
               <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
             ))}
           </div>
-        </div>
+        </section>
+
+        {/* StageStripe: placeret mellem kort og indhold (ikke i kortets bund) — den er
+            sidens primære sub-navigation for etapeløb (kommende-etape-vælger eller
+            Overall/etape-N), samme position som RiderProfileTabs indtager under
+            rytterkortet. Migreres BEVIDST ikke til tekst-faner (bærer terræn-/
+            tidsinformation pr. etape som ui/Tabs ville tabe — se filens toppkommentar). */}
+        {race.status === "scheduled" && (
+          <div className="mt-5 flex flex-col gap-3">
+            {scheduledStageNums.length > 1 && (() => {
+              const counts = bucketCounts(stageProfiles);
+              return counts.length ? (
+                <p className="text-cz-3 text-[11px]">
+                  <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
+                  {" "}
+                  {counts.map((c, i) => (
+                    <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
+                  ))}
+                </p>
+              ) : null;
+            })()}
+            <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
+          </div>
+        )}
+        {hasAnyResults && isStageRace && (
+          <div className="mt-5">
+            <StageStripe
+              stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
+              activeStage={activeTab === "samlet" ? "overall" : Number(activeTab.slice("stage-".length))}
+              showOverall
+              onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="max-w-5xl mx-auto pt-6 px-4 md:px-8 pb-24 md:pb-16">
+      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
-          {/* S4: kommende løb — race-DNA-gestalt + etape-stribe + valgt-etape-panel
-              (silhuet + finale-markør + terrain-DNA). Erstatter de stablede profilkort
-              + det separate skema-kort (tider foldet ind i striben). Degraderer pænt
-              hvis profilen mangler (gamle/PCM-løb → StageDetailPanel renderer intet). */}
+          {/* S4: kommende løb — valgt-etape-panel (silhuet + finale-markør + terrain-
+              DNA). StageStripe + race-DNA-linjen flyttet op under kortet (se ovenfor).
+              Degraderer pænt hvis profilen mangler (gamle/PCM-løb → StageDetailPanel
+              renderer intet). */}
           {race.status === "scheduled" && (
-            <div className="flex flex-col gap-3">
-              {scheduledStageNums.length > 1 && (() => {
-                const counts = bucketCounts(stageProfiles);
-                return counts.length ? (
-                  <p className="text-cz-3 text-[11px]">
-                    <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
-                    {" "}
-                    {counts.map((c, i) => (
-                      <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
-                    ))}
-                  </p>
-                ) : null;
-              })()}
-              <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
-              <StageDetailPanel
-                profile={profileByStage[scheduledStage]}
-                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-              />
-            </div>
+            <StageDetailPanel
+              profile={profileByStage[scheduledStage]}
+              stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+            />
           )}
 
           {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
@@ -667,16 +691,7 @@ export default function RaceDetailPage() {
 
           {hasAnyResults && isStageRace && (
             <div className="flex flex-col gap-[14px]">
-              {/* S4: visuel etape-stribe erstatter tekst-fanerne — ét navigations-mønster
-                  på kommende OG kørte løb (terræn synligt pr. etape før klik). Migreres
-                  BEVIDST ikke til ui/Tabs (se filens toppkommentar). */}
-              <StageStripe
-                stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
-                activeStage={activeTab === "samlet" ? "overall" : Number(activeTab.slice("stage-".length))}
-                showOverall
-                onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
-              />
-
+              {/* Etape-stribe (Overall/etape-N) sidder nu under kortet, se ovenfor. */}
               {teamFilterBar}
 
               {activeTab === "samlet" && (
@@ -944,17 +959,21 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
     <div className="flex flex-col gap-[14px]">
       <StageProfileSlot profile={profile} passages={passages} tier="full" />
 
+      {/* #2849 bølge 5c: klassement-sub-faner flyttet ud af SectionStack — sidder nu
+          flush på sidens baggrund (ikke i en card-kolonne), samme border-b + guld-
+          underline-opskrift som RiderProfileTabs (delt Tabs/TabList/Tab-komponent,
+          tabsStyles.js — identisk recipe, intet nyt CSS). #2081: samme etape,
+          forskellig klassement-linse. Fast kardinalitet (6) → ui/Tabs (#2849 bølge 3). */}
+      <Tabs value={classTab} onChange={setClassTab}>
+        <TabList label={t("detail.classTab.ariaLabel")}>
+          {STAGE_CLASS_TABS.map(key => (
+            <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
+          ))}
+        </TabList>
+      </Tabs>
+
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          {/* #2081: klassement-sub-faner — samme etape, forskellig klassement-linse.
-              Fast kardinalitet (6) → migreret til ui/Tabs (#2849 bølge 3). */}
-          <Tabs value={classTab} onChange={setClassTab}>
-            <TabList label={t("detail.classTab.ariaLabel")}>
-              {STAGE_CLASS_TABS.map(key => (
-                <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
-              ))}
-            </TabList>
-          </Tabs>
           <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} moments={moments} stageNumber={stage} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>

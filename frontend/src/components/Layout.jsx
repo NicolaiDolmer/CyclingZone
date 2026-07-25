@@ -41,16 +41,16 @@ const API = import.meta.env.VITE_API_URL;
 // "/global-rank" tilføjet per #2849 bølge 3 — T2 wide data-side (rank-tabellen
 // cappes per-side på max-w-[1600px] ligesom /races).
 const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/global-rank"]);
-// Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
-// ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
-// trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
-const WIDE_CONTENT_PREFIXES = ["/teams/"];
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
 // for disse ruter (før: RaceDetail kompenserede med negative margins og bleedte
 // kun til content-boksens kant). "/races/strategy" er IKKE T3 og undtages.
-const FULL_BLEED_PREFIXES = ["/races/"];
+// Bølge 5: de fire profil-sider (/riders/:id, /teams/:id, /managers/:teamId,
+// /staff/:id) migreret til T3 — /teams/ flyttet hertil fra det tidligere
+// WIDE_CONTENT_PREFIXES (#1675), som dermed udgik. Prefixerne matcher kun
+// detalje-ruterne: list-siderne (/riders, /staff, …) er exact-paths uden slash.
+const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/"];
 const FULL_BLEED_EXCLUDE = new Set(["/races/strategy"]);
 function isFullBleedRoute(pathname) {
   return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p)) && !FULL_BLEED_EXCLUDE.has(pathname);
@@ -339,8 +339,7 @@ export default function Layout() {
   const { enabled: peakPlannerEnabled } = usePlanner();
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
-  const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
-    || WIDE_CONTENT_PREFIXES.some(p => location.pathname.startsWith(p));
+  const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
