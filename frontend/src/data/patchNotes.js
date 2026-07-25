@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.60",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Riders mid-transfer can no longer be picked for a lineup",
+          "body": "A rider you had just sold or traded away could still be selected for an upcoming race while the move was settling, and would then vanish from the field. The eligibility check now applies consistently across the strategy pages and squad checks. This fix went live on July 18 and is noted here for completeness."
+        },
+        "da": {
+          "title": "Ryttere midt i et skifte kan ikke længere vælges til en udtagelse",
+          "body": "En rytter du lige havde solgt eller byttet væk kunne stadig vælges til et kommende løb mens skiftet faldt på plads, og forsvandt så fra feltet. Kvalifikations-tjekket gælder nu ensartet på tværs af taktik-siderne og trup-kontrollerne. Rettelsen gik live 18. juli og noteres her for fuldstændighedens skyld."
+        },
+        "refs": [2579, 2616, 2617]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage data no longer goes missing after a timeout",
+          "body": "A database timeout could permanently interrupt a stage's route enrichment, leaving its result without the ride story, moments and fatigue details behind it. The job now retries automatically instead of giving up."
+        },
+        "da": {
+          "title": "Etapedata forsvinder ikke længere efter en timeout",
+          "body": "En database-timeout kunne permanent afbryde en etapes rute-berigelse, så resultatet stod uden fortællingen, øjeblikkene og træthedsdetaljerne bag det. Jobbet prøver nu automatisk igen i stedet for at give op."
+        },
+        "refs": [2877]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "New teams' starting riders now come with full contracts",
+          "body": "When a new team got its starting squad, the riders arrived without contract details, which could leave blank salary and contract fields until a later repair. New teams now get salary and contract length set from day one."
+        },
+        "da": {
+          "title": "Nye holds startertrup kommer nu med fulde kontrakter",
+          "body": "Når et nyt hold fik sin startertrup, ankom rytterne uden kontraktdetaljer, hvilket kunne efterlade tomme løn- og kontraktfelter indtil en senere reparation. Nye hold får nu løn og kontraktlængde sat fra dag ét."
+        },
+        "refs": [2894, 2902]
+      }
+    ]
+  },
+  {
     "version": "7.59",
     "date": "2026-07-25",
     "label": "Beta",
@@ -1020,7 +1069,8 @@ export const PATCHES = [
         "da": {
           "title": "18 skrevne FAQ-svar dukker nu faktisk op på Hjælp-siden",
           "body": "En stribe FAQ-svar var skrevet men aldrig koblet på Hjælp-siden, så de var usynlige: rytterens samlede rating, Udviklings-fanens loft-projektion, dagsform og styrt i løb, løbstilmelding og klassifikationer, skadesrisiko ved træning, økonomi-guiden til nye spillere, syv svar om bestyrelsens transparens-features og tre om Sæson 1-relanceringen. Alle 18 er nu live i FAQ'en. To svar er samtidig rettet så de matcher spillet: tilfredshed flytter sig højst 5 point ned eller 8 point op pr. løbsweekend, og den sorterbare rating-kolonne ligger på Auktioner-siden."
-        }
+        },
+        "refs": [2693]
       }
     ]
   },
