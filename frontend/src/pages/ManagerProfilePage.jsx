@@ -300,14 +300,19 @@ export default function ManagerProfilePage() {
         <Tabs value={tab} onChange={setTab}>
           <TabPanel value="overview">
             <div className="flex flex-col gap-[14px]">
-              {recentlyUnlocked.length > 0 && (
-                <Card className="p-5">
-                  <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+              {/* #2917: kortet blev tidligere skjult helt når intet var låst op, så en
+                  ny manager aldrig så at achievements fandtes. Nu står det med en
+                  tomtilstand — samme tekst-mønster som "Ingen transfers" nedenfor. */}
+              <Card className="p-5">
+                <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+                {recentlyUnlocked.length === 0 ? (
+                  <p className="text-cz-3 text-sm text-center py-4">{t("manager.noAchievements")}</p>
+                ) : (
                   <div className="flex gap-2 flex-wrap">
                     {recentlyUnlocked.map(a => <AchievementBadge key={a.id} achievement={a} />)}
                   </div>
-                </Card>
-              )}
+                )}
+              </Card>
               <Card className="p-5">
                 <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
                 {transfer_activity.length === 0 ? (

@@ -14,5 +14,57 @@
   "transfer_bargain": {
     "title": "Kuppet",
     "description": "Køb en rytter for under halvdelen af hans værdi."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Slut en sæson i top 10 i din division."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Slut en sæson i top 5 i din division."
+  },
+  "season_top3": {
+    "title": "Podium",
+    "description": "Slut en sæson i top 3 i din division."
+  },
+  "season_winner": {
+    "title": "Divisionsvinder",
+    "description": "Vind din division i en sæson."
+  },
+  "season_div1_winner": {
+    "title": "Mester",
+    "description": "Vind Division 1."
+  },
+  "season_div3_winner": {
+    "title": "Nyoprykkede",
+    "description": "Vind Division 3."
+  },
+  "season_3_top3": {
+    "title": "Konstant",
+    "description": "Slut i top 3 tre sæsoner i træk."
+  },
+  "season_2_seasons": {
+    "title": "To sæsoner",
+    "description": "Gennemfør 2 sæsoner."
+  },
+  "season_5_seasons": {
+    "title": "Veteran",
+    "description": "Gennemfør 5 sæsoner."
+  },
+  "season_grand_tour_rider": {
+    "title": "Grand Tour-hold",
+    "description": "Hav en rytter med til start i et Grand Tour."
+  },
+  "team_promotion": {
+    "title": "Oprykket",
+    "description": "Ryk op i en højere division."
+  },
+  "team_relegation": {
+    "title": "Nedrykket",
+    "description": "Ryk ned i en lavere division."
+  },
+  "team_survived": {
+    "title": "Overlevede",
+    "description": "Undgå nedrykning efter at have sluttet i farezonen."
   }
 }

@@ -1,5 +1,11 @@
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import {
+  GRAND_TOUR_MIN_STAGES,
+  SEASON_TOP3_STREAK_TARGET,
+  buildSeasonRowsForTeam,
+  computeSeasonAchievementStats,
+} from "./seasonAchievements.js";
 
 const AUCTION_WIN_THRESHOLDS = [
   ["auction_first_win", 1],
@@ -28,6 +34,27 @@ const LOGIN_STREAK_THRESHOLDS = [
   ["secret_streak_30", 30],
 ];
 
+// #2917: "gennemfør N sæsoner" er en tæller på tværs af sæsoner, ikke en placering.
+const SEASON_COUNT_THRESHOLDS = [
+  ["season_2_seasons", 2],
+  ["season_5_seasons", 5],
+];
+
+// #2917: placerings-achievements. Alle måles på holdets BEDSTE rang i en AFSLUTTET
+// sæson (rank_in_division = rangen i puljen). Sorteret fra bredest til smallest.
+const SEASON_RANK_THRESHOLDS = [
+  ["season_top10", 10],
+  ["season_top5", 5],
+  ["season_top3", 3],
+  ["season_winner", 1],
+];
+
+// #2917: divisionsspecifikke sejre — "vind Division N" (rank 1 i en pulje i tier N).
+const SEASON_DIVISION_WINNER_ACHIEVEMENTS = [
+  ["season_div1_winner", 1],
+  ["season_div3_winner", 3],
+];
+
 // #1008: tæller-baserede achievements har en meningsfuld "X/Y mod næste mål"-progress.
 // Tiered grupper (auktion/transfer/holdstørrelse/streak) viser KUN den næste ikke-nåede
 // tier — ellers ville fx 7 auktionssejre vise 7/10, 7/25 og 7/50 på én gang (støj).
@@ -37,6 +64,7 @@ const PROGRESS_GROUPS = [
   { thresholds: TRANSFER_THRESHOLDS, statKey: "transferCount" },
   { thresholds: TEAM_SIZE_THRESHOLDS, statKey: "riderCount" },
   { thresholds: LOGIN_STREAK_THRESHOLDS, statKey: "loginStreak" },
+  { thresholds: SEASON_COUNT_THRESHOLDS, statKey: "seasonsCompleted" },
 ];
 
 const SINGLE_PROGRESS = [
@@ -125,6 +153,28 @@ export function getAchievementUnlocks({
   // #817: definitionen fandtes i achievements-tabellen, men engine'en havde
   // ingen unlock-logik — kunne aldrig tildeles.
   unlock("season_first_result", Boolean(stats.hasRaceResult));
+
+  // #2917 · Sæson-achievements. 13 definitioner var synlige for spilleren uden at
+  // nogen kode kunne tildele dem (0 tildelinger i prod 25/7). Tallene udledes i
+  // seasonAchievements.js så backfill-scriptet bruger nøjagtig samme regler.
+  const seasonBestRank = stats.seasonBestRank ?? null;
+  for (const [achievementId, maxRank] of SEASON_RANK_THRESHOLDS) {
+    unlock(achievementId, seasonBestRank != null && seasonBestRank <= maxRank);
+  }
+  const divisionsWon = new Set(stats.seasonDivisionsWon || []);
+  for (const [achievementId, division] of SEASON_DIVISION_WINNER_ACHIEVEMENTS) {
+    unlock(achievementId, divisionsWon.has(division));
+  }
+  addThresholdUnlocks({
+    unlock,
+    thresholds: SEASON_COUNT_THRESHOLDS,
+    value: stats.seasonsCompleted || 0,
+  });
+  unlock("season_3_top3", (stats.seasonMaxConsecutiveTop3 || 0) >= SEASON_TOP3_STREAK_TARGET);
+  unlock("team_promotion", Boolean(stats.hasPromotion));
+  unlock("team_relegation", Boolean(stats.hasRelegation));
+  unlock("team_survived", Boolean(stats.hasSurvival));
+  unlock("season_grand_tour_rider", Boolean(stats.hasGrandTourRider));
 
   // This meta-achievement should consider any achievements unlocked earlier in the same sync.
   unlock("team_5_achievements", unlockedIds.size >= 5);
@@ -327,14 +377,105 @@ async function loadRaceResultStats({ supabase, teamId }) {
   return { hasRaceResult: rows.length > 0 };
 }
 
+/**
+ * #2917 · Har holdet haft mindst én rytter med i et Grand Tour (≥15 etaper)?
+ * To små queries frem for én stor join: Grand Tours er få (6 i prod 25/7), mens
+ * et holds race_entries løber op i hundreder — vi slår derfor GT-løbene op først
+ * og spørger kun om ÉN entry i netop dem.
+ */
+async function loadGrandTourStats({ supabase, teamId }) {
+  if (!teamId) return { hasGrandTourRider: false };
+
+  const grandTours = await readMany(
+    supabase.from("races").select("id").gte("stages", GRAND_TOUR_MIN_STAGES)
+  );
+  const raceIds = grandTours.map(race => race.id).filter(Boolean);
+  if (!raceIds.length) return { hasGrandTourRider: false };
+
+  // race_entries har PK (race_id, rider_id) — INGEN id-kolonne. Vi selecter
+  // race_id (eksistens-tjek, ikke optælling).
+  const entries = await readMany(
+    supabase
+      .from("race_entries")
+      .select("race_id")
+      .eq("team_id", teamId)
+      .in("race_id", raceIds)
+      .limit(1)
+  );
+  return { hasGrandTourRider: entries.length > 0 };
+}
+
+/**
+ * #2917 · Sæson-statistik (placeringer, op/nedrykning, overlevelse, sæson-antal).
+ *
+ * Puljestørrelsen skal bruges til farezonen (team_survived), så vi henter HELE
+ * puljen for de sæsoner holdet har spillet — ikke kun holdets egen række. Med 24-25
+ * hold pr. pulje og få sæsoner er det en lille query.
+ */
+async function loadSeasonStats({ supabase, teamId }) {
+  // hasGrandTourRider ejes af loadGrandTourStats — strippes her så to loaders
+  // ikke skriver den samme nøgle (spread-rækkefølge må ikke afgøre resultatet).
+  const seasonStatsOf = (seasonRows) => {
+    const { hasGrandTourRider, ...rest } = computeSeasonAchievementStats({ seasonRows });
+    void hasGrandTourRider;
+    return rest;
+  };
+  const empty = seasonStatsOf([]);
+  if (!teamId) return empty;
+
+  const ownStandings = await readMany(
+    supabase
+      .from("season_standings")
+      .select("season_id, league_division_id")
+      .eq("team_id", teamId)
+  );
+  if (!ownStandings.length) return empty;
+
+  const seasonIds = [...new Set(ownStandings.map(row => row.season_id).filter(Boolean))];
+  const poolIds = [...new Set(ownStandings.map(row => row.league_division_id).filter(id => id != null))];
+  if (!seasonIds.length || !poolIds.length) return empty;
+
+  const [seasons, standings, team] = await Promise.all([
+    readMany(supabase.from("seasons").select("id, number, status").in("id", seasonIds)),
+    readMany(
+      supabase
+        .from("season_standings")
+        .select("season_id, team_id, division, league_division_id, rank_in_division")
+        .in("season_id", seasonIds)
+        .in("league_division_id", poolIds)
+    ),
+    readMaybeSingle(supabase.from("teams").select("division").eq("id", teamId).maybeSingle()),
+  ]);
+
+  const seasonRows = buildSeasonRowsForTeam({
+    teamId,
+    standings,
+    seasonsById: new Map(seasons.map(season => [season.id, season])),
+    currentDivision: team?.division ?? null,
+  });
+
+  return seasonStatsOf(seasonRows);
+}
+
 async function loadAchievementStats({ supabase, userId, teamId }) {
-  const [watchlistCount, loginStreak, teamStats, auctionStats, transferStats, raceResultStats] = await Promise.all([
+  const [
+    watchlistCount,
+    loginStreak,
+    teamStats,
+    auctionStats,
+    transferStats,
+    raceResultStats,
+    seasonStats,
+    grandTourStats,
+  ] = await Promise.all([
     loadWatchlistCount({ supabase, userId }),
     loadLoginStreak({ supabase, userId }),
     loadTeamStats({ supabase, teamId }),
     loadAuctionStats({ supabase, teamId }),
     loadTransferStats({ supabase, teamId }),
     loadRaceResultStats({ supabase, teamId }),
+    loadSeasonStats({ supabase, teamId }),
+    loadGrandTourStats({ supabase, teamId }),
   ]);
 
   return {
@@ -344,6 +485,8 @@ async function loadAchievementStats({ supabase, userId, teamId }) {
     ...auctionStats,
     ...transferStats,
     ...raceResultStats,
+    ...seasonStats,
+    ...grandTourStats,
   };
 }
 

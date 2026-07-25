@@ -286,6 +286,10 @@
           ["Hemmelige", "Låses op ved uventede hændelser, beskrives ikke på forhånd"]
         ]
       },
+      "seasonAchievements": {
+        "title": "Sæson-achievements",
+        "text": "Placeringer, oprykning, nedrykning og overlevelse afgøres ved sæsonskiftet, ikke mens sæsonen kører. Din placering er din rang i din egen divisionspulje, så hver pulje har en vinder. Op- og nedrykning tildeles når de nye divisioner er sat."
+      },
       "secretAchievements": {
         "title": "Hemmelige achievements",
         "text": "Hemmelige achievements vises som låst med titlen '???' indtil du låser dem op. Beskrivelsen afsløres først bagefter. De låses op ved at gøre uventede eller sjove ting i spillet."

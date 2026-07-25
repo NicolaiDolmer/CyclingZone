@@ -286,6 +286,10 @@
           ["Secret", "Unlocked by unexpected events, not described upfront"]
         ]
       },
+      "seasonAchievements": {
+        "title": "Season achievements",
+        "text": "Placings, promotion, relegation and survival are decided at the season change, not while the season is running. Your placing is your rank in your own division group, so every group has a winner. Promotion and relegation are awarded once the new divisions are set."
+      },
       "secretAchievements": {
         "title": "Secret achievements",
         "text": "Secret achievements show as locked with the title '???' until you unlock them. The description is only revealed afterwards. They unlock when you do unexpected or fun things in the game."

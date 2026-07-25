@@ -136,6 +136,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatAchievements", kind: "text" },
       { id: "categories", kind: "rows" },
+      // #2917: sæson-achievements afgøres først ved sæsonskiftet — det er den
+      // eneste kategori der ikke reagerer med det samme.
+      { id: "seasonAchievements", kind: "text" },
       { id: "secretAchievements", kind: "text" },
       { id: "notifications", kind: "text" },
     ],

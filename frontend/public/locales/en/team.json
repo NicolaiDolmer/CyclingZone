@@ -224,6 +224,7 @@
     "streak": "streak",
     "achievements": "achievements",
     "recentlyUnlocked": "Recently unlocked",
+    "noAchievements": "Nothing unlocked yet. Race, bid and build a squad to start collecting.",
     "inProgress": "In progress",
     "progressTowards": "{title}: {current} of {target}",
     "tabOverview": "Overview",
