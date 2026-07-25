@@ -60,19 +60,3 @@ export function computeRiderValueTrend({ currentBaseValue, rider = {}, snapshots
   }
   return windows;
 }
-
-// Grupér flade snapshot-rækker (fra ét .in("rider_id", ids)-kald) pr. rytter,
-// sorteret ASC pr. gruppe (computeRiderValueTrend kræver ASC). Delt af
-// batch-endpointet (holdliste/trup-oversigt — én query, ingen N+1).
-export function groupSnapshotsByRider(rows = []) {
-  const map = new Map();
-  for (const row of rows) {
-    if (!row?.rider_id) continue;
-    if (!map.has(row.rider_id)) map.set(row.rider_id, []);
-    map.get(row.rider_id).push(row);
-  }
-  for (const list of map.values()) {
-    list.sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date));
-  }
-  return map;
-}

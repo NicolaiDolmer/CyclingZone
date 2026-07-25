@@ -131,7 +131,7 @@ import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTra
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
-import { computeRiderValueTrend, groupSnapshotsByRider } from "../lib/riderValueTrend.js";
+import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
@@ -1051,45 +1051,6 @@ router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
       model: VALUATION_MODEL_V4,
     });
     res.json({ windows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/riders/value-trend — #2499 batch-variant til holdliste/trup-oversigt
-// (kompakt delta-pil pr. rytter i værdi-kolonnen). Body: { ids: string[] }
-// (maks 200 — langt over enhver squad-størrelse). Én .in()-query pr. tabel,
-// grupperet i memory (groupSnapshotsByRider) — ingen N+1 selv for en fuld trup.
-router.post("/riders/value-trend", requireAuth, async (req, res) => {
-  try {
-    const ids = Array.isArray(req.body?.ids)
-      ? [...new Set(req.body.ids.filter((v) => typeof v === "string" && v))].slice(0, 200)
-      : [];
-    if (ids.length === 0) return res.json({});
-    const [{ data: riders, error: ridersErr }, { data: history, error: histErr }, seasonNumber] = await Promise.all([
-      supabase.from("riders").select("id, base_value, birthdate, potentiale").in("id", ids),
-      supabase.from("rider_derived_ability_history")
-        .select("rider_id, snapshot_date, abilities")
-        .in("rider_id", ids)
-        .order("snapshot_date", { ascending: true }),
-      getActiveSeasonNumber(),
-    ]);
-    if (ridersErr) throw new Error(ridersErr.message);
-    if (histErr) throw new Error(histErr.message);
-    const snapshotsByRider = groupSnapshotsByRider(history || []);
-    const result = {};
-    for (const r of riders || []) {
-      result[r.id] = {
-        windows: computeRiderValueTrend({
-          currentBaseValue: r.base_value,
-          rider: { potentiale: r.potentiale, age: ageForSeason(r.birthdate, seasonNumber) },
-          snapshotsAsc: snapshotsByRider.get(r.id) || [],
-          baseline: RIDER_TYPES_BASELINE,
-          model: VALUATION_MODEL_V4,
-        }),
-      };
-    }
-    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

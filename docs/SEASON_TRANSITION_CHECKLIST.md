@@ -1,6 +1,6 @@
 # Sæsonskifte-drejebog (S1 → S2, 26.–27. juli 2026)
 
-> **⚠️ EJER-BESLUTNING 23/7 AFTEN (efter generalprøven): pyramide-komprimering, [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851).** Global rank (kun managerhold) fylder D2 (48) + D3 (96) i DETTE skifte; motorens op/nedrykning springes over og genoptages S2→S3. Skridt 2/3 nedenfor ændres når #2851 er bygget og ejer-godkendt (deadline lørdag aften). **Hård fallback:** er #2851 ikke bevist lørdag, gælder denne drejebog uændret (motorens regler). Alt andet — spærren, window-wrap, auktions-politik, transition, entries — gælder i begge tilfælde.
+> **⚠️ EJER-BESLUTNING 23/7 + BYG-BESLUTNING 25/7: pyramide-komprimering, [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851) — BYGGET 25/7, fallback-vejen forladt (ejerens kald).** Global rank (kun managerhold) fylder D2 (48) + D3 (96) i DETTE skifte; motorens op/nedrykning springes over (app_config-gate `season_end_skip_division_movement`, fail-safe off = motorens adfærd) og genoptages S2→S3. Skridt 2/3/3b nedenfor er omskrevet til komprimerings-flowet. **Ejer-gates før kørsel søndag:** økonomi-sim set + navngiven liste godkendt (begge printes af `compressPyramid.js` dry-run). Alt andet — spærren, window-wrap, auktions-politik, transition, entries — gælder uændret.
 
 > **Omskrevet fra bunden 23/7 (S8 cutover-generalprøve, #2361).** Den gamle checkliste var bygget om deadline-day-cyklussen (transfervindue med `closes_at`, auto-close, squad-enforcement-kæde) — den verden findes ikke længere: markedet er altid åbent (#1996), auto-transition er slået fra (`SEASON_AUTO_TRANSITION_ENABLED=false`), og den nævnte aldrig **"Afslut sæson"** (`processSeasonEnd`), som er det skridt der afgør op/nedrykning. Denne version er verificeret mod koden og prod-data 23/7 og dækker S1→S2 konkret; generalisér først efter cutoveren har bevist den.
 >
@@ -26,7 +26,7 @@
 | Auktioner ⏱ | ~24t varighed → der KAN være aktive auktioner søndag aften (39 aktive 23/7). Se skridt 5b |
 | Manuelle S2-entries ⏱ | 36 rækker (RMF Pro Athletic, Bacon Fræsers — egne udtagelser 23/7). Generatoren rører dem aldrig; tjek pool-match efter op/nedrykning (skridt 6) |
 
-**Hvorfor rækkefølgen er som den er:** entry-generatoren matcher hold↔løb på `league_division_id`. Op/nedrykning (i "Afslut sæson") flytter ~35 hold til nye puljer, og transitionens frigivelses-/pensionsfaser fjerner frigivne rytteres fremtidige entries igen (`clearFutureRaceEntriesSafe`). Derfor: **afvikl alt → Afslut sæson (op/nedrykning) → transition (frigivelser+pension+penge) → generér entries til sidst** — så genereres felterne én gang, mod den endelige tilstand. (#2742's oprindelige forslag om at pre-generere entries FØR skiftet er forkert af begge grunde.)
+**Hvorfor rækkefølgen er som den er:** entry-generatoren matcher hold↔løb på `league_division_id`. Komprimeringen (#2851, skridt 3b) flytter ~100+ hold til nye puljer, og transitionens frigivelses-/pensionsfaser fjerner frigivne rytteres fremtidige entries igen (`clearFutureRaceEntriesSafe`). Derfor: **afvikl alt → Afslut sæson (movement-skip) → komprimering (flytningen) → transition (frigivelser+pension+penge) → generér entries til sidst** — så genereres felterne én gang, mod den endelige tilstand. (#2742's oprindelige forslag om at pre-generere entries FØR skiftet er forkert af begge grunde.)
 
 **Ingen automatik tager over:** alle sæson-jobs (stage-scheduler, prize-sweep, entry-sweep) kører kun mod en sæson med `status='active'`. Mellem "Afslut sæson" og transitionen findes ingen aktiv sæson → hold det mellemrum KORT (minutter, ikke timer), og verificér at alt sæson-afhængigt (især præmier) er færdigt FØR "Afslut sæson".
 
@@ -68,45 +68,35 @@ select count(*) from races r where r.season_id='00000000-0000-0000-0000-00000000
 
 **Rollback herfra:** stadig intet at rulle tilbage.
 
-### Skridt 2 — ENDELIG op/nedrykningsliste + ejer-godkendelse (søndag ~17:30)
+### Skridt 2 — ENDELIG komprimerings-liste + økonomi-sim + ejer-godkendelse (søndag ~17:30)
 
-**Hvem:** Claude genererer, **ejeren godkender navnene** (hård gate — ejer-beslutning: op/nedrykning køres ikke uden at ejeren har set den endelige liste).
+**Hvem:** Claude genererer, **ejeren godkender navnene** (hård gate — ejer-beslutning 25/7: komprimeringen køres ikke uden at ejeren har set den ENDELIGE navngivne 48/96/rest-liste OG økonomi-simuleringen).
 
-Standings ændrer sig med hvert løb frem til 17:00 — listen fra 23/7 er et snapshot, ikke facit. Generér den endelige med (læg mærke til at den spejler `processDivisionEnd` præcist: top-2-*positioner* op, bund-4-*positioner* ned, AI på en plads springes over uden erstatning, D3→D4-nedrykning kræver at puljen stadig er 24/24 ægte):
+Standings ændrer sig med hvert løb frem til 17:00 — foreløbige lister er snapshots, ikke facit; cutlinen ved plads 48/144 afgøres af få point. Generér den endelige med (read-only dry-run — printer navngiven liste med rank/point/fra→til, cutline-marginer, økonomi-sim og pulje-fyld):
 
-```sql
-with st as (
-  select ss.team_id, ss.division, ss.league_division_id, ss.rank_in_division, ss.total_points,
-         t.name, t.is_ai
-  from season_standings ss join teams t on t.id = ss.team_id
-  where ss.season_id = '00000000-0000-0000-0000-000000000001' and ss.league_division_id is not null
-),
-ranked as (
-  select st.*,
-    row_number() over (partition by league_division_id order by rank_in_division nulls last) as pos,
-    count(*) over (partition by league_division_id) as pool_size,
-    bool_and(not is_ai) over (partition by league_division_id) as pool_all_real
-  from st
-)
-select p.label as pool, r.pos, r.name, r.total_points, r.is_ai,
-  case when r.pos <= 2 and r.division > 1 then 'OP'
-       when r.pos > greatest(2, r.pool_size - 4) and r.division < 4
-            and (r.division < 3 or r.pool_all_real) then 'NED' end as movement
-from ranked r join league_divisions p on p.id = r.league_division_id
-where (r.pos <= 2 and r.division > 1)
-   or (r.pos > greatest(2, r.pool_size - 4) and r.division < 4 and (r.division < 3 or r.pool_all_real))
-order by r.division, p.pool_index, r.pos;
+```bash
+railway run --service CyclingZone -- node scripts/compressPyramid.js
 ```
 
-Sanity mod 23/7-billedet: D1+D2-bevægelser er ren AI (flyttes ikke) · 8 ægte op D3→D2 · 16 ægte ned D3→D4 · ~11 ægte op D4→D3 (AI på en top-2-plads bruger pladsen uden at rykke). **Verificér også at alle 4 D3-puljer stadig viser `pool_all_real=true`** — mister én pulje det (frosset hold e.l.), udebliver dens nedrykning tavst, og ejeren skal vide det før kørslen.
+Fordelingen er `pyramidCompression.js` (unit-testet, deterministisk tiebreak: point → GC-sejre → etapesejre → navn → id): rank 1-48 → D2 (2 puljer, snake), 49-144 → D3 (4 puljer, snake), 145+ → D4 pulje A/B. Kun managerhold (fuld diskriminator); D1 røres ikke; AI-fyld reconciles bagefter.
 
-**Rollback herfra:** intet kørt endnu — ejeren kan stadig aflyse alt.
+**Ejeren skal se og godkende:** (a) navnene, især D4→D2-springene og de 2 D3→D4-nedrykninger, (b) økonomi-sim-blokken (divisions-upkeep ~4,5 → ~10,6 mio. når 48 hold betaler D2-sats — balancebeslutning i sig selv), (c) at ingen pulje viser ⚠️ over 24.
 
-### Skridt 3 — "Afslut sæson" (søndag ~17:45, EFTER ejer-ja)
+**Rollback herfra:** intet kørt endnu — ejeren kan stadig aflyse alt (så gælder motorens regler: fjern flaget i skridt 3 og kør drejebogens gamle flow).
 
-**Hvem:** ejeren klikker **⏹ Afslut** på `/admin/season` (eller Claude via `POST /api/admin/seasons/00000000-0000-0000-0000-000000000001/end` med ejerens go).
+### Skridt 3 — "Afslut sæson" MED movement-skip (søndag ~17:45, EFTER ejer-ja)
 
-Hvad der sker, i rækkefølge (`routes/api.js` → `economyEngine.processSeasonEnd`): standings genberegnes → board-evaluering pr. menneskehold (satisfaction/konsekvenser) → divisionsbonusser udbetales → **op/nedrykning** (muterer `teams.division` + `league_division_id`) → AI-fyld-rekonciliation pr. pulje (24 hold) → `seasons.status='completed'` → sekventiel board-forhandling for S2 åbnes → season_ended-notifikationer (~150 managere, in-app) + Discord-broadcast.
+**Hvem:** Claude sætter flaget (efter aftale), ejeren klikker **⏹ Afslut** på `/admin/season` (eller Claude via `POST /api/admin/seasons/00000000-0000-0000-0000-000000000001/end` med ejerens go).
+
+**3-0 · Sæt motor-gaten FØRST (#2851):**
+
+```sql
+insert into app_config (key, value, description)
+values ('season_end_skip_division_movement', '"on"'::jsonb, '#2851: spring op/nedrykning+AI-reconcile over i S1→S2 (komprimeringen flytter i stedet)')
+on conflict (key) do update set value = '"on"'::jsonb;
+```
+
+Hvad der så sker, i rækkefølge (`routes/api.js` → `economyEngine.processSeasonEnd`): standings genberegnes → board-evaluering pr. menneskehold (satisfaction/konsekvenser) → divisionsbonusser udbetales → **op/nedrykning + AI-reconcile SPRINGES OVER** (server-loggen skal vise `⏭ Op/nedrykning + AI-reconcile sprunget over (season_end_skip_division_movement=on, #2851 …)`) → `seasons.status='completed'` → sekventiel board-forhandling for S2 åbnes → season_ended-notifikationer (~150 managere, in-app) + Discord-broadcast.
 
 Verificér:
 
@@ -114,15 +104,43 @@ Verificér:
 select status, end_date from seasons where number=1;                          -- completed + dato
 select count(*) from notifications where type='season_ended';                 -- ~150
 select division, count(*) filter (where not is_ai) as real_teams from teams group by division order by 1;
--- forventet (ud fra 23/7-listen; endelige tal følger skridt 2-listen): D1 = 0 ægte,
--- D2 = 8 (før: 0), D3 = ~83 (96 − 8 op − 16 ned + ~11 fra D4), D4 = ~59 (54 − ~11 + 16). Sum = 150.
-select ld.label, count(*) from teams t join league_divisions ld on ld.id=t.league_division_id group by 1 order by 1;  -- alle puljer = 24
+-- SKAL være UÆNDRET fra skridt 0-snapshottet — flytter noget sig her, var flaget ikke på. STOP i så fald.
 ```
 
 **Rollback herfra (grænsen skærpes):**
-- **Kan rulles tilbage:** flytningerne (skriv `division`/`league_division_id` tilbage fra skridt 0-snapshottet) og `seasons.status` (ét UPDATE tilbage til `'active'` genopliver stage-scheduler/sweeps). Gør det KUN hvis transitionen endnu ikke er kørt.
+- **Kan rulles tilbage:** `seasons.status` (ét UPDATE tilbage til `'active'` genopliver stage-scheduler/sweeps). Gør det KUN hvis transitionen endnu ikke er kørt. Divisionerne er urørte i dette skridt (gaten), så divisions-rollback hører til skridt 3b.
 - **Kan IKKE rulles pænt tilbage:** divisionsbonusser (penge er bogført — reversering = manuelle modposteringer, ejer-gated), board-konsekvenser, og alle notifikationer/Discord-beskeder er SET af spillere. En fortrudt season-end er altså synlig udadtil uanset.
-- Fejler `processSeasonEnd` halvvejs: **STOP — ingen blind re-run.** Flytningerne er idempotente (samme destination), men board/bonus-siden har `repairSeasonEndFinanceAndBoard()` som dedikeret reparationsvej. Diagnosticér først.
+- Fejler `processSeasonEnd` halvvejs: **STOP — ingen blind re-run.** Board/bonus-siden har `repairSeasonEndFinanceAndBoard()` som dedikeret reparationsvej. Diagnosticér først.
+
+### Skridt 3b — Pyramide-komprimeringen (#2851) (søndag ~17:55)
+
+**Hvem:** Claude kører, med ejerens skridt 2-godkendelse i hånden.
+
+```bash
+# Sidste kontrol-print (read-only — listen skal matche den ejeren godkendte i skridt 2):
+railway run --service CyclingZone -- node scripts/compressPyramid.js
+# Derefter selve kørslen:
+railway run --service CyclingZone -- node scripts/compressPyramid.js --execute
+```
+
+Scriptet gør, i rækkefølge: **snapshot + restore-SQL skrives FØR første write** (`backend/scripts/snapshots/compress-pyramid-*-restore.sql` — auditen 25/7: standings-genberegning læser division fra `teams`, så rollback SKAL være snapshot-baseret, aldrig "kør igen") → `teams.division`/`league_division_id`-UPDATEs → NETTO-notifikationer (kun tier-ændringer; genbruger `notif.divisionPromoted`/`notif.divisionRelegated`) → `reconcileAiTeamsForPool` for alle puljer → verifikation (placeringer + pulje-fyld; exit 1 ved mismatch).
+
+Verificér (ud over scriptets egen verifikation):
+
+```sql
+select division, count(*) filter (where not is_ai) as real_teams from teams group by division order by 1;
+-- forventet: D1 = 0 ægte · D2 = 48 · D3 = 96 · D4 = resten (~6). Sum = alle managerhold.
+select ld.label, count(*) from teams t join league_divisions ld on ld.id=t.league_division_id group by 1 order by 1;
+-- alle puljer med ægte hold = 24 (efter AI-reconcile); D4-puljer uden ægte hold forbliver dormant.
+```
+
+**Efter transitionen (skridt 5) — sluk gaten igen** (S2→S3 kører motorens regler, #2164):
+
+```sql
+update app_config set value = '"off"'::jsonb where key = 'season_end_skip_division_movement';
+```
+
+**Rollback herfra:** scriptets restore-SQL genskriver præcis før-tilstanden (division + pulje for ALLE hold). Notifikationer er set af spillere og består. Kør IKKE restore efter transitionen er gennemført (sponsor/upkeep er så allerede betalt mod de nye divisioner — fremadrettet reparation i stedet).
 
 ### Skridt 4 — Window-wrap (søndag ~18:00) — *forudsat ejer-ja fra generalprøven*
 
@@ -146,13 +164,15 @@ Kør derefter `GET /api/admin/season-transition/preview` — forventet: **alle c
 
 **5a. Forventet fase-log** (rækkefølgen i `transitionToNextSeason`): `insert_next_season` (promoverer S2 upcoming→active) → `mark_previous_completed` (no-op, allerede sat) → `global_rank_decay` → `close_prev_transfer_window` → `insert_next_transfer_window` (S2-racing-window, `closed_at=NULL`) → `sponsor_contracts_renewal` (70 pending→active; dagsrater genberegnes mod S2's 28 dage, #2589) → `contract_expiry_release` (**~195 frigivelser**, 1 menneskehold-rytter) → `sponsor_payout` (~153) → `season_payroll` (**første nogensinde, ~2,62M**) → `season_parachute` (forventet 0 — kun D1/D2-nedrykkere er berettigede, og de er AI) → `rider_progression` (**udvikling + pension, første gang**) → `retirement_release` (team_id ryddes for netop-pensionerede) → `admin_log` → Discord `season_started` → `season_started_notifications` (~150) → `contract_expiring_notifications` (varsler S2-udløb).
 
-**5b. Hvis `no_active_auctions` er rød** (auktioner løber ~24t, så søndags-auktioner kan være i luften): mål overlap mod risiko-mængden:
+**5b. Hvis `no_active_auctions` er rød** (auktioner løber ~24t, så søndags-auktioner kan være i luften): mål overlap mod risiko-mængden. **#2918-rettelse 25/7:** den gamle query målte `contract_end_season <= 1 or is_retired`, som begge er strukturelt 0 FØR transitionen — den gav altid falsk tryghed. Den mængde der betyder noget er auktioner på ryttere der KAN pensioneres i transitionens `rider_progression` (36+ ved sæson 2):
 ```sql
-select count(*) from auctions a join riders r on r.id=a.rider_id
+select a.id, r.firstname, r.lastname,
+       (2027 - extract(year from r.birthdate)::int) as alder_s2, a.calculated_end
+from auctions a join riders r on r.id = a.rider_id
 where a.status in ('active','extended')
-and (r.contract_end_season <= 1 or r.is_retired);
+  and (2027 - extract(year from r.birthdate)::int) >= 36;
 ```
-Er overlappet **0** (som 23/7): kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er overlappet **> 0**: annullér de konkrete auktioner via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb.
+Er mængden **tom**: kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden pensions-risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er den **ikke tom**: krydstjek navnene mod #2700-varslets deterministiske pensionsliste (30 ryttere); auktioner på ryttere DER pensioneres annulleres via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb. NB: finaliserings-guarden (#2918-koden) fanger efterladte tilfælde, men proaktiv annullering er pænere for køberen.
 
 **5c. Hård stop-regel:** fejler fasen `global_rank_decay`, **STOP HELT** — RPC'en er ikke retry-sikker (en delvist kørt halvering, kørt igen, halverer dobbelt). Alle ANDRE faser er idempotente; ved delvis fejl i dem er recovery = ret årsagen og kør transitionen igen (resume-stien er designet til det, #578).
 

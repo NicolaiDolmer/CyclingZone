@@ -23,6 +23,7 @@ import {
 } from "./boardWeekendFinalization.js";
 import { CHECKPOINT_KINDS } from "./boardWeekendUpdate.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { SUPABASE_PAGE_SIZE } from "./supabasePagination.js";
 
 // #2598 · Tynd wrapper om den delte, projektion-aware fake (backend/lib/
 // testUtils/fakeSupabase.js). `opts.errorTables` (tabel → fejlbesked, ramte
@@ -33,6 +34,32 @@ function makeFakeSupabase(state, opts = {}) {
     errors[table] = { upsert: message };
   }
   return createFakeSupabase(state, { errors });
+}
+
+// #2932 · Tæller faktiske .range()-kald pr. tabel på en createFakeSupabase-
+// instans. Bruges til at bevise at en query rent faktisk løber igennem
+// fetchAllRows (supabasePagination.js) og ikke bare rammer den nye
+// .range()-metode på fake'en uden at koden under test reelt kalder den.
+function trackRangeCalls(supabase, tables) {
+  const counts = Object.fromEntries(tables.map((t) => [t, 0]));
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const builder = originalFrom(table);
+    if (!tables.includes(table)) return builder;
+    return {
+      ...builder,
+      select(columns) {
+        const query = builder.select(columns);
+        const originalRange = query.range;
+        query.range = (...args) => {
+          counts[table] += 1;
+          return originalRange(...args);
+        };
+        return query;
+      },
+    };
+  };
+  return counts;
 }
 
 // ─── State-fixture ────────────────────────────────────────────────────────────
@@ -566,4 +593,107 @@ test("#2308 · weekend-stien sender leagueDivisionId (pulje-id) videre til loadG
   assert.equal(loadGoalContextCalls.length, 1);
   assert.equal(loadGoalContextCalls[0].leagueDivisionId, 42,
     "weekend-stien skal sende standing.league_division_id som leagueDivisionId");
+});
+
+// ─── #2932 · riders/board_profiles/loans pagineres forbi 1000-rows-loftet ─────
+
+test("#2932: riders/board_profiles/loans pagineres forbi 1000-row-loftet (samme klasse som #2907)", async () => {
+  // Reproducerer prod-fundet 25/7 (issue #2932): boardWeekendFinalization hentede
+  // riders/board_profiles/loans med .in() UDEN .range() — PostgREST returnerer
+  // stille kun første side (SUPABASE_PAGE_SIZE rækker), ingen fejl, ingen tom
+  // række, bare fravær. Prod havde 2.652 ryttere på 156 menneskehold — langt over
+  // loftet — og denne funktion kører efter HVER løbsweekend hele sæsonen.
+  //
+  // team-b herunder ligger UDELUKKENDE på side 2 (zero-padded id'er, så
+  // string-sortering == numerisk rækkefølge), for at reproducere netop det
+  // scenarie: et hold hvis ryttere falder uden for side 1.
+  const pageSize = SUPABASE_PAGE_SIZE;
+  const teamBRiderCount = 50;
+
+  const state = makeState({ riders: [] });
+  state.teams.push({
+    id: "team-b", user_id: "user-b", name: "Team B", division: 1,
+    sponsor_income: 2_500_000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+  });
+  state.board_profiles.push({
+    id: "board-b", team_id: "team-b", plan_type: "1yr", focus: "balanced",
+    satisfaction: 50, budget_modifier: 1.0, current_goals: [],
+    negotiation_status: "completed", is_baseline: false,
+    seasons_completed: 0, cumulative_stage_wins: 0, cumulative_gc_wins: 0,
+    plan_start_season_number: 2, plan_start_sponsor_income: 2_500_000,
+    season_start_satisfaction: null, season_start_anchor_season_id: null,
+  });
+  state.season_standings.push({
+    team_id: "team-b", season_id: "season-2", division: 1, rank_in_division: 5,
+    total_points: 80, stage_wins: 0, gc_wins: 0, team: { is_ai: false },
+  });
+  state.loans.push({ id: "loan-b", team_id: "team-b", status: "active" });
+
+  for (let i = 1; i <= pageSize; i += 1) {
+    state.riders.push({
+      id: `r${String(i).padStart(5, "0")}`, team_id: "team-1",
+      firstname: "A", lastname: `${i}`, is_u25: false, popularity: 10, market_value: 100_000, salary: 10_000,
+    });
+  }
+  for (let i = 1; i <= teamBRiderCount; i += 1) {
+    state.riders.push({
+      id: `r${String(pageSize + i).padStart(5, "0")}`, team_id: "team-b",
+      firstname: "B", lastname: `${i}`, is_u25: false, popularity: 10, market_value: 100_000, salary: 10_000,
+    });
+  }
+
+  const supabase = makeFakeSupabase(state);
+  const rangeCallsByTable = trackRangeCalls(supabase, ["board_profiles", "riders", "loans"]);
+  const compute = stubComputeUpdate({ newSatisfaction: 45, newModifier: 1.0 });
+
+  const summary = await processBoardWeekendFinalization({
+    supabase,
+    season: { ...SEASON },
+    previousRaceDaysCompleted: 6,
+    deps: baseDeps({ computeWeekendUpdate: compute }),
+  });
+
+  assert.equal(summary.errors, 0);
+  assert.equal(summary.boards_updated, 2, "begge hold (team-1 + team-b) skal opdateres");
+
+  assert.ok(rangeCallsByTable.riders >= 2, "riders-loadet skal hente mindst 2 sider (1050 ryttere > page-size)");
+
+  const teamBCall = compute.calls.find((call) => call.team.id === "team-b");
+  assert.ok(teamBCall, "team-b skal evalueres");
+  assert.equal(
+    teamBCall.team.riders.length,
+    teamBRiderCount,
+    "team-b (UDELUKKENDE side 2) må IKKE fremstå tom — dette var #2932-bugget (delvist datagrundlag for board-evaluering)"
+  );
+  const teamACall = compute.calls.find((call) => call.team.id === "team-1");
+  assert.equal(teamACall.team.riders.length, pageSize, "team-1 (side 1) skal have alle sine ryttere");
+
+  // board_profiles og loans er lavere-kardinalitet i prod (435/≤367 rækker 25/7),
+  // men skal GENNEM samme fetchAllRows-sti (mindst 1 range()-kald hver) — ikke et
+  // rå .select().in() der stille kunne trunkere ved en fremtidig vækst.
+  assert.ok(rangeCallsByTable.board_profiles >= 1, "board_profiles skal hentes via fetchAllRows (range())");
+  assert.ok(rangeCallsByTable.loans >= 1, "loans skal hentes via fetchAllRows (range())");
+});
+
+test("#2932: fejl i pagineret riders-load kaster med samme besked-format som før", async () => {
+  const state = makeState();
+  // errorTables i makeFakeSupabase rammer kun upsert; simulér i stedet en
+  // select-fejl direkte på riders-tabellen via den lave-niveau errors-option.
+  const supabaseWithReadError = createFakeSupabase(state, {
+    errors: { riders: { select: "connection reset" } },
+  });
+
+  await assert.rejects(
+    () => processBoardWeekendFinalization({
+      supabase: supabaseWithReadError,
+      season: { ...SEASON },
+      previousRaceDaysCompleted: 6,
+      deps: baseDeps(),
+    }),
+    (error) => {
+      assert.match(error.message, /Could not load riders for weekend board update: connection reset/);
+      return true;
+    },
+    "fejlbeskeden skal bevare det oprindelige 'Could not load riders for weekend board update: ...'-format"
+  );
 });

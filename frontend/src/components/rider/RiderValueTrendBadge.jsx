@@ -2,7 +2,7 @@
 // til steder hvor market_value allerede vises (rytterprofil-hero, holdliste).
 //
 // Ren præsentations-komponent — `windowData` kommer allerede beregnet fra
-// backend (GET/POST /api/riders/.../value-trend, valgt via pickBestValueTrendWindow).
+// backend (GET /api/riders/:id/value-trend, valgt via pickBestValueTrendWindow).
 // Fog-gate (#2499 accept): viser KUN total-deltaet, aldrig modellens komponenter.
 // Editorial/anti-AI-slop: tekst + tynd pil, ingen glow/badge-baggrund/emoji.
 import { useTranslation } from "react-i18next";

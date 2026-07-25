@@ -65,6 +65,7 @@ import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalConte
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { notifyTeamOwner } from "./notificationService.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 function toFiniteOr(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -172,8 +173,23 @@ export async function processBoardWeekendFinalization({
   const teamIds = teams.map((t) => t.id);
 
   // 2. Aktive planer + standings + riders + lån (batch).
-  const [boardsRes, standingsRes, ridersRes, loansRes] = await Promise.all([
-    supabase.from("board_profiles").select("*").in("team_id", teamIds),
+  // #2932 P0: board_profiles/riders/loans pagineres nu via fetchAllRows (stabil
+  // .order("id")) — samme 1000-rows-PostgREST-loft-bug som #2907
+  // (loadHumanSeasonEndTeams, fixet i PR #2931). Denne funktion kører efter HVER
+  // løbsweekend hele sæsonen (ikke kun ved sæson-slut), så et upagineret
+  // .in()-load her lod weekend-board-evalueringer køre stille på et delvist
+  // rytterfelt uge efter uge for hold hvis rækker faldt uden for side 1 — ikke en
+  // fejl, ikke en tom række, bare fravær (prod 25/7: 2.652 ryttere på 156
+  // menneskehold, langt over loftet). season_standings pagineres BEVIDST ikke her
+  // (367/1000 rækker 25/7 — samme lavere-prioriterede, deferred fund som i
+  // #2907-PR-bodyen; separat issue, sorteringen mangler desuden et stabilt
+  // tiebreak til sikker paginering).
+  const withPaginationErrorLabel = (promise, label) =>
+    promise.catch((error) => {
+      throw new Error(`Could not load ${label} for weekend board update: ${error.message}`);
+    });
+
+  const [standingsRes, boardsData, ridersData, loansData] = await Promise.all([
     supabase
       .from("season_standings")
       // #2521 · is_bank/is_frozen/is_test_account tilføjet: computeRealPoolPercentile
@@ -181,32 +197,43 @@ export async function processBoardWeekendFinalization({
       // filen, ikke kun is_ai (ellers tæller bank/test/frosne hold med i percentilen).
       .select("*, team:team_id(is_ai, is_bank, is_frozen, is_test_account)")
       .eq("season_id", season.id),
-    supabase
-      .from("riders")
-      // Paritet med loadHumanSeasonEndTeams: identity-felter + U25-abilities,
-      // så weekend-targettet evaluerer mod SAMME mål-kontekst som sæson-slut.
-      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
-      .in("team_id", teamIds),
-    supabase
-      .from("loans")
-      .select("id, team_id")
-      .eq("status", "active")
-      .in("team_id", teamIds),
+    withPaginationErrorLabel(
+      fetchAllRows(() => supabase
+        .from("board_profiles")
+        .select("*")
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })),
+      "board_profiles"
+    ),
+    withPaginationErrorLabel(
+      fetchAllRows(() => supabase
+        .from("riders")
+        // Paritet med loadHumanSeasonEndTeams: identity-felter + U25-abilities,
+        // så weekend-targettet evaluerer mod SAMME mål-kontekst som sæson-slut.
+        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })),
+      "riders"
+    ),
+    withPaginationErrorLabel(
+      fetchAllRows(() => supabase
+        .from("loans")
+        .select("id, team_id")
+        .eq("status", "active")
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })),
+      "loans"
+    ),
   ]);
-  for (const [label, res] of [
-    ["board_profiles", boardsRes],
-    ["season_standings", standingsRes],
-    ["riders", ridersRes],
-    ["loans", loansRes],
-  ]) {
-    if (res.error) throw new Error(`Could not load ${label} for weekend board update: ${res.error.message}`);
+  if (standingsRes.error) {
+    throw new Error(`Could not load season_standings for weekend board update: ${standingsRes.error.message}`);
   }
 
   const standings = standingsRes.data || [];
   const standingByTeam = new Map(standings.map((s) => [s.team_id, s]));
 
   const boardsByTeam = new Map();
-  for (const board of boardsRes.data || []) {
+  for (const board of boardsData || []) {
     // #2521 · Baseline-boards deltager nu også (se header-kommentaren) —
     // negotiation_status='completed' holder stadig pending 1yr/3yr/5yr-forhandlinger ude.
     if (board.negotiation_status !== "completed") continue;
@@ -215,14 +242,14 @@ export async function processBoardWeekendFinalization({
   }
 
   const ridersByTeam = new Map();
-  for (const rider of ridersRes.data || []) {
+  for (const rider of ridersData || []) {
     if (!rider.team_id) continue;
     if (!ridersByTeam.has(rider.team_id)) ridersByTeam.set(rider.team_id, []);
     ridersByTeam.get(rider.team_id).push(rider);
   }
 
   const loanCountByTeam = new Map();
-  for (const loan of loansRes.data || []) {
+  for (const loan of loansData || []) {
     loanCountByTeam.set(loan.team_id, (loanCountByTeam.get(loan.team_id) || 0) + 1);
   }
 

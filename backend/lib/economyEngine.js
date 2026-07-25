@@ -57,6 +57,7 @@ import {
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
+import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -138,22 +139,38 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   const teamIds = (teams || []).map(team => team.id).filter(Boolean);
   if (teamIds.length === 0) return [];
 
-  const [ridersRes, boardsRes] = await Promise.all([
-    supabaseClient
-      .from("riders")
-      // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
-      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
-      .in("team_id", teamIds),
-    supabaseClient
-      .from("board_profiles")
-      .select("*")
-      .in("team_id", teamIds),
-  ]);
-  throwIfSupabaseError(ridersRes.error, "Could not load riders for season end");
+  // #2907 P0: prod 25/7 havde 2.652 ryttere på 156 menneskehold — langt over
+  // PostgREST's 1000-rows-loft. Et naivt .select().in() returnerede stille kun
+  // første side, så payroll og bestyrelsesdom kørte på ~38% af feltet for hold
+  // hvis ryttere faldt uden for side 1 (ingen fejl, ingen nulrække — ingenting).
+  // fetchAllRows paginerer; .order("id") gør siderne stabile (supabasePagination.js).
+  //
+  // board_profiles (435 rækker, 25/7) og teams-filtret ovenfor (156 rækker) er
+  // IKKE pagineret her — begge er langt under 1000 og vokser med samme,
+  // langsommere driver (antal hold, ikke antal ryttere pr. hold). Se PR for #2907
+  // for fuld liste af andre unpaginerede season-end-queries fundet i samme sweep.
+  let riders;
+  try {
+    riders = await fetchAllRows(() => (
+      supabaseClient
+        .from("riders")
+        // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
+        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
+        .in("team_id", teamIds)
+        .order("id", { ascending: true })
+    ));
+  } catch (error) {
+    throw new Error(`Could not load riders for season end: ${error.message}`, { cause: error });
+  }
+
+  const boardsRes = await supabaseClient
+    .from("board_profiles")
+    .select("*")
+    .in("team_id", teamIds);
   throwIfSupabaseError(boardsRes.error, "Could not load board profiles for season end");
 
   const ridersByTeam = new Map();
-  for (const rider of ridersRes.data || []) {
+  for (const rider of riders || []) {
     if (!rider.team_id) continue;
     if (!ridersByTeam.has(rider.team_id)) ridersByTeam.set(rider.team_id, []);
     ridersByTeam.get(rider.team_id).push(rider);
@@ -1103,30 +1120,43 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Pay division bonuses based on final standings
   await payDivisionBonuses(standings, seasonId, supabaseClient);
 
-  // Process each division after finance/board side effects have succeeded.
-  // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
-  // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
-  // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
-  // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
-  const poolTree = await buildPoolTree(supabaseClient);
+  // #2851 · Engangs-gate (S1→S2 pyramide-komprimering): når app_config-nøglen
+  // season_end_skip_division_movement er 'on' springes divisions-flytningen
+  // (processDivisionEnd) OG AI-fyld-sweepen over — scripts/compressPyramid.js ER
+  // flytningen i det skifte og kører sit eget reconcile bagefter. Fail-safe:
+  // manglende nøgle/fejl → false → motorens normale adfærd (ejer-gate 25/7).
+  const isMovementSkippedFn =
+    deps.isSeasonEndDivisionMovementSkipped ?? isSeasonEndDivisionMovementSkipped;
+  const skipDivisionMovement = await isMovementSkippedFn(supabaseClient);
 
-  for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
-    const divStandings = standings.filter(s => s.division === division);
-    await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
-      supabase: supabaseClient,
-      now: notificationNow,
-      poolTree,
-    });
-  }
+  if (skipDivisionMovement) {
+    console.log("  ⏭  Op/nedrykning + AI-reconcile sprunget over (season_end_skip_division_movement=on, #2851 — komprimeringen ER flytningen i dette skifte)");
+  } else {
+    // Process each division after finance/board side effects have succeeded.
+    // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
+    // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
+    // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
+    // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
+    const poolTree = await buildPoolTree(supabaseClient);
 
-  // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
-  // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
-  // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
-  // tier-fyld-fra-top (rebalanceDivisions) — pulje-modellen fylder med AI, ikke ved at
-  // trække ægte hold op uden for sporten.
-  if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
-    for (const ld of poolTree.byId.values()) {
-      await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+    for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
+      const divStandings = standings.filter(s => s.division === division);
+      await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
+        supabase: supabaseClient,
+        now: notificationNow,
+        poolTree,
+      });
+    }
+
+    // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
+    // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
+    // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
+    // tier-fyld-fra-top (rebalanceDivisions) — pulje-modellen fylder med AI, ikke ved at
+    // trække ægte hold op uden for sporten.
+    if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
+      for (const ld of poolTree.byId.values()) {
+        await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+      }
     }
   }
 
