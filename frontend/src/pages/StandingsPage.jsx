@@ -18,6 +18,7 @@ import {
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
+import { POOL_ALL, matchesPoolTab } from "../lib/standingsPoolFilter.js";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
 // Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
@@ -26,8 +27,6 @@ const ALL_DIVISIONS = Array.from(
   { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
   (_, i) => RULES_NUMBERS.minDivision + i,
 );
-const POOL_ALL = "all"; // pulje-sub-fane: vis hele tieren samlet.
-
 // Division-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
 // div 1 = fuld guld (--accent), div 2 = dyb guld (--accent-t), div 3 = neutral
 // (--div-3, tema-bevidst channel-token i index.css). Vi gemmer selve CSS-var-
@@ -354,8 +353,9 @@ export default function StandingsPage() {
 
   const divStandingsBase = standings
     .filter(s => s.team?.division === divTab)
-    // #1688: når tieren har flere puljer og en specifik pulje er valgt, filtrér til den.
-    .filter(s => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab)
+    // #1688/#2879: når tieren har flere puljer og en specifik pulje er valgt,
+    // filtrér til den (matchesPoolTab normaliserer string- vs. integer-id).
+    .filter(s => matchesPoolTab(rowPoolId(s), poolTab, hasPoolSubtabs))
     .sort((a, b) => effectivePts(b) - effectivePts(a));
   // Linse B sorteres efter trup-værdi; Linse A efter point. Søgning filtrerer begge.
   const strengthVal = (s) => (strength?.[s.team_id]?.totalValue || 0);
@@ -423,7 +423,7 @@ export default function StandingsPage() {
 
   // Antal i den aktuelle visning ("Alle" = hele tieren, ellers kun den valgte pulje), så
   // summarie-tallene matcher det man faktisk ser på fanen.
-  const inCurrentPool = (s) => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab;
+  const inCurrentPool = (s) => matchesPoolTab(rowPoolId(s), poolTab, hasPoolSubtabs);
   const promoteCount = tierPointSorted.filter(s => inCurrentPool(s) && promoteIds.has(s.team_id)).length;
   const relegateCount = tierPointSorted.filter(s => inCurrentPool(s) && relegateIds.has(s.team_id)).length;
 
