@@ -10572,80 +10572,94 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
   if (!UUID_RE.test(teamId)) {
     return res.status(400).json({ error: "Ugyldigt hold-id" });
   }
-  const { data: team } = await supabase.from("teams")
-    .select("id, name, division, balance, user_id").eq("id", teamId).single();
-  if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+  try {
+    const { data: team } = await supabase.from("teams")
+      .select("id, name, division, balance, user_id, is_ai").eq("id", teamId).single();
+    if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
 
-  const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
-    supabase.from("users")
-      .select("id, username, last_seen, login_streak")
-      .eq("id", team.user_id).single(),
-    supabase.from("riders")
-      .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
-      .eq("team_id", teamId).order("market_value", { ascending: false }),
-    supabase.from("season_standings")
-      // #1095: status med i join, så frontend kan markere igangværende sæson i historikken.
-      // #2111: sortér på updated_at — tabellen har ingen created_at, så queryen fejlede
-      // (42703) og season_history var tavst tom siden fa4799a3.
-      .select("*, season:season_id(number, status)")
-      .eq("team_id", teamId).order("updated_at", { ascending: false }),
-    supabase.from("achievements").select("*").order("category"),
-    supabase.from("manager_achievements")
-      .select("achievement_id, unlocked_at").eq("user_id", team.user_id),
-    supabase.from("transfer_offers")
-      .select(`id, offer_amount, created_at,
-        rider:rider_id(id, firstname, lastname),
-        buyer_team:buyer_team_id(id, name),
-        seller_team:seller_team_id(id, name)`)
-      .or(`buyer_team_id.eq.${teamId},seller_team_id.eq.${teamId}`)
-      .eq("status", "accepted")
-      .order("created_at", { ascending: false }).limit(10),
-  ]);
+    const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
+      supabase.from("users")
+        .select("id, username, last_seen, login_streak")
+        .eq("id", team.user_id).single(),
+      supabase.from("riders")
+        .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
+        .eq("team_id", teamId).order("market_value", { ascending: false }),
+      supabase.from("season_standings")
+        // #1095: status med i join, så frontend kan markere igangværende sæson i historikken.
+        // #2111: sortér på updated_at — tabellen har ingen created_at, så queryen fejlede
+        // (42703) og season_history var tavst tom siden fa4799a3.
+        .select("*, season:season_id(number, status)")
+        .eq("team_id", teamId).order("updated_at", { ascending: false }),
+      supabase.from("achievements").select("*").order("category"),
+      supabase.from("manager_achievements")
+        .select("achievement_id, unlocked_at").eq("user_id", team.user_id),
+      supabase.from("transfer_offers")
+        .select(`id, offer_amount, created_at,
+          rider:rider_id(id, firstname, lastname),
+          buyer_team:buyer_team_id(id, name),
+          seller_team:seller_team_id(id, name)`)
+        .or(`buyer_team_id.eq.${teamId},seller_team_id.eq.${teamId}`)
+        .eq("status", "accepted")
+        .order("created_at", { ascending: false }).limit(10),
+    ]);
 
-  const unlockedMap = {};
-  (unlockedAchsRes.data || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
+    const unlockedMap = {};
+    (unlockedAchsRes.data || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
 
-  // #1008: progress mod næste mål (fx "40/50") for låste, tæller-baserede achievements.
-  // Hentes efter unlock-mappet, så team_5_achievements kan tælle allerede oplåste.
-  // Secret achievements får IKKE progress (ville lække "???"-badgets indhold).
-  const progressMap = await getAchievementProgressMap({
-    supabase,
-    userId: team.user_id,
-    teamId,
-    unlockedCount: Object.keys(unlockedMap).length,
-  });
-  const achievements = (allAchsRes.data || []).map(a => {
-    const unlocked = !!unlockedMap[a.id];
-    const progress = !unlocked && !a.is_secret ? progressMap[a.id] || null : null;
-    // #1666: redaktér title/description for låste, hemmelige achievements på backend.
-    // Frontend masker dem visuelt med "???", men den rå tekst lå stadig i payloaden
-    // (DevTools → Network) og kunne spoile uoplåste secrets. Send aldrig teksten med.
-    const hideSecret = !unlocked && a.is_secret;
-    return {
-      ...a,
-      title: hideSecret ? null : a.title,
-      description: hideSecret ? null : a.description,
-      unlocked,
-      unlocked_at: unlockedMap[a.id] || null,
-      progress,
-    };
-  });
+    // #1008: progress mod næste mål (fx "40/50") for låste, tæller-baserede achievements.
+    // Hentes efter unlock-mappet, så team_5_achievements kan tælle allerede oplåste.
+    // Secret achievements får IKKE progress (ville lække "???"-badgets indhold).
+    const progressMap = await getAchievementProgressMap({
+      supabase,
+      userId: team.user_id,
+      teamId,
+      unlockedCount: Object.keys(unlockedMap).length,
+    });
+    // #2876: achievements er altid et array (evt. tomt) via `|| []` — aldrig udeladt
+    // fra svaret. Samme kontrakt for riders/season_history/transfer_activity nedenfor.
+    const achievements = (allAchsRes.data || []).map(a => {
+      const unlocked = !!unlockedMap[a.id];
+      const progress = !unlocked && !a.is_secret ? progressMap[a.id] || null : null;
+      // #1666: redaktér title/description for låste, hemmelige achievements på backend.
+      // Frontend masker dem visuelt med "???", men den rå tekst lå stadig i payloaden
+      // (DevTools → Network) og kunne spoile uoplåste secrets. Send aldrig teksten med.
+      const hideSecret = !unlocked && a.is_secret;
+      return {
+        ...a,
+        title: hideSecret ? null : a.title,
+        description: hideSecret ? null : a.description,
+        unlocked,
+        unlocked_at: unlockedMap[a.id] || null,
+        progress,
+      };
+    });
 
-  const userData = userRes.data;
-  if (userData?.last_seen) {
-    userData.is_online = (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000;
-  } else {
-    userData.is_online = false;
+    // #2876 backwards-check: team.user_id er null for AI-styrede hold (is_ai=true —
+    // ~57% af alle hold pr. 2026-07-25). userRes.data er da null (PGRST116, ingen
+    // matchende row). Et ubetinget `userData.is_online = false` kastede før en
+    // TypeError her ("Cannot set properties of null"), som Express 4 IKKE fanger fra
+    // en async handler (ingen catch → requesten hang til proxy-timeout i stedet for
+    // et svar). AI-hold nås reelt via transfer-historikkens køber/sælger-links.
+    const userData = userRes.data || null;
+    if (userData) {
+      userData.is_online = userData.last_seen
+        ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
+        : false;
+    }
+
+    res.json({
+      team: { id: team.id, name: team.name, division: team.division, is_ai: !!team.is_ai },
+      user: userData,
+      riders: ridersRes.data || [],
+      season_history: historyRes.data || [],
+      achievements,
+      transfer_activity: transfersRes.data || [],
+    });
+  } catch (err) {
+    captureException(err, { route: "GET /managers/:teamId", team_id: teamId });
+    console.error("[managers/:teamId] profil kunne ikke hentes:", err.message);
+    res.status(500).json({ error: "Kunne ikke hente managerprofil" });
   }
-
-  res.json({
-    team: { id: team.id, name: team.name, division: team.division },
-    user: userData,
-    riders: ridersRes.data || [],
-    season_history: historyRes.data || [],
-    achievements,
-    transfer_activity: transfersRes.data || [],
-  });
 });
 
 // GET /api/riders/:id/watchlist-count — antal managers der følger en rytter
