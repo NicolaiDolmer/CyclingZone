@@ -385,7 +385,7 @@ export default function TeamProfilePage() {
                         {displayRiders.map(r => (
                           <tr key={r.id}
                             className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
-                              ${r._isIncoming ? "bg-cz-success-bg0/3" : r._isOutgoing ? "bg-cz-danger-bg0/3" : ""}`}
+                              ${r._isIncoming ? "bg-cz-success-bg" : r._isOutgoing ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/riders/${r.id}`)}>
                             <td className="px-2 py-2.5 hidden sm:table-cell">
                               <NationCell code={r.nationality_code} />

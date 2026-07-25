@@ -528,7 +528,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
            navnekolonnen er erstattet af recipe'ens 1px højre-rule + opak
            cellebund (tdClass({ sticky: true })). Ind-/udgående ryttere bruger
            nu zone-tint-recipen (success/danger) i stedet for den tidligere ad
-           hoc bg-cz-success-bg0/3-opacity. Mobil-fold (sekundære kolonner ind
+           hoc bg-cz-success-bg-opacity. Mobil-fold (sekundære kolonner ind
            i sticky-underlinjen) er ikke implementeret — tabellen scroller
            horisontalt som før migreringen. */
         <div className={WRAP}>
@@ -569,7 +569,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
               <tbody>
                 {displayRiders.map((r, i) => {
                   // #2849 bølge 1: zone-tint-recipen (success/danger) erstatter den
-                  // tidligere ad hoc bg-cz-success-bg0/3-opacity for ind-/udgående ryttere.
+                  // tidligere ad hoc bg-cz-success-bg-opacity for ind-/udgående ryttere.
                   const zone = r._isIncoming ? "success" : r._isOutgoing ? "danger" : null;
                   const prevZone = i > 0 ? (displayRiders[i - 1]._isIncoming ? "success" : displayRiders[i - 1]._isOutgoing ? "danger" : null) : null;
                   const nextZone = i < displayRiders.length - 1 ? (displayRiders[i + 1]._isIncoming ? "success" : displayRiders[i + 1]._isOutgoing ? "danger" : null) : null;

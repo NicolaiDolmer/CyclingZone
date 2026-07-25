@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 // kaldersiden kan bygge listen med betingelser.
 
 const TONE = {
-  info: "bg-cz-info-bg0/20 text-cz-info",
+  info: "bg-cz-info-bg text-cz-info",
   accent: "bg-cz-accent/15 text-cz-accent-t",
   neutral: "bg-cz-subtle text-cz-2 border border-cz-border",
   success: "bg-cz-success-bg text-cz-success",

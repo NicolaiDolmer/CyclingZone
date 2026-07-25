@@ -79,14 +79,12 @@ export default {
         "cz-info":       "rgb(var(--info) / <alpha-value>)",
         "cz-info-bg":    "var(--info-bg)",
 
-        // Legacy aliases til base-status-farver. Brugt 74x i source som typo
-        // for `cz-{status}` (uden -bg0). Beholdes for backward compat — alle
-        // 4 callsites virker semantisk identisk med `cz-{status}`. Tilføjet
-        // i v2.20 (DD pressure-dot fix), opgraderet til channel-format i v2.21.
-        "cz-success-bg0": "rgb(var(--success) / <alpha-value>)",
-        "cz-danger-bg0":  "rgb(var(--danger) / <alpha-value>)",
-        "cz-warning-bg0": "rgb(var(--warning) / <alpha-value>)",
-        "cz-info-bg0":    "rgb(var(--info) / <alpha-value>)",
+        // `cz-{status}-bg0` er FJERNET i #2849 bølge 6 (ejer-valg 25/7). Aliaset
+        // var en typo for `cz-{status}` og skabte to familier til det samme:
+        // 69 callsites blandede deres egen tone med 10 forskellige alfa-værdier,
+        // mens `-bg` stod som den designede token. Nu findes kun `-bg` som
+        // statusFLADE (retunet i index.css så udseendet er bevaret) og
+        // `cz-{status}/N` til hover/badges, hvor en eksplicit alfa er meningen.
 
         // Discord brand (Blurple) — ekstern brand-farve til Discord-CTA'er.
         "cz-discord":       "rgb(var(--discord) / <alpha-value>)",

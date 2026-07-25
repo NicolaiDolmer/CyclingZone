@@ -18043,7 +18043,7 @@ export const PATCHES = [
         "audience": "player",
         "da": {
           "title": "Verificeret runtime via Claude Preview",
-          "body": "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt. Fx `bg-cz-info-bg0/20` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt"
+          "body": "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt. Fx `bg-cz-info-bg` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt"
         }
       },
       {

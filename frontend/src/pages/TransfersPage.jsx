@@ -245,13 +245,13 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 transition-all disabled:opacity-50">
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "counter"
-                  ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30"
+                  ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.counter")}
             </button>
@@ -285,20 +285,20 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.seller_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
                 {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -393,13 +393,13 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "new_offer"
-                  ? "bg-cz-info-bg0/20 text-cz-info border-cz-info/30"
+                  ? "bg-cz-info-bg text-cz-info border-cz-info/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.newOffer")}
             </button>
@@ -441,18 +441,18 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.buyer_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
               {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -551,12 +551,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -594,12 +594,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
@@ -628,17 +628,17 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {(isProposing ? swap.proposing_confirmed : swap.receiving_confirmed) ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 disabled:opacity-50">
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("swapCard.buttons.cancelSwap")}
           </button>

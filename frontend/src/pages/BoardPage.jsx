@@ -77,9 +77,9 @@ function buildBoardTourSteps(t) {
 }
 
 const GOAL_CHANGE_STYLE = {
-  relaxed:   { accent: "text-cz-success", box: "border-cz-success/30 bg-cz-success-bg0/8" },
-  tightened: { accent: "text-cz-danger",   box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
-  replaced:  { accent: "text-cz-info",  box: "border-cz-info/20 bg-cz-info-bg0/8" },
+  relaxed:   { accent: "text-cz-success", box: "border-cz-success/30 bg-cz-success-bg" },
+  tightened: { accent: "text-cz-danger",   box: "border-cz-danger/30 bg-cz-danger-bg" },
+  replaced:  { accent: "text-cz-info",  box: "border-cz-info/20 bg-cz-info-bg" },
 };
 
 const GOAL_STATUS_STYLE = {
@@ -373,7 +373,7 @@ function ClubDnaSelectionCard({
         </div>
       </div>
       {error && (
-        <div className="mb-3 p-3 rounded-cz border border-cz-danger/30 bg-cz-danger-bg0/8 text-cz-danger text-sm">
+        <div className="mb-3 p-3 rounded-cz border border-cz-danger/30 bg-cz-danger-bg text-cz-danger text-sm">
           {error}
         </div>
       )}
@@ -673,8 +673,8 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
   const memberReaction = evaluation?.member_reaction || null;
 
   const containerClass = achieved
-    ? "bg-cz-success-bg0/8 border-cz-success/30"
-    : isBehind && isRequired ? "bg-cz-danger-bg0/5 border-cz-danger/30"
+    ? "bg-cz-success-bg border-cz-success/30"
+    : isBehind && isRequired ? "bg-cz-danger-bg border-cz-danger/30"
     : isBehind ? "bg-cz-subtle border-cz-danger/50"
     : "bg-cz-subtle border-cz-border";
 
@@ -878,7 +878,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
       <div className="flex flex-wrap gap-2 mb-4">
         {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded-cz border border-cz-border">{t("goal.obligatory")}</span>}
-        {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
+        {goal.cumulative && <span className="text-xs bg-cz-info-bg text-cz-info px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
         {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
         {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
         {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
@@ -1191,10 +1191,10 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
 }
 
 const OUTCOME_STYLE = {
-  approved: { accent: "text-cz-success",   box: "border-cz-success/30 bg-cz-success-bg0/8" },
+  approved: { accent: "text-cz-success",   box: "border-cz-success/30 bg-cz-success-bg" },
   partial:  { accent: "text-cz-accent-t", box: "border-cz-accent/30 bg-cz-accent/10" },
-  tradeoff: { accent: "text-cz-info",    box: "border-cz-info/20 bg-cz-info-bg0/8" },
-  rejected: { accent: "text-cz-danger",     box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
+  tradeoff: { accent: "text-cz-info",    box: "border-cz-info/20 bg-cz-info-bg" },
+  rejected: { accent: "text-cz-danger",     box: "border-cz-danger/30 bg-cz-danger-bg" },
 };
 
 function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
@@ -1297,7 +1297,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
       )}
 
       {requestError && (
-        <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg0/8 p-4 mt-4">
+        <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg p-4 mt-4">
           <p className="text-cz-danger text-sm">{requestError}</p>
         </div>
       )}
@@ -1382,7 +1382,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
           return (
             <div key={c.id}
               className={`p-3 rounded-cz border ${isCritical
-                ? "bg-cz-danger-bg0/8 border-cz-danger/30"
+                ? "bg-cz-danger-bg border-cz-danger/30"
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
                 <LayerIcon size={20} aria-hidden="true"
@@ -1410,7 +1410,7 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   const bonus = offer.severity || 0;
 
   return (
-    <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg0/8">
+    <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg">
       <div className="flex items-start gap-3">
         <TrophyIcon size={24} aria-hidden="true" className="flex-shrink-0 text-cz-success" />
         <div className="flex-1">
@@ -1484,7 +1484,7 @@ function BoardFeedSection({ items = [] }) {
           return (
             <div key={item.id}
               className={`p-3 rounded-cz border ${isCritical
-                ? "bg-cz-danger-bg0/8 border-cz-danger/30"
+                ? "bg-cz-danger-bg border-cz-danger/30"
                 : "bg-cz-subtle border-cz-border"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
@@ -1526,10 +1526,10 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   const isWarning = daysLeft <= 3;
 
   const containerClass = isCritical
-    ? "bg-cz-danger-bg0/8 border-cz-danger/40"
+    ? "bg-cz-danger-bg border-cz-danger/40"
     : isWarning
       ? "bg-cz-accent/10 border-cz-accent/40"
-      : "bg-cz-info-bg0/10 border-cz-info/30";
+      : "bg-cz-info-bg border-cz-info/30";
 
   const accentClass = isCritical
     ? "text-cz-danger"
@@ -1817,7 +1817,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           )}
 
           {showMidReviewBanner && (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz p-4">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz p-4">
               <p className="text-cz-info text-sm font-semibold">{t("plan.midReviewHeading")}</p>
               <p className="text-cz-info/60 text-xs mt-1">{t("plan.midReviewBody", { current: Math.floor(plan_duration / 2), total: plan_duration })}</p>
             </div>
@@ -2016,7 +2016,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
       <Section className="mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         <div className={`flex items-start gap-3 p-4 rounded-cz border
-          ${current?.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
+          ${current?.negotiated ? "bg-cz-info-bg border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
             flex items-center justify-center flex-shrink-0 text-cz-accent-t" aria-hidden="true">
             <FlagIcon size={12} />
@@ -2027,7 +2027,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
               {current?.importance === "required" && (
                 <span className="text-3xs text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
               )}
-              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg0/10 px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
+              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
               {current?.satisfaction_bonus > 0 && (
                 <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: current?.satisfaction_bonus })}</span>
               )}
@@ -2061,7 +2061,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         </div>
       ) : (
         <div>
-          <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz p-4 mb-4">
+          <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz p-4 mb-4">
             <p className="text-cz-info text-sm font-medium">{t("wizard.compromiseHeading")}</p>
             <p className="text-cz-info text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
@@ -2107,7 +2107,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
             <div key={i} className={`flex items-start gap-3 p-3 rounded-cz border
-              ${g.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
+              ${g.negotiated ? "bg-cz-info-bg border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
               <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center
                 justify-center flex-shrink-0 mt-0.5">
                 <ClockIcon size={12} aria-hidden="true" />
@@ -2972,7 +2972,7 @@ export default function BoardPage() {
                       <span className={`text-xs ${wizardStep === n ? "text-cz-2" : "text-cz-3"}`}>{t(`wizard.steps.${labelKey}`)}</span>
                     </div>
                     {i < 2 && (
-                      <div className={`flex-1 h-px mx-3 ${wizardStep > n ? "bg-cz-success-bg0/30" : "bg-cz-subtle"}`} />
+                      <div className={`flex-1 h-px mx-3 ${wizardStep > n ? "bg-cz-success-bg" : "bg-cz-subtle"}`} />
                     )}
                   </div>
                 ))}
