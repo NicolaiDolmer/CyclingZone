@@ -365,8 +365,9 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   const toSeasonId = computeSeasonUuid(toSeasonNumber);
   const toWindowId = computeTransferWindowUuid(toSeasonNumber);
 
-  const { data: existingTo } = await supabase
+  const { data: existingTo, error: existingToError } = await supabase
     .from("seasons").select("id, status").eq("id", toSeasonId).maybeSingle();
+  if (existingToError) throw new Error(`Could not check next season ${toSeasonId}: ${existingToError.message}`);
 
   // Resume-support (#578): tillad completed fromSeason når toSeason eksisterer.
   // Signatur på partial failure efter mark_previous_completed (fase 3) — fase 4-8
@@ -581,8 +582,9 @@ export async function resolveTransitionSourceSeason({ supabase }) {
 // ─── Idempotent fase-helpers ──────────────────────────────────────────────────
 
 async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitionAtIso) {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("seasons").select("id, status, start_date").eq("id", seasonId).maybeSingle();
+  if (existingError) throw new Error(`Could not check season ${seasonNumber}: ${existingError.message}`);
 
   if (existing) {
     // Legacy /admin/seasons-endpoint kan have pre-created rowen med status='upcoming'
@@ -616,8 +618,9 @@ async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitio
 }
 
 async function markSeasonCompleted(supabase, seasonId, transitionAtIso) {
-  const { data: current } = await supabase
+  const { data: current, error: currentError } = await supabase
     .from("seasons").select("status, end_date").eq("id", seasonId).maybeSingle();
+  if (currentError) throw new Error(`Could not load season ${seasonId}: ${currentError.message}`);
 
   if (!current) throw new Error(`Season ${seasonId} disappeared mid-transition`);
   if (current.status === "completed") {
@@ -641,13 +644,17 @@ async function markSeasonCompleted(supabase, seasonId, transitionAtIso) {
  * kan konvergere med engine — manual flow åbnede ikke nye windows.
  */
 export async function closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso) {
-  const { data: window } = await supabase
+  // #2897: `error` SKAL destruktureres. Uden den returnerede en fejlet select
+  // `window === null` → funktionen rapporterede "no transfer_window for prev
+  // season" og skiftet fortsatte MED VINDUET ÅBENT, uden spor nogen steder.
+  const { data: window, error: windowError } = await supabase
     .from("transfer_windows")
     .select("id, status")
     .eq("season_id", fromSeasonId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (windowError) throw new Error(`Could not load prev transfer_window: ${windowError.message}`);
 
   if (!window) {
     return { skipped: true, reason: "no transfer_window for prev season" };
@@ -674,8 +681,9 @@ export async function closePrevTransferWindow(supabase, fromSeasonId, transition
  * kan oprette deterministisk UUID-window matching engine's pattern.
  */
 export async function insertTransferWindowIfMissing(supabase, windowId, seasonId, transitionAtIso) {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("transfer_windows").select("id, status").eq("id", windowId).maybeSingle();
+  if (existingError) throw new Error(`Could not check transfer_window ${windowId}: ${existingError.message}`);
 
   if (existing) {
     return { skipped: true, reason: "window already exists", status: existing.status };
@@ -699,12 +707,13 @@ async function writeAdminLog(supabase, payload) {
 
   // Idempotency: tjek om vi allerede har logget denne transition.
   // Vi bruger metadata.from_season_id + metadata.to_season_id for at matche eksisterende rows.
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("admin_log")
     .select("id")
     .eq("action_type", ADMIN_ACTION_TYPE.SEASON_TRANSITION)
     .contains("meta", { from_season_id: fromSeasonId, to_season_id: toSeasonId })
     .maybeSingle();
+  if (existingError) throw new Error(`Could not check admin_log idempotency: ${existingError.message}`);
 
   if (existing) {
     return { skipped: true, reason: "admin_log entry already exists", id: existing.id };
@@ -884,13 +893,24 @@ export async function transitionToNextSeason({
   // tæller rigtigt fra sæson 2. Kører FØR processSeasonStart så de genskabte
   // baseline-rows (modifier 1.0) anvendes i sponsor-payout. Sæson 2 er allerede
   // 'active' efter insert_next_season, så resetBetaBoardProfiles rammer den rigtigt.
-  const { data: prevWindow } = await supabase
+  const { data: prevWindow, error: prevWindowError } = await supabase
     .from("transfer_windows")
     .select("board_test_mode")
     .eq("season_id", fromSeasonId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (prevWindowError) {
+    // best-effort: board-test-reset er additiv-isoleret som søsterfaserne nedenfor
+    // og må ikke vælte selve skiftet — men den skal være SYNLIG (#2897). Uden
+    // error-destrukturering blev prevWindow bare null og resetten sprang tavst over,
+    // så sæson 2 arvede beta-bestyrelsens budget_modifiers uden spor nogen steder.
+    log.push({ phase: "reset_board_test_data", error: prevWindowError.message });
+    captureException(new Error(`Could not read prev transfer_window board_test_mode: ${prevWindowError.message}`), {
+      tags: { phase: "reset_board_test_data" },
+      extra: { fromSeasonId },
+    });
+  }
   if (prevWindow?.board_test_mode === true) {
     const resetBetaBoardProfilesFn = deps.resetBetaBoardProfiles ?? (await getResetBetaBoardProfiles());
     log.push({
