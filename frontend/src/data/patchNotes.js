@@ -21,6 +21,118 @@ export const PATCHES = [
           "body": "Routing-biblioteket er opgraderet fra React Router 6 til 7, hvilket lukker tre advarsler: to open-redirect-problemer og ét om vilkårlig constructor-injektion. Pakken `react-router-dom` er væk, fordi v7 eksporterer alt fra `react-router`, og det fjerner en advarsel som slet ikke havde en rettelse i 6.x-linjen. I backenden er et ubrugt regneark-bibliotek fjernet og et mønster-udfoldnings-bibliotek patchet, hvilket tog det projekt fra ni høj-alvorlige fund til nul. Navigationen opfører sig præcis som før. Admin-fladens catch-all-redirect er gjort absolut, fordi v7 opløser relative paths inde i catch-all-routes anderledes end v6 gjorde."
         },
         "refs": [2960]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Your season-end message is now personal",
+          "body": "When a season ends, the notification is no longer the same for everyone. Yours now tells you where you finished in your division (for example: you finished 4th of 24 in Division 3), your points, your prize money for the season and your best-scoring rider. If any of it cannot be computed, you simply get the general message instead."
+        },
+        "da": {
+          "title": "Din sæsonslut-besked er nu personlig",
+          "body": "Når en sæson slutter, er beskeden ikke længere ens for alle. Din fortæller nu hvor du sluttede i din division (for eksempel: plads 4 ud af 24 i Division 3), dine point, dine præmiepenge for sæsonen og din bedst scorende rytter. Kan noget af det ikke beregnes, får du blot den generelle besked i stedet."
+        },
+        "refs": [2924]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Season start: one card gathers the four decisions waiting for you",
+          "body": "When a new season begins, the dashboard shows a get-started card for the first week: build your squad, set the training plan, negotiate with the board and decide on your academy graduates. Each item links straight to the right page and gets a checkmark when it is done. Dismiss it any time; it returns at the next season change."
+        },
+        "da": {
+          "title": "Sæsonstart: ét kort samler de fire beslutninger der venter på dig",
+          "body": "Når en ny sæson begynder, viser dashboardet et kom-i-gang-kort den første uge: byg din trup, læg træningsplanen, forhandl med bestyrelsen og tag stilling til din akademi-årgang. Hvert punkt linker direkte til den rigtige side og får et flueben når det er klaret. Du kan afvise kortet når som helst; det vender tilbage ved næste sæsonskifte."
+        },
+        "refs": [2925]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "You get a notification when a scouting report is ready",
+          "body": "Both a targeted rider investigation and a scouting mission now notify you the moment the report is ready, linking straight to the Scouting page. A mission that found no matching riders tells you that too, instead of staying silent."
+        },
+        "da": {
+          "title": "Du får besked når en scouting-rapport er klar",
+          "body": "Både en målrettet rytter-undersøgelse og en spejdermission giver dig nu besked i det øjeblik rapporten er klar, med link direkte til Scouting-siden. En mission uden matchende ryttere siger det også, i stedet for at være tavs."
+        },
+        "refs": [2945]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions warn you about retirement-age riders",
+          "body": "Riders aged 35 or older now carry a clear retirement-risk badge in the auction list and on their profile: riders typically retire between ages 36 and 40, so a winning bid may only buy you a season or two. The badge is informational; bidding is never blocked."
+        },
+        "da": {
+          "title": "Auktioner advarer dig om ryttere i pensionsalderen",
+          "body": "Ryttere på 35 år eller ældre bærer nu et tydeligt pensionsrisiko-mærke i auktionslisten og på deres profil: ryttere stopper typisk mellem 36 og 40 år, så et vindende bud køber dig måske kun en sæson eller to. Mærket er til information; bud blokeres aldrig."
+        },
+        "refs": [2943]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Debt freezes are fairer, and you are told when they happen",
+          "body": "The season-end debt check measured your debt after the season's interest had been added, so the interest itself could push a team over the ceiling and freeze its transfers without a word. The ceiling is now assessed before that interest lands, the strictest freeze always wins within a run, and your team gets a message the moment a freeze is applied. A forced debt sale can also no longer be booked twice."
+        },
+        "da": {
+          "title": "Gældsfrysninger er mere fair, og du får besked når de sker",
+          "body": "Sæsonslut-gældstjekket målte din gæld efter sæsonens rente var lagt til, så renten i sig selv kunne skubbe et hold over loftet og fryse dets transfers uden et ord. Loftet vurderes nu før renten lander, den strengeste frysning vinder altid inden for en kørsel, og dit hold får en besked i det øjeblik en frysning træder i kraft. Et tvangssalg kan heller ikke længere bogføres to gange."
+        },
+        "refs": [2912, 2919, 2920]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The squad table shows everything at once",
+          "body": "The team page squad table was rebuilt: ratings are shown as colored numbers, an Abilities view puts all 15 ability values side by side without scrolling, rows are tighter so more riders fit on screen, and the name column shows the name and nothing else. On mobile the table folds neatly instead of breaking."
+        },
+        "da": {
+          "title": "Trup-tabellen viser alt på én gang",
+          "body": "Holdsidens trup-tabel er bygget om: ratings vises som farvede tal, en Evner-visning sætter alle 15 evne-værdier side om side uden scroll, rækkerne er lavere så flere ryttere er på skærmen, og navnekolonnen viser navnet og intet andet. På mobil folder tabellen pænt i stedet for at knække."
+        },
+        "refs": [2888, 2906]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race result posts on Discord no longer go missing",
+          "body": "When several groups finished at the same time, Discord's rate limiting could silently swallow a group's result post. Posts to the same channel are now sent one at a time and retried politely, and a post that still fails is logged loudly so it gets fixed."
+        },
+        "da": {
+          "title": "Resultat-opslag på Discord forsvinder ikke længere",
+          "body": "Når flere puljer blev færdige samtidig, kunne Discords rate-begrænsning tavst sluge en puljes resultat-opslag. Opslag til samme kanal sendes nu ét ad gangen og prøves høfligt igen, og et opslag der stadig fejler logges tydeligt så det bliver rettet."
+        },
+        "refs": [2882]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Hall of Fame counts every season correctly",
+          "body": "The Hall of Fame page read at most 1,000 standings rows, which would silently truncate division history as seasons accumulate. It now reads everything, so the honours stay honest."
+        },
+        "da": {
+          "title": "Hall of Fame tæller hver sæson korrekt",
+          "body": "Hall of Fame-siden læste højst 1.000 tabelrækker, hvilket stille ville afkorte divisionshistorikken efterhånden som sæsonerne samler sig. Nu læses det hele, så hæderslisten forbliver ærlig."
+        },
+        "refs": [2962]
       }
     ]
   },
