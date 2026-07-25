@@ -31,7 +31,7 @@ function OverallBadge({ value }) {
   return (
     <span
       className="inline-block min-w-[30px] rounded px-1.5 py-0.5 text-center font-data text-xs tabular-nums"
-      style={statStyle(value)}
+      style={statStyle(value, { scale: "rating" })}
     >
       {value ?? "—"}
     </span>
