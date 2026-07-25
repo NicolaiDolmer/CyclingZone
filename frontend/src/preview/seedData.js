@@ -95,7 +95,11 @@ export const RIDERS = [
     stat_res: 67,
     stat_ftr: 75,
     primary_type: "sprinter",
-    secondary_type: "leadout",
+    // #2849 bølge 6: var "leadout" — en type der blev FJERNET fra modellen
+    // (backend/lib/riderTypes.js: 8 typer, leadout foldet ind i sprinter/rouleur).
+    // Fixturen beskrev derfor en umulig rytter, og riderTypes-namespacet har ingen
+    // nøgle for den, så mobil-ryttertabellen rendrede den rå nøgle "types.leadout".
+    secondary_type: "rouleur",
     team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
     // #1529: visningen viser nu CZ-evner — embeddet rider_derived_abilities flades
     // op på rytteren (flattenAbilities) i de migrerede sider. Sprinter-profil.

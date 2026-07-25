@@ -1,0 +1,25 @@
+{
+  "namespace": "notifications",
+  "keys": {
+    "filter.mineSelectLabel": {
+      "en": "Filter notifications",
+      "da": "Filtrér notifikationer"
+    },
+    "filter.feedSelectLabel": {
+      "en": "Filter activity feed",
+      "da": "Filtrér aktivitetsfeed"
+    },
+    "error.notifications": {
+      "en": "Couldn't load your notifications. Nothing was lost — try again.",
+      "da": "Kunne ikke indlæse dine notifikationer. Intet gik tabt — prøv igen."
+    },
+    "error.feed": {
+      "en": "Couldn't load the league feed. Nothing was lost — try again.",
+      "da": "Kunne ikke indlæse liga-feedet. Intet gik tabt — prøv igen."
+    },
+    "error.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}

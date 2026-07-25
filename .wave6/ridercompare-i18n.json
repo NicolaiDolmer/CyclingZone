@@ -1,0 +1,21 @@
+{
+  "namespace": "rider",
+  "keys": {
+    "compare.loadingAria": {
+      "en": "Loading comparison",
+      "da": "Indlæser sammenligning"
+    },
+    "compare.loadErrorTitle": {
+      "en": "Couldn't load comparison",
+      "da": "Kunne ikke indlæse sammenligning"
+    },
+    "compare.loadErrorBody": {
+      "en": "Nothing was lost. Try again.",
+      "da": "Intet er gået tabt. Prøv igen."
+    },
+    "compare.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}

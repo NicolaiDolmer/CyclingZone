@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.55",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "The last pages moved onto the shared layout, and five markings that never showed up are fixed",
+          "body": "Board, Inbox, Season planner, Scouting, Club, Compare riders, Roadmap, Strategy, Academy and the privacy pages now use the same page header, cards, loading and error states as the rest of the app. Compare riders had no loading screen at all, and several pages failed silently instead of telling you something went wrong. Five markings were also quietly broken and now work: the gold highlight on an auction you are leading, the gold edge on a transfer offer waiting for your answer, the icons on the season planner, the engine icons in the roadmap history, and a set of buttons in the admin panel. Status colours are now one single colour across the whole app instead of each page mixing its own."
+        },
+        "da": {
+          "title": "De sidste sider er flyttet over på det fælles layout, og fem markeringer der aldrig blev vist er rettet",
+          "body": "Bestyrelse, Indbakke, Sæsonplanlægger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlæsning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlæsningsskærm, og flere sider fejlede tavst i stedet for at fortælle dig at noget gik galt. Fem markeringer var også i stilhed i stykker og virker nu: den gyldne fremhævning på en auktion du fører, den gyldne kant på et bytte-tilbud der venter på dit svar, ikonerne i sæsonplanlæggeren, motor-ikonerne i roadmap-historikken og en række knapper i admin-panelet. Statusfarver er nu én farve i hele appen i stedet for at hver side blander sin egen."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.54",
     "date": "2026-07-24",
     "label": "Beta",

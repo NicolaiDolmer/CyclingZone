@@ -1,0 +1,17 @@
+{
+  "namespace": "klub",
+  "keys": {
+    "error.load.title": {
+      "en": "Couldn't load the club",
+      "da": "Kunne ikke indlæse klubben"
+    },
+    "error.load.description": {
+      "en": "Nothing was lost — your facilities and staff are safe. Try again.",
+      "da": "Intet gik tabt — dine faciliteter og staff er sikre. Prøv igen."
+    },
+    "error.load.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}

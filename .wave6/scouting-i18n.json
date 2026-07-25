@@ -1,0 +1,17 @@
+{
+  "namespace": "scouting",
+  "keys": {
+    "error.load.title": {
+      "en": "Couldn't load scouting central",
+      "da": "Kunne ikke indlæse spejder-centralen"
+    },
+    "error.load.description": {
+      "en": "Nothing was lost — your scout's active jobs are still running. Try again.",
+      "da": "Intet gik tabt — din spejders aktive opgaver kører stadig. Prøv igen."
+    },
+    "error.load.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "namespace": "races",
+  "keys": {
+    "strategy.error.title": {
+      "en": "Something went wrong",
+      "da": "Noget gik galt"
+    },
+    "strategy.error.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}

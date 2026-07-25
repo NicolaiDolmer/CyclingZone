@@ -20,11 +20,14 @@ compose the recipes from that file. One gold primary button per view, hairline b
 - **Page header (the ONE recipe):** flex row, `items-center justify-between gap-4`, `mb-6` (24px).
   - Title: Inter Tight (`font-data`) **20px / 700**, tracking −0.01em, `--text-1`, sentence case.
   - Subtitle: one line, **13px**, `--text-2`, `mt-1`.
-  - Action cluster (optional, right): **one** `Select` (sm) + **one** primary `Button` (sm). Nothing else. Mobile: cluster wraps below the title block.
+  - Action cluster (optional, right): EITHER **one** `Select` (sm) + **one** primary `Button` (sm), OR up to **two** quiet utility actions (secondary sm) with no primary. Never two gold. Nothing else. Mobile: cluster wraps below the title block. *(Widened 2026-07-25: the original "one select + one primary, nothing else" was silently violated by Notifications / Activity / Auctions, which all legitimately need two utility actions — the spec now describes the real contract instead of being routed around.)*
+  - **No orphan action rows.** Controls belonging to the page (toggles, view switchers, "show stats") live in this cluster — never in a free-floating row between the header and the content.
 - **Section card (the ONE recipe):** `Card` = `--bg-card`, 1px `--border`, **5px radius**, **padding 20px** (16px mobile), no shadow.
   - Card header: flex `items-baseline justify-between`, `mb-4` (16px); title **15px / 600** sentence case; right slot is EITHER a quiet action (12px / 500, `--accent-t`, chevron-right 13px) OR an uppercase meta label (data font `text-2xs`, tracking .08em, `--text-3`) — never both.
   - Sibling cards stack with `gap: 14px`.
 - Gold is rationed: one primary button per view + leader markers. Meters/progress fills may use accent per the ProgressMeter component. Foreground gold on light is always `--accent-t` (#a07800).
+- **A card's border colour is a prop, never a class.** `Card`/`Section` take `borderClass`; passing `border-cz-*` through `className` loses the cascade (Tailwind emits `.border-cz-border` after `.border-cz-accent*`) and the colour vanishes **silently — but only for gold**, which is why it went unnoticed on three live surfaces. Guarded by `card.source.test.js`.
+- **One status surface:** `bg-cz-{status}-bg`. `cz-{status}/N` is for hovers and badge pills, where an explicit alpha is the intent. The `-bg0` alias was removed 2026-07-25.
 - Numerals: data font + `tabular-nums`, currency `CZ$ 1,340,000` (exact, comma-grouped).
 - **Micro type — exactly two steps below `text-xs` (12px)** (owner call 2026-07-25, audit finding F8). Tailwind has no named step under 12px, so 632 callsites had invented 8 arbitrary values (8 / 8.5 / 9 / 9.5 / 10 / 10.5 / 11 / 11.5px) for the same job. Canon:
   - `text-2xs` = **11px** — table header cells, card meta labels, any uppercase meta line.
@@ -63,6 +66,7 @@ Rider, team, race detail. **Revised 2026-07-24 (owner): the hero is a CARD, not 
 - Data-as-imagery: stage profiles / sparklines are inline SVG strokes (2px `--text-1` line, `--bg-subtle` flat fill, data-font `text-3xs` axis labels). Never photos, never gradients.
 
 ## Canonical states (inside a section card — chrome always renders, only the body swaps)
+The card header and border stay mounted; only the body swaps between loading / empty / error / content. For tables that means swapping the `<tbody>`, not the whole card (converged 2026-07-25 — two patterns were in circulation).
 - **Loading:** skeleton lines 12px tall, 12px gap, radius 4, widths echoing real content (~88/64/76/52%), accent-tinted shimmer 1.4s. Never a spinner inside cards.
 - **Empty:** `EmptyState` — dashed hairline inset; stroke icon 26px `--text-3`; title 15px/600; ONE sentence description (13px `--text-2`, sentence case, e.g. "Draft your first rider in the live auction."); ONE action = the section's primary, size sm.
 - **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost. Your bids are safe."); retry = **secondary** sm ("Try again"), never gold. **No em-dash in player-facing copy** — `scripts/tone-check-em-dash.mjs` fails the build; use a full stop, comma or colon (rule: `docs/TONE_OF_VOICE.md` §Punktuation).

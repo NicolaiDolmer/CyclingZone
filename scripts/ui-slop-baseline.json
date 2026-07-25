@@ -23,19 +23,13 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 24
-    },
-    "frontend/public/locales/da/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
+      "emoji": 20
     },
     "frontend/public/locales/da/transfers.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 23
+      "emoji": 18
     },
     "frontend/public/locales/da/watchlist.json": {
       "hex": 0,
@@ -65,19 +59,13 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 24
-    },
-    "frontend/public/locales/en/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
+      "emoji": 20
     },
     "frontend/public/locales/en/transfers.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 23
+      "emoji": 18
     },
     "frontend/public/locales/en/watchlist.json": {
       "hex": 0,
@@ -89,12 +77,6 @@
       "hex": 2,
       "slop": 0,
       "colour": 0,
-      "emoji": 0
-    },
-    "frontend/src/components/RiderFilters.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 1,
       "emoji": 0
     },
     "frontend/src/components/SetupWizardModal.jsx": {
@@ -175,29 +157,11 @@
       "colour": 0,
       "emoji": 5
     },
-    "frontend/src/components/rider/TrainingFocus.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
     "frontend/src/lib/statColor.js": {
       "hex": 2,
       "slop": 0,
       "colour": 0,
       "emoji": 0
-    },
-    "frontend/src/pages/AdminSprintMetricsPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 3
-    },
-    "frontend/src/pages/AdminWaitlistPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
     },
     "frontend/src/pages/KitchenSinkPage.jsx": {
       "hex": 2,
@@ -221,7 +185,7 @@
       "hex": 1,
       "slop": 0,
       "colour": 1,
-      "emoji": 37
+      "emoji": 36
     },
     "frontend/src/pages/admin/AdminSystemTab.jsx": {
       "hex": 0,

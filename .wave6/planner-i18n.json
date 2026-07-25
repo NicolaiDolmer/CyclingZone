@@ -1,0 +1,17 @@
+{
+  "namespace": "planner",
+  "keys": {
+    "error.title": {
+      "en": "Couldn't load the season planner",
+      "da": "Kunne ikke indlæse sæsonplanlæggeren"
+    },
+    "error.description": {
+      "en": "Nothing was lost — your peaks and training plans are safe. Try again.",
+      "da": "Intet gik tabt — dine peaks og træningsplaner er sikre. Prøv igen."
+    },
+    "error.retry": {
+      "en": "Try again",
+      "da": "Prøv igen"
+    }
+  }
+}
