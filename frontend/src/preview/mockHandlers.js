@@ -314,6 +314,32 @@ export function apiResponse(pathname) {
     const finalRows = SEED_RACE_RESULTS.filter(
       (r) => r.race_id === "race-done-2" && r.stage_number === 2
     );
+    // #2886: sæson-historik + akkumulerede totaler. Afledt af seedet (ikke
+    // hardkodet), så preview og prod svarer på samme regnestykke: point/præmie
+    // = SUM over ALLE holdets rækker i løbet, best_rank = bedste rytter-rang i
+    // gc/stage. Seedet har kun to gennemførte løb, så "Vis alle N"-knappen
+    // (>5 tidligere løb) ses først i prod. Det viste løb filtreres fra, præcis
+    // som backend gør.
+    const seasonRaces = SEED_RACES
+      .filter((ra) => ra.status === "completed")
+      .map((ra) => {
+        const mine = SEED_RACE_RESULTS.filter(
+          (r) => r.race_id === ra.id && r.team_id === TEST_TEAM.id
+        );
+        const ranked = mine
+          .filter((r) => r.rider_id && r.rank != null && ["gc", "stage"].includes(r.result_type))
+          .map((r) => r.rank);
+        return {
+          race_id: ra.id,
+          name: ra.name,
+          race_type: ra.race_type,
+          stages: ra.stages,
+          best_rank: ranked.length ? Math.min(...ranked) : null,
+          points: mine.reduce((s, r) => s + (r.points_earned || 0), 0),
+          prize_money: mine.reduce((s, r) => s + (r.prize_money || 0), 0),
+        };
+      })
+      .filter((r) => r.points > 0 || r.prize_money > 0);
     return {
       // seen:false — #2593 (del 2): matcher det ægte endpoints kontrakt (server-side
       // seen-flag i samme payload). false lader preview'ens "Nyt"-badge vises som
@@ -324,6 +350,12 @@ export function apiResponse(pathname) {
       ],
       stage_wins: 1,
       totals: { points: 80, prize_money: 194000 },
+      history: seasonRaces.filter((r) => r.race_id !== "race-done-2"),
+      season_totals: {
+        points: seasonRaces.reduce((s, r) => s + r.points, 0),
+        prize_money: seasonRaces.reduce((s, r) => s + r.prize_money, 0),
+        races: seasonRaces.length,
+      },
       recap: {
         results: finalRows,
         incidents: SEED_RACE_INCIDENTS.filter((i) => i.race_id === "race-done-2"),
