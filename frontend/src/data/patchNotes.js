@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.56",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Seasons",
+        "en": {
+          "title": "The season recap now loads in a moment instead of stalling",
+          "body": "The season page used to pull every single race result of the season into your browser before it could show anything, which got slower the further into the season we came, and could time out entirely on a full season. The totals are now worked out on the server and sent as one small summary. Same standings, same prize leader, same stage-win king, same progression graph, just quick. This matters most right after the season ends, when everyone opens the recap at once."
+        },
+        "da": {
+          "title": "Sæson-opsamlingen henter nu på et øjeblik i stedet for at hakke",
+          "body": "Sæsonsiden hentede før hvert eneste løbsresultat fra hele sæsonen ned i din browser, før den kunne vise noget. Det blev langsommere jo længere ind i sæsonen vi kom, og kunne give op helt på en fuld sæson. Nu regnes tallene ud på serveren og sendes som én lille opsummering. Samme stilling, samme præmiefører, samme etapesejrskonge, samme udviklingsgraf — bare hurtigt. Det betyder mest lige efter sæsonen slutter, hvor alle åbner opsamlingen på én gang."
+        },
+        "refs": [2891]
+      }
+    ]
+  },
+  {
     "version": "7.55",
     "date": "2026-07-25",
     "label": "Beta",
