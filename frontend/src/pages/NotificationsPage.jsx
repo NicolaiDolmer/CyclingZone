@@ -10,7 +10,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
 import {
-  Button, EmptyState, PageLoader,
+  Button, EmptyState, ErrorState, PageHeader, Section, Select, SkeletonLines,
   Tabs, TabList, Tab,
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
@@ -38,32 +38,32 @@ const PENDING_KIND_ICON = {
 const TYPE_CONFIG = {
   bid_received:              { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   bid_placed:                { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
-  auction_won:               { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/auctions" },
+  auction_won:               { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
   auction_lost:              { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
-  auction_outbid:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/auctions" },
+  auction_outbid:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
   watchlist_rider_auction:   { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
-  transfer_offer_received:   { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/transfers" },
-  transfer_offer_accepted:   { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/transfers" },
-  transfer_offer_rejected:   { Icon: XIcon,            color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/transfers" },
+  transfer_offer_received:   { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/transfers" },
+  transfer_offer_accepted:   { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/transfers" },
+  transfer_offer_rejected:   { Icon: XIcon,            color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/transfers" },
   transfer_offer_withdrawn:  { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/transfers" },
   transfer_counter:          { Icon: ExchangeIcon,     color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
-  transfer_interest:         { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/transfers" },
+  transfer_interest:         { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/transfers" },
   watchlist_rider_listed:    { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
   // #2524: rytteren er væk (slettet/forladt spillet) — ingen deep-link ind i en
   // rytterprofil der ikke findes længere, kun ind i selve ønskelisten.
   watchlist_departed:        { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/watchlist" },
-  contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/team" },
+  contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team" },
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
   race_result:               { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
   stage_result:              { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
-  season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/dashboard" },
+  season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/dashboard" },
   season_ended:              { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/seasons" },
-  salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning-bg0/8 border-cz-warning/15", link: "/finance" },
-  sponsor_paid:              { Icon: CoinIcon,         color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/finance" },
-  loan_created:              { Icon: CoinIcon,         color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/finance" },
-  emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/finance" },
-  loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/finance" },
-  board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/board" },
+  salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/finance" },
+  sponsor_paid:              { Icon: CoinIcon,         color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/finance" },
+  loan_created:              { Icon: CoinIcon,         color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/finance" },
+  emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
+  loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/finance" },
+  board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/board" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
@@ -182,6 +182,10 @@ export default function NotificationsPage() {
   // Mine tab
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(true);
+  // #2849 bølge 6: manglende fejltilstand (audit-fund #5) — supabase-fejl faldt
+  // tidligere tavst tilbage til en tom liste (data || []), umuligt at skelne fra
+  // "ingen notifikationer". ErrorState + retry gør fejlen synlig.
+  const [notifLoadError, setNotifLoadError] = useState(false);
   const [mineFilter, setMineFilter] = useState("all");
   const [markingAll, setMarkingAll] = useState(false);
   const [expandedAggregates, setExpandedAggregates] = useState(() => new Set());
@@ -191,6 +195,7 @@ export default function NotificationsPage() {
   const [events, setEvents] = useState([]);
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
+  const [feedLoadError, setFeedLoadError] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
 
   // Skal handles tab — kanonisk "kræver handling"-summary (#271 Slice A).
@@ -229,27 +234,31 @@ export default function NotificationsPage() {
 
   async function loadNotifications() {
     setNotifLoading(true);
+    setNotifLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setNotifLoading(false); return; }
     userIdRef.current = user.id;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200);
+    if (error) { setNotifLoadError(true); setNotifLoading(false); return; }
     setNotifications(data || []);
     setNotifLoading(false);
   }
 
   async function loadFeed() {
     setFeedLoading(true);
-    const { data } = await supabase
+    setFeedLoadError(false);
+    const { data, error } = await supabase
       .from("activity_feed")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(100);
+    if (error) { setFeedLoadError(true); setFeedLoading(false); setFeedLoaded(true); return; }
     setEvents(data || []);
     setFeedLoading(false);
     setFeedLoaded(true);
@@ -358,21 +367,23 @@ export default function NotificationsPage() {
   ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-          <p className="text-cz-3 text-sm">
-            {tab === "mine"
-              ? t("page.subtitleMine", { count: unreadCount })
-              : tab === "skal_handles"
-                ? t("page.subtitleHandle", { count: pending.counts.total })
-                : t("page.subtitleLeague")}
-          </p>
-        </div>
-        {tab === "mine" && (
-          <div className="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto">
+    <div className="max-w-4xl mx-auto">
+      {/* #2849 bølge 6: kanonisk PageHeader. actions-slotten bærer "marker alle
+          læst" (secondary) + "slet læste" (danger) uændret — bevidst afvigelse
+          fra action-cluster-kontraktens "max 1 select + 1 primær knap", samme
+          præcedens som Activity/Auctions (bølge 1-2): ingen gold primary her,
+          kun vedligeholds-utility der allerede fandtes. */}
+      <PageHeader
+        title={t("page.title")}
+        subtitle={
+          tab === "mine"
+            ? t("page.subtitleMine", { count: unreadCount })
+            : tab === "skal_handles"
+              ? t("page.subtitleHandle", { count: pending.counts.total })
+              : t("page.subtitleLeague")
+        }
+        actions={tab === "mine" ? (
+          <>
             {unreadCount > 0 && (
               <Button variant="secondary" size="sm" onClick={markAllRead}
                 loading={markingAll} disabled={markingAll}>
@@ -384,9 +395,9 @@ export default function NotificationsPage() {
                 {t("actions.deleteRead")}
               </Button>
             )}
-          </div>
-        )}
-      </div>
+          </>
+        ) : null}
+      />
 
       {/* Primary tabs */}
       <Tabs value={tab} onChange={setTab} className="mb-4">
@@ -410,34 +421,48 @@ export default function NotificationsPage() {
 
       {tab === "mine" ? (
         <>
-          {/* Mine — category filters */}
-          <div className="flex gap-1.5 mb-5 flex-wrap">
-            {[
-              { key: "all",       label: t("filter.all",    { count: notifications.length }) },
-              { key: "unread",    label: t("filter.unread", { count: unreadCount }) },
-              { key: "auctions",  label: t("filter.auctions") },
-              { key: "transfers", label: t("filter.transfers") },
-              { key: "board",     label: t("filter.board") },
-              { key: "finance",   label: t("filter.finance") },
-            ].map(f => (
-              <button key={f.key} onClick={() => setMineFilter(f.key)}
-                className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-colors border
-                  ${mineFilter === f.key
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-                {f.label}
-              </button>
-            ))}
+          {/* Mine — kategori-filter. #2849 bølge 6: ét filter-idiom på siden
+              (audit-fund #3) — ui/Select afløser den håndrullede pill-knap-række;
+              samme idiom genbruges i Ligaen-fanens feed-filter nedenfor. De tre
+              PRIMÆRE faner (Mine/Skal handles/Ligaen) forbliver ui/Tabs ovenfor,
+              da de skifter hele indholdssamlingen (navigation), mens dette blot
+              indsnævrer den samme liste (filter) — Select matcher T2-filterbarens
+              etablerede recept for præcis den forskel. */}
+          <div className="mb-4">
+            <Select
+              size="sm"
+              aria-label={t("filter.mineSelectLabel")}
+              value={mineFilter}
+              onChange={e => setMineFilter(e.target.value)}
+              className="w-full sm:w-56"
+            >
+              <option value="all">{t("filter.all", { count: notifications.length })}</option>
+              <option value="unread">{t("filter.unread", { count: unreadCount })}</option>
+              <option value="auctions">{t("filter.auctions")}</option>
+              <option value="transfers">{t("filter.transfers")}</option>
+              <option value="board">{t("filter.board")}</option>
+              <option value="finance">{t("filter.finance")}</option>
+            </Select>
           </div>
 
           {notifLoading ? (
-            <PageLoader />
+            <Section><SkeletonLines lines={5} /></Section>
+          ) : notifLoadError ? (
+            <Section role="alert">
+              <ErrorState
+                description={t("error.notifications")}
+                action={<Button size="sm" variant="secondary" onClick={loadNotifications}>{t("error.retry")}</Button>}
+              />
+            </Section>
           ) : filteredNotifs.length === 0 ? (
-            <EmptyState
-              icon={<BellIcon size={32} />}
-              title={mineFilter === "unread" ? t("empty.noneUnread") : t("empty.noneInCategory")}
-            />
+            <Section>
+              <EmptyState
+                icon={<BellIcon size={32} />}
+                title={mineFilter === "unread" ? t("empty.noneUnread") : t("empty.noneInCategory")}
+              />
+            </Section>
           ) : (
+            <Section>
             <div className="flex flex-col gap-2">
               {groupNotifications(filteredNotifs).map(entry => {
                 if (entry.kind === "single") {
@@ -528,7 +553,7 @@ export default function NotificationsPage() {
                         flex-shrink-0 mt-0.5 relative ${config.color}`}>
                         {AggIcon ? <AggIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                         <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
-                          bg-cz-accent text-cz-on-accent text-[10px] font-bold flex items-center justify-center leading-none">
+                          bg-cz-accent text-cz-on-accent text-3xs font-bold flex items-center justify-center leading-none">
                           {entry.count > 99 ? "99+" : entry.count}
                         </span>
                       </div>
@@ -584,19 +609,23 @@ export default function NotificationsPage() {
                 );
               })}
             </div>
+            </Section>
           )}
         </>
       ) : tab === "skal_handles" ? (
         <>
           {pendingLoading && !pendingLoaded ? (
-            <PageLoader />
+            <Section><SkeletonLines lines={5} /></Section>
           ) : pending.counts.total === 0 ? (
-            <EmptyState
-              icon={<CheckIcon size={32} />}
-              title={t("empty.noPending")}
-              description={t("empty.noPendingHint")}
-            />
+            <Section>
+              <EmptyState
+                icon={<CheckIcon size={32} />}
+                title={t("empty.noPending")}
+                description={t("empty.noPendingHint")}
+              />
+            </Section>
           ) : (
+            <Section>
             <div className="flex flex-col gap-2">
               {pendingItems.map(item => {
                 const PendingIcon = PENDING_KIND_ICON[item.kind];
@@ -617,37 +646,46 @@ export default function NotificationsPage() {
                 );
               })}
             </div>
+            </Section>
           )}
         </>
       ) : (
         <>
-          {/* Ligaen — feed filters */}
-          <div className="flex gap-1.5 mb-5 flex-wrap">
-            {[
-              { key: "all",       label: t("filter.all", { count: events.length }) },
-              { key: "auctions",  label: t("filter.auctions") },
-              { key: "transfers", label: t("filter.transfers") },
-              { key: "season",    label: t("filter.season") },
-            ].map(f => (
-              <button key={f.key} onClick={() => setFeedFilter(f.key)}
-                className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-colors border
-                  ${feedFilter === f.key
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-                {f.label}
-              </button>
-            ))}
+          {/* Ligaen — feed-filter, samme idiom (ui/Select) som Mine-fanen ovenfor. */}
+          <div className="mb-4">
+            <Select
+              size="sm"
+              aria-label={t("filter.feedSelectLabel")}
+              value={feedFilter}
+              onChange={e => setFeedFilter(e.target.value)}
+              className="w-full sm:w-56"
+            >
+              <option value="all">{t("filter.all", { count: events.length })}</option>
+              <option value="auctions">{t("filter.auctions")}</option>
+              <option value="transfers">{t("filter.transfers")}</option>
+              <option value="season">{t("filter.season")}</option>
+            </Select>
           </div>
 
           {feedLoading ? (
-            <PageLoader />
+            <Section><SkeletonLines lines={5} /></Section>
+          ) : feedLoadError ? (
+            <Section role="alert">
+              <ErrorState
+                description={t("error.feed")}
+                action={<Button size="sm" variant="secondary" onClick={loadFeed}>{t("error.retry")}</Button>}
+              />
+            </Section>
           ) : filteredEvents.length === 0 ? (
-            <EmptyState
-              icon={<FlagIcon size={32} aria-hidden="true" />}
-              title={t("empty.noFeed")}
-              description={t("empty.noFeedHint")}
-            />
+            <Section>
+              <EmptyState
+                icon={<FlagIcon size={32} aria-hidden="true" />}
+                title={t("empty.noFeed")}
+                description={t("empty.noFeedHint")}
+              />
+            </Section>
           ) : (
+            <Section>
             <div className="flex flex-col gap-2">
               {filteredEvents.map((event) => {
                 const cfg = EVENT_CONFIG[event.type] || { Icon: null, color: "text-cz-2" };
@@ -687,6 +725,7 @@ export default function NotificationsPage() {
                 );
               })}
             </div>
+            </Section>
           )}
         </>
       )}

@@ -6,6 +6,7 @@ import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
+import { StarIcon, FlagIcon, ChevronRightIcon } from "../ui";
 import { dateToOrdinal, formatRaceDateLabel, statusMeta, riderShortName } from "./plannerShared";
 
 export default function MobileLanes({ riders, races, filter, today, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider }) {
@@ -33,8 +34,8 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
   return (
     <div className="flex flex-col gap-3">
       {planningTarget && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-cz border border-cz-accent-t bg-cz-subtle text-[11px] text-cz-1">
-          <i className="ti ti-target-arrow text-[13px] text-cz-accent-t" aria-hidden="true" />
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-cz border border-cz-accent-t bg-cz-subtle text-2xs text-cz-1">
+          <FlagIcon size={13} className="text-cz-accent-t" aria-hidden="true" />
           <span>{t("planningTowards.label", { race: planningTarget.name, date: formatRaceDateLabel(planningTarget, months) })}</span>
         </div>
       )}
@@ -48,8 +49,8 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
               className={`shrink-0 min-h-[44px] px-3 py-1.5 rounded-cz border text-left hover:bg-cz-subtle ${isTarget || isSelected ? "border-cz-accent-t bg-cz-subtle" : "border-cz-border bg-cz-card"}`}
               onClick={() => onSelectRace(r.id)}
             >
-              <div className="text-[11px] text-cz-1 font-medium whitespace-nowrap">{r.name}</div>
-              <div className="text-[9.5px] text-cz-2">{formatRaceDateLabel(r, months)} · {t(`terrain.${r.terrain}`)}</div>
+              <div className="text-2xs text-cz-1 font-medium whitespace-nowrap">{r.name}</div>
+              <div className="text-3xs text-cz-2">{formatRaceDateLabel(r, months)} · {t(`terrain.${r.terrain}`)}</div>
             </button>
           );
         })}
@@ -73,7 +74,7 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
               onClick={() => onSelectRider(rd.id)}
             >
               <span className="w-7 shrink-0 flex items-center justify-center">
-                {rd.nationality ? <Flag code={rd.nationality} className="text-[14px]" /> : <span className="font-mono text-[10px] text-cz-2">—</span>}
+                {rd.nationality ? <Flag code={rd.nationality} className="text-[14px]" /> : <span className="font-mono text-3xs text-cz-2">—</span>}
               </span>
               {/* #2447: OVR-badge farvet efter samme evne-gradient som alle andre
                   rating-visninger (statStyle, SSOT) — den gamle faste --text-1/accent-
@@ -110,11 +111,13 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
                   #2455: et forslag erstatter status-glyffen med ✦ (samme princip som
                   desktop) indtil manageren har accepteret/ændret mindst én peak. */}
               {hasSuggestion ? (
-                <span className="text-[9.5px] shrink-0" style={{ color: "rgb(var(--accent-t))" }} title={t("assistant.badge")}>✦</span>
+                <span className="shrink-0 text-cz-accent-t" title={t("assistant.badge")}>
+                  <StarIcon size={11} aria-hidden="true" />
+                </span>
               ) : chip && (
-                <span className="text-[9.5px] shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
+                <span className="text-3xs shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
               )}
-              <i className="ti ti-chevron-right text-[16px] text-cz-3 shrink-0" aria-hidden="true" />
+              <ChevronRightIcon size={16} className="text-cz-3 shrink-0" aria-hidden="true" />
             </button>
           );
         })}

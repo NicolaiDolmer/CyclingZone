@@ -14,6 +14,7 @@ import { sampleFormCurves } from "../../lib/plannerCurve";
 import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
+import { StarIcon, FlagIcon } from "../ui";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
@@ -124,8 +125,8 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
     <div>
       {/* Fast indikator-strip: kun synlig mens et peak-token trækkes/vælges (item 2). */}
       {planningTarget && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-cz-border bg-cz-subtle text-[11px] text-cz-1">
-          <i className="ti ti-target-arrow text-[13px] text-cz-accent-t" aria-hidden="true" />
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-cz-border bg-cz-subtle text-2xs text-cz-1">
+          <FlagIcon size={13} className="text-cz-accent-t" aria-hidden="true" />
           <span>{t("planningTowards.label", { race: planningTarget.name, date: formatRaceDateLabel(planningTarget, months) })}</span>
         </div>
       )}
@@ -175,7 +176,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                     <rect x={rx - w / 2} y={AXIS - 14} width={w} height="12" rx="2"
                       fill={CZ.card} stroke={active ? CZ.goldDeep : CZ.border} strokeWidth="0.8" opacity="0.95" />
                   )}
-                  <text x={rx} y={AXIS - 5} textAnchor="middle" fontSize={emphasized ? 9 : 8}
+                  <text x={rx} y={AXIS - 5} textAnchor="middle" fontSize={10}
                     fill={active ? CZ.goldDeep : emphasized ? CZ.t2 : CZ.t3}
                     fontWeight={active ? 600 : 400}
                     style={{ fontFamily: "Inter Tight, monospace" }}>
@@ -212,7 +213,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
       {nowOrd != null && (
         <g>
           <line x1={x(nowOrd)} y1={AXIS - 4} x2={x(nowOrd)} y2={H} stroke={CZ.goldDeep} strokeWidth="1.4" />
-          <text x={x(nowOrd) + 3} y={AXIS - 22} fontSize="9" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>{t("today").toUpperCase()}</text>
+          <text x={x(nowOrd) + 3} y={AXIS - 22} fontSize="10" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>{t("today").toUpperCase()}</text>
           <circle cx={x(nowOrd)} cy={AXIS - 4} r="2.5" fill={CZ.goldDeep} />
         </g>
       )}
@@ -274,21 +275,21 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
               onClick={() => onSelectRider(rd.id)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRider(rd.id); } }}
             >{riderShortName(rd)}</text>
-            <text x="50" y={y0 + 39} fontSize="10.5" fill={CZ.t2} style={{ fontFamily: "'DM Sans', sans-serif" }}>{typeLabel}</text>
-            {rd.isAcademy && <text x="50" y={y0 + 52} fontSize="8.5" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>◆ {t("academy").toUpperCase()}</text>}
+            <text x="50" y={y0 + 39} fontSize="10" fill={CZ.t2} style={{ fontFamily: "'DM Sans', sans-serif" }}>{typeLabel}</text>
+            {rd.isAcademy && <text x="50" y={y0 + 52} fontSize="10" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>◆ {t("academy").toUpperCase()}</text>}
             {/* #2447: OVR-badge farvet efter samme evne-gradient (statColor/statTextColor,
                 SSOT for ALLE rating-visninger) i stedet for en fast ink/gold-kombination
                 der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på
                 hvid bund). */}
             <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr)} />
             <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr)} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
-            <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="7.5" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
+            <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="10" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
 
             {/* Baseline */}
             <line x1={CX} y1={yFor(baseline)} x2={x(endOrd)} y2={yFor(baseline)} stroke={CZ.border} strokeWidth="1" strokeDasharray="2 3" />
 
             {peaks.length === 0 ? (
-              <text x={x((startOrd + endOrd) / 2)} y={yFor(baseline) - 6} textAnchor="middle" fontSize="10.5" fill={CZ.t3} style={{ fontFamily: "'DM Sans', sans-serif" }}>{t("lane.noPeaks")}</text>
+              <text x={x((startOrd + endOrd) / 2)} y={yFor(baseline) - 6} textAnchor="middle" fontSize="10" fill={CZ.t3} style={{ fontFamily: "'DM Sans', sans-serif" }}>{t("lane.noPeaks")}</text>
             ) : (
               <>
                 {/* Build/taper-skygge (optakts-vinduet) */}
@@ -320,8 +321,17 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                           onPointerDown={(e) => { if (!p.locked) { e.currentTarget.setPointerCapture?.(e.pointerId); setDrag({ planId: p.id, riderId: rd.id, previewOrd: (p.startO + p.endO) / 2 }); } }}
                         />
                       ))}
-                      {p.locked && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="7.5" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{t("status.locked").toUpperCase()}</text>}
-                      {p.isSuggestion && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="8" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }} aria-hidden="true">✦</text>}
+                      {p.locked && <text x={bx + bw / 2} y={top + 8} textAnchor="middle" fontSize="10" fill={CZ.t2} style={{ fontFamily: "Inter Tight, monospace" }}>{t("status.locked").toUpperCase()}</text>}
+                      {/* #2849 bølge 6: ✦-emoji erstattet af StarIcon (stroke-ikonsæt,
+                          audit-fund F9) — samme stjerne-sti som ui/icons/StarIcon,
+                          indlejret via foreignObject (samme mønster som Flag ovenfor). */}
+                      {p.isSuggestion && (
+                        <foreignObject x={bx + bw / 2 - 6} y={top - 1} width="12" height="12" pointerEvents="none">
+                          <div xmlns="http://www.w3.org/1999/xhtml" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", color: CZ.goldDeep }}>
+                            <StarIcon size={10} aria-hidden="true" />
+                          </div>
+                        </foreignObject>
+                      )}
                     </g>
                   );
                 })}
@@ -350,9 +360,20 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                   strokeWidth="1" strokeDasharray={hasSuggestion ? "2 2" : undefined}
                   opacity={chip.tone === "good" && !hasSuggestion ? 0.92 : 1}
                 />
-                <text x={rx0 + 9} y={y0 + 52.5} fontSize="8.5" fill={hasSuggestion ? CZ.goldDeep : (chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep)} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  {hasSuggestion ? `✦ ${t("assistant.badge")}` : `${chip.glyph} ${t(`status.${chip.key}`)}`}
-                </text>
+                {hasSuggestion ? (
+                  <foreignObject x={rx0} y={y0 + 40} width="118" height="18" pointerEvents="none">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style={{
+                      display: "flex", alignItems: "center", gap: "3px", height: "100%",
+                      paddingLeft: "9px", fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: CZ.goldDeep,
+                    }}>
+                      <StarIcon size={10} aria-hidden="true" />{t("assistant.badge")}
+                    </div>
+                  </foreignObject>
+                ) : (
+                  <text x={rx0 + 9} y={y0 + 52.5} fontSize="10" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    {chip.glyph} {t(`status.${chip.key}`)}
+                  </text>
+                )}
               </g>
             )}
           </g>

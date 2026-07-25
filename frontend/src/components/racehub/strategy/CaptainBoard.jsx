@@ -1,7 +1,8 @@
 // Race Hub S3 — kaptajn 1/2/3 pr. terræn-bucket. Rangordnet liste (op til 3) pr.
 // bucket med ÆGTE egnethedsdata (delt FitBar mod bucket-suitability) + auto-foreslå.
 import { useTranslation } from "react-i18next";
-import { Select } from "../../ui";
+import { Select, Section, SectionHeader } from "../../ui";
+import { ArrowUpIcon, ArrowDownIcon, XIcon } from "../../ui/icons/index.jsx";
 import FitBar from "../FitBar.jsx";
 import { TERRAIN_BUCKETS, moveInList, toggleInList, autoSuggestCaptains } from "../../../lib/strategyLogic.js";
 
@@ -14,9 +15,9 @@ export default function CaptainBoard({ roster, value, onChange }) {
   const setBucket = (bucket, list) => onChange({ ...value, [bucket]: list });
 
   return (
-    <section className="border border-cz-border rounded-cz bg-cz-card p-4 mb-4">
-      <h2 className="text-sm font-semibold text-cz-1">{t("strategy.captains.title")}</h2>
-      <p className="text-2xs text-cz-3 mt-0.5 mb-3">{t("strategy.captains.help")}</p>
+    <Section>
+      <SectionHeader title={t("strategy.captains.title")} className="mb-1" />
+      <p className="text-2xs text-cz-3 mb-3">{t("strategy.captains.help")}</p>
 
       <div className="grid sm:grid-cols-2 gap-3">
         {TERRAIN_BUCKETS.map((bucket) => {
@@ -45,13 +46,16 @@ export default function CaptainBoard({ roster, value, onChange }) {
                         <span className="flex items-center gap-0.5">
                           <button type="button" aria-label={t("strategy.aChain.up")} disabled={i === 0}
                             onClick={() => setBucket(bucket, moveInList(list, i, -1))}
-                            className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-0.5 leading-none">↑</button>
+                            className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-0.5 leading-none">
+                            <ArrowUpIcon size={13} aria-hidden="true" /></button>
                           <button type="button" aria-label={t("strategy.aChain.down")} disabled={i === list.length - 1}
                             onClick={() => setBucket(bucket, moveInList(list, i, 1))}
-                            className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-0.5 leading-none">↓</button>
+                            className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-0.5 leading-none">
+                            <ArrowDownIcon size={13} aria-hidden="true" /></button>
                           <button type="button" aria-label={t("strategy.aChain.remove")}
                             onClick={() => setBucket(bucket, toggleInList(list, id))}
-                            className="text-cz-3 hover:text-cz-danger px-0.5 text-base leading-none">×</button>
+                            className="text-cz-3 hover:text-cz-danger px-0.5 leading-none">
+                            <XIcon size={13} aria-hidden="true" /></button>
                         </span>
                       </li>
                     );
@@ -70,6 +74,6 @@ export default function CaptainBoard({ roster, value, onChange }) {
           );
         })}
       </div>
-    </section>
+    </Section>
   );
 }

@@ -42,7 +42,11 @@ export function usePlanner(seasonNumber = null) {
     try {
       const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
       const res = await fetch(`${API}/api/peak-plans/board${qs}`, { headers });
-      if (!res.ok) { setLoading(false); return; }
+      // #2849 bølge 6: både !res.ok og netværks-catch returnerede tavst, så
+      // `error` aldrig blev sat — planlæggeren degraderede til en tom side uden
+      // besked (audit-fund F5, tavs degradering). Nu surfacer begge grene, så
+      // sidens ErrorState + retry rent faktisk kan rendere.
+      if (!res.ok) { setError("http"); setLoading(false); return; }
       const data = await res.json();
       setEnabled(Boolean(data.enabled));
       if (data.enabled) {
@@ -58,7 +62,7 @@ export function usePlanner(seasonNumber = null) {
       }
       setError(null);
     } catch {
-      /* netværk — behold tidligere state */
+      setError("network"); // behold tidligere board-state, men vis fejlen
     } finally {
       setLoading(false);
     }

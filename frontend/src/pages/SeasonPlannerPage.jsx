@@ -4,7 +4,7 @@
 // en tom-state (samme kill-switch-mønster som Scouting/Facilities).
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PageLoader, EmptyState } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Section, Button, StarIcon, GripVerticalIcon } from "../components/ui";
 import { usePlanner } from "../lib/usePlanner";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
@@ -15,12 +15,28 @@ function LegendItem({ children }) {
   return <span className="flex items-center gap-1.5">{children}</span>;
 }
 
+// #2849 bølge 6 — DEN ene editoriale sidehoved-recipe for denne side (ejer-
+// godkendt undtagelse fra app-standard PageHeader, se PAGE_TEMPLATES.md-note).
+// Renderes identisk i disabled/error/happy-path, så der kun findes ÉN
+// font-display-fortolkning på siden (audit-fund: var 38/22/20px tre steder).
+function PlannerPageHead({ t, right }) {
+  return (
+    <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4 gap-3">
+      <div className="min-w-0">
+        <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
+        <p className="mt-[2px] text-xs text-cz-2">{t("page.subtitle")}</p>
+      </div>
+      {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
+    </div>
+  );
+}
+
 export default function SeasonPlannerPage() {
   const { t } = useTranslation("planner");
   // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
   const [seasonNumber, setSeasonNumber] = useState(null);
   const planner = usePlanner(seasonNumber);
-  const { enabled, loading, season, availableSeasons, riders, races, maxPerRider, today, leadupDays, busy } = planner;
+  const { enabled, loading, error, season, availableSeasons, riders, races, maxPerRider, today, leadupDays, busy } = planner;
 
   const [filter, setFilter] = useState("mine");
   const [selected, setSelected] = useState(null); // { mode: "race"|"rider", id }
@@ -65,9 +81,27 @@ export default function SeasonPlannerPage() {
   const onDismissSuggestion = (riderId) => runMutation(() => planner.dismissSuggestions(riderId), t("assistant.resetDone"));
 
   if (loading) return <PageLoader />;
+
+  // #2849 bølge 6 — audit-fund "L/E/F ✓/✓/÷": board-hentningen havde ingen
+  // fejl-gren (kun tavs "beholder tidligere state" i usePlanner). Kanonisk
+  // ErrorState + secondary retry, samme mønster som CalendarPage.
+  if (error) {
+    return (
+      <div className="mx-auto max-w-[1600px]">
+        <PlannerPageHead t={t} />
+        <ErrorState
+          title={t("error.title")}
+          description={t("error.description")}
+          action={<Button size="sm" variant="secondary" onClick={() => planner.refresh()}>{t("error.retry")}</Button>}
+        />
+      </div>
+    );
+  }
+
   if (!enabled) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="mx-auto max-w-[1600px]">
+        <PlannerPageHead t={t} />
         <EmptyState title={t("empty.title")} description={t("empty.description")} />
       </div>
     );
@@ -85,40 +119,39 @@ export default function SeasonPlannerPage() {
   const seasonNotReady = seasonNumber != null && !season;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4 gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
-          <p className="text-[12px] text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
-              sæson, så managere kan planlægge mod S2's program FØR den starter. */}
-          {(availableSeasons || []).length > 1 && (
-            <div className="flex border border-cz-border rounded-cz overflow-hidden text-[11px]">
-              {availableSeasons.map((s) => (
+    <div className="mx-auto max-w-[1600px]">
+      <PlannerPageHead
+        t={t}
+        right={
+          <>
+            {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
+                sæson, så managere kan planlægge mod S2's program FØR den starter. */}
+            {(availableSeasons || []).length > 1 && (
+              <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+                {availableSeasons.map((s) => (
+                  <button
+                    key={s.id}
+                    className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                    onClick={() => setSeasonNumber(s.number)}
+                  >{t("seasonMenu.option", { number: s.number })}</button>
+                ))}
+              </div>
+            )}
+            <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+              {["mine", "all"].map((f) => (
                 <button
-                  key={s.id}
-                  className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                  onClick={() => setSeasonNumber(s.number)}
-                >{t("seasonMenu.option", { number: s.number })}</button>
+                  key={f}
+                  className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                  onClick={() => setFilter(f)}
+                >{t(`filter.${f}`)}</button>
               ))}
             </div>
-          )}
-          <div className="flex border border-cz-border rounded-cz overflow-hidden text-[11px]">
-            {["mine", "all"].map((f) => (
-              <button
-                key={f}
-                className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                onClick={() => setFilter(f)}
-              >{t(`filter.${f}`)}</button>
-            ))}
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {toast && (
-        <div className={`mb-3 text-[12px] px-3 py-2 rounded-cz border ${toast.kind === "error" ? "border-cz-accent-t text-cz-accent-t" : "border-cz-border text-cz-1 bg-cz-subtle"}`} role="status">
+        <div className={`mb-3 text-xs px-3 py-2 rounded-cz border ${toast.kind === "error" ? "border-cz-accent-t text-cz-accent-t" : "border-cz-border text-cz-1 bg-cz-subtle"}`} role="status">
           {toast.text}
         </div>
       )}
@@ -134,22 +167,32 @@ export default function SeasonPlannerPage() {
           tomme-lærred-nudge (som kun vises hvis der reelt intet er, hverken
           ægte eller foreslået — fx ingen fremtidige egen-divisions-løb endnu). */}
       {hasRiders && hasSuggestions && (
-        <div className="mb-4 bg-cz-subtle border border-cz-accent-t rounded-cz p-4">
-          <div className="font-display text-[22px] leading-none text-cz-1">✦ {t("assistant.bannerTitle")}</div>
-          <p className="text-[12.5px] text-cz-2 mt-1.5">{t("assistant.bannerBody")}</p>
-        </div>
+        // #2849 bølge 6: border-color sat via inline style, ikke className —
+        // Tailwind's kompilerede rækkefølge lader .border-cz-border (Card's
+        // default) vinde over en tilføjet .border-cz-accent-t-klasse uanset
+        // className-strengens rækkefølge (verificeret i dist-bundlen); inline
+        // style er den eneste cascade-sikre override uden at røre Card selv.
+        <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
+          <div className="flex items-start gap-2">
+            <StarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
+            <div>
+              <p className="text-[15px] font-semibold text-cz-1">{t("assistant.bannerTitle")}</p>
+              <p className="mt-1 text-[13px] text-cz-2">{t("assistant.bannerBody")}</p>
+            </div>
+          </div>
+        </Section>
       )}
 
       {hasRiders && !hasSuggestions && totalRealPeaks === 0 && (
-        <div className="mb-4 bg-cz-subtle border border-cz-border rounded-cz p-4">
-          <div className="font-display text-[22px] leading-none text-cz-1">{t("firstRun.title")}</div>
-          <p className="text-[12.5px] text-cz-2 mt-1.5">{t("firstRun.body", { max: maxPerRider })}</p>
-          <p className="text-[11.5px] text-cz-3 mt-1.5">{t("firstRun.cta")}</p>
-        </div>
+        <Section className="mb-[14px] bg-cz-subtle">
+          <p className="text-[15px] font-semibold text-cz-1">{t("firstRun.title")}</p>
+          <p className="mt-1 text-[13px] text-cz-2">{t("firstRun.body", { max: maxPerRider })}</p>
+          <p className="mt-1 text-2xs text-cz-3">{t("firstRun.cta")}</p>
+        </Section>
       )}
 
       {hasRiders && (
-        <>
+        <div className="flex flex-col gap-[14px]">
           {/* Desktop master-canvas */}
           <div className="hidden md:block bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             <MasterCanvas
@@ -176,12 +219,12 @@ export default function SeasonPlannerPage() {
           </div>
 
           {/* Legende */}
-          <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1.5 mt-2 text-[10.5px] text-cz-2">
+          <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1.5 text-3xs text-cz-2">
             <LegendItem><svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="rgb(var(--accent-t))" strokeWidth="1.5" strokeDasharray="3 2" /></svg>{t("legend.potential")}</LegendItem>
             <LegendItem><svg width="22" height="10" aria-hidden="true"><rect x="0" y="1" width="22" height="8" fill="var(--text-1)" opacity="0.16" /><line x1="0" y1="1.5" x2="22" y2="1.5" stroke="var(--text-1)" strokeWidth="1.5" /></svg>{t("legend.realized")}</LegendItem>
             <LegendItem><svg width="18" height="12" aria-hidden="true"><rect x="2" y="1" width="14" height="10" fill="var(--text-1)" opacity="0.09" /></svg>{t("legend.block")}</LegendItem>
             <LegendItem><span className="w-2 h-2 rounded-full" style={{ background: "rgb(var(--accent))", border: "1px solid rgb(var(--accent-t))" }} />{t("legend.token")}</LegendItem>
-            <LegendItem><i className="ti ti-grip-vertical text-[13px] text-cz-accent-t" aria-hidden="true" />{t("legend.drag")}</LegendItem>
+            <LegendItem><GripVerticalIcon size={13} className="text-cz-accent-t" aria-hidden="true" />{t("legend.drag")}</LegendItem>
           </div>
 
           {/* #2568: scannbar sæson-løbs-liste — den kanoniske "hvilke løb, hvornår"-
@@ -194,22 +237,20 @@ export default function SeasonPlannerPage() {
 
           {/* Kontekst-skuffe */}
           {(selectedRace || selectedRider) && (
-            <div className="mt-4">
-              <PlannerDrawer
-                mode={selectedRace ? "race" : "rider"}
-                race={selectedRace} rider={selectedRider}
-                riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
-                busy={busy}
-                onClose={() => setSelected(null)}
-                onCreatePeak={onCreatePeak}
-                onRemovePeak={onRemovePeak}
-                onAccept={onAccept}
-                onAcceptSuggestion={onAcceptSuggestion}
-                onDismissSuggestion={onDismissSuggestion}
-              />
-            </div>
+            <PlannerDrawer
+              mode={selectedRace ? "race" : "rider"}
+              race={selectedRace} rider={selectedRider}
+              riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
+              busy={busy}
+              onClose={() => setSelected(null)}
+              onCreatePeak={onCreatePeak}
+              onRemovePeak={onRemovePeak}
+              onAccept={onAccept}
+              onAcceptSuggestion={onAcceptSuggestion}
+              onDismissSuggestion={onDismissSuggestion}
+            />
           )}
-        </>
+        </div>
       )}
     </div>
   );

@@ -25,7 +25,9 @@
     "transfers": "Transfers",
     "board": "Bestyrelse",
     "finance": "Finans",
-    "season": "Sæson"
+    "season": "Sæson",
+    "mineSelectLabel": "Filtrér notifikationer",
+    "feedSelectLabel": "Filtrér aktivitetsfeed"
   },
   "empty": {
     "noneUnread": "Ingen ulæste notifikationer",
@@ -76,5 +78,10 @@
     "seasonEnded": "Sæson {number} afsluttet",
     "raceResultsApproved": "Resultater godkendt: {race}",
     "fallbackLabel": "{type}"
+  },
+  "error": {
+    "notifications": "Kunne ikke indlæse dine notifikationer. Intet gik tabt. Prøv igen.",
+    "feed": "Kunne ikke indlæse liga-feedet. Intet gik tabt. Prøv igen.",
+    "retry": "Prøv igen"
   }
 }

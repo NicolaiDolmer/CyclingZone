@@ -13,10 +13,21 @@
 // TONE: al copy i public/locales/{en,da}/scouting.json er plain/factual v1
 // (spec-beslutning: verdict-tone-session med ejer FØR ship er stadig åben,
 // jf. spec §Åbne detaljer) — review pending, ingen påstået lore/tone endnu.
+//
+// #2849 bølge 6 (design-audit 2026-07-23, "ScoutingCentral"-rækken): flyttet på
+// T1 (max-w-4xl, ingen egen container-padding — Layout leverer den globale
+// gutter). Den lokale SectionCard-dublet er slettet til fordel for ui/Section +
+// SectionHeader; alle ad hoc font-display-kort-titler ("eget editorial
+// sub-brand") er normaliseret til kanonisk SectionHeader. Sidens EGET
+// editoriale sidehoved (Bebas + border-b-bånd) er BEVARET uændret — det er
+// samme ejer-godkendte opskrift som Klub/SeasonPlanner, ikke en ny fortolkning.
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { EmptyState, PageLoader, Button, Select } from "../components/ui";
+import {
+  EmptyState, ErrorState, PageLoader, Button, Select,
+  Section, SectionStack, SectionHeader, ChevronRightIcon,
+} from "../components/ui";
 import { getSession } from "../lib/supabase";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
@@ -25,22 +36,6 @@ import { ISO2_TO_IOC } from "../lib/countryCodes";
 
 const API = import.meta.env.VITE_API_URL;
 const COUNTRY_CODES = Object.keys(ISO2_TO_IOC);
-
-function SectionCard({ children, className = "" }) {
-  return (
-    <div className={`bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px] ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function Eyebrow({ children }) {
-  return (
-    <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
-      {children}
-    </span>
-  );
-}
 
 // Lazy rytternavn-opslag: ét batch-kald (POST /api/riders/names) for nye ids,
 // cached for sidens levetid.
@@ -80,11 +75,11 @@ function useRiderNames(ids) {
 function ScoutCard({ scout, capacity, t }) {
   const isDefault = scout?.isDefault !== false;
   return (
-    <SectionCard>
-      <Eyebrow>{t("scoutCard.eyebrow")}</Eyebrow>
+    <Section>
+      <SectionHeader title={t("scoutCard.eyebrow")} />
       {isDefault ? (
         <>
-          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
+          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
             {t("scoutCard.defaultTitle")}
           </h3>
           <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose">
@@ -93,7 +88,7 @@ function ScoutCard({ scout, capacity, t }) {
         </>
       ) : (
         <>
-          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
+          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
             {scout.name}
           </h3>
           <p className="text-cz-2 text-[12.5px] mt-1 mb-0">
@@ -101,34 +96,30 @@ function ScoutCard({ scout, capacity, t }) {
           </p>
         </>
       )}
-      <p className="text-cz-3 text-[11px] mt-3 pt-2.5 border-t border-cz-border mb-0">
+      <p className="text-cz-3 text-2xs mt-3 pt-2.5 border-t border-cz-border mb-0">
         {t("scoutCard.capacityLabel", { capacity })}
       </p>
       {/* #2580: forebygger "byggede niveau 1, forventede 2 missioner"-forvirringen —
           kapacitet 2 kræver spejderens overall≥80, ikke blot en købt facilitets-tier. */}
       {capacity < 2 && (
-        <p className="text-cz-3 text-[10.5px] mt-1 mb-0">{t("scoutCard.capacityHintLocked")}</p>
+        <p className="text-cz-3 text-3xs mt-1 mb-0">{t("scoutCard.capacityHintLocked")}</p>
       )}
-    </SectionCard>
+    </Section>
   );
 }
 
 function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t }) {
   if (active.length === 0) {
     return (
-      <SectionCard>
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2">
-          {t("queue.title")}
-        </h3>
+      <Section>
+        <SectionHeader title={t("queue.title")} />
         <p className="text-cz-3 text-[12.5px] m-0">{t("queue.empty")}</p>
-      </SectionCard>
+      </Section>
     );
   }
   return (
-    <SectionCard>
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
-        {t("queue.title")}
-      </h3>
+    <Section>
+      <SectionHeader title={t("queue.title")} />
       <ul className="list-none p-0 m-0 space-y-2.5">
         {active.map((a) => {
           const label = a.kind === "target"
@@ -148,11 +139,11 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
           return (
             <li key={a.id} className="flex items-center justify-between gap-3 flex-wrap border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-cz-3">
+                <span className="text-3xs font-mono uppercase tracking-[0.1em] text-cz-3">
                   {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
                 </span>
                 <p className="text-cz-1 text-[13px] m-0 mt-0.5">{label}</p>
-                <p className="text-cz-2 text-[11.5px] m-0 mt-0.5">{reportLabel}</p>
+                <p className="text-cz-2 text-2xs m-0 mt-0.5">{reportLabel}</p>
               </div>
               <Button
                 variant="ghost" size="sm"
@@ -165,7 +156,7 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
           );
         })}
       </ul>
-    </SectionCard>
+    </Section>
   );
 }
 
@@ -190,13 +181,13 @@ function TargetPoolCard({ id, name, title, subtitle, recommended, selected, onSe
         </span>
         {recommended && (
           <span
-            className="text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-cz-pill shrink-0 bg-cz-accent text-cz-on-accent"
+            className="text-3xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-cz-pill shrink-0 bg-cz-accent text-cz-on-accent"
           >
             {t("mission.form.recommended")}
           </span>
         )}
       </div>
-      <p className="text-cz-3 text-[11px] mt-1.5 mb-0 leading-snug">{subtitle}</p>
+      <p className="text-cz-3 text-2xs mt-1.5 mb-0 leading-snug">{subtitle}</p>
     </label>
   );
 }
@@ -218,11 +209,9 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
   };
 
   return (
-    <SectionCard>
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1">
-        {t("mission.form.title")}
-      </h3>
-      <p className="text-cz-2 text-[11.5px] mt-1 mb-2.5">{t("mission.form.subtitle")}</p>
+    <Section>
+      <SectionHeader title={t("mission.form.title")} />
+      <p className="text-cz-2 text-2xs mt-1 mb-2.5">{t("mission.form.subtitle")}</p>
 
       {/* #2644 del 2: targeting-valg — kontraktfrie (default/anbefalet) vs.
           ryttere på andre managers hold. */}
@@ -247,10 +236,10 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
           onSelect={() => setTargetPool("other_teams")}
         />
       </div>
-      <p className="text-cz-3 text-[11px] mt-1.5 mb-3">{t("mission.form.existenceGuarantee")}</p>
+      <p className="text-cz-3 text-2xs mt-1.5 mb-3">{t("mission.form.existenceGuarantee")}</p>
       <form onSubmit={handleSubmit} className="flex items-end gap-3 flex-wrap">
         <div>
-          <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mission.form.scopeLabel")}</label>
+          <label className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mission.form.scopeLabel")}</label>
           <Select value={scope} onChange={(e) => setScope(e.target.value)}>
             <option value="u23">{t("mission.scope.u23")}</option>
             <option value="country">{t("mission.scope.country")}</option>
@@ -259,7 +248,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
         </div>
         {needsCountry && (
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mission.form.countryLabel")}</label>
+            <label className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mission.form.countryLabel")}</label>
             <Select value={country} onChange={(e) => setCountry(e.target.value)}>
               {COUNTRY_CODES.map((code) => (
                 <option key={code} value={code}>{getCountryName(code)}</option>
@@ -272,7 +261,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
         </Button>
       </form>
       {/* Varighed/pris fra jobConfig (SSOT: backend scoutEngine.SCOUT_JOB_CONFIG); fallbacks dækker kun før første fetch. */}
-      <p className="text-cz-3 text-[10.5px] mt-2.5 mb-0">
+      <p className="text-cz-3 text-3xs mt-2.5 mb-0">
         {t("mission.form.costNote", { days: jobConfig?.missionDays ?? 14, cost: jobConfig?.missionCost ?? 6000 })}
       </p>
       {result && !result.ok && (
@@ -280,7 +269,7 @@ function MissionForm({ onSubmit, busy, jobConfig, t }) {
           {t(`error.${result.error}`, { defaultValue: t("error.failed") })}
         </p>
       )}
-    </SectionCard>
+    </Section>
   );
 }
 
@@ -288,23 +277,19 @@ function ShortlistFeed({ completed, riderNames, t }) {
   const missions = completed.filter((c) => c.kind === "mission" && c.result?.shortlist?.length);
   if (missions.length === 0) {
     return (
-      <SectionCard>
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2">
-          {t("shortlist.title")}
-        </h3>
+      <Section>
+        <SectionHeader title={t("shortlist.title")} />
         <p className="text-cz-3 text-[12.5px] m-0">{t("shortlist.empty")}</p>
-      </SectionCard>
+      </Section>
     );
   }
   return (
-    <SectionCard>
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
-        {t("shortlist.title")}
-      </h3>
+    <Section>
+      <SectionHeader title={t("shortlist.title")} />
       <ul className="list-none p-0 m-0 space-y-3">
         {missions.slice(0, 10).map((m) => (
           <li key={m.id} className="border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
-            <p className="text-cz-3 text-[11px] font-mono uppercase tracking-[0.08em] m-0">
+            <p className="text-cz-3 text-2xs font-mono uppercase tracking-[0.08em] m-0">
               {missionCriteriaLabel(m.mission_criteria, {
                 translateScope: (s) => t(`mission.scope.${s}`),
                 translateCountry: (code) => getCountryName(code),
@@ -325,10 +310,10 @@ function ShortlistFeed({ completed, riderNames, t }) {
                   <li key={riderId} className="text-cz-1 text-[13px]">
                     {riderNames[riderId] ?? t("queue.loadingRider")}
                     {statusLabel && (
-                      <span className="ms-1.5 text-[11px] text-cz-3">· {statusLabel}</span>
+                      <span className="ms-1.5 text-2xs text-cz-3">· {statusLabel}</span>
                     )}
                     {riderId === m.result.top_rider_id && (
-                      <span className="ms-1.5 text-[10px] font-mono uppercase tracking-[0.08em] text-cz-accent-t">
+                      <span className="ms-1.5 text-3xs font-mono uppercase tracking-[0.08em] text-cz-accent-t">
                         {t("shortlist.topFind")}
                       </span>
                     )}
@@ -339,7 +324,7 @@ function ShortlistFeed({ completed, riderNames, t }) {
           </li>
         ))}
       </ul>
-    </SectionCard>
+    </Section>
   );
 }
 
@@ -362,34 +347,57 @@ export default function ScoutingCentralPage() {
   }, [central]);
 
   if (central.loading) return <PageLoader />;
+
+  // #2849 bølge 6 (audit-fund "manglende fejltilstand"): en fejlet
+  // /api/scouting/central-hentning efterlod tidligere siden i en tavs
+  // tom-tilstand (scout=null, ingen kø, ingen shortlist) — umuligt at skelne
+  // fra "du har ikke startet noget endnu". Canonical ErrorState + retry (via
+  // hookens refresh) i stedet.
+  if (central.error) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <ErrorState
+          title={t("error.load.title")}
+          description={t("error.load.description")}
+          action={<Button size="sm" variant="secondary" onClick={central.refresh}>{t("error.load.retry")}</Button>}
+        />
+      </div>
+    );
+  }
+
   if (!central.enabled) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto">
         <EmptyState title={t("empty.title")} description={t("empty.description")} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4">
         <div>
           <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
           <p className="text-[12px] text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
         </div>
         {central.scout?.id && (
-          <button type="button" className="text-[12px] text-cz-2 hover:text-cz-1" onClick={() => navigate(`/staff/${central.scout.id}`)}>
-            {t("scoutCard.viewProfile")} ›
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-[12px] text-cz-2 hover:text-cz-1"
+            onClick={() => navigate(`/staff/${central.scout.id}`)}
+          >
+            {t("scoutCard.viewProfile")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </button>
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
+      <SectionStack>
         <ScoutCard scout={central.scout} capacity={central.capacity} t={t} />
         <ActiveQueue active={central.active} riderNames={riderNames} onCancel={handleCancel} cancellingId={cancellingId} jobConfig={central.jobConfig} t={t} />
         <MissionForm onSubmit={central.startMission} busy={central.busy} jobConfig={central.jobConfig} t={t} />
         <ShortlistFeed completed={central.completed} riderNames={riderNames} t={t} />
-      </div>
+      </SectionStack>
     </div>
   );
 }

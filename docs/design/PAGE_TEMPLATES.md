@@ -65,7 +65,7 @@ Rider, team, race detail. **Revised 2026-07-24 (owner): the hero is a CARD, not 
 ## Canonical states (inside a section card — chrome always renders, only the body swaps)
 - **Loading:** skeleton lines 12px tall, 12px gap, radius 4, widths echoing real content (~88/64/76/52%), accent-tinted shimmer 1.4s. Never a spinner inside cards.
 - **Empty:** `EmptyState` — dashed hairline inset; stroke icon 26px `--text-3`; title 15px/600; ONE sentence description (13px `--text-2`, sentence case, e.g. "Draft your first rider in the live auction."); ONE action = the section's primary, size sm.
-- **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost — your bids are safe."); retry = **secondary** sm ("Try again"), never gold.
+- **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost. Your bids are safe."); retry = **secondary** sm ("Try again"), never gold. **No em-dash in player-facing copy** — `scripts/tone-check-em-dash.mjs` fails the build; use a full stop, comma or colon (rule: `docs/TONE_OF_VOICE.md` §Punktuation).
 
 ## Hard don'ts
 No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions · **no arbitrary `text-[Npx]` below 12px** — `text-2xs` / `text-3xs` only (converged 2026-07-25).

@@ -69,6 +69,11 @@
     "no_active_season": "No active season right now.",
     "auth": "You need to be logged in.",
     "network": "Network error. Try again.",
-    "failed": "Something went wrong. Try again."
+    "failed": "Something went wrong. Try again.",
+    "load": {
+      "title": "Couldn't load scouting central",
+      "description": "Nothing was lost. Your scout's active jobs are still running. Try again.",
+      "retry": "Try again"
+    }
   }
 }

@@ -11,6 +11,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Section, SectionHeader, StarIcon, ExternalLinkIcon } from "../ui";
 import { racesForList, myPeakCountByRace, formatRaceDateLabel, dateToOrdinal } from "./plannerShared";
 
 // Kompakt terræn-glyf (samme sprog som MasterCanvas.TerrainGlyph, i lille format).
@@ -38,15 +39,12 @@ export default function PlannerRaceList({ riders, races, filter, today, selected
   const peakCounts = useMemo(() => myPeakCountByRace(riders), [riders]);
 
   return (
-    <section className="mt-5" aria-label={t("raceList.title")}>
-      <div className="flex items-baseline justify-between gap-3 border-b border-cz-border pb-1.5 mb-2.5">
-        <h2 className="font-display text-[22px] leading-none text-cz-1">{t("raceList.title")}</h2>
-        <span className="text-[11px] text-cz-3 font-mono shrink-0">{t("raceList.count", { count: list.length })}</span>
-      </div>
-      <p className="text-[11.5px] text-cz-2 mb-3">{t("raceList.subtitle")}</p>
+    <Section role="region" aria-label={t("raceList.title")}>
+      <SectionHeader title={t("raceList.title")} meta={t("raceList.count", { count: list.length })} />
+      <p className="mb-3 text-2xs text-cz-2">{t("raceList.subtitle")}</p>
 
       {list.length === 0 ? (
-        <p className="text-[12px] text-cz-3 py-4">{t("raceList.empty")}</p>
+        <p className="text-xs text-cz-3 py-4">{t("raceList.empty")}</p>
       ) : (
         <ul className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((r) => {
@@ -74,7 +72,7 @@ export default function PlannerRaceList({ riders, races, filter, today, selected
                           <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-cz-accent-t" title={t("raceList.mine")} aria-label={t("raceList.mine")} />
                         )}
                       </span>
-                      <span className="block text-[10.5px] text-cz-2 mt-0.5 truncate">
+                      <span className="block text-3xs text-cz-2 mt-0.5 truncate">
                         {formatRaceDateLabel(r, months)}
                         <span className="text-cz-3"> · {t(`terrain.${r.terrain}`)}</span>
                         {r.raceClass ? <span className="text-cz-3"> · {r.raceClass}</span> : null}
@@ -85,10 +83,10 @@ export default function PlannerRaceList({ riders, races, filter, today, selected
 
                   {peaks > 0 && (
                     <span
-                      className="shrink-0 text-[9.5px] font-mono text-cz-accent-t border border-cz-accent-t rounded-full px-1.5 py-0.5"
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded-cz-pill border border-cz-accent-t px-1.5 py-0.5 font-mono text-3xs text-cz-accent-t"
                       title={t("raceList.peaksHere", { count: peaks })}
                     >
-                      {peaks}✦
+                      {peaks}<StarIcon size={9} aria-hidden="true" />
                     </span>
                   )}
 
@@ -100,7 +98,7 @@ export default function PlannerRaceList({ riders, races, filter, today, selected
                     aria-label={t("raceList.viewPage", { race: r.name })}
                     title={t("raceList.viewPage", { race: r.name })}
                   >
-                    <i className="ti ti-arrow-up-right text-[16px]" aria-hidden="true" />
+                    <ExternalLinkIcon size={16} aria-hidden="true" />
                   </Link>
                 </div>
               </li>
@@ -108,6 +106,6 @@ export default function PlannerRaceList({ riders, races, filter, today, selected
           })}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }

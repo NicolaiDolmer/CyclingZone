@@ -11,7 +11,18 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { statColor, statStyle } from "../lib/statColor";
 import { ABILITY_STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
-import { EmptyState, SearchIcon, StarIcon, XIcon } from "../components/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  PageLoader,
+  Section,
+  SearchIcon,
+  StarIcon,
+  XIcon,
+} from "../components/ui";
 
 const MAX_COMPARE = 3;
 
@@ -58,7 +69,7 @@ function RiderSearch({ onSelect, excluded }) {
         value={q}
         onChange={e => setQ(e.target.value)}
         placeholder={t("compare.searchPlaceholder")}
-        className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
+        className="w-full bg-cz-subtle border border-cz-border rounded-cz px-4 py-2.5
           text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent"
       />
       {(results.length > 0 || loading) && (
@@ -76,7 +87,7 @@ function RiderSearch({ onSelect, excluded }) {
                   <p className="text-cz-1 text-sm font-medium">{r.firstname} {r.lastname}</p>
                   <p className="text-cz-3 text-xs">{r.team?.name || t("compare.teamFree")}</p>
                 </div>
-                <span className="text-cz-accent-t font-mono text-xs">
+                <span className="text-cz-accent-t font-mono tabular-nums text-xs">
                   {formatCz(getRiderMarketValue(r))}
                 </span>
               </div>
@@ -94,28 +105,52 @@ export default function RiderComparePage() {
   const scouting = useScouting();
   const [fullRiders, setFullRiders] = useState([]);
   const initialIdsRef = useRef(searchParams.get("ids") || "");
+  // #2849 bølge 6 (audit-fund): siden havde INGEN loading-UI for deep-link-hentningen
+  // (?ids=uuid1,uuid2) — kortene poppede tavst ind når fetchen landede. `loading`
+  // starter kun true når der faktisk er et deep-link at indløse, så en almindelig
+  // tom besøg (ingen ?ids=) ikke viser en unødvendig spinner-flash.
+  const [loading, setLoading] = useState(() => Boolean(searchParams.get("ids")));
+  const [loadError, setLoadError] = useState(false);
+  // Retry-token for ErrorState's "Try again" — samme mønster som PatchNotesPage.
+  const [reloadToken, setReloadToken] = useState(0);
 
   // Deep-link: load ?ids=uuid1,uuid2 on mount (snapshot — does not refetch when URL changes).
   useEffect(() => {
     const raw = initialIdsRef.current;
     if (!raw) return;
     const ids = raw.split(",").map(s => s.trim()).filter(Boolean).slice(0, MAX_COMPARE);
-    if (ids.length === 0) return;
+    if (ids.length === 0) { setLoading(false); return; }
     let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
     (async () => {
-      const { data } = await supabase
-        .from("riders")
-        .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name), ${ABILITY_SELECT}`)
-        .in("id", ids);
-      if (cancelled || !data) return;
-      const ordered = ids
-        .map(id => data.find(r => r.id === id))
-        .filter(Boolean)
-        .map(flattenAbilities);
-      setFullRiders(ordered);
+      try {
+        const { data, error } = await supabase
+          .from("riders")
+          .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name), ${ABILITY_SELECT}`)
+          .in("id", ids);
+        if (error) throw error;
+        if (cancelled) return;
+        const ordered = ids
+          .map(id => (data || []).find(r => r.id === id))
+          .filter(Boolean)
+          .map(flattenAbilities);
+        setFullRiders(ordered);
+      } catch (e) {
+        if (!cancelled) {
+          console.error("RiderComparePage: failed to load compared riders", e);
+          setLoadError(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadToken]);
+
+  function retryInitialLoad() {
+    setReloadToken(n => n + 1);
+  }
 
   // Sync URL whenever the selected riders change so the view is shareable/back-navigable.
   useEffect(() => {
@@ -150,12 +185,29 @@ export default function RiderComparePage() {
     ).id;
   }
 
+  // #2849 bølge 6 (audit-fund): side-gate med reserveret højde (PageLoader minHeight
+  // 60vh) — erstatter den manglende loading-UI der lod deep-link-kortene poppe ind
+  // tavst. Samme mønster som RacesPage/HallOfFamePage: early return FØR containeren.
+  if (loading) return <PageLoader label={t("compare.loadingAria")} />;
+
+  // Terminal, retry-bar fejl ved en fejlet deep-link-hentning — header forbliver
+  // synlig, ErrorState erstatter kun body (samme anatomi som PatchNotesPage).
+  if (loadError) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <PageHeader title={t("compare.title")} subtitle={t("compare.subtitle")} />
+        <ErrorState
+          title={t("compare.loadErrorTitle")}
+          description={t("compare.loadErrorBody")}
+          action={<Button variant="secondary" size="sm" onClick={retryInitialLoad}>{t("compare.retry")}</Button>}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">{t("compare.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("compare.subtitle")}</p>
-      </div>
+      <PageHeader title={t("compare.title")} subtitle={t("compare.subtitle")} />
 
       {/* Search */}
       {fullRiders.length < MAX_COMPARE && (
@@ -172,7 +224,7 @@ export default function RiderComparePage() {
           <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
             <div /> {/* Empty cell for label column */}
             {fullRiders.map((r) => (
-              <div key={r.id} className="bg-cz-card border border-cz-border rounded-cz p-4 text-center">
+              <Section key={r.id} className="text-center">
                 <button
                   onClick={() => removeRider(r.id)}
                   aria-label={t("common:a11y.removeFromComparison")}
@@ -184,19 +236,21 @@ export default function RiderComparePage() {
                 <p className="text-cz-3 text-xs mt-1">
                   <TeamLink id={r.team?.id} className="hover:text-cz-accent-t transition-colors">{r.team?.name || t("compare.teamFree")}</TeamLink>
                 </p>
-                <p className="font-mono font-bold mt-2 text-sm text-cz-1">
+                <p className="font-mono tabular-nums font-bold mt-2 text-sm text-cz-1">
                   {formatCz(getRiderMarketValue(r))}
                 </p>
                 {r.is_u25 && (
-                  <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info
-                    px-1.5 py-0.5 rounded mt-1 inline-block">U25</span>
+                  <span className="text-3xs uppercase bg-cz-info/20 text-cz-info
+                    px-1.5 py-0.5 rounded-cz mt-1 inline-block">U25</span>
                 )}
-              </div>
+              </Section>
             ))}
           </div>
 
-          {/* Stats comparison */}
-          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+          {/* Stats comparison — dense per-rider grid (T2 table-wrap recipe: rounded-cz
+              wrap + hairline dividers) rather than the T1 Section padding recipe, so
+              rows keep their full-bleed hairline rules edge-to-edge on the card. */}
+          <Card className="overflow-hidden">
             {/* Potentiale row */}
             {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
               <div data-testid="compare-potential-row"
@@ -213,15 +267,14 @@ export default function RiderComparePage() {
                 ))}
               </div>
             )}
-            {STATS.map((stat, idx) => {
+            {STATS.map((stat) => {
               const bestId = getBestForStat(stat.key);
               return (
                 <div key={stat.key}
-                  className={`grid items-center py-3 px-4 border-b border-cz-border last:border-0
-                    ${idx % 2 === 0 ? "bg-transparent" : ""}`}
+                  className="grid items-center py-3 px-4 border-b border-cz-border last:border-0"
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-cz-3 font-mono text-[10px] w-9 text-center">{stat.label}</span>
+                    <span className="text-cz-3 font-mono text-3xs w-9 text-center">{stat.label}</span>
                     <span className="text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</span>
                   </div>
                   {fullRiders.map((r) => {
@@ -230,8 +283,8 @@ export default function RiderComparePage() {
                     return (
                       <div key={r.id} className="px-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-cz-subtle rounded-full h-2">
-                            <div className="h-2 rounded-full transition-all duration-500"
+                          <div className="flex-1 bg-cz-subtle rounded-cz-pill h-2">
+                            <div className="h-2 rounded-cz-pill transition-all duration-500"
                               style={{
                                 width: `${Math.round(((val || 0) / 99) * 100)}%`,
                                 backgroundColor: statColor(val),
@@ -239,12 +292,12 @@ export default function RiderComparePage() {
                               }} />
                           </div>
                           {isBest ? (
-                            <span className="font-mono text-xs font-extrabold flex-shrink-0 inline-block min-w-[28px] text-center rounded px-1 py-0.5"
+                            <span className="font-mono tabular-nums text-xs font-extrabold flex-shrink-0 inline-block min-w-[28px] text-center rounded-cz px-1 py-0.5"
                               style={statStyle(val)}>
                               {val ?? "—"}
                             </span>
                           ) : (
-                            <span className="font-mono text-xs font-medium w-7 text-right flex-shrink-0"
+                            <span className="font-mono tabular-nums text-xs font-medium w-7 text-right flex-shrink-0"
                               style={{ color: statColor(val) }}>
                               {val ?? "—"}
                             </span>
@@ -256,7 +309,7 @@ export default function RiderComparePage() {
                 </div>
               );
             })}
-          </div>
+          </Card>
         </div>
       )}
     </div>

@@ -32,7 +32,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
-import { Card, Button, EmptyState, PageLoader, ErrorState, Table, Tr, Th, Td } from "../components/ui";
+import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, Table, Tr, Th, Td } from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
@@ -175,10 +175,13 @@ export default function AcademyPage() {
   // #2796: en backend-fejl efterlod `enabled` false og ramte derfor "kommer
   // snart"-grenen nedenfor — spilleren fik at vide at featuren ikke fandtes.
   // Fejl vises nu som fejl; "kommer snart" er forbeholdt et slukket flag.
+  // #2849 bølge 6: Academy stod på den editoriale 38px-header uden at være på
+  // ejer-godkendelseslisten for editorial-headers (kun Klub/ScoutingCentral/
+  // SeasonPlanner) — bragt til T1's kanoniske PageHeader (docs/design/PAGE_TEMPLATES.md).
   if (error) {
     return (
-      <div className="space-y-4">
-        <h1 className="font-display text-[38px] leading-none uppercase tracking-wide text-cz-1">{t("title")}</h1>
+      <div className="max-w-4xl mx-auto">
+        <PageHeader title={t("title")} />
         <ErrorState title={t("error.loadTitle")} description={t("error.loadBody")} />
       </div>
     );
@@ -187,42 +190,46 @@ export default function AcademyPage() {
   // Flag slukket
   if (!enabled) {
     return (
-      <div className="space-y-4">
-        <h1 className="font-display text-[38px] leading-none uppercase tracking-wide text-cz-1">{t("title")}</h1>
+      <div className="max-w-4xl mx-auto">
+        <PageHeader title={t("title")} />
         <EmptyState title={t("title")} description={t("disabledNote")} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header med saldo + slot-tæller */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[38px] leading-none uppercase tracking-wide text-cz-1">{t("title")}</h1>
-          <p className="mt-1 text-sm text-cz-2">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {balance != null && (
-            <span className="font-data text-sm tabular-nums text-cz-2">
-              {t("balance", { amount: formatMoney(balance) })}
+    <div className="max-w-4xl mx-auto">
+      {/* Saldo + slot-tæller er ren status-tekst (intet Select/Button) — samme
+          dokumenterede afvigelse fra action-cluster-kontrakten "max 1 select +
+          1 primary" som ActivityPage's lastUpdated-tidsstempel, fordi siden ikke
+          har nogen primær header-handling at vise ved siden af. */}
+      <PageHeader
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {balance != null && (
+              <span className="font-data text-sm tabular-nums text-cz-2">
+                {t("balance", { amount: formatMoney(balance) })}
+              </span>
+            )}
+            <span
+              className={`font-data text-sm tabular-nums ${isFull ? "text-cz-warning" : "text-cz-2"}`}
+              title={isFull ? t("fullTooltip", { max: slots.max }) : undefined}
+            >
+              {t("slots", { used: slots.used, max: slots.max })}
             </span>
-          )}
-          <span
-            className={`font-data text-sm tabular-nums ${isFull ? "text-cz-warning" : "text-cz-2"}`}
-            title={isFull ? t("fullTooltip", { max: slots.max }) : undefined}
-          >
-            {t("slots", { used: slots.used, max: slots.max })}
-          </span>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
+      <div className="space-y-6">
       {/* GRADUERINGS-sektion (#932) — akademiryttere der har passeret 21 og skal
           promoveres/sælges/slippes inden override-vinduets udløb. Vises kun når der
           er pending graduates (call-to-action, ikke permanent tom-tilstand). */}
       {graduations.length > 0 && (
         <section>
-          <h2 className="font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("graduationHeading")}</h2>
+          <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("graduationHeading")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {graduations.map((g) => {
               const busy = actionState[g.riderId] != null;
@@ -245,7 +252,7 @@ export default function AcademyPage() {
                     </div>
                     {days != null && (
                       <span
-                        className={`flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded ${overdue ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-accent/15 text-cz-accent-t"}`}
+                        className={`flex-shrink-0 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${overdue ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-accent/15 text-cz-accent-t"}`}
                       >
                         {overdue ? t("graduationOverdue") : t("graduationDeadline", { days })}
                       </span>
@@ -291,7 +298,7 @@ export default function AcademyPage() {
 
       {/* INTAKE-sektion */}
       <section>
-        <h2 className="font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("intakeHeading")}</h2>
+        <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("intakeHeading")}</h2>
 
         {intake.length === 0 ? (
           <EmptyState title={t("emptyIntakeTitle")} description={t("emptyIntake")} />
@@ -331,14 +338,14 @@ export default function AcademyPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       {item.is_serious && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded bg-cz-accent/15 text-cz-accent-t">
+                        <span className="text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill bg-cz-accent/15 text-cz-accent-t">
                           {t("seriousBadge")}
                         </span>
                       )}
                       {expiryDays != null && (
                         <span
                           title={t("expiryTooltip")}
-                          className={`text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded ${expirySoon ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-subtle text-cz-2 border border-cz-border"}`}
+                          className={`text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${expirySoon ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-subtle text-cz-2 border border-cz-border"}`}
                         >
                           {expiryDays <= 0 ? t("expiryToday") : t("expiryDays", { days: expiryDays })}
                         </span>
@@ -387,10 +394,10 @@ export default function AcademyPage() {
 
                   {/* Blokerings-forklaring under knapperne */}
                   {isFull && !err && (
-                    <p className="text-[10px] text-cz-3 text-center">{t("fullNote", { max: slots.max })}</p>
+                    <p className="text-3xs text-cz-3 text-center">{t("fullNote", { max: slots.max })}</p>
                   )}
                   {!isFull && tooExpensive && !err && (
-                    <p className="text-[10px] text-cz-danger text-center">{t("error.insufficientBalance")}</p>
+                    <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
                   )}
                 </Card>
               );
@@ -401,7 +408,7 @@ export default function AcademyPage() {
 
       {/* ROSTER-sektion */}
       <section>
-        <h2 className="font-data text-[11px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("rosterHeading")}</h2>
+        <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("rosterHeading")}</h2>
 
         {roster.length === 0 ? (
           <EmptyState title={t("emptyRosterTitle")} description={t("emptyRoster")} />
@@ -475,6 +482,7 @@ export default function AcademyPage() {
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />
+      </div>
 
       {/* Promote-bekræftelse (#932 S7) — senior-cap-effekt + projiceret senior-løn. */}
       <AcademyTransferConfirmModal

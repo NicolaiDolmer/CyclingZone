@@ -13,6 +13,10 @@ import { riderOverallRating } from "../../lib/riderRating";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
+import {
+  Section, StarIcon, ExternalLinkIcon, ChartLineIcon, ChevronUpIcon, ChevronDownIcon,
+  XIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon,
+} from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
 
 function StageMini({ terrain, summit }) {
@@ -57,30 +61,30 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
         <div className="flex items-start gap-2.5 min-w-0">
           <svg width="30" height="18" viewBox="0 0 30 18" aria-hidden="true" className="mt-0.5 shrink-0"><path d="M0 17 L7 5 L12 12 L18 2 L24 10 L30 6 L30 17 Z" fill="var(--text-1)" opacity="0.82" /></svg>
           <div className="min-w-0">
-            <div className="font-display text-[20px] leading-none text-cz-1 truncate">{race.name}</div>
+            <div className="text-[15px] font-semibold text-cz-1 truncate">{race.name}</div>
             {/* #2568: dato var slet ikke i skuffe-headeren — "hvornår køres løbet"
                 skal stå direkte hos navnet, ikke kun som en chip på tidslinjen. */}
-            <div className="text-[11px] text-cz-2 mt-0.5">
+            <div className="text-2xs text-cz-2 mt-0.5">
               <span className="text-cz-1">{formatRaceDateLabel(race, months)}</span>
               {" · "}{t("drawer.race.summary", { stages: summary.stages, summits: summary.summitFinishes })}
               {" · "}{t(`terrain.${race.terrain}`)}
             </div>
             <Link
               to={`/races/${race.id}`}
-              className="inline-flex items-center gap-1 text-[11px] text-cz-accent-t hover:underline mt-1"
+              className="inline-flex items-center gap-1 text-2xs text-cz-accent-t hover:underline mt-1"
             >
-              {t("drawer.race.viewPage")}<i className="ti ti-arrow-up-right text-[13px]" aria-hidden="true" />
+              {t("drawer.race.viewPage")}<ExternalLinkIcon size={13} aria-hidden="true" />
             </Link>
           </div>
         </div>
-        <div className="text-right text-[10.5px] text-cz-2 shrink-0">
+        <div className="text-right text-3xs text-cz-2 shrink-0">
           {t("drawer.race.rivalThreat")}<br />
           <span className="font-mono text-[14px] text-cz-1">{t("drawer.race.rivalCount", { count: race.rivalPeakCount || 0 })}</span>
         </div>
       </div>
 
       {demands.length > 0 && (
-        <div className="text-[10.5px] text-cz-3 mb-2">
+        <div className="text-3xs text-cz-3 mb-2">
           <span className="uppercase tracking-wide">{t("drawer.race.demands")}:</span>{" "}
           {demands.map((d, i) => <span key={d.ability}>{i > 0 ? " · " : ""}{d.ability.replace(/_/g, " ")}</span>)}
         </div>
@@ -89,20 +93,20 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
       {race.stageProfiles?.length > 1 && (
         <>
           <button
-            className="flex items-center gap-1.5 border border-cz-border rounded-cz px-2.5 py-1.5 text-[11px] text-cz-1 hover:bg-cz-subtle mb-2"
+            className="flex items-center gap-1.5 border border-cz-border rounded-cz px-2.5 py-1.5 text-2xs text-cz-1 hover:bg-cz-subtle mb-2"
             aria-expanded={showProfiles} onClick={() => setShowProfiles((v) => !v)}
           >
-            <i className="ti ti-chart-area-line text-[15px] text-cz-accent-t" aria-hidden="true" />
+            <ChartLineIcon size={15} className="text-cz-accent-t" aria-hidden="true" />
             {showProfiles ? t("drawer.race.hideProfiles") : t("drawer.race.viewProfiles")}
-            <i className={`ti ti-chevron-${showProfiles ? "up" : "down"} text-[15px]`} aria-hidden="true" />
+            {showProfiles ? <ChevronUpIcon size={15} aria-hidden="true" /> : <ChevronDownIcon size={15} aria-hidden="true" />}
           </button>
           {showProfiles && (
             <div className="grid gap-1.5 mb-3" style={{ gridTemplateColumns: `repeat(${Math.min(6, race.stageProfiles.length)}, minmax(0, 1fr))` }}>
               {race.stageProfiles.slice(0, 12).map((s) => (
                 <div key={s.stage} className={`rounded-cz p-1.5 text-center ${s.summit ? "bg-cz-subtle border border-cz-accent-t" : "bg-cz-body border border-cz-border"}`}>
-                  <div className="font-mono text-[9px] text-cz-3">S{s.stage}</div>
+                  <div className="font-mono text-3xs text-cz-3">S{s.stage}</div>
                   <StageMini terrain={s.terrain} summit={s.summit} />
-                  <div className={`text-[9px] ${s.summit ? "text-cz-accent-t" : "text-cz-2"}`}>{t(`terrain.${s.terrain}`)}</div>
+                  <div className={`text-3xs ${s.summit ? "text-cz-accent-t" : "text-cz-2"}`}>{t(`terrain.${s.terrain}`)}</div>
                 </div>
               ))}
             </div>
@@ -110,7 +114,7 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
         </>
       )}
 
-      <div className="text-[10.5px] text-cz-3 uppercase tracking-wide mb-1.5">{t("drawer.race.rankedTitle")}</div>
+      <div className="text-3xs text-cz-3 uppercase tracking-wide mb-1.5">{t("drawer.race.rankedTitle")}</div>
       <div className="flex flex-col gap-1.5">
         {ranked.map(({ rider, score, contributions }) => {
           const peaking = peakingSet.has(rider.id);
@@ -123,20 +127,24 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
           return (
             <div key={rider.id} className="flex items-center gap-2.5">
               <span className="w-6 shrink-0 flex items-center justify-center">
-                {rider.nationality ? <Flag code={rider.nationality} className="text-[12px]" /> : <span className="font-mono text-[9.5px] text-cz-2">—</span>}
+                {rider.nationality ? <Flag code={rider.nationality} className="text-[12px]" /> : <span className="font-mono text-3xs text-cz-2">—</span>}
               </span>
               <span className="text-[12px] text-cz-1 w-28 truncate" title={top}>{riderShortName(rider)}</span>
-              <span className="flex-1 h-2 bg-cz-subtle rounded-sm overflow-hidden" title={top}>
-                <span className="block h-full rounded-sm" style={{ width: `${score}%`, background: score > 70 ? "var(--text-1)" : score > 45 ? "var(--text-2)" : "var(--text-3)" }} />
+              <span className="flex-1 h-2 bg-cz-subtle rounded-cz-pill overflow-hidden" title={top}>
+                <span className="block h-full rounded-cz-pill" style={{ width: `${score}%`, background: score > 70 ? "var(--text-1)" : score > 45 ? "var(--text-2)" : "var(--text-3)" }} />
               </span>
               <span className="font-mono text-[12px] text-cz-1 w-6 text-right">{score}</span>
               {peaking ? (
-                <span className="text-[10px] text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
+                <span className="text-3xs text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
               ) : (
                 <div className="flex flex-col items-end gap-0.5 w-[74px]">
-                  {suggestingHere && <span className="text-[9px] text-cz-3">✦ {t("drawer.race.suggestedHere")}</span>}
+                  {suggestingHere && (
+                    <span className="inline-flex items-center gap-0.5 text-3xs text-cz-3">
+                      <StarIcon size={9} aria-hidden="true" />{t("drawer.race.suggestedHere")}
+                    </span>
+                  )}
                   <button
-                    className="text-[10.5px] border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40"
+                    className="text-3xs border border-cz-border rounded-cz px-2 py-1 hover:bg-cz-subtle disabled:opacity-40"
                     disabled={busy || maxed} onClick={() => onCreatePeak(rider.id, race.id)}
                   >{t("drawer.race.setPeak")}</button>
                 </div>
@@ -155,9 +163,9 @@ function AbilityBars({ abilities }) {
     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
       {entries.map(({ k, v }) => (
         <div key={k} className="flex items-center gap-2">
-          <span className="text-[11px] text-cz-2 w-20 capitalize truncate">{k.replace(/_/g, " ")}</span>
-          <span className="flex-1 h-1.5 bg-cz-subtle rounded-sm overflow-hidden"><span className="block h-full" style={{ width: `${v}%`, background: "var(--text-1)" }} /></span>
-          <span className="font-mono text-[11px] text-cz-1 w-6 text-right">{v}</span>
+          <span className="text-2xs text-cz-2 w-20 capitalize truncate">{k.replace(/_/g, " ")}</span>
+          <span className="flex-1 h-1.5 bg-cz-subtle rounded-cz-pill overflow-hidden"><span className="block h-full rounded-cz-pill" style={{ width: `${v}%`, background: "var(--text-1)" }} /></span>
+          <span className="font-mono text-2xs text-cz-1 w-6 text-right">{v}</span>
         </div>
       ))}
     </div>
@@ -181,7 +189,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
     <div>
       <div className="flex justify-between items-center border-b border-cz-border pb-2 mb-3">
         <div>
-          <div className="font-display text-[20px] leading-none text-cz-1">{riderShortName(rider)}</div>
+          <div className="text-[15px] font-semibold text-cz-1">{riderShortName(rider)}</div>
           <div className="flex items-center gap-2 mt-1.5">
             {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
             {rider.nationality && <Flag code={rider.nationality} className="text-[14px]" />}
@@ -190,16 +198,16 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
         {/* #2447: OVR-badge farvet efter statStyle (samme SSOT som auktioner/rytter-
             profil) i stedet for plain cz-1-tekst uden nogen farve-signal. */}
         <div className="text-right flex flex-col items-end gap-1">
-          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded" style={statStyle(ovr)}>{ovr}</span>
-          <div className="text-[8px] text-cz-3 font-mono">{t("ovr.label")}</div>
+          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded-cz" style={statStyle(ovr)}>{ovr}</span>
+          <div className="text-3xs text-cz-3 font-mono">{t("ovr.label")}</div>
         </div>
       </div>
 
-      <div className="text-[10.5px] text-cz-3 uppercase tracking-wide mb-1.5">{t("drawer.rider.abilities")}</div>
+      <div className="text-3xs text-cz-3 uppercase tracking-wide mb-1.5">{t("drawer.rider.abilities")}</div>
       <AbilityBars abilities={rider.abilities} />
 
       <div className="mt-4 flex flex-col gap-3">
-        {(rider.peaks || []).length === 0 && <div className="text-[11.5px] text-cz-2">{t("drawer.rider.noPeak")}</div>}
+        {(rider.peaks || []).length === 0 && <div className="text-2xs text-cz-2">{t("drawer.rider.noPeak")}</div>}
         {(rider.peaks || []).map((p) => {
           const meta = statusMeta(p.status);
           const block = p.suggestedTrainingBlock;
@@ -215,22 +223,22 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                 <div className="text-[12.5px] text-cz-1 font-medium flex items-center gap-1.5 min-w-0">
                   <span className="truncate">{t("drawer.rider.peakFor", { race: p.targetRaceName || "—" })}</span>
                   {p.isSuggestion && (
-                    <span className="shrink-0 text-[9px] font-normal text-cz-accent-t border border-cz-accent-t rounded-full px-1.5 py-0.5">
-                      ✦ {t("assistant.badge")}
+                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-cz-pill border border-cz-accent-t px-1.5 py-0.5 text-3xs font-normal text-cz-accent-t">
+                      <StarIcon size={9} aria-hidden="true" />{t("assistant.badge")}
                     </span>
                   )}
                 </div>
                 {p.isSuggestion ? (
-                  <button className="shrink-0 text-[10.5px] text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy} onClick={() => onDismissSuggestion(rider.id)}>
+                  <button className="shrink-0 text-3xs text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy} onClick={() => onDismissSuggestion(rider.id)}>
                     {t("assistant.reset")}
                   </button>
                 ) : (
-                  <button className="shrink-0 text-[10.5px] text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy || p.locked} onClick={() => onRemovePeak(p.id)}>
-                    <i className="ti ti-x text-[13px]" aria-hidden="true" /> {t("drawer.rider.removePeak")}
+                  <button className="shrink-0 text-3xs text-cz-2 hover:text-cz-1 disabled:opacity-40" disabled={busy || p.locked} onClick={() => onRemovePeak(p.id)}>
+                    <XIcon size={13} aria-hidden="true" /> {t("drawer.rider.removePeak")}
                   </button>
                 )}
               </div>
-              <div className="text-[10.5px] text-cz-2 mb-2">
+              <div className="text-3xs text-cz-2 mb-2">
                 {t("drawer.rider.windowLabel", { start: formatOrdinalShort(dateToOrdinal(p.windowStart), months), end: formatOrdinalShort(dateToOrdinal(p.windowEnd), months) })}
                 {/* #2447: "var(--text-accent-t, ...)" var en ikke-eksisterende CSS-var
                     (rigtig token er kanal-formatet --accent-t, brugt via rgb()) — den
@@ -239,22 +247,22 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                 {!p.isSuggestion && <>{" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span></>}
               </div>
               {p.isSuggestion && (
-                <div className="text-[10.5px] text-cz-3 mb-2">
+                <div className="text-3xs text-cz-3 mb-2">
                   {t(p.suggestionReason === "registered" ? "assistant.reasonRegistered" : "assistant.reasonSuitability")}
                 </div>
               )}
-              {focus && <div className="text-[10.5px] text-cz-3 mb-2">{t("drawer.rider.focus", { focus: t(`focus.${focus}`, focus) })}</div>}
+              {focus && <div className="text-3xs text-cz-3 mb-2">{t("drawer.rider.focus", { focus: t(`focus.${focus}`, focus) })}</div>}
               {p.isSuggestion ? (
-                <button className="text-[10.5px] border border-cz-accent-t text-cz-accent-t rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAcceptSuggestion(rider.id, p.targetRaceId)}>
-                  <i className="ti ti-check text-[12px]" aria-hidden="true" /> {t("assistant.accept")}
+                <button className="text-3xs border border-cz-accent-t text-cz-accent-t rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAcceptSuggestion(rider.id, p.targetRaceId)}>
+                  <CheckIcon size={12} aria-hidden="true" /> {t("assistant.accept")}
                 </button>
               ) : block && (
                 <div className="flex gap-2 flex-wrap">
-                  <button className="text-[10.5px] border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAccept(p.id, "build", rider)}>
-                    <i className="ti ti-arrow-up-right text-[12px]" aria-hidden="true" /> {t("drawer.rider.build")} · {t("drawer.rider.autoPlan")}
+                  <button className="text-3xs border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAccept(p.id, "build", rider)}>
+                    <ArrowUpIcon size={12} aria-hidden="true" /> {t("drawer.rider.build")} · {t("drawer.rider.autoPlan")}
                   </button>
-                  <button className="text-[10.5px] border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAccept(p.id, "taper", rider)}>
-                    <i className="ti ti-arrow-down-right text-[12px]" aria-hidden="true" /> {t("drawer.rider.taper")} · {t("drawer.rider.autoPlan")}
+                  <button className="text-3xs border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40" disabled={busy} onClick={() => onAccept(p.id, "taper", rider)}>
+                    <ArrowDownIcon size={12} aria-hidden="true" /> {t("drawer.rider.taper")} · {t("drawer.rider.autoPlan")}
                   </button>
                 </div>
               )}
@@ -264,7 +272,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
 
         {canAddPeak && targetable.length > 0 && (
           <label className="flex flex-col gap-1 mt-1">
-            <span className="text-[10.5px] text-cz-3 uppercase tracking-wide">{t("drawer.rider.pickRace")}</span>
+            <span className="text-3xs text-cz-3 uppercase tracking-wide">{t("drawer.rider.pickRace")}</span>
             <select
               className="bg-cz-card border border-cz-border rounded-cz px-2 py-1.5 text-[12px] text-cz-1"
               value="" disabled={busy}
@@ -285,9 +293,9 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
 export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
   const { t } = useTranslation("planner");
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4 relative">
+    <Section className="relative">
       <button className="absolute top-3 right-3 text-cz-2 hover:text-cz-1" aria-label={t("drawer.close")} onClick={onClose}>
-        <i className="ti ti-x text-[18px]" aria-hidden="true" />
+        <XIcon size={18} aria-hidden="true" />
       </button>
       {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} />}
       {mode === "rider" && rider && (
@@ -298,6 +306,6 @@ export default function PlannerDrawer({ mode, race, rider, riders, races, maxPer
           busy={busy}
         />
       )}
-    </div>
+    </Section>
   );
 }

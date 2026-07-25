@@ -182,11 +182,15 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     // #2849 bølge 2: kanonisk section-card-recipe (Section = 20px/16px mobil-
-    // padding, ingen skygge) — statusfarven på border-kanten er bevidst bevaret
-    // via className-override oven på Card's default border (samme mønster som
-    // AuctionsPage's <Card className="border-cz-accent/40 ..."> fra bølge 1).
-    <Section className={`transition-all
-      ${isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
+    // padding, ingen skygge). Bølge 6: statusfarven sendes nu som `borderClass`-prop.
+    // Via className tabte den cascaden mod Cards egen hairline — og kun for GULD:
+    // `.border-cz-info/30` ligger efter `.border-cz-border` i bundtet og virkede,
+    // mens `.border-cz-accent/30` ligger før og forsvandt tavst. Resultatet var at
+    // "afventer dig"-tilbud aldrig fik deres guldkant, mens "afventer modpart" fik sin.
+    <Section
+      borderClass={isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border"}
+      className={`transition-all ${isAwaiting || isPending ? "" : "opacity-70"}`}
+    >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -930,7 +934,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   );
 
   return (
-    <Section data-testid="bulk-price-editor" className="border-cz-accent/30 mb-3 flex flex-col gap-3">
+    <Section data-testid="bulk-price-editor" borderClass="border-cz-accent/30" className="mb-3 flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <span className="text-cz-1 text-sm font-semibold">
           {t("bulkPrice.selected", { count: selectedListings.length })}

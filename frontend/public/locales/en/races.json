@@ -1,24 +1,71 @@
 {
   "racehub": {
-    "scope": { "mine": "My races", "division": "My division", "others": "Other divisions", "soon": "Coming soon" },
-    "timeline": { "dayOf": "Day {day} of {total}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
+    "scope": {
+      "mine": "My races",
+      "division": "My division",
+      "others": "Other divisions",
+      "soon": "Coming soon"
+    },
+    "timeline": {
+      "dayOf": "Day {day} of {total}",
+      "youAreHere": "you are here",
+      "prev": "Previous day",
+      "next": "Next day"
+    },
     "heading": "Squad distribution",
     "overlap": "{count} races today",
     "raceDay": "Race day {day}",
     "raceDays": "Race days {start}-{end}",
     "sameDayNote": "Same real day, different race days. A rider can ride one race per race day.",
-    "learnReuse": { "title": "Reusing a rider across race days", "body": "These races share one afternoon but fall on different in-game race days, so a rider can ride both. He carries fatigue into the later race. That is a trade-off, not a bug.", "dismiss": "Got it" },
+    "learnReuse": {
+      "title": "Reusing a rider across race days",
+      "body": "These races share one afternoon but fall on different in-game race days, so a rider can ride both. He carries fatigue into the later race. That is a trade-off, not a bug.",
+      "dismiss": "Got it"
+    },
     "save": "Save changes",
     "discard": "Discard",
     "unsaved": "You have unsaved changes",
     "leaveUnsaved": "You have unsaved changes. Leave without saving?",
-    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "overfull": "{selected} / {target} · too many", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
-    "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill", "fillMissing": "Fill gaps", "clearDay": "Clear day", "clearAllSeason": "Clear all", "bound": "Already racing in an overlapping race" },
+    "status": {
+      "full": "{selected} / {target} selected",
+      "understaffed": "{selected} / {target} · understaffed",
+      "overfull": "{selected} / {target} · too many",
+      "withdrawn": "Withdrawn",
+      "locked": "Lineup locked"
+    },
+    "pool": {
+      "title": "Available riders · {count}-squad",
+      "autofill": "Auto-fill",
+      "fillMissing": "Fill gaps",
+      "clearDay": "Clear day",
+      "clearAllSeason": "Clear all",
+      "bound": "Already racing in an overlapping race"
+    },
     "clearDayWarn": "Remove every rider from today's races? This cannot be undone, and the assistant will not refill them until you ask it to.",
     "clearAllWarn": "Remove every rider from ALL your remaining races this season? This cannot be undone, and the assistant will not refill them until you ask it to.",
-    "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
-    "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders", "availableGroup": "Available for", "blockedGroup": "Busy in an overlapping race", "blockedReason": "Overlaps {race}", "compatibleHint": "Same day as {race}, race day {day}. Can ride both.", "compatibleHintNoDay": "Same day as {race}. Can ride both." },
-    "role": { "hint": "Tap a rider to set captain or role", "captain": "Captain", "sprintCaptain": "Sprint captain", "hunter": "Breakaway hunter", "rider": "Rider only" },
+    "column": {
+      "add": "Add from available",
+      "withdraw": "Withdraw",
+      "reenter": "Re-enter",
+      "remove": "Remove rider"
+    },
+    "popover": {
+      "title": "Add to which race?",
+      "none": "No race available for this rider today",
+      "understaffed": "needs riders",
+      "availableGroup": "Available for",
+      "blockedGroup": "Busy in an overlapping race",
+      "blockedReason": "Overlaps {race}",
+      "compatibleHint": "Same day as {race}, race day {day}. Can ride both.",
+      "compatibleHintNoDay": "Same day as {race}. Can ride both."
+    },
+    "role": {
+      "hint": "Tap a rider to set captain or role",
+      "captain": "Captain",
+      "sprintCaptain": "Sprint captain",
+      "hunter": "Breakaway hunter",
+      "rider": "Rider only"
+    },
     "roleCard": {
       "heading": "Tactics",
       "subhead": "Give each rider a job. The hint shows why the role fits this terrain.",
@@ -90,9 +137,17 @@
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression"
     },
-    "fit": { "label": "Fit", "strong": "Strong", "average": "Average", "poor": "Poor" },
+    "fit": {
+      "label": "Fit",
+      "strong": "Strong",
+      "average": "Average",
+      "poor": "Poor"
+    },
     "boundNamed": "Locked · racing in {race}",
-    "lineupLocked": { "title": "Lineup locked", "note": "This race has started. The lineup is final." },
+    "lineupLocked": {
+      "title": "Lineup locked",
+      "note": "This race has started. The lineup is final."
+    },
     "dismiss": "Dismiss",
     "empty": "No races to plan for this day.",
     "regenerateWarn": "This replaces every pick on today's races with the assistant's suggestion. Continue?"
@@ -229,18 +284,54 @@
       "class2Win": "Class 2 win"
     },
     "type": {
-      "Klassement": { "label": "General classification", "desc": "GC placement in stage races" },
-      "Klassiker": { "label": "Classics", "desc": "Overall placement in one-day races" },
-      "Etapeplacering": { "label": "Stage placement", "desc": "Per stage in stage races" },
-      "Pointtroje": { "label": "Points jersey", "desc": "Top 3 in the points competition" },
-      "Bjergtroje": { "label": "Mountains jersey", "desc": "Top 3 in the mountains competition" },
-      "Ungdomstroje": { "label": "Young rider jersey", "desc": "Top 3 in the U25 competition" },
-      "EtapelobHold": { "label": "Team (stage race)", "desc": "Best team in stage races" },
-      "KlassikerHold": { "label": "Team (classic)", "desc": "Best team in classics" },
-      "Forertroje": { "label": "Leader's jersey", "desc": "Per day in the leader's jersey" },
-      "PointtrojeDag": { "label": "Points jersey (per day)", "desc": "Per day in the points jersey" },
-      "BjergtrojeDag": { "label": "Mountains jersey (per day)", "desc": "Per day in the mountains jersey" },
-      "UngdomstrojeDag": { "label": "Young rider jersey (per day)", "desc": "Per day in the young rider jersey" }
+      "Klassement": {
+        "label": "General classification",
+        "desc": "GC placement in stage races"
+      },
+      "Klassiker": {
+        "label": "Classics",
+        "desc": "Overall placement in one-day races"
+      },
+      "Etapeplacering": {
+        "label": "Stage placement",
+        "desc": "Per stage in stage races"
+      },
+      "Pointtroje": {
+        "label": "Points jersey",
+        "desc": "Top 3 in the points competition"
+      },
+      "Bjergtroje": {
+        "label": "Mountains jersey",
+        "desc": "Top 3 in the mountains competition"
+      },
+      "Ungdomstroje": {
+        "label": "Young rider jersey",
+        "desc": "Top 3 in the U25 competition"
+      },
+      "EtapelobHold": {
+        "label": "Team (stage race)",
+        "desc": "Best team in stage races"
+      },
+      "KlassikerHold": {
+        "label": "Team (classic)",
+        "desc": "Best team in classics"
+      },
+      "Forertroje": {
+        "label": "Leader's jersey",
+        "desc": "Per day in the leader's jersey"
+      },
+      "PointtrojeDag": {
+        "label": "Points jersey (per day)",
+        "desc": "Per day in the points jersey"
+      },
+      "BjergtrojeDag": {
+        "label": "Mountains jersey (per day)",
+        "desc": "Per day in the mountains jersey"
+      },
+      "UngdomstrojeDag": {
+        "label": "Young rider jersey (per day)",
+        "desc": "Per day in the young rider jersey"
+      }
     }
   },
   "selection": {
@@ -401,6 +492,10 @@
       "in": "In",
       "out": "Out",
       "captain": "Captain → {name}"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "retry": "Try again"
     }
   },
   "discoverCta": {
@@ -423,7 +518,9 @@
     "backToLibrary": "← Race library",
     "back": "← Back",
     "raceDnaLabel": "This race:",
-    "terrainDna": { "label": "Terrain DNA · what the stage rewards" },
+    "terrainDna": {
+      "label": "Terrain DNA · what the stage rewards"
+    },
     "ability": {
       "climbing": "Climbing",
       "time_trial": "Time trial",
@@ -513,13 +610,34 @@
       "formPeak": "{rider} arrived in excellent form and delivered on it."
     },
     "storyTags": {
-      "tag_jour_sans": { "label": "Off day", "tooltip": "Had a bad day: his legs just weren't there." },
-      "tag_peak_day": { "label": "Peak", "tooltip": "Timed his form to peak for this stage." },
-      "tag_perfect_peak": { "label": "Perfect peak", "tooltip": "Won on a stage he specifically peaked for." },
-      "tag_helper_sacrifice": { "label": "Sacrifice", "tooltip": "Gave up his own result to work for the team captain." },
-      "tag_outsider_win": { "label": "Outsider", "tooltip": "Won without being the strongest rider on paper." },
-      "tag_favorite_collapse": { "label": "Collapse", "tooltip": "The stage favourite had an off day and lost his shot." },
-      "tag_crash_ruined": { "label": "Crash", "tooltip": "A likely top result was wrecked by a crash or mechanical." }
+      "tag_jour_sans": {
+        "label": "Off day",
+        "tooltip": "Had a bad day: his legs just weren't there."
+      },
+      "tag_peak_day": {
+        "label": "Peak",
+        "tooltip": "Timed his form to peak for this stage."
+      },
+      "tag_perfect_peak": {
+        "label": "Perfect peak",
+        "tooltip": "Won on a stage he specifically peaked for."
+      },
+      "tag_helper_sacrifice": {
+        "label": "Sacrifice",
+        "tooltip": "Gave up his own result to work for the team captain."
+      },
+      "tag_outsider_win": {
+        "label": "Outsider",
+        "tooltip": "Won without being the strongest rider on paper."
+      },
+      "tag_favorite_collapse": {
+        "label": "Collapse",
+        "tooltip": "The stage favourite had an off day and lost his shot."
+      },
+      "tag_crash_ruined": {
+        "label": "Crash",
+        "tooltip": "A likely top result was wrecked by a crash or mechanical."
+      }
     },
     "jersey": {
       "leader": "Leader",
@@ -573,14 +691,36 @@
       "breakaway": "Breakaway"
     },
     "route": {
-      "stats": { "km": "KM", "elevation": "M", "climbs": "CLIMBS" },
+      "stats": {
+        "km": "KM",
+        "elevation": "M",
+        "climbs": "CLIMBS"
+      },
       "read": {
-        "summit": { "label": "Summit finish", "note": "the climb is the line, no bunch finish" },
-        "valley": { "label": "{km} km descent to the line", "note": "chasers can come back" },
-        "technical": { "label": "Technical finale", "note": "descending & positioning decide it" },
-        "long": { "label": "Long day", "note": "endurance & fatigue amplified" },
-        "short": { "label": "Short day", "note": "fatigue damped" },
-        "cobbles": { "label": "{count} cobbled sectors", "note": "positioning & power over pavé" }
+        "summit": {
+          "label": "Summit finish",
+          "note": "the climb is the line, no bunch finish"
+        },
+        "valley": {
+          "label": "{km} km descent to the line",
+          "note": "chasers can come back"
+        },
+        "technical": {
+          "label": "Technical finale",
+          "note": "descending & positioning decide it"
+        },
+        "long": {
+          "label": "Long day",
+          "note": "endurance & fatigue amplified"
+        },
+        "short": {
+          "label": "Short day",
+          "note": "fatigue damped"
+        },
+        "cobbles": {
+          "label": "{count} cobbled sectors",
+          "note": "positioning & power over pavé"
+        }
       },
       "waypoint": {
         "climb": "Category {cat} climb",
@@ -597,7 +737,9 @@
       "bonusSeconds": "+{count}s",
       "sprintMarker": "SPRINT · {points}p · +{bonus}s",
       "finishNote": "FINISH {first} / {second} / {third} s",
-      "a11y": { "graph": "Elevation profile for stage {number}: {distance} km, {elevation} m of climbing, {climbs} categorised climbs" }
+      "a11y": {
+        "graph": "Elevation profile for stage {number}: {distance} km, {elevation} m of climbing, {climbs} categorised climbs"
+      }
     }
   },
   "history": {

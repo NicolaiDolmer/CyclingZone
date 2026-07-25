@@ -25,7 +25,9 @@
     "transfers": "Transfers",
     "board": "Board",
     "finance": "Finance",
-    "season": "Season"
+    "season": "Season",
+    "mineSelectLabel": "Filter notifications",
+    "feedSelectLabel": "Filter activity feed"
   },
   "empty": {
     "noneUnread": "No unread notifications",
@@ -76,5 +78,10 @@
     "seasonEnded": "Season {number} ended",
     "raceResultsApproved": "Results approved: {race}",
     "fallbackLabel": "{type}"
+  },
+  "error": {
+    "notifications": "Couldn't load your notifications. Nothing was lost. Try again.",
+    "feed": "Couldn't load the league feed. Nothing was lost. Try again.",
+    "retry": "Try again"
   }
 }

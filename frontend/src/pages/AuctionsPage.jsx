@@ -509,8 +509,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
+  // #2849 bølge 6: "du fører"-markeringen var dobbelt død — guldkanten tabte
+  // cascaden til Cards egen hairline (nu via borderClass), og `bg-cz-accent/10/40`
+  // var en malformet klasse (dobbelt alpha) der aldrig emitterede noget CSS.
   return (
-    <Card className={`p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : ""}`}>
+    <Card
+      borderClass={imWinning ? "border-cz-accent/40" : "border-cz-border"}
+      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           {r?.id && (

@@ -39,7 +39,27 @@ import {
   EyeIcon,
   TrophyIcon,
   PageLoader,
+  PageHeader,
+  Section,
+  SectionHeader,
+  ProgressMeter,
+  ErrorState,
+  Card,
+  Button,
+  Spinner,
+  CheckIcon,
+  AlertTriangleIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  MinusIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  StarIcon,
+  ClipboardIcon,
+  FlagIcon,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -110,6 +130,14 @@ function getSatisfactionTrend(snapshots) {
   if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up" };
   if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down" };
   return { glyph: "→", color: "text-cz-3", key: "flat" };
+}
+
+// #2849 bølge 6 · trend.glyph (▲/▼/→) er rå unicode-chrome fra getSatisfactionTrend/
+// getEventSatisfactionTrend (delt lib, ikke rørt her) — render altid via stroke-ikon
+// i stedet for at printe trend.glyph direkte.
+const TREND_ICON = { up: ArrowUpIcon, down: ArrowDownIcon, flat: MinusIcon };
+function getTrendIcon(key) {
+  return TREND_ICON[key] || MinusIcon;
 }
 
 // #1073 · skærmlæser-alternativ for status-glyfferne (✓/!/~/○). Uden dette læses
@@ -201,11 +229,8 @@ function BoardMembersGrid({ members = [], onSelect }) {
   const { t } = useTranslation("board");
   if (!members.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("members.heading")}</p>
-        <span className="text-cz-3 text-[10px]">{t("members.count", { count: members.length })}</span>
-      </div>
+    <Section className="mt-4">
+      <SectionHeader title={t("members.heading")} meta={t("members.count", { count: members.length })} />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {members.map((member) => (
           // #1030 · Affordance: kortet ser klikbart ud (avatar, formand-stjerne) →
@@ -213,7 +238,7 @@ function BoardMembersGrid({ members = [], onSelect }) {
           <button key={member.archetype_key} type="button"
             onClick={() => onSelect?.(member)}
             title={t("members.viewProfile")}
-            className={`bg-cz-subtle border rounded-lg p-3 flex flex-col items-center text-center gap-2
+            className={`bg-cz-subtle border rounded-cz p-3 flex flex-col items-center text-center gap-2
               hover:bg-cz-subtle/60 hover:border-cz-accent/40 transition-colors
               ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
             <div className="relative w-12 h-12 rounded-full bg-cz-card border border-cz-border
@@ -221,26 +246,28 @@ function BoardMembersGrid({ members = [], onSelect }) {
               <span aria-hidden>{member.emoji}</span>
               {member.is_chairman && (
                 <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
-                  text-cz-on-accent text-[9px] font-bold flex items-center justify-center
-                  border border-cz-card" title={t("members.chairmanTitle")}>★</span>
+                  text-cz-on-accent flex items-center justify-center
+                  border border-cz-card" title={t("members.chairmanTitle")}>
+                  <StarIcon size={10} aria-hidden="true" />
+                </span>
               )}
             </div>
             <div>
               <p className="text-cz-1 font-medium text-xs leading-tight">{resolveMemberLabel(t, member)}</p>
-              <p className="text-cz-3 text-[10px] mt-0.5 leading-tight line-clamp-2">{resolveMemberShortDescription(t, member)}</p>
+              <p className="text-cz-3 text-3xs mt-0.5 leading-tight line-clamp-2">{resolveMemberShortDescription(t, member)}</p>
               {member.is_chairman && (
-                <p className="text-cz-accent-t text-[9px] uppercase tracking-wider mt-1 font-semibold">
+                <p className="text-cz-accent-t text-3xs uppercase tracking-wider mt-1 font-semibold">
                   {t("members.chairman")}
                 </p>
               )}
               {member.selection_kind === "wildcard" && !member.is_chairman && (
-                <p className="text-cz-3 text-[9px] uppercase tracking-wider mt-1">{t("members.wildcard")}</p>
+                <p className="text-cz-3 text-3xs uppercase tracking-wider mt-1">{t("members.wildcard")}</p>
               )}
             </div>
           </button>
         ))}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -270,8 +297,10 @@ function BoardMemberDialog({ member, onClose }) {
           <span aria-hidden>{member.emoji}</span>
           {member.is_chairman && (
             <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
-              text-cz-on-accent text-[9px] font-bold flex items-center justify-center border border-cz-card"
-              title={t("members.chairmanTitle")}>★</span>
+              text-cz-on-accent flex items-center justify-center border border-cz-card"
+              title={t("members.chairmanTitle")}>
+              <StarIcon size={10} aria-hidden="true" />
+            </span>
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -305,14 +334,13 @@ function MemberCategoryWeights({ weights }) {
   if (!entries.length) return null;
   return (
     <div className="mt-4 pt-3 border-t border-cz-border">
-      <p className="text-cz-3 text-[11px] uppercase tracking-wider mb-2">{t("members.weightsHeading")}</p>
+      <p className="text-cz-3 text-2xs uppercase tracking-wider mb-2">{t("members.weightsHeading")}</p>
       <div className="flex flex-col gap-1.5">
         {entries.map(([key, value]) => (
           <div key={key} className="flex items-center gap-2">
             <span className="text-cz-2 text-xs w-16 flex-shrink-0">{t(`category.${key}`, { defaultValue: key })}</span>
-            <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
-              <div className="h-1.5 rounded-full bg-cz-accent" style={{ width: `${Math.min(100, Number(value) * 100)}%` }} />
-            </div>
+            <ProgressMeter value={Math.min(100, Number(value) * 100)} className="flex-1"
+              ariaLabel={t(`category.${key}`, { defaultValue: key })} />
           </div>
         ))}
       </div>
@@ -336,7 +364,7 @@ function ClubDnaSelectionCard({
   const { t } = useTranslation("board");
   if (!suggestions.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
+    <Section className="mt-4">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t(sectionLabelKey)}</p>
@@ -345,7 +373,7 @@ function ClubDnaSelectionCard({
         </div>
       </div>
       {error && (
-        <div className="mb-3 p-3 rounded-lg border border-cz-danger/30 bg-cz-danger-bg0/8 text-cz-danger text-sm">
+        <div className="mb-3 p-3 rounded-cz border border-cz-danger/30 bg-cz-danger-bg0/8 text-cz-danger text-sm">
           {error}
         </div>
       )}
@@ -354,14 +382,14 @@ function ClubDnaSelectionCard({
           const isCurrent = currentKey != null && suggestion.key === currentKey;
           return (
             <div key={suggestion.key}
-              className={`bg-cz-subtle border rounded-lg p-4 flex flex-col gap-3 ${isCurrent ? "border-cz-accent/60" : "border-cz-border"}`}>
+              className={`bg-cz-subtle border rounded-cz p-4 flex flex-col gap-3 ${isCurrent ? "border-cz-accent/60" : "border-cz-border"}`}>
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
                   flex items-center justify-center text-2xl flex-shrink-0">
                   <span aria-hidden>{suggestion.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-cz-3 text-[10px] uppercase tracking-wider">
+                  <p className="text-cz-3 text-3xs uppercase tracking-wider">
                     {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
                   </p>
                   <p className="text-cz-1 font-semibold text-sm leading-tight">{getDnaCopy(t, suggestion, "label")}</p>
@@ -369,16 +397,16 @@ function ClubDnaSelectionCard({
               </div>
               <p className="text-cz-2 text-xs leading-relaxed">{getDnaCopy(t, suggestion, "shortDescription")}</p>
               {getDnaCopy(t, suggestion, "longDescription") && (
-                <p className="text-cz-3 text-[11px] italic leading-relaxed line-clamp-3">
+                <p className="text-cz-3 text-2xs italic leading-relaxed line-clamp-3">
                   {getDnaCopy(t, suggestion, "longDescription")}
                 </p>
               )}
               {getDnaRationale(t, suggestion) && (
-                <p className="text-cz-accent-t text-[11px]">{getDnaRationale(t, suggestion)}</p>
+                <p className="text-cz-accent-t text-2xs">{getDnaRationale(t, suggestion)}</p>
               )}
               {isCurrent ? (
                 <span className="mt-auto py-2 text-center text-cz-accent-t text-sm font-semibold
-                  bg-cz-accent/10 rounded-lg border border-cz-accent/30">
+                  bg-cz-accent/10 rounded-cz border border-cz-accent/30">
                   {t("dna.current")}
                 </span>
               ) : (
@@ -386,7 +414,7 @@ function ClubDnaSelectionCard({
                   type="button"
                   disabled={busy}
                   onClick={() => onChoose(suggestion.key)}
-                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-lg
+                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz
                     hover:brightness-110 disabled:opacity-50 transition-all"
                 >
                   {busy ? t("dna.saving") : t(chooseLabelKey)}
@@ -396,7 +424,7 @@ function ClubDnaSelectionCard({
           );
         })}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -458,10 +486,11 @@ function ClubDnaBadge({ dna, onSelect }) {
         <p className="text-cz-1 font-semibold text-sm">{getDnaCopy(t, dna, "label")}</p>
         <p className="text-cz-2 text-xs mt-1 leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
         {getDnaCopy(t, dna, "longDescription") && (
-          <p className="text-cz-3 text-[11px] mt-1 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
+          <p className="text-cz-3 text-2xs mt-1 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
         )}
       </div>
-      <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-lg flex-shrink-0 self-center transition-colors">›</span>
+      <ChevronRightIcon aria-hidden="true" size={18}
+        className="text-cz-3 group-hover:text-cz-2 flex-shrink-0 self-center transition-colors" />
     </button>
   );
 }
@@ -478,8 +507,7 @@ function BoardDriversPanel({ dna, plans }) {
   // flader aldrig kan divergere.
   const overall = computeOverallBoardSatisfaction(plans);
   const benchmark = overall != null ? getBenchmarkMeta(t, overall) : null;
-  const barColor = overall == null ? "bg-cz-3/30"
-    : overall >= 70 ? "bg-cz-success" : overall >= 40 ? "bg-cz-accent" : "bg-cz-danger";
+  const barTone = overall >= 70 ? "success" : overall >= 40 ? "accent" : "danger";
 
   // #102 · top-vægtede måltyper (kun boostede, >1.0), højeste først, maks 3.
   const topWeighted = Object.entries(dna?.goal_weighting || {})
@@ -491,7 +519,7 @@ function BoardDriversPanel({ dna, plans }) {
   if (overall == null && !topWeighted.length) return null;
 
   return (
-    <div data-testid="board-drivers" className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
+    <Section data-testid="board-drivers" className="mt-4">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("drivers.heading")}</p>
 
       {overall != null && (
@@ -503,31 +531,27 @@ function BoardDriversPanel({ dna, plans }) {
               <span className="font-data font-bold text-sm text-cz-1">{overall}%</span>
             </span>
           </div>
-          <div className="bg-cz-subtle rounded-full h-2" role="progressbar"
-            aria-valuenow={overall} aria-valuemin={0} aria-valuemax={100}
-            aria-label={t("drivers.satisfactionLabel")}>
-            <div className={`h-2 rounded-full transition-all ${barColor}`} style={{ width: `${overall}%` }} />
-          </div>
+          <ProgressMeter value={overall} tone={barTone} ariaLabel={t("drivers.satisfactionLabel")} />
         </div>
       )}
 
       {topWeighted.length > 0 && (
         <div>
-          <p className="text-cz-3 text-[11px] mb-2">
+          <p className="text-cz-3 text-2xs mb-2">
             {dna?.emoji ? `${dna.emoji} ` : ""}{t("drivers.weightsLabel")}
           </p>
           <div className="flex flex-wrap gap-2">
             {topWeighted.map((type) => (
               <span key={type}
-                className="text-xs bg-cz-subtle text-cz-2 px-2.5 py-1 rounded-full border border-cz-accent/30">
+                className="text-xs bg-cz-subtle text-cz-2 px-2.5 py-1 rounded-cz-pill border border-cz-accent/30">
                 {getGoalTypeLabel(t, type)}
               </span>
             ))}
           </div>
-          <p className="text-cz-3 text-[11px] mt-2 leading-relaxed">{t("drivers.weightHint")}</p>
+          <p className="text-cz-3 text-2xs mt-2 leading-relaxed">{t("drivers.weightHint")}</p>
         </div>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -580,14 +604,14 @@ function MemberReactionPanel({ reaction, compact = false }) {
   const { t } = useTranslation("board");
   if (!reaction?.quote) return null;
   return (
-    <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-lg`}>
+    <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-cz`}>
       <div className={`${compact ? "w-8 h-8 text-base" : "w-10 h-10 text-xl"} rounded-full
         bg-cz-card border border-cz-border flex items-center justify-center flex-shrink-0`}>
         <span aria-hidden>{reaction.emoji}</span>
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{resolveMemberLabel(t, reaction)}</p>
-        <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-[11px]" : "text-xs"} leading-relaxed`}>
+        <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-2xs" : "text-xs"} leading-relaxed`}>
           &ldquo;{resolveReactionQuote(t, reaction)}&rdquo;
         </p>
       </div>
@@ -609,26 +633,21 @@ function SatisfactionMeter({ value, modifier }) {
   // temaer), mens bar-fyldet beholder den lyse cz-accent (grafisk fyld, ikke tekst).
   const tone = value >= 70 ? "success" : value >= 40 ? "mid" : "danger";
   const textClass = tone === "success" ? "text-cz-success" : tone === "mid" ? "text-cz-accent-t" : "text-cz-danger";
-  const barClass = tone === "success" ? "bg-cz-success" : tone === "mid" ? "bg-cz-accent" : "bg-cz-danger";
+  const meterTone = tone === "success" ? "success" : tone === "mid" ? "accent" : "danger";
   const labelKey = value >= 80 ? "veryHappy" : value >= 60 ? "happy" :
     value >= 40 ? "neutral" : value >= 20 ? "unhappy" : "veryUnhappy";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+    <Section>
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("satisfactionMeter.label")}</p>
         <span className={`font-data font-bold text-lg ${textClass}`}>{value}%</span>
       </div>
-      <div className="bg-cz-subtle rounded-full h-3 mb-2" role="progressbar"
-        aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}
-        aria-label={t("satisfactionMeter.label")}>
-        <div className={`h-3 rounded-full transition-all duration-500 ${barClass}`}
-          style={{ width: `${value}%` }} />
-      </div>
+      <ProgressMeter value={value} tone={meterTone} ariaLabel={t("satisfactionMeter.label")} className="mb-2" />
       <div className="flex items-center justify-between">
         <p className="text-cz-2 text-sm font-medium">{t(`satisfactionMeter.${labelKey}`)}</p>
         <p className="text-cz-3 text-xs">{t("satisfactionMeter.sponsorModifier", { modifier: effectiveModifier.toFixed(2) })}</p>
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -659,7 +678,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
     : isBehind ? "bg-cz-subtle border-cz-danger/50"
     : "bg-cz-subtle border-cz-border";
 
-  const iconContent = achieved ? "✓" : isBehind ? "!" : isNearMiss ? "~" : "○";
+  const StatusIcon = achieved ? CheckIcon : isBehind ? AlertTriangleIcon : isNearMiss ? MinusIcon : ClockIcon;
   const iconClass = achieved ? "bg-cz-success-bg text-cz-success"
     : isBehind && isRequired ? "bg-cz-danger-bg text-cz-danger"
     : isBehind ? "bg-cz-danger-bg text-cz-danger"
@@ -667,9 +686,9 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
     : "bg-cz-subtle text-cz-3";
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${containerClass}`}>
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${iconClass}`}>
-        <span aria-hidden="true">{iconContent}</span>
+    <div className={`flex items-start gap-3 p-3 rounded-cz border transition-all ${containerClass}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconClass}`}>
+        <StatusIcon size={12} aria-hidden="true" />
         <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
       </div>
       <div className="flex-1">
@@ -677,7 +696,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             de kompakte plan-paneler), så samme data ikke er død plain-tekst her. */}
         {onSelect ? (
           <button type="button" onClick={onSelect}
-            className="flex items-start justify-between gap-2 w-full text-left rounded -mx-1 px-1 hover:bg-cz-subtle/40 transition-colors group/goal">
+            className="flex items-start justify-between gap-2 w-full text-left rounded-cz -mx-1 px-1 hover:bg-cz-subtle/40 transition-colors group/goal">
             <span className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
@@ -697,12 +716,12 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
         )}
         {goal.cumulative && cumulativeProgress !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
-            <div className="flex-1 bg-cz-subtle rounded-full h-1" role="progressbar"
-              aria-valuenow={goalProgressPct(cumulativeProgress, goal.target)} aria-valuemin={0} aria-valuemax={100}
-              aria-label={t("a11y.goalProgress")}>
-              <div className={`h-1 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-                style={{ width: `${goalProgressPct(cumulativeProgress, goal.target)}%` }} />
-            </div>
+            <ProgressMeter
+              value={goalProgressPct(cumulativeProgress, goal.target)}
+              tone={achieved ? "success" : "accent"}
+              ariaLabel={t("a11y.goalProgress")}
+              className="flex-1"
+            />
             <span className="text-cz-3 text-xs font-mono">{cumulativeProgress}/{goal.target}</span>
           </div>
         )}
@@ -711,7 +730,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
         {goal.type === "relative_rank"
           && evaluation?.rank_in_division != null
           && evaluation?.division_manager_count != null && (
-          <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed">
+          <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed">
             {t("goal.relativeRankDetail", {
               rank: evaluation.rank_in_division,
               total: evaluation.division_manager_count,
@@ -723,7 +742,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
         )}
         <div className="flex flex-wrap gap-3 mt-1">
           {!achieved && isRequired && (
-            <span className="text-[10px] text-cz-3 uppercase tracking-wider">{t("goal.required")}</span>
+            <span className="text-3xs text-cz-3 uppercase tracking-wider">{t("goal.required")}</span>
           )}
           {statusMeta?.label && (
             <span className={`text-xs font-medium ${statusMeta.color}`}>{statusMeta.label}</span>
@@ -746,14 +765,16 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <button
               type="button"
               onClick={() => setIdentityExpanded(v => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-cz-info hover:text-cz-info/80 underline-offset-2 hover:underline transition-colors"
+              className="inline-flex items-center gap-1 text-2xs text-cz-info hover:text-cz-info/80 underline-offset-2 hover:underline transition-colors"
             >
-              <span>★</span>
+              <StarIcon size={11} aria-hidden="true" />
               <span>{formatBoardCopy(identityRationale.short)}</span>
-              <span className="text-cz-3">{identityExpanded ? "↑" : "↓"}</span>
+              {identityExpanded
+                ? <ChevronUpIcon size={11} aria-hidden="true" className="text-cz-3" />
+                : <ChevronDownIcon size={11} aria-hidden="true" className="text-cz-3" />}
             </button>
             {identityExpanded && (
-              <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed bg-cz-subtle border border-cz-border rounded-md px-2.5 py-1.5">
+              <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed bg-cz-subtle border border-cz-border rounded-cz px-2.5 py-1.5">
                 {formatBoardCopy(identityRationale.long)}
               </p>
             )}
@@ -765,11 +786,13 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <button
               type="button"
               onClick={() => setMemberExpanded(v => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
+              className="inline-flex items-center gap-1 text-2xs text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
             >
               <span>{memberReaction.emoji}</span>
               <span>{t("goal.memberReacts", { member: memberReaction.label })}</span>
-              <span className="text-cz-3">{memberExpanded ? "↑" : "↓"}</span>
+              {memberExpanded
+                ? <ChevronUpIcon size={11} aria-hidden="true" className="text-cz-3" />
+                : <ChevronDownIcon size={11} aria-hidden="true" className="text-cz-3" />}
             </button>
             {memberExpanded && (
               <div className="mt-1.5">
@@ -793,7 +816,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
   const identityRationale = goal?.identity_basis_rationale || null;
   const isBehind = status === "behind";
   const isNearMiss = status === "near_miss" || status === "watch";
-  const iconContent = achieved ? "✓" : isBehind ? "!" : isNearMiss ? "~" : "○";
+  const MiniStatusIcon = achieved ? CheckIcon : isBehind ? AlertTriangleIcon : isNearMiss ? MinusIcon : ClockIcon;
   const iconCls = achieved ? "bg-cz-success-bg text-cz-success"
     : isBehind ? "bg-cz-danger-bg text-cz-danger"
     : isNearMiss ? "bg-cz-accent/10 text-cz-accent-t"
@@ -810,8 +833,8 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       ariaLabelledby="goal-mini-dialog-title"
     >
       <div className="flex items-start gap-3 mb-4">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
-          <span aria-hidden="true">{iconContent}</span>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+          <MiniStatusIcon size={16} aria-hidden="true" />
           <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
         </div>
         <div className="flex-1">
@@ -823,7 +846,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       </div>
 
       {evaluation?.actual != null && (
-        <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+        <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-4 flex items-center justify-between">
           <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
           <span className="font-mono text-cz-1 text-sm font-semibold">
             {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
@@ -844,19 +867,18 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
       {goal.cumulative && cumulativeProgress !== undefined && (
         <div className="mb-4">
-          <div className="bg-cz-subtle rounded-full h-2" role="progressbar"
-            aria-valuenow={goalProgressPct(cumulativeProgress, goal.target)} aria-valuemin={0} aria-valuemax={100}
-            aria-label={t("a11y.goalProgress")}>
-            <div className={`h-2 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-              style={{ width: `${goalProgressPct(cumulativeProgress, goal.target)}%` }} />
-          </div>
+          <ProgressMeter
+            value={goalProgressPct(cumulativeProgress, goal.target)}
+            tone={achieved ? "success" : "accent"}
+            ariaLabel={t("a11y.goalProgress")}
+          />
           <p className="text-cz-3 text-xs text-center mt-1">{cumulativeProgress}/{goal.target}</p>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded border border-cz-border">{t("goal.obligatory")}</span>}
-        {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
+        {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded-cz border border-cz-border">{t("goal.obligatory")}</span>}
+        {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
         {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
         {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
         {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
@@ -866,17 +888,19 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       {/* #989/#1096/#815 · "Hvordan måles dette?" — forklarer evalueringen for de
           måltyper hvor formatet/kriteriet ikke er selvforklarende. */}
       {getGoalHelpText(t, goal) && (
-        <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
-          <p className="text-[11px] text-cz-3 uppercase tracking-wider mb-1">{t("goalHelp.heading")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 mb-4">
+          <p className="text-2xs text-cz-3 uppercase tracking-wider mb-1">{t("goalHelp.heading")}</p>
           <p className="text-cz-2 text-xs leading-relaxed">{getGoalHelpText(t, goal)}</p>
         </div>
       )}
 
       {identityRationale && (
-        <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
-          <p className="text-[11px] text-cz-info">★ {formatBoardCopy(identityRationale.short)}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 mb-4">
+          <p className="text-2xs text-cz-info flex items-center gap-1">
+            <StarIcon size={11} aria-hidden="true" /> {formatBoardCopy(identityRationale.short)}
+          </p>
           {identityRationale.long && (
-            <p className="text-[11px] text-cz-3 mt-1 leading-relaxed">{formatBoardCopy(identityRationale.long)}</p>
+            <p className="text-2xs text-cz-3 mt-1 leading-relaxed">{formatBoardCopy(identityRationale.long)}</p>
           )}
         </div>
       )}
@@ -917,7 +941,9 @@ function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
                 : "bg-cz-subtle border-cz-border text-cz-3"}`}>
               {isCompleted ? (
                 <>
-                  <span aria-hidden="true">{metPct >= 50 ? "✓" : "✗"}</span>
+                  {metPct >= 50
+                    ? <CheckIcon size={16} aria-hidden="true" />
+                    : <XIcon size={16} aria-hidden="true" />}
                   <span className="sr-only">{metPct >= 50 ? t("a11y.seasonComplete.good") : t("a11y.seasonComplete.poor")}</span>
                 </>
               ) : seasonNum}
@@ -944,7 +970,7 @@ function CumulativeStatsRow({ goals, cumStats }) {
         const pct = goalProgressPct(current, goal.target);
         const achieved = current >= goal.target;
         return (
-          <div key={i} className="bg-cz-card border border-cz-border rounded-cz p-4">
+          <Card key={i} className="p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">
               {goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}
             </p>
@@ -954,13 +980,12 @@ function CumulativeStatsRow({ goals, cumStats }) {
               </span>
               <span className="text-cz-3 text-sm mb-1">/ {goal.target}</span>
             </div>
-            <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
-              aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
-              aria-label={goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}>
-              <div className={`h-1.5 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-                style={{ width: `${pct}%` }} />
-            </div>
-          </div>
+            <ProgressMeter
+              value={pct}
+              tone={achieved ? "success" : "accent"}
+              ariaLabel={goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}
+            />
+          </Card>
         );
       })}
     </div>
@@ -971,7 +996,7 @@ function SeasonSnapshotGrid({ snapshots }) {
   const { t } = useTranslation("board");
   if (!snapshots?.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+    <Section>
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("snapshot.heading")}</p>
       {/* #2307 · 6-kolonne tabel kan overflowe smalle viewports; scroll containeren
           (ikke siden) horisontalt, samme mønster som PlanTimelineBar ovenfor. */}
@@ -1020,7 +1045,7 @@ function SeasonSnapshotGrid({ snapshots }) {
         </tbody>
       </table>
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -1069,7 +1094,7 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
   );
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
+    <Section className="mt-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
@@ -1097,35 +1122,35 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
       {/* #1241 · break-words på alle chip-værdier: lange enkeltord (fx
           "Etapejaegerhold") clippede ud over chip-kanten i 6-kolonne-gridet. */}
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.primary")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.primary")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{primarySpecializationLabel}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.secondary")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.secondary")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{secondarySpecializationLabel}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.competitive")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.competitive")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{competitiveTierLabel}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.squad")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.squad")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
           <p className="text-cz-3 text-xs mt-1 break-words">{squadStatusLabel}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.nationalCore")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.nationalCore")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5 break-words max-w-full">
             {nationalCore?.established && nationalCore?.code && <Flag code={nationalCore.code} />}
             {nationalCoreValue}
           </p>
           <p className="text-cz-3 text-xs mt-1 break-words">{nationalCoreSub}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starProfile")}</p>
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.starProfile")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{starProfileValue}</p>
           <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
         </div>
@@ -1134,7 +1159,7 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
           viser HVEM bestyrelsen læser som stjerner — ikke kun et antal. Følger
           det editorielle kort-look (subtil sektion + mono-score, ingen glow). */}
       <div className="mt-4 border-t border-cz-border pt-3">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starRidersHeading")}</p>
+        <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.starRidersHeading")}</p>
         {starRiders.length > 0 ? (
           <ul className="mt-2 space-y-1.5">
             {starRiders.map((rider, index) => (
@@ -1161,7 +1186,7 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
       {dnaRelationNote && (
         <p className="text-cz-3 text-xs mt-4 leading-relaxed border-t border-cz-border pt-3">{dnaRelationNote}</p>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -1185,7 +1210,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const latestStyle = OUTCOME_STYLE[outcomeKey];
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+    <Section>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("request.heading")}</p>
@@ -1227,11 +1252,11 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           )}
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
+              <p className="text-cz-3 text-3xs uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
               <div className="flex flex-col gap-2">
                 {focusChanged && (
-                  <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-                    <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("request.focusLabel")}</p>
+                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
+                    <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
                     <p className="text-cz-2 text-sm mt-1">
                       {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
                     </p>
@@ -1241,7 +1266,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                   const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
                   const style = GOAL_CHANGE_STYLE[kind];
                   return (
-                    <div key={`${change.kind}-${index}`} className={`border rounded-lg p-3 ${style.box}`}>
+                    <div key={`${change.kind}-${index}`} className={`border rounded-cz p-3 ${style.box}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
@@ -1258,7 +1283,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                               : formatBoardCopy(change.after_label)}
                           </p>
                         </div>
-                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${style.accent}`}>
+                        <span className={`text-3xs font-semibold uppercase tracking-wider ${style.accent}`}>
                           {t(`changeKind.${kind}`)}
                         </span>
                       </div>
@@ -1291,7 +1316,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                 <button
                   onClick={() => onRequest(option.type)}
                   disabled={disabled || Boolean(requestingType)}
-                  className="w-full mt-4 py-2.5 rounded-lg text-sm font-semibold border transition-all
+                  className="w-full mt-4 py-2.5 rounded-cz text-sm font-semibold border transition-all
                     bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
                     disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
                 >
@@ -1307,7 +1332,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           })}
         </div>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -1347,11 +1372,8 @@ function BoardConsequencesPanel({ consequences = [] }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("consequence.heading")}</p>
-        <span className="text-cz-3 text-[10px]">{t("consequence.count", { count: visible.length })}</span>
-      </div>
+    <Section className="mt-5">
+      <SectionHeader title={t("consequence.heading")} meta={t("consequence.count", { count: visible.length })} />
       <div className="flex flex-col gap-2">
         {visible.sort((a, b) => a.layer - b.layer).map((c) => {
           const style = CONSEQUENCE_LAYER_STYLE[c.layer];
@@ -1359,7 +1381,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
           const LayerIcon = style.Icon;
           return (
             <div key={c.id}
-              className={`p-3 rounded-lg border ${isCritical
+              className={`p-3 rounded-cz border ${isCritical
                 ? "bg-cz-danger-bg0/8 border-cz-danger/30"
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
@@ -1376,7 +1398,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
           );
         })}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -1409,14 +1431,14 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
               type="button"
               disabled={busy}
               onClick={onAccept}
-              className="px-3 py-2 rounded-md bg-cz-success/20 hover:bg-cz-success/30 text-cz-success text-xs font-semibold border border-cz-success/40 disabled:opacity-50">
+              className="px-3 py-2 rounded-cz bg-cz-success/20 hover:bg-cz-success/30 text-cz-success text-xs font-semibold border border-cz-success/40 disabled:opacity-50">
               {t("bonusOffer.accept")}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={onDecline}
-              className="px-3 py-2 rounded-md bg-cz-subtle hover:bg-cz-subtle/70 text-cz-2 text-xs font-medium border border-cz-border disabled:opacity-50">
+              className="px-3 py-2 rounded-cz bg-cz-subtle hover:bg-cz-subtle/70 text-cz-2 text-xs font-medium border border-cz-border disabled:opacity-50">
               {t("bonusOffer.decline")}
             </button>
           </div>
@@ -1454,17 +1476,14 @@ function BoardFeedSection({ items = [] }) {
   const recent = items.slice(0, 5);
 
   return (
-    <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("feed.heading")}</p>
-        <span className="text-cz-3 text-[10px]">{t("feed.latestCount", { count: items.length })}</span>
-      </div>
+    <Section className="mt-5">
+      <SectionHeader title={t("feed.heading")} meta={t("feed.latestCount", { count: items.length })} />
       <div className="flex flex-col gap-2">
         {recent.map((item) => {
           const isCritical = item.type === "board_critical";
           return (
             <div key={item.id}
-              className={`p-3 rounded-lg border ${isCritical
+              className={`p-3 rounded-cz border ${isCritical
                 ? "bg-cz-danger-bg0/8 border-cz-danger/30"
                 : "bg-cz-subtle border-cz-border"}`}>
               <div className="flex items-start justify-between gap-3">
@@ -1475,7 +1494,7 @@ function BoardFeedSection({ items = [] }) {
                   <p className="text-cz-3 text-xs mt-1 leading-relaxed">{resolveFeedMessage(item, tBackend)}</p>
                 </div>
                 {isCritical && (
-                  <span className="text-[10px] uppercase tracking-wider text-cz-danger flex-shrink-0">
+                  <span className="text-3xs uppercase tracking-wider text-cz-danger flex-shrink-0">
                     {t("feed.needsAction")}
                   </span>
                 )}
@@ -1484,7 +1503,7 @@ function BoardFeedSection({ items = [] }) {
           );
         })}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -1542,15 +1561,16 @@ function SatisfactionProgressLine({ progress }) {
   const { current, target } = progress;
   if (Math.round(current) === Math.round(target)) {
     return (
-      <p className="text-cz-3 text-[11px] font-data -mt-2 mb-1">
+      <p className="text-cz-3 text-2xs font-data -mt-2 mb-1">
         {t("transparency.progressAtTarget", { target: Math.round(target) })}
       </p>
     );
   }
   const up = target > current;
+  const TrendArrow = up ? ArrowUpIcon : ArrowDownIcon;
   return (
-    <p className="text-cz-3 text-[11px] font-data -mt-2 mb-1 flex items-center gap-1">
-      <span aria-hidden="true" className={up ? "text-cz-success" : "text-cz-danger"}>{up ? "↑" : "↓"}</span>
+    <p className="text-cz-3 text-2xs font-data -mt-2 mb-1 flex items-center gap-1">
+      <TrendArrow size={11} aria-hidden="true" className={up ? "text-cz-success" : "text-cz-danger"} />
       {t("transparency.progressTowards", { target: Math.round(target) })}
     </p>
   );
@@ -1562,7 +1582,7 @@ function PassiveModifierLine({ info }) {
   if (!info) return null;
   const sign = info.pct > 0 ? "+" : "";
   return (
-    <p className="text-cz-3 text-[11px] -mt-1 mb-1">
+    <p className="text-cz-3 text-2xs -mt-1 mb-1">
       {t(`transparency.passiveModifier.${info.band}`, { pct: `${sign}${info.pct}` })}
     </p>
   );
@@ -1573,7 +1593,7 @@ function ChairmanWarningLine({ count }) {
   const { t } = useTranslation("board");
   if (!Number.isFinite(Number(count)) || Number(count) < 1) return null;
   return (
-    <p className="text-cz-danger text-[11px] font-medium mb-1">
+    <p className="text-cz-danger text-2xs font-medium mb-1">
       {t("transparency.chairmanWarning")}
     </p>
   );
@@ -1584,18 +1604,18 @@ function BonusOfferProgressLine({ progress }) {
   const { t } = useTranslation("board");
   if (!progress) return null;
   if (progress.eligible) {
-    return <p className="text-cz-success text-[11px] font-medium mb-1">{t("transparency.bonusOfferEligible")}</p>;
+    return <p className="text-cz-success text-2xs font-medium mb-1">{t("transparency.bonusOfferEligible")}</p>;
   }
   if (!progress.satisfaction_ok) {
     return (
-      <p className="text-cz-3 text-[11px] mb-1">
+      <p className="text-cz-3 text-2xs mb-1">
         {t("transparency.bonusOfferSatisfactionGap", { threshold: progress.satisfaction_threshold })}
       </p>
     );
   }
   if (progress.goals_gap != null && progress.goals_gap > 0) {
     return (
-      <p className="text-cz-3 text-[11px] mb-1">
+      <p className="text-cz-3 text-2xs mb-1">
         {t("transparency.bonusOfferClose", { count: progress.goals_gap })}
       </p>
     );
@@ -1614,9 +1634,9 @@ function TradeoffWarningLine({ payload }) {
       : null;
   if (!text) return null;
   return (
-    <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-lg px-2.5 py-1.5 mb-2">
-      <p className="text-cz-accent-t text-[11px] font-semibold">{t("transparency.tradeoff.heading")}</p>
-      <p className="text-cz-2 text-[11px] mt-0.5">{text}</p>
+    <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-2.5 py-1.5 mb-2">
+      <p className="text-cz-accent-t text-2xs font-semibold">{t("transparency.tradeoff.heading")}</p>
+      <p className="text-cz-2 text-2xs mt-0.5">{text}</p>
     </div>
   );
 }
@@ -1630,13 +1650,13 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
   if (!planData) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] text-center">
+      <Card className="p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] text-center">
         <div className="w-8 h-8 rounded-full bg-cz-subtle flex items-center justify-center text-cz-3 text-sm font-bold">
           {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
         </div>
         <p className="text-cz-3 text-xs">{getPlanLabel(t, planType)}</p>
-        <p className="text-cz-3 text-[11px]">{t("plan.autoConfigured")}</p>
-      </div>
+        <p className="text-cz-3 text-2xs">{t("plan.autoConfigured")}</p>
+      </Card>
     );
   }
 
@@ -1674,7 +1694,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
     && seasons_completed === Math.floor(plan_duration / 2);
 
   return (
-    <div className={`bg-cz-card border rounded-cz flex flex-col ${is_expired ? "border-cz-accent/40" : "border-cz-border"}`}>
+    <Card borderClass={is_expired ? "border-cz-accent/40" : "border-cz-border"} className="flex flex-col">
       {/* Full-bredde header (#955 fane-rework) */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -1692,9 +1712,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               gør det klikbart → scroll til tilfredshedsforklaringen nederst. */}
           <button type="button" onClick={scrollToSatisfactionExplainer}
             title={t("satisfactionExplainer.heading")}
-            className="text-right flex-shrink-0 rounded px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
+            className="text-right flex-shrink-0 rounded-cz px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
             <p className={`font-data font-bold text-base ${satColor} underline-offset-2 group-hover/sat:underline`}>{board.satisfaction}%</p>
-            <p className="text-cz-3 text-[11px] font-data">×{modifier.toFixed(2)}</p>
+            <p className="text-cz-3 text-2xs font-data">×{modifier.toFixed(2)}</p>
           </button>
         </div>
 
@@ -1711,7 +1731,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
         {is_expired ? (
           <button onClick={onNegotiate}
-            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-lg hover:bg-cz-accent/20 transition-all">
+            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-cz hover:bg-cz-accent/20 transition-all">
             {t("plan.negotiateExpired")}
           </button>
         ) : (
@@ -1719,25 +1739,26 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             {/* #955 · standing = kvalitativ label + trend-pil + bar + tal */}
             <div className="flex items-center justify-between gap-3 mb-1.5">
               <div className="flex items-baseline gap-2 min-w-0">
-                <span className="text-cz-3 text-[11px] uppercase tracking-wider">{t("plan.standingHeading")}</span>
+                <span className="text-cz-3 text-2xs uppercase tracking-wider">{t("plan.standingHeading")}</span>
                 <span className={`text-sm font-semibold ${benchmark.color}`}>{benchmark.label}</span>
                 {trend && (
                   <>
-                    <span aria-hidden="true" className={`text-xs ${trend.color}`}>{trend.glyph}</span>
+                    {(() => {
+                      const TrendIcon = getTrendIcon(trend.key);
+                      return <TrendIcon size={13} aria-hidden="true" className={trend.color} />;
+                    })()}
                     <span className="sr-only">{t(`status.trend.${trend.key}`)}</span>
                   </>
                 )}
               </div>
               <span className="text-cz-2 text-xs font-data flex-shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
             </div>
-            <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
-              aria-valuenow={nonCumGoals.length ? Math.round((goalsAchieved / nonCumGoals.length) * 100) : 0}
-              aria-valuemin={0} aria-valuemax={100} aria-label={t("a11y.goalsProgress")}>
-              <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                style={{ width: `${nonCumGoals.length ? (goalsAchieved / nonCumGoals.length) * 100 : 0}%` }} />
-            </div>
+            <ProgressMeter
+              value={nonCumGoals.length ? Math.round((goalsAchieved / nonCumGoals.length) * 100) : 0}
+              ariaLabel={t("a11y.goalsProgress")}
+            />
             {seasons_remaining != null && plan_duration > 1 && (
-              <p className="text-cz-3 text-[11px] mt-1.5 text-right">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
+              <p className="text-cz-3 text-2xs mt-1.5 text-right">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
             )}
           </>
         )}
@@ -1774,7 +1795,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
       <div className="mt-auto border-t border-cz-border">
         <button onClick={() => setDetailOpen(v => !v)}
           className="w-full py-2.5 text-xs text-cz-3 hover:text-cz-2 transition-colors flex items-center justify-center gap-1">
-          <span>{detailOpen ? "↑" : "↓"}</span>
+          {detailOpen
+            ? <ChevronUpIcon size={13} aria-hidden="true" />
+            : <ChevronDownIcon size={13} aria-hidden="true" />}
           <span>{detailOpen ? t("plan.hideDetails") : t("plan.showDetails")}</span>
         </button>
       </div>
@@ -1787,12 +1810,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.timelineHeading")}</p>
               <PlanTimelineBar planDuration={plan_duration} seasonsCompleted={seasons_completed} snapshots={snapshots} />
               <div className="mt-2">
-                <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
-                  aria-valuenow={plan_progress_pct || 0} aria-valuemin={0} aria-valuemax={100}
-                  aria-label={t("a11y.planProgress")}>
-                  <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                    style={{ width: `${plan_progress_pct || 0}%` }} />
-                </div>
+                <ProgressMeter value={plan_progress_pct || 0} ariaLabel={t("a11y.planProgress")} />
                 <p className="text-cz-3 text-xs text-center mt-1">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
               </div>
             </div>
@@ -1831,7 +1849,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
                     t(`personality.financial_risk.${outlook.personality.financial_risk}`, { defaultValue: "" }),
                     t(`personality.identity_strength.${outlook.personality.identity_strength}`, { defaultValue: "" }),
                   ].filter(Boolean).map(label => (
-                    <span key={label} className="text-[10px] bg-cz-subtle text-cz-2 px-2 py-0.5 rounded-full border border-cz-border">{label}</span>
+                    <span key={label} className="text-3xs bg-cz-subtle text-cz-2 px-2 py-0.5 rounded-cz-pill border border-cz-border">{label}</span>
                   ))}
                 </div>
               )}
@@ -1848,16 +1866,16 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
           {!is_expired && !renew_locked && (
             <button onClick={onRenew}
-              className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-lg hover:text-cz-2 hover:border-cz-border/80 transition-all">
+              className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all">
               {t("plan.renew")}
             </button>
           )}
           {!is_expired && renew_locked && (
-            <p className="text-cz-3 text-[10px] text-center">{t("plan.renewLocked")}</p>
+            <p className="text-cz-3 text-3xs text-center">{t("plan.renewLocked")}</p>
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -1873,20 +1891,22 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
     <div>
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-accent/10 border border-cz-accent/30
-          flex items-center justify-center text-2xl mx-auto mb-4">◧</div>
+          flex items-center justify-center mx-auto mb-4 text-cz-accent-t" aria-hidden="true">
+          <ClipboardIcon size={24} />
+        </div>
         <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step1Title")}</h2>
         <p className="text-cz-2 text-sm mt-1">{t("wizard.step1Subtitle")}</p>
       </div>
 
       <BoardIdentityCard identityProfile={identityProfile} title={t("identity.wizardTitle")} teamDna={teamDna} />
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4 mt-4">
+      <Section className="mb-4 mt-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.focusLabel")}</label>
             {FOCUS_KEYS.map(key => (
               <button key={key} onClick={() => setFocus(key)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 border transition-all
+                className={`w-full text-left px-3 py-2 rounded-cz text-sm mb-1 border transition-all
                   ${focus === key
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-2"}`}>
@@ -1896,7 +1916,7 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
           </div>
           <div>
             <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.horizonLabel")}</label>
-            <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-3">
+            <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz px-3 py-3">
               <p className="text-cz-accent-t font-semibold text-sm">{getPlanLabel(t, planType)}</p>
               <p className="text-cz-accent-t text-xs mt-0.5">{t(`planDescriptions.${planType}`)}</p>
             </div>
@@ -1907,23 +1927,23 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
             {t("wizard.horizonDuration", { count: duration })}
           </p>
         )}
-      </div>
+      </Section>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-6">
+      <Section className="mb-6">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         {previewLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="w-5 h-5 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+            <Spinner size={20} />
           </div>
         ) : previewError ? (
           <p className="text-cz-danger text-sm">{previewError}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {preview.map((g, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-cz-subtle border border-cz-border">
+              <div key={i} className="flex items-start gap-3 p-3 rounded-cz bg-cz-subtle border border-cz-border">
                 <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center justify-center
-                  flex-shrink-0 mt-0.5 text-xs">
-                  <span aria-hidden="true">○</span>
+                  flex-shrink-0 mt-0.5">
+                  <ClockIcon size={12} aria-hidden="true" />
                   <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -1934,8 +1954,8 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
                     {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">{t("goal.satisfactionPenalty", { count: g.satisfaction_penalty })}</span>}
                   </div>
                   {g.identity_basis_rationale && (
-                    <p className="text-[11px] text-cz-info mt-1.5">
-                      ★ {formatBoardCopy(g.identity_basis_rationale.short)}
+                    <p className="text-2xs text-cz-info mt-1.5 flex items-center gap-1">
+                      <StarIcon size={11} aria-hidden="true" /> {formatBoardCopy(g.identity_basis_rationale.short)}
                     </p>
                   )}
                 </div>
@@ -1943,7 +1963,7 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
             ))}
           </div>
         )}
-      </div>
+      </Section>
 
       <button
         onClick={onStart}
@@ -1981,12 +2001,11 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
           </button>
         )}
         <span className="text-cz-3 text-xs flex-shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
-        <div className="flex-1 bg-cz-subtle rounded-full h-1.5" role="progressbar"
-          aria-valuenow={total ? Math.round((goalIdx / total) * 100) : 0} aria-valuemin={0} aria-valuemax={100}
-          aria-label={t("a11y.wizardProgress")}>
-          <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-            style={{ width: `${((goalIdx) / total) * 100}%` }} />
-        </div>
+        <ProgressMeter
+          value={total ? Math.round((goalIdx / total) * 100) : 0}
+          ariaLabel={t("a11y.wizardProgress")}
+          className="flex-1"
+        />
       </div>
 
       <div className="text-center mb-8">
@@ -1994,19 +2013,21 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         <p className="text-cz-2 text-sm mt-1">{t("wizard.step2Subtitle")}</p>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
+      <Section className="mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
-        <div className={`flex items-start gap-3 p-4 rounded-lg border
+        <div className={`flex items-start gap-3 p-4 rounded-cz border
           ${current?.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
-            flex items-center justify-center flex-shrink-0 text-xs text-cz-accent-t" aria-hidden="true">◎</div>
+            flex items-center justify-center flex-shrink-0 text-cz-accent-t" aria-hidden="true">
+            <FlagIcon size={12} />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-1 font-semibold break-words">{getBoardGoalLabel(t, current)}</p>
             <div className="flex flex-wrap gap-3 mt-2">
               {current?.importance === "required" && (
-                <span className="text-[10px] text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
+                <span className="text-3xs text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
               )}
-              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg0/10 px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
+              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg0/10 px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
               {current?.satisfaction_bonus > 0 && (
                 <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: current?.satisfaction_bonus })}</span>
               )}
@@ -2017,7 +2038,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
             </div>
           </div>
         </div>
-      </div>
+      </Section>
 
       {!pendingNegotiate ? (
         <div className="flex gap-3">
@@ -2081,15 +2102,15 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
         </p>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-6">
+      <Section className="mb-6">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.agreedHeading")}</p>
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
-            <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border
+            <div key={i} className={`flex items-start gap-3 p-3 rounded-cz border
               ${g.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
               <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center
-                justify-center flex-shrink-0 mt-0.5 text-xs">
-                <span aria-hidden="true">○</span>
+                justify-center flex-shrink-0 mt-0.5">
+                <ClockIcon size={12} aria-hidden="true" />
                 <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
               </div>
               <div className="flex-1 min-w-0">
@@ -2104,7 +2125,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
             </div>
           ))}
         </div>
-      </div>
+      </Section>
 
       <button onClick={onSign} disabled={saving}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz
@@ -2662,15 +2683,11 @@ export default function BoardPage() {
   // #2307 · fejlet load → vis brugervendt fejl + retry i stedet for stille tom side.
   if (loadError) return (
     <div className="max-w-4xl mx-auto board-a11y">
-      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("page.title")}</h1>
-      <div className="text-center py-16 text-cz-3">
-        <p>{t("loadError")}</p>
-        <button onClick={() => loadAll()}
-          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("retry")}
-        </button>
-      </div>
+      <PageHeader title={t("page.title")} />
+      <ErrorState
+        title={t("loadError")}
+        action={<Button size="sm" variant="secondary" onClick={() => loadAll()}>{t("retry")}</Button>}
+      />
     </div>
   );
 
@@ -2684,21 +2701,19 @@ export default function BoardPage() {
   return (
     <div className="max-w-4xl mx-auto board-a11y">
       <OnboardingTour pageKey="board" steps={buildBoardTourSteps(t)} />
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-        </div>
-        <Link to="/finance"
-          className="px-3 py-2 rounded-lg text-sm border bg-cz-subtle text-cz-2 border-cz-border
-            hover:text-cz-1 hover:bg-cz-subtle transition-all inline-flex items-center gap-1.5">
-          <CoinIcon size={16} aria-hidden="true" /> {t("page.financeLink")}
-        </Link>
-      </div>
+      <PageHeader
+        title={t("page.title")}
+        subtitle={t("page.subtitle")}
+        actions={
+          <Link to="/finance" className={`${buttonClass({ variant: "secondary", size: "sm" })} gap-1.5`}>
+            <CoinIcon size={16} aria-hidden="true" /> {t("page.financeLink")}
+          </Link>
+        }
+      />
 
       {/* S-02a: Sæson 1 baseline — bestyrelsen observerer, ingen forhandling endnu. */}
       {isBaselinePhase && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-5">
+        <Section className="mb-5">
           <div className="flex items-start gap-3">
             <EyeIcon size={24} aria-hidden="true" className="flex-shrink-0 mt-0.5 text-cz-2" />
             <div>
@@ -2706,7 +2721,7 @@ export default function BoardPage() {
               <p className="text-cz-3 text-sm leading-relaxed">{t("baseline.body")}</p>
             </div>
           </div>
-        </div>
+        </Section>
       )}
 
       {!isBaselinePhase && !hasAnyPlan && setupNextPlanType && teamDna && (
@@ -2838,7 +2853,7 @@ export default function BoardPage() {
           </div>
 
           {/* #818 · forklar forhandlingsrækkefølge (5→3→1 år) */}
-          <p className="text-cz-3 text-[11px] mt-2 px-1">{t("plan.negotiationOrder")}</p>
+          <p className="text-cz-3 text-2xs mt-2 px-1">{t("plan.negotiationOrder")}</p>
 
           <div className="mt-4" role="tabpanel" id={`plan-panel-${activePlanTab}`} aria-labelledby={`plan-tab-${activePlanTab}`}>
             <DashboardPlanPanel
@@ -2869,22 +2884,22 @@ export default function BoardPage() {
       {!isBaselinePhase && <BoardFeedSection items={boardFeed} />}
 
       {/* Tilfredshedsforklaring — #1030: scroll-mål fra plan-panelets tilfredsheds-tal */}
-      <div id="board-satisfaction-explainer" className="bg-cz-card border border-cz-border rounded-cz p-5 mt-5 scroll-mt-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("satisfactionExplainer.heading")}</h2>
+      <Section id="board-satisfaction-explainer" className="mt-5 scroll-mt-4">
+        <SectionHeader title={t("satisfactionExplainer.heading")} />
         <div className="grid sm:grid-cols-3 gap-3">
           {[
             { key: "high",     color: "text-cz-success" },
             { key: "moderate", color: "text-cz-accent-t" },
             { key: "low",      color: "text-cz-danger" },
           ].map(item => (
-            <div key={item.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
+            <div key={item.key} className="bg-cz-subtle rounded-cz p-3 border border-cz-border">
               <p className={`font-mono font-bold text-sm ${item.color}`}>{t(`satisfactionExplainer.${item.key}.range`)}</p>
               <p className="text-cz-2 text-xs font-medium mt-1">{t(`satisfactionExplainer.${item.key}.label`)}</p>
               <p className="text-cz-3 text-xs mt-1">{t(`satisfactionExplainer.${item.key}.effect`)}</p>
             </div>
           ))}
         </div>
-      </div>
+      </Section>
 
       {/* S-02h · Wizard modal overlay — vises oven på dashboard (ikke full-page takeover) */}
       {wizardPlanType && (
@@ -2893,7 +2908,7 @@ export default function BoardPage() {
               mål-tæller og knapper flød før direkte på den mørke overlay → tema-tokens
               (text-cz-1/2/3) blev ulæselige i light-mode ("gennemsigtig tekst"). */}
           <div ref={wizardDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("wizard.dialogAria")}
-            className="w-full max-w-2xl bg-cz-body border border-cz-border rounded-cz p-4 sm:p-6 shadow-2xl h-fit">
+            className="w-full max-w-2xl bg-cz-body border border-cz-border rounded-cz p-4 sm:p-6 shadow-overlay h-fit">
             {/* Onboarding-header (sæson 2 setup) */}
             {wizardIsSetup && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 mb-6">
@@ -2934,7 +2949,7 @@ export default function BoardPage() {
             )}
 
             {/* Trin-indikator */}
-            <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
+            <Section className="mb-4">
               <div className="flex items-center">
                 {[
                   { n: 1, labelKey: "strategy"    },
@@ -2949,7 +2964,7 @@ export default function BoardPage() {
                           : "bg-cz-subtle text-cz-3"}`}>
                         {wizardStep > n ? (
                           <>
-                            <span aria-hidden="true">✓</span>
+                            <CheckIcon size={14} aria-hidden="true" />
                             <span className="sr-only">{t("a11y.wizardStepDone")}</span>
                           </>
                         ) : n}
@@ -2962,7 +2977,7 @@ export default function BoardPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Section>
 
             {wizardExistingPlanData?.board && (
               <div className="mb-4">

@@ -785,7 +785,11 @@
     "searching": "Søger...",
     "teamFree": "Fri agent",
     "empty": "Søg efter en rytter ovenfor for at starte sammenligning",
-    "potential": "Potentiale"
+    "potential": "Potentiale",
+    "loadingAria": "Indlæser sammenligning",
+    "loadErrorTitle": "Kunne ikke indlæse sammenligning",
+    "loadErrorBody": "Intet er gået tabt. Prøv igen.",
+    "retry": "Prøv igen"
   },
   "scouting": {
     "label_worldclass": "Verdensklasse-emne",

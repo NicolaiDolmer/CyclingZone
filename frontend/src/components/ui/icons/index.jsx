@@ -530,3 +530,30 @@ export function GlobeIcon(props) {
     </IconBase>
   );
 }
+
+// Chart-line (#2849 bølge 6: sæsonplanlæggerens "vis formkurver"-toggle brugte
+// Tabler-ikonfonten `ti ti-chart-area-line`, som ALDRIG har været indlæst i
+// projektet — ingen @font-face, ingen npm-pakke, ingen .ti-klasse. Akse + kurve.
+export function ChartLineIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 4v16h16" />
+      <path d="M7 15l3.5-4.5 3 3L18 8" />
+    </IconBase>
+  );
+}
+
+// Grip-vertical (#2849 bølge 6: samme Tabler-udskiftning — træk-håndtaget i
+// planlæggerens legende). To kolonner prikker.
+export function GripVerticalIcon(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="9" cy="6" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="18" r="1" />
+      <circle cx="15" cy="6" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="18" r="1" />
+    </IconBase>
+  );
+}
