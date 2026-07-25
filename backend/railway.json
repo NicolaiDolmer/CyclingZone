@@ -1,6 +1,8 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "deploy": {
-    "startCommand": "node --import ./instrument.mjs server.js"
+    "startCommand": "node --import ./instrument.mjs server.js",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 60
   }
 }
