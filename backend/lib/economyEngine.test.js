@@ -6223,3 +6223,273 @@ test("#2976 · tvangssalget står ved magt selv om salgs-beskeden fejler", async
   assert.equal(captured[0].context.messageCode, "notif.debtCeilingForcedSale.message");
   assert.equal(captured[0].context.teamId, teamId);
 });
+
+// ─── #2976 · Samme graense i SAESON-SLUT-vejen ────────────────────────────────
+//
+// Soendagens cutover har to kald-kaeder, og de deler defekten:
+//
+//   A) POST /api/admin/seasons/:id/end -> processSeasonEnd
+//        -> for (team of teams) await processTeamSeasonEnd(...)    <- 0 try/catch
+//        -> for (division of 1..MAX) await processDivisionEnd(...) <- 0 try/catch
+//   B) transitionToNextSeason (fase 6) -> processSeasonStart -> payroll (daekket ovenfor)
+//
+// I (A) er indsatsen hoejere end en manglende besked: en throw midt i
+// divisions-loopet efterlader op/nedrykningen HALVT anvendt.
+
+// Multi-hold-mock for processSeasonEnd. Samme princip som
+// createMultiTeamPayrollSupabase, men for de tabeller saeson-slut roerer.
+function createMultiTeamSeasonEndSupabase({ teams, boards, standings, failNotificationForUserIds = [] }) {
+  const notifications = [];
+  const boardUpdates = [];
+  const fail = new Set(failNotificationForUserIds);
+
+  // Kaedebar query-stub. Saeson-slut rammer den samme tabel med flere forskellige
+  // former (fetchAllRows-paginering via .range(), direkte await, .limit(),
+  // .single()), saa stubben svarer paa dem alle:
+  //   .range()  → `rangeRows`  (pagineret laesning)
+  //   await     → `awaitRows`  (boardGoalContext's Promise.all-queries)
+  const chain = (rangeRows = [], awaitRows = []) => {
+    const q = {
+      select: () => q, eq: () => q, in: () => q, lte: () => q, gte: () => q,
+      is: () => q, not: () => q, order: () => q,
+      limit: () => Promise.resolve({ data: awaitRows, error: null }),
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      range: () => Promise.resolve({ data: rangeRows, error: null }),
+      then: (res, rej) => Promise.resolve({ data: awaitRows, error: null }).then(res, rej),
+    };
+    return q;
+  };
+
+  const supabase = {
+    rpc() { return Promise.resolve({ data: 0, error: null }); },
+    from(table) {
+      switch (table) {
+        case "seasons":
+          return {
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { number: 5 }, error: null }) }) }),
+            update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          };
+        case "season_standings":
+          // .range() → slutstillingen; direkte await → boardGoalContext's
+          // pulje-optaelling (tom er fint, den paavirker kun maal-konteksten).
+          return chain(standings, []);
+        case "teams":
+          return {
+            select(columns) {
+              if (columns === "user_id") {
+                return { eq: (_c, teamId) => ({ single: () => Promise.resolve({ data: { user_id: `user-${teamId}` }, error: null }) }) };
+              }
+              return chain(teams, teams);
+            },
+            update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          };
+        case "riders":
+          return chain([], []);
+        case "board_profiles":
+          return {
+            select: () => chain(boards, boards),
+            update(payload) {
+              return {
+                eq(_c, boardId) {
+                  boardUpdates.push({ id: boardId, payload: { ...payload } });
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        case "board_plan_snapshots":
+          return { select: () => chain([], []), upsert: () => Promise.resolve({ error: null }) };
+        case "loans":
+          // .select("id", { count: "exact", head: true }).eq().eq() → { count }
+          return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) }) };
+        case "finance_transactions":
+          // .range(): alle hold markeret som "bonus allerede udbetalt", saa
+          // payDivisionBonuses ikke krediterer og testen holder fokus paa
+          // notifikations-graensen. await: boardGoalContext's transfer-balance.
+          return chain(teams.map(t => ({ team_id: t.id })), []);
+        case "race_results":
+          return chain([], []);
+        case "notifications": {
+          const q = {
+            eq() { return q; }, gte() { return q; }, order() { return q; },
+            is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+          };
+          return {
+            select() { return q; },
+            insert(row) {
+              if (fail.has(row.user_id)) {
+                return Promise.resolve({ data: null, error: { code: "23514", message: "notifications_type_check violation" } });
+              }
+              notifications.push(row);
+              return Promise.resolve({ data: row, error: null });
+            },
+          };
+        }
+        default:
+          throw new Error(`Unexpected table in multi-team season-end test: ${table}`);
+      }
+    },
+  };
+
+  return { supabase, notifications, boardUpdates };
+}
+
+test("#2976 · en fejlende bestyrelses-besked afbryder ikke sæson-slut for de øvrige hold", async () => {
+  // Tre hold med en 3-årsplan midtvejs → hver rammer boardMidReview-beskeden.
+  // Hold 2's insert fejler. Uden notifyManagerSafe ville hold 3 aldrig få sin
+  // bestyrelsesdom, og op/nedrykningen bagefter ville aldrig køre.
+  const ids = ["team-1", "team-2", "team-3"];
+  const teams = ids.map(id => ({
+    id,
+    name: `Season End ${id}`,
+    is_ai: false,
+    user_id: `user-${id}`,
+    balance: 500,
+    sponsor_income: 200,
+    division: 3,
+  }));
+  const boards = ids.map(id => ({
+    id: `board-${id}`,
+    team_id: id,
+    plan_type: "3yr",
+    focus: "balanced",
+    satisfaction: 50,
+    budget_modifier: 1.0,
+    current_goals: [],
+    seasons_completed: 0, // → seasonsCompleted 1 = floor(3/2) → mid-review
+    cumulative_stage_wins: 0,
+    cumulative_gc_wins: 0,
+    plan_start_sponsor_income: 200,
+  }));
+  const standings = ids.map((id, i) => ({
+    season_id: "season-5",
+    team_id: id,
+    division: 3,
+    league_division_id: null,
+    total_points: 50 - i,
+    rank_in_division: i + 2,
+    stage_wins: 0,
+    gc_wins: 0,
+    team: { id, is_ai: false },
+  }));
+
+  const ctx = createMultiTeamSeasonEndSupabase({
+    teams, boards, standings,
+    failNotificationForUserIds: ["user-team-2"],
+  });
+  const captured = [];
+
+  await processSeasonEnd("season-5", {
+    supabase: ctx.supabase,
+    ...baseDeps(),
+    boardTestMode: false,
+    // Divisions-flytningen dækkes af sin egen test nedenfor.
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  // 1. Alle tre hold fik deres bestyrelsesdom skrevet — også hold 2.
+  for (const id of ids) {
+    assert.ok(
+      ctx.boardUpdates.find(u => u.id === `board-${id}`),
+      `hold ${id} skal have fået sin board_profiles-opdatering`,
+    );
+  }
+
+  // 2. De hold hvis besked kunne leveres, fik den.
+  assert.equal(ctx.notifications.length, 2, "hold 1 og 3 skal have fået deres halvvejsevaluering");
+  assert.deepEqual(
+    ctx.notifications.map(n => n.user_id).sort(),
+    ["user-team-1", "user-team-3"],
+  );
+
+  // 3. Fejlen blev rapporteret, ikke slugt.
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].context.teamId, "team-2");
+  assert.equal(captured[0].context.messageCode, "notif.boardMidReview.message");
+  assert.equal(captured[0].context.sourcePath, "processTeamSeasonEnd.boardMidReview");
+  assert.equal(captured[0].context.tags.notification_type, "board_update");
+});
+
+test("#2976 · en fejlende oprykkerbesked må ikke efterlade pyramiden halvt flyttet", async () => {
+  // To puljer i div 2, hver med 3 hold → top 2 rykker op fra hver pulje (4 i alt).
+  // Beskeden fejler for den første oprykker. Uden notifyManagerSafe ville de tre
+  // resterende hold aldrig få deres division skrevet: nogle flyttet, andre ikke.
+  const divisionUpdates = [];
+  const notifications = [];
+
+  const mkStanding = (teamId, poolId, rank) => ({
+    season_id: "season-5",
+    team_id: teamId,
+    division: 2,
+    league_division_id: poolId,
+    rank_in_division: rank,
+    team: { id: teamId, is_ai: false },
+  });
+  const standings = [
+    mkStanding("a1", "pool-a", 1), mkStanding("a2", "pool-a", 2), mkStanding("a3", "pool-a", 3),
+    mkStanding("b1", "pool-b", 1), mkStanding("b2", "pool-b", 2), mkStanding("b3", "pool-b", 3),
+  ];
+
+  const supabase = {
+    from(table) {
+      if (table === "teams") {
+        return {
+          select: () => ({ eq: (_c, teamId) => ({ single: () => Promise.resolve({ data: { user_id: `user-${teamId}` }, error: null }) }) }),
+          update(payload) {
+            return {
+              eq(_c, teamId) {
+                divisionUpdates.push({ teamId, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) {
+            if (row.user_id === "user-a1") {
+              return Promise.resolve({ data: null, error: { message: "connection reset" } });
+            }
+            notifications.push(row);
+            return Promise.resolve({ data: row, error: null });
+          },
+        };
+      }
+      throw new Error(`Unexpected table in division-end test: ${table}`);
+    },
+  };
+
+  const captured = [];
+  // childrenOf → [] slår relegation fra; testen handler om oprykningsloopet.
+  const poolTree = { parentOf: () => "pool-parent", childrenOf: () => [], byId: new Map() };
+
+  await processDivisionEnd(standings, 2, "season-5", 5, {
+    supabase,
+    poolTree,
+    captureException: (error, context) => captured.push({ error, context }),
+  });
+
+  // Alle fire oprykkere skal have fået deres division skrevet.
+  assert.deepEqual(
+    divisionUpdates.map(u => u.teamId).sort(),
+    ["a1", "a2", "b1", "b2"],
+    "oprykningen må ikke stoppe ved det hold hvis besked fejlede",
+  );
+  for (const u of divisionUpdates) {
+    assert.equal(u.payload.division, 1, "alle fire skal flyttes til div 1");
+  }
+
+  assert.equal(notifications.length, 3, "de tre øvrige oprykkere skal have fået deres besked");
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].context.teamId, "a1");
+  assert.equal(captured[0].context.sourcePath, "processDivisionEnd.divisionPromoted");
+  assert.equal(captured[0].context.messageCode, "notif.divisionPromoted.message");
+});

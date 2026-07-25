@@ -31,7 +31,6 @@ import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
-import { captureException as captureExceptionShared } from "./sentry.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -1324,6 +1323,10 @@ export async function processSeasonEnd(seasonId, deps = {}) {
         supabase: supabaseClient,
         now: notificationNow,
         poolTree,
+        // #2976 · observabilitets-seam for notifyManagerSafe (samme mønster som
+        // defaultRunSeasonPayroll). En fejlet op/nedryknings-besked må ikke
+        // efterlade pyramiden halvt flyttet.
+        captureException: deps.captureException,
       });
     }
 
@@ -1705,7 +1708,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // feedback.headline/summary stammer fra boardEngine.evaluateBoardSeason
       // og er stadig DA-narrative — full board-feedback-i18n er ude af #666's
       // scope (spawnes som follow-up).
-      await notifyManager(
+      await notifyManagerSafe(
         team.id,
         "board_update",
         "Board plan expired",
@@ -1720,7 +1723,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
             summary: feedback.summary,
             satisfaction: newSatisfaction,
           },
-        }
+        },
+        { sourcePath: "processTeamSeasonEnd.boardPlanExpired", seasonId, captureException: deps.captureException }
       );
 
       // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
@@ -1777,7 +1781,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           : newSatisfaction >= 40
           ? "The board is moderately pleased with your progress."
           : "The board is worried about your progress in the plan.";
-        await notifyManager(
+        await notifyManagerSafe(
           team.id,
           "board_update",
           "Mid-plan review",
@@ -1792,13 +1796,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
               summary: feedback.summary,
               satisfaction: newSatisfaction,
             },
-          }
+          },
+          { sourcePath: "processTeamSeasonEnd.boardMidReview", seasonId, captureException: deps.captureException }
         );
       } else {
         const planLabelKey = planLabelKey_(board.plan_type);
         const delta = newSatisfaction - anchorSatisfaction;
         const planLabelEn = { "1yr": "1-year plan", "3yr": "3-year plan", "5yr": "5-year plan" }[board.plan_type] || "plan";
-        await notifyManager(
+        await notifyManagerSafe(
           team.id,
           "board_update",
           "Season report",
@@ -1816,7 +1821,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
               satisfaction: newSatisfaction,
               delta,
             },
-          }
+          },
+          { sourcePath: "processTeamSeasonEnd.boardSeasonReport", seasonId, captureException: deps.captureException }
         );
       }
     }
@@ -1841,7 +1847,15 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
         boardTestMode,
         now: deps.now ?? new Date(),
-        notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
+        // #2976: evaluateAndApplyConsequences kalder notify ÉN gang pr. anvendt
+        // konsekvens-lag. Kastede notifikationen, ville de resterende lag
+        // (fyring, budget-nedskæring) aldrig blive anvendt for dette hold, og
+        // catch'en nedenfor ville rapportere det som "board consequences
+        // failed" selv om konsekvensen faktisk lykkedes. Begge dele forkerte.
+        notify: ({ type, title, message, metadata }) => notifyManagerSafe(
+          team.id, type, title, message, notificationDeps, metadata ?? null,
+          { sourcePath: "processTeamSeasonEnd.boardConsequences", seasonId, captureException: deps.captureException },
+        ),
       });
     } catch (error) {
       // #2389 A2: en tavs fejl her betyder at en reel spil-konsekvens (fyring,
@@ -2104,7 +2118,10 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
           // allerede havde titleCode/messageCode — EN-first fallback + i18n-koder
           // så EN-brugere ikke længere får rå dansk tekst (frontend-nøglerne
           // notif.divisionPromoted.* fandtes allerede, ubrugte, i backendMessages.json).
-          await notifyManager(
+          // #2976: divisionen ER allerede flyttet ovenfor. Kastede beskeden,
+          // ville resten af op/nedrykningen udeblive og efterlade pyramiden
+          // halvt flyttet — værre end en manglende lykønskning.
+          await notifyManagerSafe(
             s.team_id, "board_update", "Promoted! 🎉",
             `Congratulations! Your team moves up to Division ${division - 1}.`, notificationDeps,
             {
@@ -2112,7 +2129,8 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
               titleParams: {},
               messageCode: "notif.divisionPromoted.message",
               messageParams: { division: division - 1 },
-            }
+            },
+            { sourcePath: "processDivisionEnd.divisionPromoted", seasonId, captureException: deps.captureException }
           );
           promoted++;
         }
@@ -2138,7 +2156,7 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
             .update({ division: division + 1, league_division_id: dest })
             .eq("id", s.team_id);
           throwIfSupabaseError(error, `Could not relegate team ${s.team_id}`);
-          await notifyManager(
+          await notifyManagerSafe(
             s.team_id, "board_update", "Relegation",
             `Your team drops to Division ${division + 1}.`, notificationDeps,
             {
@@ -2146,7 +2164,8 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
               titleParams: {},
               messageCode: "notif.divisionRelegated.message",
               messageParams: { division: division + 1 },
-            }
+            },
+            { sourcePath: "processDivisionEnd.divisionRelegated", seasonId, captureException: deps.captureException }
           );
           relegated++;
         }
@@ -2483,17 +2502,28 @@ async function notifyManager(teamId, type, title, message, deps = {}, metadata =
 /**
  * #2976 · Notifikations-afsendelse der ALDRIG afbryder pengelogikken.
  *
- * Kald-kæden ved sæsonskiftet har INGEN per-hold-grænse:
- *   seasonTransition.transitionToNextSeason (fase 6)
- *     → economyEngine.processSeasonStart
- *       → defaultRunSeasonPayroll  ← `for (team of teams) await ...`, intet try/catch
- *         → processTeamSeasonPayroll
+ * BEGGE kald-kæder i søndagens cutover har INGEN per-hold-grænse:
+ *
+ *   A) Sæson-SLUT — POST /api/admin/seasons/:id/end (api.js)
+ *        → processSeasonEnd
+ *          → for (team of teams) await processTeamSeasonEnd(...)   ← 0 try/catch
+ *          → for (division of 1..MAX) await processDivisionEnd(...) ← 0 try/catch
+ *
+ *   B) Sæson-START — seasonTransition.transitionToNextSeason (fase 6)
+ *        → processSeasonStart
+ *          → defaultRunSeasonPayroll
+ *            → for (team of teams) await processTeamSeasonPayroll(...) ← 0 try/catch
  *
  * En kastet notifikationsfejl for ÉT hold (DB-hikke, netværk, hold uden
- * user_id) ville derfor afbryde payroll for alle resterende hold OG resten af
- * sæson-transitionen (fase 7+ kører aldrig). Og den kaster først EFTER at
- * pengene er bogført, så at kaste redder ingenting: det bytter "én manglende
- * besked" for "halvt gennemført økonomikørsel".
+ * user_id) ville derfor afbryde resten af den kørsel: i (A) mister de
+ * resterende hold deres bestyrelsesdom, og en fejl i divisions-loopet
+ * efterlader op/nedrykningen HALVT anvendt (nogle hold flyttet, andre ikke);
+ * i (B) mister de resterende hold deres payroll og fase 7+ kører aldrig.
+ *
+ * Fælles for alle callsites: notifikationen sendes EFTER at den tilstand den
+ * beskriver er skrevet (penge bogført, plan opdateret, division flyttet). At
+ * kaste redder derfor ingenting — det bytter "én manglende besked" for "halvt
+ * gennemført sæsonskifte".
  *
  * Fejlen sluges ikke: den logges højlydt til cron-loggen og captures til Sentry
  * med hold-id + besked-type, så en systematisk fejl (fx en notifikationstype
@@ -2509,7 +2539,7 @@ async function notifyManagerSafe(teamId, type, title, message, deps = {}, metada
     await notifyManager(teamId, type, title, message, deps, metadata);
     return true;
   } catch (error) {
-    const capture = context.captureException ?? captureExceptionShared;
+    const capture = context.captureException ?? captureException;
     console.error(
       `  ❌ [economy] NOTIFIKATION FEJLEDE (${context.sourcePath || "unknown"}) for hold ${teamId}`
         + ` · type=${type} code=${metadata?.messageCode ?? "n/a"} · ${error?.message || error}`
