@@ -22,6 +22,25 @@ test("header-celle: text-2xs uppercase tracking .06em i text-3", () => {
   assert.ok(c.includes("text-left"));
 });
 
+// #2906 (ejer 25/7: "rækkerne er for høje") — opt-in `dense` halverer den
+// LODRETTE polstring. Default-rytmen (T2: 13px) må ikke ændre sig.
+test("dense: halveret lodret polstring i både header og celle", () => {
+  assert.ok(tdClass({ dense: true }).includes("py-[7px]"));
+  assert.ok(!tdClass({ dense: true }).includes("py-[13px]"));
+  assert.ok(thClass({ dense: true }).includes("py-2"));
+  assert.ok(!thClass({ dense: true }).includes("py-3"));
+});
+
+test("dense er opt-in — T2's default-rytme er uændret", () => {
+  assert.ok(tdClass().includes("py-[13px]"), "default-celle skal stadig være T2's 13px");
+  assert.ok(thClass().includes("py-3"), "default-header skal stadig være py-3");
+});
+
+test("dense rører ikke den VANDRETTE gutter (det er `compact`s job)", () => {
+  assert.ok(tdClass({ dense: true }).includes("px-4"));
+  assert.ok(tdClass({ dense: true, compact: true }).includes("px-2"));
+});
+
 test("numerisk celle er højrestillet font-data tabular", () => {
   const c = tdClass({ numeric: true });
   assert.ok(c.includes("text-right"));

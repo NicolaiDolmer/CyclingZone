@@ -12,6 +12,9 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
+import { getCountryCode3 } from "../lib/countryUtils";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
+import { riderOverallRating } from "../lib/riderRating";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
@@ -21,22 +24,12 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
-import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState } from "../components/ui";
+import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { WRAP, SCROLLER, TABLE, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
-// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
-
-// #2849 bølge 1: SortTh styrer selv sin farve (aktiv/hover-tekst) — thClass'
-// indbyggede text-cz-3 ville kollidere med den på samme element, så vi
-// strippers den her og lader SortTh vinde over farven.
-function sortableThClass(opts) {
-  return thClass(opts).replace(/\btext-cz-3\b\s*/, "").trim();
-}
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive }) {
   const { t } = useTranslation("team");
@@ -169,11 +162,16 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         </div>
         <div className="p-5 border-b border-cz-border">
           {/* #1242: samme kvalitative scouting-præsentation som alle andre flader —
-              det hardcodede rå tal (showValue) er fjernet. */}
+              det hardcodede rå tal (showValue) er fjernet.
+              #2888 (ejer 24/7: "den tekst-beskrivelse af potentiale regner jeg med at
+              fjerne overalt"): den kvalitative TEKST-label ("Verdensklasse-emne" osv.)
+              flyttes til tooltip'en — dette var det sidste sted på holdsiden hvor den
+              stod som synlig tekst. Stjernerne bærer informationen (skala-skiftet
+              stjerner → 1-99 er #2454/#2006, ikke denne PR). */}
           {scouting.estimateFor(rider.id) !== null && (
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-cz-border">
               <span className="text-cz-3 text-xs">{t("actionModal.potentialLabel")}</span>
-              <ScoutablePotentiale rider={rider} scouting={scouting} />
+              <ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle hideLevel />
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
@@ -391,6 +389,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
+  // #2906: ryttertype som underlinje i den sticky navnecelle i evne-tilstanden.
+  const { t: tTypes } = useTranslation("riderTypes");
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
   // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.
@@ -404,6 +404,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
   // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
   const [showSeniors, setShowSeniors] = useState(true);
   const [showAcademy, setShowAcademy] = useState(true);
+  // #2906 punkt 1 (ejer 25/7: "muligt/nemmere at se alle evner på samme tid"):
+  // to kolonne-tilstande i stedet for én 25-kolonners tabel ingen skærm kan vise.
+  // "overview" = de beskrivende kolonner (værdi, løn, status, kontrakt, handling);
+  // "abilities" = navn + rating + de 15 evner, som TILSAMMEN er smallere end
+  // 1280px-viewporten → alle 15 evner synlige på én gang uden vandret scroll.
+  const [tableMode, setTableMode] = useState("overview");
 
   // Incoming = riders with pending_team_id = myTeam but team_id != myTeam
   // Outgoing = riders with team_id = myTeam but pending different team
@@ -429,7 +435,14 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
     .filter(r => (r.is_academy ? showAcademy : showSeniors))
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
-    .map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
+    // #2906 punkt 2: `_ovr` = den samme 1-99-rating som rytterprofilen og
+    // auktionerne viser (riderOverallRating, type-bevidst). Dekoreres her, så
+    // rating-kolonnen kan sorteres via useClientRiderFilters' numeriske gren.
+    .map(r => ({
+      ...r,
+      _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
+      _ovr: riderOverallRating(r),
+    }));
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
@@ -443,46 +456,228 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
 
+  // Ryttertype som ren tekst — bruges til den sticky navnecelles underlinje i
+  // evne-tilstanden (hvor Type ikke har sin egen kolonne) og til mobil-folden.
+  // KUN primærtypen: underlinjen deler bredde med den pinnede navnekolonne, og
+  // "Etapeløbsrytter / Bjergrytter" gjorde den ~2x bredere end navnet — på 393px
+  // åd den halvdelen af skærmen, så kun 2 evne-kolonner var synlige.
+  // Samme gyldigheds-gate som RiderTypeBadge: en ukendt type-nøgle skal give
+  // INTET, ikke en rå i18n-nøgle ("types.leadout") — fælden #2849 bølge 6 ryddede
+  // op i, da en fjernet type stadig lå i en fixture.
+  function typeText(r) {
+    if (!r.primary_type || !RIDER_TYPE_KEYS.includes(r.primary_type)) return "";
+    return tTypes(`types.${r.primary_type}`);
+  }
+
+  const nameColumn = {
+    key: "name",
+    header: t("squad.headers.rider"),
+    sticky: true,
+    sortKey: "firstname",
+    // Evne-tilstanden har ingen Type-kolonne — typen lever i underlinjen i stedet
+    // (T2-recipens sticky-celle: navn + text-3xs uppercase underlinje).
+    subline: tableMode === "abilities" ? (r) => typeText(r) : undefined,
+    render: (r) => (
+      <>
+        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
+        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
+        <RiderLink id={r.id} stopPropagation
+          className="text-cz-1 hover:text-cz-accent-t transition-colors">
+          {r.firstname} {r.lastname}
+        </RiderLink>
+      </>
+    ),
+  };
+
+  // #2906 punkt 2 / #2888 punkt 2: rating som TAL (1-99), ikke stjerner.
+  // Bevidst UDEN farveplade: statColor-skalaen er fejl-ankret (#2890), så en
+  // farvet rating-celle ville rendre ~96% af menneskehold-ryttere grå. Tallet
+  // står i data-fonten med tabular figures (tdClass numeric).
+  const ratingColumn = {
+    key: "rating",
+    header: <span title={t("squad.headers.ratingTitle")}>{t("squad.headers.rating")}</span>,
+    sortKey: "_ovr",
+    numeric: true,
+    compact: true,
+    render: (r) => <span className="font-semibold text-cz-1">{r._ovr || "—"}</span>,
+  };
+
+  const abilityColumns = STATS.map(({ key, label }) => ({
+    key,
+    header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
+    sortKey: key,
+    numeric: true,
+    compact: true,
+    render: (r) => (
+      <span className="inline-block min-w-[26px] text-center text-xs font-mono px-1 py-0.5 rounded"
+        style={statStyle(r[key] || 0)}>
+        {r[key] || "-"}
+      </span>
+    ),
+  }));
+
+  const overviewColumns = [
+    {
+      key: "nation",
+      header: t("squad.headers.nation"),
+      sortKey: "nationality_code",
+      fold: true,
+      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
+      render: (r) => <NationCell code={r.nationality_code} />,
+    },
+    nameColumn,
+    ratingColumn,
+    {
+      key: "potential",
+      header: t("squad.headers.potential"),
+      sortKey: "_scoutMid",
+      compact: true,
+      // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
+      // tooltip'en (labelAsTitle) og scout-niveauet i scouting-fanen (hideLevel).
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
+    },
+    {
+      key: "value",
+      header: t("squad.headers.value"),
+      sortKey: "value",
+      numeric: true,
+      compact: true,
+      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
+    },
+    {
+      key: "salary",
+      header: t("squad.headers.salary"),
+      sortKey: "salary",
+      numeric: true,
+      compact: true,
+      render: (r) => <span className="text-cz-2">{formatNumber(r.salary || 0)}</span>,
+    },
+    // #1482: Status — alder + ind-/udgående som skanbare badges.
+    // #1531: skade-badge når rytteren er skadet (injured_until i fremtiden).
+    {
+      key: "badges",
+      header: t("squad.headers.badges"),
+      compact: true,
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+          {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
+          {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
+        </div>
+      ),
+    },
+    // #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier).
+    {
+      key: "age",
+      header: t("squad.headers.age"),
+      sortKey: "birthdate",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => String(getRiderAge(r.birthdate) ?? "—"),
+      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate) ?? "—"}</span>,
+    },
+    // #2888 punkt 3: sekundærtypen på egen linje — kolonnen var den bredeste
+    // enkeltkolonne i tabellen ("Etapeløbsrytter / Bjergrytter" på én linje).
+    {
+      key: "type",
+      header: t("squad.headers.type"),
+      sortKey: "primary_type",
+      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
+    },
+    // #1482: Kontraktudløb. #2888: cellen viser den korte sæson-form ("S4") med
+    // den fulde sætning i tooltip'en — "Udløber efter S4" fyldte ~120px pr. række.
+    {
+      key: "contract",
+      header: t("squad.headers.contract"),
+      sortKey: "contract_end_season",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => (r.contract_end_season != null ? t("squad.headers.contractShort", { season: r.contract_end_season }) : "—"),
+      render: (r) => (
+        <span className="text-cz-2"
+          title={r.contract_end_season != null ? t("squad.headers.contractValue", { season: r.contract_end_season }) : undefined}>
+          {r.contract_end_season != null ? t("squad.headers.contractShort", { season: r.contract_end_season }) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "action",
+      header: t("squad.headers.action"),
+      compact: true,
+      render: (r) => (!r._isIncoming ? (
+        <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
+          className="px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
+          {t("squad.actionButton")}
+        </button>
+      ) : null),
+    },
+  ];
+
+  // Evne-tilstand: navn (sticky) + rating + de 15 evner. ~870px i alt på desktop
+  // → ingen vandret scroll; på mobil scroller evnerne under den pinnede navnekolonne.
+  const abilityModeColumns = [nameColumn, ratingColumn, ...abilityColumns];
+  const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
+
   return (
     <div>
-      {/* #1929-redesign: gruppe-filtre i toppen — inkludér/ekskludér seniorer og
-          akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun synligt
-          når holdet har akademiryttere (ellers er der intet at filtrere). */}
-      {academyGroupCount > 0 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-cz-3">{t("squad.filter.label")}</span>
-          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.seniors", { count: seniorGroupCount })}
-          </button>
-          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.academy", { count: academyGroupCount })}
-          </button>
-        </div>
-      )}
+      {/* #2888/#2906: ÉN kontrol-række i stedet for op til tre stablede rækker
+          (gruppe-filtre, nuværende/kommende, tilstand). Hver stablet række kostede
+          ~44px højde over tabellen — den plads er det tabellen skulle bruge.
+          Venstre: hvem vises. Højre: hvilke kolonner vises. */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {/* #1929-redesign: gruppe-filtre — inkludér/ekskludér seniorer og
+            akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun
+            synligt når holdet har akademiryttere (ellers er der intet at filtrere). */}
+        {academyGroupCount > 0 && (
+          <>
+            <span className="text-xs text-cz-3">{t("squad.filter.label")}</span>
+            <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
+              className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+              {t("squad.filter.seniors", { count: seniorGroupCount })}
+            </button>
+            <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
+              className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+              {t("squad.filter.academy", { count: academyGroupCount })}
+            </button>
+          </>
+        )}
 
-      {/* #1095: segmenteret nuværende/kommende-visning */}
-      {hasTransfers && (
-        <div className="flex gap-2 mb-4 flex-wrap items-center">
-          {(incomingRiders.length > 0 || outgoingRiders.length > 0) && (
-            <div className="flex rounded-cz border border-cz-border overflow-hidden">
-              {[
-                { key: "current",  label: t("squad.view.current",  { count: currentCount }) },
-                { key: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
-              ].map(v => (
-                <button key={v.key} onClick={() => setSquadView(v.key)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-all
-                    ${squadView === v.key
-                      ? "bg-cz-accent/10 text-cz-accent-t"
-                      : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* #1095: segmenteret nuværende/kommende-visning */}
+        {hasTransfers && (
+          <div className="flex rounded-cz border border-cz-border overflow-hidden">
+            {[
+              { key: "current",  label: t("squad.view.current",  { count: currentCount }) },
+              { key: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
+            ].map(v => (
+              <button key={v.key} onClick={() => setSquadView(v.key)} aria-pressed={squadView === v.key}
+                className={`px-3 py-1.5 text-xs font-medium transition-all
+                  ${squadView === v.key
+                    ? "bg-cz-accent/10 text-cz-accent-t"
+                    : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* #2906 punkt 1: kolonne-tilstand. "Evner" viser alle 15 evner samtidig. */}
+        <div className="flex rounded-cz border border-cz-border overflow-hidden ms-auto">
+          {[
+            { key: "overview",  label: t("squad.mode.overview") },
+            { key: "abilities", label: t("squad.mode.abilities") },
+          ].map(m => (
+            <button key={m.key} type="button" onClick={() => setTableMode(m.key)} aria-pressed={tableMode === m.key}
+              className={`px-3 py-1.5 text-xs font-medium transition-all
+                ${tableMode === m.key
+                  ? "bg-cz-accent/10 text-cz-accent-t"
+                  : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+              {m.label}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {squadView === "upcoming" && (incomingRiders.length > 0 || outgoingRiders.length > 0) && (
         <p className="text-cz-3 text-xs mb-3">{t("squad.view.upcomingHint")}</p>
@@ -516,148 +711,27 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
           <EmptyState icon={<BikeIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />
         )
       ) : (
-        /* #2849 bølge 1: DataTable-komponenten kan ikke udtrykke denne tabel —
-           hele rækken navigerer til rytterprofilen ved klik (#1796, forhindrer
-           "døde klik" på værdi-/potentiale-cellerne), og DataTable har intet
-           onRowClick-hook. Vi beholder derfor custom tabel-markup, men
-           genbruger WRAP/SCROLLER/thClass/tdClass/trClass fra dataTableStyles.js
-           så tabellen deler chrome (sticky-kolonne, borders, zone-tints) med
-           den kanoniske DataTable. Den rå shadow-[10px_0_16px_-16px_…] på
-           navnekolonnen er erstattet af recipe'ens 1px højre-rule + opak
-           cellebund (tdClass({ sticky: true })). Ind-/udgående ryttere bruger
-           nu zone-tint-recipen (success/danger) i stedet for den tidligere ad
-           hoc bg-cz-success-bg-opacity. Mobil-fold (sekundære kolonner ind
-           i sticky-underlinjen) er ikke implementeret — tabellen scroller
-           horisontalt som før migreringen. */
-        <div className={WRAP}>
-          <div className={SCROLLER}>
-            <table data-sortable className={TABLE}>
-              <thead>
-                <tr>
-                  {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}
-                  <SortTh sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({})}>{t("squad.headers.nation")}</SortTh>
-                  <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({ sticky: true })}>{t("squad.headers.rider")}</SortTh>
-                  <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({ numeric: true })}>{t("squad.headers.value")}</SortTh>
-                  {/* #1131: Løn-kolonnen var eneste døde header i rækken (1.385 dead clicks
-                      i Clarity 5/6-12/6) — sortérbar nu, samme som på /riders. */}
-                  <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({ numeric: true })}>{t("squad.headers.salary")}</SortTh>
-                  <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({})}>{t("squad.headers.potential")}</SortTh>
-                  {/* #1482: status/badges, ryttertype og kontraktudløb som egne
-                      kolonner (Discord-feedback) — U25/ind/ud flyttet ud af navne-cellen. */}
-                  <th className={thClass({})}>{t("squad.headers.badges")}</th>
-                  <SortTh sortKey="birthdate" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({ numeric: true })}>{t("squad.headers.age")}</SortTh>
-                  <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({})}>{t("squad.headers.type")}</SortTh>
-                  <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className={sortableThClass({})}>{t("squad.headers.contract")}</SortTh>
-                  {STATS.map(({ key, label }) => (
-                    <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
-                      title={tRider(`racePreview.derived.${key}`)}
-                      className={sortableThClass({ numeric: true, compact: true })}>{label}</SortTh>
-                  ))}
-                  <th className={thClass({})}>{t("squad.headers.action")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayRiders.map((r, i) => {
-                  // #2849 bølge 1: zone-tint-recipen (success/danger) erstatter den
-                  // tidligere ad hoc bg-cz-success-bg-opacity for ind-/udgående ryttere.
-                  const zone = r._isIncoming ? "success" : r._isOutgoing ? "danger" : null;
-                  const prevZone = i > 0 ? (displayRiders[i - 1]._isIncoming ? "success" : displayRiders[i - 1]._isOutgoing ? "danger" : null) : null;
-                  const nextZone = i < displayRiders.length - 1 ? (displayRiders[i + 1]._isIncoming ? "success" : displayRiders[i + 1]._isOutgoing ? "danger" : null) : null;
-                  const edgeTop = Boolean(zone) && i > 0 && prevZone !== zone;
-                  const edgeBottom = Boolean(zone) && i < displayRiders.length - 1 && nextZone !== zone;
-                  const z = { zone, edgeTop, edgeBottom };
-                  return (
-                    <tr key={r.id}
-                      onClick={() => navigate(`/riders/${r.id}`)}
-                      className={`${trClass(zone)} cursor-pointer`}>
-                      <td className={tdClass(z)}>
-                        <NationCell code={r.nationality_code} />
-                      </td>
-                      <td className={tdClass({ ...z, sticky: true })}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
-                          {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
-                          <RiderLink id={r.id} stopPropagation
-                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
-                            {r.firstname} {r.lastname}
-                          </RiderLink>
-                          {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen. */}
-                        </div>
-                      </td>
-                      <td className={tdClass({ ...z, numeric: true })}>
-                        <div className="text-cz-accent-t font-mono text-sm font-bold">
-                          {formatNumber(getRiderMarketValue(r))}
-                        </div>
-                        {/* #2849 bølge 6 (ejer-feedback 25/7): delta-pilen fyldte for
-                            meget i truppen — værdien alene er det man skanner efter her.
-                            Bevægelsen findes stadig på rytterprofilens hero. */}
-                      </td>
-                      <td className={tdClass({ ...z, numeric: true })}>
-                        <span className="text-cz-2 font-mono">{r.salary || 0}</span>
-                      </td>
-                      <td className={tdClass(z)}>
-                        {/* #2849 bølge 6 (ejer-feedback 25/7): stjernerne alene — den
-                            kvalitative label og scout-niveau-badgen fylder for meget i
-                            en tæt tabelcelle. Samme kontrakt som T3-heroen og akademiet. */}
-                        <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />
-                      </td>
-                      {/* #1482: Status — alder + ind-/udgående som skanbare badges.
-                          #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
-                      <td className={tdClass(z)}>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
-                          {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
-                          {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
-                        </div>
-                      </td>
-                      {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
-                      <td className={tdClass({ ...z, numeric: true })}>
-                        <span className="text-cz-2 font-mono">{getRiderAge(r.birthdate) ?? "—"}</span>
-                      </td>
-                      {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
-                      <td className={tdClass(z)}>
-                        <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                      </td>
-                      {/* #1482: Kontraktudløb i egen kolonne (sæson-number, "—" hvis ukendt). */}
-                      <td className={tdClass(z)}>
-                        <span className="text-cz-2 text-xs whitespace-nowrap">
-                          {r.contract_end_season != null
-                            ? t("squad.headers.contractValue", { season: r.contract_end_season })
-                            : "—"}
-                        </span>
-                      </td>
-                      {STATS.map(({ key }) => (
-                        <td key={key} className={tdClass({ ...z, numeric: true, compact: true })}>
-                          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                            {r[key] || "-"}
-                          </span>
-                        </td>
-                      ))}
-                      <td className={tdClass(z)}>
-                        {!r._isIncoming && (
-                          <div className="text-center">
-                            <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
-                              className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
-                              {t("squad.actionButton")}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        /* #2888/#2906: truppen bruger nu den KANONISKE DataTable (T2-recipen) i
+           stedet for sin egen kopi af tabel-markuppen. Rækken navigerer stadig
+           til rytterprofilen (#1796) — det sker via DataTable's rowProps-hook,
+           som blev tilføjet i #2849 bølge 1 og gjorde den gamle "DataTable kan
+           ikke udtrykke denne tabel"-begrundelse forældet. Gevinsten er delt
+           adfærd: mobil-fold (nation/alder/kontrakt ind i navnecellens
+           underlinje), sticky navnekolonne, zone-tints og den nye `dense`-
+           rækkehøjde rammer alle T2-tabeller på én gang, ikke kun holdsiden. */
+        <DataTable
+          label={t("tabs.squad", { count: displayRiders.length })}
+          columns={columns}
+          rows={displayRiders}
+          rowKey={(r) => r.id}
+          dense
+          rowZone={(r) => (r._isIncoming ? "success" : r._isOutgoing ? "danger" : null)}
+          rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
+          sort={sort}
+          sortDir={sortDir}
+          onSort={handleSort}
+          count={t("squad.count", { count: displayRiders.length })}
+        />
       )}
     </div>
   );

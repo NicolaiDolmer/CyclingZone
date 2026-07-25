@@ -24,6 +24,8 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePill
 // per-række-hook (#2849 bølge 1). className KONKATENERES EFTER den zone-afledte
 // klasse (så caller-klasser, fx en selektions-ring, kan style oven på zone-tint/
 // hover); øvrige props (ref, onClick, data-*, …) spredes uændret på <tr>.
+// `dense` (#2906): halveret lodret cellepolstring for tabeller hvor antallet af
+// rækker pr. skærm er pointen (truppen: 30 ryttere). Default = T2's 13px-rytme.
 export function DataTable({
   columns,
   rows,
@@ -36,6 +38,7 @@ export function DataTable({
   count = null,
   label,
   className = "",
+  dense = false,
 }) {
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
@@ -56,7 +59,7 @@ export function DataTable({
                   return (
                     <th
                       key={col.key}
-                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky, compact: col.compact, dense })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
                       onClick={sortable ? () => onSort(col.sortKey) : undefined}
                       aria-sort={
                         sortable
@@ -85,7 +88,7 @@ export function DataTable({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""}`}
+                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact, dense })} ${col.fold ? "hidden sm:table-cell" : ""}`}
                       >
                         {col.sticky
                           ? renderStickyCell(col, row, i, foldCols)

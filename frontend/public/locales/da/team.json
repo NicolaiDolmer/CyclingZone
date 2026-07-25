@@ -40,6 +40,8 @@
     "headers": {
       "nation": "Nation",
       "rider": "Rytter",
+      "rating": "Rating",
+      "ratingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
       "value": "Værdi",
       "salary": "Løn",
       "potential": "Potentiale",
@@ -48,8 +50,14 @@
       "type": "Type",
       "contract": "Kontrakt",
       "contractValue": "Udløber efter S{season}",
+      "contractShort": "S{season}",
       "action": "Handling"
     },
+    "mode": {
+      "overview": "Overblik",
+      "abilities": "Evner"
+    },
+    "count": "{count, plural, one {1 rytter} other {# ryttere}}",
     "actionButton": "Sælg / Auktion",
     "ownAuctionTooltip": "På auktion · højeste bud {price} CZ$ · slutter om {timeLeft}"
   },

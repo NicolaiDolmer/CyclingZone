@@ -38,9 +38,13 @@ const ZONES = {
 // 28px brede med 32px luft imellem sig, hvilket spreder rytterdatabasen og
 // truppen ud og gør dem svære at skanne på tværs. Navn/hold/status-kolonner
 // beholder px-4 — dér ER luften det der adskiller læsbar tekst.
-export function thClass({ numeric = false, sticky = false, compact = false } = {}) {
+// #2906 (ejer-feedback 25/7): `dense` halverer den LODRETTE cellepolstring
+// (py-[13px] -> py-[7px], header py-3 -> py-2) for tabeller hvor rækketallet er
+// det der tæller — truppen viser 30 ryttere, og ~48px rækker gav ~1450px side.
+// Opt-in pr. tabel, så T2's default-rytme (13px) er uændret alle andre steder.
+export function thClass({ numeric = false, sticky = false, compact = false, dense = false } = {}) {
   const base =
-    `whitespace-nowrap bg-cz-card ${compact ? "px-2" : "px-4"} py-3 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
+    `whitespace-nowrap bg-cz-card ${compact ? "px-2" : "px-4"} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -48,7 +52,7 @@ export function thClass({ numeric = false, sticky = false, compact = false } = {
 
 // Zone-kanter (2px semi-opaque separator) ERSTATTER den ordinære 1px toplinje
 // på boundary-rækken — to border-top-utilities på samme celle er udefineret.
-export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false, compact = false } = {}) {
+export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false, compact = false, dense = false } = {}) {
   const z = ZONES[zone];
   const rules = [
     z && edgeTop ? z.edgeTop : "border-t border-cz-border",
@@ -56,7 +60,7 @@ export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop 
   ];
   const bg = z ? (sticky ? z.stickyCell : z.cell) : sticky ? "bg-cz-card group-hover:bg-cz-subtle" : "";
   return [
-    `${compact ? "px-2" : "px-4"} py-[13px] text-sm text-cz-1`,
+    `${compact ? "px-2" : "px-4"} ${dense ? "py-[7px]" : "py-[13px]"} text-sm text-cz-1`,
     numeric ? "text-right font-data tabular-nums" : "text-left",
     sticky ? STICKY : "",
     bg,
