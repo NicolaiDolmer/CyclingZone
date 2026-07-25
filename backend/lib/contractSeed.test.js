@@ -51,13 +51,30 @@ test("CONTRACT-konstanter", () => {
 // kontrakt; ryttere med kontrakt (salary != null) arver uændret ({}).
 
 test("contractOnAcquirePatch: rytter MED kontrakt → {} (arves uændret, regenereres ALDRIG)", () => {
-  // salary != null → tom patch uanset base_value/length/end
+  // salary != null OG contract_end_season != null → tom patch uanset base_value/length
   assert.deepEqual(
     contractOnAcquirePatch({ salary: 42_000, base_value: 1_000_000, contract_length: 3, contract_end_season: 9 }, 5),
     {}
   );
-  // salary 0 er en gyldig (gratis) kontrakt → arves også uændret
-  assert.deepEqual(contractOnAcquirePatch({ salary: 0, base_value: 1_000_000 }, 5), {});
+  // salary 0 er en gyldig (gratis) kontrakt → arves også uændret (kræver stadig contract_end_season != null)
+  assert.deepEqual(contractOnAcquirePatch({ salary: 0, base_value: 1_000_000, contract_end_season: 9 }, 5), {});
+});
+
+// #2894/#2902 forward-guard: FØR fixet krævede guarden kun salary != null, hvilket
+// blindede patchen for ryttere hvor starterSquadAllocator satte team_id men aldrig
+// kontrakt-felterne (salary blev separat backfillet af #2746, contract_length/
+// contract_end_season forblev NULL — 1.326 ryttere/138 hold, verificeret 25/7).
+// Guarden kræver nu OGSÅ contract_end_season != null, så et fremtidigt
+// erhvervelses-kald (auktion/transfer/swap/lån) på sådan en rytter healer den.
+test("contractOnAcquirePatch: salary sat MEN contract_end_season NULL → heales (ikke længere blindet, #2902)", () => {
+  const patch = contractOnAcquirePatch(
+    { salary: 42_000, current_production_value: 1_000_000, contract_length: null, contract_end_season: null },
+    1,
+    { division: 1 },
+  );
+  assert.equal(patch.contract_length, 2);
+  assert.equal(patch.salary, 302_900); // genberegnet fra current_production_value, ikke det gamle 42_000
+  assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
 test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
