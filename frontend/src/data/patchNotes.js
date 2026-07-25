@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.62",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Security",
+        "en": {
+          "title": "Four security advisories closed in the app's dependencies",
+          "body": "The routing library was upgraded from React Router 6 to 7, which closes three advisories: two open-redirect issues and one arbitrary-constructor-injection issue. The `react-router-dom` package is gone, since v7 exports everything from `react-router`, and that removes an advisory which had no fix at all in the 6.x line. On the backend, an unused spreadsheet library was removed and a pattern-expansion library patched, taking that project from nine high-severity findings to zero. Navigation behaves exactly as before. The admin catch-all redirect was made absolute, because v7 resolves relative paths inside catch-all routes differently than v6 did."
+        },
+        "da": {
+          "title": "Fire sikkerhedsadvarsler lukket i appens afhængigheder",
+          "body": "Routing-biblioteket er opgraderet fra React Router 6 til 7, hvilket lukker tre advarsler: to open-redirect-problemer og ét om vilkårlig constructor-injektion. Pakken `react-router-dom` er væk, fordi v7 eksporterer alt fra `react-router`, og det fjerner en advarsel som slet ikke havde en rettelse i 6.x-linjen. I backenden er et ubrugt regneark-bibliotek fjernet og et mønster-udfoldnings-bibliotek patchet, hvilket tog det projekt fra ni høj-alvorlige fund til nul. Navigationen opfører sig præcis som før. Admin-fladens catch-all-redirect er gjort absolut, fordi v7 opløser relative paths inde i catch-all-routes anderledes end v6 gjorde."
+        },
+        "refs": [2960]
+      }
+    ]
+  },
+  {
     "version": "7.61",
     "date": "2026-07-25",
     "label": "Beta",

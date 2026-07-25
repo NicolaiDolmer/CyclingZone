@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import { Suspense, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import AdminTabs from "../../components/admin/shared/AdminTabs";

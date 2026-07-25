@@ -13,7 +13,7 @@
 // for at udlede sit eget (potentielt forkerte) løb fra den rå races-liste.
 
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card, FlagIcon } from "./ui";
 
 export default function TeamSelectionCtaCard({ nextRace }) {

@@ -9,7 +9,7 @@
 // tidslinjen (racesForList). En række vælger løbet (åbner skuffen + fremhæver
 // kolonnen); et separat link fører til den fulde løbsside (/races/:id).
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, StarIcon, ExternalLinkIcon } from "../ui";
 import { racesForList, myPeakCountByRace, formatRaceDateLabel, dateToOrdinal } from "./plannerShared";

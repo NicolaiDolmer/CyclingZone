@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useConsent } from "../lib/consent.jsx";
 import { formatDateTime } from "../lib/intl";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";

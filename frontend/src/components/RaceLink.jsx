@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 // Løbet som førsteklasses klikbart objekt → /races/:id (valgfri ?stage=N).
 // id mangler → ren <span> (graceful, som RiderLink/TeamLink). Rygrad for S5/S6.

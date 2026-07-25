@@ -3,7 +3,7 @@
 // Gem skriver IKKE entries — den tilbyder live preview-diff + eksplicit "Regenerér".
 // Auth/fetch-mønster spejler RaceHubBoard.jsx.
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../lib/supabase";
 import { PageHeader, PageLoader, SectionStack, EmptyState, ErrorState, Button } from "../components/ui";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { PageLoader, PageHeader, EmptyState, ErrorState, Button, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";

@@ -23,7 +23,7 @@
 // samme ejer-godkendte opskrift som Klub/SeasonPlanner, ikke en ny fortolkning.
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import {
   EmptyState, ErrorState, PageLoader, Button, Select,
   Section, SectionStack, SectionHeader, ChevronRightIcon,
