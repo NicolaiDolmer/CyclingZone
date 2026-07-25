@@ -179,6 +179,11 @@
       "title": "Rytter har forladt spillet",
       "message": "{rider} har forladt spillet og er fjernet fra din ønskeliste."
     },
+    "auctionCancelledRetired": {
+      "title": "Auktion annulleret: rytter pensioneret",
+      "messageBidder": "{rider} pensionerede sig, før auktionen kunne gennemføres. Du er ikke blevet trukket.",
+      "messageSeller": "{rider} pensionerede sig, før auktionen på ham kunne gennemføres. Auktionen blev annulleret."
+    },
     "intakeExpiryCompensation": {
       "title": "Akademi-intake-tilbud udløb: rytter solgt",
       "message": "Dit akademi-intake-tilbud for {rider} udløb, og han blev solgt på auktion. Du modtog {amount} CZ$."

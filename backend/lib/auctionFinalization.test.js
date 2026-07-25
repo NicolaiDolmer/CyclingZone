@@ -900,6 +900,139 @@ test("finalizeAuctionById cancels a stale auction when another human manager own
   assert.match(notifications[0].message, /anden manager/);
 });
 
+// #2918: en rytter kan pensioneres (is_retired=true) mens hans auktion stadig
+// løber (sæson-transitionens rider_progression-fase rører ikke auctions). Uden
+// guard ville finalize have debiteret køberen og krediteret sælgeren for en
+// rytter der aldrig kan starte et løb igen.
+test("finalizeAuctionById cancels cleanly with no money movement when the rider retired before finalization", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retired",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-retired",
+          firstname: "Veteran",
+          lastname: "Retiree",
+          team_id: "seller-team",
+          is_retired: true,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 200,
+          division: 3,
+          user_id: "user-seller",
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-retired",
+    notifyTeamOwner: async (...args) => notifications.push(args),
+    now: new Date("2026-07-27T09:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "cancelled_retired");
+  assert.deepEqual(auctionUpdates, [{
+    status: "cancelled",
+    actual_end: "2026-07-27T09:00:00.000Z",
+    seller_team_id: "seller-team",
+  }]);
+  // Money-risk fully closed: no balance RPC calls, no rider ownership change.
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(financeInserts, []);
+
+  assert.equal(notifications.length, 2);
+  const [bidderNotif, sellerNotif] = notifications;
+  assert.equal(bidderNotif[0], "buyer-team");
+  assert.equal(bidderNotif[1], "auction_cancelled");
+  assert.match(bidderNotif[3], /not been charged/);
+  assert.equal(bidderNotif[5].messageCode, "notif.auctionCancelledRetired.messageBidder");
+  assert.equal(bidderNotif[5].titleCode, "notif.auctionCancelledRetired.title");
+
+  assert.equal(sellerNotif[0], "seller-team");
+  assert.equal(sellerNotif[1], "auction_cancelled");
+  assert.match(sellerNotif[3], /cancelled/);
+  assert.equal(sellerNotif[5].messageCode, "notif.auctionCancelledRetired.messageSeller");
+});
+
+test("finalizeAuctionById retirement guard also cancels youth auctions before senior/academy placement", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-youth-retired",
+        status: "active",
+        is_youth: true,
+        current_bidder_id: "buyer-team",
+        current_price: 40,
+        seller_team_id: null,
+        rider: {
+          id: "rider-youth-retired",
+          firstname: "Young",
+          lastname: "ButRetired",
+          team_id: null,
+          is_retired: true,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-buyer",
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-youth-retired",
+    notifyTeamOwner: async (...args) => notifications.push(args),
+    now: new Date("2026-07-27T09:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "cancelled_retired");
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(financeInserts, []);
+  // No seller for youth auctions — only the bidder is notified.
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0][0], "buyer-team");
+  assert.equal(notifications[0][1], "auction_cancelled");
+});
+
 test("finalizeAuctionById still pays the human seller for a normal owned-rider auction", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
