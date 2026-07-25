@@ -173,10 +173,24 @@ export default function ManagerProfilePage() {
     </div>
   );
 
-  const { team, user, riders: rawRiders, season_history, achievements, transfer_activity } = data;
+  const {
+    team, user,
+    riders: rawRiders,
+    season_history: rawSeasonHistory,
+    achievements: rawAchievements,
+    transfer_activity: rawTransferActivity,
+  } = data;
   // #1529: backend leverer rytteren med nested rider_derived_abilities — flad evnerne
   // op på rytter-objektet så r.climbing osv. virker i render-cellerne nedenfor.
   const riders = (rawRiders || []).map(flattenAbilities);
+  // #2876: achievements/season_history/transfer_activity guardes nu på samme måde
+  // som riders — et 200-svar der mangler et af felterne (delvist svar eller en
+  // fremtidig kontraktændring) skal degradere til en tom liste, ikke crashe hele
+  // siden i error boundary. Backend leverer altid arrayet (evt. tomt, #2876), men
+  // frontend skal ikke stole blindt på det.
+  const season_history = rawSeasonHistory || [];
+  const achievements = rawAchievements || [];
+  const transfer_activity = rawTransferActivity || [];
   const sortedRiders = sortRows(riders, riderSort.sort ? MANAGER_RIDER_ACCESSORS[riderSort.sort] : null, riderSort.sortDir);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
@@ -244,12 +258,17 @@ export default function ManagerProfilePage() {
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
                   <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
-                    {t("manager.managerPrefix")} {user.username} · {t("manager.division", { n: team.division })}
+                    {t("manager.managerPrefix")} {user?.username ?? t("manager.aiManaged")} · {t("manager.division", { n: team.division })}
                   </span>
                 </div>
-                <div className="mt-2">
-                  <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
-                </div>
+                {/* #2876 backwards-check: user kan være null (AI-styret hold, ingen
+                    tilknyttet brugerkonto) — nås reelt via transfer-historikkens
+                    køber/sælger-links. OnlineBadge forudsætter et user-objekt. */}
+                {user && (
+                  <div className="mt-2">
+                    <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
+                  </div>
+                )}
               </div>
             </div>
             {isOwnProfile && (
@@ -411,28 +430,34 @@ export default function ManagerProfilePage() {
           </TabPanel>
 
           <TabPanel value="achievements">
-            <div className="flex flex-col gap-[14px]">
-              {Object.entries(achByCategory).map(([cat, achs]) => {
-                const inProgress = achs.filter(a => a.progress);
-                return (
-                  <Card key={cat} className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
-                      <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
-                    </div>
-                    {inProgress.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
-                        <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("manager.inProgress")}</p>
-                        {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+            {/* #2876: tom achievements-liste (fx et delvist svar) skal vise en rigtig
+                tom-tilstand, ikke et blankt panel — samme opskrift som Riders/Season-fanerne. */}
+            {Object.keys(achByCategory).length === 0 ? (
+              <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noAchievements")} />
+            ) : (
+              <div className="flex flex-col gap-[14px]">
+                {Object.entries(achByCategory).map(([cat, achs]) => {
+                  const inProgress = achs.filter(a => a.progress);
+                  return (
+                    <Card key={cat} className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
+                        <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
                       </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
+                      <div className="flex flex-wrap gap-2">
+                        {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
+                      </div>
+                      {inProgress.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
+                          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("manager.inProgress")}</p>
+                          {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabPanel>
         </Tabs>
       </div>
