@@ -129,19 +129,57 @@ function createSeasonEndSupabase({
       if (table === "season_standings") {
         return {
           select(columns) {
+            if (columns === "team_id, division, rank_in_division, total_points") {
+              // #2951 · loadSponsorStandingsContextForSeason — pagineret via
+              // fetchAllRows (.order("id").range()), ingen sekundær sortering.
+              return {
+                eq(column, value) {
+                  assert.equal(column, "season_id");
+                  return {
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          const data = clone(state.standings).filter(row => row.season_id === value);
+                          return Promise.resolve({
+                            data: data.slice(from, to + 1),
+                            error: null,
+                          });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "*, team:team_id(*)");
             return {
               eq(column, value) {
                 assert.equal(column, "season_id");
                 assert.equal(value, state.season.id);
                 return {
+                  // #2951 · processSeasonEnd/repairSeasonEndFinanceAndBoard pagineres nu
+                  // via fetchAllRows: total_points DESC + .order("id") som stabilt
+                  // tiebreak, derefter .range() pr. side.
                   order(orderColumn, orderOptions) {
                     assert.equal(orderColumn, "total_points");
                     assert.deepEqual(orderOptions, { ascending: false });
-                    return Promise.resolve({
-                      data: clone(state.standings),
-                      error: null,
-                    });
+                    return {
+                      order(secondOrderColumn, secondOrderOptions) {
+                        assert.equal(secondOrderColumn, "id");
+                        assert.deepEqual(secondOrderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({
+                              data: clone(state.standings).slice(from, to + 1),
+                              error: null,
+                            });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -176,6 +214,22 @@ function createSeasonEndSupabase({
                       );
                       assert.equal(innerVal, false);
                       return makeChain();
+                    },
+                    // #2951 · loadHumanSeasonEndTeams pagineres nu via fetchAllRows
+                    // (.order("id").range()); andre kaldere (processSeasonStart,
+                    // rebalanceDivisions) awaiter kæden direkte uden .order() og
+                    // rammer derfor stadig teamsResult-thenable'en ovenfor uændret.
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          return Promise.resolve({
+                            data: teamsResult.data.slice(from, to + 1),
+                            error: teamsResult.error,
+                          });
+                        },
+                      };
                     },
                   });
                   return makeChain();
@@ -300,12 +354,22 @@ function createSeasonEndSupabase({
                 eq(column, value) {
                   assert.equal(column, "season_id");
                   assert.equal(value, state.season.id);
-                  return Promise.resolve({
-                    data: clone(state.inserts.board_plan_snapshots)
-                      .filter(row => row.season_id === value)
-                      .map(row => ({ team_id: row.team_id, board_id: row.board_id })),
-                    error: null,
-                  });
+                  const data = clone(state.inserts.board_plan_snapshots)
+                    .filter(row => row.season_id === value)
+                    .map(row => ({ team_id: row.team_id, board_id: row.board_id }));
+                  // #2951 · repairSeasonEndFinanceAndBoard's dedup-tjek pagineres nu
+                  // via fetchAllRows (.order("id").range()).
+                  return {
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "id");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return {
+                        range(from, to) {
+                          return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                        },
+                      };
+                    },
+                  };
                 },
               };
             }
@@ -433,10 +497,22 @@ function createSeasonEndSupabase({
               in(column, values) {
                 assert.equal(column, "team_id");
                 assert.deepEqual(values, [state.team.id]);
-                return Promise.resolve({
-                  data: [clone(state.board)],
-                  error: null,
-                });
+                // #2951 · loadHumanSeasonEndTeams pagineres nu via fetchAllRows
+                // (.order("id").range()).
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({
+                          data: [clone(state.board)].slice(from, to + 1),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -469,7 +545,19 @@ function createSeasonEndSupabase({
                       const data = state.inserts.finance_transactions
                         .filter(row => Object.entries(filters).every(([k, v]) => row[k] === v))
                         .map(row => ({ team_id: row.team_id }));
-                      return Promise.resolve({ data, error: null });
+                      // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                      // fetchAllRows (.order("id").range()).
+                      return {
+                        order(orderColumn, orderOptions) {
+                          assert.equal(orderColumn, "id");
+                          assert.deepEqual(orderOptions, { ascending: true });
+                          return {
+                            range(from, to) {
+                              return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                            },
+                          };
+                        },
+                      };
                     },
                   };
                 },
@@ -896,7 +984,11 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
     allRiders.push({ id: `r${i}`, team_id: "team-b", salary: 100 });
   }
 
-  let rangeCallCount = 0;
+  // #2951 · teams/board_profiles var deferred i #2907-PR-bodyen ("langt under
+  // loftet i dag, samme langsommere driver") — nu også pagineret. rangeCallCounts
+  // tæller .range()-kald pr. tabel, så testen kan bevise at ALLE tre queries
+  // reelt går gennem fetchAllRows, ikke kun riders.
+  const rangeCallCounts = { teams: 0, riders: 0, board_profiles: 0 };
   const supabase = {
     from(table) {
       if (table === "teams") {
@@ -908,13 +1000,25 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
                   eq() {
                     return {
                       eq() {
-                        return Promise.resolve({
-                          data: [
-                            { id: "team-a", is_ai: false, is_bank: false, is_frozen: false },
-                            { id: "team-b", is_ai: false, is_bank: false, is_frozen: false },
-                          ],
-                          error: null,
-                        });
+                        return {
+                          order(orderColumn, orderOptions) {
+                            assert.equal(orderColumn, "id");
+                            assert.deepEqual(orderOptions, { ascending: true });
+                            return {
+                              range(from, to) {
+                                rangeCallCounts.teams += 1;
+                                const allTeams = [
+                                  { id: "team-a", is_ai: false, is_bank: false, is_frozen: false },
+                                  { id: "team-b", is_ai: false, is_bank: false, is_frozen: false },
+                                ];
+                                return Promise.resolve({
+                                  data: allTeams.slice(from, to + 1),
+                                  error: null,
+                                });
+                              },
+                            };
+                          },
+                        };
                       },
                     };
                   },
@@ -937,7 +1041,7 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
                     assert.deepEqual(orderOptions, { ascending: true });
                     return {
                       range(from, to) {
-                        rangeCallCount += 1;
+                        rangeCallCounts.riders += 1;
                         return Promise.resolve({
                           data: allRiders.slice(from, to + 1),
                           error: null,
@@ -956,7 +1060,18 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
           select() {
             return {
               in() {
-                return Promise.resolve({ data: [], error: null });
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        rangeCallCounts.board_profiles += 1;
+                        return Promise.resolve({ data: [].slice(from, to + 1), error: null });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -968,7 +1083,9 @@ test("#2907: loadHumanSeasonEndTeams paginerer riders forbi 1000-row-loftet", as
 
   const teams = await loadHumanSeasonEndTeams(supabase);
 
-  assert.equal(rangeCallCount >= 2, true, "skal hente mindst 2 sider (1500 ryttere > page-size)");
+  assert.equal(rangeCallCounts.riders >= 2, true, "skal hente mindst 2 sider (1500 ryttere > page-size)");
+  assert.ok(rangeCallCounts.teams >= 1, "teams skal hentes via fetchAllRows (range())");
+  assert.ok(rangeCallCounts.board_profiles >= 1, "board_profiles skal hentes via fetchAllRows (range())");
   const teamA = teams.find(t => t.id === "team-a");
   const teamB = teams.find(t => t.id === "team-b");
   assert.equal(teamA.riders.length, pageSize, "team-a (side 1) skal have alle sine ryttere");
@@ -2362,7 +2479,19 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
                     const data = financeRows
                       .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
                       .map(r => ({ team_id: r.team_id }));
-                    return Promise.resolve({ data, error: null });
+                    // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                    // fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -2861,7 +2990,19 @@ function createSeasonStartSupabase({
               eq(col, val) {
                 assert.equal(col, "season_id");
                 const rows = val === prevSeasonId ? clone(prevStandings) : [];
-                return Promise.resolve({ data: rows, error: null });
+                // #2951 · loadSponsorStandingsContextForSeason pagineres nu via
+                // fetchAllRows (.order("id").range()).
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "id");
+                    assert.deepEqual(orderOptions, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -4273,7 +4414,19 @@ test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] fi
                     const data = financeRows
                       .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
                       .map(r => ({ team_id: r.team_id }));
-                    return Promise.resolve({ data, error: null });
+                    // #2951 · payDivisionBonuses' dedup-tjek pagineres nu via
+                    // fetchAllRows (.order("id").range()).
+                    return {
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "id");
+                        assert.deepEqual(orderOptions, { ascending: true });
+                        return {
+                          range(from, to) {
+                            return Promise.resolve({ data: data.slice(from, to + 1), error: null });
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -4932,7 +5085,9 @@ test("#1441 A1: defaultRunSeasonPayroll aggregate-summary indeholder facility_up
       return {
         select() {
           return {
-            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+            // #2951 · loadHumanSeasonEndTeams's teams-query pagineres nu via
+            // fetchAllRows (.order("id").range()).
+            eq() { return { eq() { return { eq() { return { order() { return { range() { return Promise.resolve({ data: [], error: null }); } }; } }; } }; } }; },
           };
         },
       };
@@ -4968,7 +5123,9 @@ test("#2357: defaultRunSeasonPayroll læser facilities_enabled fra app_config (f
       return {
         select() {
           return {
-            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+            // #2951 · loadHumanSeasonEndTeams's teams-query pagineres nu via
+            // fetchAllRows (.order("id").range()).
+            eq() { return { eq() { return { eq() { return { order() { return { range() { return Promise.resolve({ data: [], error: null }); } }; } }; } }; } }; },
           };
         },
       };

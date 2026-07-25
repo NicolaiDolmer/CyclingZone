@@ -1,30 +1,54 @@
 // backend/lib/sponsorOffers.js
-// Deterministisk sponsor-tilbuds-generering (#1663). Givet et holds renownTarget
-// (samlet sponsor ved fuld kalender) splittes den i 3 varianter: garanteret base +
-// per-løbsdag-rate + længde. Seedet på team+season → stabil på tværs af reloads
-// (spilleren kan ikke "reroll'e" ved refresh). Split-faktorer er justérbare og
-// kalibreres i harness (Phase J).
+// Deterministisk sponsor-tilbuds-generering (#1663, udvidet i #2948 "Sponsorvalg 2.0").
+// Givet et holds renownTarget (samlet sponsor ved fuld deltagelse) genereres 5
+// arketype-tilbud med ægte forskellige indtjeningskilder: garanteret base,
+// per-løbsdag-rate og bonusklausuler (signing/etapesejr/podie/sæsonmål).
+// Seedet på team+season → stabil på tværs af reloads (ingen reroll ved refresh).
+//
+// #2913 (ejer-beslutning 25/7): enheden er PR. ETAPE ("1 race day = one stage
+// your team starts"). Andelene (guaranteedFraction/raceDayShare/clause-shares)
+// er kontraktens sandhed; selve per-etape-raten beregnes først endeligt ved
+// AKTIVERING mod divisionens faktiske etapetal (sponsorContractsService).
+// perRaceDayRate her er kun en DISPLAY-projektion mod calendarDays-argumentet.
 
-// FULL_CALENDAR_DAYS: forventede løbsdage pr. sæson (sæson 1 = ProSeries). Læses i
-// produktion fra seasons.race_days_total (default 60); her som kalibrerings-konstant.
+// FULL_CALENDAR_DAYS: fallback-divisor når ingen kalenderdata findes (tests,
+// legacy-kald). Prod bruger divisionens etapetal / seasons.race_days_total.
 export const FULL_CALENDAR_DAYS = 60;
 
-// ~50 fiktive sponsor-navne. Kuratér for tone (ingen ægte mærker, ingen AI-slop-klang).
-export const SPONSOR_NAME_POOL = Object.freeze([
-  "Meridian Bank", "Alta Cycles", "Provincia Forsikring", "Northwind Energy",
-  "Sundberg Group", "Kettler & Vos", "Halcyon Telecom", "Verema Pharma",
-  "Borealis Steel", "Falcon Logistics", "Marisol Wines", "Cobalt Mobility",
-  "Hartmann Bau", "Lumen Optics", "Sable Aerospace", "Granvik Maritime",
-  "Otero Foods", "Brennan Whisky", "Vesna Robotics", "Kestrel Outdoor",
-  "Dalmar Cement", "Polaris Insurance", "Rendal Timber", "Solveig Dairy",
-  "Tagliani Olive", "Vanguard Motors", "Eldfell Geothermal", "Marquez Coffee",
-  "Nordhavn Shipping", "Cygnus Media", "Brandt Pharma", "Aurelia Jewelers",
-  "Stenmark Tools", "Larkin Brewing", "Castell Vineyards", "Ferro Metals",
-  "Aiden Outdoor", "Vossberg Optics", "Calluna Botanics", "Drummond Whisky",
-  "Saber Security", "Wexler Foods", "Nilsen Marine", "Petra Stone",
-  "Halvorsen Bank", "Corvus Aviation", "Mistral Energy", "Bjarke Design",
-  "Ravensburg Glass", "Thorne Logistics",
-]);
+// ~50 fiktive sponsor-navne, partitioneret efter arketype-affinitet så navnet
+// passer til aftalens karakter (bank → tryghed, outdoor → aktivitet, …).
+// Kuratér for tone (ingen ægte mærker, ingen AI-slop-klang).
+const NAME_POOLS = Object.freeze({
+  safe: Object.freeze([
+    "Meridian Bank", "Halvorsen Bank", "Provincia Forsikring", "Polaris Insurance",
+    "Verema Pharma", "Brandt Pharma", "Sundberg Group", "Aurelia Jewelers",
+    "Ravensburg Glass", "Lumen Optics",
+  ]),
+  loyal: Object.freeze([
+    "Falcon Logistics", "Thorne Logistics", "Nordhavn Shipping", "Granvik Maritime",
+    "Nilsen Marine", "Dalmar Cement", "Rendal Timber", "Ferro Metals",
+    "Borealis Steel", "Hartmann Bau", "Petra Stone", "Stenmark Tools",
+  ]),
+  racing: Object.freeze([
+    "Alta Cycles", "Kestrel Outdoor", "Aiden Outdoor", "Cobalt Mobility",
+    "Vanguard Motors", "Northwind Energy", "Mistral Energy", "Eldfell Geothermal",
+    "Calluna Botanics",
+  ]),
+  results: Object.freeze([
+    "Vesna Robotics", "Sable Aerospace", "Corvus Aviation", "Saber Security",
+    "Halcyon Telecom", "Vossberg Optics", "Cygnus Media", "Bjarke Design",
+  ]),
+  ambition: Object.freeze([
+    "Larkin Brewing", "Brennan Whisky", "Drummond Whisky", "Marisol Wines",
+    "Castell Vineyards", "Tagliani Olive", "Marquez Coffee", "Otero Foods",
+    "Wexler Foods", "Solveig Dairy", "Kettler & Vos",
+  ]),
+});
+
+// Samlet pulje (bagudkompatibel eksport — bruges af tests og evt. tooling).
+export const SPONSOR_NAME_POOL = Object.freeze(
+  Object.values(NAME_POOLS).flat()
+);
 
 // Lille deterministisk hash (FNV-1a-agtig) → uint32. Ingen Math.random (banned i harness).
 function hashSeed(str) {
@@ -36,51 +60,101 @@ function hashSeed(str) {
   return h >>> 0;
 }
 
-// Split-varianter: guaranteedFraction = andel af target lagt i garanteret base; resten
-// dækkes af per-dag × calendarDays (den reelle sæson-kalender; default FULL_CALENDAR_DAYS),
-// så total ≈ target ved fuld kalender.
-const VARIANTS = [
-  { variant: "predictable", guaranteedFraction: 0.88, lengthSeasons: 1 },
-  { variant: "activity",    guaranteedFraction: 0.55, lengthSeasons: 2 },
-  { variant: "long",        guaranteedFraction: 0.73, lengthSeasons: 3 },
-];
+// De 5 arketyper (#2948, ejer-godkendt mockup 25/7). Andele er af renownTarget:
+//   guaranteedFraction  → garanteret base (udbetales ved sæsonstart, board-modificeret)
+//   raceDayShare        → variabel pulje, optjenes pr. etape holdet starter i
+//   clauses[].share     → bonusklausul-beløb (frosset i kroner ved pick)
+// Potentiale ved fuld deltagelse: safe 1.00 · loyal 1.04 · racing 1.08 ·
+// results 0.65 + sejre/podier (loft +0.50) · ambition 0.90 + 0.18 ved top-halvdel.
+// Lavere garanti køber højere loft (risikopræmie). Kalibreret i
+// scripts/sponsorChoiceScorecard.js mod ægte population (±10 %-guard på total).
+export const ARCHETYPES = Object.freeze([
+  {
+    variant: "safe",
+    guaranteedFraction: 0.92,
+    raceDayShare: 0.08,
+    lengthSeasons: 1,
+    clauses: [],
+  },
+  {
+    variant: "loyal",
+    guaranteedFraction: 0.78,
+    raceDayShare: 0.18,
+    lengthSeasons: 3,
+    clauses: [{ type: "signing", share: 0.08 }],
+  },
+  {
+    variant: "racing",
+    guaranteedFraction: 0.5,
+    raceDayShare: 0.58,
+    lengthSeasons: 1,
+    clauses: [],
+  },
+  {
+    variant: "results",
+    guaranteedFraction: 0.55,
+    raceDayShare: 0.1,
+    lengthSeasons: 2,
+    clauses: [
+      { type: "stage_win", share: 0.018 },
+      { type: "podium", share: 0.007 },
+      { type: "results_cap", share: 0.5 },
+    ],
+  },
+  {
+    variant: "ambition",
+    guaranteedFraction: 0.7,
+    raceDayShare: 0.2,
+    lengthSeasons: 2,
+    clauses: [{ type: "season_objective", objective: "top_half", share: 0.18 }],
+  },
+]);
 
-// calendarDays: den reelle sæson-kalenderlængde (seasons.race_days_total). Bruges som
-// divisor så per-dag-raten skalerer med den faktiske sæson. Defaulter til
-// FULL_CALENDAR_DAYS (60) — eksisterende callsites uden argumentet bevarer adfærden.
+// Frys en klausul til kroner ud fra target. share-feltet erstattes af amount så
+// kontraktrækken (bonus_clauses jsonb) er selvbærende — den må aldrig afhænge af
+// et live-driftende renownTarget (samme lektie som #2589).
+function freezeClauses(clauses, renownTargetValue) {
+  return clauses.map(({ share, ...rest }) => ({
+    ...rest,
+    amount: Math.round(renownTargetValue * share),
+  }));
+}
+
+// calendarDays: divisor for DISPLAY-raten (den endelige rate sættes ved aktivering
+// mod divisionens etapetal). Defaulter til FULL_CALENDAR_DAYS.
 export function generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays = FULL_CALENDAR_DAYS }) {
   const divisor = Number(calendarDays) > 0 ? Number(calendarDays) : FULL_CALENDAR_DAYS;
   const seed = hashSeed(`${teamId}:${seasonNumber}`);
-  // Vælg 3 forskellige navne deterministisk.
-  const names = [];
-  let cursor = seed % SPONSOR_NAME_POOL.length;
-  while (names.length < 3) {
-    const name = SPONSOR_NAME_POOL[cursor % SPONSOR_NAME_POOL.length];
-    if (!names.includes(name)) names.push(name);
-    cursor += 1 + (seed % 7);
-  }
 
-  return VARIANTS.map((v, i) => {
-    const guaranteedBase = Math.round(renownTargetValue * v.guaranteedFraction);
-    const perRaceDayRate = Math.round((renownTargetValue - guaranteedBase) / divisor);
+  return ARCHETYPES.map((a, i) => {
+    const pool = NAME_POOLS[a.variant];
+    const sponsorName = pool[(seed + i * 7 + (seed % 13)) % pool.length];
+    const guaranteedBase = Math.round(renownTargetValue * a.guaranteedFraction);
+    const raceDayPool = Math.round(renownTargetValue * a.raceDayShare);
     return {
-      variant: v.variant,
-      sponsorName: names[i],
+      variant: a.variant,
+      sponsorName,
       guaranteedBase,
-      perRaceDayRate,
-      lengthSeasons: v.lengthSeasons,
+      guaranteedFraction: a.guaranteedFraction,
+      raceDayShare: a.raceDayShare,
+      perRaceDayRate: Math.round(raceDayPool / divisor),
+      lengthSeasons: a.lengthSeasons,
+      clauses: freezeClauses(a.clauses, renownTargetValue),
     };
   });
 }
 
-// #2589: reverse-lookup for aktiverings-genberegning (sponsorContractsService.
-// expireAndRenewContracts). length_seasons er unikt pr. variant (1/2/3) og gemmes
-// direkte på sponsor_contracts-raden, så guaranteedFraction kan slås op UDEN at
-// gætte/matche mod et frisk regenereret tilbud — det matchede tidligere (PR #2606)
-// mod guaranteed_base, hvilket driftede når renownTargetValue (season_standings)
-// ændrede sig mellem pick og aktivering (~36% mismatch, verificeret i prod 17/7).
-// length_seasons ændres aldrig efter pick, så dette opslag er altid stabilt.
+// Legacy-varianter (før #2948). Rækker skrevet FØR variant/guaranteed_fraction-
+// kolonnerne fandtes kan kun identificeres via length_seasons (unikt 1/2/3 i det
+// gamle sæt). Bruges udelukkende som fallback i recomputeActivationRate for
+// gamle pending/aktive rækker — nye rækker bærer fraction eksplicit.
+const LEGACY_VARIANTS = [
+  { variant: "predictable", guaranteedFraction: 0.88, lengthSeasons: 1 },
+  { variant: "activity", guaranteedFraction: 0.55, lengthSeasons: 2 },
+  { variant: "long", guaranteedFraction: 0.73, lengthSeasons: 3 },
+];
+
 export function guaranteedFractionForLength(lengthSeasons) {
-  const match = VARIANTS.find((v) => v.lengthSeasons === Number(lengthSeasons));
+  const match = LEGACY_VARIANTS.find((v) => v.lengthSeasons === Number(lengthSeasons));
   return match ? match.guaranteedFraction : null;
 }

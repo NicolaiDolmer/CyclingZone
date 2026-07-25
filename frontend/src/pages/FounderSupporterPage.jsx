@@ -224,7 +224,7 @@ export default function FounderSupporterPage() {
   return (
     <div className="min-h-screen bg-cz-body">
       {/* ----- Sticky top-bar ----- */}
-      <header className="sticky top-0 z-40 bg-cz-body border-b border-cz-border">
+      <header className="sticky top-0 z-sticky bg-cz-body border-b border-cz-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link to="/" aria-label="Cycling Zone" className="flex items-center gap-2.5 group">
             {/* #481: locked monogram + theme-aware outlined wordmark (with twin lines). */}

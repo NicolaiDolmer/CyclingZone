@@ -3080,6 +3080,8 @@ export default function BoardPage() {
         offers={sponsorState?.offers ?? []}
         pendingVariant={sponsorState?.pendingVariant}
         upcomingSeasonNumber={sponsorState?.upcomingSeasonNumber}
+        stageCounts={sponsorState?.stageCounts ?? null}
+        teamDivision={sponsorState?.teamDivision ?? null}
         onAccept={handleAcceptSponsor}
         accepting={accepting}
       />

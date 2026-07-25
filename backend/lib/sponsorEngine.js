@@ -102,6 +102,8 @@ export function computeSponsorForSeason({
       gross_sponsor: base,
       capped: false,
       per_race_day_rate: Number(activeContract.per_race_day_rate) || 0,
+      // #2948: forecast-UI'et navngiver kontrakten (sponsorDetail.contract).
+      sponsor_name: activeContract.sponsor_name ?? null,
       explanation: `Kontrakt-garanteret base ${base}.`,
     };
   }
