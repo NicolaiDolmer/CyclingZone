@@ -1,7 +1,6 @@
 import { useState, useEffect, Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate, useParams } from "react-router-dom";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber } from "../lib/intl";
@@ -131,32 +130,34 @@ export default function SeasonEndPage() {
       );
       setRaces(sortedRaces);
 
-      // Build point progression + winners per race
-      let resultsData = [];
+      // #2891: aggregeringen sker server-side. Før hentede vi HELE race_results
+      // for sæsonen med fetchAllRows (459.347 rækker = 459 OFFSET-sider, hvor
+      // hver side er dyrere end den forrige → ~9,5 minutters DB-tid pr.
+      // sidevisning, og et kast fra supabasePagination når 8 s-loftet rammes).
+      // De rå rækker blev udelukkende brugt til tre aggregeringer, som RPC'en
+      // nu leverer direkte: præmie pr. hold pr. løb, præmie-leder (= sum heraf)
+      // og etapesejre pr. rytter. ~4.756 rækker, ~510 ms i ét kald.
+      const { data: recap, error: recapError } = await supabase
+        .rpc("get_season_recap", { p_season_id: season.id });
+      // Kast eksplicit (#1851-klassen): et tavst `|| []` ville vise en tom
+      // recap som om sæsonen ingen resultater havde.
+      if (recapError) throw new Error(`get_season_recap: ${recapError.message}`);
+
+      // { race_id: { team_id: prize } } — allerede i opslags-form fra serveren.
+      const prizeByRace = recap?.team_race_prize || {};
+      const stageKings = recap?.stage_kings || [];
+
       if (racesRes.data?.length) {
-        // Paginér: PostgREST capper ved 1000 → ellers undertælles progression + vindere.
-        resultsData = await fetchAllRows(() => supabase
-          .from("race_results")
-          .select("rider:rider_id(id, firstname, lastname, team_id, team:team_id(id, name, is_ai)), prize_money, race_id, result_type, rank")
-          .in("race_id", racesRes.data.map(r => r.id))
-          .order("id", { ascending: true }));
-
         const prog = {};
-        standings.forEach(s => { prog[s.team_id] = []; });
-
-        let cumulative = {};
-        standings.forEach(s => { cumulative[s.team_id] = 0; });
+        const cumulative = {};
+        standings.forEach(s => { prog[s.team_id] = []; cumulative[s.team_id] = 0; });
 
         sortedRaces.forEach(race => {
-          const raceResults = resultsData.filter(r => r.race_id === race.id);
-          const racePoints = {};
-          raceResults.forEach(r => {
-            if (r.rider?.team_id) {
-              racePoints[r.rider.team_id] = (racePoints[r.rider.team_id] || 0) + (r.prize_money || 0);
-            }
-          });
+          // Løb uden resultater for menneskehold har ingen nøgle → flad kurve,
+          // men stadig ét punkt, så graf-labels (races.map) ikke desynker.
+          const racePrize = prizeByRace[race.id] || {};
           standings.forEach(s => {
-            cumulative[s.team_id] = (cumulative[s.team_id] || 0) + (racePoints[s.team_id] || 0);
+            cumulative[s.team_id] = (cumulative[s.team_id] || 0) + (Number(racePrize[s.team_id]) || 0);
             if (prog[s.team_id]) prog[s.team_id].push(cumulative[s.team_id]);
           });
         });
@@ -167,12 +168,13 @@ export default function SeasonEndPage() {
       // Vindere
       const teamMeta = Object.fromEntries(allStandings.map(s => [s.team_id, s.team]));
 
-      // 1. Præmie-leader: sum(prize_money) per human team
+      // 1. Præmie-leader: sum af aggregatet per menneskehold.
       const prizeByTeam = {};
-      resultsData.forEach(r => {
-        const teamId = r.rider?.team_id;
-        if (!teamId || !humanTeamIds.has(teamId)) return;
-        prizeByTeam[teamId] = (prizeByTeam[teamId] || 0) + (r.prize_money || 0);
+      Object.values(prizeByRace).forEach(perTeam => {
+        Object.entries(perTeam || {}).forEach(([teamId, prize]) => {
+          if (!humanTeamIds.has(teamId)) return;
+          prizeByTeam[teamId] = (prizeByTeam[teamId] || 0) + (Number(prize) || 0);
+        });
       });
       const prizeTop = Object.entries(prizeByTeam).sort((a, b) => b[1] - a[1])[0];
       const prizeWinner = prizeTop ? { team: teamMeta[prizeTop[0]], amount: prizeTop[1] } : null;
@@ -199,17 +201,20 @@ export default function SeasonEndPage() {
       const activeTop = Object.entries(activeByTeam).sort((a, b) => b[1] - a[1])[0];
       const mostActive = activeTop ? { team: teamMeta[activeTop[0]] || txs.find(t => t.team_id === activeTop[0])?.team, count: activeTop[1] } : null;
 
-      // 4. Stage-king: count rank=1 stage results per rider
-      const stageWinsByRider = {};
-      resultsData.forEach(r => {
-        if (r.result_type !== "stage" || r.rank !== 1) return;
-        if (!r.rider?.id) return;
-        const k = r.rider.id;
-        if (!stageWinsByRider[k]) stageWinsByRider[k] = { rider: r.rider, count: 0 };
-        stageWinsByRider[k].count += 1;
-      });
-      const stageTop = Object.values(stageWinsByRider).sort((a, b) => b.count - a.count)[0];
-      const stageKing = stageTop || null;
+      // 4. Stage-king: RPC'en returnerer top 5 sorteret faldende, så [0] er
+      //    vinderen. Bevidst UDEN is_ai-filter, præcis som før — en AI-rytter
+      //    kan stadig vinde flest etaper.
+      const stageTop = stageKings[0];
+      const stageKing = stageTop
+        ? {
+            rider: {
+              id: stageTop.rider_id,
+              firstname: stageTop.firstname,
+              lastname: stageTop.lastname,
+            },
+            count: stageTop.wins,
+          }
+        : null;
 
       setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing });
     } catch (e) {
