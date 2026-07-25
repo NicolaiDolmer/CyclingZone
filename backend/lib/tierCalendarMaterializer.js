@@ -258,7 +258,7 @@ export async function materializeTierCalendars({
         .order("id", { ascending: true })
     ));
   } catch (tErr) {
-    throw new Error(`teams: ${tErr.message}`);
+    throw new Error(`teams: ${tErr.message}`, { cause: tErr });
   }
   const realByDiv = new Map();
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);

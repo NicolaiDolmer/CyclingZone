@@ -664,7 +664,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
         .order("id", { ascending: true })
     ));
   } catch (teamErr) {
-    throw new Error(`teams: ${teamErr.message}`);
+    throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
   }
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
