@@ -33,9 +33,14 @@ const ZONES = {
   },
 };
 
-export function thClass({ numeric = false, sticky = false } = {}) {
+// #2849 bølge 6 (ejer-feedback 25/7): `compact` halverer den vandrette gutter
+// (px-4 -> px-2) for kolonner der kun bærer ét kort tal. De 15 evne-kolonner er
+// 28px brede med 32px luft imellem sig, hvilket spreder rytterdatabasen og
+// truppen ud og gør dem svære at skanne på tværs. Navn/hold/status-kolonner
+// beholder px-4 — dér ER luften det der adskiller læsbar tekst.
+export function thClass({ numeric = false, sticky = false, compact = false } = {}) {
   const base =
-    "whitespace-nowrap bg-cz-card px-4 py-3 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
+    `whitespace-nowrap bg-cz-card ${compact ? "px-2" : "px-4"} py-3 font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -43,7 +48,7 @@ export function thClass({ numeric = false, sticky = false } = {}) {
 
 // Zone-kanter (2px semi-opaque separator) ERSTATTER den ordinære 1px toplinje
 // på boundary-rækken — to border-top-utilities på samme celle er udefineret.
-export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false } = {}) {
+export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop = false, edgeBottom = false, compact = false } = {}) {
   const z = ZONES[zone];
   const rules = [
     z && edgeTop ? z.edgeTop : "border-t border-cz-border",
@@ -51,7 +56,7 @@ export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop 
   ];
   const bg = z ? (sticky ? z.stickyCell : z.cell) : sticky ? "bg-cz-card group-hover:bg-cz-subtle" : "";
   return [
-    "px-4 py-[13px] text-sm text-cz-1",
+    `${compact ? "px-2" : "px-4"} py-[13px] text-sm text-cz-1`,
     numeric ? "text-right font-data tabular-nums" : "text-left",
     sticky ? STICKY : "",
     bg,

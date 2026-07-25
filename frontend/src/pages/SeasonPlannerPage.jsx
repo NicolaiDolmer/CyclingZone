@@ -31,6 +31,13 @@ function PlannerPageHead({ t, right }) {
   );
 }
 
+// #2849 bølge 6, ejer-feedback 25/7: containeren var flyttet til T2's 1600px-cap,
+// fordi /planner står i Layouts WIDE_CONTENT_ROUTES. Men brættet er et SVG med fast
+// viewBox (940 enheder), så det SKALERER med containeren i stedet for at vise mere:
+// på en bred skærm voksede hver rytter-bane fra ~105px til ~149px, og man kunne se
+// færre ryttere ad gangen, ikke flere. max-w-6xl er den bredde brættet er tegnet til.
+// T2's cap er et loft, ikke et krav — en dataTABEL vinder på bredde, et fast-format
+// bræt gør ikke.
 export default function SeasonPlannerPage() {
   const { t } = useTranslation("planner");
   // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
@@ -87,7 +94,7 @@ export default function SeasonPlannerPage() {
   // ErrorState + secondary retry, samme mønster som CalendarPage.
   if (error) {
     return (
-      <div className="mx-auto max-w-[1600px]">
+      <div className="mx-auto max-w-6xl">
         <PlannerPageHead t={t} />
         <ErrorState
           title={t("error.title")}
@@ -100,7 +107,7 @@ export default function SeasonPlannerPage() {
 
   if (!enabled) {
     return (
-      <div className="mx-auto max-w-[1600px]">
+      <div className="mx-auto max-w-6xl">
         <PlannerPageHead t={t} />
         <EmptyState title={t("empty.title")} description={t("empty.description")} />
       </div>
@@ -119,7 +126,7 @@ export default function SeasonPlannerPage() {
   const seasonNotReady = seasonNumber != null && !season;
 
   return (
-    <div className="mx-auto max-w-[1600px]">
+    <div className="mx-auto max-w-6xl">
       <PlannerPageHead
         t={t}
         right={

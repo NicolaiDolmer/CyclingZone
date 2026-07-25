@@ -7,6 +7,7 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePill
 //   key,          // felt-nøgle; default-celleindhold er row[key]
 //   header,       // header-label
 //   numeric,      // true → højrestillet font-data tabular
+//   compact,      // true → halv vandret gutter (px-2); til smalle ét-tals-kolonner
 //   sticky,       // true → pinned første kolonne (opak bg + 1px højre-rule)
 //   render,       // (row, i) => node — celleindhold
 //   subline,      // kun sticky: (row, i) => node — text-3xs uppercase underlinje
@@ -55,7 +56,7 @@ export function DataTable({
                   return (
                     <th
                       key={col.key}
-                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
                       onClick={sortable ? () => onSort(col.sortKey) : undefined}
                       aria-sort={
                         sortable
@@ -84,7 +85,7 @@ export function DataTable({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom })} ${col.fold ? "hidden sm:table-cell" : ""}`}
+                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""}`}
                       >
                         {col.sticky
                           ? renderStickyCell(col, row, i, foldCols)

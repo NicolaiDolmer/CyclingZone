@@ -471,6 +471,8 @@ export default function RidersPage() {
       header: <span title={tRider(`racePreview.derived.${key}`)}>{label}</span>,
       sortKey: key,
       numeric: true,
+      // #2849 bølge 6 (ejer-feedback): evne-kolonnerne stod for spredt.
+      compact: true,
       render: (r) => <StatBar value={r[key]} />,
     })),
   ];

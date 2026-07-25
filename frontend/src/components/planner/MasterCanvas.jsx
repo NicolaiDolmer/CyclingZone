@@ -21,7 +21,11 @@ const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
 // #2519: AXIS +12px (fra 36) for at give plads til en dato-label pr. løbshoved
 // (item 1 i spec) uden at flytte månedsticks/NOW-markør's relative placering.
-const AXIS = 48, LANE = 88, TOP_PAD = 14, BOT_PAD = 16;
+// #2849 bølge 6 (ejer-beslutning 25/7): LANE 88 -> 64, TOP/BOT_PAD strammet
+// tilsvarende. Brættets formål er overblik over HELE truppen, og med 88 fyldte
+// 20 ryttere ~2000px lodret — man scrollede i stedet for at overskue. 64 giver
+// ~1400px for samme trup uden at gøre form-kurverne uaflæselige.
+const AXIS = 48, LANE = 64, TOP_PAD = 10, BOT_PAD = 12;
 
 function TerrainGlyph({ x, y, terrain }) {
   const c = CZ.ink;
