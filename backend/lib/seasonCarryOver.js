@@ -305,12 +305,25 @@ export async function carryTrainingPlans({
   }
 
   for (const part of chunk(rows, INSERT_CHUNK)) {
-    const { error } = await supabase
+    // Idempotensen har to lag:
+    //   1. Pre-filtret ovenfor (existingKeys) fjerner rækker der allerede findes
+    //      i mål-sæsonen — det er laget der gør en SEKVENTIEL gentagelse gratis.
+    //   2. onConflict + ignoreDuplicates → PostgREST sender
+    //      `Prefer: resolution=ignore-duplicates` = ON CONFLICT DO NOTHING mod
+    //      UNIQUE(team_id, rider_id, season_id) (training_plans_team_rider_season_uniq).
+    //      Det er laget der gør en SAMTIDIG gentagelse sikker — vinduet mellem
+    //      læsningen af existingKeys og dette kald er dækket af databasen, ikke
+    //      af os.
+    // `.select("rider_id")` returnerer KUN de rækker der faktisk blev indsat, så
+    // `carried` ikke over-rapporterer i race-tilfældet (2. lag). Det tal er det
+    // ejeren aflæser som bevis for at fasen virkede — det skal være sandt.
+    const { data, error } = await supabase
       .from("training_plans")
       .upsert(part, {
         onConflict: "team_id,rider_id,season_id",
         ignoreDuplicates: true,
-      });
+      })
+      .select("rider_id");
     if (error) {
       // Delvis fremdrift bevares og rapporteres — samme partial-stats-disciplin
       // som releaseExpiredContractRiders (#2744-B).
@@ -318,7 +331,7 @@ export async function carryTrainingPlans({
       err.partialStats = { ...stats };
       throw err;
     }
-    stats.carried += part.length;
+    stats.carried += (data || []).length;
   }
 
   return { ...stats, dry_run: false };

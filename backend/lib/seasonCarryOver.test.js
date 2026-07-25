@@ -83,6 +83,10 @@ function createMockSupabase(state) {
         select: (cols) => buildQuery(table).select(cols),
         upsert(rows, opts) {
           writes.push({ table, rows, opts });
+          // Modellerer ON CONFLICT DO NOTHING: dubletter springes over, og
+          // .select() returnerer KUN de faktisk indsatte rækker (samme semantik
+          // som PostgREST med Prefer: resolution=ignore-duplicates).
+          const inserted = [];
           for (const row of rows) {
             const dup = (state[table] || []).some(
               (r) =>
@@ -92,9 +96,15 @@ function createMockSupabase(state) {
             );
             if (dup && opts?.ignoreDuplicates) continue;
             state[table] = state[table] || [];
-            state[table].push({ id: `gen-${state[table].length}`, ...row });
+            const stored = { id: `gen-${state[table].length}`, ...row };
+            state[table].push(stored);
+            inserted.push(stored);
           }
-          return Promise.resolve({ data: null, error: null });
+          const result = { data: inserted, error: null };
+          return {
+            select: () => Promise.resolve(result),
+            then: (resolve) => resolve(result),
+          };
         },
       };
     },
@@ -178,6 +188,49 @@ test("carryTrainingPlans er idempotent — anden kørsel kopierer intet nyt", as
   await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
   const second = await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
 
+  assert.equal(second.carried, 0);
+  assert.equal(second.skipped_already_present, 1);
+  assert.equal(state.training_plans.filter((p) => p.season_id === S2).length, 1);
+});
+
+// Cutoveren køres af et menneske under tidspres; en gentaget kørsel er en
+// realistisk handling. Idempotensen hviler på TO lag, og de testes hver for sig.
+test("idempotens lag 2: en SAMTIDIG gentagelse stoppes af unique-constraintet, ikke af pre-filtret", async () => {
+  const state = baseState();
+  const supabase = createMockSupabase(state);
+
+  await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
+
+  // Lag 2 er faktisk wiret: upsert kører ON CONFLICT DO NOTHING mod det unikke
+  // indeks training_plans_team_rider_season_uniq (team_id, rider_id, season_id).
+  const write = supabase.__writes.at(-1);
+  assert.equal(write.opts.onConflict, "team_id,rider_id,season_id");
+  assert.equal(write.opts.ignoreDuplicates, true);
+
+  // Simulér en anden kørsel der nåede at læse existingKeys FØR den første skrev:
+  // pre-filtret (lag 1) redder os ikke her, så databasen skal.
+  const { data } = await supabase
+    .from("training_plans")
+    .upsert(
+      [{ team_id: "team-human", rider_id: "rider-stays", season_id: S2, focus: "sprint", intensity: "hard" }],
+      { onConflict: "team_id,rider_id,season_id", ignoreDuplicates: true }
+    )
+    .select("rider_id");
+
+  assert.equal(data.length, 0, "dubletten må ikke indsættes");
+  assert.equal(state.training_plans.filter((p) => p.season_id === S2).length, 1);
+});
+
+test("carried tæller kun rækker der FAKTISK blev indsat (ikke afviste dubletter)", async () => {
+  const state = baseState();
+  // Rækken findes allerede i mål-sæsonen, men vi tvinger pre-filtret forbi ved
+  // at tilføje den EFTER at have talt — her: samme nøgle to gange i kilden.
+  const supabase = createMockSupabase(state);
+  const first = await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
+  assert.equal(first.carried, 1);
+
+  // Anden kørsel: pre-filtret fanger den, så der sendes intet — carried = 0.
+  const second = await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
   assert.equal(second.carried, 0);
   assert.equal(second.skipped_already_present, 1);
   assert.equal(state.training_plans.filter((p) => p.season_id === S2).length, 1);

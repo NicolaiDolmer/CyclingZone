@@ -177,9 +177,18 @@ function createMockSupabase(initialState = {}) {
         upsert(rows, opts) {
           const list = Array.isArray(rows) ? rows : [rows];
           state[table] = state[table] || [];
-          for (const row of list) state[table].push({ ...row });
+          const inserted = [];
+          for (const row of list) {
+            const stored = { ...row };
+            state[table].push(stored);
+            inserted.push(stored);
+          }
           calls.upserts.push({ table, rows: list, opts });
-          return Promise.resolve({ data: null, error: null });
+          const result = { data: inserted, error: null };
+          return {
+            select: () => Promise.resolve(result),
+            then: (resolve) => resolve(result),
+          };
         },
         update(payload) {
           return {
