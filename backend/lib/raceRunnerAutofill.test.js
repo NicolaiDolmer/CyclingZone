@@ -13,6 +13,16 @@ const ab = (v) => ({
 // kald loadEntrantsForRace/fillMissingTeamEntries laver (select/eq/in/or/gte + insert).
 function makeSupabase(state) {
   const calls = [];
+  function applyFilters(rows, filters) {
+    let result = rows;
+    for (const [op, col, val] of filters) {
+      if (op === "eq") result = result.filter((r) => r[col] === val);
+      if (op === "in") result = result.filter((r) => val.includes(r[col]));
+      if (op === "gte") result = result.filter((r) => r[col] != null && r[col] >= val);
+      if (op === "is") result = result.filter((r) => (r[col] ?? null) === val);
+    }
+    return result;
+  }
   function builder(table) {
     const q = { table, filters: [] };
     const api = {
@@ -23,15 +33,15 @@ function makeSupabase(state) {
       is(col, val) { q.filters.push(["is", col, val]); return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       order() { return api; },
+      // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
+      // (.order("id").range()) — anvender samme filtre som .then(), sliced til siden.
+      range(from, to) {
+        const rows = applyFilters([...(state[table] || [])], q.filters);
+        return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+      },
       insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
       then(resolve) {
-        let rows = [...(state[table] || [])];
-        for (const [op, col, val] of q.filters) {
-          if (op === "eq") rows = rows.filter((r) => r[col] === val);
-          if (op === "in") rows = rows.filter((r) => val.includes(r[col]));
-          if (op === "gte") rows = rows.filter((r) => r[col] != null && r[col] >= val);
-          if (op === "is") rows = rows.filter((r) => (r[col] ?? null) === val);
-        }
+        const rows = applyFilters([...(state[table] || [])], q.filters);
         resolve({ data: rows, error: null });
       },
     };

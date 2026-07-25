@@ -15,6 +15,7 @@ import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLA
 import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export { MONUMENT_GAMEDAY_BASE, TIER_CLASS_WHITELIST };
 
@@ -246,8 +247,19 @@ export async function materializeTierCalendars({
 
   const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
-  const { data: teams, error: tErr } = await supabase.from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
-  if (tErr) throw new Error(`teams: ${tErr.message}`);
+  // #2962: helt ufiltreret teams-select (369 rækker 25/7, samme #2951-klasse) —
+  // pagineret via fetchAllRows; .order("id") som stabilt tiebreak.
+  let teams;
+  try {
+    teams = await fetchAllRows(() => (
+      supabase
+        .from("teams")
+        .select("league_division_id, is_ai, is_bank, is_frozen, is_test_account")
+        .order("id", { ascending: true })
+    ));
+  } catch (tErr) {
+    throw new Error(`teams: ${tErr.message}`);
+  }
   const realByDiv = new Map();
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));

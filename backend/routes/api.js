@@ -10168,7 +10168,7 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
       { count: postNull },
       { count: postPopulated },
       { count: totalTx },
-      { data: humanTeams },
+      humanTeams,
     ] = await Promise.all([
       supabase
         .from("finance_transactions")
@@ -10186,23 +10186,29 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
         .gte("created_at", PHASE_B_DEPLOY_CUTOFF)
         .not("actor_type", "is", null),
       supabase.from("finance_transactions").select("id", { count: "exact", head: true }),
-      supabase
+      // #2962: humanTeams (160 rækker 25/7, #2951-klasse) — pagineret via fetchAllRows.
+      fetchAllRows(() => supabase
         .from("teams")
         .select("id, balance")
         .not("user_id", "is", null)
         .eq("is_ai", false)
-        .eq("is_bank", false),
+        .eq("is_bank", false)
+        .order("id", { ascending: true })),
     ]);
 
     const teamIds = (humanTeams || []).map((t) => t.id);
     let driftTeams = 0;
     let maxDrift = 0;
     if (teamIds.length > 0) {
-      const { data: txRows, error: txErr } = await supabase
+      // #2962: AKTIV bug, ikke kun forebyggende — 5212 finance_transactions-rækker
+      // for menneskehold målt 25/7 (5,2x over 1000-loftet). Naivt .in() truncerede
+      // stille drift-beregningen til kun de første 1000 rækker. Pagineret via
+      // fetchAllRows; .order("id") som stabilt tiebreak.
+      const txRows = await fetchAllRows(() => supabase
         .from("finance_transactions")
         .select("team_id, amount")
-        .in("team_id", teamIds);
-      if (txErr) throw txErr;
+        .in("team_id", teamIds)
+        .order("id", { ascending: true }));
       const sumByTeam = new Map();
       for (const row of txRows || []) {
         sumByTeam.set(row.team_id, (sumByTeam.get(row.team_id) || 0) + (row.amount || 0));
