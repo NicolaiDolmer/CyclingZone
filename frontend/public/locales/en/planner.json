@@ -104,7 +104,7 @@
     }
   },
   "terrain": {
-    "flat": "Flat",
+    "sprint": "Sprint",
     "hilly": "Hilly",
     "mountain": "Mountain",
     "itt": "ITT",

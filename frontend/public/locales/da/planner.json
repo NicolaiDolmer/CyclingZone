@@ -104,7 +104,7 @@
     }
   },
   "terrain": {
-    "flat": "Flad",
+    "sprint": "Sprint",
     "hilly": "Kuperet",
     "mountain": "Bjerg",
     "itt": "Enkeltstart",

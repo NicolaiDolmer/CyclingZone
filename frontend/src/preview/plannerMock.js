@@ -18,12 +18,12 @@ const BUILD_WEEK = { mon: { intensity: "hard" }, tue: { intensity: "normal" }, w
 const TAPER_WEEK = { mon: { intensity: "normal" }, tue: { intensity: "easy" }, wed: { intensity: "normal" }, thu: { intensity: "easy" }, fri: { intensity: "easy" }, sat: { intensity: "rest" }, sun: { intensity: "rest" } };
 
 const DEMANDS = {
-  flat: { sprint: 0.61, acceleration: 0.15, flat: 0.06, positioning: 0.08, endurance: 0.02, randomness: 0.08 },
+  sprint: { sprint: 0.61, acceleration: 0.15, flat: 0.06, positioning: 0.08, endurance: 0.02, randomness: 0.08 },
   hilly: { punch: 0.35, climbing: 0.2, tempo: 0.15, endurance: 0.1, positioning: 0.08, randomness: 0.12 },
   mountain: { climbing: 0.5, tempo: 0.12, endurance: 0.14, recovery: 0.06, punch: 0.04, tactics: 0.02, positioning: 0.02, randomness: 0.1 },
   itt: { time_trial: 0.58, positioning: 0.24, flat: 0.06, randomness: 0.12 },
 };
-const FOCUS_FOR = { flat: "sprint", hilly: "vo2max", mountain: "vo2max", itt: "aero" };
+const FOCUS_FOR = { sprint: "sprint", hilly: "vo2max", mountain: "vo2max", itt: "aero" };
 
 function ability(over = {}) {
   const base = { climbing: 38, time_trial: 38, sprint: 38, punch: 40, endurance: 46, cobblestone: 36, acceleration: 40, recovery: 44, tactics: 42, positioning: 46, flat: 40, tempo: 42, durability: 44, aggression: 38, descending: 42 };
@@ -31,7 +31,7 @@ function ability(over = {}) {
 }
 
 function mountainStages(n, summits) {
-  const terrains = ["flat", "hilly", "mountain", "hilly", "itt", "mountain", "flat", "mountain"];
+  const terrains = ["sprint", "hilly", "mountain", "hilly", "itt", "mountain", "sprint", "mountain"];
   return Array.from({ length: n }, (_, i) => {
     const terrain = terrains[i % terrains.length];
     const summit = terrain === "mountain" && summits > 0 && (i % 2 === 0);
@@ -49,12 +49,12 @@ function makeRace(id, name, terrain, date, isMine, stages, summits, division, ri
     id, name, raceClass: stages > 1 ? "WorldTour" : "ProSeries", division, isMine,
     date, gameDayStart: ord(date), gameDayEnd: ord(date) + (stages - 1), stages, terrain,
     stageProfiles: strip, profileSummary: raceProfileSummary(strip),
-    demandVector: DEMANDS[terrain] || DEMANDS.flat, rivalPeakCount,
+    demandVector: DEMANDS[terrain] || DEMANDS.sprint, rivalPeakCount,
   };
 }
 
 const RACES = [
-  makeRace("r-coastal", "Coastal Sprint", "flat", "2026-04-20", true, 1, 0, 3, 1),
+  makeRace("r-coastal", "Coastal Sprint", "sprint", "2026-04-20", true, 1, 0, 3, 1),
   makeRace("r-hill", "Hill GP", "hilly", "2026-05-10", true, 1, 0, 3, 2),
   makeRace("r-alpine", "Alpine Classic", "mountain", "2026-06-14", true, 6, 2, 3, 3),
   makeRace("r-nat", "Nationals TT", "itt", "2026-06-25", false, 1, 0, 2, 0),
