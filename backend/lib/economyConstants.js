@@ -299,6 +299,11 @@ export const FINANCE_REASON = Object.freeze({
   // Race-baserede payouts
   RACE_PRIZE_PAYOUT: "race_prize_payout",
   SPONSOR_RACE_DAY: "sponsor_race_day",
+  // #2948 Sponsorvalg 2.0: bonusklausuler (signing ved aktivering, sejr/podie
+  // pr. completet løb, sæsonmål ved sæsonafslutning)
+  SPONSOR_SIGNING_BONUS: "sponsor_signing_bonus",
+  SPONSOR_RESULT_BONUS: "sponsor_result_bonus",
+  SPONSOR_OBJECTIVE_BONUS: "sponsor_objective_bonus",
   // Auctions
   AUCTION_WINNER_PAYMENT: "auction_winner_payment",
   AUCTION_SELLER_PAYOUT: "auction_seller_payout",

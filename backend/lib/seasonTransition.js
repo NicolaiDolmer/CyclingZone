@@ -43,7 +43,10 @@ import {
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
-import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
+import {
+  expireAndRenewContracts as defaultExpireAndRenewContracts,
+  evaluateSeasonObjectives as defaultEvaluateSeasonObjectives,
+} from "./sponsorContractsService.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
@@ -697,10 +700,28 @@ export async function transitionToNextSeason({
     });
   }
 
+  // Phase 5a-2 (#2948): sæsonmåls-bonusser for den NETOP AFSLUTTEDE sæson —
+  // SKAL køre FØR expireAndRenewContracts flipper kontrakt-status (klausulen
+  // sidder på den stadig-aktive kontrakt). Idempotent pr. (kontrakt, sæson).
+  // Additiv-isoleret: en fejl her må ikke vælte skiftet.
+  const evaluateSeasonObjectivesFn =
+    deps.evaluateSeasonObjectives ?? defaultEvaluateSeasonObjectives;
+  try {
+    log.push({
+      phase: "sponsor_season_objectives",
+      ...(await evaluateSeasonObjectivesFn({
+        supabase,
+        finishedSeasonNumber: plan.from_season.number,
+      })),
+    });
+  } catch (err) {
+    log.push({ phase: "sponsor_season_objectives", error: err.message });
+  }
+
   // Phase 5b (#1663, Økonomi Fase 2): udløb + forny sponsor-kontrakter FØR
   // sponsor-payout. For hvert menneske-hold beholdes en stadig-låst kontrakt
   // (expires_after_season >= ny sæson) — ellers udløbes den gamle og default-
-  // varianten ("long") for den nye sæson auto-tildeles. Garanterer at hvert
+  // varianten ("safe", 1 sæson — #2914) for den nye sæson auto-tildeles. Garanterer at hvert
   // hold har en aktiv kontrakt hvis guaranteed_base processSeasonStart betaler.
   // Samme menneske-hold-diskriminator som processSeasonStart (is_ai=false,
   // is_bank=false, is_frozen=false; #1077). expireAndRenewContracts er

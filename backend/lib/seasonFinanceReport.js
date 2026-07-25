@@ -53,6 +53,11 @@ export const REASON_LABEL = Object.freeze({
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP]: "Facility upkeep",
   [FINANCE_REASON.SEASON_START_STAFF_SALARY]: "Staff salaries",
+  // #2948 Sponsorvalg 2.0: bonusklausuler (signing ved aktivering, sejr/podie
+  // pr. completet løb, sæsonmål ved sæsonafslutning)
+  [FINANCE_REASON.SPONSOR_SIGNING_BONUS]: "Sponsor — underskriftsbonus",
+  [FINANCE_REASON.SPONSOR_RESULT_BONUS]: "Sponsor — resultatbonus",
+  [FINANCE_REASON.SPONSOR_OBJECTIVE_BONUS]: "Sponsor — sæsonmålsbonus",
 });
 
 const FALLBACK_LABEL = "Other";
