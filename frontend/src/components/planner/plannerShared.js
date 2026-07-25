@@ -108,6 +108,20 @@ export function myPeakCountByRace(riders) {
   return out;
 }
 
+// #2883: find den nærmeste sæson AT NUDGE mod, når manageren står i en tidligere
+// sæson (typisk den aktive) og en senere sæson allerede er oprettet. Bruges til
+// et proaktivt banner ("Sæson 2 kan planlægges nu") — tre testere rapporterede
+// planneren som "låst til aktiv sæson" 25/7, selvom sæson-vælgeren (#2518) reelt
+// understøtter et vilkårligt sæsonnummer; roden var lav synlighed/tillid, ikke en
+// hård spærring (se PR-beskrivelsen for research). Ren funktion: viewingNumber må
+// være null (ingen nudge, boardet er ikke loadet endnu).
+export function nextPlannableSeason(availableSeasons, viewingNumber) {
+  if (viewingNumber == null) return null;
+  const candidates = (availableSeasons || []).filter((s) => s && Number.isFinite(s.number) && s.number > viewingNumber);
+  if (!candidates.length) return null;
+  return candidates.reduce((a, b) => (a.number < b.number ? a : b));
+}
+
 // Trænings-status-chip: farve + redundant ikon-glyf (ikke kun farve — a11y §5.4).
 export function statusMeta(status) {
   switch (status) {

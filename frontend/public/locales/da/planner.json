@@ -8,11 +8,18 @@
     "description": "Her planlægger du hver rytters form-peaks henover sæsonen. Kig forbi snart."
   },
   "seasonMenu": {
+    "label": "Sæson",
     "option": "S{number}"
   },
   "seasonNotReady": {
     "title": "Sæson {number}s kalender er ikke klar endnu",
     "description": "Løbsprogrammet for denne sæson er ikke genereret endnu, så der er intet at planlægge mod. Kig forbi igen tættere på sæsonstart."
+  },
+  "nextSeasonBanner": {
+    "title": "Sæson {number} er åben for planlægning",
+    "body": "Kalenderen for sæson {number} er klar. Du kan sætte peaks for den nu, inden sæsonen starter.",
+    "cta": "Skift til sæson {number}",
+    "dismiss": "Afvis"
   },
   "firstRun": {
     "title": "Planlæg din første peak",

@@ -2534,8 +2534,14 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // "Sæson 2 er endnu ikke oprettet" kan vises sammen med en S1-fane at falde
     // tilbage på. #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er
     // IKKE en rigtig spillesæson og skal aldrig tilbydes i vælgeren.
-    const { data: allSeasonsRows } = await supabase
+    // #2883: kaster nu ved fejl (som resten af handleren) — MANGLENDE fejl-
+    // håndtering her degraderede tavst til availableSeasons:[], hvilket skjuler
+    // sæson-vælgeren HELT (kun rendret ved length > 1) uden en eneste Sentry-
+    // linje. Symptomet ville være ikke-til-at-skelne fra "planneren er låst til
+    // den aktive sæson" (tre testere, 25/7).
+    const { data: allSeasonsRows, error: seasonsErr } = await supabase
       .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
+    if (seasonsErr) throw new Error(`seasons (available list): ${seasonsErr.message}`);
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) return res.json({ enabled: true, season: null, availableSeasons, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
 
@@ -2993,8 +2999,10 @@ router.get("/races/calendar", requireAuth, async (req, res) => {
     if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
     // #2600: sæson 0 (åbne-beta-fasens bogførings-sæson, 0 løb) er ikke en rigtig
     // spillesæson og skal aldrig tilbydes i kalenderens sæson-vælger.
-    const { data: allSeasonsRows } = await supabase
+    // #2883: kaster nu ved fejl (samme fix som board-endpointet — se dets kommentar).
+    const { data: allSeasonsRows, error: allSeasonsErr } = await supabase
       .from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: true });
+    if (allSeasonsErr) throw new Error(`seasons (available list, calendar): ${allSeasonsErr.message}`);
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) {
       return res.json({ season: null, availableSeasons, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });

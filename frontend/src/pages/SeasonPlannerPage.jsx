@@ -4,8 +4,9 @@
 // en tom-state (samme kill-switch-mønster som Scouting/Facilities).
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PageLoader, EmptyState, ErrorState, Section, Button, StarIcon, GripVerticalIcon } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Section, Button, StarIcon, GripVerticalIcon, CalendarIcon, XIcon } from "../components/ui";
 import { usePlanner } from "../lib/usePlanner";
+import { nextPlannableSeason } from "../components/planner/plannerShared";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
 import PlannerDrawer from "../components/planner/PlannerDrawer";
@@ -13,6 +14,37 @@ import PlannerRaceList from "../components/planner/PlannerRaceList";
 
 function LegendItem({ children }) {
   return <span className="flex items-center gap-1.5">{children}</span>;
+}
+
+// #2883: tre testere rapporterede 25/7 at planneren var "låst til den aktive
+// sæson" op mod S2-cutover 27/7. Sæson-vælgeren (#2518/#2556) understøtter reelt
+// et vilkårligt sæsonnummer allerede — men den sad som to bare tal ("1"/"2") i et
+// button-par visuelt identisk med "mine/alle"-filteret lige ved siden af, uden
+// nogen forklarende tekst. Dette banner gør muligheden UMULIG at overse i stedet
+// for at stole på at managere selv opdager/forstår sæson-vælgeren — den korteste
+// vej fra "jeg kan ikke rigtigt få lov til det" (Discord-citat) til en synlig,
+// ét-klik CTA. Session-scoped dismiss (ingen persistens — lav-frekvent nok).
+function NextSeasonNudge({ t, nextSeason, onSwitch, onDismiss }) {
+  return (
+    <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <CalendarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
+          <div>
+            <p className="text-[15px] font-semibold text-cz-1">{t("nextSeasonBanner.title", { number: nextSeason.number })}</p>
+            <p className="mt-1 text-[13px] text-cz-2">{t("nextSeasonBanner.body", { number: nextSeason.number })}</p>
+            <button
+              className="mt-2 text-3xs border border-cz-accent-t text-cz-accent-t rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle"
+              onClick={onSwitch}
+            >{t("nextSeasonBanner.cta", { number: nextSeason.number })}</button>
+          </div>
+        </div>
+        <button className="shrink-0 text-cz-2 hover:text-cz-1" aria-label={t("nextSeasonBanner.dismiss")} onClick={onDismiss}>
+          <XIcon size={14} aria-hidden="true" />
+        </button>
+      </div>
+    </Section>
+  );
 }
 
 // #2849 bølge 6 — DEN ene editoriale sidehoved-recipe for denne side (ejer-
@@ -48,6 +80,9 @@ export default function SeasonPlannerPage() {
   const [filter, setFilter] = useState("mine");
   const [selected, setSelected] = useState(null); // { mode: "race"|"rider", id }
   const [toast, setToast] = useState(null); // { kind: "error"|"ok", text }
+  // #2883 sæson-nudge: gemmer ID'et på den sæson der er afvist (ikke bare et bool),
+  // så en SENERE sæson (fx S3, når den oprettes) stadig nudger selvom S2 er afvist.
+  const [dismissedNudgeSeasonId, setDismissedNudgeSeasonId] = useState(null);
 
   const months = t("months", { returnObjects: true });
 
@@ -56,6 +91,15 @@ export default function SeasonPlannerPage() {
     const h = setTimeout(() => setToast(null), 3800);
     return () => clearTimeout(h);
   }, [toast]);
+
+  // #2883: den sæson der reelt er valgt lige nu (eksplicit klik ELLER backend-
+  // defaultens aktive sæson, når intet er klikket endnu) — grundlaget for både
+  // switcher-highlighten (uændret) og nudge-banneret (nyt).
+  const viewingSeasonNumber = seasonNumber ?? season?.number ?? null;
+  const nextSeason = useMemo(
+    () => nextPlannableSeason(availableSeasons, viewingSeasonNumber),
+    [availableSeasons, viewingSeasonNumber],
+  );
 
   const selectedRace = useMemo(() => (selected?.mode === "race" ? (races || []).find((r) => r.id === selected.id) : null), [selected, races]);
   const selectedRider = useMemo(() => (selected?.mode === "rider" ? (riders || []).find((r) => r.id === selected.id) : null), [selected, riders]);
@@ -132,16 +176,23 @@ export default function SeasonPlannerPage() {
         right={
           <>
             {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
-                sæson, så managere kan planlægge mod S2's program FØR den starter. */}
+                sæson, så managere kan planlægge mod S2's program FØR den starter.
+                #2883: eksplicit "Sæson"-label tilføjet — bare "1"/"2"-knapper ved
+                siden af et VISUELT IDENTISK mine/alle-filter blev læst som ét
+                filter-cluster, ikke som en sæson-switcher (tre testere rapporterede
+                planneren som "låst" 25/7, selvom denne switcher allerede virkede). */}
             {(availableSeasons || []).length > 1 && (
-              <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
-                {availableSeasons.map((s) => (
-                  <button
-                    key={s.id}
-                    className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                    onClick={() => setSeasonNumber(s.number)}
-                  >{t("seasonMenu.option", { number: s.number })}</button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("seasonMenu.label")}</span>
+                <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+                  {availableSeasons.map((s) => (
+                    <button
+                      key={s.id}
+                      className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                      onClick={() => setSeasonNumber(s.number)}
+                    >{t("seasonMenu.option", { number: s.number })}</button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
@@ -161,6 +212,18 @@ export default function SeasonPlannerPage() {
         <div className={`mb-3 text-xs px-3 py-2 rounded-cz border ${toast.kind === "error" ? "border-cz-accent-t text-cz-accent-t" : "border-cz-border text-cz-1 bg-cz-subtle"}`} role="status">
           {toast.text}
         </div>
+      )}
+
+      {/* #2883: proaktiv nudge mod en senere oprettet sæson (fx S2 op mod cutover)
+          — vist UANSET pladsmangel/tom-state nedenfor, så beskeden aldrig kan
+          overses af det generiske "ingen ryttere endnu"-empty-state. */}
+      {nextSeason && nextSeason.id !== dismissedNudgeSeasonId && (
+        <NextSeasonNudge
+          t={t}
+          nextSeason={nextSeason}
+          onSwitch={() => { setSeasonNumber(nextSeason.number); setDismissedNudgeSeasonId(nextSeason.id); }}
+          onDismiss={() => setDismissedNudgeSeasonId(nextSeason.id)}
+        />
       )}
 
       {seasonNotReady && (
