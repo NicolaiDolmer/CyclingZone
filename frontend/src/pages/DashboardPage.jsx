@@ -28,6 +28,12 @@ import {
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import GlobalRankWidget from "../components/GlobalRankWidget";
+import SeasonStartGuideCard from "../components/SeasonStartGuideCard";
+import {
+  isSeasonStartWindow, buildSeasonStartItems,
+  readSeasonStartDismissed, writeSeasonStartDismissed,
+} from "../lib/seasonStartGuide";
+import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, PageLoader,
   PageHeader, Section, SectionHeader, SectionAction,
@@ -141,6 +147,23 @@ export default function DashboardPage() {
   // auto-seedes som 'pending' ved sæson-start, så board non-null er IKKE nok;
   // samme signal som onboarding-trinnet board_plan_set).
   const [boardPlanMissing, setBoardPlanMissing] = useState(false);
+  // #2925 — blev /api/board/status overhovedet besvaret? boardPlanMissing=false
+  // betyder ELLERS to vidt forskellige ting ("plan forhandlet" vs. "kaldet
+  // fejlede"), og sæsonstart-guiden må ikke vise et falsk grønt flueben.
+  const [boardStatusLoaded, setBoardStatusLoaded] = useState(false);
+
+  // #2925 — "Season N: kom i gang". Vises kun i sæsonstart-vinduet (dage siden
+  // aktiv sæsons start_date, se lib/seasonStartGuide.js), dismissable pr. sæson.
+  const [seasonStartDismissed, setSeasonStartDismissed] = useState(false);
+  const [academyEnabled, setAcademyEnabled] = useState(false);
+  const [seasonStartCounts, setSeasonStartCounts] = useState({
+    trainingPlanCount: null, pendingGraduations: null,
+  });
+
+  // #2925 — sæsonstart-vinduet. Afledt af eksisterende data (aktiv sæsons
+  // start_date), ikke af et nyt flag. `nowMs` tikker allerede hvert minut, så
+  // vinduet lukker af sig selv uden reload og uden urent new Date() i render.
+  const seasonStartWindowOpen = isSeasonStartWindow(seasonInfo, new Date(nowMs));
 
   async function loadAll() {
     try {
@@ -249,6 +272,7 @@ export default function DashboardPage() {
       (pt) => boardStatus?.plans?.[pt]?.board?.negotiation_status === "completed"
     );
     setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
+    setBoardStatusLoaded(Boolean(boardStatus));
     setActiveOffers([
       ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
       ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
@@ -409,6 +433,51 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [team?.id]);
 
+  // #2925 — dismiss huskes PR. SÆSON i localStorage (samme mønster som Discord-
+  // nudgen og completion-kortet). Læsningen ligger i en effekt, ikke i render,
+  // så komponenten forbliver ren. Nøglen bærer sæson-id'et, så et dismiss i
+  // sæson 2 ikke skjuler guiden ved næste sæsonskifte.
+  useEffect(() => {
+    setSeasonStartDismissed(readSeasonStartDismissed(seasonInfo?.id));
+  }, [seasonInfo?.id]);
+
+  // Akademiet er feature-gated. Layout.jsx har allerede afgjort synligheden og
+  // cachet den; vi genbruger cachen frem for at betale et ekstra /api/academy/me.
+  useEffect(() => {
+    setAcademyEnabled(readCachedAcademyNav());
+  }, [team?.id]);
+
+  // #2925 — de to "udført"-signaler der ikke allerede ligger på dashboardet.
+  // Begge er head-count-queries (ingen rækker over tråden) mod tabeller med
+  // ejer-scoped RLS (training_plans_own_select / academy_graduation_owner_read),
+  // og de køres KUN når sæsonstart-vinduet er åbent, så managere uden for
+  // vinduet betaler intet. Tælles på rider_id: begge tabeller har den kolonne,
+  // og en select på en ikke-eksisterende kolonne giver 400 og en tavs null-count
+  // (race_entries-fælden fra #2296).
+  useEffect(() => {
+    if (!seasonStartWindowOpen || !team?.id || !seasonInfo?.id) return undefined;
+    let cancelled = false;
+    (async () => {
+      const [trainingRes, gradRes] = await Promise.all([
+        supabase.from("training_plans")
+          .select("rider_id", { count: "exact", head: true })
+          .eq("team_id", team.id).eq("season_id", seasonInfo.id),
+        academyEnabled
+          ? supabase.from("academy_graduation")
+              .select("rider_id", { count: "exact", head: true })
+              .eq("team_id", team.id).eq("status", "pending")
+          : Promise.resolve({ count: 0 }),
+      ]);
+      if (cancelled) return;
+      // count===null (fejl/ukendt) bevares som null → punktet vises UDEN flueben.
+      setSeasonStartCounts({
+        trainingPlanCount: trainingRes.count ?? null,
+        pendingGraduations: gradRes.count ?? null,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, academyEnabled]);
+
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
@@ -510,6 +579,11 @@ export default function DashboardPage() {
     })();
   }
 
+  function dismissSeasonStart() {
+    writeSeasonStartDismissed(seasonInfo?.id);
+    setSeasonStartDismissed(true);
+  }
+
   function dismissCompletion() {
     localStorage.setItem("cz-dashboard-onboarding-completion-dismissed", "1");
     setCompletionDismissed(true);
@@ -583,6 +657,22 @@ export default function DashboardPage() {
   );
   const showDiscordNudgeBanner = !onboardingIncomplete && showDiscordNudge;
 
+  // #2925 — sæsonstart-guiden. Undertrykt mens onboarding kører (samme regel som
+  // Discord-nudgen, #2288 B: onboarding-kortet får skærmen for sig selv), og kun
+  // inden for vinduet. `ownedNow` og `boardPlanMissing` er allerede hentet, så
+  // kun to lette tællinger kommer oveni.
+  const showSeasonStartGuide = seasonStartWindowOpen && !seasonStartDismissed && !onboardingIncomplete;
+  const seasonStartItems = showSeasonStartGuide
+    ? buildSeasonStartItems({
+      squadCount: ownedNow,
+      trainingPlanCount: seasonStartCounts.trainingPlanCount,
+      boardPlanMissing,
+      boardStatusLoaded,
+      pendingGraduations: seasonStartCounts.pendingGraduations,
+      academyEnabled,
+    })
+    : [];
+
   return (
     // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
     // race-data, countdowns); browser-oversættere muterede dem og udløste
@@ -631,6 +721,17 @@ export default function DashboardPage() {
           kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
       {!onboardingDismissed && onboardingIncomplete && (
         <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+      )}
+
+      {/* #2925 — "Season N: kom i gang". Over "Næste træk", fordi de fire
+          sæsonskifte-beslutninger er dét der reelt venter mandag morgen; kortet
+          forsvinder af sig selv når vinduet lukker (7 dage) eller ved dismiss. */}
+      {showSeasonStartGuide && (
+        <SeasonStartGuideCard
+          seasonNumber={seasonInfo?.number}
+          items={seasonStartItems}
+          onDismiss={dismissSeasonStart}
+        />
       )}
 
       {/* Næste træk — prioriteret action-overblik (#271 Slice B).

@@ -15,6 +15,30 @@
     "notTrainedToday": "You have not trained today",
     "boardPlanMissing": "No board plan negotiated yet"
   },
+  "seasonStart": {
+    "title": "Season {number}: get started",
+    "dismissAria": "Dismiss the season start guide",
+    "done": "Done",
+    "progress": "{done} of {total} decisions made",
+    "items": {
+      "squad": {
+        "title": "Build your squad",
+        "desc": "Most teams start a season short of riders. Bid in the live auctions to fill the gaps."
+      },
+      "training": {
+        "title": "Set the training plan",
+        "desc": "Training plans belong to one season, so last season's plan no longer applies."
+      },
+      "board": {
+        "title": "Negotiate with the board",
+        "desc": "Your new plan is waiting. Until you agree it, the season's targets are not settled."
+      },
+      "academy": {
+        "title": "Decide on academy graduates",
+        "desc": "Promote, sell or release riders who turned 21. After 7 days the engine promotes them if you have room and cash, otherwise it sells."
+      }
+    }
+  },
   "squadWarning": {
     "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
