@@ -9610,16 +9610,23 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
   try {
     const { seasonId } = req.params;
 
-    const [teams, standingsRes, loansRes] = await Promise.all([
+    // #2951: season_standings (367/1000 rækker 25/7, samme klasse som #2907/
+    // #2932) og loans (global .eq(status,"active"), ikke team-scopet — vokser
+    // med aktive lån på tværs af ALLE hold) pagineret via fetchAllRows.
+    const [teams, standings, loanData] = await Promise.all([
       loadHumanSeasonEndTeams(supabase),
-      supabase.from("season_standings").select("*").eq("season_id", seasonId),
-      supabase.from("loans").select("team_id, amount_remaining, interest_rate").eq("status", "active"),
+      fetchAllRows(() => supabase
+        .from("season_standings")
+        .select("*")
+        .eq("season_id", seasonId)
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
+        .from("loans")
+        .select("team_id, amount_remaining, interest_rate")
+        .eq("status", "active")
+        .order("id", { ascending: true })),
     ]);
 
-    if (standingsRes.error) throw standingsRes.error;
-    if (loansRes.error) throw loansRes.error;
-    const standings = standingsRes.data || [];
-    const loanData = loansRes.data || [];
     const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
 
     res.json({ preview });

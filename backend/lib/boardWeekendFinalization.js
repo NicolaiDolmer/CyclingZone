@@ -155,17 +155,28 @@ export async function processBoardWeekendFinalization({
   const computeWeekendUpdateFn = deps.computeWeekendUpdate ?? computeWeekendSatisfactionUpdate;
   const computeBaselineUpdateFn = deps.computeBaselineWeekendUpdate ?? computeBaselineWeekendUpdate;
 
+  // #2951: teams-hentningen (153 rækker 25/7, samme diskriminator som andre
+  // steder i filen) pagineret via fetchAllRows — samme klasse som riders/
+  // board_profiles/loans nedenfor, blot en langsommere driver (team-count).
+  const withPaginationErrorLabel = (promise, label) =>
+    promise.catch((error) => {
+      throw new Error(`Could not load ${label} for weekend board update: ${error.message}`);
+    });
+
   // 1. Rigtige human-hold (match-UI-filter: ikke-AI/bank/test/frosne).
-  const { data: teams, error: teamsError } = await supabase
-    .from("teams")
-    // #2521 · `balance` er tilføjet til selectet: baseline-boards' økonomi-signal
-    // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
-    .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at")
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false)
-    .eq("is_test_account", false);
-  if (teamsError) throw new Error(`Could not load teams for weekend board update: ${teamsError.message}`);
+  const teams = await withPaginationErrorLabel(
+    fetchAllRows(() => supabase
+      .from("teams")
+      // #2521 · `balance` er tilføjet til selectet: baseline-boards' økonomi-signal
+      // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
+      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .eq("is_test_account", false)
+      .order("id", { ascending: true })),
+    "teams"
+  );
   if (!teams?.length) {
     summary.skipped_reason = "no_human_teams";
     return summary;
@@ -180,23 +191,21 @@ export async function processBoardWeekendFinalization({
   // .in()-load her lod weekend-board-evalueringer køre stille på et delvist
   // rytterfelt uge efter uge for hold hvis rækker faldt uden for side 1 — ikke en
   // fejl, ikke en tom række, bare fravær (prod 25/7: 2.652 ryttere på 156
-  // menneskehold, langt over loftet). season_standings pagineres BEVIDST ikke her
-  // (367/1000 rækker 25/7 — samme lavere-prioriterede, deferred fund som i
-  // #2907-PR-bodyen; separat issue, sorteringen mangler desuden et stabilt
-  // tiebreak til sikker paginering).
-  const withPaginationErrorLabel = (promise, label) =>
-    promise.catch((error) => {
-      throw new Error(`Could not load ${label} for weekend board update: ${error.message}`);
-    });
-
-  const [standingsRes, boardsData, ridersData, loansData] = await Promise.all([
-    supabase
-      .from("season_standings")
-      // #2521 · is_bank/is_frozen/is_test_account tilføjet: computeRealPoolPercentile
-      // (baseline-target) skal filtrere puljen med SAMME diskriminator som resten af
-      // filen, ikke kun is_ai (ellers tæller bank/test/frosne hold med i percentilen).
-      .select("*, team:team_id(is_ai, is_bank, is_frozen, is_test_account)")
-      .eq("season_id", season.id),
+  // menneskehold, langt over loftet). #2951: season_standings (367/1000 25/7,
+  // samme team-count-driver) er nu OGSÅ pagineret — denne query har ingen
+  // total_points-sortering, så .order("id") alene er nok som stabilt tiebreak.
+  const [standings, boardsData, ridersData, loansData] = await Promise.all([
+    withPaginationErrorLabel(
+      fetchAllRows(() => supabase
+        .from("season_standings")
+        // #2521 · is_bank/is_frozen/is_test_account tilføjet: computeRealPoolPercentile
+        // (baseline-target) skal filtrere puljen med SAMME diskriminator som resten af
+        // filen, ikke kun is_ai (ellers tæller bank/test/frosne hold med i percentilen).
+        .select("*, team:team_id(is_ai, is_bank, is_frozen, is_test_account)")
+        .eq("season_id", season.id)
+        .order("id", { ascending: true })),
+      "season_standings"
+    ),
     withPaginationErrorLabel(
       fetchAllRows(() => supabase
         .from("board_profiles")
@@ -225,12 +234,8 @@ export async function processBoardWeekendFinalization({
       "loans"
     ),
   ]);
-  if (standingsRes.error) {
-    throw new Error(`Could not load season_standings for weekend board update: ${standingsRes.error.message}`);
-  }
 
-  const standings = standingsRes.data || [];
-  const standingByTeam = new Map(standings.map((s) => [s.team_id, s]));
+  const standingByTeam = new Map((standings || []).map((s) => [s.team_id, s]));
 
   const boardsByTeam = new Map();
   for (const board of boardsData || []) {
