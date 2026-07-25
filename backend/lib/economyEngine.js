@@ -159,7 +159,7 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
         .order("id", { ascending: true })
     ));
   } catch (error) {
-    throw new Error(`Could not load riders for season end: ${error.message}`);
+    throw new Error(`Could not load riders for season end: ${error.message}`, { cause: error });
   }
 
   const boardsRes = await supabaseClient
