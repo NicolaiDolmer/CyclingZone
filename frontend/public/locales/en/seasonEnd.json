@@ -31,7 +31,7 @@
   },
   "division": "Division {div}",
   "promotionNote": "Top 2 promoted ↑",
-  "relegationNote": "Bottom 2 relegated ↓",
+  "relegationNote": "Bottom 4 relegated ↓",
   "table": {
     "rank": "#",
     "team": "Team",

@@ -879,6 +879,10 @@
       "q": "How do I train a rider?",
       "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You have 3 focus slots per season. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
     },
+    "seasonChangeMoneyFaq": {
+      "q": "What happens to my money at the season change?",
+      "a": "Everything happens at the start of the new season, in one batch. Your sponsor contract renews first, then sponsor money is paid out, and right after that the season's payroll follows: loan interest, rider salaries, and facility upkeep plus staff salaries, in that order. Nothing is deducted when the old season ends; salaries and interest moved to season start in v3.78. If your sponsor income and balance can't cover the payroll, the system automatically takes an emergency loan for the shortfall (see 'What happens if I can't pay the salaries?'). If your sponsor deal also has a per-race-day rate, that part is paid separately as you complete races during the season; it is not part of the season-change batch."
+    },
     "salaryShortfall": {
       "q": "What happens if I can't pay the salaries?",
       "a": "Salaries are deducted at season start AFTER sponsor money is paid out. If your balance + sponsor minus loan interest doesn't cover the salaries, the system automatically takes an emergency loan for the shortfall. Interest on the emergency loan is added at the next season's start."
