@@ -1,8 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import {
   buildPersonalSeasonEndedMessage,
+  formatEnglishOrdinal,
   loadSeasonEndedPersonalization,
   SEASON_ENDED_MESSAGE_CODES,
 } from "./seasonEndedPersonalization.js";
@@ -26,6 +32,40 @@ const FULL_FACTS = {
   nextDivision: 2,
 };
 
+// ─── 0. Engelske ordenstal (ejer-beslutning 25/7) ────────────────────────────
+
+test("ordenstal: de almindelige former", () => {
+  assert.equal(formatEnglishOrdinal(1), "1st");
+  assert.equal(formatEnglishOrdinal(2), "2nd");
+  assert.equal(formatEnglishOrdinal(3), "3rd");
+  assert.equal(formatEnglishOrdinal(4), "4th");
+  assert.equal(formatEnglishOrdinal(9), "9th");
+  assert.equal(formatEnglishOrdinal(10), "10th");
+});
+
+test("ordenstal: teens er undtagelsen — 11th/12th/13th, ikke 11st/12nd/13rd", () => {
+  assert.equal(formatEnglishOrdinal(11), "11th");
+  assert.equal(formatEnglishOrdinal(12), "12th");
+  assert.equal(formatEnglishOrdinal(13), "13th");
+  assert.equal(formatEnglishOrdinal(14), "14th");
+});
+
+test("ordenstal: 21st/22nd/23rd følger mønstret igen", () => {
+  assert.equal(formatEnglishOrdinal(21), "21st");
+  assert.equal(formatEnglishOrdinal(22), "22nd");
+  assert.equal(formatEnglishOrdinal(23), "23rd");
+  assert.equal(formatEnglishOrdinal(24), "24th");
+});
+
+test("ordenstal: 111/112/113 er også teens (sidste TO cifre afgør)", () => {
+  assert.equal(formatEnglishOrdinal(111), "111th");
+  assert.equal(formatEnglishOrdinal(112), "112th");
+  assert.equal(formatEnglishOrdinal(113), "113th");
+  assert.equal(formatEnglishOrdinal(101), "101st");
+  assert.equal(formatEnglishOrdinal(102), "102nd");
+  assert.equal(formatEnglishOrdinal(103), "103rd");
+});
+
 // ─── 1. Byggeren ─────────────────────────────────────────────────────────────
 
 test("bygger: komplette fakta → fuld besked med rytter og næste division", () => {
@@ -34,11 +74,12 @@ test("bygger: komplette fakta → fuld besked med rytter og næste division", ()
   assert.equal(res.messageCode, SEASON_ENDED_MESSAGE_CODES.full);
   assert.equal(
     res.message,
-    "You finished in position 4 of 24 in Division 3 with 1,742 points and CZ$ 138,224 in prize money. " +
+    "You finished 4th of 24 in Division 3 with 1,742 points and CZ$ 138,224 in prize money. " +
       "Your best rider was Mathias Vacek with 1,120 points. You start Season 2 in Division 2.",
   );
   assert.deepEqual(res.messageParams, {
     rank: 4,
+    rankOrdinal: "4th",
     poolSize: 24,
     division: 3,
     points: 1742,
@@ -82,7 +123,7 @@ test("bygger: hverken rytter eller næste division → minimal variant", () => {
   assert.equal(res.messageCode, SEASON_ENDED_MESSAGE_CODES.minimal);
   assert.equal(
     res.message,
-    "You finished in position 4 of 24 in Division 3 with 1,742 points and CZ$ 138,224 in prize money.",
+    "You finished 4th of 24 in Division 3 with 1,742 points and CZ$ 138,224 in prize money.",
   );
 });
 
@@ -112,6 +153,34 @@ test("bygger: meningsløs placering (rank 0) → null i stedet for 'position 0 o
     buildPersonalSeasonEndedMessage({ facts: { ...FULL_FACTS, rank: 0 }, nextSeasonNumber: 2 }),
     null,
   );
+});
+
+// Locale-guard: engelsk bruger ordenstal, dansk bruger det rå tal. Byttes de om,
+// render dansk "plads 4th ud af 24" (eller engelsk "You finished 4 of 24").
+test("locale-skabeloner: EN bruger {rankOrdinal}, DA bruger {rank}", () => {
+  const localeDir = join(__dirname, "../../frontend/public/locales");
+  const en = JSON.parse(readFileSync(join(localeDir, "en/backendMessages.json"), "utf8"));
+  const da = JSON.parse(readFileSync(join(localeDir, "da/backendMessages.json"), "utf8"));
+
+  const personalKeys = [
+    "messagePersonal",
+    "messagePersonalNoNextDivision",
+    "messagePersonalNoRider",
+    "messagePersonalMinimal",
+  ];
+
+  for (const key of personalKeys) {
+    assert.ok(en.notif.seasonEnded[key], `EN mangler ${key}`);
+    assert.ok(da.notif.seasonEnded[key], `DA mangler ${key}`);
+    assert.match(en.notif.seasonEnded[key], /\{rankOrdinal\}/, `EN ${key} skal bruge ordenstal`);
+    assert.doesNotMatch(en.notif.seasonEnded[key], /\{rank\}/, `EN ${key} må ikke bruge det rå tal`);
+    assert.match(da.notif.seasonEnded[key], /\{rank\}/, `DA ${key} skal bruge det rå tal`);
+    assert.doesNotMatch(
+      da.notif.seasonEnded[key],
+      /\{rankOrdinal\}/,
+      `DA ${key} må ALDRIG bruge det engelske ordenstal ("plads 4th ud af 24")`,
+    );
+  }
 });
 
 // ─── 2. Loaderen ─────────────────────────────────────────────────────────────
@@ -256,7 +325,7 @@ test("emit: personaliserede beskeder sendes pr. manager med egne tal", async () 
 
   assert.equal(stats.personalized, 2);
   assert.equal(stats.delivered, 2);
-  assert.match(calls[0].message, /position 4 of 3 in Division 3/);
+  assert.match(calls[0].message, /You finished 4th of 3 in Division 3/);
   assert.match(calls[0].message, /Mathias Vacek/);
   assert.match(calls[0].message, /You start Season 2 in Division 2\./);
   assert.equal(calls[0].metadata.messageCode, SEASON_ENDED_MESSAGE_CODES.full);
@@ -306,7 +375,7 @@ test("emit: FAIL-SAFE — fejl i flag-opslaget udelader kun divisions-sætningen
     },
   });
 
-  assert.match(calls[0].message, /position 4 of 3/, "resten af personaliseringen består");
+  assert.match(calls[0].message, /4th of 3/, "resten af personaliseringen består");
   assert.doesNotMatch(calls[0].message, /You start Season/, "usikker division loves ikke");
 });
 

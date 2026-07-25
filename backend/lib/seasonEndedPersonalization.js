@@ -187,6 +187,31 @@ function formatNumber(value) {
 }
 
 /**
+ * Engelsk ordenstal: 1st, 2nd, 3rd, 4th ... (ejer-beslutning 25/7).
+ *
+ * Teens er undtagelsen: 11th/12th/13th følger IKKE 1st/2nd/3rd-mønstret, mens
+ * 21st/22nd/23rd gør. Derfor tjekkes de sidste TO cifre først.
+ *
+ * Bruges KUN til engelsk. Dansk beholder det rå tal ("plads 4 ud af 24"), og
+ * derfor sendes både `rank` (tal) og `rankOrdinal` (streng) som i18n-parametre
+ * — ellers ville den danske skabelon rendere "plads 4th ud af 24".
+ */
+export function formatEnglishOrdinal(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  const whole = Math.trunc(num);
+  const lastTwo = Math.abs(whole) % 100;
+  const lastOne = Math.abs(whole) % 10;
+  let suffix = "th";
+  if (lastTwo < 11 || lastTwo > 13) {
+    if (lastOne === 1) suffix = "st";
+    else if (lastOne === 2) suffix = "nd";
+    else if (lastOne === 3) suffix = "rd";
+  }
+  return `${whole}${suffix}`;
+}
+
+/**
  * Byg den personlige besked. Returnerer null hvis grundlaget ikke er komplet —
  * kalderen sender da den generiske besked.
  *
@@ -205,7 +230,8 @@ export function buildPersonalSeasonEndedMessage({ facts, nextSeasonNumber } = {}
   const hasRider = typeof riderName === "string" && riderName.length > 0 && Number.isFinite(riderPoints);
   const hasNextDivision = Number.isFinite(nextDivision) && Number.isFinite(nextSeasonNumber);
 
-  const base = `You finished in position ${formatNumber(rank)} of ${formatNumber(poolSize)} in Division ${division} with ${formatNumber(points)} points and CZ$ ${formatNumber(prize)} in prize money.`;
+  const rankOrdinal = formatEnglishOrdinal(rank);
+  const base = `You finished ${rankOrdinal} of ${formatNumber(poolSize)} in Division ${division} with ${formatNumber(points)} points and CZ$ ${formatNumber(prize)} in prize money.`;
   const riderSentence = hasRider
     ? ` Your best rider was ${riderName} with ${formatNumber(riderPoints)} points.`
     : "";
@@ -219,7 +245,9 @@ export function buildPersonalSeasonEndedMessage({ facts, nextSeasonNumber } = {}
   else if (hasNextDivision) messageCode = SEASON_ENDED_MESSAGE_CODES.noRider;
   else messageCode = SEASON_ENDED_MESSAGE_CODES.minimal;
 
-  const messageParams = { rank, poolSize, division, points, prize };
+  // rank = rå tal (dansk: "plads 4"), rankOrdinal = engelsk ordenstal ("4th").
+  // Begge sendes altid, så hver locale-skabelon kan vælge sin egen form.
+  const messageParams = { rank, rankOrdinal, poolSize, division, points, prize };
   if (hasRider) {
     messageParams.rider = riderName;
     messageParams.riderPoints = riderPoints;
