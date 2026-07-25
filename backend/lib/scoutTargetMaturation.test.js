@@ -120,3 +120,67 @@ describe("completeTargetAssignment (sweep-backstop, flyttet fra scoutSweep)", ()
     assert.equal(state.assignments[0].status, "completed");
   });
 });
+
+// #2945 — notify()-wiring: begge modnings-stier (lazy = hovedsti #2644, sweep =
+// backstop) skal fortælle spilleren rapporten er klar, EFTER status er sat.
+describe("scout-report-ready-notifikation wiring (#2945)", () => {
+  it("lazyCompleteDueTargetAssignments: kalder notify med den FULDFØRTE assignment (status='completed')", async () => {
+    const { supabase } = makeMock({ assignments: [targetAssignment()] });
+    const calls = [];
+    const notify = async (args) => { calls.push(args); return { delivered: true, deduped: false }; };
+
+    const result = await lazyCompleteDueTargetAssignments({ supabase, teamId: "team-1", now: NOW, notify });
+
+    assert.equal(result.completed, 1);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].assignment.id, "as-1");
+    assert.equal(calls[0].assignment.status, "completed", "notify ser den ALLEREDE fuldførte status");
+    assert.equal(calls[0].assignment.target_level, 2);
+    assert.equal(calls[0].now, NOW);
+  });
+
+  it("lazyCompleteDueTargetAssignments: kalder IKKE notify når intet er due (no-op)", async () => {
+    const { supabase } = makeMock({ assignments: [targetAssignment({ created_at: T5_MIN_AGO })] });
+    const calls = [];
+    const notify = async (args) => { calls.push(args); return { delivered: true }; };
+    await lazyCompleteDueTargetAssignments({ supabase, teamId: "team-1", now: NOW, notify });
+    assert.equal(calls.length, 0);
+  });
+
+  it("lazyCompleteDueTargetAssignments: en tabt claim (race) kalder IKKE notify for den række", async () => {
+    const { supabase, state } = makeMock({ assignments: [targetAssignment()] });
+    state.assignments[0].status = "completed"; // allerede fuldført af et andet kald
+    const calls = [];
+    const notify = async (args) => { calls.push(args); return { delivered: true }; };
+    await lazyCompleteDueTargetAssignments({ supabase, teamId: "team-1", now: NOW, notify });
+    assert.equal(calls.length, 0);
+  });
+
+  it("completeTargetAssignment: kalder notify EFTER scout_assignments-updaten er bekræftet", async () => {
+    const { supabase, state } = makeMock({ assignments: [targetAssignment({ target_level: 1 })] });
+    let statusSeenByNotify = null;
+    const notify = async ({ assignment }) => { statusSeenByNotify = assignment.status; return { delivered: true }; };
+
+    await completeTargetAssignment({ supabase, assignment: state.assignments[0], notify });
+
+    assert.equal(statusSeenByNotify, "completed");
+    assert.equal(state.assignments[0].status, "completed", "selve fuldførelsen sker uanset notify");
+  });
+
+  it("dedup mellem lazy og sweep-backstop for SAMME assignment: 2. notify-kald dedup'er (delt related_id = assignment.id)", async () => {
+    // Simulerer det faktiske race #2644 beskytter imod: lazy-stien vinder claimet,
+    // men et efterfølgende sweep-tick for samme assignment (fx en genkørt tick før
+    // completed-status er synlig alle steder) må IKKE give en ekstra notifikation.
+    // notifyScoutReportReady/notifyUser's (type,title,message,related_id)-dedup
+    // (24t) er selve garantien — her bevises blot at BEGGE call-sites sender samme
+    // related_id, så det defensive lag rent faktisk kan fange en dublet.
+    const { supabase } = makeMock({ assignments: [targetAssignment()] });
+    const relatedIds = [];
+    const notify = async ({ assignment }) => { relatedIds.push(assignment.id); return { delivered: true }; };
+
+    await lazyCompleteDueTargetAssignments({ supabase, teamId: "team-1", now: NOW, notify });
+    await completeTargetAssignment({ supabase, assignment: { ...targetAssignment(), status: "completed" }, notify });
+
+    assert.deepEqual(relatedIds, ["as-1", "as-1"], "begge stier sender SAMME related_id for samme assignment-id");
+  });
+});

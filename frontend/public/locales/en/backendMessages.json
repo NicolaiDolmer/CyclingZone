@@ -179,6 +179,18 @@
       "title": "Rider has left the game",
       "message": "{rider} has left the game and was removed from your watchlist."
     },
+    "scoutReportReady": {
+      "target": {
+        "title": "Scouting report ready",
+        "message": "Your level {level} investigation of {rider} is ready. View the report."
+      },
+      "mission": {
+        "title": "Scouting mission ready",
+        "messageSingle": "Your scouting mission found {count} rider. View the shortlist.",
+        "messageMulti": "Your scouting mission found {count} riders. View the shortlist.",
+        "messageEmpty": "Your scouting mission is complete. No matching riders were found this time."
+      }
+    },
     "auctionCancelledRetired": {
       "title": "Auction cancelled: rider retired",
       "messageBidder": "{rider} retired before the auction could complete. You have not been charged.",
