@@ -46,7 +46,12 @@ import { notifyUser, emitContractExpiringNotifications } from "./notificationSer
 import {
   expireAndRenewContracts as defaultExpireAndRenewContracts,
   evaluateSeasonObjectives as defaultEvaluateSeasonObjectives,
+  resolveContractForNewSeason,
+  contractRaceDayPool,
+  contractSigningBonus,
 } from "./sponsorContractsService.js";
+import { renownTarget } from "./renownEngine.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
@@ -363,10 +368,14 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     );
   }
 
+  // #2926: samme menneske-hold-diskriminator som processSeasonStart og
+  // expireAndRenewContracts (is_bank=false manglede → previewet kunne tælle
+  // bank-pseudo-holdet med selvom udbetalingen aldrig rammer det).
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
     .select("id, name, sponsor_income, division")
     .eq("is_ai", false)
+    .eq("is_bank", false)
     .eq("is_frozen", false);
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
@@ -374,15 +383,27 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     fromSeasonId: fromSeason.id,
     toSeasonNumber,
   });
+  const contractsByTeamId = await loadSponsorContractStock({ supabase });
 
-  // Sponsor-preview viser base før board/pullout-modifier. Den samme sponsor-engine
-  // bruges i processSeasonStart, så admin-preview og faktisk payout ikke driver.
+  // Sponsor-preview viser den GARANTEREDE base før board/pullout-modifier —
+  // altså præcis det beløb processSeasonStart udbetaler efter at
+  // expireAndRenewContracts har gjort én kontrakt aktiv pr. hold (#2926).
   const sponsorPreview = (humanTeams || []).map((team) => ({
     team_id: team.id,
     team_name: team.name,
     division: team.division,
-    ...buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext),
+    ...buildSponsorPreviewRow(
+      team,
+      toSeasonNumber,
+      sponsorStandingsContext,
+      contractsByTeamId.get(team.id) || {}
+    ),
   }));
+
+  const sponsorContractSources = { locked: 0, pending: 0, default: 0 };
+  for (const row of sponsorPreview) {
+    sponsorContractSources[row.sponsor_contract_source] += 1;
+  }
 
   return {
     from_season: {
@@ -397,9 +418,39 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     },
     already_transitioned: Boolean(existingTo),
     teams_affected: sponsorPreview.length,
+    // Udbetales ved sæsonstart (board-modifier lægges oveni i processSeasonStart).
     sponsor_base_total: sponsorPreview.reduce((s, p) => s + p.sponsor_base, 0),
+    // Udbetales ÉN gang ved aktivering af et pending valg (loyal-arketypen, #2948).
+    sponsor_signing_bonus_total: sponsorPreview.reduce((s, p) => s + p.sponsor_signing_bonus, 0),
+    // IKKE en udbetaling ved skiftet: den variable puljes samlede størrelse, som
+    // holdene optjener pr. etape hen over sæsonen ved fuld deltagelse.
+    sponsor_race_day_pool_total: sponsorPreview.reduce((s, p) => s + p.sponsor_race_day_pool, 0),
+    sponsor_contract_sources: sponsorContractSources,
     sponsor_breakdown: sponsorPreview,
   };
+}
+
+/**
+ * #2926 · Kontraktbestanden i to bulk-queries (ikke N+1 pr. hold). De delvise
+ * UNIQUE-indekser på sponsor_contracts garanterer højst én 'active' og én
+ * 'pending' pr. hold, så et Map pr. status er en fuldstændig repræsentation.
+ */
+async function loadSponsorContractStock({ supabase }) {
+  const byTeamId = new Map();
+  for (const status of ["active", "pending"]) {
+    // Pagineret (#2951-klassen): ét hold = én kontrakt pr. status, så rækketallet
+    // vokser 1:1 med populationen og ville stille blive kappet ved 1000.
+    const data = await fetchAllRows(() =>
+      supabase.from("sponsor_contracts").select("*").eq("status", status).order("id")
+    );
+    for (const row of data || []) {
+      if (!row?.team_id) continue;
+      const entry = byTeamId.get(row.team_id) || {};
+      entry[status === "active" ? "activeContract" : "pendingContract"] = row;
+      byTeamId.set(row.team_id, entry);
+    }
+  }
+  return byTeamId;
 }
 
 async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNumber }) {
@@ -414,22 +465,57 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
   return buildSponsorStandingsContext(data || []);
 }
 
-function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext) {
+/**
+ * #2926 · Previewet modellerede tidligere en KONTRAKTFRI tilstand (division-base
+ * + variabel pulje) — men udbetalingen sker EFTER fase 5b (expireAndRenewContracts),
+ * hvor hvert menneskehold har præcis én aktiv kontrakt, og processSeasonStart
+ * udbetaler dens (typisk lavere) guaranteed_base. Preview'et overvurderede derfor
+ * sæsonstartens pengeinjektion markant. Her resolves den kontrakt der FAKTISK vil
+ * være aktiv, via samme rene regel som fornyelsen bruger.
+ */
+function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext, contracts = {}) {
   const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
+  const divisionStandings = lastSeasonStanding
+    ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
+    : [];
+
+  // Samme input som sponsorContractsService.loadRenownTargetValue henter i drift:
+  // holdets NUVÆRENDE division + forrige sæsons standing/divisionsfelt.
+  const renownTargetValue = renownTarget({
+    division: team.division ?? lastSeasonStanding?.division ?? null,
+    lastSeasonStanding,
+    divisionStandings,
+  });
+  const { source, contract } = resolveContractForNewSeason({
+    teamId: team.id,
+    newSeasonNumber: toSeasonNumber,
+    activeContract: contracts.activeContract ?? null,
+    pendingContract: contracts.pendingContract ?? null,
+    renownTargetValue,
+  });
+
   const breakdown = computeSponsorForSeason({
     seasonNumber: toSeasonNumber,
     team,
     lastSeasonStanding,
-    divisionStandings: lastSeasonStanding
-      ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
-      : [],
+    divisionStandings,
+    activeContract: contract,
   });
+
   return {
     sponsor_base: breakdown.gross_sponsor,
     sponsor_mode: breakdown.mode,
     sponsor_variable: breakdown.variable,
     sponsor_formula_base: breakdown.base,
     sponsor_breakdown: breakdown,
+    // Kontrakt-kontekst (#2926) så dry-run-rapporten kan vise HVORFOR tallet er
+    // som det er — låst aftale, managerens valg, eller auto-default.
+    sponsor_contract_source: source,
+    sponsor_contract_variant: contract.variant ?? null,
+    sponsor_name: contract.sponsor_name ?? null,
+    sponsor_signing_bonus: source === "pending" ? contractSigningBonus(contract) : 0,
+    sponsor_race_day_pool: contractRaceDayPool(contract),
+    sponsor_renown_target: renownTargetValue,
   };
 }
 

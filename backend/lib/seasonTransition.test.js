@@ -50,10 +50,15 @@ function createMockSupabase(initialState = {}) {
   };
   const calls = { inserts: [], updates: [] };
 
-  function chain(table, filters = {}, orderBy = null, limit = null) {
+  function chain(table, filters = {}, orderBy = null, limit = null, range = null) {
     return {
       eq(col, val) {
-        return chain(table, { ...filters, [col]: val }, orderBy, limit);
+        return chain(table, { ...filters, [col]: val }, orderBy, limit, range);
+      },
+      // fetchAllRows påfører .range(from, to) pr. side (#2926: sponsor_contracts
+      // hentes pagineret). Mocken respekterer vinduet så pagineringen faktisk testes.
+      range(from, to) {
+        return chain(table, filters, orderBy, limit, { from, to });
       },
       // gte er en no-op i mocken (created_at-vindue findes ikke for in-memory
       // rows) — dedup matcher derfor på user/type/title/message/related_id, hvilket
@@ -93,9 +98,18 @@ function createMockSupabase(initialState = {}) {
         return Promise.resolve({ data: rows[0], error: null });
       },
       then(resolve) {
-        // Direct await without terminal — return all matching rows.
+        // Direct await without terminal — return all matching rows (evt. skåret
+        // til det range fetchAllRows har bedt om).
+        const rows = state[table].filter((row) => matchesFilters(row, filters));
+        const ordered = orderBy
+          ? [...rows].sort((a, b) => {
+              const av = a[orderBy.col]; const bv = b[orderBy.col];
+              if (av === bv) return 0;
+              return orderBy.asc ? (av > bv ? 1 : -1) : (av > bv ? -1 : 1);
+            })
+          : rows;
         return resolve({
-          data: state[table].filter((row) => matchesFilters(row, filters)),
+          data: range ? ordered.slice(range.from, range.to + 1) : ordered,
           error: null,
         });
       },
@@ -156,7 +170,7 @@ function createMockSupabase(initialState = {}) {
 
 // ─── Plan-builder tests ───────────────────────────────────────────────────────
 
-test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 340K hver (D3 intro-skaleret, #1441 A6)", async () => {
+test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, auto-default 'safe' på D3-renown (#2926)", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active", start_date: "2026-05-08", end_date: null }],
     transfer_windows: [],
@@ -181,11 +195,16 @@ test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 340K hv
   assert.equal(plan.to_season.id, "00000000-0000-0000-0000-000000000001");
   assert.equal(plan.to_season.transfer_window_id, "00000000-0000-0000-0000-00000001aaaa");
   assert.equal(plan.teams_affected, 22);
-  assert.equal(plan.sponsor_base_total, 22 * 340000); // #1441 A6: D3 260k → 340k
+  // #2926: transitionens fase 5b giver hvert kontraktfrit hold en 'safe'-aftale FØR
+  // sponsor-payouten, så previewet skal vise kontraktens garanterede base
+  // (0,92 × renownTarget = 0,92 × 340k) — ikke den kontraktfri division-base på 340k.
+  assert.equal(plan.sponsor_base_total, 22 * 312_800);
+  assert.equal(plan.sponsor_contract_sources.default, 22);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "contract");
   assert.equal(plan.already_transitioned, false);
 });
 
-test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", async () => {
+test("buildTransitionPlan — sæson 1 → 2 preview bruger kontrakt-basen, ikke den kontraktfri variable model (#2926)", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
     teams: [
@@ -206,13 +225,172 @@ test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", as
   });
 
   assert.equal(plan.to_season.number, 2);
-  // Alle tre hold er i division 3 → base 340k (#1441 A6: 260k→340k) + performance-variabel.
-  // Top (rank 1) = 340k + 150k; mid (rank 2) = 340k + 75k; bund (rank 3) = 340k + 0.
-  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 490_000);
-  assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "variable");
-  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 415_000);
-  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 340_000);
-  assert.equal(plan.sponsor_base_total, 1_245_000);
+  // Alle tre hold er kontraktfri → auto-default 'safe' (0,92 × renownTarget).
+  // renownTarget = 340k × clamp(1 + 0,45 × resultsScore, 1,0 … 1,40):
+  //   top  (rank 1, 180 p, median 120) resultsScore 1,00 → ×1,40 = 476.000 → base 437.920
+  //   mid  (rank 2, 120 p)             resultsScore 0,50 → ×1,225 = 416.500 → base 383.180
+  //   bund (rank 3, 60 p)              resultsScore 0,00 → ×1,00 = 340.000 → base 312.800
+  // Den GAMLE kontraktfri model gav 490k/415k/340k = 1.245.000 — ~9 % for højt.
+  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 437_920);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "contract");
+  assert.equal(plan.sponsor_breakdown[0].sponsor_contract_source, "default");
+  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 383_180);
+  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 312_800);
+  assert.equal(plan.sponsor_base_total, 1_133_900);
+  assert.ok(plan.sponsor_base_total < 1_245_000, "kontrakt-modellen må aldrig give mere end den kontraktfri");
+});
+
+// ─── #2926 · Kontraktbestand-bevidst sponsor-preview ──────────────────────────
+
+test("buildTransitionPlan — managerens pending valg aktiveres og bærer basen", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
+    teams: [
+      { id: "team-1", name: "Picked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    season_standings: [
+      { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+    ],
+    sponsor_contracts: [
+      {
+        id: "c-pending", team_id: "team-1", status: "pending", start_season: 2, expires_after_season: 2,
+        variant: "racing", sponsor_name: "Alta Cycles", guaranteed_base: 238_000,
+        guaranteed_fraction: 0.5, race_day_share: 0.58, length_seasons: 1, bonus_clauses: [],
+      },
+    ],
+  });
+
+  const plan = await buildTransitionPlan({ supabase, fromSeasonId: "season-1" });
+
+  assert.equal(plan.sponsor_breakdown[0].sponsor_contract_source, "pending");
+  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 238_000);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_name, "Alta Cycles");
+  assert.equal(plan.sponsor_base_total, 238_000);
+  assert.equal(plan.sponsor_contract_sources.pending, 1);
+  // race_day_share × target (238.000 / 0,5 = 476.000) = 276.080 — optjenes pr. etape
+  // HEN OVER sæsonen, ikke ved skiftet.
+  assert.equal(plan.sponsor_race_day_pool_total, 276_080);
+  assert.equal(plan.sponsor_signing_bonus_total, 0);
+});
+
+test("buildTransitionPlan — låst flersæsons kontrakt beholdes (pending for en anden sæson ignoreres)", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
+    teams: [
+      { id: "team-1", name: "Locked Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    season_standings: [
+      { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+    ],
+    sponsor_contracts: [
+      {
+        id: "c-active", team_id: "team-1", status: "active", start_season: 1, expires_after_season: 3,
+        variant: "loyal", sponsor_name: "Falcon Logistics", guaranteed_base: 371_280,
+        guaranteed_fraction: 0.78, race_day_share: 0.18, length_seasons: 3,
+        bonus_clauses: [{ type: "signing", amount: 38_080 }],
+      },
+      {
+        id: "c-pending-s4", team_id: "team-1", status: "pending", start_season: 4, expires_after_season: 4,
+        variant: "safe", sponsor_name: "Meridian Bank", guaranteed_base: 999_999,
+        guaranteed_fraction: 0.92, race_day_share: 0.08, length_seasons: 1, bonus_clauses: [],
+      },
+    ],
+  });
+
+  const plan = await buildTransitionPlan({ supabase, fromSeasonId: "season-1" });
+
+  assert.equal(plan.sponsor_breakdown[0].sponsor_contract_source, "locked");
+  assert.equal(plan.sponsor_base_total, 371_280);
+  assert.equal(plan.sponsor_contract_sources.locked, 1);
+  // Signing-bonussen blev betalt da kontrakten blev aktiveret — den udbetales IKKE igen.
+  assert.equal(plan.sponsor_signing_bonus_total, 0);
+});
+
+test("buildTransitionPlan — signing-bonus på et pending 'loyal'-valg rapporteres separat", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
+    teams: [
+      { id: "team-1", name: "Loyal Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    season_standings: [
+      { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+    ],
+    sponsor_contracts: [
+      {
+        id: "c-pending", team_id: "team-1", status: "pending", start_season: 2, expires_after_season: 4,
+        variant: "loyal", sponsor_name: "Thorne Logistics", guaranteed_base: 371_280,
+        guaranteed_fraction: 0.78, race_day_share: 0.18, length_seasons: 3,
+        bonus_clauses: [{ type: "signing", amount: 38_080 }],
+      },
+    ],
+  });
+
+  const plan = await buildTransitionPlan({ supabase, fromSeasonId: "season-1" });
+
+  assert.equal(plan.sponsor_base_total, 371_280);
+  assert.equal(plan.sponsor_signing_bonus_total, 38_080);
+});
+
+test("buildTransitionPlan — realistisk blanding (låst + valgt + kontraktfri) ligger under den gamle kontraktfri model", async () => {
+  // Fixture spejler prod-mixet 25/7: udløbende S1-kontrakter (expires_after_season=1),
+  // managervalg for S2, og hold der intet har valgt → auto-default 'safe'.
+  const supabase = createMockSupabase({
+    seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-06-22", end_date: null }],
+    teams: [
+      { id: "t-locked", name: "Locked", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t-expiring", name: "Expiring", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t-picked", name: "Picked", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t-silent", name: "Silent", sponsor_income: 240000, division: 4, is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    season_standings: [
+      { season_id: "season-1", team_id: "t-locked", division: 3, total_points: 400, rank_in_division: 1 },
+      { season_id: "season-1", team_id: "t-expiring", division: 3, total_points: 200, rank_in_division: 2 },
+      // AI-hold tæller med i divisionens median/størrelse (samme som i drift).
+      { season_id: "season-1", team_id: "ai-d3", division: 3, total_points: 100, rank_in_division: 3 },
+      { season_id: "season-1", team_id: "t-picked", division: 4, total_points: 300, rank_in_division: 1 },
+      { season_id: "season-1", team_id: "t-silent", division: 4, total_points: 100, rank_in_division: 2 },
+      { season_id: "season-1", team_id: "ai-d4", division: 4, total_points: 50, rank_in_division: 3 },
+    ],
+    sponsor_contracts: [
+      {
+        id: "c1", team_id: "t-locked", status: "active", start_season: 1, expires_after_season: 3,
+        variant: "long", sponsor_name: "Nordhavn Shipping", guaranteed_base: 294_433,
+        guaranteed_fraction: 0.73, race_day_share: 0.27, length_seasons: 3, bonus_clauses: [],
+      },
+      {
+        // Udløber ved sæson 1 → må IKKE tælle som låst; holdet får auto-default.
+        id: "c2", team_id: "t-expiring", status: "active", start_season: 1, expires_after_season: 1,
+        variant: "predictable", sponsor_name: "Halvorsen Bank", guaranteed_base: 360_800,
+        guaranteed_fraction: 0.88, race_day_share: 0.12, length_seasons: 1, bonus_clauses: [],
+      },
+      {
+        id: "c3", team_id: "t-picked", status: "pending", start_season: 2, expires_after_season: 3,
+        variant: "activity", sponsor_name: "Kestrel Outdoor", guaranteed_base: 227_463,
+        guaranteed_fraction: 0.55, race_day_share: 0.45, length_seasons: 2, bonus_clauses: [],
+      },
+    ],
+  });
+
+  const plan = await buildTransitionPlan({ supabase, fromSeasonId: "season-1" });
+
+  assert.deepEqual(plan.sponsor_contract_sources, { locked: 1, pending: 1, default: 2 });
+  const byName = Object.fromEntries(plan.sponsor_breakdown.map((r) => [r.team_name, r]));
+  assert.equal(byName.Locked.sponsor_base, 294_433);   // låst aftale, urørt af renown
+  assert.equal(byName.Picked.sponsor_base, 227_463);   // managerens valg
+  // Expiring: D3-median 200, rank 2 af 3 → resultsScore 0,50 → renown ×1,225
+  //           → 416.500 × 0,92 (safe) = 383.180
+  assert.equal(byName.Expiring.sponsor_base, 383_180);
+  assert.equal(byName.Expiring.sponsor_contract_source, "default");
+  // Silent: D4 (315k), D4-median 100, rank 2 af 3 → resultsScore 0,50 → 385.875 × 0,92
+  assert.equal(byName.Silent.sponsor_base, 355_005);
+  assert.equal(plan.sponsor_base_total, 1_260_081);
+
+  // Den GAMLE kontraktfri model (division-base + variabel pulje op til 150k) gav
+  // 1.760.000 for præcis samme population — ~28 % for højt. Regressions-låsen for #2926.
+  assert.ok(
+    plan.sponsor_base_total < 1_760_000,
+    "kontrakt-modellen skal ligge under den kontraktfri model"
+  );
 });
 
 test("buildTransitionPlan — already_transitioned=true når sæson 1 allerede eksisterer", async () => {
