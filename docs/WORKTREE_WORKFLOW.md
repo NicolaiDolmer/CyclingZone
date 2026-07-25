@@ -116,17 +116,28 @@ Alle worktrees delte tidligere hardcodet port 4173, og `webServer.reuseExistingS
 
 Når guarden fejler: dræb processen på porten (`netstat -ano | findstr :<port>` → `Stop-Process -Id <PID> -Force`) eller kør med eksplicit fri `PW_PORT`.
 
-### Delt node_modules
+### Delt node_modules — kun når lockfilen matcher main ([#2967](https://github.com/NicolaiDolmer/CyclingZone/issues/2967))
 
-Worktrees deler `node_modules/` via junction. Det betyder:
+`setup-worktree.ps1` junction-linker `node_modules/` fra main, men **kun hvis worktreets `package-lock.json` er byte-identisk med mains**. Er den ikke, springes junctionen over og scriptet beder dig køre `npm ci --prefix <pkg>` i worktreet.
 
-- ✅ Sparer disk + install-tid
-- ⚠️ Hvis to worktrees samtidig kører `npm install` med forskellige `package.json`-ændringer, kan de overskrive hinandens deps. **I praksis sjældent et problem** — dep-ændringer er typisk én session ad gangen.
-- 🔧 Hvis du har dep-konflikter mellem worktrees: lav et separat install i den aktive worktree:
-  ```powershell
-  cmd /c rmdir /Q backend\node_modules
-  npm install --prefix backend
-  ```
+- ✅ Match → junction. Sparer disk + install-tid, og pakkerne er per definition de rigtige.
+- ✅ Mismatch → eget install. Koster ~500 MB og et par minutter i præcis de sessioner der ændrer dependencies.
+
+Gaten blev indført efter at hoved-checkoutets `frontend/node_modules` blev tømt **tre gange på én aften** (25/7) af en parallel wave-session. To ting gik galt, og begge er reelle:
+
+1. **`npm ci` sletter `node_modules` før den geninstallerer.** Junctionen fører sletningen over i den anden checkout. Sidste gang forsvandt `react`, og 1320 frontend-tests fejlede med `ERR_MODULE_NOT_FOUND` midt i en dependency-PR.
+2. **Delte pakker er direkte forkerte på tværs af branches.** Den aften havde `main` `react-router-dom@6.30.4` og PR-branchen `react-router@7.18.1` uden `react-router-dom`. Én mappe kan ikke rumme begge, så den ene session kørte sine tests mod de forkerte pakker uden at opdage det. Det er en stille korrektheds-fejl, ikke bare en irritation, og den rammer hårdest netop hvor testene betyder mest.
+
+Den gamle note her sagde at det var "i praksis sjældent et problem". Det holdt indtil vi begyndte at køre 12 agenter parallelt.
+
+Har du allerede en junction du vil bryde manuelt (fx i en harness-worktree, som `setup-worktree.ps1` ikke nødvendigvis har rørt):
+
+```powershell
+cmd /c rmdir /Q frontend\node_modules   # rmdir fjerner junctionen, IKKE målet
+npm ci --prefix frontend
+```
+
+Brug `rmdir` og ikke `Remove-Item -Recurse` — sidstnævnte kan følge junctionen og slette main-repoets rigtige mappe. Det er den samme fælde, bare med hånden på tasterne.
 
 ### Memory deles på tværs af worktrees
 
