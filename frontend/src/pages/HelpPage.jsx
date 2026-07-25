@@ -321,6 +321,7 @@ const FAQ_KEYS = [
   "dayFormFaq",
   "crashesFaq",
   "newPlayerEconomyFaq",
+  "seasonChangeMoneyFaq",
   "salaryShortfall",
   "debtCeiling",
   "prizeMoneyFaq",

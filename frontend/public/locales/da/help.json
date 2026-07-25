@@ -879,6 +879,10 @@
       "q": "Hvordan træner jeg en rytter?",
       "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du har 3 fokus-slots pr. sæson. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
+    "seasonChangeMoneyFaq": {
+      "q": "Hvad sker der med min økonomi ved sæsonskiftet?",
+      "a": "Alt sker ved starten af den nye sæson, i én omgang. Din sponsorkontrakt fornys først, derefter udbetales sponsorpengene, og lige efter følger sæsonens betalinger: lånerenter, rytterlønninger og facilitets-driftsomkostninger plus staff-lønninger, i den rækkefølge. Der trækkes ikke noget når den gamle sæson slutter; løn og renter blev flyttet til sæsonstart i v3.78. Hvis din sponsorindtægt og balance ikke dækker betalingerne, optager systemet automatisk et nødlån for det manglende beløb (se 'Hvad sker der hvis jeg ikke kan betale lønninger?'). Har din sponsoraftale også en løbsdags-rate, udbetales den del separat efterhånden som du kører løb i sæsonen; den indgår ikke i sæsonskiftets omgang."
+    },
     "salaryShortfall": {
       "q": "Hvad sker der hvis jeg ikke kan betale lønninger?",
       "a": "Lønninger trækkes ved sæsonstart EFTER sponsor er udbetalt. Hvis din balance + sponsor + lånerenter ikke dækker lønnen, optager systemet automatisk et nødlån for det manglende beløb. Renter på nødlånet tilskrives ved næste sæsons start."
