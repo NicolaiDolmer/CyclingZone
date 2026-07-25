@@ -82,6 +82,12 @@ Fordelingen er `pyramidCompression.js` (unit-testet, deterministisk tiebreak: po
 
 **Ejeren skal se og godkende:** (a) navnene, især D4→D2-springene og de 2 D3→D4-nedrykninger, (b) økonomi-sim-blokken (divisions-upkeep ~4,5 → ~10,6 mio. når 48 hold betaler D2-sats — balancebeslutning i sig selv), (c) at ingen pulje viser ⚠️ over 24.
 
+**⚠️ Rækkefølge på sponsortallet ([#2926](https://github.com/NicolaiDolmer/CyclingZone/issues/2926)):** `compressPyramid.js`' økonomi-sim er kontrakt-bevidst og regner allerede på divisionerne EFTER flytningen — den blok er gyldig her. Men **transitionens** sponsor-dry-run (`simulateSeasonTransitionDryRun.js`) læser `teams.division` live og skal derfor køres **EFTER** komprimeringen, i skridt 3b. Kører du den FØR, får de ~84 hold uden eget sponsorvalg beregnet deres auto-default på den GAMLE divisions renown, og totalen bliver forkert (målt 25/7: 55,57M før flytning mod ~56,6M efter). De 75 hold der selv har valgt har frossen base — flytningen ændrer dem ikke.
+
+**Tallet at sammenligne med i skridt 3b:** "Sponsor GARANTERET total" **≈ 56,6M**, med kontrakt-kilder ≈ 0 låst / 75+ managervalg / resten auto-default. Afviger det mere end et par procent, så stop og undersøg FØR skridt 4.
+
+**Hvorfor det udbetalte ikke rammer previewet præcist:** `sponsor_base_total` er FØR board-modifier (×0,8–1,2 pr. hold, capped på base ×1,2), så det faktisk bogførte beløb afviger nogle procent. Det er forventet, ikke en fejl.
+
 **Rollback herfra:** intet kørt endnu — ejeren kan stadig aflyse alt (så gælder motorens regler: fjern flaget i skridt 3 og kør drejebogens gamle flow).
 
 ### Skridt 3 — "Afslut sæson" MED movement-skip (søndag ~17:45, EFTER ejer-ja)
@@ -136,6 +142,14 @@ select division, count(*) filter (where not is_ai) as real_teams from teams grou
 -- forventet: D1 = 0 ægte · D2 = 48 · D3 = 96 · D4 = resten (~6). Sum = alle managerhold.
 select ld.label, count(*) from teams t join league_divisions ld on ld.id=t.league_division_id group by 1 order by 1;
 -- alle puljer med ægte hold = 24 (efter AI-reconcile); D4-puljer uden ægte hold forbliver dormant.
+```
+
+**Sponsor-kontrol — først NU (#2926):** `teams.division` er den S2-sandhed previewet skal regne på, så kør sponsor-dry-runnet her og ikke før:
+
+```bash
+railway run --service CyclingZone -- node scripts/simulateSeasonTransitionDryRun.js   # read-only
+# Forvent: "Sponsor GARANTERET total" ≈ 56,6M · kontrakt-kilder ≈ 0 låst / 75+ valgt / resten auto-default.
+# Den variable pulje (~9,5M) optjenes pr. etape hen over S2 — den udbetales IKKE ved skiftet.
 ```
 
 **Efter transitionen (skridt 5) — sluk gaten igen** (S2→S3 kører motorens regler, #2164):
