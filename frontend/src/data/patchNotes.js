@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.57",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "The last pages moved onto the shared layout, and five markings that never showed up are fixed",
+          "body": "Board, Inbox, Season planner, Scouting, Club, Compare riders, Roadmap, Strategy, Academy and the privacy pages now use the same page header, cards, loading and error states as the rest of the app. Compare riders had no loading screen at all, and several pages failed silently instead of telling you something went wrong. Five markings were also quietly broken and now work: the gold highlight on an auction you are leading, the gold edge on a transfer offer waiting for your answer, the icons on the season planner, the engine icons in the roadmap history, and a set of buttons in the admin panel. Status colours are now one single colour across the whole app instead of each page mixing its own. The ability columns on Riders and My team sit closer together so more of them fit on screen, the season planner shows more riders at once, and the squad list drops the value arrow and the potential label to make room for what you actually scan for."
+        },
+        "da": {
+          "title": "De sidste sider er flyttet over pÃ¥ det fÃ¦lles layout, og fem markeringer der aldrig blev vist er rettet",
+          "body": "Bestyrelse, Indbakke, SÃ¦sonplanlÃ¦gger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlÃ¦sning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlÃ¦sningsskÃ¦rm, og flere sider fejlede tavst i stedet for at fortÃ¦lle dig at noget gik galt. Fem markeringer var ogsÃ¥ i stilhed i stykker og virker nu: den gyldne fremhÃ¦vning pÃ¥ en auktion du fÃ¸rer, den gyldne kant pÃ¥ et bytte-tilbud der venter pÃ¥ dit svar, ikonerne i sÃ¦sonplanlÃ¦ggeren, motor-ikonerne i roadmap-historikken og en rÃ¦kke knapper i admin-panelet. Statusfarver er nu Ã©n farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne pÃ¥ Ryttere og Mit Hold stÃ¥r tÃ¦ttere, sÃ¥ flere af dem er pÃ¥ skÃ¦rmen ad gangen, sÃ¦sonplanlÃ¦ggeren viser flere ryttere pÃ¥ Ã©n gang, og truppen har droppet vÃ¦rdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
+        },
+        "refs": [2849]
+      }
+    ]
+  },
+  {
     "version": "7.56",
     "date": "2026-07-25",
     "label": "Beta",

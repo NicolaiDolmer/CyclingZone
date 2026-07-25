@@ -11,7 +11,7 @@ export default function LeaderBadge({ className = "" }) {
   const { t } = useTranslation("common");
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide
+      className={`inline-flex items-center gap-1 text-3xs font-bold uppercase tracking-wide
         px-1.5 py-0.5 rounded-full ${className}`}
       style={{ backgroundColor: "#e8c547", color: "#1a1f38" }}
       title={t("leaderBadge")}

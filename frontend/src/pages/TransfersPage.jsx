@@ -58,7 +58,7 @@ const MARKET_SORT_DESC_FIRST_KEYS = new Set(["age", "listed", "value", "salary",
 // Markeds-tabellen konverteres IKKE til <DataTable> (bulk-select-checkbokse +
 // en expander-handlingsrække pr. listing er uden for DataTable's API), men
 // genbruger recipens VÆRDIER direkte via dataTableStyles (WRAP) + denne konstant.
-const MARKET_TH_BASE = "font-data text-[11px] font-semibold uppercase tracking-[.06em]";
+const MARKET_TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
 // Accessorer pr. sorterbar kolonne. Rytterens evner er fladtgjort op på
 // listing.rider[<key>] (flattenAbilities ved load) — se abilities.js (SSOT).
@@ -182,11 +182,15 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     // #2849 bølge 2: kanonisk section-card-recipe (Section = 20px/16px mobil-
-    // padding, ingen skygge) — statusfarven på border-kanten er bevidst bevaret
-    // via className-override oven på Card's default border (samme mønster som
-    // AuctionsPage's <Card className="border-cz-accent/40 ..."> fra bølge 1).
-    <Section className={`transition-all
-      ${isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
+    // padding, ingen skygge). Bølge 6: statusfarven sendes nu som `borderClass`-prop.
+    // Via className tabte den cascaden mod Cards egen hairline — og kun for GULD:
+    // `.border-cz-info/30` ligger efter `.border-cz-border` i bundtet og virkede,
+    // mens `.border-cz-accent/30` ligger før og forsvandt tavst. Resultatet var at
+    // "afventer dig"-tilbud aldrig fik deres guldkant, mens "afventer modpart" fik sin.
+    <Section
+      borderClass={isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border"}
+      className={`transition-all ${isAwaiting || isPending ? "" : "opacity-70"}`}
+    >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -196,11 +200,11 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           <p className="text-cz-3 text-xs">{t("offerCard.from")}: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.created_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
-          <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
+          <span className={`text-3xs uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
             {cfg.label}
           </span>
           {offer.seller_squad_critical && (
-            <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
+            <span className="text-3xs px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
               {t("offerCard.squadCriticalReceived")}
             </span>
           )}
@@ -224,9 +228,9 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
             <span className="text-cz-2 font-mono">{formatCz(getRiderSalary(offer.rider))}</span>
           </p>
           {offer.rider?.contract_length != null ? (
-            <p className="text-cz-3 text-[10px]">{t("offerCard.contractExpires", { season: offer.rider.contract_end_season })}</p>
+            <p className="text-cz-3 text-3xs">{t("offerCard.contractExpires", { season: offer.rider.contract_end_season })}</p>
           ) : (
-            <p className="text-cz-3 text-[10px]">{t("offerCard.noContract")}</p>
+            <p className="text-cz-3 text-3xs">{t("offerCard.noContract")}</p>
           )}
         </div>
       </div>
@@ -241,13 +245,13 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 transition-all disabled:opacity-50">
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "counter"
-                  ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30"
+                  ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.counter")}
             </button>
@@ -281,20 +285,20 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.seller_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
                 {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -353,11 +357,11 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           <p className="text-cz-3 text-xs">{t("offerCard.to")}: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.updated_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
-          <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
+          <span className={`text-3xs uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
             {cfg.label}
           </span>
           {offer.seller_squad_critical && (
-            <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
+            <span className="text-3xs px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
               {t("offerCard.squadCriticalSent")}
             </span>
           )}
@@ -389,13 +393,13 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-medium border transition-all
                 ${mode === "new_offer"
-                  ? "bg-cz-info-bg0/20 text-cz-info border-cz-info/30"
+                  ? "bg-cz-info-bg text-cz-info border-cz-info/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.newOffer")}
             </button>
@@ -437,18 +441,18 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.buyer_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
               {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -505,7 +509,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
             {isProposing ? `${t("offerCard.to")}: ${swap.receiving?.name}` : `${t("offerCard.from")}: ${swap.proposing?.name}`}
           </p>
         </div>
-        <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
+        <span className={`text-3xs uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
           {cfg.label}
         </span>
       </div>
@@ -518,13 +522,13 @@ function SwapCard({ swap, myTeamId, onAction }) {
           <RiderLink key={rider?.id} id={rider?.id}
             aria-label={rider ? `${rider.firstname} ${rider.lastname}` : undefined}
             className="group block bg-cz-subtle rounded-cz px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{label}</p>
             <p className="text-cz-1 text-sm font-semibold transition-colors group-hover:text-cz-accent-t">
               {rider?.firstname} {rider?.lastname}
             </p>
             <div className="flex gap-2 mt-1">
               {SWAP_PREVIEW.map(([l, k]) => (
-                <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
+                <span key={k} className="text-3xs text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
               ))}
             </div>
           </RiderLink>
@@ -547,12 +551,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -597,12 +601,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
@@ -631,17 +635,17 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {(isProposing ? swap.proposing_confirmed : swap.receiving_confirmed) ? (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz px-4 py-3 text-center">
+            <div className="bg-cz-info-bg border border-cz-info/20 rounded-cz px-4 py-3 text-center">
               <p className="text-cz-info text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 disabled:opacity-50">
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg text-cz-danger/70 border border-cz-danger/15 rounded-cz text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("swapCard.buttons.cancelSwap")}
           </button>
@@ -937,7 +941,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   );
 
   return (
-    <Section data-testid="bulk-price-editor" className="border-cz-accent/30 mb-3 flex flex-col gap-3">
+    <Section data-testid="bulk-price-editor" borderClass="border-cz-accent/30" className="mb-3 flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <span className="text-cz-1 text-sm font-semibold">
           {t("bulkPrice.selected", { count: selectedListings.length })}
@@ -974,7 +978,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
       {/* Preview: rytter + nuværende pris → ny pris, så justeringen aldrig er en
           overraskelse efter "Anvend". */}
       <div className="bg-cz-subtle rounded-cz p-3">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-2">{t("bulkPrice.previewTitle")}</p>
+        <p className="text-cz-3 text-3xs uppercase tracking-wider mb-2">{t("bulkPrice.previewTitle")}</p>
         {preview.length === 0 ? (
           <p className="text-cz-3 text-xs">{t("bulkPrice.previewEmpty")}</p>
         ) : (
@@ -991,7 +995,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
               </li>
             ))}
             {preview.length > BULK_PREVIEW_VISIBLE && (
-              <li className="text-cz-3 text-[10px]">{t("bulkPrice.previewMore", { count: preview.length - BULK_PREVIEW_VISIBLE })}</li>
+              <li className="text-cz-3 text-3xs">{t("bulkPrice.previewMore", { count: preview.length - BULK_PREVIEW_VISIBLE })}</li>
             )}
           </ul>
         )}
@@ -1414,7 +1418,7 @@ export default function TransfersPage() {
           stat-Section under headeren (samme recipe som AuctionsPage's stats-
           grid fra bølge 1), ikke i PageHeader's action-slot. */}
       <Section className="mb-5 inline-block">
-        <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("page.balance")}</p>
+        <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("page.balance")}</p>
         <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">{formatNumber(myBalance)} CZ$</p>
       </Section>
 
@@ -1438,7 +1442,7 @@ export default function TransfersPage() {
             <Tab key={m.key} value={m.key}>
               {t(`modes.${m.key}`)}
               {modeBadge[m.key] > 0 && (
-                <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                <span className="ms-2 bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full">
                   {modeBadge[m.key]}
                 </span>
               )}
@@ -1458,7 +1462,7 @@ export default function TransfersPage() {
                 <Tab key={key} value={key}>
                   {meta.label}
                   {meta.badge > 0 && (
-                    <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                    <span className="ms-2 bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full">
                       {meta.badge}
                     </span>
                   )}

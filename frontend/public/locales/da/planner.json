@@ -7,7 +7,9 @@
     "title": "Sæsonplanlæggeren er ikke live endnu",
     "description": "Her planlægger du hver rytters form-peaks henover sæsonen. Kig forbi snart."
   },
-  "seasonMenu": { "option": "S{number}" },
+  "seasonMenu": {
+    "option": "S{number}"
+  },
   "seasonNotReady": {
     "title": "Sæson {number}s kalender er ikke klar endnu",
     "description": "Løbsprogrammet for denne sæson er ikke genereret endnu, så der er intet at planlægge mod. Kig forbi igen tættere på sæsonstart."
@@ -27,8 +29,13 @@
     "reasonRegistered": "Matcher et løb du allerede har tilmeldt rytteren.",
     "reasonSuitability": "Bedste type-match i kalenderen."
   },
-  "filter": { "mine": "Mine løb", "all": "Alle løb" },
-  "planningTowards": { "label": "Planlægger mod: {race} · {date}" },
+  "filter": {
+    "mine": "Mine løb",
+    "all": "Alle løb"
+  },
+  "planningTowards": {
+    "label": "Planlægger mod: {race} · {date}"
+  },
   "raceList": {
     "title": "Sæsonens løb",
     "subtitle": "Alle løb denne sæson: hvornår de køres, og hvad de kræver. Åbn et for at planlægge en peak, eller hop til den fulde løbsside.",
@@ -52,12 +59,20 @@
     "pending": "Optakt ikke begyndt",
     "locked": "Låst"
   },
-  "tokens": { "label": "{used} af {max} peaks brugt" },
-  "ovr": { "label": "OVR" },
+  "tokens": {
+    "label": "{used} af {max} peaks brugt"
+  },
+  "ovr": {
+    "label": "OVR"
+  },
   "today": "I dag",
   "academy": "Akademi",
-  "form": { "now": "Nuværende form {value}" },
-  "lane": { "noPeaks": "Ingen peaks sat. En flad sæson indtil du planlægger en." },
+  "form": {
+    "now": "Nuværende form {value}"
+  },
+  "lane": {
+    "noPeaks": "Ingen peaks sat. En flad sæson indtil du planlægger en."
+  },
   "drawer": {
     "close": "Luk",
     "race": {
@@ -110,7 +125,23 @@
     "locked": "Denne peak er låst og kan ikke længere ændres.",
     "race_not_in_calendar": "Det løb er ikke i din divisions kalender.",
     "race_not_scheduled": "Det løb er ikke planlagt endnu.",
-    "generic": "Noget gik galt. Prøv igen."
+    "generic": "Noget gik galt. Prøv igen.",
+    "title": "Kunne ikke indlæse sæsonplanlæggeren",
+    "description": "Intet gik tabt. Dine peaks og træningsplaner er sikre. Prøv igen.",
+    "retry": "Prøv igen"
   },
-  "months": ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"]
+  "months": [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "maj",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "okt",
+    "nov",
+    "dec"
+  ]
 }

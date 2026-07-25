@@ -1,24 +1,71 @@
 {
   "racehub": {
-    "scope": { "mine": "Mine løb", "division": "Min division", "others": "Andre divisioner", "soon": "Kommer snart" },
-    "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
+    "scope": {
+      "mine": "Mine løb",
+      "division": "Min division",
+      "others": "Andre divisioner",
+      "soon": "Kommer snart"
+    },
+    "timeline": {
+      "dayOf": "Dag {day} af {total}",
+      "youAreHere": "du er her",
+      "prev": "Forrige dag",
+      "next": "Næste dag"
+    },
     "heading": "Trup-fordeling",
     "overlap": "{count} løb i dag",
     "raceDay": "Løbsdag {day}",
     "raceDays": "Løbsdag {start}-{end}",
     "sameDayNote": "Samme rigtige dag, forskellige løbsdage. En rytter kan køre ét løb pr. løbsdag.",
-    "learnReuse": { "title": "Genbrug af en rytter på tværs af løbsdage", "body": "Løbene deler samme eftermiddag men ligger på forskellige in-game løbsdage, så en rytter kan køre begge. Han bærer træthed med ind i det senere løb. Det er et trade-off, ikke en bug.", "dismiss": "Forstået" },
+    "learnReuse": {
+      "title": "Genbrug af en rytter på tværs af løbsdage",
+      "body": "Løbene deler samme eftermiddag men ligger på forskellige in-game løbsdage, så en rytter kan køre begge. Han bærer træthed med ind i det senere løb. Det er et trade-off, ikke en bug.",
+      "dismiss": "Forstået"
+    },
     "save": "Gem ændringer",
     "discard": "Kassér",
     "unsaved": "Du har ugemte ændringer",
     "leaveUnsaved": "Du har ugemte ændringer. Forlad uden at gemme?",
-    "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
-    "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "clearDay": "Ryd dag", "clearAllSeason": "Ryd alt", "bound": "Kører allerede et overlappende løb" },
+    "status": {
+      "full": "{selected} / {target} valgt",
+      "understaffed": "{selected} / {target} · underbemandet",
+      "overfull": "{selected} / {target} · for mange",
+      "withdrawn": "Afmeldt",
+      "locked": "Trup låst"
+    },
+    "pool": {
+      "title": "Ledige ryttere · {count}-trup",
+      "autofill": "Auto-udfyld",
+      "fillMissing": "Udfyld manglende",
+      "clearDay": "Ryd dag",
+      "clearAllSeason": "Ryd alt",
+      "bound": "Kører allerede et overlappende løb"
+    },
     "clearDayWarn": "Fjern alle ryttere fra dagens løb? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
     "clearAllWarn": "Fjern alle ryttere fra ALLE dine resterende løb resten af sæsonen? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
-    "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
-    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere", "availableGroup": "Ledig til", "blockedGroup": "Optaget i overlappende løb", "blockedReason": "Overlapper {race}", "compatibleHint": "Samme dag som {race}, løbsdag {day}. Kan bruges begge steder.", "compatibleHintNoDay": "Samme dag som {race}. Kan bruges begge steder." },
-    "role": { "hint": "Tryk på en rytter for at sætte kaptajn eller rolle", "captain": "Kaptajn", "sprintCaptain": "Sprint-kaptajn", "hunter": "Udbrudsjæger", "rider": "Kun rytter" },
+    "column": {
+      "add": "Tilføj fra ledige",
+      "withdraw": "Afmeld",
+      "reenter": "Deltag igen",
+      "remove": "Fjern rytter"
+    },
+    "popover": {
+      "title": "Tilføj til hvilket løb?",
+      "none": "Intet løb tilgængeligt for denne rytter i dag",
+      "understaffed": "mangler ryttere",
+      "availableGroup": "Ledig til",
+      "blockedGroup": "Optaget i overlappende løb",
+      "blockedReason": "Overlapper {race}",
+      "compatibleHint": "Samme dag som {race}, løbsdag {day}. Kan bruges begge steder.",
+      "compatibleHintNoDay": "Samme dag som {race}. Kan bruges begge steder."
+    },
+    "role": {
+      "hint": "Tryk på en rytter for at sætte kaptajn eller rolle",
+      "captain": "Kaptajn",
+      "sprintCaptain": "Sprint-kaptajn",
+      "hunter": "Udbrudsjæger",
+      "rider": "Kun rytter"
+    },
     "roleCard": {
       "heading": "Taktik",
       "subhead": "Giv hver rytter en opgave. Hintet viser hvorfor rollen passer terrænet.",
@@ -90,9 +137,17 @@
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression"
     },
-    "fit": { "label": "Match", "strong": "Stærk", "average": "Middel", "poor": "Svag" },
+    "fit": {
+      "label": "Match",
+      "strong": "Stærk",
+      "average": "Middel",
+      "poor": "Svag"
+    },
     "boundNamed": "Låst · kører {race}",
-    "lineupLocked": { "title": "Trup låst", "note": "Løbet er gået i gang. Truppen er endelig." },
+    "lineupLocked": {
+      "title": "Trup låst",
+      "note": "Løbet er gået i gang. Truppen er endelig."
+    },
     "dismiss": "Afvis",
     "empty": "Ingen løb at planlægge denne dag.",
     "regenerateWarn": "Dette erstatter alle valg på dagens løb med assistentens forslag. Fortsæt?"
@@ -229,18 +284,54 @@
       "class2Win": "Klasse 2-sejr"
     },
     "type": {
-      "Klassement": { "label": "Samlet klassement", "desc": "GC-placering i etapeløb" },
-      "Klassiker": { "label": "Klassiker", "desc": "Samlet placering i endagsløb" },
-      "Etapeplacering": { "label": "Etapeplacering", "desc": "Pr. etape i etapeløb" },
-      "Pointtroje": { "label": "Pointtrøje", "desc": "Top 3 i pointkonkurrencen" },
-      "Bjergtroje": { "label": "Bjergtrøje", "desc": "Top 3 i bjergkonkurrencen" },
-      "Ungdomstroje": { "label": "Ungdomstrøje", "desc": "Top 3 i U25-konkurrencen" },
-      "EtapelobHold": { "label": "Hold (etapeløb)", "desc": "Bedste hold i etapeløb" },
-      "KlassikerHold": { "label": "Hold (klassiker)", "desc": "Bedste hold i klassiker" },
-      "Forertroje": { "label": "Førertrøje", "desc": "Pr. dag i førertrøjen" },
-      "PointtrojeDag": { "label": "Pointtrøje (pr. dag)", "desc": "Pr. dag i pointtrøjen" },
-      "BjergtrojeDag": { "label": "Bjergtrøje (pr. dag)", "desc": "Pr. dag i bjergtrøjen" },
-      "UngdomstrojeDag": { "label": "Ungdomstrøje (pr. dag)", "desc": "Pr. dag i ungdomstrøjen" }
+      "Klassement": {
+        "label": "Samlet klassement",
+        "desc": "GC-placering i etapeløb"
+      },
+      "Klassiker": {
+        "label": "Klassiker",
+        "desc": "Samlet placering i endagsløb"
+      },
+      "Etapeplacering": {
+        "label": "Etapeplacering",
+        "desc": "Pr. etape i etapeløb"
+      },
+      "Pointtroje": {
+        "label": "Pointtrøje",
+        "desc": "Top 3 i pointkonkurrencen"
+      },
+      "Bjergtroje": {
+        "label": "Bjergtrøje",
+        "desc": "Top 3 i bjergkonkurrencen"
+      },
+      "Ungdomstroje": {
+        "label": "Ungdomstrøje",
+        "desc": "Top 3 i U25-konkurrencen"
+      },
+      "EtapelobHold": {
+        "label": "Hold (etapeløb)",
+        "desc": "Bedste hold i etapeløb"
+      },
+      "KlassikerHold": {
+        "label": "Hold (klassiker)",
+        "desc": "Bedste hold i klassiker"
+      },
+      "Forertroje": {
+        "label": "Førertrøje",
+        "desc": "Pr. dag i førertrøjen"
+      },
+      "PointtrojeDag": {
+        "label": "Pointtrøje (pr. dag)",
+        "desc": "Pr. dag i pointtrøjen"
+      },
+      "BjergtrojeDag": {
+        "label": "Bjergtrøje (pr. dag)",
+        "desc": "Pr. dag i bjergtrøjen"
+      },
+      "UngdomstrojeDag": {
+        "label": "Ungdomstrøje (pr. dag)",
+        "desc": "Pr. dag i ungdomstrøjen"
+      }
     }
   },
   "selection": {
@@ -401,6 +492,10 @@
       "in": "Ind",
       "out": "Ud",
       "captain": "Kaptajn → {name}"
+    },
+    "error": {
+      "title": "Noget gik galt",
+      "retry": "Prøv igen"
     }
   },
   "discoverCta": {
@@ -423,7 +518,9 @@
     "backToLibrary": "← Løbsbibliotek",
     "back": "← Tilbage",
     "raceDnaLabel": "Dette løb:",
-    "terrainDna": { "label": "Terræn-DNA · hvad etapen belønner" },
+    "terrainDna": {
+      "label": "Terræn-DNA · hvad etapen belønner"
+    },
     "ability": {
       "climbing": "Klatring",
       "time_trial": "Enkeltstart",
@@ -513,13 +610,34 @@
       "formPeak": "{rider} kom til etapen i strålende form og leverede."
     },
     "storyTags": {
-      "tag_jour_sans": { "label": "Dårlig dag", "tooltip": "Havde en dårlig dag: benene var der bare ikke." },
-      "tag_peak_day": { "label": "Peak", "tooltip": "Timede sin form til at toppe på denne etape." },
-      "tag_perfect_peak": { "label": "Perfekt peak", "tooltip": "Vandt på en etape han specifikt havde peaket til." },
-      "tag_helper_sacrifice": { "label": "Offer", "tooltip": "Ofrede sit eget resultat for at arbejde for holdets kaptajn." },
-      "tag_outsider_win": { "label": "Outsider", "tooltip": "Vandt uden at være feltets stærkeste rytter på papiret." },
-      "tag_favorite_collapse": { "label": "Kollaps", "tooltip": "Etapens favorit havde en dårlig dag og mistede chancen." },
-      "tag_crash_ruined": { "label": "Styrt", "tooltip": "Et sandsynligt topresultat blev ødelagt af et styrt eller en mekanisk defekt." }
+      "tag_jour_sans": {
+        "label": "Dårlig dag",
+        "tooltip": "Havde en dårlig dag: benene var der bare ikke."
+      },
+      "tag_peak_day": {
+        "label": "Peak",
+        "tooltip": "Timede sin form til at toppe på denne etape."
+      },
+      "tag_perfect_peak": {
+        "label": "Perfekt peak",
+        "tooltip": "Vandt på en etape han specifikt havde peaket til."
+      },
+      "tag_helper_sacrifice": {
+        "label": "Offer",
+        "tooltip": "Ofrede sit eget resultat for at arbejde for holdets kaptajn."
+      },
+      "tag_outsider_win": {
+        "label": "Outsider",
+        "tooltip": "Vandt uden at være feltets stærkeste rytter på papiret."
+      },
+      "tag_favorite_collapse": {
+        "label": "Kollaps",
+        "tooltip": "Etapens favorit havde en dårlig dag og mistede chancen."
+      },
+      "tag_crash_ruined": {
+        "label": "Styrt",
+        "tooltip": "Et sandsynligt topresultat blev ødelagt af et styrt eller en mekanisk defekt."
+      }
     },
     "jersey": {
       "leader": "Fører",
@@ -573,14 +691,36 @@
       "breakaway": "Udbrud"
     },
     "route": {
-      "stats": { "km": "KM", "elevation": "M", "climbs": "STIGNINGER" },
+      "stats": {
+        "km": "KM",
+        "elevation": "M",
+        "climbs": "STIGNINGER"
+      },
       "read": {
-        "summit": { "label": "Målgang på toppen", "note": "stigningen er målstregen, ingen massespurt" },
-        "valley": { "label": "{km} km nedkørsel til mål", "note": "forfølgerne kan nå tilbage" },
-        "technical": { "label": "Teknisk finale", "note": "nedkørsel og positionering afgør det" },
-        "long": { "label": "Lang dag", "note": "udholdenhed og træthed forstærkes" },
-        "short": { "label": "Kort dag", "note": "træthed dæmpes" },
-        "cobbles": { "label": "{count} brostenssektorer", "note": "positionering og styrke over brostenene" }
+        "summit": {
+          "label": "Målgang på toppen",
+          "note": "stigningen er målstregen, ingen massespurt"
+        },
+        "valley": {
+          "label": "{km} km nedkørsel til mål",
+          "note": "forfølgerne kan nå tilbage"
+        },
+        "technical": {
+          "label": "Teknisk finale",
+          "note": "nedkørsel og positionering afgør det"
+        },
+        "long": {
+          "label": "Lang dag",
+          "note": "udholdenhed og træthed forstærkes"
+        },
+        "short": {
+          "label": "Kort dag",
+          "note": "træthed dæmpes"
+        },
+        "cobbles": {
+          "label": "{count} brostenssektorer",
+          "note": "positionering og styrke over brostenene"
+        }
       },
       "waypoint": {
         "climb": "Kategori {cat}-stigning",
@@ -597,7 +737,9 @@
       "bonusSeconds": "+{count} s",
       "sprintMarker": "SPRINT · {points}p · +{bonus}s",
       "finishNote": "MÅL {first} / {second} / {third} s",
-      "a11y": { "graph": "Højdeprofil for etape {number}: {distance} km, {elevation} højdemeter, {climbs} kategoriserede stigninger" }
+      "a11y": {
+        "graph": "Højdeprofil for etape {number}: {distance} km, {elevation} højdemeter, {climbs} kategoriserede stigninger"
+      }
     }
   },
   "history": {

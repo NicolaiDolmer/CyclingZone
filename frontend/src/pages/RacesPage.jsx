@@ -393,7 +393,7 @@ export default function RacesPage() {
                             {t("calendar.resultsImported", { count: race.results?.length || 0 })}
                           </p>
                         </div>
-                        <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
+                        <span className="text-3xs uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
                           {t("status.completed")}
                         </span>
                       </div>
@@ -632,7 +632,7 @@ export default function RacesPage() {
                     // Afled visnings-status (#1828): igangværende etapeløb vises "Live", ikke "Kommende".
                     const derivedStatus = deriveRaceStatus(r.status, r.stages_completed, r.stages);
                     return (
-                      <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
+                      <span className={`inline-block px-2 py-0.5 rounded-full border text-3xs uppercase
                         ${derivedStatus === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                           : derivedStatus === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                           : "bg-cz-subtle text-cz-3 border-cz-border"}`}>

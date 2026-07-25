@@ -196,13 +196,13 @@ export default function PatchNotesPage() {
                       {formatDate(day.date, lang)}
                     </span>
                     {isNew && (
-                      <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+                      <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill flex-shrink-0">
                         {t("newBadge")}
                       </span>
                     )}
                   </span>
                   <span className="flex items-center gap-2 flex-shrink-0">
-                    <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                    <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                       {summary}
                     </span>
                     <ChevronDownIcon

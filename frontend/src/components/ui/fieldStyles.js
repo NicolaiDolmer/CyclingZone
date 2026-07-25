@@ -17,7 +17,7 @@ export function controlClass({ size = "md", error = false } = {}) {
 }
 
 export function labelClass() {
-  return "mb-1.5 block font-data text-[11px] font-semibold uppercase tracking-[.12em] text-cz-2";
+  return "mb-1.5 block font-data text-2xs font-semibold uppercase tracking-[.12em] text-cz-2";
 }
 
 export function helperClass({ error = false } = {}) {

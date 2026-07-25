@@ -27,7 +27,7 @@ const FRESH_CLASS = { fresh: "text-cz-success", ok: "text-cz-2", tired: "text-cz
 
 function RoleBadge({ t, role }) {
   return (
-    <span className="text-[9px] uppercase text-cz-accent-t border border-cz-accent/40 px-1.5 py-px rounded ms-1.5">
+    <span className="text-3xs uppercase text-cz-accent-t border border-cz-accent/40 px-1.5 py-px rounded ms-1.5">
       {t(`selection.${ROLE_KEY[role]}`)}
     </span>
   );
@@ -84,13 +84,13 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
           <RaceLink id={column.id} state={{ from: "board" }} className="text-sm font-semibold text-cz-1 hover:text-cz-accent-t transition-colors">{column.name}</RaceLink>
           {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
         </div>
-        <p className="text-[11px] text-cz-3 mt-0.5">
+        <p className="text-2xs text-cz-3 mt-0.5">
           {raceDayLabel && (
             <span className="inline-block me-1.5 text-cz-accent-t font-medium">{raceDayLabel}</span>
           )}
           {column.race_type === "stage_race" ? t("raceType.stages", { count: column.stages }) : t("raceType.oneDay")} · {t(`classOption.${column.race_class}`)}
         </p>
-        <span className={`inline-block mt-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>
+        <span className={`inline-block mt-2 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>
           {statusLabel}
         </span>
       </div>
@@ -120,11 +120,11 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
               </div>
             );
           })}
-          <p className="px-3 py-2 text-[10px] text-cz-3">{t("racehub.lineupLocked.note")}</p>
+          <p className="px-3 py-2 text-3xs text-cz-3">{t("racehub.lineupLocked.note")}</p>
         </div>
       ) : !column.withdrawn ? (
         <div className="py-1 flex-1">
-          {selectedIds.length > 0 && <p className="px-3 pt-1 pb-0.5 text-[10px] text-cz-3">{t("racehub.role.hint")}</p>}
+          {selectedIds.length > 0 && <p className="px-3 pt-1 pb-0.5 text-3xs text-cz-3">{t("racehub.role.hint")}</p>}
           {selectedIds.map((id) => {
             const r = ridersById.get(id);
             if (!r) return null;
@@ -142,13 +142,13 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
                   <button type="button" onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
                     className="group/role flex items-center gap-1 text-left min-w-0 disabled:opacity-50">
-                    <span aria-hidden="true" className={`text-cz-3 text-[10px] flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
+                    <span aria-hidden="true" className={`text-cz-3 text-3xs flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
                     <span className="text-xs text-cz-1 truncate transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
                     {role && <RoleBadge t={t} role={role} />}
                   </button>
                   <span className="flex items-center gap-2 flex-shrink-0">
                     <FitBar score={r.suitability} />
-                    <span className={`text-[11px] font-mono ${FRESH_CLASS[fresh] || "text-cz-3"}`}>{r.form ?? "—"}</span>
+                    <span className={`text-2xs font-mono ${FRESH_CLASS[fresh] || "text-cz-3"}`}>{r.form ?? "—"}</span>
                     <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
                       aria-label={t("racehub.column.remove")}
                       className="text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>

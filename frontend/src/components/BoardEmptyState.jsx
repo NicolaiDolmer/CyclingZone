@@ -34,7 +34,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
         {EMPTY_STATE_PLANS.map(plan => (
           <div key={plan.id} className="bg-cz-subtle border border-cz-border rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30 flex items-center justify-center text-[11px] font-bold text-cz-accent-t">{plan.badge}</span>
+              <span className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30 flex items-center justify-center text-2xs font-bold text-cz-accent-t">{plan.badge}</span>
               <p className="text-cz-1 text-sm font-semibold">{t(`emptyState.plans.${plan.id}.label`)}</p>
             </div>
             <p className="text-cz-3 text-xs">{t(`emptyState.plans.${plan.id}.description`)}</p>
@@ -44,7 +44,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       <p className="text-cz-3 text-xs mb-4 -mt-2">{t("emptyState.plansFooter")}</p>
 
       <div data-tour="board-satisfaction" className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("emptyState.satisfactionLabel")}</p>
+        <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("emptyState.satisfactionLabel")}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
           <span className="text-cz-success font-mono">{t("emptyState.bands.high")}</span>
           <span className="text-cz-accent-t font-mono">{t("emptyState.bands.moderate")}</span>
@@ -54,7 +54,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       </div>
 
       <div data-tour="board-kpis" className="mb-4">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-2">{t("emptyState.kpis.heading")}</p>
+        <p className="text-cz-3 text-3xs uppercase tracking-wider mb-2">{t("emptyState.kpis.heading")}</p>
         <ul className="text-cz-2 text-xs space-y-1">
           {EMPTY_STATE_KPIS.map(kpi => (
             <li key={kpi}>• <span className="text-cz-1 font-medium">{t(`emptyState.kpis.${kpi}.label`)}</span>, {t(`emptyState.kpis.${kpi}.text`)}</li>

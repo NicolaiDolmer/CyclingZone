@@ -33,18 +33,18 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-4">
       <div className="flex justify-between items-end gap-4 border-b border-cz-border pb-2 flex-wrap">
-        <p className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">
+        <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold">
           {stageLabel || t("detail.stageProfile.label")}
         </p>
         <div className="flex gap-4">
           <div className="text-end">
             <b className="block font-display text-xl text-cz-1 leading-none">{formatNumber(profile.distance_km)}</b>
-            <span className="text-cz-3 text-[8px] tracking-widest">{t("detail.route.stats.km")}</span>
+            <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.km")}</span>
           </div>
           {profile.elevation_gain_m > 0 && (
             <div className="text-end">
               <b className="block font-display text-xl text-cz-1 leading-none">{formatNumber(profile.elevation_gain_m)}</b>
-              <span className="text-cz-3 text-[8px] tracking-widest">{t("detail.route.stats.elevation")}</span>
+              <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.elevation")}</span>
             </div>
           )}
           {waypoints.some((w) => w.kind === "kom") && (
@@ -52,7 +52,7 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
               <b className="block font-display text-xl text-cz-1 leading-none">
                 {waypoints.filter((w) => w.kind === "kom").length}
               </b>
-              <span className="text-cz-3 text-[8px] tracking-widest">{t("detail.route.stats.climbs")}</span>
+              <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.climbs")}</span>
             </div>
           )}
         </div>
@@ -62,11 +62,11 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         <div className="flex gap-1.5 flex-wrap mt-2">
           {reads.map((r) => (
             <span key={r.key}
-              className={`inline-flex flex-col gap-px px-2 py-1 border bg-cz-subtle rounded-cz text-[8.5px] font-semibold uppercase tracking-wider
+              className={`inline-flex flex-col gap-px px-2 py-1 border bg-cz-subtle rounded-cz text-3xs font-semibold uppercase tracking-wider
                 ${READ_TONE_CLASS[r.key] || "border-cz-border text-cz-2"}`}
               style={READ_TONE_STYLE[r.key]}>
               {t(`detail.route.read.${r.key}.label`, r.params)}
-              <em className="not-italic font-mono text-[8px] normal-case tracking-normal text-cz-3">
+              <em className="not-italic font-mono text-3xs normal-case tracking-normal text-cz-3">
                 {t(`detail.route.read.${r.key}.note`, r.params)}
               </em>
             </span>

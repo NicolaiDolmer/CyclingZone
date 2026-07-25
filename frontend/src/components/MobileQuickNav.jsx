@@ -85,13 +85,13 @@ export default function MobileQuickNav({ unread }) {
             <NavLink
               key={to}
               to={to}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-3xs font-medium transition-colors
                 ${isActive ? "text-cz-accent" : "text-cz-sidebar-2 hover:text-cz-sidebar-1"}`}
             >
               <div className="relative">
                 {icon}
                 {showBadge && (
-                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
                     {unread > 9 ? "9+" : unread}
                   </span>
                 )}

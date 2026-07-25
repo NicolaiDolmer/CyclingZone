@@ -7,9 +7,10 @@ import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePill
 //   key,          // felt-nøgle; default-celleindhold er row[key]
 //   header,       // header-label
 //   numeric,      // true → højrestillet font-data tabular
+//   compact,      // true → halv vandret gutter (px-2); til smalle ét-tals-kolonner
 //   sticky,       // true → pinned første kolonne (opak bg + 1px højre-rule)
 //   render,       // (row, i) => node — celleindhold
-//   subline,      // kun sticky: (row, i) => node — 10.5px uppercase underlinje
+//   subline,      // kun sticky: (row, i) => node — text-3xs uppercase underlinje
 //   sublineIndent,// kun sticky: true → pl-[17px] så underlinjen flugter forbi JerseyDot
 //   fold,         // true → skjules ≤640px og foldes ind i sticky-cellens underlinje
 //   foldValue,    // (row) => string — tekstværdi til mobil-fold (default row[key])
@@ -55,7 +56,7 @@ export function DataTable({
                   return (
                     <th
                       key={col.key}
-                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+                      className={`${thClass({ numeric: col.numeric, sticky: col.sticky, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
                       onClick={sortable ? () => onSort(col.sortKey) : undefined}
                       aria-sort={
                         sortable
@@ -84,7 +85,7 @@ export function DataTable({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom })} ${col.fold ? "hidden sm:table-cell" : ""}`}
+                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact })} ${col.fold ? "hidden sm:table-cell" : ""}`}
                       >
                         {col.sticky
                           ? renderStickyCell(col, row, i, foldCols)
@@ -105,7 +106,7 @@ export function DataTable({
   );
 }
 
-// Sticky-celle: navnelinje 13.5/500 + 10.5px uppercase underlinje. På mobil
+// Sticky-celle: navnelinje 13.5/500 + text-3xs uppercase underlinje. På mobil
 // foldes `fold`-kolonnernes værdier ind forrest i underlinjen (" · "-adskilt).
 function renderStickyCell(col, row, i, foldCols) {
   const primary = col.render ? col.render(row, i) : row[col.key];
@@ -121,7 +122,7 @@ function renderStickyCell(col, row, i, foldCols) {
       </span>
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block whitespace-nowrap font-data text-[10.5px] uppercase tracking-[.05em] text-cz-3 ${indent}`}
+          className={`mt-0.5 block whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">
@@ -136,7 +137,7 @@ function renderStickyCell(col, row, i, foldCols) {
   );
 }
 
-// 9px uppercase zone-/status-pill — samme recipe overalt hvor rækker danner
+// text-3xs uppercase zone-/status-pill — samme recipe overalt hvor rækker danner
 // zoner (standings-zoner, listings der lukker, "New" osv.).
 export function ZonePill({ tone = "neutral", className = "", children }) {
   return <span className={`${zonePillClass(tone)} ${className}`}>{children}</span>;

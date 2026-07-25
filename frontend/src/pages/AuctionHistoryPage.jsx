@@ -329,7 +329,7 @@ export default function AuctionHistoryPage() {
                 return (
                   <Tr key={a.id}
                     className={`cursor-pointer
-                      ${iSelf ? "bg-cz-subtle/40" : iWon ? "bg-cz-success-bg0/3" : iSold && !noSale ? "bg-cz-info-bg0/3" : ""}`}
+                      ${iSelf ? "bg-cz-subtle/40" : iWon ? "bg-cz-success-bg" : iSold && !noSale ? "bg-cz-info-bg" : ""}`}
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
                     <Td className="hidden sm:table-cell">
                       <NationCell code={a.rider?.nationality_code} />

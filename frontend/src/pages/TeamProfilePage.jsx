@@ -54,9 +54,9 @@ const TABS = ["squad", "results", "palmares", "transfers", "club"];
 function HeroStatBlock({ label, value, sub, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-[10px] font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
-      {sub && <div className="font-data text-[11px] text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
+      {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
     </div>
   );
 }
@@ -267,13 +267,13 @@ export default function TeamProfilePage() {
                 <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   {isMyTeam && <CategoryTag>{t("profile.yourTeam")}</CategoryTag>}
-                  <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                  <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                     {t("profile.division", { n: team.division })}
                   </span>
                   {team.manager_name && (
                     <>
-                      <span className="text-cz-3 text-[11px]" aria-hidden="true">·</span>
-                      <span className="font-data text-[11px] uppercase tracking-[.08em] text-cz-3">
+                      <span className="text-cz-3 text-2xs" aria-hidden="true">·</span>
+                      <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                         {t("profile.managerLabel", { name: team.manager_name })}
                       </span>
                       <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
@@ -385,7 +385,7 @@ export default function TeamProfilePage() {
                         {displayRiders.map(r => (
                           <tr key={r.id}
                             className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
-                              ${r._isIncoming ? "bg-cz-success-bg0/3" : r._isOutgoing ? "bg-cz-danger-bg0/3" : ""}`}
+                              ${r._isIncoming ? "bg-cz-success-bg" : r._isOutgoing ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/riders/${r.id}`)}>
                             <td className="px-2 py-2.5 hidden sm:table-cell">
                               <NationCell code={r.nationality_code} />

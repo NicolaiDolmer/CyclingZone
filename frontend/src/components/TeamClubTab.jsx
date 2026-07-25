@@ -40,17 +40,17 @@ export default function TeamClubTab({ teamId }) {
               <div className="min-w-0">
                 <div className="flex items-baseline gap-[10px] flex-wrap">
                   <span className="font-display text-[15px] leading-none">{tKlub(`tracks.${f.track}.name`)}</span>
-                  <span className="text-[11px] text-cz-accent-t">
+                  <span className="text-2xs text-cz-accent-t">
                     {f.tier === 0 ? tKlub("facilities.notBuilt") : tKlub("facilities.tier", { tier: f.tier, max: 5 })}
                   </span>
                   {f.tier > 0 && (
-                    <span className={`text-[9.5px] uppercase tracking-wide rounded-[3px] px-[6px] py-[2px] ${f.effectLive ? "text-cz-success bg-cz-success/10" : "text-cz-accent-t bg-cz-accent/10"}`}>
+                    <span className={`text-3xs uppercase tracking-wide rounded-[3px] px-[6px] py-[2px] ${f.effectLive ? "text-cz-success bg-cz-success/10" : "text-cz-accent-t bg-cz-accent/10"}`}>
                       {tKlub(f.effectLive ? "effect.live" : "effect.target")}
                     </span>
                   )}
                 </div>
                 {f.tier > 0 && <div className="my-[6px]"><TierLadder tier={f.tier} /></div>}
-                <div className="text-[11px] text-cz-2">
+                <div className="text-2xs text-cz-2">
                   {f.staff
                     ? <>{tStaff(`roles.${f.track}`)} <Link to={`/staff/${f.staff.id}`} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{f.staff.name}</Link> (T{f.staff.tier})</>
                     : <span className="text-cz-3">{tKlub("staff.none")}</span>}

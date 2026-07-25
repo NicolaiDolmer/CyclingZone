@@ -19,11 +19,11 @@ import { StarIcon, EyeIcon, SearchIcon } from "../../ui";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
 function TrendSub({ pct, t }) {
-  if (pct == null) return <span className="text-[11px] text-cz-3">{t("profile.interest.trendNew")}</span>;
-  if (pct === 0) return <span className="text-[11px] text-cz-3">{t("profile.interest.trendFlat")}</span>;
+  if (pct == null) return <span className="text-2xs text-cz-3">{t("profile.interest.trendNew")}</span>;
+  if (pct === 0) return <span className="text-2xs text-cz-3">{t("profile.interest.trendFlat")}</span>;
   const up = pct > 0;
   return (
-    <span className={`text-[11px] font-semibold ${up ? "text-cz-success" : "text-cz-danger"}`}>
+    <span className={`text-2xs font-semibold ${up ? "text-cz-success" : "text-cz-danger"}`}>
       {up ? "▴" : "▾"} {Math.abs(pct)}%
     </span>
   );
@@ -69,9 +69,9 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
     : t(`profile.interest.summary.${isOwn ? "own" : "scouting"}`, { followers: watchlistCount, scouted: scoutedBy, views: views7d });
 
   const statDefs = [
-    { key: "followers", icon: StarIcon, value: watchlistCount, sub: <span className="text-[11px] text-cz-3">{t("profile.interest.followersSub", { count: watchlistCount })}</span> },
+    { key: "followers", icon: StarIcon, value: watchlistCount, sub: <span className="text-2xs text-cz-3">{t("profile.interest.followersSub", { count: watchlistCount })}</span> },
     { key: "views7d", icon: EyeIcon, value: views7d, sub: <TrendSub pct={trendPct} t={t} /> },
-    { key: "scoutedBy", icon: SearchIcon, value: scoutedBy, sub: <span className="text-[11px] text-cz-3">{t("profile.interest.scoutedBySub", { count: scoutedBy })}</span> },
+    { key: "scoutedBy", icon: SearchIcon, value: scoutedBy, sub: <span className="text-2xs text-cz-3">{t("profile.interest.scoutedBySub", { count: scoutedBy })}</span> },
   ];
 
   // Visnings-trend som øverste feed-linje (beskriver "nu", har ingen event-dato).
@@ -101,7 +101,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-[13px]">
         {statDefs.map((s) => (
           <div key={s.key} className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-cz-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-3xs font-semibold uppercase tracking-[0.1em] text-cz-3">
               <s.icon size={14} aria-hidden="true" />
               {t(`profile.interest.stats.${s.key}`)}
             </span>
@@ -131,7 +131,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
                   <span className="flex-1 text-[12.5px] text-cz-1 truncate">
                     <TeamLink id={s.team_id} className="hover:text-cz-accent-t transition-colors">{s.team_name ?? t("bids.row.teamFallback")}</TeamLink>
                   </span>
-                  <span className="text-[11px] text-cz-3 whitespace-nowrap">
+                  <span className="text-2xs text-cz-3 whitespace-nowrap">
                     {t("profile.interest.whoScouts.level", { level: s.level })}
                     {s.season != null ? ` · ${t("profile.interest.seasonShort", { n: s.season })}` : ""}
                   </span>
@@ -144,7 +144,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
 
       <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="px-[17px] py-2.5 border-b border-cz-border">
-          <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-3">
+          <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
             {t("profile.interest.feed.title")}
           </span>
         </div>
@@ -155,7 +155,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
             <div key={e.key} className={`flex items-center gap-3 px-[17px] py-3 ${i > 0 ? "border-t border-cz-border" : ""}`}>
               <FeedIcon type={e.type} />
               <span className="flex-1 text-[12.5px] text-cz-1 min-w-0 truncate">{e.text}</span>
-              <span className="text-[11px] text-cz-3 whitespace-nowrap">{e.meta}</span>
+              <span className="text-2xs text-cz-3 whitespace-nowrap">{e.meta}</span>
             </div>
           ))
         )}

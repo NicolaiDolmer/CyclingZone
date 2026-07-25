@@ -44,7 +44,7 @@ export default function StageDetailPanel({ profile, stageLabel }) {
           {t(`detail.${labelKey}`)}
         </p>
         {finaleKey && (
-          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30">
+          <span className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30">
             {t(`detail.${finaleKey}`)}
           </span>
         )}
@@ -52,7 +52,7 @@ export default function StageDetailPanel({ profile, stageLabel }) {
       <div className="mt-3">
         <TerrainDNABar demandVector={profile.demand_vector} />
       </div>
-      <p className="text-cz-3 text-[11px] mt-2">{t("detail.stageProfile.note")}</p>
+      <p className="text-cz-3 text-2xs mt-2">{t("detail.stageProfile.note")}</p>
     </div>
   );
 }

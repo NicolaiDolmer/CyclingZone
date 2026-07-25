@@ -124,8 +124,8 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
               disabled={loading}
               className={`w-full px-4 py-2 font-bold rounded-lg text-sm border transition-all disabled:opacity-50
                 ${selectedRider.is_retired
-                  ? "bg-cz-success-bg0/20 text-cz-success border-cz-success/30"
-                  : "bg-cz-danger-bg0/20 text-cz-danger border-cz-danger/30"}`}
+                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}
             >
               {selectedRider.is_retired ? "Aktivér rytter" : "Pensionér rytter"}
             </button>

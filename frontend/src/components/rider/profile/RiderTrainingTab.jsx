@@ -117,7 +117,7 @@ function FocusCard({ rider, training, progress, t }) {
           {t("profile.training.title")}
         </h3>
         {total != null && (
-          <span className="text-[10.5px] text-cz-3">{t("profile.training.slotsUsed", { used, total })}</span>
+          <span className="text-3xs text-cz-3">{t("profile.training.slotsUsed", { used, total })}</span>
         )}
       </div>
 
@@ -146,7 +146,7 @@ function FocusCard({ rider, training, progress, t }) {
 
       {/* Intensitet (segmenteret). Kræver et valgt fokus for at kunne sættes. */}
       <div className="flex items-center gap-2.5 mb-[11px]">
-        <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] text-cz-3 flex-none">
+        <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3 flex-none">
           {t("training.intensity")}
         </span>
         <div className="inline-flex gap-0.5 bg-cz-subtle border border-cz-border rounded-lg p-[3px]">
@@ -159,7 +159,7 @@ function FocusCard({ rider, training, progress, t }) {
                 onClick={() => pickIntensity(i)}
                 disabled={busy || !focus}
                 aria-pressed={on}
-                className={`min-h-[44px] px-3 rounded-[6px] text-[11.5px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`min-h-[44px] px-3 rounded-[6px] text-2xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   on ? "bg-cz-card text-cz-1 shadow-sm" : "text-cz-3 hover:text-cz-2"
                 }`}
               >
@@ -172,7 +172,7 @@ function FocusCard({ rider, training, progress, t }) {
 
       {/* #2465: fejl-overflade for pickFocus/pickIntensity — tidligere tavs. */}
       {actionError && (
-        <div role="alert" className="mb-[11px] px-2.5 py-1.5 rounded-cz border border-cz-danger/30 bg-cz-danger/10 text-[11px] text-cz-danger">
+        <div role="alert" className="mb-[11px] px-2.5 py-1.5 rounded-cz border border-cz-danger/30 bg-cz-danger/10 text-2xs text-cz-danger">
           {t([`profile.training.actionErrors.${actionError}`, "profile.training.actionErrorGeneric"])}
         </div>
       )}
@@ -191,7 +191,7 @@ function FocusCard({ rider, training, progress, t }) {
                 {t("profile.training.activeRest", { focus: t(`profile.training.focus.${focus}`) })}
               </span>
             </div>
-            <p className="mt-1 text-[11px] text-cz-2 leading-snug">{t("profile.training.restNote")}</p>
+            <p className="mt-1 text-2xs text-cz-2 leading-snug">{t("profile.training.restNote")}</p>
           </>
         ) : (
           <>
@@ -214,7 +214,7 @@ function FocusCard({ rider, training, progress, t }) {
               />
             </div>
             <div className="flex justify-between gap-2 mt-1.5">
-              <span className="text-[10.5px] text-cz-3">
+              <span className="text-3xs text-cz-3">
                 {fp && fpVal != null
                   ? t("profile.training.progressTo", {
                       ability: t(`racePreview.derived.${fp.ability}`),
@@ -222,9 +222,9 @@ function FocusCard({ rider, training, progress, t }) {
                     })
                   : t("profile.training.progressPending")}
               </span>
-              <span className="text-[10.5px] text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
+              <span className="text-3xs text-cz-3 flex-none">{t("profile.training.effectNote")}</span>
             </div>
-            <p className="mt-2 text-[11px] text-cz-2 leading-snug">
+            <p className="mt-2 text-2xs text-cz-2 leading-snug">
               {risk > 0 ? t("profile.training.riskNote", { risk }) : t("profile.training.noRiskNote")}
             </p>
           </>
@@ -232,14 +232,14 @@ function FocusCard({ rider, training, progress, t }) {
 
         {/* "Hvert fokus træner …" — fokus → evner (altid synlig som reference). */}
         <div className="mt-[11px] pt-2.5 border-t border-cz-border">
-          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-cz-3">
+          <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
             {t("profile.training.focusRefTitle")}
           </span>
           <div className="grid grid-cols-2 gap-x-[14px] gap-y-1 mt-[7px]">
             {TRAINING_FOCUS_KEYS.map((f) => (
               <div key={f} className="flex justify-between gap-2">
-                <span className="text-[11px] text-cz-1 font-semibold">{t(`profile.training.focus.${f}`)}</span>
-                <span className="text-[10.5px] text-cz-3 text-right">
+                <span className="text-2xs text-cz-1 font-semibold">{t(`profile.training.focus.${f}`)}</span>
+                <span className="text-3xs text-cz-3 text-right">
                   {TRAINING_FOCUS_ABILITIES[f].map((a) => t(`racePreview.derived.${a}`)).join(" · ")}
                 </span>
               </div>
@@ -293,12 +293,12 @@ function DailyLogCard({ riderId, runs, t }) {
           }
           return (
             <div key={tick_date} className="flex items-center gap-[11px] py-2 border-t border-cz-border">
-              <span className="font-mono text-[11px] text-cz-3 flex-none w-[42px]">{dayLabel(tick_date, t)}</span>
+              <span className="font-mono text-2xs text-cz-3 flex-none w-[42px]">{dayLabel(tick_date, t)}</span>
               <span className="text-[12px] text-cz-1 flex-1 min-w-0 truncate">
                 {focusLabel}
                 <span className="text-cz-3"> · {intensityLabel}</span>
               </span>
-              <span className={`text-[11px] flex-none text-right ${resultClass}`}>{result}</span>
+              <span className={`text-2xs flex-none text-right ${resultClass}`}>{result}</span>
             </div>
           );
         })
@@ -323,18 +323,18 @@ function TrendCard({ riderId, runs, t }) {
   ];
   return (
     <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
-      <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.training.trend.title")}
       </span>
       <div className="grid grid-cols-3 gap-2 mt-2.5">
         {tiles.map((tile) => (
           <div key={tile.label}>
             <div className="font-mono tabular-nums text-2xl font-bold leading-none text-cz-1">{tile.value}</div>
-            <div className="text-[10px] text-cz-3 mt-1.5 leading-tight">{tile.label}</div>
+            <div className="text-3xs text-cz-3 mt-1.5 leading-tight">{tile.label}</div>
           </div>
         ))}
       </div>
-      <p className="mt-3 pt-2.5 border-t border-cz-border text-[10.5px] text-cz-3 leading-snug">
+      <p className="mt-3 pt-2.5 border-t border-cz-border text-3xs text-cz-3 leading-snug">
         {t("profile.training.trend.note")}
       </p>
     </div>
@@ -385,15 +385,15 @@ function FormCard({ condition, t }) {
         </div>
         <div className="flex items-center gap-2 pt-0.5">
           {days > 0 ? (
-            <span className="inline-flex items-center text-[11px] px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
+            <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
               {t("condition.injured", { days })}
             </span>
           ) : (
             <>
-              <span className="inline-flex items-center text-[11px] px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
+              <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
                 {t("profile.training.form.healthy")}
               </span>
-              <span className="text-[11px] text-cz-3">{t("profile.training.form.healthyHint")}</span>
+              <span className="text-2xs text-cz-3">{t("profile.training.form.healthyHint")}</span>
             </>
           )}
         </div>

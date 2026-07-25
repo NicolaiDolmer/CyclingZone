@@ -41,7 +41,7 @@ function SectionCard({ children }) {
 
 function Eyebrow({ children }) {
   return (
-    <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+    <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
       {children}
     </span>
   );
@@ -60,7 +60,7 @@ function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
           style={{ left: pct(ceilLo), width: `calc(${pct(ceilHi)} - ${pct(ceilLo)})` }}
         />
       </div>
-      <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-[11.5px]">
+      <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
         <span className="text-cz-3"> · {ceilLo}–{ceilHi}</span>
       </span>
@@ -163,7 +163,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
           : scoutSystemEnabled
             ? t("scouting.sendScoutJob", { minutes: TARGET_JOB_MINUTES, cost: TARGET_JOB_COST })
             : t(labelKey)}
-        {!scoutSystemEnabled && slots && <span className="text-cz-3 font-mono text-[10.5px]">{slots.remaining}/{slots.total}</span>}
+        {!scoutSystemEnabled && slots && <span className="text-cz-3 font-mono text-3xs">{slots.remaining}/{slots.total}</span>}
       </button>
     );
   };
@@ -196,7 +196,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
         </p>
         {scoutButton("scouting.scout")}
         {scoutError && (
-          <p role="alert" className="mt-2 text-[11px] text-cz-danger">
+          <p role="alert" className="mt-2 text-2xs text-cz-danger">
             {t([`profile.scouting.scoutErrors.${scoutError}`, "profile.scouting.scoutFailed"])}
           </p>
         )}
@@ -221,14 +221,14 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 {verdict ? t(`profile.scouting.headline_${verdict.headlineKey}`) : t("profile.scouting.capsMissingTitle")}
               </h3>
               {verdict && (
-                <span className={`text-[10px] font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium}`}>
+                <span className={`text-3xs font-mono font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-cz border ${CONFIDENCE_STYLE[verdict.confidence] ?? CONFIDENCE_STYLE.medium}`}>
                   {t(`profile.scouting.confidence_${verdict.confidence}`)}
                 </span>
               )}
             </div>
           </div>
           <div className="text-right">
-            <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-3">
+            <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
               {t("profile.scouting.potentialLabel")}
             </span>
             <div className="mt-1">
@@ -239,7 +239,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
               )}
             </div>
             {!own && (
-              <span className="block text-[10px] font-mono text-cz-3 mt-0.5" title={t("scouting.levelTitle")}>
+              <span className="block text-3xs font-mono text-cz-3 mt-0.5" title={t("scouting.levelTitle")}>
                 {level}/{maxLevel}
               </span>
             )}
@@ -260,7 +260,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <p className="text-cz-3 text-[12px] m-0">{t("profile.scouting.rescoutHint")}</p>
             {scoutButton("scouting.rescout")}
             {scoutError && (
-              <p role="alert" className="text-[11px] text-cz-danger w-full m-0">
+              <p role="alert" className="text-2xs text-cz-danger w-full m-0">
                 {t([`profile.scouting.scoutErrors.${scoutError}`, "profile.scouting.scoutFailed"])}
               </p>
             )}
@@ -275,7 +275,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
               {t("profile.scouting.typesTitle")}
             </h3>
-            <span className="text-[10.5px] text-cz-3">{t("profile.scouting.typesSubtitle")}</span>
+            <span className="text-3xs text-cz-3">{t("profile.scouting.typesSubtitle")}</span>
           </div>
           <div className="space-y-2">
             {orderedTypes.map((row) => (
@@ -283,7 +283,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 label={tTypes(`types.${row.key}`)} />
             ))}
           </div>
-          <p className="text-cz-3 text-[10.5px] mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>
+          <p className="text-cz-3 text-3xs mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>
         </SectionCard>
       )}
 
@@ -305,13 +305,13 @@ export default function RiderScoutingTab({ rider, scouting }) {
           </h3>
           <div className="grid grid-cols-2 gap-3 max-w-[420px]">
             <div>
-              <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-3">
+              <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
                 {t("profile.scouting.valueMarket")}
               </span>
               <span className="block font-display text-[19px] text-cz-1 mt-0.5">{formatCz(value.market)}</span>
             </div>
             <div>
-              <span className="block font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-3">
+              <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
                 {t("profile.scouting.valueExpected")}
               </span>
               <span className="block font-display text-[19px] text-cz-1 mt-0.5">{formatCz(value.expected)}</span>

@@ -51,7 +51,7 @@ function LanguageToggle() {
           onClick={() => setLanguage(lng)}
           aria-pressed={language === lng}
           className={
-            "rounded-[3px] px-2.5 py-1 font-data text-[11px] font-semibold uppercase tracking-wider transition-colors " +
+            "rounded-[3px] px-2.5 py-1 font-data text-2xs font-semibold uppercase tracking-wider transition-colors " +
             (language === lng ? "bg-cz-accent text-cz-on-accent" : "text-cz-2 hover:text-cz-1")
           }
         >
@@ -66,7 +66,7 @@ function Kicker({ children }) {
   return (
     <div className="flex items-center gap-2.5">
       <span className="h-px w-6 bg-cz-accent-t" aria-hidden="true" />
-      <span className="font-data text-[11px] font-semibold uppercase tracking-[0.22em] text-cz-3">{children}</span>
+      <span className="font-data text-2xs font-semibold uppercase tracking-[0.22em] text-cz-3">{children}</span>
     </div>
   );
 }
@@ -154,7 +154,7 @@ export default function LandingPage() {
         {/* ───────── Hero ───────── */}
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pb-24 lg:pt-20">
           <div>
-            <span className="inline-flex cursor-default select-none items-center gap-2 border border-cz-border bg-cz-card px-3 py-1 font-data text-[11px] font-semibold uppercase tracking-[0.16em] text-cz-2">
+            <span className="inline-flex cursor-default select-none items-center gap-2 border border-cz-border bg-cz-card px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[0.16em] text-cz-2">
               <span className="h-1.5 w-1.5 rounded-full bg-cz-accent" aria-hidden="true" />
               {t("hero.badge")}
             </span>
@@ -233,7 +233,7 @@ export default function LandingPage() {
                     <div>
                       <h3 className="text-lg font-semibold text-cz-1">{row.title}</h3>
                       <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-cz-2">{row.body}</p>
-                      <p className="mt-2 font-data text-[11px] uppercase tracking-[0.16em] text-cz-3">{row.data}</p>
+                      <p className="mt-2 font-data text-2xs uppercase tracking-[0.16em] text-cz-3">{row.data}</p>
                     </div>
                   </div>
                 );

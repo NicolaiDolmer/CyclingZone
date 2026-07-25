@@ -6,7 +6,10 @@
     "balance": "Saldo",
     "division": "Division {division}"
   },
-  "sections": { "facilities": "Faciliteter", "staff": "Staff" },
+  "sections": {
+    "facilities": "Faciliteter",
+    "staff": "Staff"
+  },
   "cost": {
     "upkeep": "Drift",
     "payroll": "Lønninger",
@@ -40,11 +43,31 @@
     "note": "Ikke alle effekter er aktive endnu"
   },
   "tracks": {
-    "training": { "name": "Træningscenter", "effect": "træning", "soon": "Hurtigere rytter-udvikling" },
-    "scouting": { "name": "Scouting-netværk", "effect": "rytter-indsigt", "soon": "Skarpere rytter-indsigt" },
-    "medical": { "name": "Medicinsk afdeling", "effect": "restitution", "soon": "Hurtigere restitution" },
-    "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots", "soon": "Flere intake-slots" },
-    "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)", "soon": "Langsigtet sponsor-indtægt" }
+    "training": {
+      "name": "Træningscenter",
+      "effect": "træning",
+      "soon": "Hurtigere rytter-udvikling"
+    },
+    "scouting": {
+      "name": "Scouting-netværk",
+      "effect": "rytter-indsigt",
+      "soon": "Skarpere rytter-indsigt"
+    },
+    "medical": {
+      "name": "Medicinsk afdeling",
+      "effect": "restitution",
+      "soon": "Hurtigere restitution"
+    },
+    "academy": {
+      "name": "Akademi-udvidelse",
+      "effect": "intake-slots",
+      "soon": "Flere intake-slots"
+    },
+    "commercial": {
+      "name": "Kommerciel afdeling",
+      "effect": "sponsor (loftet)",
+      "soon": "Langsigtet sponsor-indtægt"
+    }
   },
   "roles": {
     "training": "Sportsdirektør",
@@ -76,7 +99,10 @@
     "failed": "Noget gik galt. Prøv igen.",
     "network": "Kunne ikke nå serveren. Prøv igen."
   },
-  "empty": { "title": "Klubben er lukket", "description": "Faciliteter og staff er ikke tilgængelige endnu." },
+  "empty": {
+    "title": "Klubben er lukket",
+    "description": "Faciliteter og staff er ikke tilgængelige endnu."
+  },
   "confirm": {
     "upgradeTitle": "Bekræft opgradering",
     "buildTitle": "Bekræft byggeri",
@@ -87,5 +113,12 @@
     "severanceNote": "Fratrædelsen trækkes nu",
     "confirm": "Bekræft",
     "cancel": "Annullér"
+  },
+  "error": {
+    "load": {
+      "title": "Kunne ikke indlæse klubben",
+      "description": "Intet gik tabt. Dine faciliteter og staff er sikre. Prøv igen.",
+      "retry": "Prøv igen"
+    }
   }
 }

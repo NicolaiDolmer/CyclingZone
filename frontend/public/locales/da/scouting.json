@@ -69,6 +69,11 @@
     "no_active_season": "Ingen aktiv sæson lige nu.",
     "auth": "Du skal være logget ind.",
     "network": "Netværksfejl. Prøv igen.",
-    "failed": "Noget gik galt. Prøv igen."
+    "failed": "Noget gik galt. Prøv igen.",
+    "load": {
+      "title": "Kunne ikke indlæse spejder-centralen",
+      "description": "Intet gik tabt. Din spejders aktive opgaver kører stadig. Prøv igen.",
+      "retry": "Prøv igen"
+    }
   }
 }

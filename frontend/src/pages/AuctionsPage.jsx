@@ -162,7 +162,7 @@ function Countdown({ end, status }) {
         </span>
       )}
       {endLabel && (
-        <span className="text-[9px] text-cz-3 leading-none">{endLabel}</span>
+        <span className="text-3xs text-cz-3 leading-none">{endLabel}</span>
       )}
     </span>
   );
@@ -172,7 +172,7 @@ function Countdown({ end, status }) {
 // #2701 bud-gate: forklaring når truppen ingen egnet plads har (bud deaktiveret).
 function BidRoomBlockNotice({ reason, t }) {
   return (
-    <div className="text-[11px] text-cz-warning bg-cz-warning-bg rounded px-2 py-1 leading-snug">
+    <div className="text-2xs text-cz-warning bg-cz-warning-bg rounded px-2 py-1 leading-snug">
       {t(reason === "both_full" ? "auctions:bidGate.bothFull" : "auctions:bidGate.seniorFull")}
     </div>
   );
@@ -181,7 +181,7 @@ function BidRoomBlockNotice({ reason, t }) {
 // #2701: hint på ungdomsauktioner om hvor rytteren lander (senior-først).
 function BidDestinationHint({ destination, t }) {
   return (
-    <span className="text-[10px] text-cz-accent-t whitespace-nowrap">
+    <span className="text-3xs text-cz-accent-t whitespace-nowrap">
       {t(destination === "academy" ? "auctions:bidGate.toAcademy" : "auctions:bidGate.toSenior")}
     </span>
   );
@@ -255,33 +255,33 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       <td className="px-3 py-1.5">
         <div className="flex items-center gap-1 flex-wrap">
           {imWinning && (
-            <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.winning")}
             </span>
           )}
           {isSeller && (
-            <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.seller")}
             </span>
           )}
           {isMyRider && !isSeller && (
-            <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.mine")}
             </span>
           )}
           {auction.status === "extended" && (
-            <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.extended")}
             </span>
           )}
           {auction.is_flash && (
-            <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded whitespace-nowrap">
+            <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded whitespace-nowrap">
               {t("auctions:badge.flash")}
             </span>
           )}
           <RiderBadges badges={[ageBadgeKey(r)]} />
           {auction.is_youth && (
-            <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
+            <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
         </div>
       </td>
@@ -301,7 +301,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs whitespace-nowrap">
         {formatNumber(getRiderSalary(r))}
         {r?.contract_length != null && (
-          <span className="ms-1 text-cz-3 text-[10px]">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</span>
+          <span className="ms-1 text-cz-3 text-3xs">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</span>
         )}
       </td>
 
@@ -326,7 +326,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               Tooltip bærer selve vurderingen + estimat-forbeholdet. */}
           {valueDelta && (
             <span
-              className={`text-[10px] font-mono whitespace-nowrap ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
+              className={`text-3xs font-mono whitespace-nowrap ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
               title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
             >
               {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
@@ -416,23 +416,23 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
               {/* Proxy bid section — vandret til højre for bud-knappen, forkortet label så den er plads til */}
               {!proxyExpanded && (myProxy ? (
                 <div className="flex items-center gap-1">
-                  <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
+                  <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
-                  <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-[9px] text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
-                  <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-[9px] text-cz-3 hover:text-cz-danger">{t("auctions:bid.proxy.removeButton")}</button>
+                  <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
+                  <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-3xs text-cz-3 hover:text-cz-danger">{t("auctions:bid.proxy.removeButton")}</button>
                 </div>
               ) : (
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-[10px] font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
+                  className="inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-3xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAdd")}
                 </button>
               ))}
               {bidStatus === "error" && errorText && (
-                <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
+                <p className="text-3xs text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
               )}
             </div>
             {proxyExpanded && (
@@ -445,24 +445,24 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                     placeholder={t("auctions:bid.proxy.placeholder")}
                     aria-label={t("auctions:bid.proxy.inputAria")}
-                    className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
+                    className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
                     aria-label={t("auctions:bid.proxy.save")}
-                    className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
+                    className={`px-2 py-1 rounded text-3xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
                       disabled:opacity-50`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-[9px] text-cz-3 hover:text-cz-2"><span aria-hidden="true">✕</span></button>
+                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-3xs text-cz-3 hover:text-cz-2"><span aria-hidden="true">✕</span></button>
                 </div>
-                <p className="text-[9px] text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
+                <p className="text-3xs text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
-                  <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
+                  <p className="text-3xs text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
                 )}
               </div>
             )}
@@ -474,7 +474,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
           <span className="text-cz-3 text-xs">—</span>
         )}
         {warningText && (
-          <p className="text-[10px] text-cz-warning leading-tight mt-1 max-w-[260px]">{warningText}</p>
+          <p className="text-3xs text-cz-warning leading-tight mt-1 max-w-[260px]">{warningText}</p>
         )}
       </td>
     </tr>
@@ -509,8 +509,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
+  // #2849 bølge 6: "du fører"-markeringen var dobbelt død — guldkanten tabte
+  // cascaden til Cards egen hairline (nu via borderClass), og `bg-cz-accent/10/40`
+  // var en malformet klasse (dobbelt alpha) der aldrig emitterede noget CSS.
   return (
-    <Card className={`p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : ""}`}>
+    <Card
+      borderClass={imWinning ? "border-cz-accent/40" : "border-cz-border"}
+      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           {r?.id && (
@@ -544,70 +550,70 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {r?.primary_type && (
                 <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
               )}
-              {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
-              {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
-              {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
-              {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
+              {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
+              {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
+              {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
+              {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
               <RiderBadges badges={[ageBadgeKey(r)]} />
-              {auction.is_youth && <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
+              {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
           </div>
         </div>
         <div className="text-right flex-shrink-0" data-tour={isFirst ? "auctions-countdown" : undefined}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.time")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.time")}</p>
           <Countdown end={auction.calculated_end} status={auction.status} />
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className={`bg-cz-subtle rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.highestBid")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-sm">
             {formatNumber(auction.current_price ?? 0)} CZ$
           </p>
           {getAuctionLeaderName(auction) && !imWinning && (
-            <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
+            <p className="text-cz-3 text-3xs truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
         {/* #2464: estimeret markedsværdi + delta ved siden af prisen — godt køb/
             overpris skal kunne aflæses på ét blik, formuleret som estimat. */}
         {valueDelta && (
           <div className="bg-cz-subtle rounded-lg px-3 py-2">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.estValue")}</p>
+            <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.estValue")}</p>
             <p
               className="text-cz-2 font-mono text-sm font-medium"
               title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
             >
               {formatNumber(valueDelta.value)} CZ$
             </p>
-            <p className={`text-[10px] mt-0.5 ${VALUE_DELTA_CLASS[valueDelta.direction]}`}>
+            <p className={`text-3xs mt-0.5 ${VALUE_DELTA_CLASS[valueDelta.direction]}`}>
               {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
             </p>
           </div>
         )}
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">
             {r?.contract_length != null ? t("auctions:card.salary") : t("auctions:card.estSalary")}
           </p>
           <p className="text-cz-2 font-mono text-sm font-medium">
             {formatNumber(getRiderSalary(r))} CZ$
           </p>
           {r?.contract_length != null && (
-            <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</p>
+            <p className="text-cz-3 text-3xs mt-0.5">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</p>
           )}
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.seller")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.seller")}</p>
           <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
       </div>
 
       {r?.id && scouting.estimateFor(r.id) !== null && (
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="text-cz-3 text-[9px] uppercase tracking-wider">{t("auctions:card.potential")}</span>
+          <span className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.potential")}</span>
           <ScoutablePotentiale rider={r} scouting={scouting} showScout />
         </div>
       )}
@@ -615,7 +621,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
         <div className={`mt-2 grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${Math.min(visibleStatsArr.length, 5)}, minmax(0, 1fr))` }}>
           {visibleStatsArr.map(key => (
             <div key={key} className="text-center">
-              <p className="text-cz-3 text-[9px] uppercase mb-0.5">{STAT_LABEL_BY_KEY[key]}</p>
+              <p className="text-cz-3 text-3xs uppercase mb-0.5">{STAT_LABEL_BY_KEY[key]}</p>
               <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r?.[key] || 0)}>
                 {r?.[key] || "—"}
               </span>
@@ -660,7 +666,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {/* Proxy bid section — vandret til højre for bud-knappen */}
               {!proxyExpanded && (myProxy ? (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg whitespace-nowrap">
+                  <span className="text-3xs bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
                   <button
@@ -688,10 +694,10 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-cz-3">{t("auctions:bid.minBidCard", { amount: formatNumber(minBid) })}</p>
-            {bidStatus === "error" && errorText && <p className="text-[11px] text-cz-danger">{errorText}</p>}
+            <p className="text-3xs text-cz-3">{t("auctions:bid.minBidCard", { amount: formatNumber(minBid) })}</p>
+            {bidStatus === "error" && errorText && <p className="text-2xs text-cz-danger">{errorText}</p>}
             {warningText && (
-              <p className="text-[11px] text-cz-warning leading-snug">{warningText}</p>
+              <p className="text-2xs text-cz-warning leading-snug">{warningText}</p>
             )}
             {proxyExpanded && (
               <div className="flex flex-col gap-1">
@@ -724,9 +730,9 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     ✕
                   </button>
                 </div>
-                <p className="text-[11px] text-cz-3 leading-tight">{t("auctions:bid.proxy.help")}</p>
+                <p className="text-2xs text-cz-3 leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
-                  <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
+                  <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
                 )}
               </div>
             )}
@@ -1463,33 +1469,33 @@ export default function AuctionsPage() {
       {!loading && myTeamId && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <Section>
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
+            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
               {formatNumber(myBalance)} CZ$
             </p>
             {reservedBalance > 0 && (
-              <p className="text-cz-3 text-[10px] mt-0.5">
+              <p className="text-cz-3 text-3xs mt-0.5">
                 {t("auctions:stats.balanceAvailable", { amount: formatNumber(availableBalance) })}
               </p>
             )}
           </Section>
           <Section>
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
+            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {formatNumber(reservedBalance)} CZ$
             </p>
             {winningAuctions.length > 0 && (
-              <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
+              <p className="text-cz-3 text-3xs mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
             )}
           </Section>
           <Section>
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
+            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {currentRiderCount ?? "—"}
             </p>
           </Section>
           <Section>
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
+            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {projectedRiderCount ?? "—"}
               {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
@@ -1499,7 +1505,7 @@ export default function AuctionsPage() {
               )}
             </p>
             {(incomingCount > 0 || outgoingCount > 0) && (
-              <p className="text-cz-3 text-[10px] mt-0.5">
+              <p className="text-cz-3 text-3xs mt-0.5">
                 {incomingCount > 0 && t("auctions:stats.incoming", { count: incomingCount })}
                 {incomingCount > 0 && outgoingCount > 0 && " · "}
                 {outgoingCount > 0 && t("auctions:stats.outgoing", { count: outgoingCount })}
@@ -1640,7 +1646,7 @@ function applyAuctionSort(list, auctionSort) {
 // #2849 bølge 1: cz-table-recipens header-typografi (11px uppercase, tracking
 // .06em, font-data) — farven (--text-3/aktiv-accent) styres fortsat af selve
 // SortableTh-komponenten, så den ikke dupliceres her.
-const TH_BASE = "font-data text-[11px] font-semibold uppercase tracking-[.06em]";
+const TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");

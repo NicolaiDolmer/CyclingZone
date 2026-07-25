@@ -28,13 +28,13 @@ export default function ConfirmModal({ open, title, lines = [], note, confirmLab
         <dl className="flex flex-col gap-[6px]">
           {lines.map((line) => (
             <div key={line.label} className="flex items-baseline justify-between gap-4 border-b border-cz-border pb-[6px] last:border-0 last:pb-0">
-              <dt className="text-[12px] text-cz-2">{line.label}</dt>
+              <dt className="text-xs text-cz-2">{line.label}</dt>
               <dd className="font-data text-[13px] text-cz-1">{line.value}</dd>
             </div>
           ))}
         </dl>
       )}
-      {note && <p className="mt-3 text-[11px] text-cz-3">{note}</p>}
+      {note && <p className="mt-3 text-2xs text-cz-3">{note}</p>}
     </Modal>
   );
 }

@@ -449,7 +449,7 @@ export default function RaceHubBoard() {
         <>
           {/* #2195: forklar komprimeringen når dagen rummer flere spil-dage. */}
           {multiDay && (
-            <p className="mb-3 text-[11px] text-cz-3 flex items-center gap-1.5">
+            <p className="mb-3 text-2xs text-cz-3 flex items-center gap-1.5">
               <FlagIcon size={12} aria-hidden="true" /> {t("racehub.sameDayNote")}
             </p>
           )}

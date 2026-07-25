@@ -152,13 +152,21 @@
   /* Semantic states — D-SEM Set 2 (warning shifted off brand gold). Base colors
      as channel format for <alpha-value> support. */
   --success:    21 119 47;    /* #15772f */
-  --success-bg: #dcfce7;
   --danger:     168 30 30;     /* #a81e1e */
-  --danger-bg:  #fee2e2;
   --warning:    154 91 0;      /* #9a5b00 */
-  --warning-bg: #fef3c7;
   --info:       26 71 192;     /* #1a47c0 */
-  --info-bg:    #dbeafe;
+
+  /* Status-flader (#2849 boelge 6, ejer-valg 25/7 "mulighed C"). Lyst tema brugte
+     faste pasteller (#dcfce7 osv.), men 69 callsites blandede i praksis deres egen
+     8%-tone oven paa fladen via legacy-aliaset `-bg0` — og DEN tone er den appen
+     faktisk ser ud af. Vi flytter tokenet ned til callsites' niveau i stedet for at
+     tvinge 45 flader op paa pastellen: samme alfa-form som moerkt tema altid har
+     haft, saa `-bg` nu er den ENESTE statusbaggrund i systemet. Zone-toner og
+     status-badges bliver tilsvarende mildere i lyst tema — bevidst. */
+  --success-bg: rgba(21, 119, 47, 0.08);
+  --danger-bg:  rgba(168, 30, 30, 0.08);
+  --warning-bg: rgba(154, 91, 0, 0.08);
+  --info-bg:    rgba(26, 71, 192, 0.08);
 
   /* Discord brand (Blurple) — ekstern brand-farve til Discord-CTA'er (dashboard
      DM-nudge). Defineres som token her så callsites ikke baerer raa hex (#671

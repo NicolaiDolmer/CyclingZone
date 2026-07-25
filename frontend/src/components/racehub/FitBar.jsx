@@ -13,7 +13,7 @@ const TIER_FILL = {
 export default function FitBar({ score, className = "" }) {
   const { t } = useTranslation("races");
   const tier = fitTier(score);
-  if (tier == null) return <span className="text-cz-3 text-[10px] font-mono">—</span>;
+  if (tier == null) return <span className="text-cz-3 text-3xs font-mono">—</span>;
   const pct = Math.max(0, Math.min(100, score));
   const label = `${t("racehub.fit.label")} ${score} · ${t(`racehub.fit.${tier}`)}`;
   return (
@@ -26,7 +26,7 @@ export default function FitBar({ score, className = "" }) {
       <span className="relative inline-block w-9 h-1 rounded-full bg-cz-border/60 overflow-hidden align-middle">
         <span className={`absolute inset-y-0 left-0 rounded-full ${TIER_FILL[tier]}`} style={{ width: `${pct}%` }} />
       </span>
-      <span className="text-[10px] font-mono tabular-nums text-cz-2 w-5 text-right">{score}</span>
+      <span className="text-3xs font-mono tabular-nums text-cz-2 w-5 text-right">{score}</span>
     </span>
   );
 }

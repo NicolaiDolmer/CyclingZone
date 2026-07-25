@@ -12,8 +12,6 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
-import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
-import RiderValueTrendBadge from "../components/rider/RiderValueTrendBadge.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
@@ -381,7 +379,7 @@ function OwnAuctionBadge({ auction }) {
       to="/auctions?tab=my-situation"
       onClick={e => e.stopPropagation()}
       title={t("team:squad.ownAuctionTooltip", { price: formatNumber(auction.current_price), timeLeft })}
-      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
     >
       {t("rider:badges.label.auction")}
       <span className="font-mono normal-case tracking-normal">{formatNumber(auction.current_price)}</span>
@@ -389,7 +387,7 @@ function OwnAuctionBadge({ auction }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -528,7 +526,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
            navnekolonnen er erstattet af recipe'ens 1px højre-rule + opak
            cellebund (tdClass({ sticky: true })). Ind-/udgående ryttere bruger
            nu zone-tint-recipen (success/danger) i stedet for den tidligere ad
-           hoc bg-cz-success-bg0/3-opacity. Mobil-fold (sekundære kolonner ind
+           hoc bg-cz-success-bg-opacity. Mobil-fold (sekundære kolonner ind
            i sticky-underlinjen) er ikke implementeret — tabellen scroller
            horisontalt som før migreringen. */
         <div className={WRAP}>
@@ -561,7 +559,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                       title={tRider(`racePreview.derived.${key}`)}
-                      className={sortableThClass({ numeric: true })}>{label}</SortTh>
+                      className={sortableThClass({ numeric: true, compact: true })}>{label}</SortTh>
                   ))}
                   <th className={thClass({})}>{t("squad.headers.action")}</th>
                 </tr>
@@ -569,7 +567,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
               <tbody>
                 {displayRiders.map((r, i) => {
                   // #2849 bølge 1: zone-tint-recipen (success/danger) erstatter den
-                  // tidligere ad hoc bg-cz-success-bg0/3-opacity for ind-/udgående ryttere.
+                  // tidligere ad hoc bg-cz-success-bg-opacity for ind-/udgående ryttere.
                   const zone = r._isIncoming ? "success" : r._isOutgoing ? "danger" : null;
                   const prevZone = i > 0 ? (displayRiders[i - 1]._isIncoming ? "success" : displayRiders[i - 1]._isOutgoing ? "danger" : null) : null;
                   const nextZone = i < displayRiders.length - 1 ? (displayRiders[i + 1]._isIncoming ? "success" : displayRiders[i + 1]._isOutgoing ? "danger" : null) : null;
@@ -598,19 +596,18 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
                         <div className="text-cz-accent-t font-mono text-sm font-bold">
                           {formatNumber(getRiderMarketValue(r))}
                         </div>
-                        {/* #2499: kompakt delta-pil under værdien — inline-notation
-                            for at undgå en ekstra kolonne i en allerede tæt tabel. */}
-                        <RiderValueTrendBadge
-                          window={pickBestValueTrendWindow(valueTrends[r.id]?.windows)}
-                          size="xs"
-                          className="justify-end mt-0.5"
-                        />
+                        {/* #2849 bølge 6 (ejer-feedback 25/7): delta-pilen fyldte for
+                            meget i truppen — værdien alene er det man skanner efter her.
+                            Bevægelsen findes stadig på rytterprofilens hero. */}
                       </td>
                       <td className={tdClass({ ...z, numeric: true })}>
                         <span className="text-cz-2 font-mono">{r.salary || 0}</span>
                       </td>
                       <td className={tdClass(z)}>
-                        <ScoutablePotentiale rider={r} scouting={scouting} />
+                        {/* #2849 bølge 6 (ejer-feedback 25/7): stjernerne alene — den
+                            kvalitative label og scout-niveau-badgen fylder for meget i
+                            en tæt tabelcelle. Samme kontrakt som T3-heroen og akademiet. */}
+                        <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />
                       </td>
                       {/* #1482: Status — alder + ind-/udgående som skanbare badges.
                           #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
@@ -638,7 +635,7 @@ function SquadTab({ riders, scouting, onSelectRider, valueTrends, ownAuctions })
                         </span>
                       </td>
                       {STATS.map(({ key }) => (
-                        <td key={key} className={tdClass({ ...z, numeric: true })}>
+                        <td key={key} className={tdClass({ ...z, numeric: true, compact: true })}>
                           <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                             {r[key] || "-"}
                           </span>
@@ -680,7 +677,6 @@ export function TeamPage() {
   const [demoteBusy, setDemoteBusy] = useState(false);
   const [demoteError, setDemoteError] = useState(null);
   // #2499: værdi-delta pr. rytter (kompakt pil i værdi-kolonnen) — { [riderId]: { windows } }.
-  const [valueTrends, setValueTrends] = useState({});
   // #2183: egne ryttere der lige nu er under aktiv auktion — { [riderId]: auctionRow }.
   // Genindlæses ved hver loadAll() (dvs. også efter en handling i RiderActionModal
   // starter en ny auktion) + holdes friskt via realtime-subscription nedenfor.
@@ -714,26 +710,10 @@ export function TeamPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
-  // #2499: batch-hentning af værdi-deltaer NÅR truppen er kendt (ét POST-kald,
-  // ingen N+1). Non-critical: fejl efterlader bare valueTrends tom → ingen pile
-  // vist, resten af siden upåvirket. Genkører når truppens sammensætning ændrer sig.
-  const riderIdsKey = riders.map(r => r.id).join(",");
-  useEffect(() => { loadValueTrends(); }, [riderIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadValueTrends() {
-    if (riders.length === 0) { setValueTrends({}); return; }
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/value-trend`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ ids: riders.map(r => r.id) }),
-      });
-      setValueTrends(res.ok ? await res.json() : {});
-    } catch {
-      setValueTrends({});
-    }
-  }
+  // #2849 bølge 6: værdi-delta-pilen er fjernet fra truppen efter ejer-feedback,
+  // og dermed også dens batch-hentning (POST /api/riders/value-trend) — den kørte
+  // ved hvert besøg på holdsiden uden at noget længere brugte svaret.
+  // Bevægelsen vises fortsat på rytterprofilens hero, som henter sin egen.
 
   // Åbn demote-bekræftelsen: tæl fremtidige løb rytteren ville blive fjernet fra
   // (scheduled + stages_completed=0), så dialogen kan vise konsekvensen FØR confirm.
@@ -929,7 +909,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} valueTrends={valueTrends} ownAuctions={ownAuctions} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />

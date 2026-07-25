@@ -40,14 +40,14 @@ export default function RoleCard({ role, active, onClick, terrainBucket, disable
         </span>
         {strength != null && (
           <span
-            className={`text-[9px] uppercase tracking-wide px-1.5 py-px rounded border ${STRENGTH_CLASS[strength]}`}
+            className={`text-3xs uppercase tracking-wide px-1.5 py-px rounded border ${STRENGTH_CLASS[strength]}`}
             title={t("racehub.breakawayStrength.tooltip")}
           >
             {t("racehub.breakawayStrength.label")}: {t(`racehub.breakawayStrength.${strength}`)}
           </span>
         )}
       </div>
-      <p className="text-[11px] leading-snug text-cz-3 mt-0.5">{t(hint.descKey)}</p>
+      <p className="text-2xs leading-snug text-cz-3 mt-0.5">{t(hint.descKey)}</p>
     </button>
   );
 }

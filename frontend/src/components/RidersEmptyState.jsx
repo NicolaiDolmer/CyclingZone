@@ -26,7 +26,7 @@ export default function RidersEmptyState({ balance, onFilterByBudget, onStartTou
 
       <div className="mb-3">
         <div className="bg-cz-subtle rounded-cz px-3 py-2 border border-cz-border">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("emptyState.balance")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("emptyState.balance")}</p>
           <p className="text-cz-accent-t font-mono font-bold text-sm mt-0.5">{balanceLabel} CZ$</p>
         </div>
       </div>

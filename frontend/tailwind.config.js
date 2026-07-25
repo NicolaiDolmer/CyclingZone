@@ -18,6 +18,19 @@ export default {
         8:  "0.08",
         12: "0.12",
       },
+      // #2849 bølge 6 — mikro-typografi-tokens (audit-fund F8). Under Tailwinds
+      // `text-xs` (12px) fandtes ingen navngivne trin, så 632 callsites havde
+      // opfundet 8 forskellige arbitrære px-værdier (8 / 8.5 / 9 / 9.5 / 10 /
+      // 10.5 / 11 / 11.5) til det SAMME formål. Ejer-beslutning 2026-07-25:
+      // to trin, så label/sub-label-hierarkiet i tæt sportsdata bevares.
+      //   text-2xs (11px) — tabel-headers, kort-meta-labels, uppercase-meta
+      //   text-3xs (10px) — stat-labels, sublines, zone-pills, badge-mikrotekst
+      // Line-height er sat eksplicit, så trinnene ikke arver Tailwinds
+      // default-leading og skifter rytme mellem sider.
+      fontSize: {
+        "3xs": ["10px", { lineHeight: "1.3" }],
+        "2xs": ["11px", { lineHeight: "1.35" }],
+      },
       fontFamily: {
         // #1578 WP0: `sans` is the prose/UI body face (DM Sans), matching the
         // `body { font-family: 'DM Sans' … }` rule in index.css so `font-sans`
@@ -66,14 +79,12 @@ export default {
         "cz-info":       "rgb(var(--info) / <alpha-value>)",
         "cz-info-bg":    "var(--info-bg)",
 
-        // Legacy aliases til base-status-farver. Brugt 74x i source som typo
-        // for `cz-{status}` (uden -bg0). Beholdes for backward compat — alle
-        // 4 callsites virker semantisk identisk med `cz-{status}`. Tilføjet
-        // i v2.20 (DD pressure-dot fix), opgraderet til channel-format i v2.21.
-        "cz-success-bg0": "rgb(var(--success) / <alpha-value>)",
-        "cz-danger-bg0":  "rgb(var(--danger) / <alpha-value>)",
-        "cz-warning-bg0": "rgb(var(--warning) / <alpha-value>)",
-        "cz-info-bg0":    "rgb(var(--info) / <alpha-value>)",
+        // `cz-{status}-bg0` er FJERNET i #2849 bølge 6 (ejer-valg 25/7). Aliaset
+        // var en typo for `cz-{status}` og skabte to familier til det samme:
+        // 69 callsites blandede deres egen tone med 10 forskellige alfa-værdier,
+        // mens `-bg` stod som den designede token. Nu findes kun `-bg` som
+        // statusFLADE (retunet i index.css så udseendet er bevaret) og
+        // `cz-{status}/N` til hover/badges, hvor en eksplicit alfa er meningen.
 
         // Discord brand (Blurple) — ekstern brand-farve til Discord-CTA'er.
         "cz-discord":       "rgb(var(--discord) / <alpha-value>)",

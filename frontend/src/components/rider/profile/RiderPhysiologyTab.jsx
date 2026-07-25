@@ -38,7 +38,7 @@ function DeltaTag({ pct }) {
   if (pct == null) return null;
   const over = pct >= 0;
   return (
-    <span className={`font-mono text-[10.5px] font-semibold ${over ? "text-cz-success" : "text-cz-danger"}`}>
+    <span className={`font-mono text-3xs font-semibold ${over ? "text-cz-success" : "text-cz-danger"}`}>
       {over ? "▴" : "▾"} {Math.abs(pct)}% {over ? t("profile.physio.over") : t("profile.physio.under")}
     </span>
   );
@@ -70,17 +70,17 @@ function HeadlineCard({ label, big, unit, sub, riderVal, meanVal, divLabel }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-cz-3">{label}</span>
+        <span className="font-mono text-3xs font-semibold uppercase tracking-[0.1em] text-cz-3">{label}</span>
         <DeltaTag pct={deltaPct(riderVal, meanVal)} />
       </div>
       <div className="flex items-baseline gap-1.5 mt-[7px] mb-[3px]">
         <span className="font-mono tabular-nums text-2xl font-bold text-cz-1">{big}</span>
-        <span className="text-[11px] text-cz-3">{unit}</span>
+        <span className="text-2xs text-cz-3">{unit}</span>
       </div>
-      <span className="text-[10.5px] text-cz-2">{sub}</span>
+      <span className="text-3xs text-cz-2">{sub}</span>
       <BenchmarkBar value={riderVal} mean={meanVal} />
       {divLabel != null && (
-        <div className="text-[9.5px] text-cz-3 mt-[5px]">{t("profile.physio.divMean", { value: divLabel })}</div>
+        <div className="text-3xs text-cz-3 mt-[5px]">{t("profile.physio.divMean", { value: divLabel })}</div>
       )}
     </div>
   );
@@ -95,7 +95,7 @@ function WattProfile({ riderCurve, divCurve, unit, lang, division, t }) {
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">{t("profile.physio.profile.title")}</h3>
         {divCurve && (
-          <span className="text-[10.5px] text-cz-3 inline-flex items-center gap-1.5">
+          <span className="text-3xs text-cz-3 inline-flex items-center gap-1.5">
             {t("profile.physio.divMeanShort", { division })}
             <span className="inline-block w-2 h-2 border-l-2 border-cz-1" aria-hidden="true" title="" />
           </span>
@@ -109,7 +109,7 @@ function WattProfile({ riderCurve, divCurve, unit, lang, division, t }) {
             <div className="flex items-baseline justify-between gap-2">
               <div className="flex items-baseline gap-2">
                 <span className="font-bold text-[12.5px] text-cz-1 min-w-[42px]">{DURATION_LABELS[p.key]}</span>
-                <span className="text-[10.5px] text-cz-3">{t(`profile.physio.profile.note.${PROFILE_NOTE_KEYS[p.key]}`)}</span>
+                <span className="text-3xs text-cz-3">{t(`profile.physio.profile.note.${PROFILE_NOTE_KEYS[p.key]}`)}</span>
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="font-mono tabular-nums font-bold text-[13px] text-cz-1">{fmtVal(p, unit, lang)}</span>
@@ -131,15 +131,15 @@ function CriticalPowerCard({ cp, lang, t }) {
       <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2.5">{t("profile.physio.cp.title")}</h3>
       <div className="flex gap-[18px] flex-wrap">
         <div>
-          <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtW(cp.cpWatts, lang)} <span className="text-[11px] font-normal text-cz-3">W</span></div>
-          <div className="text-[10px] text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.cp")}</div>
+          <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtW(cp.cpWatts, lang)} <span className="text-2xs font-normal text-cz-3">W</span></div>
+          <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.cp")}</div>
         </div>
         <div>
-          <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtWkg(cp.wPrimeKj)} <span className="text-[11px] font-normal text-cz-3">kJ</span></div>
-          <div className="text-[10px] text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.wprime")}</div>
+          <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtWkg(cp.wPrimeKj)} <span className="text-2xs font-normal text-cz-3">kJ</span></div>
+          <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.wprime")}</div>
         </div>
       </div>
-      <p className="mt-2 text-[11px] text-cz-2 leading-snug">{t("profile.physio.cp.read")}</p>
+      <p className="mt-2 text-2xs text-cz-2 leading-snug">{t("profile.physio.cp.read")}</p>
     </div>
   );
 }
@@ -169,13 +169,13 @@ function ZonesCard({ zones, ftpWatts, lang, t }) {
         {zones.map((z) => (
           <div key={z.z} className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-[2px] flex-none" style={{ background: ZONE_COLORS[z.z] }} aria-hidden="true" />
-            <span className="font-mono text-[10px] font-bold text-cz-2 flex-none w-[22px]">{z.z}</span>
-            <span className="text-[11px] text-cz-1 flex-1">{t(`profile.physio.zones.name.${z.z}`)}</span>
-            <span className="font-mono text-[10.5px] text-cz-3">{rangeLabel(z)}</span>
+            <span className="font-mono text-3xs font-bold text-cz-2 flex-none w-[22px]">{z.z}</span>
+            <span className="text-2xs text-cz-1 flex-1">{t(`profile.physio.zones.name.${z.z}`)}</span>
+            <span className="font-mono text-3xs text-cz-3">{rangeLabel(z)}</span>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[9.5px] text-cz-3">{t("profile.physio.zones.derived", { ftp: fmtW(ftpWatts, lang) })}</p>
+      <p className="mt-2 text-3xs text-cz-3">{t("profile.physio.zones.derived", { ftp: fmtW(ftpWatts, lang) })}</p>
     </div>
   );
 }
@@ -226,12 +226,12 @@ export default function RiderPhysiologyTab({ physiology, benchmark }) {
           <div className="flex items-center justify-between gap-2.5 flex-wrap mb-1.5">
             <div>
               <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">{t("profile.physio.curve.title")}</h3>
-              <span className="text-[10.5px] text-cz-3">{t("profile.physio.curve.subtitle")}</span>
+              <span className="text-3xs text-cz-3">{t("profile.physio.curve.subtitle")}</span>
             </div>
             <div className="inline-flex bg-cz-subtle rounded-cz p-0.5">
               {["wkg", "w"].map((u) => (
                 <button key={u} type="button" onClick={() => setUnit(u)} aria-pressed={unit === u}
-                  className={`min-h-[44px] px-4 rounded-[4px] text-[11.5px] font-semibold transition-colors ${unit === u ? "bg-cz-card text-cz-1 shadow-sm" : "text-cz-3 hover:text-cz-2"}`}>
+                  className={`min-h-[44px] px-4 rounded-[4px] text-2xs font-semibold transition-colors ${unit === u ? "bg-cz-card text-cz-1 shadow-sm" : "text-cz-3 hover:text-cz-2"}`}>
                   {u === "wkg" ? "W/kg" : "W"}
                 </button>
               ))}
@@ -298,11 +298,11 @@ function CurveSvg({ riderCurve, divCurve, unit, lang, division, t }) {
         ))}
       </svg>
       <div className="flex gap-4 flex-wrap mt-1.5">
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+        <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
           <span className="w-3.5 h-[3px] rounded-sm bg-cz-accent-t" aria-hidden="true" />{t("profile.physio.curve.rider")}
         </span>
         {divCurve && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+          <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-0 border-t-2 border-dashed border-cz-3" aria-hidden="true" />{t("profile.physio.divMeanShort", { division })}
           </span>
         )}

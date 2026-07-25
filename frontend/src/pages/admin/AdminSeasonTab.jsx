@@ -572,7 +572,7 @@ export default function AdminSeasonTab() {
               </thead>
               <tbody>
                 {sortedSeasonPreview.map(row => (
-                  <tr key={row.team_id} className={`border-b border-cz-border ${row.needs_emergency_loan ? "bg-cz-danger-bg0/5" : ""}`}>
+                  <tr key={row.team_id} className={`border-b border-cz-border ${row.needs_emergency_loan ? "bg-cz-danger-bg" : ""}`}>
                     <td className="px-3 py-2">
                       <p className="text-cz-1 font-medium">{row.team_name}</p>
                       <p className="text-cz-3">Div {row.division}</p>

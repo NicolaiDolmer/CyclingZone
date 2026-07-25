@@ -1,6 +1,7 @@
 // Race Hub S3 — live preview-diff: "Sådan ændrer din strategi udtagelserne".
 // Viser pr. kommende løb hvilke ryttere der kommer ind/ud + kaptajn-skift. Skriver intet.
 import { useTranslation } from "react-i18next";
+import { Section, SectionHeader } from "../../ui";
 import { summarizeDiff } from "../../../lib/strategyLogic.js";
 
 export default function PreviewDiff({ diff, roster, raceNames = {} }) {
@@ -11,13 +12,13 @@ export default function PreviewDiff({ diff, roster, raceNames = {} }) {
   const changed = Object.entries(diff).filter(([, d]) => d.added.length || d.removed.length || d.captainChange);
 
   return (
-    <section className="border border-cz-border rounded-cz bg-cz-card p-4 mt-4">
-      <h2 className="text-sm font-semibold text-cz-1">{t("strategy.preview.title")}</h2>
+    <Section className="mt-4">
+      <SectionHeader title={t("strategy.preview.title")} />
       {changed.length === 0 ? (
         <p className="text-xs text-cz-3 italic mt-2">{t("strategy.preview.none")}</p>
       ) : (
         <>
-          <p className="text-[11px] text-cz-2 mt-1 mb-3">{t("strategy.preview.summary", summary)}</p>
+          <p className="text-2xs text-cz-2 mt-1 mb-3">{t("strategy.preview.summary", summary)}</p>
           <ul className="space-y-2">
             {changed.map(([raceId, d]) => (
               <li key={raceId} className="text-xs border-l-2 border-cz-border pl-2">
@@ -38,6 +39,6 @@ export default function PreviewDiff({ diff, roster, raceNames = {} }) {
           </ul>
         </>
       )}
-    </section>
+    </Section>
   );
 }

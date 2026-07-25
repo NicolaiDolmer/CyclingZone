@@ -36,7 +36,7 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
           className={`flex-1 min-w-0 rounded-cz px-1.5 py-1.5 text-center border transition-colors
             ${activeStage === "overall" ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
         >
-          <span className={`text-[11px] font-semibold uppercase tracking-wide ${activeStage === "overall" ? "text-cz-accent-t" : "text-cz-2"}`}>
+          <span className={`text-2xs font-semibold uppercase tracking-wide ${activeStage === "overall" ? "text-cz-accent-t" : "text-cz-2"}`}>
             {t("detail.tabOverall")}
           </span>
         </button>
@@ -60,9 +60,9 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
               {hasRouteData(s) && yMax
                 ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} yMax={yMax} uid={`ms-${n}`} />
                 : <LegacyMiniSilhouette profileType={s.profile_type} />}
-              <span className="block text-[10px] font-mono mt-0.5">{n}</span>
+              <span className="block text-3xs font-mono mt-0.5">{n}</span>
               {times?.[n]?.timeLabel && (
-                <span className="block text-[9px] font-mono text-cz-3 leading-none">{times[n].timeLabel}</span>
+                <span className="block text-3xs font-mono text-cz-3 leading-none">{times[n].timeLabel}</span>
               )}
             </span>
           </button>

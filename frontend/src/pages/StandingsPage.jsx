@@ -468,7 +468,7 @@ export default function StandingsPage() {
         <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
         {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
         {s.team_id === myTeamId && (
-          <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+          <span className="shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase"
             style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
             {t("youBadge")}
           </span>
@@ -476,7 +476,7 @@ export default function StandingsPage() {
         {/* #1718: diskret AI-markør (uden eget hue/emoji, samme dæmpede stil som
             rytter-ranglistens AI-tag) — AI-hold vises nu, men skal kunne skelnes. */}
         {s.team?.is_ai && (
-          <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-[9px] font-medium uppercase text-cz-3">
+          <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-3xs font-medium uppercase text-cz-3">
             {t("aiBadge")}
           </span>
         )}
@@ -519,7 +519,7 @@ export default function StandingsPage() {
     { key: "podiums", header: t("thPodiums"), numeric: true, fold: true, foldValue: (s) => String(podiums[s.team_id] || 0), render: (s) => podiums[s.team_id] || 0 },
     {
       key: "prize", header: t("thPrize"), numeric: true,
-      render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-[10px] text-cz-3">CZ$</span></>,
+      render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-3xs text-cz-3">CZ$</span></>,
     },
     {
       key: "points", header: t("thPoints"), numeric: true,
@@ -530,7 +530,7 @@ export default function StandingsPage() {
           <>
             <span className="font-bold" style={{ color }}>{formatNumber(eff)}</span>
             {penalty > 0 && (
-              <span className="ms-1.5 text-[10px] text-cz-danger"
+              <span className="ms-1.5 text-3xs text-cz-danger"
                 title={t("penaltyTooltip", { penalty, earned: formatNumber(s.total_points || 0) })}>
                 (−{penalty})
               </span>
@@ -555,7 +555,7 @@ export default function StandingsPage() {
       key: "squadValue", header: t("thSquadValue"), numeric: true,
       render: (s) => (strengthLoading && !strength?.[s.team_id]
         ? <span className="text-cz-3">…</span>
-        : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-[10px] text-cz-3">CZ$</span></>),
+        : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-3xs text-cz-3">CZ$</span></>),
     },
     { key: "riders", header: t("thRiders"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.riderCount || 0), render: (s) => strength?.[s.team_id]?.riderCount || 0 },
     { key: "u25", header: t("thU25"), numeric: true, fold: true, foldValue: (s) => String(strength?.[s.team_id]?.u25Count || 0), render: (s) => strength?.[s.team_id]?.u25Count || 0 },
@@ -676,7 +676,7 @@ export default function StandingsPage() {
           Kun i Linse A uden aktiv søgning, og kun når tieren faktisk kan rykke. */}
       {lens === LENS_STANDINGS && !search && divStandings.length > 0 && (canPromote || canRelegate) && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-cz border border-cz-border bg-cz-card px-3.5 py-2.5 text-xs text-cz-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-cz-3">{t("movement.label")}</span>
+          <span className="text-3xs font-medium uppercase tracking-wide text-cz-3">{t("movement.label")}</span>
           {canPromote && (
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-sm border border-cz-success/40 bg-cz-success-bg" />

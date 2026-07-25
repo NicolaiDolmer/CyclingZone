@@ -169,14 +169,14 @@ export default function RaceHistoryPage() {
                               ? `${ed.winner.rider.firstname} ${ed.winner.rider.lastname}`
                               : ed.winner.rider_name}
                           </RiderLink>
-                          <p className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3">
+                          <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">
                             <TeamLink id={ed.winner.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
                               {ed.winner.rider?.team?.name || ed.winner.team_name || "–"}
                             </TeamLink>
                           </p>
                         </div>
                       ) : (
-                        <span className="font-data text-[11px] uppercase tracking-[.04em] text-cz-3">{t("history.noResults")}</span>
+                        <span className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">{t("history.noResults")}</span>
                       )}
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export default function RaceHistoryPage() {
                           )}
                           {s.rider_name}
                         </p>
-                        <p className="truncate font-data text-[11px] uppercase tracking-[.04em] text-cz-3">
+                        <p className="truncate font-data text-2xs uppercase tracking-[.04em] text-cz-3">
                           {[
                             s.gc_wins > 0 && t("history.statGc", { count: s.gc_wins }),
                             s.stage_wins > 0 && t("history.statStageWins", { count: s.stage_wins }),

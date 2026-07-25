@@ -21,7 +21,7 @@ const TONE_BG = {
 };
 
 const BC_BASE =
-  "inline-flex items-center gap-1.5 font-data text-[11px] font-semibold uppercase tracking-[.08em] tabular-nums";
+  "inline-flex items-center gap-1.5 font-data text-2xs font-semibold uppercase tracking-[.08em] tabular-nums";
 
 export function statusBadgeClass(state, { emphasis = false } = {}) {
   const tone = STATUS_TONE[state] ?? "info";
@@ -31,7 +31,7 @@ export function statusBadgeClass(state, { emphasis = false } = {}) {
 }
 
 const TAG_BASE =
-  "inline-flex items-center font-data text-[10px] font-semibold uppercase tracking-[.08em] text-cz-2";
+  "inline-flex items-center font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-2";
 
 export function categoryTagClass({ dense = false } = {}) {
   if (dense) return `${TAG_BASE} tracking-[.1em] pl-2 border-l-2 border-cz-accent`;

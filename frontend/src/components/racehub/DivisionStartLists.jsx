@@ -67,11 +67,11 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
         <h2 className="text-base font-bold text-cz-1">
           {data.pool ? t("browse.heading", { division: t("browse.division", { n: data.pool.tier }), pool: poolName }) : t("browse.headingGeneric")}
         </h2>
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-3 border border-cz-border rounded-full px-2.5 py-1">
+        <span className="inline-flex items-center gap-1.5 text-2xs text-cz-3 border border-cz-border rounded-full px-2.5 py-1">
           <LockIcon size={11} aria-hidden="true" /> {t("browse.readonly")}
         </span>
       </div>
-      <p className="text-[11px] text-cz-3 mb-3">{t("browse.horizonNote", { count: data.horizonDays })}</p>
+      <p className="text-2xs text-cz-3 mb-3">{t("browse.horizonNote", { count: data.horizonDays })}</p>
       {columns.length === 0 ? (
         <EmptyState icon={<FlagIcon size={24} />} title={t("browse.empty")} />
       ) : (

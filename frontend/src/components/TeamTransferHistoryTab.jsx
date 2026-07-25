@@ -105,7 +105,7 @@ function TradeLeg({ amount, date }) {
   return (
     <span className="whitespace-nowrap">
       <span className="font-mono text-cz-1">{formatNumber(amount)} CZ$</span>
-      {date && <span className="text-cz-3 ms-1.5 text-[10px]">{formatDate(date, "short")}</span>}
+      {date && <span className="text-cz-3 ms-1.5 text-3xs">{formatDate(date, "short")}</span>}
     </span>
   );
 }
@@ -161,7 +161,7 @@ function TransferProfitPanel({ trades, totals }) {
         </table>
       </div>
       {unknownCount > 0 && (
-        <p className="text-cz-3 text-[11px] mt-2">{t("profit.totalExcluded", { count: unknownCount })}</p>
+        <p className="text-cz-3 text-2xs mt-2">{t("profit.totalExcluded", { count: unknownCount })}</p>
       )}
     </Card>
   );
@@ -295,7 +295,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
                     {ev.counterparty?.id ? (
                       <TeamLink id={ev.counterparty.id} className="text-cz-1 hover:text-cz-accent-t">
                         {ev.counterparty.name}
-                        {ev.counterparty.is_ai && <span className="ms-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
+                        {ev.counterparty.is_ai && <span className="ms-1 text-cz-3 text-3xs">{t("history.aiTag")}</span>}
                       </TeamLink>
                     ) : ev.type === "academy" ? (
                       // #1525: akademi-intake har ingen modpart — kilden er akademiet.

@@ -313,7 +313,7 @@ export default function WatchlistPage() {
         return (
           <div className="flex items-center justify-center gap-1.5">
             {inAuction ? (
-              <span className="text-[10px] px-2 py-0.5 rounded border font-medium uppercase
+              <span className="text-3xs px-2 py-0.5 rounded border font-medium uppercase
                 bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap">
                 {t("inAuction")}
               </span>

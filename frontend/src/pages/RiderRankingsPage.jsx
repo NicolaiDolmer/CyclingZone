@@ -273,7 +273,7 @@ export default function RiderRankingsPage() {
       sortKey: "prize_earned",
       render: (rider) => (
         <span className={sortKey === "prize_earned" ? "font-bold text-cz-accent-t" : rider.prize_earned > 0 ? "text-cz-2" : "text-cz-3"}>
-          {formatNumber(rider.prize_earned || 0)} <span className="text-[10px] text-cz-3">CZ$</span>
+          {formatNumber(rider.prize_earned || 0)} <span className="text-3xs text-cz-3">CZ$</span>
         </span>
       ),
     },

@@ -399,7 +399,7 @@ export default function SeasonEndPage() {
                           {expectedPrize > 0 ? <span className="text-cz-2 font-mono"> · {formatExpectedPrize(expectedPrize)}</span> : ""}
                         </p>
                       </div>
-                      <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${RACE_STATUS_CLS[statusKey]}`}>
+                      <span className={`text-3xs uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${RACE_STATUS_CLS[statusKey]}`}>
                         {t(`status.${statusKey}`)}
                       </span>
                     </div>
@@ -477,7 +477,7 @@ export default function SeasonEndPage() {
                                   {s.team?.name}
                                 </span>
                                 {isLeader && <LeaderBadge />}
-                                {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("you")}</span>}
+                                {isMe && <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("you")}</span>}
                                 {isPromotion && <ZonePill tone="success">{t("promotion")}</ZonePill>}
                                 {isRelegation && <ZonePill tone="danger">{t("relegation")}</ZonePill>}
                               </div>
@@ -537,7 +537,7 @@ function WinnerCard({ icon: Icon, title, primary, secondary, onClick, hasData })
       }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         {Icon && <Icon size={15} className="text-cz-accent flex-shrink-0" aria-hidden="true" />}
-        <span className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">{title}</span>
+        <span className="text-cz-3 text-3xs uppercase tracking-wider font-semibold">{title}</span>
       </div>
       <p className="text-cz-1 font-bold text-sm truncate">{primary}</p>
       <p className="text-cz-3 text-xs truncate mt-0.5">{secondary}</p>
@@ -580,7 +580,7 @@ function PointChart({ data, labels, color }) {
       {/* X-axis labels */}
       <div className="flex justify-between mt-1 px-1">
         {labels.map((l, i) => (
-          <span key={i} className="font-data text-[10px] text-cz-3 truncate max-w-16 text-center"
+          <span key={i} className="font-data text-3xs text-cz-3 truncate max-w-16 text-center"
             style={{ width: `${100 / labels.length}%` }}>
             {l.length > 8 ? l.slice(0, 8) + "…" : l}
           </span>
@@ -589,7 +589,7 @@ function PointChart({ data, labels, color }) {
       {/* Values */}
       <div className="flex justify-between mt-2">
         {data.map((v, i) => (
-          <span key={i} className="text-[9px] font-mono text-center"
+          <span key={i} className="text-3xs font-mono text-center"
             style={{ color, width: `${100 / data.length}%` }}>
             {v > 0 ? formatNumber(v) : ""}
           </span>

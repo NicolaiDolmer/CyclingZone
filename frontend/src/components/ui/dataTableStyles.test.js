@@ -13,9 +13,9 @@ test("wrap: rounded-cz + hairline på bg-card, ingen skygge", () => {
   assert.ok(!WRAP.includes("shadow"));
 });
 
-test("header-celle: 11px uppercase tracking .06em i text-3", () => {
+test("header-celle: text-2xs uppercase tracking .06em i text-3", () => {
   const c = thClass();
-  assert.ok(c.includes("text-[11px]"));
+  assert.ok(c.includes("text-2xs"));
   assert.ok(c.includes("uppercase"));
   assert.ok(c.includes("tracking-[.06em]"));
   assert.ok(c.includes("text-cz-3"));
@@ -58,9 +58,9 @@ test("zone-rækker: fuld-række-tint, ingen hover, 2px separator kun på boundar
   assert.ok(trClass(null).includes("hover:bg-cz-subtle"));
 });
 
-test("zone-pill: 9px uppercase, tone-bg + tone-tekst", () => {
+test("zone-pill: text-3xs uppercase, tone-bg + tone-tekst", () => {
   const c = zonePillClass("danger");
-  assert.ok(c.includes("text-[9px]"));
+  assert.ok(c.includes("text-3xs"));
   assert.ok(c.includes("uppercase"));
   assert.ok(c.includes("bg-cz-danger-bg"));
   assert.ok(c.includes("text-cz-danger"));

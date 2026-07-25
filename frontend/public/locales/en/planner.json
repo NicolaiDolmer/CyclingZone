@@ -7,7 +7,9 @@
     "title": "Season planner isn't live yet",
     "description": "This is where you'll plan each rider's form peaks across the season. Check back soon."
   },
-  "seasonMenu": { "option": "S{number}" },
+  "seasonMenu": {
+    "option": "S{number}"
+  },
   "seasonNotReady": {
     "title": "Season {number}'s calendar isn't ready yet",
     "description": "The race program for this season hasn't been generated yet, so there's nothing to plan against. Check back closer to the season start."
@@ -27,8 +29,13 @@
     "reasonRegistered": "Matches a race you've already entered them for.",
     "reasonSuitability": "Best type match on your calendar."
   },
-  "filter": { "mine": "My races", "all": "All races" },
-  "planningTowards": { "label": "Planning towards: {race} · {date}" },
+  "filter": {
+    "mine": "My races",
+    "all": "All races"
+  },
+  "planningTowards": {
+    "label": "Planning towards: {race} · {date}"
+  },
   "raceList": {
     "title": "Season races",
     "subtitle": "Every race this season: when it runs and what it demands. Open one to plan a peak, or jump to its full page.",
@@ -52,12 +59,20 @@
     "pending": "Lead-up not started",
     "locked": "Locked"
   },
-  "tokens": { "label": "{used} of {max} peaks used" },
-  "ovr": { "label": "OVR" },
+  "tokens": {
+    "label": "{used} of {max} peaks used"
+  },
+  "ovr": {
+    "label": "OVR"
+  },
   "today": "Today",
   "academy": "Academy",
-  "form": { "now": "Current form {value}" },
-  "lane": { "noPeaks": "No peaks set. A flat season until you plan one." },
+  "form": {
+    "now": "Current form {value}"
+  },
+  "lane": {
+    "noPeaks": "No peaks set. A flat season until you plan one."
+  },
   "drawer": {
     "close": "Close",
     "race": {
@@ -110,7 +125,23 @@
     "locked": "This peak is locked and can no longer be changed.",
     "race_not_in_calendar": "That race isn't in your division's calendar.",
     "race_not_scheduled": "That race isn't scheduled yet.",
-    "generic": "Something went wrong. Try again."
+    "generic": "Something went wrong. Try again.",
+    "title": "Couldn't load the season planner",
+    "description": "Nothing was lost. Your peaks and training plans are safe. Try again.",
+    "retry": "Try again"
   },
-  "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  "months": [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ]
 }

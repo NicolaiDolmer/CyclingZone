@@ -41,7 +41,7 @@ export default function StaffSwitcherBar({ current, roster, onNavigate }) {
 
         {/* Midte: index + total */}
         <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
-          <span className="font-mono tabular-nums text-[11px] text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+          <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
             {t("switcher.count", { index: idx + 1, total: roster.length })}
           </span>
         </div>

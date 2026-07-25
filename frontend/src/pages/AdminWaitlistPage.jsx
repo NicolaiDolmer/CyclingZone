@@ -69,7 +69,7 @@ const INTENT_SCORE_TOOLTIP =
 
 // Kanonisk table-header-typografi (tableStyles.js HEADER, minus farve — SortableTh
 // styrer selv --text-3/--accent-t-farven ud fra aktiv sort-kolonne).
-const TH_CLASS = "px-3 py-2 font-data text-[11px] font-semibold uppercase tracking-[.1em]";
+const TH_CLASS = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-[.1em]";
 
 function scoreBucket(score) {
   if (score == null) return "low";

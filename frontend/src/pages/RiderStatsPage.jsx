@@ -474,28 +474,28 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {imWinning && <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.leading")}</span>}
-          {isSeller && <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.selling")}</span>}
-          {wasOverbid && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.outbid")}</span>}
-          {auction.status === "extended" && <span className="text-[10px] uppercase bg-cz-warning-bg text-cz-warning px-2 py-0.5 rounded">{t("auctionPanel.badges.extended")}</span>}
-          {auction.is_flash && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded">{t("auctionPanel.badges.flash")}</span>}
+          {imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.leading")}</span>}
+          {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.selling")}</span>}
+          {wasOverbid && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.outbid")}</span>}
+          {auction.status === "extended" && <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning px-2 py-0.5 rounded">{t("auctionPanel.badges.extended")}</span>}
+          {auction.is_flash && <span className="text-3xs uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded">{t("auctionPanel.badges.flash")}</span>}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className={`bg-cz-card rounded-cz px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.highestBid")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctionPanel.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-base">
             {formatNumber(auction.current_price)} CZ$
           </p>
           {getAuctionLeaderName(auction) && !imWinning && (
-            <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
+            <p className="text-cz-3 text-3xs truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
         <div className="bg-cz-card rounded-cz px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.timeLeft")}</p>
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctionPanel.timeLeft")}</p>
           <AuctionCountdown end={auction.calculated_end} status={auction.status} />
-          <p className="text-cz-3 text-[10px] truncate">{t("auctionPanel.sellerPrefix", { name: getAuctionSellerLabel(auction) })}</p>
+          <p className="text-cz-3 text-3xs truncate">{t("auctionPanel.sellerPrefix", { name: getAuctionSellerLabel(auction) })}</p>
         </div>
       </div>
 
@@ -526,15 +526,15 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
               {bidStatus === "loading" ? "..." : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
-          <p className="text-[10px] text-cz-3">{t("auctionPanel.minBid", { amount: formatNumber(minBid) })}</p>
-          {bidStatus === "error" && errorText && <p className="text-[11px] text-cz-danger">{errorText}</p>}
-          {warningText && <p className="text-[11px] text-cz-warning leading-snug">{warningText}</p>}
+          <p className="text-3xs text-cz-3">{t("auctionPanel.minBid", { amount: formatNumber(minBid) })}</p>
+          {bidStatus === "error" && errorText && <p className="text-2xs text-cz-danger">{errorText}</p>}
+          {warningText && <p className="text-2xs text-cz-warning leading-snug">{warningText}</p>}
 
           {/* Autobud-loft */}
           <div className="mt-1">
             {myProxy && !proxyExpanded ? (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-cz-pill">
+                <span className="text-3xs bg-cz-success-bg text-cz-success px-2 py-1 rounded-cz-pill">
                   {t("auctionPanel.proxy.display", { amount: formatNumber(myProxy) })}
                 </span>
                 <button
@@ -592,7 +592,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                   </button>
                 </div>
                 {proxyStatus === "error" && proxyErrorText && (
-                  <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
+                  <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
                 )}
               </div>
             )}

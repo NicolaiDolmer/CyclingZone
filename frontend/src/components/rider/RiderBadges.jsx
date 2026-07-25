@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 // kaldersiden kan bygge listen med betingelser.
 
 const TONE = {
-  info: "bg-cz-info-bg0/20 text-cz-info",
+  info: "bg-cz-info-bg text-cz-info",
   accent: "bg-cz-accent/15 text-cz-accent-t",
   neutral: "bg-cz-subtle text-cz-2 border border-cz-border",
   success: "bg-cz-success-bg text-cz-success",
@@ -54,7 +54,7 @@ export default function RiderBadges({ badges = [], className = "" }) {
         key={key}
         aria-label={full}
         title={full}
-        className={`inline-flex items-center justify-center text-[10px] font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 ${TONE[def.tone]} ${className}`}
+        className={`inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 ${TONE[def.tone]} ${className}`}
       >
         {label}
       </span>

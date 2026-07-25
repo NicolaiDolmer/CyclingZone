@@ -139,8 +139,8 @@ function DualStatSlider({ statKey, label, filters, onChange, t }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</label>
-        <span className={`text-[10px] font-mono font-bold ${active ? "text-cz-accent-t" : "text-cz-3"}`}>
+        <label className="text-cz-3 text-3xs uppercase tracking-wider">{label}</label>
+        <span className={`text-3xs font-mono font-bold ${active ? "text-cz-accent-t" : "text-cz-3"}`}>
           {localMin}-{localMax}
         </span>
       </div>
@@ -246,7 +246,7 @@ export default function RiderFilters({
               className={`transition-transform duration-150 ${panelOpen ? "rotate-90" : ""}`} />
             {t("panel.label")}
             {activeFilterCount > 0 && (
-              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-cz-pill normal-case tracking-normal">
+              <span className="bg-cz-accent/10 text-cz-accent-t text-3xs px-1.5 py-0.5 rounded-cz-pill normal-case tracking-normal">
                 {t("stats.active", { count: activeFilterCount })}
               </span>
             )}
@@ -404,7 +404,7 @@ export default function RiderFilters({
               className={`transition-transform duration-150 ${statsOpen ? "rotate-90" : ""}`} />
             <span className="uppercase tracking-wider font-medium">{t("stats.section")}</span>
             {hasActiveStats && (
-              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-cz-pill">
+              <span className="bg-cz-accent/10 text-cz-accent-t text-3xs px-1.5 py-0.5 rounded-cz-pill">
                 {t("stats.active", { count: activeStatKeys.length })}
               </span>
             )}

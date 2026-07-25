@@ -545,7 +545,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
         <button
           onClick={generatePreview}
           disabled={generating || !selectedSeasonId}
-          className="w-full sm:w-auto px-4 py-2 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
         >
           {generating ? "Genererer…" : "Generér forslag"}
         </button>
@@ -578,7 +578,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
                 onClick={() => setRaceTypeFilter(opt.key)}
                 className={`px-2.5 py-1 rounded border ${
                   raceTypeFilter === opt.key
-                    ? "bg-cz-accent-bg text-cz-accent border-cz-accent/30"
+                    ? "bg-cz-accent/10 text-cz-accent border-cz-accent/30"
                     : "text-cz-3 border-cz-border hover:bg-cz-bg"
                 }`}
               >
@@ -697,7 +697,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           <button
             onClick={saveSelection}
             disabled={saving || finalSelected.length === 0}
-            className="w-full sm:w-auto px-4 py-2 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
           >
             {saving
               ? "Gemmer…"
@@ -834,7 +834,7 @@ function WhitelistEditor({
               type="button"
               onClick={onSave}
               disabled={!dirty || saving || disabled}
-              className="px-3 py-1.5 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded text-xs font-medium hover:brightness-110 disabled:opacity-50"
+              className="px-3 py-1.5 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded text-xs font-medium hover:brightness-110 disabled:opacity-50"
             >
               {saving ? "Gemmer…" : dirty ? "Gem prioritets-lister" : "Gemt"}
             </button>
@@ -953,7 +953,7 @@ function WhitelistColumn({
             type="button"
             onClick={handleAddClick}
             disabled={!addPickerId}
-            className="px-3 py-1 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded text-xs hover:brightness-110 disabled:opacity-50"
+            className="px-3 py-1 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded text-xs hover:brightness-110 disabled:opacity-50"
           >
             Tilføj
           </button>

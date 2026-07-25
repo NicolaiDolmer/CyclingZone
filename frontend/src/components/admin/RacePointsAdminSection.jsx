@@ -311,7 +311,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
                                 }
                               }
                             }}
-                            className={`text-[10px] px-2 py-1 rounded border transition-colors
+                            className={`text-3xs px-2 py-1 rounded border transition-colors
                               ${rowDirty ? "border-cz-warn/60 text-cz-warn" : "border-cz-border text-cz-3 hover:text-cz-2 hover:border-cz-accent/50"}`}
                           >
                             {t("racePoints.resetRow")}

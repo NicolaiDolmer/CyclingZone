@@ -22,7 +22,18 @@ import {
   buildVotePayload,
   votesByItemId,
 } from "../lib/roadmapVoting.js";
-import { FlagIcon, StopwatchIcon, TeamIcon, ExchangeIcon, CrownIcon } from "../components/ui";
+import {
+  PageHeader,
+  Section,
+  SectionHeader,
+  SectionStack,
+  FlagIcon,
+  StopwatchIcon,
+  TeamIcon,
+  ExchangeIcon,
+  CrownIcon,
+  MinusIcon,
+} from "../components/ui";
 
 const ENGINES = [
   { key: "races", Icon: FlagIcon },
@@ -32,7 +43,11 @@ const ENGINES = [
   { key: "club", Icon: CrownIcon },
 ];
 
-const ENGINE_ICON = Object.fromEntries(ENGINES.map((e) => [e.key, e.icon]));
+// #2849 bølge 6: læste `e.icon` (lowercase) mod ENGINES' `Icon` — mappingen var
+// altid undefined, så "Already built" faldt tilbage til bullet-glyffen `•` og
+// motor-ikonerne har aldrig været vist. Glyf-fallbacken var samtidig et brud på
+// anti-slop-reglen (stroke-ikoner, aldrig unicode-chrome).
+const ENGINE_ICON = Object.fromEntries(ENGINES.map((e) => [e.key, e.Icon]));
 
 const ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, shipped_at";
 
@@ -49,7 +64,7 @@ function VoteAxis({ label, value, disabled, onSelect }) {
             aria-checked={value === n}
             disabled={disabled}
             onClick={() => onSelect(n)}
-            className={`w-7 h-7 rounded-md text-xs font-semibold border transition-colors disabled:opacity-50 ${
+            className={`w-7 h-7 rounded-cz text-xs font-semibold border transition-colors disabled:opacity-50 ${
               value === n
                 ? "bg-cz-accent text-cz-on-accent border-cz-accent"
                 : "bg-transparent text-cz-2 border-cz-border hover:border-cz-accent"
@@ -103,7 +118,7 @@ function AdminCreateForm({ t, onCreated }) {
   }
 
   const fieldClass =
-    "w-full bg-cz-subtle border border-cz-border rounded-md px-2 py-1.5 text-sm text-cz-1 focus:border-cz-accent focus:outline-none";
+    "w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5 text-sm text-cz-1 focus:border-cz-accent focus:outline-none";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -151,7 +166,7 @@ function AdminCreateForm({ t, onCreated }) {
             type="checkbox"
             checked={form.approved}
             onChange={(e) => update("approved", e.target.checked)}
-            className="rounded border-cz-border text-cz-accent focus:ring-cz-accent"
+            className="rounded-cz border-cz-border text-cz-accent focus:ring-cz-accent"
           />
           {t("admin.approved")}
         </label>
@@ -160,7 +175,7 @@ function AdminCreateForm({ t, onCreated }) {
         <button
           type="submit"
           disabled={state === "saving"}
-          className="px-3 py-1.5 text-xs font-semibold bg-cz-accent text-cz-on-accent rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity"
+          className="px-3 py-1.5 text-xs font-semibold bg-cz-accent text-cz-on-accent rounded-cz hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
           {state === "saving" ? t("admin.creating") : t("admin.create")}
         </button>
@@ -297,32 +312,33 @@ export default function RoadmapPage() {
   const hasVotableItems = (items?.length ?? 0) > 0;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-        {hasVotableItems && (
-          <p className="text-cz-2 text-sm mt-2">{t("voting.intro")}</p>
-        )}
-      </div>
+    <div className="max-w-4xl mx-auto">
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
+      {hasVotableItems && (
+        <p className="mb-6 text-cz-2 text-sm">{t("voting.intro")}</p>
+      )}
 
-      <div className="flex flex-col gap-3">
+      <SectionStack>
         {ENGINES.map(({ key, Icon }) => (
-          <div key={key} className="bg-cz-card border border-cz-border rounded-cz px-5 py-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon className="w-4 h-4 text-cz-accent-t flex-shrink-0" aria-hidden="true" />
-              <h2 className="text-cz-1 font-bold text-sm">{t(`engines.${key}.title`)}</h2>
-            </div>
+          <Section key={key}>
+            <SectionHeader
+              title={
+                <span className="inline-flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-cz-accent-t flex-shrink-0" aria-hidden="true" />
+                  {t(`engines.${key}.title`)}
+                </span>
+              }
+            />
 
             <div className="mb-3">
-              <div className="text-cz-3 text-[10px] font-semibold uppercase tracking-wider mb-1">
+              <div className="text-cz-3 text-3xs font-semibold uppercase tracking-wider mb-1">
                 {t("labels.today")}
               </div>
               <p className="text-cz-2 text-sm leading-relaxed">{t(`engines.${key}.today`)}</p>
             </div>
 
             <div>
-              <div className="text-cz-accent-t text-[10px] font-semibold uppercase tracking-wider mb-1">
+              <div className="text-cz-accent-t text-3xs font-semibold uppercase tracking-wider mb-1">
                 {t("labels.next")}
               </div>
 
@@ -386,19 +402,21 @@ export default function RoadmapPage() {
                 </ul>
               )}
             </div>
-          </div>
+          </Section>
         ))}
-      </div>
 
-      {shipped.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-cz-1 font-bold text-sm">{t("shipped.title")}</h2>
-          <p className="text-cz-3 text-xs mb-3">{t("shipped.subtitle")}</p>
-          <div className="bg-cz-card border border-cz-border rounded-cz px-5 py-4">
+        {shipped.length > 0 && (
+          <Section>
+            <SectionHeader title={t("shipped.title")} className="mb-1" />
+            <p className="mb-3 text-cz-3 text-xs">{t("shipped.subtitle")}</p>
             <ul className="flex flex-col gap-3">
-              {shipped.map((item) => (
+              {shipped.map((item) => {
+                const EngineIcon = ENGINE_ICON[item.engine] ?? null;
+                return (
                 <li key={item.id} className="flex items-start gap-2">
-                  <span aria-hidden="true" className="mt-0.5">{ENGINE_ICON[item.engine] ?? "•"}</span>
+                  <span aria-hidden="true" className="mt-0.5 text-cz-3">
+                    {EngineIcon ? <EngineIcon size={14} /> : <MinusIcon size={14} />}
+                  </span>
                   <span className="text-cz-2 text-sm leading-relaxed flex-1">
                     {itemTitle(item, i18n.language)}
                   </span>
@@ -413,22 +431,19 @@ export default function RoadmapPage() {
                     </button>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
-          </div>
-        </div>
-      )}
+          </Section>
+        )}
 
-      {isAdmin && (
-        <div className="mt-8">
-          <h2 className="text-cz-accent-t text-[10px] font-semibold uppercase tracking-wider mb-2">
-            {t("admin.panel")}
-          </h2>
-          <div className="bg-cz-card border border-cz-border rounded-cz px-5 py-4">
+        {isAdmin && (
+          <Section>
+            <SectionHeader title={t("admin.panel")} />
             <AdminCreateForm t={t} onCreated={handleCreated} />
-          </div>
-        </div>
-      )}
+          </Section>
+        )}
+      </SectionStack>
     </div>
   );
 }

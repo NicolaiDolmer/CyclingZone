@@ -54,7 +54,7 @@ export default function NextActionsCard({
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-cz-1 text-sm">{t("nextActions.title")}</h2>
         {items.length > 0 && (
-          <span className="text-[10px] font-mono bg-cz-accent/15 text-cz-accent-t rounded-full px-2 py-0.5 leading-5">
+          <span className="text-3xs font-mono bg-cz-accent/15 text-cz-accent-t rounded-full px-2 py-0.5 leading-5">
             {items.length}
           </span>
         )}

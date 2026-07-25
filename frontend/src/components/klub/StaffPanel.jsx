@@ -48,38 +48,38 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
 
   return (
     <Modal open={open} onClose={onClose} title={`${t("sections.staff")} · ${track ? t(`tracks.${track}.name`) : ""}`}>
-      <p className="text-[11px] text-cz-3 mb-3">{t("staff.billNote")} · {t("staff.tierGate")}</p>
-      {error && <p className="text-[12px] text-cz-danger mb-3" role="alert">{error}</p>}
+      <p className="text-2xs text-cz-3 mb-3">{t("staff.billNote")} · {t("staff.tierGate")}</p>
+      {error && <p className="text-xs text-cz-danger mb-3" role="alert">{error}</p>}
       {staff ? (
         <div className="rounded-cz border border-cz-accent/60 bg-cz-card px-[14px] py-[12px] mb-3 flex justify-between items-center">
           <div>
-            <div className="text-[14px] font-medium"><Link to={`/staff/${staff.id}`} onClick={onClose} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{staff.name}</Link> <span className="text-[11px] text-cz-2 font-normal">· {track ? t(`roles.${track}`) : ""} · T{staff.tier}</span></div>
-            <div className="text-[11px] text-cz-2 mt-[3px]">{t("staff.hired")} · {t("staff.salary", { amount: formatNumber(staff.salary) })}</div>
+            <div className="text-sm font-medium"><Link to={`/staff/${staff.id}`} onClick={onClose} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{staff.name}</Link> <span className="text-2xs text-cz-2 font-normal">· {track ? t(`roles.${track}`) : ""} · T{staff.tier}</span></div>
+            <div className="text-2xs text-cz-2 mt-[3px]">{t("staff.hired")} · {t("staff.salary", { amount: formatNumber(staff.salary) })}</div>
           </div>
           <div className="text-right">
             <Button variant="secondary" size="sm" loading={busy} onClick={() => setConfirmingFire(true)}>{t("staff.release")}</Button>
-            <div className="text-[10.5px] text-cz-2 mt-[5px]">{t("staff.severance", { amount: formatNumber(Math.round(staff.salary * 0.5)) })}</div>
+            <div className="text-3xs text-cz-2 mt-[5px]">{t("staff.severance", { amount: formatNumber(Math.round(staff.salary * 0.5)) })}</div>
           </div>
         </div>
       ) : null}
       {staff ? (
         // Én chef pr. rolle (backend 409 ved besat) → skjul kandidater, vis fyr-først-note.
-        <p className="text-[11px] text-cz-3">{t("staff.occupied")}</p>
+        <p className="text-2xs text-cz-3">{t("staff.occupied")}</p>
       ) : (
         <>
-          <div className="text-[10px] uppercase tracking-[1.4px] text-cz-2 mb-2">{t("staff.candidates")}</div>
+          <div className="text-3xs uppercase tracking-[1.4px] text-cz-2 mb-2">{t("staff.candidates")}</div>
           {loading ? (
-            <p className="text-[12px] text-cz-3">…</p>
+            <p className="text-xs text-cz-3">…</p>
           ) : (
             <div className="flex flex-col gap-[6px]">
               {candidates.map((c) => (
                 <div key={c.name} className="rounded-cz border border-cz-border bg-cz-card px-[14px] py-[9px] flex justify-between items-center gap-3">
                   <div className="text-[13px] min-w-0">
                     <span className="truncate">{c.name}</span>
-                    <span className="text-[11px] text-cz-2"> · {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}{c.topSpecialization && <> · {tStaff(`axes.${c.topSpecialization}`)}</>}</span>
+                    <span className="text-2xs text-cz-2"> · {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}{c.topSpecialization && <> · {tStaff(`axes.${c.topSpecialization}`)}</>}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono tabular-nums font-bold text-[14px]" style={{ color: statColor(c.overall) }}>{c.overall}</span>
+                    <span className="font-data tabular-nums font-bold text-sm" style={{ color: statColor(c.overall) }}>{c.overall}</span>
                     <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
                   </div>
                 </div>

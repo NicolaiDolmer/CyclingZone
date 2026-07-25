@@ -12,8 +12,10 @@ import { useTranslation } from "react-i18next";
 import { formatDate } from "../../lib/intl.js";
 import RiderLink from "../RiderLink.jsx";
 import { daySummary, breakthroughJumps, isBreakthrough } from "../../lib/trainingReport.js";
-import { ChevronDownIcon } from "../ui/icons/index.jsx";
+import { ChevronDownIcon, ClockIcon } from "../ui/icons/index.jsx";
 import { SkeletonLines } from "../ui/Skeleton.jsx";
+import Section, { SectionHeader } from "../ui/Section.jsx";
+import EmptyState from "../ui/EmptyState.jsx";
 import { SCROLLER, TABLE, thClass, tdClass } from "../ui/dataTableStyles.js";
 
 // #2849 bølge 4 — kanonisk dataTableStyles-chrome (T2, docs/design/PAGE_TEMPLATES.md)
@@ -56,7 +58,7 @@ function DayRiderTable({ rows, t, tRider }) {
                     {row.name}
                   </RiderLink>
                   {row.injured && (
-                    <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
+                    <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
                       {row.injury_days === 1
                         ? t("injured", { days: row.injury_days })
                         : t("injured_plural", { days: row.injury_days })}
@@ -86,7 +88,7 @@ function DayRiderTable({ rows, t, tRider }) {
                   <div className="flex flex-col gap-0.5">
                     {row.status === "over" && <span className="text-cz-success text-xs">{t("sharpDay")}</span>}
                     {row.status === "under" && <span className="text-cz-danger text-xs">{t("flatDay")}</span>}
-                    <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                    <span className={`text-2xs font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
                       {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
                     </span>
                   </div>
@@ -114,11 +116,11 @@ function DayCard({ run, t, tRider }) {
       >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-semibold text-cz-1">{formatDate(run.tick_date)}</span>
-          <span className="text-[11px] px-2 py-0.5 rounded-cz bg-cz-subtle text-cz-3 border border-cz-border">
+          <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-subtle text-cz-3 border border-cz-border">
             {executedByLabel(run.executed_by, t)}
           </span>
           {run.bonus_applied && (
-            <span className="text-[11px] px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+            <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
               {t("bonusApplied")}
             </span>
           )}
@@ -141,21 +143,18 @@ export default function TrainingHistory({ history }) {
   const tRider = useTranslation("rider").t;
   const { runs, loading } = history;
 
+  // #2849 bølge 6: sektionen havde sin egen overskrifts-opskrift (`h2 text-lg
+  // font-bold` på sidens baggrund — en 10. header-stil uden for spec'en) og
+  // håndrullede kort-recipes til loading/empty. Nu kanonisk Section +
+  // SectionHeader, hvor chrome altid renderer og kun body swapper.
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1">
-        <h2 className="text-lg font-bold text-cz-1">{t("historyTitle")}</h2>
-        <p className="text-xs text-cz-3">{t("historySubtitle")}</p>
-      </div>
+    <Section>
+      <SectionHeader title={t("historyTitle")} meta={t("historySubtitle")} />
 
       {loading ? (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-          <SkeletonLines lines={4} />
-        </div>
+        <SkeletonLines lines={4} />
       ) : runs.length === 0 ? (
-        <div className="bg-cz-card border border-cz-border rounded-cz text-center py-8 text-cz-3 text-sm">
-          {t("historyEmpty")}
-        </div>
+        <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")} />
       ) : (
         <div className="space-y-2">
           {runs.map((run) => (
@@ -163,6 +162,6 @@ export default function TrainingHistory({ history }) {
           ))}
         </div>
       )}
-    </div>
+    </Section>
   );
 }

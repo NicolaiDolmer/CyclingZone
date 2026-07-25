@@ -249,7 +249,7 @@ export default function RaceSelectionPanel({
 
       {/* #1747: forklaring af egnethedstallet (det "uklare element") + skjul-skadede-toggle. */}
       <div className="px-4 py-2 border-b border-cz-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-cz-subtle">
-        <p className="text-cz-3 text-[11px] leading-snug">{t("selection.suitabilityHelp")}</p>
+        <p className="text-cz-3 text-2xs leading-snug">{t("selection.suitabilityHelp")}</p>
         {injuredCount > 0 && (
           <label className="flex items-center gap-1.5 text-xs text-cz-2 whitespace-nowrap cursor-pointer self-start sm:self-auto">
             <input
@@ -265,7 +265,7 @@ export default function RaceSelectionPanel({
 
       {/* S4: delt "why this rider"-hint — kobler etapens terræn til dit stærkeste fit. */}
       {selectedStageBucket && bestId && (
-        <p className="px-4 py-2 text-[11px] leading-snug text-cz-2 bg-cz-subtle border-b border-cz-border">
+        <p className="px-4 py-2 text-2xs leading-snug text-cz-2 bg-cz-subtle border-b border-cz-border">
           {t("selection.whyBest", {
             bucket: t(`strategy.buckets.${selectedStageBucket}`),
             name: riders.find((r) => r.id === bestId)?.name ?? "",
@@ -324,19 +324,19 @@ export default function RaceSelectionPanel({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-cz-1 font-medium">{rider.name}</span>
                     {rider.injured && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
+                      <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                         {t("selection.injured")}
                       </span>
                     )}
                     {bound && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${checked
+                      <span className={`text-3xs px-2 py-0.5 rounded-full border ${checked
                         ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
                         : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
                         {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
                       </span>
                     )}
                     {checked && freeRoleSet.has(rider.id) && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30">
+                      <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30">
                         {t("selection.freeRole")}
                       </span>
                     )}
@@ -344,18 +344,18 @@ export default function RaceSelectionPanel({
                   </div>
                   <div className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-cz-2">
                     <span className="inline-flex items-center gap-1.5">
-                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{fitLabel}</span>
+                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{fitLabel}</span>
                       {rider.id === bestId && (
-                        <span className="text-[9px] uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                        <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{t("selection.form")}</span>
+                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.form")}</span>
                       <span className="font-mono tabular-nums text-cz-2">{rider.form ?? "—"}</span>
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{t("selection.fatigue")}</span>
+                      <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
                       <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
                     </span>
                   </div>
@@ -403,19 +403,19 @@ export default function RaceSelectionPanel({
                       />
                       <span className="text-cz-1 font-medium">{rider.name}</span>
                       {rider.injured && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
+                        <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                           {t("selection.injured")}
                         </span>
                       )}
                       {bound && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
+                        <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
                           : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
                           {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
                         </span>
                       )}
                       {checked && freeRoleSet.has(rider.id) && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30 whitespace-nowrap">
+                        <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30 whitespace-nowrap">
                           {t("selection.freeRole")}
                         </span>
                       )}
@@ -427,7 +427,7 @@ export default function RaceSelectionPanel({
                   <td className="px-4 py-2.5 text-right">
                     <span className="inline-flex items-center gap-2 justify-end">
                       {rider.id === bestId && (
-                        <span className="text-[9px] uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                        <span className="text-3xs uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
                       )}
                       <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
                     </span>
@@ -536,7 +536,7 @@ function SelectionSortControl({ sort, onSort, fitLabel, t }) {
   const dirAria = sort.dir === "desc" ? t("selection.sort.descAria") : t("selection.sort.ascAria");
   return (
     <div className="sm:hidden flex flex-col gap-2 px-4 py-3 border-b border-cz-border">
-      <span className="block text-cz-3 text-[10px] uppercase tracking-wider">{t("selection.sort.label")}</span>
+      <span className="block text-cz-3 text-3xs uppercase tracking-wider">{t("selection.sort.label")}</span>
       <div className="flex flex-wrap items-center gap-1.5">
         {SELECTION_SORT_KEYS.map((key) => {
           const on = sort.sort === key;

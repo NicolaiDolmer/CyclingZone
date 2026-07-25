@@ -785,7 +785,11 @@
     "searching": "Searching...",
     "teamFree": "Free agent",
     "empty": "Search for a rider above to start comparing",
-    "potential": "Potential"
+    "potential": "Potential",
+    "loadingAria": "Loading comparison",
+    "loadErrorTitle": "Couldn't load comparison",
+    "loadErrorBody": "Nothing was lost. Try again.",
+    "retry": "Try again"
   },
   "scouting": {
     "label_worldclass": "World-class prospect",
