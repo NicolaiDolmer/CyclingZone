@@ -18,6 +18,19 @@ export default {
         8:  "0.08",
         12: "0.12",
       },
+      // #2849 bølge 6 — mikro-typografi-tokens (audit-fund F8). Under Tailwinds
+      // `text-xs` (12px) fandtes ingen navngivne trin, så 632 callsites havde
+      // opfundet 8 forskellige arbitrære px-værdier (8 / 8.5 / 9 / 9.5 / 10 /
+      // 10.5 / 11 / 11.5) til det SAMME formål. Ejer-beslutning 2026-07-25:
+      // to trin, så label/sub-label-hierarkiet i tæt sportsdata bevares.
+      //   text-2xs (11px) — tabel-headers, kort-meta-labels, uppercase-meta
+      //   text-3xs (10px) — stat-labels, sublines, zone-pills, badge-mikrotekst
+      // Line-height er sat eksplicit, så trinnene ikke arver Tailwinds
+      // default-leading og skifter rytme mellem sider.
+      fontSize: {
+        "3xs": ["10px", { lineHeight: "1.3" }],
+        "2xs": ["11px", { lineHeight: "1.35" }],
+      },
       fontFamily: {
         // #1578 WP0: `sans` is the prose/UI body face (DM Sans), matching the
         // `body { font-family: 'DM Sans' … }` rule in index.css so `font-sans`
