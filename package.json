@@ -43,6 +43,8 @@
     "test:lint-catches": "node --test scripts/lint-swallowed-catches.test.mjs",
     "lint:silent-mutations": "node scripts/lint-silent-mutations.mjs",
     "test:lint-silent-mutations": "node --test scripts/lint-silent-mutations.test.mjs",
+    "lint:finance-types": "node scripts/lint-finance-types.mjs",
+    "test:lint-finance-types": "node --test scripts/lint-finance-types.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
