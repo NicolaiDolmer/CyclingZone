@@ -672,6 +672,71 @@ async function finalizeAuctionRecord({
 
   const actualEnd = now.toISOString();
 
+  // #2918: en rytter kan pensioneres (riders.is_retired=true) MENS hans auktion
+  // stadig løber — season-transitionens rider_progression-fase sætter feltet
+  // uden at røre auctions, og der er ingen fysisk balance-reservation ved bud
+  // (jf. auctionCancellation.js), så en betaling kan KUN ske her ved finalize.
+  // Denne guard ligger FØR is_youth-grenen og FØR sælger-kontekst/pris-flyt, så
+  // den dækker begge auktionstyper, og ingen cent når at flytte for en rytter
+  // der aldrig kan starte et løb igen. auction.rider er allerede select("*")'et
+  // af finalizeAuctionById (rider:rider_id(*)), så is_retired kræver ingen
+  // ekstra query. Cancel-semantik spejler cancelAuctionByAdmin: status →
+  // "cancelled", ingen debit/kredit (der var aldrig en at fortryde), begge
+  // parter får en "auction_cancelled"-notifikation (samme type admin-cancel
+  // bruger). Modsat staleHumanOwner-grenen nedenfor holder vi os til EN-first
+  // fallback-tekst + i18n-metadata-koder (ingen rå dansk i backend, #1068).
+  if (auction.rider?.is_retired) {
+    await closeAuction({
+      supabase,
+      auction,
+      status: "cancelled",
+      actualEnd,
+      sellerOwned: sellerOwnsAuctionRider(auction),
+    });
+
+    const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
+
+    if (auction.current_bidder_id) {
+      await notifyTeamOwner(
+        auction.current_bidder_id,
+        "auction_cancelled",
+        "Auction cancelled: rider retired",
+        `${riderName} retired before the auction could complete. You have not been charged.`,
+        auction.id,
+        {
+          riderId: auction.rider.id,
+          titleCode: "notif.auctionCancelledRetired.title",
+          titleParams: {},
+          messageCode: "notif.auctionCancelledRetired.messageBidder",
+          messageParams: { rider: riderName },
+        }
+      );
+    }
+
+    if (auction.seller_team_id) {
+      await notifyTeamOwner(
+        auction.seller_team_id,
+        "auction_cancelled",
+        "Auction cancelled: rider retired",
+        `${riderName} retired before the auction on him could complete. The auction was cancelled.`,
+        auction.id,
+        {
+          riderId: auction.rider.id,
+          titleCode: "notif.auctionCancelledRetired.title",
+          titleParams: {},
+          messageCode: "notif.auctionCancelledRetired.messageSeller",
+          messageParams: { rider: riderName },
+        }
+      );
+    }
+
+    return {
+      ok: true,
+      code: "cancelled_retired",
+      auction_id: auction.id,
+    };
+  }
+
   // 07d Fase B / #240: Slå aktiv sæson op én gang så audit-payloads kan stamp'e
   // season_id eksplicit. DB-trigger fill_finance_tx_season() er en safety-net,
   // men callsites skal være selv-dokumenterende. activeSeasonId kan være null

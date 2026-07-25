@@ -179,6 +179,11 @@
       "title": "Rider has left the game",
       "message": "{rider} has left the game and was removed from your watchlist."
     },
+    "auctionCancelledRetired": {
+      "title": "Auction cancelled: rider retired",
+      "messageBidder": "{rider} retired before the auction could complete. You have not been charged.",
+      "messageSeller": "{rider} retired before the auction on him could complete. The auction was cancelled."
+    },
     "intakeExpiryCompensation": {
       "title": "Academy intake offer expired: rider sold",
       "message": "Your academy intake offer for {rider} expired, and he was sold at auction. You received {amount} CZ$."
