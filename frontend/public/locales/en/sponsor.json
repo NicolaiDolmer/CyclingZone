@@ -11,7 +11,10 @@
   "offers": {
     "title": "Choose your sponsor",
     "subtitle": "Five sponsors, five ways to earn in season {season}.",
-    "unitDefinition": "1 race day = one stage your team starts.",
+    "unitDefinition": "1 race day = one stage your team starts. Not a calendar day.",
+    "unitCount": "Division {division} rides {count} stages in season {season}, so that is {count} race days you can earn on.",
+    "unitPerDay": "They are spread over {days} calendar days, so most days carry about {perDay} stages.",
+    "divisionNote": "Switching division here changes the rate per stage, not the totals. Your own division already sets how big these offers are.",
     "divisionPicker": "Project earnings for a division",
     "divisionPill": "Division {division} · {count} race days",
     "deadline": "Your choice locks when season {season} starts. If you don't choose, the club signs the 1-season safe deal for you.",
@@ -23,7 +26,7 @@
     "signDeal": "Sign deal",
     "cancel": "Cancel",
     "guaranteedShare": "{pct}% of the deal is guaranteed",
-    "boardNote": "Board satisfaction adjusts the guaranteed payout by up to ±20%. Bonuses are paid as they happen."
+    "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch race-day money or bonuses: those are paid in full, on top, as you earn them."
   },
   "variant": {
     "safe": "The safe deal",
@@ -43,9 +46,11 @@
     "seasonObjective": "Finish top half of your division: {amount} CZ$ at season end"
   },
   "field": {
-    "guaranteedBase": "Guaranteed",
+    "guaranteedBase": "Guaranteed at season start",
     "perRaceDay": "Per race day",
-    "projectedMax": "Max (all {count} race days)",
+    "raceDayMath": "{count} race days × {rate} CZ$",
+    "ifYouStartEveryStage": "If you start every stage",
+    "bonusUpside": "Bonuses on top, if earned",
     "length": "Length",
     "seasons": "{count, plural, one {# season} other {# seasons}}"
   },
