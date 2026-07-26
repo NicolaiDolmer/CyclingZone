@@ -154,7 +154,7 @@ import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "..
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
-import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks } from "../lib/plannerBoard.js";
+import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -2217,18 +2217,59 @@ async function lockGuardForWrite(plan, nowOrd) {
   return true;
 }
 
+// #3018: hvilken division "tilhører" holdet i EN GIVEN sæson? Tre svar, og de er
+// forskellige — det var netop sammenblandingen der gav fejlen.
+//
+//   upcoming  → UKENDT. Op/nedrykning afgøres ved sæsonskiftet, og rangeringen
+//               kører på standings der stadig flytter sig. Vi gætter ikke.
+//   active    → teams.league_division_id (holdets nuværende placering).
+//   completed → den division holdet FAKTISK kørte i den sæson, fra
+//               season_standings. Samme retning som #2908 fastslog for
+//               sæsonsiden: en afsluttet sæson hører til den GAMLE division, og
+//               efter et sæsonskifte er holdets aktuelle division en anden.
+//
+// Returnerer { divisionId, pending }. divisionId=null betyder "intet løb i denne
+// sæson er holdets" (fx et hold der ikke eksisterede i en afsluttet sæson) —
+// ærligere end at låne den nuværende division og markere de forkerte løb.
+async function resolveTeamDivisionForSeason({ teamId, season, currentDivisionId }) {
+  if (!teamDivisionKnownForSeason(season?.status)) return { divisionId: null, pending: true };
+  if (season?.status === "active") return { divisionId: currentDivisionId ?? null, pending: false };
+
+  const { data, error } = await supabase
+    .from("season_standings").select("league_division_id")
+    .eq("season_id", season.id).eq("team_id", teamId).maybeSingle();
+  if (error) throw new Error(`season_standings (planner division): ${error.message}`);
+  return { divisionId: data?.league_division_id ?? null, pending: false };
+}
+
 // Guard: mål-løbet er i holdets kalender = holdets division + aktiv sæson. Ejeren
 // planlægger peaks FORUD (før trup-udtagelse), så vi kræver IKKE en race_entries-
 // række (division-tilhør er "dit holds løb", addendum §8 Q3-kandidat). Returnerer
 // { race } eller { status, error }.
-async function loadTargetRaceForPeak(targetRaceId, seasonId, teamDivisionId) {
+async function loadTargetRaceForPeak(targetRaceId, seasonId, team) {
   const { data: race, error } = await supabase
     .from("races").select("id, season_id, league_division_id, status")
     .eq("id", targetRaceId).maybeSingle();
   if (error) throw new Error(`races (peak target): ${error.message}`);
   if (!race) return { status: 404, error: "race_not_found" };
   if (race.season_id !== seasonId) return { status: 409, error: "race_not_in_season" };
-  if (teamDivisionId == null || race.league_division_id !== teamDivisionId) {
+
+  const { data: season, error: seasonErr } = await supabase
+    .from("seasons").select("id, status").eq("id", seasonId).maybeSingle();
+  if (seasonErr) throw new Error(`seasons (peak target season): ${seasonErr.message}`);
+
+  // #3018: guarden sammenlignede FØR altid mod holdets NUVÆRENDE division, uanset
+  // hvilken sæson målet lå i. For en kommende sæson lod det manageren oprette
+  // peaks mod sin GAMLE divisions løb (140 af 156 hold skifter pulje ved
+  // komprimeringen, målt 26/7) — en plan der peger på løb holdet ikke skal køre.
+  // Nu opløses divisionen PR. SÆSON, samme kilde som boardet læser, så det man
+  // kan se og det man kan skrive altid er den samme kalender.
+  const { divisionId, pending } = await resolveTeamDivisionForSeason({
+    teamId: team.id, season, currentDivisionId: team.league_division_id ?? null,
+  });
+  if (pending) return { status: 409, error: "division_not_settled" };
+
+  if (divisionId == null || race.league_division_id !== divisionId) {
     return { status: 403, error: "race_not_in_calendar" };
   }
   return { race };
@@ -2242,9 +2283,11 @@ async function suggestedBlockForRace(targetRaceId) {
   return buildSuggestedTrainingBlock({ recommendedFocus });
 }
 
+// #3018: status + start_date hentes med, så kalderen kan afgøre om holdets
+// division overhovedet er afgjort for sæsonen (teamDivisionKnownForSeason).
 async function activePeakSeason() {
   const { data } = await supabase
-    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
+    .from("seasons").select("id, number, status, start_date").eq("status", "active").maybeSingle();
   return data ?? null;
 }
 
@@ -2259,7 +2302,7 @@ async function resolvePlannerSeason(seasonNumberRaw) {
   const n = Number(seasonNumberRaw);
   if (Number.isFinite(n) && n >= 0) {
     const { data, error } = await supabase
-      .from("seasons").select("id, number").eq("number", n).maybeSingle();
+      .from("seasons").select("id, number, status, start_date").eq("number", n).maybeSingle();
     if (error) throw new Error(`seasons (by number): ${error.message}`);
     return data ?? null;
   }
@@ -2386,7 +2429,7 @@ router.post("/peak-plans", requireAuth, marketWriteLimiter, async (req, res) => 
     if (!rider) return res.status(404).json({ error: "Rider not found" });
     if (rider.team_id !== req.team.id) return res.status(403).json({ error: "not_own_rider" });
 
-    const rt = await loadTargetRaceForPeak(targetRaceId, season.id, req.team.league_division_id ?? null);
+    const rt = await loadTargetRaceForPeak(targetRaceId, season.id, req.team);
     if (rt.error) return res.status(rt.status).json({ error: rt.error });
 
     // Eksisterende planer for (rytter, sæson) → max-2 + duplikat-mål-guard.
@@ -2443,7 +2486,7 @@ router.patch("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, res
     const nowOrd = peakNowOrdinal();
     if (await lockGuardForWrite(plan, nowOrd)) return res.status(409).json({ error: "locked" });
 
-    const rt = await loadTargetRaceForPeak(targetRaceId, plan.season_id, req.team.league_division_id ?? null);
+    const rt = await loadTargetRaceForPeak(targetRaceId, plan.season_id, req.team);
     if (rt.error) return res.status(rt.status).json({ error: rt.error });
 
     // Duplikat-mål mod ANDRE planer for samme rytter/sæson.
@@ -2562,6 +2605,15 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     const availableSeasons = (allSeasonsRows || []).map((s) => ({ id: s.id, number: s.number, status: s.status }));
     if (!season) return res.json({ enabled: true, season: null, availableSeasons, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
 
+    // #3018: hvilken division hører holdet til i NETOP denne sæson? Kommende
+    // sæson → ukendt (afgøres ved sæsonskiftet); aktiv → holdets nuværende;
+    // afsluttet → den det faktisk kørte i (season_standings). Samme resolver som
+    // skrive-stien, så det man kan se og det man kan skrive er samme kalender.
+    const { divisionId: seasonDivisionId, pending: divisionPending } = await resolveTeamDivisionForSeason({
+      teamId: req.team.id, season, currentDivisionId: req.team.league_division_id ?? null,
+    });
+    const divisionSettled = !divisionPending;
+
     const nowOrd = peakNowOrdinal();
 
     // ── Holdets ryttere + evner + condition + peaks ───────────────────────────
@@ -2575,7 +2627,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     if (ridErr) throw new Error(`riders (planner board): ${ridErr.message}`);
     const riderIds = (riders || []).map((r) => r.id);
     if (!riderIds.length) {
-      return res.json({ enabled: true, season, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
+      return res.json({ enabled: true, season, availableSeasons, divisionPending: !divisionSettled, maxPerRider: MAX_PEAK_PLANS_PER_SEASON, today, leadupDays: leadup, riders: [], races: [] });
     }
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -2641,7 +2693,11 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       scheduleRows,
       profileRows: fullProfiles.map((r) => ({ race_id: r.race_id, stage_number: r.stage_number, profile_type: r.profile_type })),
       divisions: divisionsRes.data || [],
-      teamDivisionId: req.team.league_division_id ?? null,
+      // #3018: den sæson-opløste division, ikke holdets nuværende. null → intet
+      // løb markeres isMine, i stedet for at markere den GAMLE divisions løb som
+      // "mine" i en kommende sæson (thelamba 26/7: "planlæggeren viser Division
+      // 3's kalender for sæson 2 til et hold der rykker op i Division 2").
+      teamDivisionId: seasonDivisionId,
     });
 
     const profByRace = new Map();
@@ -2731,7 +2787,13 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // slots fyldt — RENT beregnet, ALDRIG en rider_peak_plans-række (se
     // lib/peakSuggestions.js's topkommentar for hvorfor). Forsvinder automatisk
     // fra næste board-kald den dag manageren opretter en ægte plan for slottet.
-    const suggestRiderIdSet = new Set(ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id));
+    // #3018: ingen forslag når divisionen ikke er afgjort. Forslagene vælger blandt
+    // `isMine`-løb, så de ville enten være tomme (isMine er nu false overalt) eller
+    // — hvis nogen senere løsner det filter — anbefale løb i den gamle division.
+    // Eksplicit guard frem for at hvile på en tom candidateRaces-liste.
+    const suggestRiderIdSet = new Set(
+      divisionSettled ? ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id) : [],
+    );
     if (suggestRiderIdSet.size) {
       const suggestRiderIds = [...suggestRiderIdSet];
       const [dismissedSet, registeredByRider] = await Promise.all([
@@ -2804,6 +2866,10 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       enabled: true,
       season,
       availableSeasons,
+      // #3018: fortæl UI'et at ingen af løbene kan tilskrives holdet endnu, så det
+      // kan vise den ærlige "din division afgøres ved sæsonskiftet"-tilstand i
+      // stedet for et tomt bræt (mine-filteret ville ellers matche nul løb).
+      divisionPending: !divisionSettled,
       maxPerRider: MAX_PEAK_PLANS_PER_SEASON,
       today,
       leadupDays: leadup,

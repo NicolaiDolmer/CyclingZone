@@ -63,6 +63,26 @@ const RACES = [
 ];
 const RACE_BY_ID = new Map(RACES.map((r) => [r.id, r]));
 
+// #3018: sæson 2 i preview — den tilstand thelamba ramte 26/7. Holdets division
+// for en KOMMENDE sæson er ikke afgjort (op/nedrykning sker ved sæsonskiftet), så
+// boardet må ikke markere noget som isMine. Uden dette seed kunne ejeren ikke se
+// den ærlige "din division afgøres ved sæsonskiftet"-flade på preview.
+//
+// Bemærk isMine:false på ALLE løb + divisioner på tværs af pyramiden: det er
+// præcis hvad backenden nu sender når teamDivisionId ikke kan bestemmes.
+const RACES_S2 = [
+  makeRace("r2-openers", "Season Openers", "sprint", "2026-08-02", false, 1, 0, 2, 0),
+  makeRace("r2-ardennes", "Ardennes Week", "hilly", "2026-08-16", false, 4, 1, 2, 0),
+  makeRace("r2-highalps", "High Alps Tour", "mountain", "2026-09-06", false, 7, 3, 3, 0),
+  makeRace("r2-chrono", "Chrono Championship", "itt", "2026-09-20", false, 1, 0, 3, 0),
+  makeRace("r2-closer", "Autumn Closer", "hilly", "2026-10-04", false, 1, 0, 4, 0),
+];
+
+const SEASON_S1 = { id: "season-preview", number: 1, status: "active" };
+const SEASON_S2 = { id: "season-preview-2", number: 2, status: "upcoming" };
+const AVAILABLE_SEASONS = [SEASON_S1, SEASON_S2];
+
+
 // #2447: nationalitet som rigtig 2-bogstavs ISO-kode (lowercase) — matcher
 // riders.nationality_code i produktion (samme format Flag-komponenten kræver).
 // Var tidligere 3-bogstavs pseudo-koder ("BEL"/"NOR"/...) der aldrig ville have
@@ -152,7 +172,9 @@ function serialize(p) {
 function buildBoard(peakList) {
   return {
     enabled: true,
-    season: { id: "season-preview", number: 1 },
+    season: SEASON_S1,
+    availableSeasons: AVAILABLE_SEASONS,
+    divisionPending: false,
     maxPerRider: MAX_PER_RIDER,
     today: TODAY,
     leadupDays: LEADUP,
@@ -164,24 +186,65 @@ function buildBoard(peakList) {
   };
 }
 
+// #3018: boardet for en sæson hvor holdets division ikke er afgjort endnu.
+// Ingen peaks og ingen assistent-forslag (serveren genererer dem ikke, fordi de
+// ville pege på den gamle divisions løb), og intet løb er isMine — kalenderen
+// vises på tværs af divisioner, så manageren stadig kan orientere sig.
+function buildPendingBoard() {
+  return {
+    enabled: true,
+    season: SEASON_S2,
+    availableSeasons: AVAILABLE_SEASONS,
+    divisionPending: true,
+    maxPerRider: MAX_PER_RIDER,
+    today: TODAY,
+    leadupDays: LEADUP,
+    riders: RIDERS.map((r) => ({ ...r, peaks: [] })),
+    races: RACES_S2,
+  };
+}
+
 function board() { return buildBoard(peaks); }
+
+// season_number=2 (eller et hvilket som helst nummer > 1) → pending-boardet.
+function isPendingSeasonRequest(search) {
+  const n = Number(new URLSearchParams(search || "").get("season_number"));
+  return Number.isFinite(n) && n >= 2;
+}
 
 // Statisk, deterministisk board til read-only E2E-smoke (fixtures.installNetworkMocks).
 // Bygger fra en frisk seed uden at røre den stateful preview-state, så Playwright og
 // det interaktive preview-gennemklik ikke deler mutation.
-export function previewPlannerBoard() { return buildBoard(seedPeaks()); }
+// #3018: E2E-boardet holdes bevidst på ÉN sæson. Sæson-vælgeren rendres kun ved
+// availableSeasons.length > 1, så en tom/1-element-liste bevarer præcis den
+// snapshot-overflade core-smoke's planner.png er taget på. Den interaktive
+// preview-mock (board() nedenfor) har begge sæsoner, så ejeren kan klikke over i
+// S2 og se "division afventer"-tilstanden — det er dér den skal kunne testes.
+export function previewPlannerBoard() {
+  return { ...buildBoard(seedPeaks()), availableSeasons: [SEASON_S1] };
+}
 
 /**
  * Rout /api/peak-plans* mod den in-memory-preview-state. Returnerer { status, body }
  * eller null (umatchet → kalderen falder tilbage til generisk mock/ægte fetch).
  */
-export function plannerMockRoute(method, pathname, _search, body) {
+export function plannerMockRoute(method, pathname, search, body) {
   ensure();
   const m = pathname.match(/^\/api\/peak-plans(?:\/([^/]+)(?:\/(accept-training))?)?$/);
   if (!m) return null;
   const seg = m[1], sub = m[2];
 
-  if (seg === "board" && method === "GET") return { status: 200, body: board() };
+  // #3018: sæson-vælgeren skal kunne ramme S2's pending-tilstand i preview.
+  const pendingSeason = isPendingSeasonRequest(search) || Number(body?.season_number) >= 2;
+
+  if (seg === "board" && method === "GET") {
+    return { status: 200, body: pendingSeason ? buildPendingBoard() : board() };
+  }
+  // Writes mod en sæson uden afgjort division afvises, præcis som serveren gør —
+  // ellers kunne preview'et bekræfte et flow der fejler i produktion.
+  if (pendingSeason && method !== "GET") {
+    return { status: 409, body: { error: "division_not_settled" } };
+  }
   if (!seg && method === "GET") return { status: 200, body: { enabled: true, season: board().season, maxPerRider: MAX_PER_RIDER, plans: peaks.map(serialize) } };
 
   // POST /api/peak-plans/dismiss-suggestions — nulstil assistent-forslaget til

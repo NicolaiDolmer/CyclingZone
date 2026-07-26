@@ -24,7 +24,11 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-const EMPTY = { season: null, availableSeasons: [], maxPerRider: 2, today: null, leadupDays: 14, riders: [], races: [] };
+// #3018: divisionPending = holdets division for DEN VALGTE sæson er ikke afgjort
+// endnu (sæsonen er 'upcoming'; op/nedrykning sker ved sæsonskiftet). Så er intet
+// løb markeret isMine, og siden viser en ærlig forklaring frem for den gamle
+// divisions kalender. Default false → uændret adfærd for den aktive sæson.
+const EMPTY = { season: null, availableSeasons: [], divisionPending: false, maxPerRider: 2, today: null, leadupDays: 14, riders: [], races: [] };
 
 // #2518: seasonNumber = null → backend defaulter til aktiv sæson (uændret
 // adfærd); et eksplicit nummer (fra sæson-vælgeren i SeasonPlannerPage) lader
@@ -53,6 +57,7 @@ export function usePlanner(seasonNumber = null) {
         setBoard({
           season: data.season ?? null,
           availableSeasons: data.availableSeasons ?? [],
+          divisionPending: Boolean(data.divisionPending),
           maxPerRider: data.maxPerRider ?? 2,
           today: data.today ?? null,
           leadupDays: data.leadupDays ?? 14,

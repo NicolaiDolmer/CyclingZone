@@ -7,6 +7,7 @@ import {
   stageProfileStrip,
   raceProfileSummary,
   countRivalPeaks,
+  teamDivisionKnownForSeason,
   PEAK_STATUS_ONTRACK_TQ,
 } from "./plannerBoard.js";
 
@@ -88,4 +89,33 @@ test("countRivalPeaks: distinkte rival-hold pr. løb, mit hold ekskluderet", () 
 test("countRivalPeaks: løb hvor kun mit hold topper → ingen entry", () => {
   const counts = countRivalPeaks([{ target_race_id: "r1", team_id: "me" }], "me");
   assert.equal(counts.has("r1"), false);
+});
+
+// ── #3018 · holdets division er ikke afgjort for en kommende sæson ────────────
+
+test("teamDivisionKnownForSeason: 'upcoming' → divisionen er IKKE afgjort", () => {
+  // Kernen i #3018: teams.league_division_id beskriver den AKTIVE sæson. For en
+  // sæson der ikke er startet, afgøres divisionen først ved sæsonskiftet, så den
+  // nuværende division må ikke bruges til at markere "mine løb".
+  assert.equal(teamDivisionKnownForSeason("upcoming"), false);
+});
+
+test("teamDivisionKnownForSeason: aktiv/afsluttet sæson → divisionen ER afgjort", () => {
+  assert.equal(teamDivisionKnownForSeason("active"), true);
+  assert.equal(teamDivisionKnownForSeason("completed"), true);
+});
+
+test("teamDivisionKnownForSeason: gaten ophæver sig selv ved cutoveren", () => {
+  // compressPyramid.js skriver de nye league_division_id FØR transitionen
+  // promoverer sæsonen 'upcoming' → 'active'. I det øjeblik status flipper er
+  // divisionen både opdateret og korrekt, uden ny deploy.
+  assert.equal(teamDivisionKnownForSeason("upcoming"), false);
+  assert.equal(teamDivisionKnownForSeason("active"), true);
+});
+
+test("teamDivisionKnownForSeason: ukendt/manglende status blokerer ikke planlægning", () => {
+  // Fail-open er det rigtige her: kun 'upcoming' er den kendte usikre tilstand.
+  // En uventet status må ikke låse den aktive sæsons planlægger ned.
+  assert.equal(teamDivisionKnownForSeason(null), true);
+  assert.equal(teamDivisionKnownForSeason(undefined), true);
 });

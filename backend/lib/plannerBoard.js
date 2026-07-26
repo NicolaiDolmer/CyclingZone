@@ -19,6 +19,30 @@
 export const PEAK_STATUS_ONTRACK_TQ = 0.6;
 
 /**
+ * Er holdets division KENDT for den sæson planlæggeren kigger på? (#3018)
+ *
+ * `teams.league_division_id` beskriver holdets placering i den AKTIVE sæson. Den
+ * siger intet om en sæson der endnu ikke er startet: op/nedrykning (og S1→S2's
+ * pyramide-komprimering, #2851) afgøres først ved sæsonskiftet, og rangeringen
+ * sker på season_standings der stadig flytter sig mens sæsonens sidste løb kører.
+ *
+ * Derfor er den nuværende division IKKE en gyldig kilde for en 'upcoming' sæson.
+ * Målt 26/7 mod prod: 140 af 156 ægte managerhold lander i en ANDEN pulje i S2 —
+ * at bruge den nuværende division ville vise den forkerte kalender til ~90 %.
+ *
+ * Gaten ophæver sig selv ved cutoveren uden ny deploy: compressPyramid.js skriver
+ * de nye league_division_id FØR transitionen promoverer sæsonen 'upcoming' →
+ * 'active' (se scripts/compressPyramid.js's topkommentar), så i det øjeblik
+ * status flipper, er holdets division både opdateret og korrekt.
+ *
+ * @param {string|null|undefined} seasonStatus  seasons.status for den valgte sæson
+ * @returns {boolean}
+ */
+export function teamDivisionKnownForSeason(seasonStatus) {
+  return seasonStatus !== "upcoming";
+}
+
+/**
  * Status for en peak set fra Planneren (spec §3A trænings-status-chip).
  * - "pending"  : optakts-vinduet er ikke begyndt endnu → tq er ren prognose.
  * - "on_track" : optakten kører + træningskvalitet ≥ tærskel.

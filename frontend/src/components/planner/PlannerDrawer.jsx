@@ -34,7 +34,7 @@ function StageMini({ terrain, summit }) {
   );
 }
 
-function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
+function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPending }) {
   const { t } = useTranslation("planner");
   const months = t("months", { returnObjects: true });
   const [showProfiles, setShowProfiles] = useState(false);
@@ -136,6 +136,12 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy }) {
               <span className="font-mono text-[12px] text-cz-1 w-6 text-right">{score}</span>
               {peaking ? (
                 <span className="text-3xs text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
+              ) : divisionPending ? (
+                // #3018: serveren afviser peaks mod en sæson hvor divisionen ikke
+                // er afgjort (division_not_settled). Vis grunden frem for en knap
+                // der garanteret fejler — egnetheds-rangeringen ovenfor er stadig
+                // ægte information at orientere sig i.
+                <span className="text-3xs text-cz-3 w-[74px] text-right">{t("drawer.race.peaksLocked")}</span>
               ) : (
                 <div className="flex flex-col items-end gap-0.5 w-[74px]">
                   {suggestingHere && (
@@ -290,14 +296,14 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
   );
 }
 
-export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
+export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy, divisionPending }) {
   const { t } = useTranslation("planner");
   return (
     <Section className="relative">
       <button className="absolute top-3 right-3 text-cz-2 hover:text-cz-1" aria-label={t("drawer.close")} onClick={onClose}>
         <XIcon size={18} aria-hidden="true" />
       </button>
-      {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} />}
+      {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} divisionPending={divisionPending} />}
       {mode === "rider" && rider && (
         <RiderDrawer
           rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today}

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageLoader, EmptyState, ErrorState, Section, Button, StarIcon, GripVerticalIcon, CalendarIcon, XIcon } from "../components/ui";
 import { usePlanner } from "../lib/usePlanner";
-import { nextPlannableSeason } from "../components/planner/plannerShared";
+import { nextPlannableSeason, effectivePlannerFilter } from "../components/planner/plannerShared";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
 import PlannerDrawer from "../components/planner/PlannerDrawer";
@@ -32,7 +32,13 @@ function NextSeasonNudge({ t, nextSeason, onSwitch, onDismiss }) {
           <CalendarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
           <div>
             <p className="text-[15px] font-semibold text-cz-1">{t("nextSeasonBanner.title", { number: nextSeason.number })}</p>
-            <p className="mt-1 text-[13px] text-cz-2">{t("nextSeasonBanner.body", { number: nextSeason.number })}</p>
+            {/* #3018: den oprindelige body lovede "you can set peaks for it now",
+                hvilket ikke er sandt for en sæson hvor divisionen først afgøres
+                ved sæsonskiftet — netop det løfte fik thelamba til at åbne S2 og
+                få den gamle divisions kalender. Vælg copy efter sæson-status. */}
+            <p className="mt-1 text-[13px] text-cz-2">
+              {t(nextSeason.status === "upcoming" ? "nextSeasonBanner.bodyUpcoming" : "nextSeasonBanner.body", { number: nextSeason.number })}
+            </p>
             <button
               className="mt-2 text-3xs border border-cz-accent-t text-cz-accent-t rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle"
               onClick={onSwitch}
@@ -42,6 +48,32 @@ function NextSeasonNudge({ t, nextSeason, onSwitch, onDismiss }) {
         <button className="shrink-0 text-cz-2 hover:text-cz-1" aria-label={t("nextSeasonBanner.dismiss")} onClick={onDismiss}>
           <XIcon size={14} aria-hidden="true" />
         </button>
+      </div>
+    </Section>
+  );
+}
+
+// #3018: holdets division for den valgte sæson er ikke afgjort endnu. thelamba
+// 26/7: planlæggeren viste D3's kalender for S2 til et hold på vej op i D2 —
+// fordi boardet markerede "mine løb" ud fra holdets NUVÆRENDE division uanset
+// hvilken sæson man kiggede på. Målt mod prod samme dag: 140 af 156 managerhold
+// lander i en anden pulje i S2, så den gamle division var forkert for ~90 %.
+//
+// Vi viser den sande tilstand frem for et gæt: divisionen afgøres ved
+// sæsonskiftet (rangeringen kører på standings der stadig flytter sig), så
+// planlæggeren siger det rent ud og viser hele kalenderen på tværs af divisioner
+// i stedet for at udpege en forkert. Ingen dismiss-knap — det her er ikke en
+// nudge man kan vælge fra, det er grunden til at brættet ser anderledes ud.
+function DivisionPendingNotice({ t, seasonNumber }) {
+  return (
+    <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
+      <div className="flex items-start gap-2">
+        <CalendarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-cz-1">{t("divisionPending.title", { number: seasonNumber })}</p>
+          <p className="mt-1 text-[13px] text-cz-2">{t("divisionPending.body", { number: seasonNumber })}</p>
+          <p className="mt-1 text-2xs text-cz-3">{t("divisionPending.hint", { number: seasonNumber })}</p>
+        </div>
       </div>
     </Section>
   );
@@ -75,9 +107,12 @@ export default function SeasonPlannerPage() {
   // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
   const [seasonNumber, setSeasonNumber] = useState(null);
   const planner = usePlanner(seasonNumber);
-  const { enabled, loading, error, season, availableSeasons, riders, races, maxPerRider, today, leadupDays, busy } = planner;
+  const { enabled, loading, error, season, availableSeasons, divisionPending, riders, races, maxPerRider, today, leadupDays, busy } = planner;
 
   const [filter, setFilter] = useState("mine");
+  // #3018: uden en afgjort division findes der ingen "mine løb" — tving hele
+  // kalenderen frem i stedet for at lade default-filteret tegne et tomt bræt.
+  const viewFilter = effectivePlannerFilter(filter, divisionPending);
   const [selected, setSelected] = useState(null); // { mode: "race"|"rider", id }
   const [toast, setToast] = useState(null); // { kind: "error"|"ok", text }
   // #2883 sæson-nudge: gemmer ID'et på den sæson der er afvist (ikke bare et bool),
@@ -195,15 +230,20 @@ export default function SeasonPlannerPage() {
                 </div>
               </div>
             )}
-            <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
-              {["mine", "all"].map((f) => (
-                <button
-                  key={f}
-                  className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                  onClick={() => setFilter(f)}
-                >{t(`filter.${f}`)}</button>
-              ))}
-            </div>
+            {/* #3018: mine/alle-filteret skjules når divisionen ikke er afgjort —
+                "Mine løb" ville matche nul løb, og at tilbyde et valg der ikke
+                findes er netop den slags flade testerne kaldte ubrugelig. */}
+            {!divisionPending && (
+              <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+                {["mine", "all"].map((f) => (
+                  <button
+                    key={f}
+                    className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                    onClick={() => setFilter(f)}
+                  >{t(`filter.${f}`)}</button>
+                ))}
+              </div>
+            )}
           </>
         }
       />
@@ -213,6 +253,11 @@ export default function SeasonPlannerPage() {
           {toast.text}
         </div>
       )}
+
+      {/* #3018: den ærlige tilstand når divisionen for den valgte sæson ikke er
+          afgjort endnu. Vist FØR alt andet, så den aldrig kan læses som en
+          fodnote til et bræt der ser ud til at være "din" kalender. */}
+      {divisionPending && <DivisionPendingNotice t={t} seasonNumber={season?.number ?? seasonNumber} />}
 
       {/* #2883: proaktiv nudge mod en senere oprettet sæson (fx S2 op mod cutover)
           — vist UANSET pladsmangel/tom-state nedenfor, så beskeden aldrig kan
@@ -253,7 +298,10 @@ export default function SeasonPlannerPage() {
         </Section>
       )}
 
-      {hasRiders && !hasSuggestions && totalRealPeaks === 0 && (
+      {/* #3018: "planlæg din første peak"-nudget lover noget man ikke kan gøre
+          endnu, når divisionen ikke er afgjort — DivisionPendingNotice ovenfor
+          er den rigtige besked i den tilstand. */}
+      {hasRiders && !hasSuggestions && !divisionPending && totalRealPeaks === 0 && (
         <Section className="mb-[14px] bg-cz-subtle">
           <p className="text-[15px] font-semibold text-cz-1">{t("firstRun.title")}</p>
           <p className="mt-1 text-[13px] text-cz-2">{t("firstRun.body", { max: maxPerRider })}</p>
@@ -267,7 +315,7 @@ export default function SeasonPlannerPage() {
           <div className="hidden md:block bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             <MasterCanvas
               riders={riders} races={races} today={today} leadupDays={leadupDays}
-              filter={filter}
+              filter={viewFilter}
               selectedRaceId={selected?.mode === "race" ? selected.id : null}
               selectedRiderId={selected?.mode === "rider" ? selected.id : null}
               onSelectRace={(id) => setSelected({ mode: "race", id })}
@@ -280,7 +328,7 @@ export default function SeasonPlannerPage() {
           {/* Mobil stakket spor */}
           <div className="md:hidden">
             <MobileLanes
-              riders={riders} races={races} filter={filter} today={today}
+              riders={riders} races={races} filter={viewFilter} today={today}
               selectedRaceId={selected?.mode === "race" ? selected.id : null}
               selectedRiderId={selected?.mode === "rider" ? selected.id : null}
               onSelectRace={(id) => setSelected({ mode: "race", id })}
@@ -300,7 +348,7 @@ export default function SeasonPlannerPage() {
           {/* #2568: scannbar sæson-løbs-liste — den kanoniske "hvilke løb, hvornår"-
               flade (tidslinjen er for tæt til løbs-navne). Vist på begge viewports. */}
           <PlannerRaceList
-            riders={riders} races={races} filter={filter} today={today}
+            riders={riders} races={races} filter={viewFilter} today={today}
             selectedRaceId={selected?.mode === "race" ? selected.id : null}
             onSelectRace={(id) => setSelected({ mode: "race", id })}
           />
@@ -311,7 +359,7 @@ export default function SeasonPlannerPage() {
               mode={selectedRace ? "race" : "rider"}
               race={selectedRace} rider={selectedRider}
               riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
-              busy={busy}
+              busy={busy} divisionPending={divisionPending}
               onClose={() => setSelected(null)}
               onCreatePeak={onCreatePeak}
               onRemovePeak={onRemovePeak}

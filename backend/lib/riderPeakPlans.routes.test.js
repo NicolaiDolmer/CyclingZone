@@ -232,3 +232,81 @@ test("GET /peak-plans/board + GET /races/calendar kaster hvis availableSeasons-q
     "kalenderen skal kaste hvis availableSeasons-queryen fejler, ikke tavst degradere til []",
   );
 });
+
+// ── #3018 · planlæggeren må ikke vise den GAMLE divisions kalender ────────────
+// thelamba 26/7: S2-planlæggeren viste D3's kalender til et hold på vej op i D2.
+// Rod-årsag: boardet sendte holdets NUVÆRENDE league_division_id ind i
+// buildCalendarModel uanset hvilken sæson der blev spurgt om, og isMine matchede
+// derfor den gamle division. Målt mod prod samme dag: 140 af 156 ægte
+// managerhold lander i en anden pulje i S2.
+
+test("GET /peak-plans/board bruger den SÆSON-opløste division, ikke holdets nuværende", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(
+    block,
+    /teamDivisionId: seasonDivisionId/,
+    "boardet må ikke sende req.team.league_division_id direkte ind i buildCalendarModel",
+  );
+  assert.doesNotMatch(
+    block,
+    /teamDivisionId: req\.team\.league_division_id/,
+    "den gamle 'altid nuværende division'-adfærd er præcis fejlen i #3018",
+  );
+  assert.match(block, /resolveTeamDivisionForSeason\(/, "divisionen skal opløses pr. sæson");
+});
+
+test("GET /peak-plans/board eksponerer divisionPending til UI'et", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /divisionPending: !divisionSettled/, "UI'et skal kunne vise den ærlige 'din division afgøres ved sæsonskiftet'-tilstand");
+});
+
+test("GET /peak-plans/board laver ingen assistent-forslag når divisionen ikke er afgjort", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(
+    block,
+    /divisionSettled \? ridersOut\.filter/,
+    "forslag vælger blandt isMine-løb og ville ellers pege på den gamle division",
+  );
+});
+
+// Den tre-vejs-regel hele fixet hviler på. Retningen for 'completed' er den #2908
+// fastslog for sæsonsiden: en afsluttet sæson hører til den division holdet
+// FAKTISK kørte i, ikke den det er havnet i efter sæsonskiftet.
+test("resolveTeamDivisionForSeason skelner upcoming / active / completed", () => {
+  const idx = apiSource.indexOf("async function resolveTeamDivisionForSeason");
+  assert.ok(idx !== -1, "resolveTeamDivisionForSeason skal findes");
+  const block = apiSource.slice(idx, idx + 1200);
+  assert.match(block, /teamDivisionKnownForSeason\(season\?\.status\)/, "upcoming → pending");
+  assert.match(block, /pending: true/, "upcoming skal signalere pending, ikke gætte en division");
+  assert.match(block, /season\?\.status === "active"/, "aktiv sæson → holdets nuværende division");
+  assert.match(block, /from\("season_standings"\)/, "afsluttet sæson → den division holdet faktisk kørte i");
+  assert.match(block, /\.eq\("season_id", season\.id\)/, "standings-opslaget skal scopes til den valgte sæson");
+});
+
+test("loadTargetRaceForPeak afviser writes mod en sæson uden afgjort division", () => {
+  const idx = apiSource.indexOf("async function loadTargetRaceForPeak");
+  assert.ok(idx !== -1, "loadTargetRaceForPeak skal findes");
+  const block = apiSource.slice(idx, idx + 2000);
+  assert.match(block, /resolveTeamDivisionForSeason\(/, "skrive-stien skal bruge SAMME resolver som boardet");
+  assert.match(block, /division_not_settled/, "afvisningen skal have sin egen fejlkode, så UI'et kan forklare hvorfor");
+  // Guarden SKAL ligge før den almindelige division-sammenligning, ellers ville et
+  // løb i den gamle division stadig slippe igennem som gyldigt mål.
+  assert.ok(
+    block.indexOf("division_not_settled") < block.indexOf("race_not_in_calendar"),
+    "division_not_settled skal evalueres FØR race_not_in_calendar",
+  );
+});
+
+test("peak-CRUD sender hele holdet til loadTargetRaceForPeak (ikke kun nuværende division)", () => {
+  for (const marker of ['router.post("/peak-plans"', 'router.patch("/peak-plans/:id"']) {
+    const block = handlerBlock(marker);
+    assert.match(block, /loadTargetRaceForPeak\([^)]*req\.team\)/, `${marker} skal give resolveren holdet, så divisionen kan opløses pr. sæson`);
+    assert.doesNotMatch(block, /loadTargetRaceForPeak\([^)]*league_division_id/, `${marker} må ikke låse guarden til den nuværende division`);
+  }
+});
+
+test("resolvePlannerSeason henter status med, så division-gaten kan afgøres", () => {
+  const idx = apiSource.indexOf("async function resolvePlannerSeason");
+  const block = apiSource.slice(idx, idx + 700);
+  assert.match(block, /select\("id, number, status, start_date"\)/, "status skal med i sæson-opslaget");
+});
