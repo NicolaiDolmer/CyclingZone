@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.66",
+    "date": "2026-07-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Exhausted auto-bids now cancel themselves and release your reserved balance",
+          "body": "When someone outbid your auto-bid above its cap, the auto-bid stayed on the auction as a dead entry — it could never fire again, but it kept part of your balance reserved until you deleted it yourself, and if you were leapfrogged without ever leading you got no message at all. An outbid auto-bid is now cancelled automatically, the reservation is released right away, and you always get a notification saying so."
+        },
+        "da": {
+          "title": "Udmattede autobud annullerer nu sig selv og frigiver din reserverede saldo",
+          "body": "Når nogen overbød dit autobud over dets loft, blev autobuddet liggende på auktionen som en død række — det kunne aldrig byde igen, men det holdt en del af din saldo reserveret indtil du selv slettede det, og blev du sprunget over uden nogensinde at føre, fik du slet ingen besked. Et overbudt autobud annulleres nu automatisk, reservationen frigives med det samme, og du får altid en notifikation om det."
+        },
+        "refs": [230]
+      }
+    ]
+  },
+  {
     "version": "7.65",
     "date": "2026-07-26",
     "label": "Beta",
