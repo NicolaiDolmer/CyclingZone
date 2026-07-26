@@ -18,7 +18,7 @@
 
 > **Næste sessioner efter cutover:** (a) "allerede løst"-verifikation — 60+ kandidater i prioriterings-docen, realistisk 30-50 closes · (b) ejer-beslutnings-batch (49 issues venter kun på A/B-valg) · (c) s2_uge1-sporet som bølge · (d) fælles planner-design-session (#2905, mockups i `docs/screenshots/wave3-2507/2905/`). Bølge 1-4-historik: git-log + patch notes 7.62-7.64.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (main-checkout) — cutover-preflight kørt 26/7 ~12:15; står standby til cutover-støtte i aften.
 
 ## Standing context (forever-relaunch)
 

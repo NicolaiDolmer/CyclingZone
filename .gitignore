@@ -95,3 +95,6 @@ backend/scripts/backups/
 # via scripts/simulateSeasonProduction.js. Kun den fittede model (riderValuationModelV4.json,
 # ~2 KB) committes — den er hvad route/preview loader ved runtime (som v3-modellen).
 backend/lib/riderProductionSample.json
+
+# Cutover-rollback-artefakter (prod-data: balances + restore-SQL) — lokale, regenererbare
+backend/scripts/snapshots/
