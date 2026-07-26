@@ -1032,7 +1032,7 @@ export const SEED_TRAINING = {
   riderWeekPlans: {},
 };
 
-// ── #2863 · Sæsonens kåringer (get_season_honours-RPC) ───────────────────────
+// ── #2863 · Sæsonens bedste ryttere (get_season_honours-RPC) ───────────────────────
 // Payloaden fra public.get_season_honours(p_season_id): to top-5-lister, points
 // og wins, allerede sorteret af serveren. Tallene serialiseres som STRENGE
 // ligesom PostgREST gør med bigint, så preview/e2e faktisk afprøver den
@@ -1040,7 +1040,7 @@ export const SEED_TRAINING = {
 //
 // Formen efterligner sæson 1 med vilje på to punkter, fordi det er dér den er
 // nem at bygge forkert:
-//   1. flest point er en AI-ejet rytter → AI-badget skal være synligt i kåringen
+//   1. flest point er en AI-ejet rytter → AI-badget skal være synligt øverst
 //   2. toppen af sejrs-listen er DELT (11 og 11) → tie-break-noten skal vises
 // De to øverste peger på rigtige seed-ryttere, så navnene kan klikkes igennem.
 export const SEED_SEASON_HONOURS = {

@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 
 import {
   normalizeHonours,
-  championOf,
+  topOf,
   isMissingFunctionError,
 } from "./seasonHonours.js";
 
-// #2863 — kåringen af sæsonens bedste ryttere.
+// #2863 — sæsonens bedste ryttere: flest point og flest sejre.
 //
 // Datasættet nedenfor er de faktiske tal fra prod sæson 1 (read-only 26/7, 27
 // af 28 løbsdage afviklet). Det er valgt netop fordi det indeholder de to
@@ -57,24 +57,24 @@ test("#2863 en tom eller fejlagtig payload giver to tomme lister, ikke et crash"
   }
 });
 
-test("#2863 World Champion = flest point, også når rytteren er AI-ejet", () => {
+test("#2863 nr. 1 på point findes, også når rytteren er AI-ejet", () => {
   const { points } = normalizeHonours(S1);
-  const { champion, runnersUp, shared } = championOf(points, "points");
-  assert.equal(champion.name, "Cooper Doyle");
-  assert.equal(champion.points, 8844);
+  const { leader, runnersUp, shared } = topOf(points, "points");
+  assert.equal(leader.name, "Cooper Doyle");
+  assert.equal(leader.points, 8844);
   // Ingen is_ai-udelukkelse: en rytter er en rytter, samme valg som
   // stage-king-kortet på samme side. UI'et markerer det med AI-badget i stedet.
-  assert.equal(champion.isAi, true);
+  assert.equal(leader.isAi, true);
   assert.equal(runnersUp.length, 4);
   assert.equal(shared, false);
 });
 
-test("#2863 European Champion = flest sejre, tie-break på point", () => {
+test("#2863 nr. 1 på sejre afgøres af point ved lige antal", () => {
   const { wins } = normalizeHonours(S1);
-  const { champion, runnersUp, shared } = championOf(wins, "wins");
+  const { leader, runnersUp, shared } = topOf(wins, "wins");
   // Adamczyk og Whitfield har begge 28. Point afgør, og det skal siges højt.
-  assert.equal(champion.name, "Jakub Adamczyk");
-  assert.equal(champion.wins, 28);
+  assert.equal(leader.name, "Jakub Adamczyk");
+  assert.equal(leader.wins, 28);
   assert.equal(shared, true, "delt topplacering skal kunne forklares i UI'et");
   assert.equal(runnersUp[0].name, "George Whitfield");
   assert.equal(runnersUp[0].wins, 28);
@@ -82,14 +82,14 @@ test("#2863 European Champion = flest sejre, tie-break på point", () => {
 
 test("#2863 shared er falsk når toppen står alene", () => {
   const { wins } = normalizeHonours({ wins: S1_WINS.slice(1) });
-  const { champion, shared } = championOf(wins, "wins");
-  assert.equal(champion.name, "George Whitfield");
+  const { leader, shared } = topOf(wins, "wins");
+  assert.equal(leader.name, "George Whitfield");
   assert.equal(shared, false);
 });
 
-test("#2863 tom liste giver ingen champion i stedet for at kaste", () => {
-  assert.deepEqual(championOf([], "points"), { champion: null, runnersUp: [], shared: false });
-  assert.deepEqual(championOf(undefined, "wins"), { champion: null, runnersUp: [], shared: false });
+test("#2863 tom liste giver ingen leader i stedet for at kaste", () => {
+  assert.deepEqual(topOf([], "points"), { leader: null, runnersUp: [], shared: false });
+  assert.deepEqual(topOf(undefined, "wins"), { leader: null, runnersUp: [], shared: false });
 });
 
 test("#2863 rytter uden hold falder ikke ud, den vises bare uden holdnavn", () => {

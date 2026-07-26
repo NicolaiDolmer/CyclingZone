@@ -16,33 +16,29 @@
     "scheduled": "Upcoming"
   },
   "honours": {
-    "heading": "Season honours",
+    "heading": "Season's best riders",
     "metaFinal": "Season {number} · final",
     "metaProvisional": "Provisional",
     "title": {
-      "points": "World champion",
-      "wins": "European champion"
-    },
-    "leader": {
-      "points": "Leading on points",
-      "wins": "Leading on wins"
+      "points": "Most points",
+      "wins": "Most wins"
     },
     "unit": {
       "points": "points",
       "wins": "wins"
     },
     "tieBreak": {
-      "points": "Level on points. The rider ranked first alphabetically takes the title.",
-      "wins": "Level on wins. Points decide the title."
+      "points": "Level on points. Alphabetical order decides who is listed first.",
+      "wins": "Level on wins. Points decide the order."
     },
     "note": "Wins count stage, general classification, one-day, points, mountain and youth classification victories, the same total as the Wins column on the rider rankings.",
-    "noRider": "No rider qualified.",
+    "noRider": "No rider yet.",
     "noTeam": "No team",
     "empty": {
-      "title": "No honours yet",
+      "title": "No rider results yet",
       "body": "Riders earn points and wins once the season's races have been run."
     },
-    "error": "Couldn't load the season honours."
+    "error": "Couldn't load the season's best riders."
   },
   "winners": {
     "prize": { "title": "Prize leader", "secondary": "+{amount} earned", "empty": "No prizes yet" },

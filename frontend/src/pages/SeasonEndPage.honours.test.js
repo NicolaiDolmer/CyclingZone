@@ -4,14 +4,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// #2863 — kåringen af sæsonens bedste ryttere er ADDITIV til /seasons.
+// #2863 — sæsonens bedste ryttere er ADDITIV til /seasons.
 //
 // Hvorfor det er en guard og ikke bare en kodegennemgang: season_ended-
 // notifikationen deep-linker alle menneske-managere til præcis denne side i
-// minutterne efter sæsonskiftet. Kåringens RPC applies EFTER merge, så der
+// minutterne efter sæsonskiftet. Blokkens RPC applies EFTER merge, så der
 // findes et vindue hvor funktionen ikke findes. Falder blokken ind i sidens
 // fælles fejl-sti, mister ~150 managere slutstilling, kalender og
-// pointudvikling for at vise en kåring der endnu ikke er slået til.
+// pointudvikling for at vise en blok der endnu ikke er slået til.
 //
 // node --test uden DOM → kildekode-strukturel guard, samme mønster som
 // SeasonEndPage.recapAggregate.test.js.
@@ -25,15 +25,15 @@ const code = raw
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
-test("#2863 siden henter kåringen via get_season_honours(p_season_id)", () => {
+test("#2863 siden henter listerne via get_season_honours(p_season_id)", () => {
   assert.match(
     code,
     /\.rpc\(\s*["'`]get_season_honours["'`]\s*,\s*\{\s*p_season_id:/,
-    "kåringen skal komme fra RPC'en, ikke fra en klient-side aggregering",
+    "listerne skal komme fra RPC'en, ikke fra en klient-side aggregering",
   );
 });
 
-test("#2863 kåringen læser ALDRIG rå race_results eller rider_rankings_mv til klienten", () => {
+test("#2863 blokken læser ALDRIG rå race_results eller rider_rankings_mv til klienten", () => {
   // Den klient-side vej (som /rider-rankings bruger) er 5.736 mv-rækker + hele
   // riders-tabellen i pagineret form. På DENNE side, med ~150 samtidige
   // managere ved cutover, er det præcis den fælde #2891 lige har lukket.
@@ -54,8 +54,8 @@ test("#2863 en manglende migration skjuler blokken, den fejler ikke siden", () =
   );
 });
 
-test("#2863 kåringens fejl går ALDRIG i sidens fælles error-state", () => {
-  // setError({type:"season"}) river hele siden ned til ErrorState. Kåringen har
+test("#2863 blokkens fejl går ALDRIG i sidens fælles error-state", () => {
+  // setError({type:"season"}) river hele siden ned til ErrorState. Blokken har
   // sin egen state (setHonours) netop for ikke at kunne gøre det.
   const loadHonours = code.slice(
     code.indexOf("const loadHonours"),
@@ -66,13 +66,13 @@ test("#2863 kåringens fejl går ALDRIG i sidens fælles error-state", () => {
   assert.doesNotMatch(
     loadHonours,
     /setError\s*\(/,
-    "kåringen må ikke kunne sætte sidens fælles fejl-tilstand",
+    "blokken må ikke kunne sætte sidens fælles fejl-tilstand",
   );
   assert.match(loadHonours, /setHonours\(\s*\{\s*status:\s*["'`]failed["'`]/);
 });
 
-test("#2863 en ægte RPC-fejl bliver SET, den sluges ikke til en tom kåring", () => {
-  // #1851-klassen: en tom kåring der ser bevidst ud er værre end en synlig fejl.
+test("#2863 en ægte RPC-fejl bliver SET, den sluges ikke til en tom liste", () => {
+  // #1851-klassen: en tom liste der ser bevidst ud er værre end en synlig fejl.
   assert.match(
     code,
     /console\.error\([\s\S]{0,80}get_season_honours/,
@@ -86,8 +86,10 @@ test("#2863 en ægte RPC-fejl bliver SET, den sluges ikke til en tom kåring", (
 });
 
 test("#2863 blokken er provisional så længe sæsonen ikke er completed", () => {
-  // At kåre en verdensmester midt i sæsonen ville være forkert. Statusen
-  // afgøres af sæsonens EGEN status, ikke af om der tilfældigvis er data.
+  // `Foreløbig`-chippen er det ENESTE der siger om tallene kan flytte sig endnu
+  // (labels er ens før og efter, fordi "flest point" er lige sandt begge steder).
+  // Den skal afgøres af sæsonens EGEN status, ikke af om der tilfældigvis er data
+  // — ellers ville en fuldt talt sæson og en halvspillet se identiske ud.
   assert.match(
     code,
     /provisional=\{selectedSeason\?\.status !== ["'`]completed["'`]\}/,

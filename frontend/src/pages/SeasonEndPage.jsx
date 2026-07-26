@@ -72,7 +72,7 @@ export default function SeasonEndPage() {
   const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
   const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
-  // #2863 kåringen har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
+  // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
   // additiv: get_season_honours() applies efter merge, og ~150 managere lander
   // på denne side samtidig ved cutover. En manglende eller fejlende RPC må
   // derfor aldrig kunne tage slutstilling og kalender med sig ned.
@@ -116,7 +116,7 @@ export default function SeasonEndPage() {
   };
 
   // #2863 — sæsonens bedste ryttere. Egen fetch, egen fejl-håndtering, bevidst
-  // IKKE en del af loadSeason's try/catch: kåringen er en tilføjelse til
+  // IKKE en del af loadSeason's try/catch: blokken er en tilføjelse til
   // opsamlingen, ikke en forudsætning for den.
   const loadHonours = async (season) => {
     setHonours({ status: "loading", data: null });
@@ -134,7 +134,7 @@ export default function SeasonEndPage() {
         setHonours({ status: "unavailable", data: null });
         return;
       }
-      // Alt andet er en ægte fejl og skal SES. En tom kåring der ser bevidst ud
+      // Alt andet er en ægte fejl og skal SES. en tom liste der ser bevidst ud
       // er værre end en synlig fejl (#1851-klassen).
       console.error("SeasonEndPage: get_season_honours failed", e);
       setHonours({ status: "failed", data: null });
@@ -287,7 +287,7 @@ export default function SeasonEndPage() {
     else loadInit();
   };
 
-  // #2863: kåringen retry'er KUN sit eget kald — resten af siden er allerede
+  // #2863: blokken retry'er KUN sit eget kald — resten af siden er allerede
   // hentet og skal ikke gen-hentes for at prøve ét RPC-kald igen.
   const retryHonours = () => { if (selectedSeason) loadHonours(selectedSeason); };
 
@@ -372,7 +372,7 @@ export default function SeasonEndPage() {
       ) : (
         <div className="flex flex-col gap-[14px]">
           {/* #2863 Sæsonens bedste ryttere. Står ØVERST og uden for
-              standings-guarden nedenfor: kåringen er årbogssidens overskrift,
+              standings-guarden nedenfor: listerne er årbogssidens overskrift,
               og den bygger på race_results (via rider_rankings_mv), ikke på om
               der findes menneskehold i slutstillingen. "unavailable" =
               migrationen er ikke applied endnu → ingen blok. */}

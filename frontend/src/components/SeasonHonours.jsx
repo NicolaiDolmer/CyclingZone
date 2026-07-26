@@ -4,32 +4,42 @@ import { Link } from "react-router";
 import { Flag } from "./Flag";
 import RiderBadges from "./rider/RiderBadges";
 import { formatNumber } from "../lib/intl";
-import { championOf } from "../lib/seasonHonours";
+import { topOf } from "../lib/seasonHonours";
 import {
   Section, SectionHeader, EmptyState, ErrorState, Button, SkeletonLines,
-  GlobeIcon, JerseyIcon, TrophyIcon,
+  ChartLineIcon, TrophyIcon,
 } from "./ui";
 
-// #2863 — kåringen af sæsonens bedste ryttere, øverst på /seasons.
+// #2863 — sæsonens bedste ryttere, øverst på /seasons.
 //
-// Ejerens model (Discord 23/7): flest point = World Champion, flest sejre =
-// European Champion. Begge tal kommer fra get_season_honours(), der læser
-// rider_rankings_mv, altså samme kolonner som rytter-ranglisten har vist hele
-// sæsonen. Ren visning: intet her rører sæsonskiftet.
+// Ejerens model (Discord 23/7): flest point og flest sejre. Begge tal kommer fra
+// get_season_honours(), der læser rider_rankings_mv, altså samme kolonner som
+// rytter-ranglisten har vist hele sæsonen. Ren visning: intet her rører
+// sæsonskiftet.
 //
-// Formen er en årbogs-opslag, ikke et dashboard-kort: guld-keyline på oversiden
-// (samme T3-signatur som rytter-/løbs-hero'en), Bebas-navn som overskrift,
-// hairline-delte nummer 2 til 5 nedenunder, og en note der siger hvad "sejre"
-// tæller. Ingen skygger, ingen emoji, tabulære tal på al numerik.
+// NAVNGIVNING — ejer-beslutning 26/7: labelen siger hvad der MÅLES ("flest
+// point" / "flest sejre"), ikke hvad nogen har vundet. Ordene verdensmester og
+// europamester er lovet til #934/#266, der bygger VM og EM som rigtige løb;
+// brugte vi dem her, ville to forskellige ryttere kunne være "verdensmester" i
+// samme sæson. Ceremonien kommer derfor fra OPSÆTNINGEN, ikke fra ordene:
+// guld-keyline på oversiden (samme T3-signatur som rytter-/løbs-hero'en),
+// navnet i Bebas, hairline-delte nummer 2 til 5 nedenunder, og en note der
+// siger hvad "sejre" tæller. Ingen skygger, ingen emoji, tabulære tal overalt.
+// Fordi labelen er en optælling og ikke en titel, er den ens før og efter
+// sæsonslut; det er `Foreløbig`-chippen i sektions-headeren der bærer
+// forskellen. Skal det en dag være en titel, er det fire strenge i
+// seasonEnd-namespacet, ikke en kodeændring.
 //
-// Kårings-blokken må ALDRIG kunne vælte resten af siden. Ved sæson-cutover
-// rammer ~150 managere /seasons samtidig via season_ended-notifikationen, så
-// SeasonEndPage holder honours i sin egen state: RPC'en mangler indtil
-// migrationen er applied (da rendres blokken slet ikke), og enhver anden fejl
-// bliver til en fejl-tilstand INDE i kortet mens slutstilling og kalender
-// stadig virker.
+// Blokken må ALDRIG kunne vælte resten af siden. Ved sæson-cutover rammer ~150
+// managere /seasons samtidig via season_ended-notifikationen, så SeasonEndPage
+// holder honours i sin egen state: RPC'en mangler indtil migrationen er applied
+// (da rendres blokken slet ikke), og enhver anden fejl bliver til en
+// fejl-tilstand INDE i kortet mens slutstilling og kalender stadig virker.
 
-const METRIC_ICON = { points: GlobeIcon, wins: JerseyIcon };
+// Ikonerne beskriver MÅLINGEN, ikke en titel: en kurve for point der er samlet
+// op over sæsonen, et trofæ for sejre der er kørt hjem. En globus/trøje ville
+// pege på VM/EM, hvilket er præcis det navngivningen bevidst undgår.
+const METRIC_ICON = { points: ChartLineIcon, wins: TrophyIcon };
 
 function MetricValue({ metric, value, t }) {
   return (
@@ -42,11 +52,13 @@ function MetricValue({ metric, value, t }) {
   );
 }
 
-// Ét kårings-felt: titel-label, vinderen i Bebas, hold-linje, tallet, og
-// nummer 2 til 5 som hairline-delte rækker.
-function HonourColumn({ metric, entries, provisional, className = "" }) {
+// Én måling: hvad der tælles, nr. 1 i Bebas, hold-linje, tallet, og nummer 2
+// til 5 som hairline-delte rækker. Labelen er den SAMME før og efter sæsonslut,
+// fordi "flest point" er lige sandt begge steder; det er `Foreløbig`-chippen i
+// sektions-headeren der siger om tallene kan nå at flytte sig endnu.
+function HonourColumn({ metric, entries, className = "" }) {
   const { t } = useTranslation("seasonEnd");
-  const { champion, runnersUp, shared } = championOf(entries, metric);
+  const { leader, runnersUp, shared } = topOf(entries, metric);
   const Icon = METRIC_ICON[metric];
 
   return (
@@ -54,39 +66,39 @@ function HonourColumn({ metric, entries, provisional, className = "" }) {
       <div className="mb-2 flex items-center gap-1.5">
         <Icon size={15} className="flex-shrink-0 text-cz-accent" aria-hidden="true" />
         <span className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
-          {t(provisional ? `honours.leader.${metric}` : `honours.title.${metric}`)}
+          {t(`honours.title.${metric}`)}
         </span>
       </div>
 
-      {!champion ? (
+      {!leader ? (
         <p className="text-[13px] text-cz-2">{t("honours.noRider")}</p>
       ) : (
         <>
           <Link
-            to={champion.riderId ? `/riders/${champion.riderId}` : "#"}
+            to={leader.riderId ? `/riders/${leader.riderId}` : "#"}
             className="font-display block break-words text-[28px] uppercase leading-[.92] text-cz-1 transition-colors hover:text-cz-accent-t sm:text-[32px]"
           >
-            {champion.name}
+            {leader.name}
           </Link>
 
           <div className="mb-3 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            {champion.nationalityCode && (
-              <Flag code={champion.nationalityCode} className="flex-shrink-0" />
+            {leader.nationalityCode && (
+              <Flag code={leader.nationalityCode} className="flex-shrink-0" />
             )}
-            {champion.teamId ? (
+            {leader.teamId ? (
               <Link
-                to={`/teams/${champion.teamId}`}
+                to={`/teams/${leader.teamId}`}
                 className="min-w-0 truncate text-[13px] text-cz-2 transition-colors hover:text-cz-accent-t"
               >
-                {champion.teamName || t("honours.noTeam")}
+                {leader.teamName || t("honours.noTeam")}
               </Link>
             ) : (
               <span className="text-[13px] text-cz-3">{t("honours.noTeam")}</span>
             )}
-            {champion.isAi && <RiderBadges badges={["ai"]} />}
+            {leader.isAi && <RiderBadges badges={["ai"]} />}
           </div>
 
-          <MetricValue metric={metric} value={champion[metric]} t={t} />
+          <MetricValue metric={metric} value={leader[metric]} t={t} />
 
           {runnersUp.length > 0 && (
             <ol className="mt-4">
@@ -137,7 +149,7 @@ function HonourColumn({ metric, entries, provisional, className = "" }) {
  * @param {boolean} props.loading
  * @param {boolean} props.failed  ægte fejl (IKKE "migrationen mangler")
  * @param {() => void} props.onRetry
- * @param {boolean} props.provisional sæsonen kører stadig, så ingen er kåret endnu
+ * @param {boolean} props.provisional sæsonen kører stadig, så tallene kan flytte sig
  * @param {number|undefined} props.seasonNumber
  */
 export default function SeasonHonours({
@@ -182,11 +194,10 @@ export default function SeasonHonours({
     body = (
       <>
         <div className="grid gap-5 md:grid-cols-2 md:gap-6">
-          <HonourColumn metric="points" entries={honours.points} provisional={provisional} />
+          <HonourColumn metric="points" entries={honours.points} />
           <HonourColumn
             metric="wins"
             entries={honours.wins}
-            provisional={provisional}
             className="border-t border-cz-border pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0"
           />
         </div>

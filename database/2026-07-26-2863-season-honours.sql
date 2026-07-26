@@ -1,22 +1,37 @@
--- #2863 — Sæsonens bedste ryttere: World Champion (flest point) + European
--- Champion (flest sejre).
+-- #2863 — Sæsonens bedste ryttere: flest point + flest sejre.
 --
 -- BAGGRUND
 --   Spiller-ønske i #questions-and-answers 23/7, ejer-bekræftet med hans egen
 --   model: "'in the old days' the rider with the most points became world
 --   champion. And the rider with the most victories became European champion."
 --
+-- NAVNGIVNING — EJER-BESLUTNING 26/7: fladen hedder "flest point" / "flest
+--   sejre", IKKE verdensmester/europamester. #934 (landshold + internationale
+--   mesterskaber) og #266 (mestertrøjer) bygger VM og EM som rigtige løb, og
+--   bruger vi navnene her, står vi den dag med to forskellige "verdensmestre" i
+--   samme sæson. Retningen er asymmetrisk: en beskrivende label kan opgraderes
+--   til en titel senere, men en titel kan ikke tages tilbage fra sæson 1's
+--   vinder efter spillerne har set den. Funktionen returnerer derfor rå tal og
+--   navngiver ingenting; al copy bor i seasonEnd-namespacet.
+--
 -- DETTE ER EN VISNING, IKKE ET MOTOR-TRIN.
---   Kåringen beregnes udelukkende ud fra data der allerede findes efter
+--   Optællingen sker udelukkende ud fra data der allerede findes efter
 --   sæsonslut. Intet i seasonTransition.js / economyEngine.js / processSeasonEnd
 --   er rørt, og funktionen kaldes ikke af nogen cron eller sweep. Den kan
 --   applies FØR eller EFTER cutoveren uden at ændre hvad cutoveren gør.
 --
+-- APPLY-REKKEFØLGE — EJER-BESLUTNING 26/7: ejeren kører selv denne migration
+--   EFTER merge OG EFTER cutoveren søndag aften. Det er bevidst, ikke en
+--   forglemmelse: listerne giver først mening når sæsonen er lukket og sidste
+--   løbsdag er talt med. Kør den ikke i forvejen. Indtil den er kørt svarer
+--   PostgREST PGRST202, og /seasons udelader blokken helt (se
+--   frontend/src/lib/seasonHonours.js: isMissingFunctionError).
+--
 -- HVOR TALLENE KOMMER FRA
 --   rider_rankings_mv (#2175) — det samme færdig-aggregerede matview som
 --   /rider-rankings har vist spilleren hele sæsonen. Det er hele pointen med at
---   læse derfra og ikke fra race_results: kåringen SKAL matche den rangliste
---   spillerne har fulgt, ellers ser titlen ud til at være uddelt efter et andet
+--   læse derfra og ikke fra race_results: optællingen SKAL matche den rangliste
+--   spillerne har fulgt, ellers ser tallene ud til at komme fra et andet
 --   regnestykke end det de kunne se.
 --     · points = SUM(points_earned) over sæsonens race_results
 --     · wins   = stage + gc + classic + pts + mtn + young  (#925's total_wins,
@@ -29,11 +44,15 @@
 --   rider_id som sidste led gør rækkefølgen deterministisk, så to kald i træk
 --   ikke kan bytte om på to ellers identiske ryttere.
 --
--- INGEN is_ai-FILTER — bevidst, og det samme valg som stage-king-kortet på
+-- INGEN is_ai-FILTER — EJER-BESLUTNING 26/7, truffet på de faktiske sæson-1-tal.
+--   AI-ejede ryttere tæller med på lige fod, samme valg som stage-king-kortet på
 --   samme side traf i #2891 ("det ville være en gameplay-ændring forklædt som
---   noget andet"). En rytter er en rytter; ejeren kan skifte det med én WHERE-
---   linje hvis titlen skal være menneske-only. Klienten får is_ai med, så UI'et
---   kan sætte AI-badget på og læseren kan se det med det samme.
+--   noget andet"). En rytter er en rytter. Konsekvensen er kendt og accepteret:
+--   sæson 1's pointliste toppes af en AI-ejet rytter (Cooper Doyle, 8.844 mod
+--   4.595). Klienten får is_ai med, så UI'et sætter AI-badget på og læseren ser
+--   det med det samme.
+--   Tilføj IKKE et is_ai-filter her uden en ny ejer-beslutning: det ville
+--   tavst ændre hvem der står øverst på en flade spillerne allerede har set.
 --   Pensionerede ryttere falder ud (join'et på is_retired IS NOT TRUE) —
 --   præcis som ranglisten allerede gør.
 --
@@ -102,10 +121,10 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.get_season_honours(uuid) IS
-  '#2863 · Sæsonens bedste ryttere til kåringen på /seasons. Top 5 efter point '
-  '(World Champion) og top 5 efter sejre (European Champion), læst fra '
-  'rider_rankings_mv så tallene matcher rytter-ranglisten 1:1. Ren visning: '
-  'ingen del af sæsonskiftet kalder den. ~17 ms mod sæson 1 i prod.';
+  '#2863 · Sæsonens bedste ryttere på /seasons. Top 5 efter point og top 5 '
+  'efter sejre, læst fra rider_rankings_mv så tallene matcher rytter-ranglisten '
+  '1:1. AI-ejede ryttere tæller med (ejer-beslutning 26/7). Ren visning: ingen '
+  'del af sæsonskiftet kalder den. ~17 ms mod sæson 1 i prod.';
 
 -- Samme grant-form som get_season_recap: siden kalder RPC'en direkte fra
 -- browseren med anon/authenticated-nøglen.

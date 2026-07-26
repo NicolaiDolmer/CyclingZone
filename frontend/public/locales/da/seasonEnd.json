@@ -16,33 +16,29 @@
     "scheduled": "Kommende"
   },
   "honours": {
-    "heading": "Sæsonens kåringer",
+    "heading": "Sæsonens bedste ryttere",
     "metaFinal": "Sæson {number} · endelig",
     "metaProvisional": "Foreløbig",
     "title": {
-      "points": "Verdensmester",
-      "wins": "Europamester"
-    },
-    "leader": {
-      "points": "Fører på point",
-      "wins": "Fører på sejre"
+      "points": "Flest point",
+      "wins": "Flest sejre"
     },
     "unit": {
       "points": "point",
       "wins": "sejre"
     },
     "tieBreak": {
-      "points": "Lige på point. Rytteren der står først alfabetisk får titlen.",
-      "wins": "Lige på sejre. Point afgør titlen."
+      "points": "Lige på point. Alfabetisk rækkefølge afgør hvem der står først.",
+      "wins": "Lige på sejre. Point afgør rækkefølgen."
     },
     "note": "Sejre tæller etape, samlet klassement, endagsløb, pointtrøje, bjergtrøje og ungdomstrøje, samme total som Sejre-kolonnen på rytter-ranglisten.",
-    "noRider": "Ingen rytter kvalificerede sig.",
+    "noRider": "Ingen rytter endnu.",
     "noTeam": "Intet hold",
     "empty": {
-      "title": "Ingen kåringer endnu",
+      "title": "Ingen rytterresultater endnu",
       "body": "Ryttere optjener point og sejre når sæsonens løb er kørt."
     },
-    "error": "Kunne ikke indlæse sæsonens kåringer."
+    "error": "Kunne ikke indlæse sæsonens bedste ryttere."
   },
   "winners": {
     "prize": { "title": "Præmie-leader", "secondary": "+{amount} tjent", "empty": "Ingen præmier endnu" },
