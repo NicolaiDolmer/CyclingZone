@@ -1,3 +1,4 @@
+import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -49,6 +50,15 @@ export async function notifyUser({
 }) {
   if (!userId) {
     return { delivered: false, deduped: false, reason: "missing_user" };
+  }
+
+  // #3016: en type uden for notifications_type_check afvises tavst af Postgres
+  // (per-item try/catch hos kalderne). Gør det højlydt ved kilden — insert
+  // forsøges stadig, så adfærden er uændret hvis constrainten er nyere end listen.
+  if (!isKnownNotificationType(type)) {
+    captureException(new Error(
+      `Ukendt notifikationstype "${type}" — mangler i NOTIFICATION_TYPES/notifications_type_check (#3016)`,
+    ));
   }
 
   const sinceIso = new Date(now.getTime() - dedupeWindowMs).toISOString();
