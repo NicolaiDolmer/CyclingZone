@@ -4,6 +4,153 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.64",
+    "date": "2026-07-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season Planner",
+        "en": {
+          "title": "Season Planner no longer shows your old division's calendar",
+          "body": "If your team changed division at the season change, the planner kept showing your previous division's race calendar for the new season, so nearly every promoted or relegated team was planning against races it would never ride. The planner now resolves the calendar for the season you're actually viewing. While a season's promotions and relegations are not yet decided, it says so plainly instead of guessing."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren viser ikke længere din gamle divisions kalender",
+          "body": "Skiftede dit hold division ved sæsonskiftet, blev planlæggeren ved med at vise den forrige divisions kalender for den nye sæson, så næsten alle op- og nedrykkede hold planlagde mod løb de aldrig skulle køre. Planlæggeren opløser nu kalenderen for den sæson du rent faktisk kigger på. Er en sæsons op- og nedrykninger ikke afgjort endnu, siger den det ligeud i stedet for at gætte."
+        },
+        "refs": [3018]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The sponsor card now shows the math behind a race day",
+          "body": "Each sponsor offer card stated a rate per race day and a single \"Max\" figure, which left you guessing what the rate actually adds up to over a season and made every offer look about the same. The card now breaks it down: what's guaranteed at season start, your division's race days times the rate, and what that totals to if you start every stage, with any conditional bonuses shown separately instead of folded into the max."
+        },
+        "da": {
+          "title": "Sponsorkortet viser nu regnestykket bag en løbsdag",
+          "body": "Hvert sponsor-tilbudskort viste en rate pr. løbsdag og et enkelt \"Maks\"-tal, hvilket lod dig gætte hvad raten faktisk løber op i over en sæson og fik alle tilbud til at ligne hinanden. Kortet deler nu regnestykket op: hvad der er garanteret ved sæsonstart, din divisions løbsdage gange raten, og hvad det bliver til i alt hvis du starter hver etape, med eventuelle betingede bonusser vist separat i stedet for lagt ind i maks-tallet."
+        },
+        "refs": [2862]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season page now shows the season's best riders",
+          "body": "The Seasons page lists the top riders when a season ends: most points and most wins, each with the runners-up beneath. It's a count, not a championship, since real international titles are planned separately, so the labels read \"Most points\" and \"Most wins\" rather than any title. While the season is still running, you see the same board marked as provisional."
+        },
+        "da": {
+          "title": "Sæson-siden viser nu sæsonens bedste ryttere",
+          "body": "Sæson-siden lister topspillerne når en sæson slutter: flest point og flest sejre, med nr. 2 til 5 under hver. Det er en optælling, ikke en kåring, da rigtige internationale mesterskaber er planlagt separat, så labels er \"Flest point\" og \"Flest sejre\" i stedet for en titel. Mens sæsonen stadig kører, ser du samme tavle markeret som foreløbig."
+        },
+        "refs": [2863]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Every rider starts the new season fresh",
+          "body": "At the season change, your whole squad's fatigue now resets to zero instead of carrying over whatever load riders had built up in the previous season. All riders, on every team, start the new season equally fresh."
+        },
+        "da": {
+          "title": "Alle ryttere starter den nye sæson friske",
+          "body": "Ved sæsonskiftet nulstilles hele din trups træthed nu til nul, i stedet for at bære den belastning rytterne havde bygget op i den foregående sæson videre. Alle ryttere, på alle hold, starter den nye sæson lige friske."
+        },
+        "refs": [2910]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Season achievements now work",
+          "body": "Thirteen season achievements, including top 10, division winner, promotion, relegation and finishing in the money three seasons running, were visible on your profile but nothing in the game could ever award them. They can now be unlocked going forward, and season 1 has been awarded retroactively."
+        },
+        "da": {
+          "title": "Sæson-achievements virker nu",
+          "body": "Tretten sæson-achievements, herunder top 10, divisionsvinder, oprykning, nedrykning og tre sæsoner i træk i pengene, var synlige på din profil, men intet i spillet kunne nogensinde tildele dem. De kan nu låses op fremadrettet, og sæson 1 er tildelt med tilbagevirkende kraft."
+        },
+        "refs": [2917]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season history now shows where you actually finished",
+          "body": "Your season history table always showed a dash in the placement column, no matter how the season actually went. It now shows where you actually finished, like #1 or #2, so a season you won reads as won."
+        },
+        "da": {
+          "title": "Sæsonhistorikken viser nu hvor du rent faktisk sluttede",
+          "body": "Sæsonhistorik-tabellen viste altid en streg i placerings-kolonnen, uanset hvordan sæsonen faktisk gik. Den viser nu hvor du rent faktisk sluttede, som #1 eller #2, så en sæson du vandt også fremstår som vundet."
+        },
+        "refs": [2917]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "The calendar page loads in under a second instead of up to 13",
+          "body": "As the season grew past roughly 400 races, one of the calendar's background requests silently failed every single time, adding around 8 seconds to every page load without showing an error. That request is now gone, the remaining ones run in parallel, and the page only fetches the fields it actually displays. Server response time dropped from up to 9.4 seconds to under 0.7, and first paint on mobile from up to 13 seconds to about 5 on a cold load."
+        },
+        "da": {
+          "title": "Kalender-siden loader nu på under et sekund i stedet for op til 13",
+          "body": "Da sæsonen voksede forbi omkring 400 løb, fejlede et af kalenderens baggrundskald i stilhed hver eneste gang, hvilket lagde omkring 8 sekunder til hver sidevisning uden at vise nogen fejl. Det kald er nu væk, de resterende kører parallelt, og siden henter kun de felter den rent faktisk viser. Server-svartiden faldt fra op til 9,4 sekunder til under 0,7, og første visning på mobil fra op til 13 sekunder til omkring 5 ved en kold indlæsning."
+        },
+        "refs": [2861]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "The guided \"Show me how\" tour now covers all 4 onboarding steps",
+          "body": "The dashboard's getting-started card only offered a guided walkthrough for two of its four steps; the other two, daily training and squad selection, had no explanation and the help button simply didn't appear. All four steps now open a tour, including the training focus screen and the squad selection page where most new managers actually got stuck."
+        },
+        "da": {
+          "title": "Den guidede \"Vis mig hvordan\"-rundvisning dækker nu alle 4 onboarding-trin",
+          "body": "Dashboardets onboarding-kort tilbød kun en guidet rundvisning på to af sine fire trin; de andre to, daglig træning og holdudtagelse, havde ingen forklaring og hjælpe-knappen dukkede simpelthen ikke op. Alle fire trin åbner nu en rundvisning, inklusive træningsfokus-siden og holdudtagelsen, hvor de fleste nye managere rent faktisk sad fast."
+        },
+        "refs": [2819]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sign-up",
+        "en": {
+          "title": "Signing up with an unconfirmed email now gives you a way forward",
+          "body": "If you finished signup but never confirmed your email, there was no way back: the only button led to a login that was guaranteed to fail. The confirmation screen now suggests a fix if your address looks mistyped (like a missing letter in gmail.com), shows a countdown instead of a rate-limit error when you resend, and lets you correct your email without losing the team name and manager name you already entered."
+        },
+        "da": {
+          "title": "Tilmelding med en ubekræftet email giver dig nu en vej videre",
+          "body": "Gennemførte du tilmeldingen men bekræftede aldrig din email, var der ingen vej tilbage: den eneste knap førte til et login der var garanteret at fejle. Bekræftelsesskærmen foreslår nu en rettelse hvis din adresse ser forkert tastet ud (som et manglende bogstav i gmail.com), viser en nedtælling i stedet for en rate-limit-fejl når du sender igen, og lader dig rette din email uden at miste det holdnavn og managernavn du allerede har tastet."
+        },
+        "refs": [2826]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "Feedback you send can now get a reply",
+          "body": "Messages sent through the in-app feedback form used to disappear into a queue nobody read. They now reach an admin inbox where they can be triaged and answered, and if you get a reply, it lands as a notification in the game, the same way other messages do."
+        },
+        "da": {
+          "title": "Feedback du sender kan nu få et svar",
+          "body": "Beskeder sendt via feedback-formularen i appen forsvandt tidligere ind i en kø som ingen læste. De havner nu i en admin-indbakke hvor de kan triageres og besvares, og får du et svar, lander det som en notifikation i spillet, på samme måde som andre beskeder."
+        },
+        "refs": [2842]
+      }
+    ]
+  },
+  {
     "version": "7.63",
     "date": "2026-07-25",
     "label": "Beta",
