@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { restRows, restObject, apiResponse, parseRpc, rpcResponse } from "./mockHandlers.js";
 import { TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
+import { normalizeHonours, topOf } from "../lib/seasonHonours.js";
 
 test("races-tabel returnerer seed-løb", () => {
   const rows = restRows("races", "https://x/rest/v1/races?select=*");
@@ -120,4 +121,43 @@ test("/api/managers/:id — rival-holdet har nul oplåste (tomtilstand kan ses)"
   assert.equal(r.team.id, RIVAL_TEAM.id);
   assert.equal(r.achievements.filter((a) => a.unlocked).length, 0);
   assert.deepEqual(r.transfer_activity, []);
+});
+
+// ── #2863 · RPC-routing + honours-seed ───────────────────────────────────────
+
+test("#2863 parseRpc genkender rpc-stier og kun dem", () => {
+  assert.equal(parseRpc("https://x/rest/v1/rpc/get_season_honours"), "get_season_honours");
+  assert.equal(parseRpc("https://x/rest/v1/rpc/get_season_honours?foo=1"), "get_season_honours");
+  // Almindelige tabel-POSTs må IKKE fanges — de skal stadig svare optimistisk.
+  assert.equal(parseRpc("https://x/rest/v1/teams?id=eq.1"), null);
+  assert.equal(parseRpc("https://x/rest/v1/rpc"), null);
+});
+
+test("#2863 rpcResponse svarer kun på seedede RPC'er", () => {
+  assert.ok(rpcResponse("get_season_honours"), "honours-RPC har seed");
+  assert.equal(
+    rpcResponse("get_season_recap"),
+    undefined,
+    "useedede RPC'er skal falde tilbage til den gamle mutations-adfærd",
+  );
+  assert.equal(rpcResponse(null), undefined);
+});
+
+test("#2863 honours-seedet overlever normalizeHonours med begge fælder intakte", () => {
+  const { points, wins } = normalizeHonours(rpcResponse("get_season_honours"));
+  assert.equal(points.length, 5);
+  assert.equal(wins.length, 5);
+
+  // Fælde 1: flest point er en AI-ejet rytter → badget skal kunne vises.
+  const onPoints = topOf(points, "points");
+  assert.equal(onPoints.leader.isAi, true);
+
+  // Fælde 2: toppen af sejrs-listen er delt → tie-break-noten skal kunne vises.
+  const onWins = topOf(wins, "wins");
+  assert.equal(onWins.shared, true);
+  assert.equal(onWins.leader.wins, onWins.runnersUp[0].wins);
+
+  // Tallene er strenge i seedet (som PostgREST' bigint) og skal være tal bagefter.
+  assert.equal(typeof onPoints.leader.points, "number");
+  assert.ok(points.every((e) => e.riderId && e.name));
 });

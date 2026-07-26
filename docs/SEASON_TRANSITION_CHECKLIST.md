@@ -68,6 +68,29 @@ select count(*) from races r where r.season_id='00000000-0000-0000-0000-00000000
 
 **Præmie-rækken er kritisk:** prize-sweepen kører KUN mod den aktive sæson. Ubetalte S1-præmier efter "Afslut sæson" strander for evigt (ingen cron samler dem op). Hvis > 0 og sweepen ikke selv når det inden for ~15 min → kør `paySeasonPrizesToDate` manuelt (admin) FØR skridt 3.
 
+#### 1b — Rangliste-matviewet skal have set den sidste løbsdag (#2863)
+
+**Hvorfor det står her:** `processSeasonEnd` / `seasonTransition.js` refresher **ikke** `rider_rankings_mv` (verificeret 26/7: `refreshRankingMatviewsSafe` kaldes kun fra `raceRunner.js`' finalization og fra en 10-minutters cron i `cron.js`). Matviewet er kilden til både rytter-ranglisten og **"Sæsonens bedste ryttere"** på `/seasons`. Refreshen er desuden best-effort: `refreshRankingMatviewsSafe` sluger og logger sine fejl. Fejler finalization-hooken, og er cron'en nede, sætter siden en forkert rytter øverst på forældede tal uden at signalere noget.
+
+```sql
+-- 1) Heartbeat: hvornår blev matview-gruppen sidst refreshet?
+select matview_group, refreshed_at, now() - refreshed_at as age
+from matview_refresh_heartbeat where matview_group = 'ranking';
+-- Forventet: age < 10 min, og refreshed_at EFTER sidste etapes finalisering.
+
+-- 2) Afstemning: matviewet skal matche de rå resultater for S1.
+select
+  (select sum(points) from rider_rankings_mv
+    where season_id='00000000-0000-0000-0000-000000000001') as mv_points,
+  (select sum(rr.points_earned) from race_results rr
+     join races r on r.id = rr.race_id
+    where r.season_id='00000000-0000-0000-0000-000000000001'
+      and rr.rider_id is not null) as raw_points;
+-- Forventet: de to tal er ENS (618.243 pr. 26/7, 27 af 28 løbsdage).
+```
+
+Er de to tal ikke ens, eller er heartbeaten ældre end sidste finalisering: kør `select public.refresh_ranking_matviews();` og gentag afstemningen. Bemærk at det er en `REFRESH MATERIALIZED VIEW` **uden** `CONCURRENTLY` — den tager ACCESS EXCLUSIVE-lås, så læsere af ranglisten og `/seasons` venter mens den kører (målt op til 7,8 s, se **#3013**). Kør den derfor helst før managerne vender tilbage, ikke midt i myldretiden mandag morgen.
+
 **Rollback herfra:** stadig intet at rulle tilbage.
 
 ### Skridt 2 — ENDELIG komprimerings-liste + økonomi-sim + ejer-godkendelse (søndag ~17:30)
@@ -270,7 +293,8 @@ Idempotent (UNIQUE på `user_id, achievement_id`) — re-run er sikkert. Vil eje
 2. Discord: **præcis én** "Sæson 2 startet"-besked (2+ = loop, se abort).
 3. Sentry: ingen nye events med `phase:`-tags fra transitionen.
 4. Stage-scheduler-log (Railway): næste tick melder "0 due" — første etape er først 09:00.
-5. Kør post-cutover-tjeklisten **#2846**.
+5. **Gentag afstemningen fra skridt 1b** (`mv_points` = `raw_points` for S1). Det er den sidste gate før managerne møder listerne mandag morgen, og den er hurtig. Kør derefter `database/2026-07-26-2863-season-honours.sql` (#2863, bevidst FØRST her: listerne giver ingen mening før sæsonen er lukket) og åbn `/seasons` for den afsluttede sæson: "Sæsonens bedste ryttere" skal vise to navne, ikke en fejl-tilstand.
+6. Kør post-cutover-tjeklisten **#2846**.
 
 ### Skridt 8 — Morgenvagt (mandag 08:45–09:30)
 
