@@ -35,3 +35,29 @@ export async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
   }
   return rows;
 }
+
+// #3030: .in(ids)-lister URL-encodes ind i PostgREST-request-linjen; gatewayen
+// dropper forbindelsen når linjen passerer ~16 KB (≈430 UUID'er) → undici
+// "TypeError: fetch failed" UDEN statuskode. Det væltede auto-prize-sweepen
+// (399 race-ids, Sentry CYCLINGZONE-3H) og ownership-invariant-watch (459
+// intake-rytter-ids, CYCLINGZONE-3G) i takt med at sæsonen voksede. 100 ids
+// ≈ 3,7 KB URL — god margin. Brug denne til ALLE .in()-kald hvis id-liste
+// ikke er hårdt bundet lavt.
+export const SUPABASE_IN_CHUNK_SIZE = 100;
+
+// buildQueryForChunk: (idsChunk) => query-builder (med .order(), uden .range()).
+// Kaldes én gang pr. chunk; hver chunk pagineres via fetchAllRows. Rækkefølgen
+// er stabil inden for en chunk, men på tværs af chunks følger den id-listens
+// rækkefølge — kald sites der kræver global sortering må selv sortere bagefter.
+export async function fetchAllRowsChunkedIn(
+  ids,
+  buildQueryForChunk,
+  { chunkSize = SUPABASE_IN_CHUNK_SIZE, pageSize = SUPABASE_PAGE_SIZE } = {},
+) {
+  const rows = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    rows.push(...await fetchAllRows(() => buildQueryForChunk(chunk), pageSize));
+  }
+  return rows;
+}
