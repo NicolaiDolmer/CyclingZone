@@ -19,7 +19,8 @@
     "title": "Season {number} is open for planning",
     "body": "The season {number} calendar is ready. You can set peaks for it now, ahead of the season start.",
     "cta": "Switch to season {number}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "bodyUpcoming": "The season {number} calendar is ready to explore. Your division for that season is decided at the season rollover, so peaks open once it is confirmed."
   },
   "firstRun": {
     "title": "Plan your first peak",
@@ -93,7 +94,8 @@
       "demands": "This race demands",
       "alreadyPeaking": "Peaking here",
       "suggestedHere": "Assistant suggests here",
-      "viewPage": "View race page"
+      "viewPage": "View race page",
+      "peaksLocked": "Division pending"
     },
     "rider": {
       "abilities": "Abilities",
@@ -135,7 +137,8 @@
     "generic": "Something went wrong. Try again.",
     "title": "Couldn't load the season planner",
     "description": "Nothing was lost. Your peaks and training plans are safe. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet."
   },
   "months": [
     "Jan",
@@ -150,5 +153,10 @@
     "Oct",
     "Nov",
     "Dec"
-  ]
+  ],
+  "divisionPending": {
+    "title": "Your season {number} division is decided at the season rollover",
+    "body": "Promotion and relegation are settled when the current season closes, so we cannot tell you which calendar is yours yet. Every division's season {number} races are listed below, so you can still study the route.",
+    "hint": "Peaks for season {number} open as soon as your division is confirmed."
+  }
 }

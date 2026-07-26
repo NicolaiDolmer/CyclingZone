@@ -19,7 +19,8 @@
     "title": "Sæson {number} er åben for planlægning",
     "body": "Kalenderen for sæson {number} er klar. Du kan sætte peaks for den nu, inden sæsonen starter.",
     "cta": "Skift til sæson {number}",
-    "dismiss": "Afvis"
+    "dismiss": "Afvis",
+    "bodyUpcoming": "Kalenderen for sæson {number} er klar til at kigge i. Din division for den sæson afgøres ved sæsonskiftet, så peaks åbner når den er bekræftet."
   },
   "firstRun": {
     "title": "Planlæg din første peak",
@@ -93,7 +94,8 @@
       "demands": "Dette løb kræver",
       "alreadyPeaking": "Topper her",
       "suggestedHere": "Assistenten foreslår her",
-      "viewPage": "Se løbsside"
+      "viewPage": "Se løbsside",
+      "peaksLocked": "Division afventer"
     },
     "rider": {
       "abilities": "Evner",
@@ -135,7 +137,8 @@
     "generic": "Noget gik galt. Prøv igen.",
     "title": "Kunne ikke indlæse sæsonplanlæggeren",
     "description": "Intet gik tabt. Dine peaks og træningsplaner er sikre. Prøv igen.",
-    "retry": "Prøv igen"
+    "retry": "Prøv igen",
+    "division_not_settled": "Din division for den sæson afgøres ved sæsonskiftet, så peaks kan ikke sættes endnu."
   },
   "months": [
     "jan",
@@ -150,5 +153,10 @@
     "okt",
     "nov",
     "dec"
-  ]
+  ],
+  "divisionPending": {
+    "title": "Din division i sæson {number} afgøres ved sæsonskiftet",
+    "body": "Op- og nedrykning falder først på plads når den nuværende sæson lukker, så vi kan ikke vise dig hvilken kalender der er din endnu. Alle divisioners løb i sæson {number} står nedenfor, så du kan nå at studere ruterne.",
+    "hint": "Peaks for sæson {number} åbner så snart din division er bekræftet."
+  }
 }
