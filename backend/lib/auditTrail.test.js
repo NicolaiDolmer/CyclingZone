@@ -408,11 +408,14 @@ test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async (
         };
       }
       if (table === "teams") {
-        return {
-          select: () => ({
-            in: () => Promise.resolve({ data: [{ id: "team-P", name: "P" }], error: null }),
-          }),
+        // #3030: teams-opslaget går nu via fetchAllRowsChunkedIn → .in().order().range().
+        const builder = {
+          select: () => builder,
+          in: () => builder,
+          order: () => builder,
+          range: (from, to) => Promise.resolve({ data: [{ id: "team-P", name: "P" }].slice(from, to + 1), error: null }),
         };
+        return builder;
       }
       if (table === "import_log") {
         return { insert: () => Promise.resolve({ data: null, error: null }) };

@@ -123,6 +123,52 @@ test("getSeasonPrizePreview splitter optjent vs udbetalbar (#896)", async () => 
   assert.equal(preview.warnings.length, 0);
 });
 
+test("#3030 getSeasonPrizePreview chunker .in(race_ids) uden dubletter eller tab", async () => {
+  // 250 completed ubetalte løb → helperen skal sende 3 chunks (100/100/50).
+  // Mock der RESPEKTERER .in()-argumentet — den delte queryFor-mock ignorerer
+  // det og ville skjule både dublet- og chunk-størrelses-fejl.
+  const races = Array.from({ length: 250 }, (_, i) => ({
+    id: `race-${i}`, name: `Race ${i}`, prize_paid_at: null, status: "completed",
+  }));
+  const results = races.map((r) => ({ race_id: r.id, team_id: "t1", prize_money: 10 }));
+  const seenChunkSizes = [];
+  const supabase = {
+    from(table) {
+      let inIds = null;
+      const rows = table === "races" ? races
+        : table === "race_results" ? results
+        : table === "teams" ? [{ id: "t1", name: "Team 1" }]
+        : (() => { throw new Error(`uventet tabel: ${table}`); })();
+      const b = {
+        select: () => b,
+        eq: () => b,
+        gt: () => b,
+        order: () => b,
+        in(_col, ids) {
+          inIds = ids;
+          if (table === "race_results") seenChunkSizes.push(ids.length);
+          return b;
+        },
+        range(from, to) {
+          const filtered = inIds
+            ? rows.filter((r) => inIds.includes(r.race_id ?? r.id))
+            : rows;
+          return Promise.resolve({ data: filtered.slice(from, to + 1), error: null });
+        },
+        then: (resolve) => resolve({ data: rows, error: null }),
+      };
+      return b;
+    },
+  };
+
+  const preview = await getSeasonPrizePreview("season-1", supabase);
+
+  assert.deepEqual(seenChunkSizes, [100, 100, 50]);
+  assert.equal(preview.pending_payment.length, 250);
+  // 250 løb × 10 CZ$ — en dublet-fejl ved chunking ville give mere.
+  assert.equal(preview.total_pending, 2500);
+});
+
 test("getSeasonPrizePreview advarer ved løb hvor hele puljen er fri/AI (#896)", async () => {
   const supabase = makeSupabase({
     races: [{ id: "r1", name: "AI Race", prize_paid_at: null, status: "completed" }],
@@ -249,7 +295,7 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
         return builder;
       }
       if (table === "teams") {
-        const builder = { select: () => builder, in: () => builder, then: (r) => r({ data: [], error: null }) };
+        const builder = { select: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: [], error: null }), then: (r) => r({ data: [], error: null }) };
         return builder;
       }
       if (table === "import_log") {
@@ -488,7 +534,7 @@ function makeConcurrentPayoutSupabase({ pendingRace }) {
         return builder;
       }
       if (table === "teams") {
-        const builder = { select: () => builder, in: () => builder, then: (r) => r({ data: [], error: null }) };
+        const builder = { select: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: [], error: null }), then: (r) => r({ data: [], error: null }) };
         return builder;
       }
       if (table === "import_log") {
