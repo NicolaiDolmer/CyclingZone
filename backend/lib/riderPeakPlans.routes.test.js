@@ -221,11 +221,14 @@ test("GET /peak-plans/board + GET /races/calendar kaster hvis availableSeasons-q
     /const \{ data: allSeasonsRows, error: seasonsErr \} = await supabase[\s\S]{0,200}if \(seasonsErr\) throw new Error/,
     "board skal kaste hvis availableSeasons-queryen fejler, ikke tavst degradere til []",
   );
+  // #2861 gjorde de tre uafhængige opslag (sæson, sæson-liste, divisioner) parallelle,
+  // så destruktureringen sker fra Promise.all-resultatet i stedet for direkte på awaitet.
+  // Garantien der låses er uændret: en fejlende availableSeasons-query skal KASTE.
   const calIdx = apiSource.indexOf('router.get("/races/calendar"');
   const calBlock = apiSource.slice(calIdx, calIdx + 3500);
   assert.match(
     calBlock,
-    /const \{ data: allSeasonsRows, error: allSeasonsErr \} = await supabase[\s\S]{0,200}if \(allSeasonsErr\) throw new Error/,
+    /const \{ data: allSeasonsRows, error: allSeasonsErr \} = [\s\S]{0,200}if \(allSeasonsErr\) throw new Error/,
     "kalenderen skal kaste hvis availableSeasons-queryen fejler, ikke tavst degradere til []",
   );
 });

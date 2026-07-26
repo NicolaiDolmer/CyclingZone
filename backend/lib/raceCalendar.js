@@ -243,6 +243,30 @@ export function buildCalendarModel({
   return { entries, days, divisions: divisionTree };
 }
 
+// Kalender-entry → wire-format (#2861). buildCalendarModel's entry er den FULDE
+// model (peak-plans-board'et bruger fx status/gameDayStart/terrainStages), men
+// kalender-fladen læser kun felterne herunder: expandStageEvents i
+// frontend/src/lib/calendarGrid.js plukker id/name/raceType/stages/stage-planen/
+// division/poolLabel/isMine/leaderSet, og date+terrain bruges som fallback når et
+// løb mangler stageSchedule. raceClass, status, poolId, poolIndex, gameDayStart,
+// gameDayEnd, terrainStages og entered blev sendt men aldrig læst — 67 kB (S1) /
+// 73 kB (S2) af rå JSON pr. kalender-load, som mobilen skulle parse for ingenting.
+export function toCalendarWireEntry(entry) {
+  return {
+    id: entry.id,
+    name: entry.name,
+    raceType: entry.raceType,
+    stages: entry.stages,
+    division: entry.division,
+    poolLabel: entry.poolLabel,
+    date: entry.date,
+    terrain: entry.terrain,
+    stageSchedule: entry.stageSchedule,
+    isMine: entry.isMine,
+    leaderSet: entry.leaderSet,
+  };
+}
+
 // [{division, label, pools:[{id,label,poolIndex}]}] sorteret efter tier så
 // division-vælgeren kan vise "Division 1..4" + puljerne under hver.
 export function buildDivisionTree(divisions = []) {
