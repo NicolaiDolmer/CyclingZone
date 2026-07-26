@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.65",
+    "date": "2026-07-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help pages no longer describe rules the game doesn't have",
+          "body": "The training help claimed you only get 3 training focus slots per season — in reality you can set a focus on as many riders as you like, and always could. The division table in the help also listed only Divisions 1-3; the pyramid has four divisions, and the table now shows all of them."
+        },
+        "da": {
+          "title": "Hjælpesiderne beskriver ikke længere regler spillet ikke har",
+          "body": "Trænings-hjælpen påstod at du kun har 3 trænings-fokus-slots pr. sæson — i virkeligheden kan du sætte fokus på så mange ryttere du vil, og det har du altid kunnet. Divisions-tabellen i hjælpen viste desuden kun Division 1-3; pyramiden har fire divisioner, og tabellen viser nu dem alle."
+        },
+        "refs": [1914]
+      }
+    ]
+  },
+  {
     "version": "7.64",
     "date": "2026-07-26",
     "label": "Beta",

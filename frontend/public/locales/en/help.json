@@ -459,7 +459,8 @@
           ["Division", "Minimum riders", "Maximum riders"],
           ["Division 1", "0", "30"],
           ["Division 2", "0", "30"],
-          ["Division 3", "0", "30"]
+          ["Division 3", "0", "30"],
+          ["Division 4", "0", "30"]
         ]
       },
       "promotionRelegation": {
@@ -531,7 +532,7 @@
       },
       "trainingFocus": {
         "title": "Training focus",
-        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You have 3 focus slots per season, so pick your key riders; changing an existing focus costs nothing. Training is free and does not cost money."
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -881,7 +882,7 @@
     },
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You have 3 focus slots per season. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",

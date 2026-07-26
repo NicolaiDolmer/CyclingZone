@@ -459,7 +459,8 @@
           ["Division", "Minimum ryttere", "Maksimum ryttere"],
           ["Division 1", "0", "30"],
           ["Division 2", "0", "30"],
-          ["Division 3", "0", "30"]
+          ["Division 3", "0", "30"],
+          ["Division 4", "0", "30"]
         ]
       },
       "promotionRelegation": {
@@ -531,7 +532,7 @@
       },
       "trainingFocus": {
         "title": "Træningsfokus",
-        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, men har en risiko for tilbageslag (tabt fremgang): Let er sikker, Normal har en lille risiko, Hård en tydelig. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du har 3 fokus-slots pr. sæson, så vælg dine nøgleryttere; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, men har en risiko for tilbageslag (tabt fremgang): Let er sikker, Normal har en lille risiko, Hård en tydelig. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
       },
       "scouting": {
         "title": "Scouting af potentiale",
@@ -881,7 +882,7 @@
     },
     "trainingFocusFaq": {
       "q": "Hvordan træner jeg en rytter?",
-      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du har 3 fokus-slots pr. sæson. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",
