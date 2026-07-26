@@ -22,12 +22,27 @@ export const SEASON_FATIGUE_RESET_FLAG_KEY = "season_fatigue_reset_enabled";
 
 // Modes:
 //   "off"        → identitet (bruges kun af harness/tests til at måle nul-linjen)
-//   "full"       → alle på 0 (off-season-nulstilling)
+//   "full"       → alle på 0 (off-season-nulstilling) ← EJER-VALGT 26/7, se nedenfor
 //   "rest_days"  → N simulerede hviledage gennem DEN ÆGTE daglige model
 //                  (riderCondition.nextFatigue, intensity "rest"), så recovery-evnen
 //                  stadig betyder noget og trætte ryttere ikke bliver gratis friske.
+//
+// EJER-BESLUTNING 2026-07-26: "full". Harnessen anbefalede "rest_days"/3, fordi en
+// fuld nulstilling giver AI-holdene +3,9 procentpoint af top-10-pladserne (40,5 →
+// 44,4 %). Ejeren fik det trade-off præsenteret og valgte alligevel fuld nulstilling:
+// princippet "alle starter sæsonen lige" vejer tungere end den engangs-skævhed.
+// AI-løftet findes i øvrigt KUN fordi AI-ryttere aldrig restituerer (trainingSweep
+// filtrerer på is_ai = false) — retter vi den bug, forsvinder skævheden af sig selv.
+//
+// IDEMPOTENS: "full" er en idempotent afbildning (f → 0, og 0 → 0), så en gen-kørsel
+// af sæsonskiftet er et rent no-op på trætheds-siden. Derfor har denne side bevidst
+// INGEN claim-tabel — modsat akademi-optagelsen (#2911), hvor en gen-kørsel ville
+// udstede nye tilbud. Egenskaben er låst af tests i seasonFatigueReset.test.js
+// ("shipped mode er idempotent"), så et skifte tilbage til rest_days — som IKKE er
+// idempotent, den konvergerer mod 0 dag for dag — fejler testen i stedet for at
+// smutte igennem.
 export const SEASON_FATIGUE_RESET = Object.freeze({
-  MODE: "rest_days",
+  MODE: "full",
   REST_DAYS: 3,
   DEFAULT_RECOVERY: 50, // rytter uden abilities-række → neutral recovery
   UPSERT_CHUNK: 500,
@@ -77,10 +92,12 @@ export function seasonResetFatigue({
  *
  * - Flag-gated (fail-safe off). Kaldes fra seasonStartHooks.js, aldrig direkte
  *   fra transitionen.
- * - Idempotent i praksis: funktionen er en ren afbildning af den aktuelle
- *   træthed, så en re-run efter en fuldført kørsel er et no-op for "full"
- *   (0 → 0) og konvergerer mod 0 for "rest_days". Kør derfor ÉN gang pr.
- *   skifte — kaldepunktet ligger i transitionens engangs-sti.
+ * - IDEMPOTENT i den mode der shippes ("full"): funktionen er en ren afbildning
+ *   af den aktuelle træthed, og f → 0 er idempotent (anden kørsel finder alle på
+ *   0, skriver nul rækker og rapporterer changed: 0). En operatør der kører
+ *   sæsonskiftet igen "for en sikkerheds skyld" kan derfor ikke gøre skade på
+ *   trætheds-siden — derfor ingen claim-tabel her. ("rest_days" er IKKE
+ *   idempotent: hver kørsel trækker N hviledage mere fra.)
  * - Rører KUN kolonnen fatigue (+ updated_at). form/injured_until er urørt
  *   (supabase-js upsert opdaterer kun de angivne kolonner på UPDATE-stien —
  *   samme kontrakt som raceFatigue.applyRaceFatigue).

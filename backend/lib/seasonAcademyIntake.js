@@ -29,6 +29,7 @@ import { makeRng } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllPaged } from "./dbChunk.js";
+import { captureException } from "./sentry.js";
 
 export const SEASON_ACADEMY_INTAKE_FLAG_KEY = "season_academy_intake_enabled";
 
@@ -220,7 +221,17 @@ export async function runSeasonAcademyIntake({
         },
       });
     } catch (e) {
+      // Pr. hold isoleret: ét holds fejlede seeding må ikke vælte optagelsen for
+      // resten. Fejlen surfacer to steder — i det returnerede errors[] (og dermed
+      // i transitionens fase-log) OG i Sentry, så en fejl under et rigtigt
+      // sæsonskifte ikke kun kan ses af den der læser fase-loggen bagefter.
+      // NB: holdet er allerede claimet, så en gen-kørsel springer det over —
+      // fejlede hold skal håndteres manuelt, ikke ved at køre skiftet igen.
       errors.push(`${entry.teamId}: ${e?.message ?? e}`);
+      captureException(e, {
+        tags: { phase: "season_academy_intake" },
+        extra: { teamId: entry.teamId, seasonId: season.id },
+      });
     }
   }
 

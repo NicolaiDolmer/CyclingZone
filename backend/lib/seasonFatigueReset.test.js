@@ -186,6 +186,112 @@ test("rest_days bruger rytterens EGEN recovery-evne fra abilities-tabellen", asy
 
 test("defaults er de owner-gatede værdier", () => {
   assert.equal(SEASON_FATIGUE_RESET_FLAG_KEY, "season_fatigue_reset_enabled");
-  assert.equal(SEASON_FATIGUE_RESET.MODE, "rest_days");
-  assert.equal(SEASON_FATIGUE_RESET.REST_DAYS, 3);
+  // Ejer-beslutning 2026-07-26: fuld nulstilling, IKKE 3 hviledage.
+  assert.equal(SEASON_FATIGUE_RESET.MODE, "full");
+});
+
+// ─── Idempotens ───────────────────────────────────────────────────────────────
+// Cutoveren køres af et menneske under tidspres. "Kør den lige igen for en
+// sikkerheds skyld" er en realistisk handling, og trætheds-siden har bevidst
+// INGEN claim-tabel (modsat akademi-optagelsen). Sikkerheden hviler derfor helt
+// på at afbildningen er idempotent — det bevises her, ikke antages.
+
+test("shipped mode er en idempotent afbildning over hele 0-100", () => {
+  // Forward-guard: skifter nogen MODE tilbage til rest_days (som konvergerer mod
+  // 0 dag for dag i stedet for at ramme et fikspunkt), fejler denne test.
+  for (let f = 0; f <= 100; f++) {
+    const once = seasonResetFatigue({ fatigue: f, mode: SEASON_FATIGUE_RESET.MODE });
+    const twice = seasonResetFatigue({ fatigue: once, mode: SEASON_FATIGUE_RESET.MODE });
+    assert.equal(twice, once, `f=${f}: anden kørsel flyttede ${once} → ${twice}`);
+  }
+});
+
+test("rest_days er til sammenligning IKKE idempotent (derfor er 'full' valgt)", () => {
+  const once = seasonResetFatigue({ fatigue: 100, recoveryAbility: 50, mode: "rest_days", restDays: 3 });
+  const twice = seasonResetFatigue({ fatigue: once, recoveryAbility: 50, mode: "rest_days", restDays: 3 });
+  assert.ok(twice < once, "rest_days skal trække yderligere hviledage fra ved re-run");
+});
+
+// Mock hvor upserts faktisk lander i state'en, så anden kørsel læser resultatet
+// af den første — dvs. den ægte gen-kørsels-situation.
+function buildStatefulSupabase(initialConditions) {
+  const state = new Map(initialConditions.map((c) => [c.rider_id, { ...c }]));
+  const capture = { runs: [] };
+  let current = null;
+  const supabase = {
+    from(table) {
+      if (table !== "rider_condition") throw new Error(`uventet tabel: ${table}`);
+      const api = {
+        select() { return api; },
+        order() { return api; },
+        range(from, to) {
+          const rows = [...state.values()]
+            .sort((a, b) => String(a.rider_id).localeCompare(String(b.rider_id)))
+            .slice(from, to + 1)
+            .map((r) => ({ rider_id: r.rider_id, fatigue: r.fatigue }));
+          return Promise.resolve({ data: rows, error: null });
+        },
+        upsert(rows) {
+          for (const r of rows) {
+            const prev = state.get(r.rider_id) || {};
+            state.set(r.rider_id, { ...prev, ...r });
+            current.push(r.rider_id);
+          }
+          return Promise.resolve({ error: null });
+        },
+      };
+      return api;
+    },
+  };
+  const run = async () => {
+    current = [];
+    const res = await applySeasonFatigueReset({ supabase, isEnabled: async () => true });
+    capture.runs.push({ res, written: current });
+    return res;
+  };
+  return { run, capture, state };
+}
+
+test("gen-kørsel af hele apply-laget er et no-op: nul skrivninger, changed 0", async () => {
+  const { run } = buildStatefulSupabase([
+    { rider_id: "r1", fatigue: 100 },
+    { rider_id: "r2", fatigue: 63 },
+    { rider_id: "r3", fatigue: 0 },
+  ]);
+
+  const first = await run();
+  assert.equal(first.ran, true);
+  assert.equal(first.riders, 3);
+  assert.equal(first.changed, 2, "r1+r2 ændres, r3 var allerede frisk");
+  assert.equal(first.avgAfter, 0);
+
+  const second = await run();
+  assert.equal(second.ran, true);
+  assert.equal(second.riders, 3);
+  assert.equal(second.changed, 0, "anden kørsel må ikke ændre noget");
+  assert.equal(second.avgBefore, 0);
+  assert.equal(second.avgAfter, 0);
+});
+
+test("gen-kørsel skriver bogstaveligt talt nul rækker til databasen", async () => {
+  const { run, capture } = buildStatefulSupabase([
+    { rider_id: "a", fatigue: 91 },
+    { rider_id: "b", fatigue: 12 },
+  ]);
+  await run();
+  await run();
+  await run(); // tredje gang for en sikkerheds skyld — præcis operatørens instinkt
+  assert.deepEqual(capture.runs.map((r) => r.written.length), [2, 0, 0]);
+});
+
+test("gen-kørsel rører ikke form/injured_until — heller ikke i første kørsel", async () => {
+  const { run, capture, state } = buildStatefulSupabase([
+    { rider_id: "r1", fatigue: 100, form: 72, injured_until: "2026-08-01" },
+  ]);
+  await run();
+  await run();
+  assert.ok(capture.runs[0].written.length === 1 && capture.runs[1].written.length === 0);
+  assert.equal(state.get("r1").form, 72, "form må ikke være rørt");
+  assert.equal(state.get("r1").injured_until, "2026-08-01", "injured_until må ikke være rørt");
+  assert.equal(state.get("r1").fatigue, 0);
 });
