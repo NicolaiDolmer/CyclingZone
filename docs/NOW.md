@@ -18,7 +18,7 @@
 
 > **Næste sessioner efter cutover:** (a) "allerede løst"-verifikation — 60+ kandidater i prioriterings-docen, realistisk 30-50 closes · (b) ejer-beslutnings-batch (49 issues venter kun på A/B-valg) · (c) s2_uge1-sporet som bølge · (d) fælles planner-design-session (#2905, mockups i `docs/screenshots/wave3-2507/2905/`). Bølge 1-4-historik: git-log + patch notes 7.62-7.64.
 
-> **🤖 Working agent:** Claude Code (denne session, 26/7 ~16:30): #3030 hotfix — auto-prize-sweep død (.in()-URL over gateway-grænse), 688k CZ$ ubetalt. Skal lande FØR cutover ~19:00.
+> **🤖 Working agent:** Ingen aktiv session. (Cutover-session starter ~19:00 — prompt ligger hos ejeren; preflight er grøn, se audit-pm.) 26/7 ~17:15: #3030 hotfix SHIPPED+verificeret (auto-prize-sweep død på .in()-URL-grænse; 688.200 CZ$ udbetalt 15:03 UTC, Sentry 3H/3G/2G resolved, PR #3031). Nyt: #3032 (scouting-notifikationsfejl, Sentry 3F, 5 brugere).
 
 ## Standing context (forever-relaunch)
 
