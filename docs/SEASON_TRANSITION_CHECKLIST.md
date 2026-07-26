@@ -8,25 +8,26 @@
 
 ---
 
-## Nøglefakta (målt i prod 23/7 — genmål de markerede ⏱ på dagen)
+## Nøglefakta (⏱-rækkerne genmålt i prod **søndag 26/7 kl. 09:50** — genmål igen efter sidste løb)
 
 | Hvad | Værdi |
 |---|---|
 | Sidste S1-etape | **26/7 17:00 UTC** (19:00 dansk) |
 | Første S2-etape | **27/7 09:00 UTC** (11:00 dansk) — vinduet er ~16 timer, helt manuelt |
-| S1-løb ikke afviklet ⏱ | 76 løb / 147 etaper (23/7) — skal være **0** før "Afslut sæson"; #2805-spærren håndhæver det |
+| S1-løb ikke afviklet ⏱ | **30 løb / 49 etaper** (26/7 09:50; første udestående etape 09:00 UTC, sidste 17:00 UTC) — skal være **0** før "Afslut sæson"; #2805-spærren håndhæver det |
 | S2-kalender | 455 løb / 1.148 etaper, allerede materialiseret, sidste løbsdag 23/8 |
 | S2 i `seasons`-tabellen | **Findes allerede** som `status='upcoming'` → transitionen *promoverer* i stedet for at oprette (`already_transitioned: JA ⚠️` i preview er FORVENTET, ikke en fejl) |
 | S1-transfervindue | 1 række: `status='closed'`, `closed_at=NULL`, whistle/squad_enf `NULL` (racing-window) → **readiness-gatens 3 window-checks kan ikke blive grønne af sig selv** (deadline-cyklussen er afskaffet) — se skridt 5a |
-| Kontraktudløb ⏱ | 195 ejede ryttere med `contract_end_season<=1` (1 på menneskehold) — frigives i transitionens fase `contract_expiry_release` |
-| Pension ⏱ | 81 menneskehold-ryttere i 36-39-vinduet + 11 garanteret (40+) ved `ageForSeason(bd, 2)` — afgøres i `rider_progression` under transitionen; `retirement_release` rydder team_id bagefter |
+| Kontraktudløb ⏱ | **206** ejede ryttere med `contract_end_season<=1`, heraf **11 på menneskehold** (26/7 09:50) — frigives i transitionens fase `contract_expiry_release` |
+| Pension ⏱ | **84** menneskehold-ryttere i 36-39-vinduet + **11** garanteret (40+) ved `ageForSeason(bd, 2)` (26/7 09:50) — afgøres i `rider_progression` under transitionen; `retirement_release` rydder team_id bagefter |
 | Payroll | **Første sæson-payroll nogensinde** — ~2,62 mio. CZ$ på menneskehold i ét hug (fase `season_payroll` i transitionen) |
-| Sponsor ⏱ | **~55,57M garanteret (målt 25/7 for 159 hold, FØR komprimering)** — 75 hold får deres eget valg aktiveret, 84 auto-defaulter til 'safe'. Efter komprimeringen forventes ~56,6M (indikativ). Oveni kommer en variabel pulje på ~9,5M der optjenes **pr. etape hen over hele S2**, ikke ved skiftet. **De gamle 66,03M (dry-run 23/7) var forkerte**: previewet modellerede en kontraktfri tilstand, mens udbetalingen sker EFTER kontrakt-fornyelsen ([#2926](https://github.com/NicolaiDolmer/CyclingZone/issues/2926) — rettet; dry-runnet viser nu kontrakt-kilderne eksplicit). **#2852 fikset:** de 3 test-konti tælles ikke længere med, så tallene måles nu over **156** hold, ikke 159. De 3 har ingen sponsorkontrakter, så de lå alle i auto-default-bucket'en: `sponsor_contract_sources.default` går 84 → **81**, og basen falder med 3 default-'safe'-baser (størrelsesorden ~0,9M ved D3, indikativ). **Viser preview'et stadig 159 hold, er #2852-fixet ikke deployet — STOP** |
-| Træningsplaner ⏱ | 2.017 S1-planer på 94 hold (25/7 sen aften, vokser mens managere planlægger). **#2916 fikset:** transitionens fase `manager_setup_carry_over` kopierer dem til S2 for ryttere der stadig er på holdet (dry-run: **1.747 planer på 93 hold**; 248 udelades fordi rytteren har skiftet hold, 22 fordi holdet er en test-konto). Uden fasen ville alle 94 hold vågne op til auto-programmer mandag. Tallet må gerne bevæge sig — det er størrelsesordenen der gælder. Er `carryOverPreview.surfaces.training_plans.eligible` **0** i preview'et, så STOP |
-| Flags | `stage_scheduler=on`, `race_engine_v2=on`, `auto_prize=on`, `auto_entry_generator=on`, `auto_calendar` **OFF** (mangler i app_config) → transitionen genererer IKKE selv kalender/entries |
-| Auktioner ⏱ | ~24t varighed → der KAN være aktive auktioner søndag aften (39 aktive 23/7). Se skridt 5b |
-| Manuelle S2-entries ⏱ | 46 rækker på 3 hold (25/7; RMF Pro Athletic, Bacon Fræsers m.fl. — egne udtagelser). Generatoren rører dem aldrig. `manager_setup_carry_over` TÆLLER nu dem der ligger i forkert pulje efter op/nedrykning (`race_entries.wrong_pool` i transition-loggen) — den sletter aldrig noget, så oprydningen er stadig manuel (skridt 6) |
-| S2-peak-planer ⏱ | 65 planer på 13 hold (25/7). Samme fase rapporterer `rider_peak_plans.wrong_pool` + `missing_target` efter flytningen. Rør dem ikke uden ejer-go — det er de mest engagerede managere |
+| Sponsor ⏱ | **54,59M garanteret FØR komprimering** (`simulateSeasonTransitionDryRun.js`, 156 hold, målt 26/7 09:50) → **55,73M EFTER** (`compressPyramid.js`' økonomi-sim, samme kørsel, Δ +1,14M). Kontrakt-kilder: **0 låst · 76 managervalg · 80 auto-default 'safe'**. Signing-bonusser 0,03M. Oveni en variabel pulje på **9,41M** der optjenes **pr. etape hen over hele S2**, ikke ved skiftet. Kun de 80 kontraktfri hold følger den nye divisions renown — låste + valgte har frossen base, så flytningen rører dem ikke. **De gamle 66,03M (dry-run 23/7) var forkerte**: previewet modellerede en kontraktfri tilstand, mens udbetalingen sker EFTER kontrakt-fornyelsen ([#2926](https://github.com/NicolaiDolmer/CyclingZone/issues/2926) — rettet). **#2852 fikset:** test-konti tælles ikke længere med. **Viser preview'et 159 eller 161 hold i stedet for 156, er #2852-fixet ikke deployet — STOP** |
+| Trætheds-nulstilling ⏱ | **[#2910](https://github.com/NicolaiDolmer/CyclingZone/issues/2910) er TÆNDT:** `season_fatigue_reset_enabled='on'`, mode **`full`** (ejer-valg 26/7 — alle starter S2 lige). Fasen `season_fatigue_reset` rører **6.191 rækker** i `rider_condition` og sætter gennemsnittet fra **84,7 → 0** (målt 26/7 09:50). Idempotent (f → 0), rører kun `fatigue`, ikke form. Søsterhooken `season_academy_intake_enabled` er **'off'** (ejer-valg), så `season_academy_intake` logger INGEN fase |
+| Træningsplaner ⏱ | **2.025** S1-planer på 94 hold (26/7 09:50, vokser mens managere planlægger). **#2916 fikset:** transitionens fase `manager_setup_carry_over` kopierer dem til S2 for ryttere der stadig er på holdet. **Forvent ~1.700-1.755 kopierede planer, ikke et præcist tal:** preview-tallet måles mod den NUVÆRENDE trup (1.755 målt 26/7 09:50), men fasen kører SIDST — efter `contract_expiry_release` + `rider_progression` + `retirement_release` har taget ryttere ud af truppen. En afvigelse inden for intervallet er normal og må ikke udløse stop. Uden fasen ville alle 94 hold vågne op til auto-programmer mandag. Er `carryOverPreview.surfaces.training_plans.eligible` **0** i preview'et, så STOP |
+| Flags | `stage_scheduler=on`, `race_engine_v2=on`, `auto_prize=on`, `auto_entry_generator=on`, `season_fatigue_reset=on`, `season_academy_intake=off`, `auto_calendar` **OFF** (mangler i app_config) → transitionen genererer IKKE selv kalender/entries (verificeret i `app_config` 26/7 09:50) |
+| Auktioner ⏱ | ~24t varighed → der KAN være aktive auktioner søndag aften (**22 aktive 26/7 09:50, heraf 0 på ryttere der er 36+ ved S2**). Se skridt 5b |
+| Manuelle S2-entries ⏱ | 46 rækker på 3 hold (uændret 26/7 09:50; RMF Pro Athletic, Bacon Fræsers m.fl. — egne udtagelser). Generatoren rører dem aldrig. `manager_setup_carry_over` TÆLLER nu dem der ligger i forkert pulje efter op/nedrykning (`race_entries.wrong_pool` i transition-loggen) — den sletter aldrig noget, så oprydningen er stadig manuel (skridt 6) |
+| S2-peak-planer ⏱ | **80 planer på 14 hold** (26/7 09:50). Samme fase rapporterer `rider_peak_plans.wrong_pool` + `missing_target` efter flytningen. Rør dem ikke uden ejer-go — det er de mest engagerede managere |
 
 **Hvorfor rækkefølgen er som den er:** entry-generatoren matcher hold↔løb på `league_division_id`. Komprimeringen (#2851, skridt 3b) flytter ~100+ hold til nye puljer, og transitionens frigivelses-/pensionsfaser fjerner frigivne rytteres fremtidige entries igen (`clearFutureRaceEntriesSafe`). Derfor: **afvikl alt → Afslut sæson (movement-skip) → komprimering (flytningen) → transition (frigivelser+pension+penge) → generér entries til sidst** — så genereres felterne én gang, mod den endelige tilstand. (#2742's oprindelige forslag om at pre-generere entries FØR skiftet er forkert af begge grunde.)
 
@@ -38,7 +39,7 @@
 
 Alle tider UTC (dansk tid = UTC+2). Operatør = ejer + Claude-session i fællesskab; hvert skridt angiver **hvem der klikker**. Kommandoer med `railway run` køres fra `backend/`-mappen.
 
-### Skridt 0 — Preflight (lørdag 26/7 eller søndag formiddag)
+### Skridt 0 — Preflight (lørdag 25/7 eller søndag 26/7 formiddag)
 
 **Hvem:** Claude forbereder, ejeren klikker backup.
 
@@ -49,7 +50,7 @@ Alle tider UTC (dansk tid = UTC+2). Operatør = ejer + Claude-session i fælless
    ```sql
    select id, name, division, league_division_id, balance from teams order by id;
    ```
-5. **Genmål ⏱-rækkerne** i nøglefakta-tabellen (løb, udløb, pension, auktioner, manuelle entries).
+5. **Genmål ⏱-rækkerne** i nøglefakta-tabellen (løb, udløb, pension, sponsor, træthed, træningsplaner, auktioner, manuelle entries, peak-planer).
 
 **Rollback herfra:** alt kan afbrydes uden spor.
 
@@ -97,7 +98,10 @@ Er de to tal ikke ens, eller er heartbeaten ældre end sidste finalisering: kør
 
 **Hvem:** Claude genererer, **ejeren godkender navnene** (hård gate — ejer-beslutning 25/7: komprimeringen køres ikke uden at ejeren har set den ENDELIGE navngivne 48/96/rest-liste OG økonomi-simuleringen).
 
-Standings ændrer sig med hvert løb frem til 17:00 — foreløbige lister er snapshots, ikke facit; cutlinen ved plads 48/144 afgøres af få point. Generér den endelige med (read-only dry-run — printer navngiven liste med rank/point/fra→til, cutline-marginer, økonomi-sim og pulje-fyld):
+> ### 🚨 LISTEN SKAL REGENERERES EFTER SIDSTE LØB (efter 17:00 UTC)
+> **Cutline 144 har en margin på 2 point** (African Cycling Project 54p vs Kelme Cycling Team 52p, målt 26/7 09:50), og **30 S1-løb mangler stadig at blive kørt**. En liste beregnet før sidste løbsdag er afviklet KAN være forkert — ét resultat vender nedrykningen. Godkend derfor kun en liste der er genereret EFTER at skridt 1's tre tællinger alle giver 0. (Cutline 48 er til gengæld sikker: margin 121 point.)
+
+Standings ændrer sig med hvert løb frem til 17:00 — foreløbige lister er snapshots, ikke facit. Generér den endelige med (read-only dry-run — printer navngiven liste med rank/point/fra→til, cutline-marginer, økonomi-sim og pulje-fyld):
 
 ```bash
 railway run --service CyclingZone -- node scripts/compressPyramid.js
@@ -105,11 +109,11 @@ railway run --service CyclingZone -- node scripts/compressPyramid.js
 
 Fordelingen er `pyramidCompression.js` (unit-testet, deterministisk tiebreak: point → GC-sejre → etapesejre → navn → id): rank 1-48 → D2 (2 puljer, snake), 49-144 → D3 (4 puljer, snake), 145+ → D4 pulje A/B. Kun managerhold (fuld diskriminator); D1 røres ikke; AI-fyld reconciles bagefter.
 
-**Ejeren skal se og godkende:** (a) navnene, især D4→D2-springene og de 2 D3→D4-nedrykninger, (b) økonomi-sim-blokken (divisions-upkeep ~4,5 → ~10,6 mio. når 48 hold betaler D2-sats — balancebeslutning i sig selv), (c) at ingen pulje viser ⚠️ over 24.
+**Ejeren skal se og godkende:** (a) navnene, især D4→D2-springene og de 5 D3→D4-nedrykninger, (b) økonomi-sim-blokken (divisions-upkeep **3,84M → 10,56M**, Δ +6,72M, når 48 hold betaler D2-sats — balancebeslutning i sig selv; netto liga-økonomi Δ −5,58M), (c) at ingen pulje viser ⚠️ over 24. Tal målt 26/7 09:50 på den foreløbige liste — genmål efter sidste løb.
 
-**⚠️ Rækkefølge på sponsortallet ([#2926](https://github.com/NicolaiDolmer/CyclingZone/issues/2926)):** `compressPyramid.js`' økonomi-sim er kontrakt-bevidst og regner allerede på divisionerne EFTER flytningen — den blok er gyldig her. Men **transitionens** sponsor-dry-run (`simulateSeasonTransitionDryRun.js`) læser `teams.division` live og skal derfor køres **EFTER** komprimeringen, i skridt 3b. Kører du den FØR, får de ~84 hold uden eget sponsorvalg beregnet deres auto-default på den GAMLE divisions renown, og totalen bliver forkert (målt 25/7: 55,57M før flytning mod ~56,6M efter). De 75 hold der selv har valgt har frossen base — flytningen ændrer dem ikke.
+**⚠️ Rækkefølge på sponsortallet ([#2926](https://github.com/NicolaiDolmer/CyclingZone/issues/2926)):** `compressPyramid.js`' økonomi-sim er kontrakt-bevidst og regner allerede på divisionerne EFTER flytningen — den blok er gyldig her. Men **transitionens** sponsor-dry-run (`simulateSeasonTransitionDryRun.js`) læser `teams.division` live og skal derfor køres **EFTER** komprimeringen, i skridt 3b. Kører du den FØR, får de 80 hold uden eget sponsorvalg beregnet deres auto-default på den GAMLE divisions renown, og totalen bliver forkert (målt 26/7 09:50: **54,59M før flytning mod 55,73M efter**). De 76 hold der selv har valgt har frossen base — flytningen ændrer dem ikke.
 
-**Tallet at sammenligne med i skridt 3b:** "Sponsor GARANTERET total" **≈ 56,6M**, med kontrakt-kilder ≈ 0 låst / 75+ managervalg / resten auto-default. Afviger det mere end et par procent, så stop og undersøg FØR skridt 4.
+**Tallet at sammenligne med i skridt 3b:** "Sponsor GARANTERET total" **≈ 55,7M** (økonomi-simens "efter"-tal fra netop denne kørsel er facit — brug det, ikke tallet her, hvis listen har flyttet sig), med kontrakt-kilder **0 låst / 76 managervalg / 80 auto-default**. Afviger det mere end et par procent fra økonomi-simens "efter"-tal, så stop og undersøg FØR skridt 4.
 
 **Hvorfor det udbetalte ikke rammer previewet præcist:** `sponsor_base_total` er FØR board-modifier (×0,8–1,2 pr. hold, capped på base ×1,2), så det faktisk bogførte beløb afviger nogle procent. Det er forventet, ikke en fejl.
 
@@ -164,7 +168,7 @@ Verificér (ud over scriptets egen verifikation):
 
 ```sql
 select division, count(*) filter (where not is_ai) as real_teams from teams group by division order by 1;
--- forventet: D1 = 0 ægte · D2 = 48 · D3 = 96 · D4 = resten (~6). Sum = alle managerhold.
+-- forventet: D1 = 0 ægte · D2 = 48 · D3 = 96 · D4 = 12 (6+6, dry-run 26/7 09:50). Sum = 156 managerhold.
 select ld.label, count(*) from teams t join league_divisions ld on ld.id=t.league_division_id group by 1 order by 1;
 -- alle puljer med ægte hold = 24 (efter AI-reconcile); D4-puljer uden ægte hold forbliver dormant.
 ```
@@ -173,9 +177,12 @@ select ld.label, count(*) from teams t join league_divisions ld on ld.id=t.leagu
 
 ```bash
 railway run --service CyclingZone -- node scripts/simulateSeasonTransitionDryRun.js   # read-only
-# Forvent: "Sponsor GARANTERET total" ≈ 56,6M · kontrakt-kilder ≈ 0 låst / 75+ valgt / resten auto-default.
-# Den variable pulje (~9,5M) optjenes pr. etape hen over S2 — den udbetales IKKE ved skiftet.
+# Forvent (26/7 09:50): "Hold påvirket" = 156 · "Sponsor GARANTERET total" ≈ 55,7M
+#   · kontrakt-kilder 0 låst / 76 valgt / 80 auto-default · signing-bonusser ~0,03M.
+# Den variable pulje (~9,4M) optjenes pr. etape hen over S2 — den udbetales IKKE ved skiftet.
 ```
+
+**⚠️ Ignorér linjen `1. Nedrykning: sæson 2 >= gate 1 → ⚠️ OP/NEDRYKNING VIL SKE`.** Det er en falsk alarm i DETTE skifte: dry-runnets invariant-check er en ren sæsonnummer-sammenligning (`toNum >= FIRST_PROMOTION_RELEGATION_SEASON`) og læser ikke `season_end_skip_division_movement`. Divisionsflytningen bor i `processSeasonEnd` → `processDivisionEnd`, som er gatet i skridt 3 — transitionen flytter ingen hold. Stop ikke på den.
 
 **Efter transitionen (skridt 5) — sluk gaten igen** (S2→S3 kører motorens regler, #2164):
 
@@ -205,7 +212,30 @@ Kør derefter `GET /api/admin/season-transition/preview` — forventet: **alle c
 
 **Hvem:** ejeren klikker **"Udfør sæsonskifte"** på `/admin/season` (Sæson-cyklus-sektionen), eller Claude via `POST /api/admin/season-transition` med ejerens go.
 
-**5a. Forventet fase-log** (rækkefølgen i `transitionToNextSeason`): `insert_next_season` (promoverer S2 upcoming→active) → `mark_previous_completed` (no-op, allerede sat) → `global_rank_decay` → `close_prev_transfer_window` → `insert_next_transfer_window` (S2-racing-window, `closed_at=NULL`) → `sponsor_contracts_renewal` (75 pending→active + 84 auto-default 'safe' pr. 25/7; dagsrater genberegnes mod holdets faktiske etapetal, #2589/#2913) → `contract_expiry_release` (**~195 frigivelser**, 1 menneskehold-rytter) → `sponsor_payout` (~159 · **~55,6M garanteret**, se Nøglefakta + #2926) → `season_payroll` (**første nogensinde, ~2,62M**) → `season_parachute` (forventet 0 — kun D1/D2-nedrykkere er berettigede, og de er AI) → `rider_progression` (**udvikling + pension, første gang**) → `retirement_release` (team_id ryddes for netop-pensionerede) → `admin_log` → Discord `season_started` → `season_started_notifications` (~150) → `contract_expiring_notifications` (varsler S2-udløb).
+**5a. Forventet fase-log** (den faktiske rækkefølge i `transitionToNextSeason`, verificeret mod koden 26/7 — abort-vurdér mod DENNE liste):
+
+1. `insert_next_season` — promoverer S2 upcoming→active
+2. `mark_previous_completed` — no-op, allerede sat i skridt 3
+3. `global_rank_decay` — **hård stop-fase, se 5c**
+4. `close_prev_transfer_window`
+5. `insert_next_transfer_window` — S2-racing-window, `closed_at=NULL`
+6. *(`reset_board_test_data` — **betinget**, logges KUN hvis S1-vinduet havde `board_test_mode=true`. Det har det ikke (verificeret 26/7 09:50), så fasen forventes at MANGLE. Dukker den op med en `error`, er det #2897-læsefejlen, ikke en reset)*
+7. `sponsor_season_objectives` — sæsonmåls-bonusser for den netop afsluttede S1 ([#2948](https://github.com/NicolaiDolmer/CyclingZone/issues/2948)); SKAL køre før kontrakt-fornyelsen, udbetaler rigtige penge
+8. `sponsor_contracts_renewal` — **76** pending→active + **80** auto-default 'safe' (26/7 09:50; dagsrater genberegnes mod holdets faktiske etapetal, #2589/#2913)
+9. `contract_expiry_release` — **206 frigivelser**, heraf 11 på menneskehold
+10. `sponsor_payout` — 156 hold · **≈55,7M garanteret** (se Nøglefakta + #2926)
+11. `season_payroll` — **første nogensinde, ~2,62M**. Kan sende `board_critical`-beskeder, se 5d
+12. `season_parachute` — forventet 0 (kun D1/D2-nedrykkere er berettigede, og de er AI)
+13. `rider_progression` — **udvikling + pension, første gang**
+14. `retirement_release` — team_id ryddes for netop-pensionerede
+15. `season_fatigue_reset` — **[#2910](https://github.com/NicolaiDolmer/CyclingZone/issues/2910), flaget er ON**: `riders: 6191 · changed: ~6191 · avgBefore ~84,7 · avgAfter 0` (mode `full`)
+16. *(`season_academy_intake` — flaget er OFF, så fasen logges IKKE. Dukker den op, er flaget blevet tændt: STOP)*
+17. *(`season_calendar` + `season_entry_generator` — betinget bag `auto_calendar_enabled`, som er OFF. Forventes at MANGLE; entries genereres manuelt i skridt 6)*
+18. `manager_setup_carry_over` — **[#2916](https://github.com/NicolaiDolmer/CyclingZone/issues/2916)**, forvent **~1.700-1.755** kopierede træningsplaner (se Nøglefakta: intervallet er normalt, ikke et afvigelses-signal)
+19. `admin_log`
+20. Discord `season_started`
+21. `season_started_notifications` — ~150
+22. `contract_expiring_notifications` — varsler S2-udløb
 
 **5b. Hvis `no_active_auctions` er rød** (auktioner løber ~24t, så søndags-auktioner kan være i luften): mål overlap mod risiko-mængden. **#2918-rettelse 25/7:** den gamle query målte `contract_end_season <= 1 or is_retired`, som begge er strukturelt 0 FØR transitionen — den gav altid falsk tryghed. Den mængde der betyder noget er auktioner på ryttere der KAN pensioneres i transitionens `rider_progression` (36+ ved sæson 2):
 ```sql
@@ -231,7 +261,9 @@ order by created_at desc limit 5;
 
 **5c. Hård stop-regel:** fejler fasen `global_rank_decay`, **STOP HELT** — RPC'en er ikke retry-sikker (en delvist kørt halvering, kørt igen, halverer dobbelt). Alle ANDRE faser er idempotente; ved delvis fejl i dem er recovery = ret årsagen og kør transitionen igen (resume-stien er designet til det, #578).
 
-Verificér (fra den gamle checklistes trin 3, stadig gyldige):
+**5d. Forventede EKSTRA notifikationer ([#2976](https://github.com/NicolaiDolmer/CyclingZone/issues/2976)):** `season_payroll` (og sæson-slut-vejen) sender nu `board_critical`-beskeder som drejebogen tidligere ikke nævnte — "The board forced a sale" (tvangssalg ved breach-streak ≥2), "Transfers frozen: debt over the cap", og "One season before a forced sale". Ingen menneskehold står i gæld/fryse-tilstand FØR skiftet (0 frosne, 0 med breach-streak, 0 i minus pr. 26/7 09:50), men payroll kan selv skubbe et hold derned. Dukker de op, er det forventet adfærd, ikke en fejl. Baseline `board_critical` = **24 rækker** (26/7 09:50).
+
+Verificér:
 
 ```sql
 select number, status, start_date, end_date from seasons order by number;      -- S1 completed, S2 active; PRÆCIS +0 nye rækker
@@ -241,7 +273,16 @@ select count(*) from finance_transactions where type='sponsor' and season_id='00
 select count(*) from finance_transactions where type='salary'  and season_id='00000000-0000-0000-0000-000000000002';   -- ~150
 select count(*) from riders where is_retired = true and team_id is not null;   -- 0 (retirement_release virkede)
 select count(*) from riders where team_id is not null and is_academy=false and contract_end_season <= 1;  -- 0 eller kun løb-udskudte
-select created_at, description from admin_log where action_type='season_transition' order by created_at desc limit 3;  -- præcis 1 ny
+select round(avg(fatigue)::numeric,2) from rider_condition;                    -- 0 (#2910, mode full; var 84,69 den 26/7 09:50)
+```
+
+**Tælle-queries: filtrér ALTID på tid, tæl aldrig totaler.** Begge tabeller har historik (`season_started` = **17** rækker, `admin_log`/`season_transition` = **2** rækker pr. 26/7 09:50), så en total giver 173 og 3, ikke 150 og 1. Et forventningstal der bygger på en baseline man skal huske kl. 20 om aftenen er den fejlbarlige del — tidsfilteret kan ikke lyve:
+
+```sql
+select count(*) from notifications
+ where type='season_started' and created_at > now() - interval '2 hours';      -- ~150
+select created_at, description from admin_log
+ where action_type='season_transition' and created_at > now() - interval '2 hours';  -- PRÆCIS 1 række
 ```
 
 **Rollback herfra: DETTE ER POINT OF NO RETURN.** Efter en gennemført transition er S2 live, penge er udbetalt (sponsor+payroll), global rank er halveret, ryttere er frigivet/pensioneret/udviklet, og ~150 managere har fået besked. Der findes ingen samlet rollback — kun fremadrettede reparationer (idempotente re-runs af enkeltfaser, manuelle modposteringer, `repairSeasonEndFinanceAndBoard`). Derfor ligger ALLE ejer-beslutninger FØR dette skridt.
@@ -317,7 +358,14 @@ Claude-session åben FØR 09:00: følg stage-scheduler-logs + første etapers af
 
 ## Kendte accepterede afvigelser (bevidst IKKE fikset før 27/7)
 
-- ~~**Test-konti i sponsor/payroll** (3 stk): `processSeasonStart` filtrerer ikke `is_test_account`~~ — **fikset (#2852).** `buildTransitionPlan`, `processSeasonStart` og kontrakt-fornyelsen bruger nu den fælles `applyHumanTeamFilter` (`backend/lib/humanTeamFilter.js`). `teams_affected` går fra 159 til 156 i preview'et; falder tallet ikke med præcis 3, så STOP og undersøg før du kører skiftet. Resterende forekomster af den korte diskriminator uden for transition-motoren (season-end, cron, board-stier) er noteret i PR'ens backwards-check.
+- ~~**Test-konti i sponsor/payroll** (dengang 3, nu 4): `processSeasonStart` filtrerer ikke `is_test_account`~~ — **fikset (#2852).** `buildTransitionPlan`, `processSeasonStart` og kontrakt-fornyelsen bruger nu den fælles `applyHumanTeamFilter` (`backend/lib/humanTeamFilter.js`). **Kontrollér tallet 156 mod filteret, ikke mod et fald på 3.** Regnestykket er `is_ai=false` (**161**) minus de 5 der ryger på `is_bank`/`is_frozen`/`is_test_account` (4 test-konti + 2 frosne, hvoraf 1 hold er begge dele) = **156** (målt 26/7 09:50). Viser preview'et ikke 156, så kør denne og sammenlign:
+  ```sql
+  select count(*) filter (where is_ai=false) as ikke_ai,
+         count(*) filter (where is_ai=false and (is_bank or is_frozen or is_test_account)) as fravalgt,
+         count(*) filter (where is_ai=false and not is_bank and not is_frozen and not is_test_account) as menneskehold
+  from teams;   -- 161 · 5 · 156
+  ```
+  Matcher `menneskehold` men ikke `teams_affected`, er #2852-fixet ikke deployet — STOP og undersøg før du kører skiftet. Resterende forekomster af den korte diskriminator uden for transition-motoren (season-end, cron, board-stier) er noteret i PR'ens backwards-check.
 - **Payroll før pension:** en rytter der pensioneres i fase `rider_progression` har allerede fået sin S2-løn trukket i fasen før. Én sæsons løn til en afgående rytter — accepteret spilregel-nuance.
 - **D3→D4-nedrykning hviler på data, ikke en regel:** `poolAllReal`-gaten er åben fordi alle 4 D3-puljer er 24/24 ægte. Efter S2 (hvor AI-fyld lander i D3) lukker gaten igen af sig selv — **#2164 skal implementeres eksplicit før S2→S3**. Skridt 2 verificerer gaten på dagen.
 - **`resolveCalendarAnchor`/kalender-regenerering:** ikke relevant — S2-kalenderen ER materialiseret og røres ikke.
@@ -325,6 +373,7 @@ Claude-session åben FØR 09:00: følg stage-scheduler-logs + første etapers af
 ## Reference
 
 - #2361 (drejebogs-issuet) · #2742 (rækkefølgen) · #2805 (season-end-spærren, merget som PR #2850) · #2846 (post-cutover-tjekliste) · #2164 (D3→D4 eksplicit regel, efter cutover)
+- Nye faser/beskeder i dette skifte: #2910 (trætheds-nulstilling, ON) · #2911 (akademi-optagelse, OFF) · #2948 (sæsonmåls-bonusser) · #2976 (tvangssalgs- + varselsbeskeder) · #2863 (sæsonens bedste ryttere) · #2897/PR #3000 (error-destrukturering i cutover-stien, merget 26/7 som `1c51069b`)
 - Transition-motor: `backend/lib/seasonTransition.js` · season-end: `backend/lib/economyEngine.js` (`processSeasonEnd`→`processDivisionEnd`) · gate: `backend/lib/seasonTransitionReadiness.js`
 - Scripts: `simulateSeasonTransitionDryRun.js` (read-only dry-run) · `executeSeasonTransition.js` (ugatet nød-transition — brug admin-endpointet i stedet) · `generateSeasonEntries.js` (skridt 6)
 - Incident-arv: `.claude/learnings/2026-05-22-season-transition-cron-loop-racing-window-leakage.md` · `docs/GAME_INVARIANTS.md`
