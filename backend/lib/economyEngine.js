@@ -235,11 +235,15 @@ export async function processSeasonStart(seasonId, deps = {}) {
   console.log(`\n🏁 Processing season start: ${seasonId}`);
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
 
-  const { data: season } = await supabaseClient
+  // #2897: uden `error` blev en fejlet select til seasonNumber=null, og
+  // loadSponsorStandingsContextForSeason(null) gav tavst forkert sponsor-payout
+  // ved sæson-start. Payroll-stien må fejle højt, ikke betale forkert.
+  const { data: season, error: seasonError } = await supabaseClient
     .from("seasons")
     .select("number")
     .eq("id", seasonId)
     .single();
+  if (seasonError) throw new Error(`Could not load season ${seasonId} for season start: ${seasonError.message}`);
   const seasonNumber = season?.number ?? null;
   const sponsorStandingsContext = await loadSponsorStandingsContextForSeason(
     supabaseClient,

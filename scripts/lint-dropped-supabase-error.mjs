@@ -186,11 +186,13 @@ export function findDroppedSupabaseErrors(rawSrc) {
 //
 // Målt 26/7: 178 fund, hvoraf 111 i api.js alene. Nedspisning sporet i #2997.
 // De 8 i cutover-stien (seasonTransition.js 7/7 + economyEngine.js'
-// processSeasonStart) rettes separat i PR #3000 — den ændrer runtime-adfærd og
-// venter på ejer-beslutning. Når den merger, falder baseline her til 170.
+// processSeasonStart) blev ryddet i PR #3000, og #2986 (kalender-perf) ryddede
+// én i api.js → 169 tilbage. seasonTransition.js er derfor helt væk fra listen:
+// den har implicit baseline 0, og enhver ny droppet error i sæsonskiftet fejler
+// CI med det samme. Ratchet'en virker begge veje — når en anden PR rydder et
+// site, strammes tallet her i samme ombæring.
 const BASELINE = {
-  "backend/routes/api.js": 111,
-  "backend/lib/seasonTransition.js": 7,
+  "backend/routes/api.js": 110,
   "backend/lib/discordNotifier.js": 6,
   "backend/lib/loanEngine.js": 6,
   "backend/lib/proxyBidding.js": 6,
@@ -199,7 +201,7 @@ const BASELINE = {
   "backend/lib/academyGraduation.js": 3,
   "backend/lib/aiTeamGenerator.js": 3,
   "backend/lib/deadlineDayReport.js": 3,
-  "backend/lib/economyEngine.js": 3,
+  "backend/lib/economyEngine.js": 2,
   "backend/lib/riderBidTimeline.js": 3,
   "backend/lib/auctionEngine.js": 2,
   "backend/lib/auctionFinalization.js": 2,
