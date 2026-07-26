@@ -277,7 +277,12 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
   return {
     next,
     changed,
-    retirement: retirementDecision(age, rider.id, season, cfg),
+    // Ejer-regel 26/7 (cutover S1→S2): pension måles på den AFSLUTTEDE sæsons
+    // alder (age − 1), ikke den nye sæsons. Spillerne er lovet pension "mellem
+    // 36-40" — en rytter de har set som 35 hele sæsonen må ikke pensioneres
+    // minutter efter sæsonslut. Konsekvens: ingen pension under synlig alder 36,
+    // og garantien rammer efter sæsonen som synlig 40-årig (aldrig en 41-sæson).
+    retirement: retirementDecision(age - 1, rider.id, season, cfg),
   };
 }
 
