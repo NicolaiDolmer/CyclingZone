@@ -110,6 +110,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Motor-genereret optag pr. sæson. Nyt optag hører til den nye sæson; en kopi af det gamle ville være forkert data.",
   },
   {
+    table: "academy_season_intake_runs",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "Idempotens-claim for sæson-optagelsen (#2911): én række pr. (hold, sæson) der beviser at optagelsen allerede er kørt. Manageren konfigurerer intet her, og en carry-over ville være direkte skadelig — en kopieret claim ville få den nye sæsons optagelse til at springe holdet over.",
+  },
+  {
     table: "board_plan_snapshots",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Historik-snapshot af en afsluttet bestyrelsesplan. Skrivebeskyttet efterslæb, ikke en indstilling.",
