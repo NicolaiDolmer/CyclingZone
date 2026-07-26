@@ -234,6 +234,14 @@
       "title": "Autobid placed",
       "message": "{bidderName}'s autobid placed {amount} CZ$ on {riderName}"
     },
+    "autoBidExhausted": {
+      "title": "Your auto-bid was outbid",
+      "message": "Your auto-bid on {riderName} reached its cap and was outbid by {bidderName}. The auto-bid has been cancelled and your reserved balance released."
+    },
+    "autoBidCancelled": {
+      "title": "Auto-bid cancelled",
+      "message": "The price on {riderName} has passed your auto-bid cap of {maxAmount} CZ$. The auto-bid has been cancelled and your reserved balance released."
+    },
     "debtWarning": {
       "title": "⚠️ Negative balance",
       "message": "Your team has a negative balance. Check the Finances page for details."

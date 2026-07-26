@@ -234,6 +234,14 @@
       "title": "Autobud afgivet",
       "message": "{bidderName}'s autobud bød {amount} CZ$ på {riderName}"
     },
+    "autoBidExhausted": {
+      "title": "Dit autobud er overbudt",
+      "message": "Dit autobud på {riderName} nåede sit loft og blev overbudt af {bidderName}. Autobuddet er annulleret og din reserverede saldo frigivet."
+    },
+    "autoBidCancelled": {
+      "title": "Autobud annulleret",
+      "message": "Prisen på {riderName} har passeret dit autobud-loft på {maxAmount} CZ$. Autobuddet er annulleret og din reserverede saldo frigivet."
+    },
     "debtWarning": {
       "title": "⚠️ Negativ saldo",
       "message": "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer."

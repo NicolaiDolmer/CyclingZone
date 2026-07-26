@@ -101,6 +101,10 @@ export async function resolveProxyBids({
   // selv sætte en lavere proxy senere hvis de ønsker).
   const balanceRejectedTeams = new Set();
 
+  // #230: teams der allerede har fået en annullerings-notifikation i denne
+  // kørsel — delete er idempotent, men notifikationen må ikke gentages.
+  const cancelNotified = new Set();
+
   // #1740: cascaden ejer ALLE "du er overbudt"-notifikationer (auction_outbid +
   // auction_proxy_outbid). Vi samler de teams den allerede har notificeret, så
   // kalderen (POST /bid, PATCH /proxy) IKKE sender en falsk overbudt-besked til en
@@ -220,6 +224,48 @@ export async function resolveProxyBids({
       continue;
     }
 
+    // #230: ryd døde proxies — rækker hvis loft er under minimumsbuddet kan
+    // aldrig fyre igen (prisen falder aldrig), men tæller stadig med i ejerens
+    // worst-case-commitment og låser dermed reserveret saldo på ubestemt tid.
+    // Undtagelse: previousLeader's loft PRÆCIS på currentPrice er #1091-tie-break-
+    // kandidaten og må ikke ryddes (den fyrer i tie-break-grenen ovenfor).
+    const deadProxies = allProxies.filter(
+      (p) =>
+        p.team_id !== currentWinner &&
+        p.max_amount < minBid &&
+        !(
+          previousLeader &&
+          p.team_id === previousLeader &&
+          Number(p.max_amount) === Number(currentPrice)
+        ),
+    );
+    for (const dead of deadProxies) {
+      await supabase
+        .from("auction_proxy_bids")
+        .delete()
+        .eq("auction_id", auctionId)
+        .eq("team_id", dead.team_id);
+      if (cancelNotified.has(dead.team_id)) continue;
+      cancelNotified.add(dead.team_id);
+      if (notifyTeamOwner) {
+        const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
+        await trackedNotify(
+          dead.team_id,
+          "auction_proxy_outbid",
+          "Autobud annulleret",
+          `Prisen på ${riderName} har passeret dit autobud-loft på ${dead.max_amount} CZ$ — autobuddet er annulleret og din reserverede saldo frigivet`,
+          auctionId,
+          {
+            riderId: auction.rider_id,
+            titleCode: "notif.autoBidCancelled.title",
+            titleParams: {},
+            messageCode: "notif.autoBidCancelled.message",
+            messageParams: { riderName, maxAmount: dead.max_amount },
+          },
+        ).catch(onProxyNotifFailed(auctionId));
+      }
+    }
+
     const challengers = allProxies
       .filter(
         (p) =>
@@ -329,6 +375,17 @@ export async function resolveProxyBids({
       current_bidder_id: autoBidder,
     }).eq("id", auctionId);
 
+    // #230 (ejer-valg A, 11/6): når en proxy er slået over sit loft, annulleres
+    // rækken straks så reservationen (worst-case-commitment) frigives — før fixet
+    // blev den liggende og låste saldo indtil manageren selv slettede den.
+    if (exhaustedTeam) {
+      await supabase
+        .from("auction_proxy_bids")
+        .delete()
+        .eq("auction_id", auctionId)
+        .eq("team_id", exhaustedTeam);
+    }
+
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
 
     // #183: maybeSingle() returnerer { data: null } i stedet for error ved 0 rækker.
@@ -343,14 +400,21 @@ export async function resolveProxyBids({
 
     if (notifyTeamOwner) {
       if (exhaustedTeam) {
-        // Proxy was beaten by a higher max
+        // Proxy was beaten by a higher max — #230: rækken er annulleret ovenfor,
+        // så beskeden fortæller også at reservationen er frigivet.
         await trackedNotify(
           exhaustedTeam,
           "auction_proxy_outbid",
           "Dit autobud er stoppet",
-          `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
+          `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName} — autobuddet er annulleret og din reserverede saldo frigivet`,
           auctionId,
-          { riderId: auction.rider_id }
+          {
+            riderId: auction.rider_id,
+            titleCode: "notif.autoBidExhausted.title",
+            titleParams: {},
+            messageCode: "notif.autoBidExhausted.message",
+            messageParams: { riderName, bidderName },
+          }
         ).catch(onProxyNotifFailed(auctionId));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
