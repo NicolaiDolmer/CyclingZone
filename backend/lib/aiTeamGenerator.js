@@ -247,7 +247,7 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
       .in("team_id", chunk)
       .order("id", { ascending: true }));
   } catch (e) {
-    throw new Error(`navne-snapshot (riders for trim): ${e.message}`);
+    throw new Error(`navne-snapshot (riders for trim): ${e.message}`, { cause: e });
   }
   const nameByRider = new Map(
     (riders || []).map((r) => [r.id, [r.firstname, r.lastname].filter(Boolean).join(" ") || null]),
@@ -283,7 +283,7 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
       .in("id", chunk)
       .order("id", { ascending: true }));
   } catch (e) {
-    throw new Error(`navne-snapshot (teams for trim): ${e.message}`);
+    throw new Error(`navne-snapshot (teams for trim): ${e.message}`, { cause: e });
   }
   const nameByTeam = new Map((teams || []).map((t) => [t.id, t.name || null]));
 
