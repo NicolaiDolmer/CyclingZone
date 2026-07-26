@@ -7,7 +7,7 @@
 **Sidste S1-etape søndag 26/7 19:00 · cutover ~19:30-20:30 · S2 dag 1 = MANDAG AFTEN 18:00-20:40** (ejer-valg 26/7: hele mandagen til sponsorvalg/holdudtagelse; DB-retiming kørt + post-verificeret, 41 pulje-løb, tirsdag+frem uændret, sæsonslut stadig søn 23/8). Drejebog: [SEASON_TRANSITION_CHECKLIST](SEASON_TRANSITION_CHECKLIST.md) · post-cutover: [#2846](https://github.com/NicolaiDolmer/CyclingZone/issues/2846).
 
 > **🎯 Next action (ejer):**
-> 1. 🔴 **Godkend Discord-besked** om mandag-aften-tiderne ordret (udkast i session-opsummering 26/7) — skal ud FØR i aften.
+> 1. 🔴 **Post selv Discord-beskeden** om mandag-aften-tiderne (færdig tekst i session-opsummering 26/7, ejer poster selv) — skal ud FØR i aften.
 > 2. 🔴 **[#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851): endelig 48/96/9-liste ~17:30** godkendes FØR "Afslut sæson". Mandagsvagt flyttet til ~17:45-18:15.
 > 3. **Efter cutover (Claude kører):** honours-SQL (`database/2026-07-26-2863-season-honours.sql`) · achievements-backfill (EFTER op/nedrykning) · ryd 91 S2-peaks · verificér `AVG(fatigue)=0` · #2894/#2902-backfill (1.326 ryttere) · apply #3016-migration (PR #3027) + re-verify scout-varsler · luk 7 gated done (#2589 #2744 #2745 #2835 #2894 #2902 #2925).
 > 4. **Ejer-ja udestår:** datareparation #2881 (48 ryttere, SQL klar) · #2892 Sentry-kvote (26/27 cron-monitorer disabled) · #1903 bekræft om abonnementet 25/7 var dit testkøb.
