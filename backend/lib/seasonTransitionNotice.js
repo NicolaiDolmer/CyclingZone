@@ -22,7 +22,11 @@ import {
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 
-export const SEASON_TRANSITION_RISK_TYPE = "season_transition_risk";
+// "contract_expiring": eneste eksisterende type i notifications_type_check-
+// constrainten der matcher varslets indhold og har frontend-rendering
+// (AlertTriangle + /team-link i NotificationsPage). "season_transition_risk"
+// findes IKKE i constrainten — INSERT afvises (#2700, opdaget ved --live 26/7).
+export const SEASON_TRANSITION_RISK_TYPE = "contract_expiring";
 
 // EN-first (#1068). DA-oversættelse + i18n-koder ligger i backendMessages.json
 // (notif.seasonTransitionRisk.*) — samme messageBoth/messageExpiringOnly/
