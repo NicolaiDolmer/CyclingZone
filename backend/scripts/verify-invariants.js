@@ -56,12 +56,20 @@ function loadEnv(envPath) {
   }
 }
 
-async function fetchAll(baseUrl, apiKey, table, select, filters = {}) {
+// #2974: `orderBy` er IKKE valgfri pynt. Uden en eksplicit, unik sortering
+// garanterer PostgREST/Postgres ikke samme rækkefølge mellem to Range-requests:
+// den samme række kan dukke op på to sider mens en anden helt udebliver. For alle
+// tabeller > PAGE rækker gør det resultatet upålideligt — og for en DUPLIKAT-
+// invariant er det fatalt. Målt mod prod 26/7 rapporterede den usorterede udgave
+// 118.365 falske dubletter i race_results (ægte antal: 0), og squad_within_max
+// talte 11 hold over loftet hvor SQL sagde 14. Sortér altid på en unik nøgle.
+async function fetchAll(baseUrl, apiKey, table, select, filters = {}, orderBy = "id") {
   const PAGE = 1000;
   const rows = [];
   for (let from = 0; ; from += PAGE) {
     const url = new URL(`${baseUrl}/rest/v1/${table}`);
     url.searchParams.set("select", select);
+    url.searchParams.set("order", `${orderBy}.asc`);
     for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
     const res = await fetch(url.toString(), {
       headers: {
@@ -94,20 +102,23 @@ async function main() {
   const apiKey = process.env.SUPABASE_SERVICE_KEY;
   if (!baseUrl || !apiKey) throw new Error("Mangler SUPABASE_URL eller SUPABASE_SERVICE_KEY");
 
-  const fetch_ = (table, select, filters) => fetchAll(baseUrl, apiKey, table, select, filters);
+  const fetch_ = (table, select, filters, orderBy) => fetchAll(baseUrl, apiKey, table, select, filters, orderBy);
 
-  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans] = await Promise.all([
+  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans, raceResultRows] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id,is_academy,is_retired"),
     // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
     fetch_("riders", "id,base_value", { is_retired: "is.false" }),
-    fetch_("rider_derived_abilities", "rider_id"),
+    // rider_derived_abilities har ingen `id`-kolonne — rider_id er den unikke nøgle.
+    fetch_("rider_derived_abilities", "rider_id", undefined, "rider_id"),
     fetch_("auctions", "id,rider_id,status", { status: "in.(active,extended)" }),
     fetch_("transfer_listings", "id,rider_id,status", { status: "eq.open" }),
     fetch_("swap_offers", "id,offered_rider_id,status", { status: "in.(pending,countered,awaiting_confirmation)" }),
     fetch_("finance_transactions", "type"),
     fetch_("notifications", "type"),
     fetch_("loans", "team_id,amount_remaining,loan_type", { status: "eq.active" }),
+    // #2974/#2898: hele race_results til duplikat-invarianten nedenfor.
+    fetch_("race_results", "race_id,stage_number,rider_id,result_type,rank,points_earned"),
   ]);
 
   const humanTeams = teams.filter(t => !t.is_ai && !t.is_frozen && !t.is_bank);
@@ -198,6 +209,57 @@ async function main() {
     .filter(r => !r.team_id && r.is_academy && !r.is_retired)
     .map(r => ({ riderId: r.id }));
 
+  // Check 10 (#2974/#2898): Ingen dublerede race_results.
+  //
+  // Rodårsagen: persist-laget bruger et idempotent delete-then-insert. supabase-js
+  // KASTER ikke — fejler deletet tavst (fx statement timeout under samtidige
+  // etaper), kører insertet alligevel og lægger de nye rækker OVEN PÅ de gamle.
+  // Konsekvens: dublerede points_earned og DOBBELT prize_money (prizePayoutEngine
+  // betaler pr. point-række). Direkte spillervendt: forkerte stillinger og penge
+  // udbetalt to gange. #2974 tilføjede fejltjek på kaldestederne; DENNE invariant
+  // er detektionen der fanger det hvis mønstret alligevel slipper igennem.
+  //
+  // Nøgle: (race_id, stage_number, result_type, rider_id) — én rytter kan ikke
+  // optræde to gange i samme klassement på samme etape. Det er præcis den form
+  // en dublet fra et fejlet delete tager.
+  //
+  // rider_id IS NULL er UDELADT — og det er ikke kosmetik. Målt mod prod 26/7 er
+  // 43.288 af 487.377 rækker rytterløse: hold-klassementerne (`team`, `team_day`)
+  // har per design ingen rytter, og historiske PCM-importer efterlod rækker hvor
+  // rytteren ikke kunne matches. Grupperer man dem med, samler SQL/Map alle
+  // NULL-rytter-rækker i ét løb i ÉN nøgle og rapporterer 2.336 "dubletter" på
+  // 410 løb — rent støj. Med filteret: 0 dubletter i prod.
+  const raceResultKeyCount = new Map();
+  for (const r of raceResultRows) {
+    if (r.rider_id == null) continue;
+    const key = `${r.race_id}|${r.stage_number}|${r.result_type}|${r.rider_id}`;
+    raceResultKeyCount.set(key, (raceResultKeyCount.get(key) || 0) + 1);
+  }
+  const duplicateRaceResults = [];
+  for (const [key, n] of raceResultKeyCount.entries()) {
+    if (n <= 1) continue;
+    const [raceId, stageNumber, resultType, riderId] = key.split("|");
+    duplicateRaceResults.push({ raceId, stageNumber: Number(stageNumber), resultType, riderId, rows: n });
+  }
+  const duplicateRaces = new Set(duplicateRaceResults.map(d => d.raceId));
+
+  // Check 11 (#2898): Samme rang tildelt to gange i samme klassement på samme
+  // etape. Fanger den variant hvor dubletten IKKE er rytter-identisk (fx en
+  // genafvikling med et ændret felt oven på et fejlet delete). NULL-rang er
+  // udeladt: ikke-scorende rækker bærer rank=null i massevis og er ikke dubletter.
+  const rankKeyCount = new Map();
+  for (const r of raceResultRows) {
+    if (r.rank == null) continue;
+    const key = `${r.race_id}|${r.stage_number}|${r.result_type}|${r.rank}`;
+    rankKeyCount.set(key, (rankKeyCount.get(key) || 0) + 1);
+  }
+  const duplicateRanks = [];
+  for (const [key, n] of rankKeyCount.entries()) {
+    if (n <= 1) continue;
+    const [raceId, stageNumber, resultType, rank] = key.split("|");
+    duplicateRanks.push({ raceId, stageNumber: Number(stageNumber), resultType, rank: Number(rank), rows: n });
+  }
+
   const checks = {
     no_double_active_auctions: check(
       doubleAuctions.length === 0,
@@ -261,6 +323,20 @@ async function main() {
         ? `OK — ${activeRiders.length} aktive ryttere har derive + base_value`
         : `${strandedRiders.length} aktiv(e) rytter(e) mangler derive (rider_derived_abilities-række eller base_value)`,
       strandedRiders.slice(0, 50)
+    ),
+    no_duplicate_race_results: check(
+      duplicateRaceResults.length === 0,
+      duplicateRaceResults.length === 0
+        ? `OK — ${raceResultKeyCount.size} rytter-nøgler af ${raceResultRows.length} race_results-rækker, ingen dubletter`
+        : `${duplicateRaceResults.length} dubleret(e) race_results-nøgle(r) fordelt på ${duplicateRaces.size} løb — dublerede point/præmier (#2974/#2898)`,
+      duplicateRaceResults.slice(0, 50)
+    ),
+    no_duplicate_race_result_ranks: check(
+      duplicateRanks.length === 0,
+      duplicateRanks.length === 0
+        ? "OK — ingen rang tildelt to gange i samme klassement"
+        : `${duplicateRanks.length} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
+      duplicateRanks.slice(0, 50)
     ),
   };
 
