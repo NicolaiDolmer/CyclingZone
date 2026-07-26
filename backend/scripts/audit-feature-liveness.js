@@ -111,16 +111,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // + 2 incidents. Alle tre tabeller har nu rows i prod og daekkes af Detector A igen
   // (#2224 / #2393). Detector A tjekker total row-count, saa loebsfrie dage giver ikke
   // false positives.
-  // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
-  // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
-  // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
-  // tabellen har rows.
-  "rider_development_log",
-  // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
-  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22. Tabellen
-  // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
-  // i academyGraduation.js. Fjern denne entry når tabellen har rows.
-  "academy_graduation",
+  // (rider_development_log (#1137) fjernet 26/7: S1→S2-transitionen skrev 4.869
+  // rows via rider_progression — featuren er levende, Detector A overvåger igen.)
+  // (academy_graduation (#932/#1467) fjernet 26/7: 23 graduation-rows landede ved
+  // S1→S2-transitionen — featuren er levende, Detector A overvåger igen.)
   // (subscriptions (#1903) fjernet 25/7: første checkout.completed-række landede kl.
   // 17:45 lokal (Alunta-checkout live) — featuren er levende, Detector A overvåger igen.)
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
