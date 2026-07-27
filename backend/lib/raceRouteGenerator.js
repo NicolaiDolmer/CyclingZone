@@ -172,13 +172,78 @@ function isOnClimb(km, climbs) {
   return climbs.some((c) => km >= Number(c.crest_km) - Number(c.length_km) && km <= Number(c.crest_km));
 }
 
-// Flyt en km-værdi der lander midt i en stigning til nærmeste gyldige flad/nedkørsels-
-// punkt. Nedkørsel (lige efter toppen) foretrækkes (#3048-issue accepterer eksplicit
-// nedkørsel); falder den løsning uden for et fornuftigt bånd, prøves flad tilgang (lige
-// før foden) i stedet. Ingen ekstra rng-forbrug — deterministisk ud fra allerede-trukne
-// climbs, så resten af rute-strømmen (sectors) er upåvirket.
-function clampSprintKm(km, climbs, distanceKm) {
+// #3048 — kanonisk dalregel (ejer-godkendt 27/7, verificeret mod alle 137 ramte
+// prod-rækker; erstatter den oprindelige crest+1-nedkørsel fra PR #3054, som ejeren
+// afviste som urealistisk — konkret modeksempel: Vuelta a los Picos etape 4, hvor
+// crest+1 landede i et 6 km hul mellem to kategori-1-stigninger).
+//
+// Reglen er UAFHÆNGIG af den oprindelige rå km: samme climbs+distance giver altid
+// samme dal, så samme reglen giver samme resultat som den allerede kørte prod-
+// reparation, uanset hvor den oprindelige (fejlplacerede) sprint lå.
+export function sprintSearchWindow(distanceKm) {
+  return [Math.ceil(distanceKm * 0.2), Math.floor(distanceKm * 0.85)];
+}
+
+// Sammenhængende frie strækninger ("dale") i søgevinduet. Et km-punkt er BESAT hvis
+// det ligger i [crest_km - length_km - 1, crest_km + 1] for en climb — én kilometers
+// luft i begge ender (§2 i den kanoniske regel). Returnerer [lo,hi]-par (reelle km,
+// ikke afrundede) sorteret på lo.
+export function sprintValleys(climbs, distanceKm) {
+  const [winLo, winHi] = sprintSearchWindow(distanceKm);
+  if (winHi <= winLo) return [];
+
+  const occupied = climbs
+    .map((c) => [
+      Math.max(winLo, Number(c.crest_km) - Number(c.length_km) - 1),
+      Math.min(winHi, Number(c.crest_km) + 1),
+    ])
+    .filter(([lo, hi]) => hi > lo)
+    .sort((a, b) => a[0] - b[0]);
+
+  const merged = [];
+  for (const iv of occupied) {
+    const last = merged[merged.length - 1];
+    if (last && iv[0] <= last[1]) last[1] = Math.max(last[1], iv[1]);
+    else merged.push([...iv]);
+  }
+
+  const valleys = [];
+  let cursor = winLo;
+  for (const [lo, hi] of merged) {
+    if (lo > cursor) valleys.push([cursor, lo]);
+    cursor = Math.max(cursor, hi);
+  }
+  if (cursor < winHi) valleys.push([cursor, winHi]);
+  return valleys;
+}
+
+// §4 i den kanoniske regel: findes dale på >= 15 km, vælg den hvis midtpunkt ligger
+// tættest på distance_km * 0.55. Findes ingen på 15 km, vælg den længste dal.
+export function pickSprintValley(valleys, distanceKm) {
+  if (!valleys.length) return null;
+  const big = valleys.filter(([lo, hi]) => hi - lo >= 15);
+  const pool = big.length ? big : valleys;
+  const target = distanceKm * 0.55;
+  const scoreOf = (v) => (big.length ? Math.abs((v[0] + v[1]) / 2 - target) : -(v[1] - v[0]));
+
+  let best = pool[0];
+  let bestScore = scoreOf(best);
+  for (const v of pool) {
+    const score = scoreOf(v);
+    if (score < bestScore) { bestScore = score; best = v; }
+  }
+  return best;
+}
+
+// Flyt en fejlplaceret mellemsprint til midtpunktet af den valgte dal (§5). Findes
+// slet ingen fri strækning i søgevinduet (§6), falder funktionen tilbage til den
+// oprindelige nedkørsel/tilgang-logik fra PR #3054 som sidste udvej — deterministisk,
+// ingen ekstra rng-forbrug, resten af rute-strømmen (sectors) er upåvirket.
+export function clampSprintKm(km, climbs, distanceKm) {
   if (!climbs.length || !isOnClimb(km, climbs)) return km;
+
+  const valley = pickSprintValley(sprintValleys(climbs, distanceKm), distanceKm);
+  if (valley) return Math.round((valley[0] + valley[1]) / 2);
 
   let after = km;
   for (let guard = 0; guard < 20 && isOnClimb(after, climbs); guard++) {
