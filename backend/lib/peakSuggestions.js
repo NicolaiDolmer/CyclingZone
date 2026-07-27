@@ -27,6 +27,7 @@
 
 import { ABILITY_KEYS, terrainScore } from "./raceSimulator.js";
 import { snapPeakWindow, MAX_PEAK_PLANS_PER_SEASON } from "./riderPeakPlans.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 export const YOUNG_AGE_THRESHOLD = 23;
 export const YOUNG_RIDER_PEAK_COUNT = 1;
@@ -44,15 +45,10 @@ export function minPeakSpacingDays(leadupDays, windowRadiusDays) {
   return Math.max(0, Number(leadupDays) || 0) + 2 * (Math.max(0, Number(windowRadiusDays) || 0));
 }
 
-// Sæson-forankret alder, IKKE wall-clock (#3081). LAUNCH_REFERENCE_YEAR/
-// ageForSeason duplikeres BEVIDST her — samme dokumenterede mønster som
-// lib/squadRiskGuard.js — i stedet for at importere riderProgressionEngine.
-// ageForSeason (SSOT for selve formlen): riderProgressionEngine.js importerer
-// supabasePagination.fetchAllRows + notificationService (DB/side-effects) og,
-// via riderValuation.js, node:fs readFileSync af valuerings-modellen. En import
-// herfra ville bryde DENNE fils dokumenterede renheds-kontrakt (se topkommentaren:
-// "REN lib, ingen DB/Date/Math.random") og trække DB-afhængigheder ind i en
-// beregning der køres on-demand pr. rytter i GET /peak-plans/board.
+// Sæson-forankret alder, IKKE wall-clock (#3081). Alderen kommer fra
+// riderSeasonAge.js — en dependency-fri SSOT, så denne fils renheds-kontrakt
+// ("REN lib, ingen DB/Date/Math.random", se topkommentaren) holder uden en duplikat.
+// Re-eksporteres, så kaldere og tests der importerer ageForSeason herfra er upåvirkede.
 //
 // #3081: assistenten regnede tidligere alder på wall-clock (den nu fjernede
 // ageFromBirthdate(birthdate, todayDateString) = todayYear − birthYear). Det
@@ -60,21 +56,7 @@ export function minPeakSpacingDays(leadupDays, windowRadiusDays) {
 // driftede det, fordi sæson-cutover ikke sker på nytår — wall-clock-året lå
 // stadig i 2026 langt ind i sæson 2, mens sæson-alderen allerede skulle regnes
 // fra 2027. Se forward-guard-testen nederst i peakSuggestions.test.js.
-const LAUNCH_REFERENCE_YEAR = 2026;
-
-/**
- * Alder VED sæsonens referenceår — samme SSOT-formel som
- * riderProgressionEngine.ageForSeason: LAUNCH_REFERENCE_YEAR + (seasonNumber − 1) − fødselsår.
- * @param {string|null} birthdate  "YYYY-MM-DD"
- * @param {number|null} seasonNumber
- * @returns {number|null}
- */
-export function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
-  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
-}
+export { ageForSeason };
 
 /**
  * Hvor mange peaks assistenten foreslår for én rytter. Ukendt alder (ingen

@@ -24,22 +24,17 @@
 // og developRidersForSeason kalder ageForSeason(birthdate, seasonNumber) — altså
 // alderen VED overgangen til den nye sæson, ikke alderen i den nuværende.
 //
-// ageForSeason/LAUNCH_REFERENCE_YEAR duplikeres bevidst her (samme mønster som
-// scripts/salaryDecouplingScorecard.js, scripts/fitRiderValuationV4.js m.fl. —
-// se kommentar dér) i stedet for at importere riderProgressionEngine.js, som ville
-// lukke en modul-cyklus tilbage til marketUtils.js (academyGraduation.js importerer
-// begge veje). SSOT for selve formlen er riderProgressionEngine.ageForSeason.
+// ageForSeason importeres nu fra riderSeasonAge.js (dependency-fri SSOT) og
+// re-eksporteres, så kaldere af denne fil er upåvirkede. Tidligere lå der en
+// bevidst duplikat her, fordi en import af riderProgressionEngine.js ville lukke en
+// modul-cyklus tilbage til marketUtils.js (academyGraduation.js importerer begge
+// veje). riderSeasonAge.js har ingen imports overhovedet og kan derfor ikke deltage
+// i en cyklus — duplikaten er dermed unødvendig, ikke bare uheldig.
 
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
-const LAUNCH_REFERENCE_YEAR = 2026;
-
-export function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
-  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
-}
+export { ageForSeason };
 
 // Rytteren frigives til fri agent ved NÆSTE transition (#2744-B): kontrakten er
 // allerede udløbet eller udløber netop NU (contract_end_season <= den aktive/
