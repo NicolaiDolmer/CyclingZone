@@ -68,7 +68,7 @@ function TypeRow({ typeKey, now, ceilLo, ceilHi, label }) {
   );
 }
 
-export default function RiderScoutingTab({ rider, scouting }) {
+export default function RiderScoutingTab({ rider, scouting, seasonYear = null }) {
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const [report, setReport] = useState(null);   // null = loader, ellers payload
@@ -233,7 +233,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
             </span>
             <div className="mt-1">
               {stars ? (
-                <PotentialeStars range={stars} birthdate={rider.birthdate} />
+                <PotentialeStars range={stars} birthdate={rider.birthdate} seasonYear={seasonYear} />
               ) : (
                 <PotentialeStars value={null} />
               )}

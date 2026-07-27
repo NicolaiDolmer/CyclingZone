@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import {
   Card, Button, EmptyState, ErrorState, GavelIcon,
@@ -51,6 +52,8 @@ function getAuctionLeaderId(auction) {
 export default function AuctionHistoryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation(["auctions", "common"]);
+  // #3071: sæson-referenceår til alders-badget (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   // #2849 bølge 2: terminal, retry-bar fejl-state — samme mønster som
@@ -347,7 +350,7 @@ export default function AuctionHistoryPage() {
                     <Td className="hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
                         <RiderBadges badges={[
-                          ageBadgeKey(a.rider),
+                          ageBadgeKey(a.rider, seasonYear),
                           iSelf ? "self" : iWon && "bought",
                           !iSelf && iSold && !noSale && "sold",
                         ]} />
