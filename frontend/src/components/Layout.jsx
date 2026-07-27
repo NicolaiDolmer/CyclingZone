@@ -18,6 +18,7 @@ import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { plannerNavItem } from "../lib/plannerNavVisibility";
+import { pathMatchesNavItem } from "../lib/navMatching.js";
 import { usePlanner } from "../lib/usePlanner";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
@@ -66,6 +67,23 @@ function buildBottomItems(t) {
   ];
 }
 
+// #3102: admin-gruppen stod ordret to steder (gruppe-opslaget i useEffect og
+// navGroups i render) og var allerede drevet fra hinanden — kun det ene sted
+// havde exact:true på /admin, så "Admin" lyste op sammen med underpunktet på
+// hver /admin/*-side. Én kilde nu, så de ikke kan drifte igen.
+function buildAdminGroup(t) {
+  return {
+    key: "admin", label: t("nav.group.admin"),
+    items: [
+      { to: "/admin", label: t("nav.item.admin"), exact: true },
+      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
+      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
+      { to: "/admin/attribution", label: t("nav.item.attribution") },
+      { to: "/admin/retention", label: t("nav.item.retention") },
+    ],
+  };
+}
+
 function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
   return [
     {
@@ -74,7 +92,6 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
         { to: "/dashboard",      label: t("nav.item.dashboard") },
         { to: "/team",           label: t("nav.item.team") },
         { to: "/training",       label: t("nav.item.training") },
-        ...plannerNavItem(peakPlannerEnabled, t),
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
         ...scoutingNavItem(scoutSystemEnabled, t),
         { to: "/board",          label: t("nav.item.board") },
@@ -85,6 +102,23 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
         ...(facilitiesEnabled ? [{ to: "/staff", label: t("nav.item.staffOverview") }] : []),
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
+      ],
+    },
+    {
+      // #3102 etape 1: planlægnings-fladerne (holdudtagelse, formplan, strategi)
+      // lå spredt over Klubhus (planneren) og resultat-gruppen (holdudtagelse),
+      // og strategisiden havde slet ingen nav-indgang — eneste vej var et text-xs
+      // link i Race Hub-brættet. Rækkefølgen her spejler den kommende hub's faner
+      // (Holdudtagelse · Formplan · Strategi) fra kontraktens etape 3.
+      key: "planlaegning", label: t("nav.group.planlaegning"),
+      items: [
+        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
+        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
+        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
+        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
+        ...plannerNavItem(peakPlannerEnabled, t),
+        { to: "/races/strategy", label: t("nav.item.strategy") },
+        { to: "/calendar",       label: t("nav.item.calendar") },
       ],
     },
     {
@@ -103,20 +137,19 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
     {
       // #1609: "League"-gruppen nedlagt — Teams/H2H/Season-Preview er konsolideret
       // ind i Standings-hub'en (linse + drawer). Hub'en bor her som "League & standings".
-      key: "saeson-resultater", label: t("nav.group.saeson"),
+      // #3102 etape 1: gruppen er renset til rene KIGGE-flader — planlægnings-
+      // genvejene (holdudtagelse, kalender) er flyttet til Planlægning ovenfor.
+      key: "resultater", label: t("nav.group.resultater"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
-        { to: "/calendar",       label: t("nav.item.calendar") },
+        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
+        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
+        // #3102: excludePaths så den heller ikke lyser op sammen med det nye
+        // Holdstrategi-punkt (prefix-matchet ville ellers ramme /races/strategy).
+        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         { to: "/global-rank",    label: t("nav.item.globalRank") },
-        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
-        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
-        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar" },
-        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
-        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
-        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
-        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
         { to: "/seasons",        label: t("nav.item.seasons") },
       ],
     },
@@ -126,30 +159,6 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
-}
-
-// #987: `to` kan indeholde en query (fx "/transfers?tab=market"). Aktiv kræver
-// at path matcher OG alle query-params i `to` findes i URL'en. `excludeQuery`
-// afaktiverer et item når en bestemt param-værdi ER sat (så søskende-genveje
-// til samme path ikke begge lyser op).
-function pathMatchesNavItem(location, to, exact = false, excludeQuery = null) {
-  const [toPath, toQuery] = to.split("?");
-  const pathOk = exact
-    ? location.pathname === toPath
-    : location.pathname === toPath || location.pathname.startsWith(`${toPath}/`);
-  if (!pathOk) return false;
-  const current = new URLSearchParams(location.search);
-  if (toQuery) {
-    for (const [k, v] of new URLSearchParams(toQuery)) {
-      if (current.get(k) !== v) return false;
-    }
-  }
-  if (excludeQuery) {
-    for (const [k, v] of new URLSearchParams(excludeQuery)) {
-      if (current.get(k) === v) return false;
-    }
-  }
-  return true;
 }
 
 // #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
@@ -164,11 +173,17 @@ async function fetchUnreadCount(userId) {
   return count || 0;
 }
 
-function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, title }) {
-  const isActive = pathMatchesNavItem(location, to, exact, excludeQuery);
+function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, excludePaths, title }) {
+  const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   const showBadge = badge && unread > 0;
+  // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
+  // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
+  // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
+  // (Løb · Holdudtagelse · Holdstrategi) annoncerede skærmlæsere derfor alle tre
+  // som current page, selv om kun én var fremhævet visuelt. Vi ejer allerede
+  // isActive her, så Link + vores eget aria-current er den ene sandhed.
   return (
-    <NavLink to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
+    <Link to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
       className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
@@ -191,7 +206,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
         <span aria-hidden="true"
           className="pointer-events-none absolute left-3 bottom-1 h-0.5 w-5 rounded-full bg-cz-accent origin-left scale-x-0 transition-transform duration-200 ease-out group-hover:scale-x-100 motion-reduce:transition-none" />
       )}
-    </NavLink>
+    </Link>
   );
 }
 
@@ -278,7 +293,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
             IKKE en flydende knap. Åbner FeedbackModal i stedet for at navigere,
-            derfor et rent button-element frem for NavItem (som altid er en NavLink). */}
+            derfor et rent button-element frem for NavItem (som altid er et Link). */}
         <button
           type="button"
           onClick={() => { onNav?.(); onOpenFeedback?.(); }}
@@ -354,14 +369,8 @@ export default function Layout() {
   useEffect(() => {
     const path = location.pathname;
     const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
-    if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
-      { to: "/admin", label: t("nav.item.admin"), exact: true },
-      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
-      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
-      { to: "/admin/attribution", label: t("nav.item.attribution") },
-      { to: "/admin/retention", label: t("nav.item.retention") },
-    ] });
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i.to, i.exact, i.excludeQuery)))
+    if (isAdmin) groups.push(buildAdminGroup(t));
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
@@ -509,15 +518,7 @@ export default function Layout() {
   }
 
   const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
-  const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
-        { to: "/admin", label: t("nav.item.admin") },
-        { to: "/admin/waitlist", label: t("nav.item.waitlist") },
-        { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
-        { to: "/admin/attribution", label: t("nav.item.attribution") },
-      { to: "/admin/retention", label: t("nav.item.retention") },
-      ] }]
-    : baseGroups;
+  const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t)] : baseGroups;
   const bottomItems = buildBottomItems(t);
 
   const needsSetup = teamLoaded && !team?.manager_name;

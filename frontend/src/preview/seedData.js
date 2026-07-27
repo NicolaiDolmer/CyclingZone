@@ -705,7 +705,12 @@ export const SEED_STRATEGY = {
     suitabilities: { flat: 82, hills: 64, mountains: 41, cobbles: 55, time_trial: 60 },
   })),
   a_chain: [RIDERS[0].id],
-  captain_priorities: { flat: RIDERS[0].id, hills: RIDERS[0].id, mountains: null, cobbles: RIDERS[0].id, time_trial: null },
+  // #3102: buckets + rangordnede LISTER — samme form som backend leverer
+  // (raceStrategy.js / raceStrategy.test.js) og som CaptainBoard læser via
+  // TERRAIN_BUCKETS. Fixturen stod med skalar-id'er og de gamle bucket-navne
+  // (hills/mountains/time_trial), så preview-mocken crashede StrategyPage på
+  // list.map — dvs. ejeren kunne ikke teste strategisiden på preview.
+  captain_priorities: { flat: [RIDERS[0].id], hilly: [RIDERS[0].id], mountain: [], cobbles: [RIDERS[0].id], itt: [] },
   role_rules: [
     { rider_id: RIDERS[0].id, bucket: "flat", role: "captain" },
   ],

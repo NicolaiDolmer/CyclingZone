@@ -228,7 +228,7 @@
       },
       "headToHead": {
         "title": "Compare two teams (Head-to-Head)",
-        "text": "Open League & standings (under Season & Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
+        "text": "Open League & standings (under Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
       },
       "contactSupport": {
         "title": "Contact & feedback",
@@ -365,7 +365,7 @@
       },
       "racesAndResults": {
         "title": "Races and results",
-        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
+        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
       },
       "latestTeamResult": {
         "title": "Where do I see how my team did?",
@@ -385,7 +385,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -398,7 +398,7 @@
       },
       "raceLibrary": {
         "title": "Race library",
-        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
+        "text": "Under Results, Races, Library you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
@@ -441,7 +441,7 @@
       },
       "fullTable": {
         "title": "The full points table",
-        "text": "Under Season & Results, Races, Points & prizes you'll find every race class's complete points and prize scale with all places.",
+        "text": "Under Results, Races, Points & prizes you'll find every race class's complete points and prize scale with all places.",
         "ctaLabel": "Open Points & prizes →",
         "ctaTo": "/races?tab=points",
         "disclaimer": "Prize amounts may still be adjusted during the open beta."
@@ -759,7 +759,7 @@
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
-        "text": "Open Team strategy from the squad board to set preferences your assistant follows when it auto-fills the calendar. Rank an A-chain of core riders. They get priority for the races you mark as targets. Give a rider a fixed role (always captain, or always sprint captain when selected). Rank captains 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial); the assistant picks the highest-ranked rider who makes that race's lineup. Mark your target races so your strongest riders go there. Preview shows exactly how your strategy changes selections before you save, and Regenerate suggestions applies it without touching the picks you made by hand."
+        "text": "Open Team strategy under Planning, or from the squad board, to set preferences your assistant follows when it auto-fills the calendar. Rank an A-chain of core riders. They get priority for the races you mark as targets. Give a rider a fixed role (always captain, or always sprint captain when selected). Rank captains 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial); the assistant picks the highest-ranked rider who makes that race's lineup. Mark your target races so your strongest riders go there. Preview shows exactly how your strategy changes selections before you save, and Regenerate suggestions applies it without touching the picks you made by hand."
       },
       "breakaway": {
         "title": "Breakaways",
@@ -794,11 +794,11 @@
     },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
-      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
+      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view (Planning -> Team selection) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
     },
     "teamStrategyFaq": {
       "q": "How do I make the assistant pick my best riders for big races?",
-      "a": "Open Team strategy from the squad board. Add your best riders to the A-chain and mark the races that matter most as targets, and the assistant then prioritizes your A-chain for those races. You can also rank captains 1/2/3 per terrain and give riders a fixed role. Use Preview changes to see exactly how it affects your lineups, then Save and Regenerate suggestions. Picks you set by hand are never overwritten."
+      "a": "Open Team strategy under Planning. Add your best riders to the A-chain and mark the races that matter most as targets, and the assistant then prioritizes your A-chain for those races. You can also rank captains 1/2/3 per terrain and give riders a fixed role. Use Preview changes to see exactly how it affects your lineups, then Save and Regenerate suggestions. Picks you set by hand are never overwritten."
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
@@ -1070,7 +1070,7 @@
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
-      "a": "Season 1's calendar is designed before the window closes and is published on the Races page (Season & Results → Races → Calendar). WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
+      "a": "Season 1's calendar is designed before the window closes and is published under Planning → Team selection. WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
     },
     "howToWinRace": {
       "q": "How do I win a race, and what decides the result?",
@@ -1086,7 +1086,7 @@
     },
     "raceSignupFaq": {
       "q": "Where do I sign up for a race?",
-      "a": "Go to Season & Results, Races (or open /races directly). The Calendar tab opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
+      "a": "Go to Planning, Team selection (or open /races directly). It opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
     },
     "raceClassificationsFaq": {
       "q": "What's the difference between GC, Classic/Monument and stage wins?",
