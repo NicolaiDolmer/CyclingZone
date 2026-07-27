@@ -1,7 +1,8 @@
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  ageFromBirthdate,
+  ageForSeason,
   suggestedPeakCount,
   minPeakSpacingDays,
   normalizedSuitability,
@@ -12,15 +13,19 @@ import {
   ADULT_RIDER_PEAK_COUNT,
 } from "./peakSuggestions.js";
 
-// ── ageFromBirthdate ────────────────────────────────────────────────────────
+// ── ageForSeason ─────────────────────────────────────────────────────────────
+// #3081: erstatter den fjernede wall-clock ageFromBirthdate(birthdate, todayDateString).
+// Skal spejle riderProgressionEngine.ageForSeason (SSOT) præcis, samme værdier
+// som squadRiskGuard.test.js verificerer for sin bevidste duplikat.
 
-test("ageFromBirthdate: simpel kalenderårs-differens", () => {
-  assert.equal(ageFromBirthdate("2001-03-01", "2026-07-16"), 25);
+test("ageForSeason: sæson-drevet, ikke wall-clock (spejler riderProgressionEngine SSOT)", () => {
+  assert.equal(ageForSeason("2001-03-01", 1), 2026 - 2001); // 25, sæson 1 = launch-året
+  assert.equal(ageForSeason("2001-03-01", 2), 2027 - 2001); // 26, ét år ældre i sæson 2
 });
 
-test("ageFromBirthdate: manglende input → null", () => {
-  assert.equal(ageFromBirthdate(null, "2026-07-16"), null);
-  assert.equal(ageFromBirthdate("2001-03-01", null), null);
+test("ageForSeason: manglende input → null", () => {
+  assert.equal(ageForSeason(null, 2), null);
+  assert.equal(ageForSeason("2001-03-01", NaN), null);
 });
 
 // ── suggestedPeakCount ──────────────────────────────────────────────────────
@@ -132,7 +137,7 @@ test("suggestPeaksForRider: snapper vindue omkring valgte løbs etape-datoer", (
   const stageDatesByRaceId = new Map([["r1", ["2026-08-10"]]]);
   const out = suggestPeaksForRider({
     rider: { birthdate: "1998-01-01" }, abilities: climberAbilities,
-    candidateRaces, stageDatesByRaceId, todayDateString: "2026-07-16",
+    candidateRaces, stageDatesByRaceId, seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2,
   });
   assert.equal(out.length, 1);
@@ -149,8 +154,8 @@ test("suggestPeaksForRider: ung rytter får kun ét forslag selvom flere kandida
   ];
   const stageDatesByRaceId = new Map([["r1", ["2026-08-10"]], ["r2", ["2026-11-18"]]]);
   const out = suggestPeaksForRider({
-    rider: { birthdate: "2005-01-01" }, abilities: climberAbilities, // 21 år pr. 2026-07-16
-    candidateRaces, stageDatesByRaceId, todayDateString: "2026-07-16",
+    rider: { birthdate: "2005-01-01" }, abilities: climberAbilities, // 21 år i sæson 1 (2026 − 2005)
+    candidateRaces, stageDatesByRaceId, seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2,
   });
   assert.equal(out.length, 1);
@@ -160,7 +165,7 @@ test("suggestPeaksForRider: uplanlagt mål-løb (ingen etape-datoer) springes st
   const candidateRaces = [{ id: "r1", ord: 100, demandVector: { climbing: 10 } }];
   const out = suggestPeaksForRider({
     rider: { birthdate: "1998-01-01" }, abilities: climberAbilities,
-    candidateRaces, stageDatesByRaceId: new Map(), todayDateString: "2026-07-16",
+    candidateRaces, stageDatesByRaceId: new Map(), seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2,
   });
   assert.deepEqual(out, []);
@@ -174,7 +179,7 @@ test("suggestPeaksForRider: fylder kun resterende slot når rytteren allerede ha
   const stageDatesByRaceId = new Map([["r1", ["2026-08-10"]], ["r2", ["2026-11-18"]]]);
   const out = suggestPeaksForRider({
     rider: { birthdate: "1998-01-01" }, abilities: climberAbilities,
-    candidateRaces, stageDatesByRaceId, todayDateString: "2026-07-16",
+    candidateRaces, stageDatesByRaceId, seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2, existingPeakCount: 1,
   });
   assert.equal(out.length, 1); // voksen-loft 2 minus 1 ægte = 1 forslag
@@ -188,7 +193,7 @@ test("suggestPeaksForRider: respekterer mellemrum mod ÆGTE peak-vinduer (reserv
   const stageDatesByRaceId = new Map([["too-close", ["2026-08-10"]], ["far-enough", ["2026-11-18"]]]);
   const out = suggestPeaksForRider({
     rider: { birthdate: "1998-01-01" }, abilities: climberAbilities,
-    candidateRaces, stageDatesByRaceId, todayDateString: "2026-07-16",
+    candidateRaces, stageDatesByRaceId, seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2, existingPeakCount: 1, reservedOrds: [100],
   });
   assert.equal(out.length, 1);
@@ -198,8 +203,52 @@ test("suggestPeaksForRider: respekterer mellemrum mod ÆGTE peak-vinduer (reserv
 test("suggestPeaksForRider: ingen kandidat-løb → tom liste, ingen kast", () => {
   const out = suggestPeaksForRider({
     rider: { birthdate: "1998-01-01" }, abilities: climberAbilities,
-    candidateRaces: [], stageDatesByRaceId: new Map(), todayDateString: "2026-07-16",
+    candidateRaces: [], stageDatesByRaceId: new Map(), seasonNumber: 1,
     leadupDays: 14, windowRadiusDays: 2,
   });
   assert.deepEqual(out, []);
+});
+
+// #3081: rytter født 2004 fylder 23 i sæson 2 (2027 − 2004) og skal derfor have
+// det VOKSNE peak-antal (2), ikke ungdomsantallet (1). Før fixet regnede
+// suggestPeaksForRider alder på wall-clock (ageFromBirthdate/todayDateString),
+// som i sæson 2 stadig lå i kalenderåret 2026 (sæson-cutover sker IKKE på nytår)
+// — rytteren blev dermed regnet som 22 år (2026 − 2004) og fik kun ét forslag.
+// Denne test fejler på main (før fixet) og skal bestå efter (seasonNumber-baseret
+// ageForSeason). Verificeret i prod 27/7: 121 ryttere ramt af præcis dette.
+test("suggestPeaksForRider: rytter født 2004 får voksen-peak-antal i sæson 2, ikke ungdomsantal (#3081)", () => {
+  const candidateRaces = [
+    { id: "r1", ord: 100, demandVector: { climbing: 10 } },
+    { id: "r2", ord: 200, demandVector: { climbing: 9 } },
+  ];
+  const stageDatesByRaceId = new Map([["r1", ["2026-08-10"]], ["r2", ["2026-11-18"]]]);
+  const out = suggestPeaksForRider({
+    rider: { birthdate: "2004-01-01" }, abilities: climberAbilities,
+    candidateRaces, stageDatesByRaceId,
+    seasonNumber: 2, // ageForSeason("2004-01-01", 2) = 2027 - 2004 = 23 → voksen
+    leadupDays: 14, windowRadiusDays: 2,
+  });
+  assert.equal(out.length, ADULT_RIDER_PEAK_COUNT, "23-årig i sæson 2 skal have det voksne peak-antal (2), ikke ungdomsantallet (1)");
+});
+
+// ── #3081 forward-guard ──────────────────────────────────────────────────────
+// Scope: KUN denne fil, ikke hele backend-træet. Backend bruger wall-clock-datoer
+// legitimt overalt til andet end alder (scheduling, copenhagenDateString, m.fl.),
+// så et helt-træ-scan (som frontend/riderAgeSeasonGuard.test.js kører — sikkert
+// dér fordi frontend-alder reelt kun har ét sted den beregnes) ville give en
+// strøm af falske positiver her. Denne fil har derimod netop ÉN alderskilde
+// (ageForSeason ovenfor), så et snævert scan af peakSuggestions.js selv rammer
+// præcis den fejlklasse #3081/#3071 handlede om: en tredje, tavs alders-konvention.
+test("#3081 forward-guard: peakSuggestions.js har ingen wall-clock alderskilde og bruger stadig ageForSeason", () => {
+  const src = readFileSync(new URL("./peakSuggestions.js", import.meta.url), "utf8");
+  assert.doesNotMatch(
+    src,
+    /todayYear\s*-\s*birthYear|new Date\(\)\.getFullYear\(\)|getUTCFullYear\(\)\s*-\s*.*getUTCFullYear\(\)/,
+    "Wall-clock alders-mønster fundet i peakSuggestions.js (#3081/#3071-fejlklassen) — brug ageForSeason(birthdate, seasonNumber) i stedet",
+  );
+  assert.match(
+    src,
+    /function ageForSeason\(/,
+    "peakSuggestions.js skal fortsat have en sæson-forankret ageForSeason (SSOT: riderProgressionEngine.ageForSeason) — ingen tredje alders-konvention",
+  );
 });

@@ -2832,7 +2832,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           registeredRaceIds: registeredByRider.get(rd.id) || new Set(),
           existingPeakCount: rd.peaks.length,
           reservedOrds,
-          todayDateString: today,
+          seasonNumber: season.number,
           leadupDays: leadup,
           windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
         });
