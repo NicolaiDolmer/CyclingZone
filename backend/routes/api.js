@@ -148,7 +148,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
@@ -3934,6 +3934,53 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       regenerated++;
     }
     res.json({ ok: true, regenerated, skipped, mode });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 1 — GET /api/races/distribution/clear-preview?scope=all (#3061)
+// Konsekvens-forhåndsvisning til "Clear all"-bekræftelsesdialogen: hvilke af holdets
+// planlagte (ikke-startede) løb resten af sæsonen ville blive ramt, MED hvert løbs ægte
+// starttidspunkt (til en sand nedtælling, ikke en kalenderdato). Read-only — rører intet.
+// Kun scope=all understøttes (det er den eneste "ryd alt"-handling #3061 dækker; "Ryd dag"
+// beholder sin simple bekræftelse, da den ikke er kilden til den observerede prod-hændelse).
+router.get("/races/distribution/clear-preview", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    // {data,error} destruktureres begge: en tavst droppet fejl her ville vise en TOM
+    // konsekvens-liste, og dialogen ville dermed berolige manageren om at intet rammes
+    // netop når vi ikke kan se hvad der rammes. Fail loud i stedet.
+    const { data: season, error: seasonErr } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`clear-preview seasons: ${seasonErr.message}`);
+    if (!season) return res.json({ ok: true, races: [] });
+
+    const { data: races, error: racesErr } = await supabase
+      .from("races").select("id, name, stages_completed, status, league_division_id").eq("season_id", season.id);
+    if (racesErr) throw new Error(`clear-preview races: ${racesErr.message}`);
+
+    const cols = (races || []).filter((r) =>
+      r.status === "scheduled" &&
+      teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
+    if (!cols.length) return res.json({ ok: true, races: [] });
+
+    const raceIds = cols.map((r) => r.id);
+    const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
+
+    const { races: preview } = buildClearPreview({ cols, windowByRace });
+    res.json({ ok: true, races: preview });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

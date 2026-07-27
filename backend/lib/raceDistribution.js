@@ -129,6 +129,22 @@ export function partitionClearTargets({ cols = [] }) {
   return { target, skipped };
 }
 
+// #3061: konsekvens-forhåndsvisning til "Clear all"-dialogen. Genbruger SAMME frys-guard
+// som selve ryd-handlingen (partitionClearTargets) — hvad dialogen viser SKAL matche hvad
+// der faktisk cleares, ellers lyver den. Filtrerer derefter til reelt KOMMENDE løb: et løb
+// uden schedule-data eller allerede forbi sit starttidspunkt kan ikke få en ærlig nedtælling
+// (#3061-krav: "nedtællingen skal være sand, brug løbets faktiske starttidspunkt") og tælles
+// derfor ikke med i "N races" — dialogen skal aldrig overdrive konsekvensen. Sorteret efter
+// starttidspunkt (nærmeste først, så listen læses som en tidslinje). Pure + deterministisk.
+export function buildClearPreview({ cols = [], windowByRace = new Map(), nowMs = Date.now() }) {
+  const { target } = partitionClearTargets({ cols });
+  const races = target
+    .map((r) => ({ id: r.id, name: r.name, startAt: windowByRace.get(r.id)?.start ?? null }))
+    .filter((r) => Number.isFinite(r.startAt) && r.startAt > nowMs)
+    .sort((a, b) => a.startAt - b.startAt);
+  return { races };
+}
+
 // #3041: hvilke af en kolonnes rider_ids skal FODRES ind i buildBindingMap som bindende?
 // Rod-årsag: bindingMap brugte hidtil ALLE entries (auto+manuelt) i en kolonne, så et
 // auto-udtaget pick i et endnu-ikke-startet løb låste rytteren for et andet overlappende
