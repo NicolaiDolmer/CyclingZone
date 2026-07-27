@@ -860,7 +860,7 @@ async function runStageSchedulerCron() {
 // + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper). Best-
 // effort i sig selv (refreshRankingMatviewsSafe sluger + logger fejl).
 async function runRankingMatviewRefreshCron() {
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: sentryCapture });
 }
 
 // ─── Global Rank ugentligt bevægelses-snapshot (#2453) ────────────────────────
