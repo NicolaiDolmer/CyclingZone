@@ -27,6 +27,34 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Squad selection",
         "en": {
+          "title": "Riders are no longer held by last season's races",
+          "body": "After the move up, riders showed as taken by races from season 1, often in the division you had just left, and the squad would not save at all. Race days are counted from the start of each season, so last season's day 4 and this season's day 4 read as the same day. A race now only holds a rider inside its own season. Starting line-ups are filled from the same rule, so no one is left out of a field for a race they rode last year."
+        },
+        "da": {
+          "title": "Ryttere holdes ikke længere af sidste sæsons løb",
+          "body": "Efter oprykningen stod ryttere som optaget af løb fra sæson 1, ofte i den division du lige havde forladt, og truppen kunne slet ikke gemmes. Løbsdage tælles fra hver sæsons start, så sidste sæsons dag 4 og denne sæsons dag 4 blev læst som samme dag. Et løb holder nu kun en rytter inden for sin egen sæson. Startfelter fyldes efter samme regel, så ingen udelades af et felt på grund af et løb han kørte sidste år."
+        },
+        "refs": [3070, 3076]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders show their real age again",
+          "body": "Everyone turned a year older when season 2 began, and training and values moved with it, but the age on screen stayed on last season's number. Young prospects could read as 30 and over in the market, and the retirement warning pointed at the wrong riders. Ages, the under-23 and under-25 badges and the age filters now follow the season."
+        },
+        "da": {
+          "title": "Ryttere viser deres rigtige alder igen",
+          "body": "Alle blev et år ældre da sæson 2 begyndte, og træning og værdier fulgte med, men alderen på skærmen blev stående på sidste sæsons tal. Unge talenter kunne stå som 30 og derover på markedet, og pensionsadvarslen pegede på de forkerte ryttere. Alder, U23- og U25-mærkerne og aldersfiltrene følger nu sæsonen."
+        },
+        "refs": [3071]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
           "title": "Clearing your squad now tells you which races it withdraws you from",
           "body": "\"Clear all\" removed your riders from every scheduled race for the rest of the season behind a plain confirmation box, so a team could end up out of races without knowing it. It now names the races you would be withdrawn from, with the time until each one starts, and makes keeping your squad the easy answer."
         },
