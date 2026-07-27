@@ -17,6 +17,7 @@ import NextActionsCard from "../components/NextActionsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
 import { pickNextSelectableRace } from "../lib/nextSelectableRace";
+import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
@@ -393,24 +394,33 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
-  // #2288 D1 — mangler holdudtagelse til det næste udtagelige løb? Samme kilde
-  // som RaceSelectionPanel/saveSelection (race_entries, is_auto_filled=false).
+  // #2288 D1 / #3042 — mangler holdudtagelse til det næste udtagelige løb? Bruger
+  // NU samme kontrakt som løbssiden: GET /api/races/:id/selection (det
+  // RaceSelectionPanel selv henter fra) → selection.rider_ids.length vs size.max,
+  // via den delte rene isSquadSelectionMissing (raceSquadSelectionStatus.js).
+  //
+  // Tidligere talte vi selv race_entries filtreret på is_auto_filled=false ("har
+  // manageren manuelt valgt mindst én rytter?"). Det matchede ikke løbssidens
+  // "fuld trup"-begreb (ALLE entries, manuelle + auto-fyldte, mod size.max) — så
+  // en trup raceEntryGenerator havde top-fyldt fuldt automatisk (0 manuelle
+  // entries) blev fejlagtigt vist som "udtagelse mangler" på Dashboard, selvom
+  // løbssiden viste en fuld trup (#3042, Discord-bug 25/7).
   useEffect(() => {
     let cancelled = false;
     const nextRace = pickNextSelectableRace(nextRaces);
     if (!nextRace || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     (async () => {
-      const { count } = await supabase
-        .from("race_entries")
-        // race_entries har ingen id-kolonne (PK = race_id+rider_id); tæl på race_id.
-        // "id" gav 400/42703 hver dashboard-load → count=null → nudgen viste sig ALDRIG (#2296-regression).
-        .select("race_id", { count: "exact", head: true })
-        .eq("race_id", nextRace.id)
-        .eq("team_id", team.id)
-        .eq("is_auto_filled", false);
-      // Kun eksplicit count===0 viser nudgen — null (fejl/ukendt, fx e2e-mock
-      // uden Content-Range) må ikke udløse et falsk "udtagelse mangler".
-      if (!cancelled) setSquadSelectionMissingRace(count === 0 ? nextRace : null);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const r = await fetch(`${API}/api/races/${nextRace.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
+        // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
+        // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
+        if (!r.ok || cancelled) return;
+        const body = await r.json();
+        if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(body) ? nextRace : null);
+      } catch { /* netværk — nudgen forbliver som den var */ }
     })();
     return () => { cancelled = true; };
   }, [nextRaces, team?.id]);
