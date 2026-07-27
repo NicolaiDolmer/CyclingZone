@@ -164,15 +164,12 @@
   "subtitle": {
     "withSeason": "Sæson {number} · {count} løb",
     "noSeason": "Ingen aktiv sæson",
-    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb",
-    "library": "{count} løb på tværs af alle sæsoner",
-    "points": "Pointtabeller og præmieformel"
+    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb"
   },
   "tabs": {
     "calendar": "Kalender",
     "library": "Bibliotek",
-    "world": "Verdens-kalender",
-    "points": "Point & præmier"
+    "world": "Verdens-kalender"
   },
   "raceType": {
     "stageRace": "Etapeløb",
@@ -273,7 +270,6 @@
   "points": {
     "loadError": "Kunne ikke indlæse pointtabellen. Prøv igen.",
     "retry": "Prøv igen",
-    "title": "Point- og præmieoversigt",
     "subtitle": "Sådan beregnes dine løbspræmier fra dine placeringer",
     "help": "Hjælp & Regler",
     "formula": "Præmieformlen: 1 point = {amount} CZ$",

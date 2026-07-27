@@ -164,15 +164,12 @@
   "subtitle": {
     "withSeason": "Season {number} · {count} races",
     "noSeason": "No active season",
-    "noSeasonWithCount": "No active season · {count} races",
-    "library": "{count} races across all seasons",
-    "points": "Points tables and prize formula"
+    "noSeasonWithCount": "No active season · {count} races"
   },
   "tabs": {
     "calendar": "Calendar",
     "library": "Library",
-    "world": "World calendar",
-    "points": "Points & prizes"
+    "world": "World calendar"
   },
   "raceType": {
     "stageRace": "Stage race",
@@ -273,7 +270,6 @@
   "points": {
     "loadError": "Couldn't load the points table. Please try again.",
     "retry": "Try again",
-    "title": "Points & prize overview",
     "subtitle": "How your race prizes are calculated from your placements",
     "help": "Help & Rules",
     "formula": "Prize formula: 1 point = {amount} CZ$",

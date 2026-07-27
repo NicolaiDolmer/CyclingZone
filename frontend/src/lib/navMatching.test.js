@@ -22,8 +22,23 @@ test("/races → kun Løb er aktiv", () => {
   assert.deepEqual(activeOf(loc("/races")), ["races"]);
 });
 
+// #3102 etape 2: ?tab=library findes ikke længere på /races (fanen flyttede til
+// Resultat-hubben og ruten redirecter), men et gammelt bogmærke rammer stadig
+// URL'en før redirecten kører. Løb skal være det aktive punkt i det øjeblik.
 test("/races?tab=library → kun Løb er aktiv", () => {
   assert.deepEqual(activeOf(loc("/races", "?tab=library")), ["races"]);
+});
+
+// #3102 etape 2: hubbens tre faner deler ÉT nav-punkt (/resultater uden query).
+// Punktet må lyse op på alle tre — og de gamle /races-punkter må ikke gøre det.
+// Testen fanger den dag nogen giver Arkiv eller Point sit eget menupunkt: så
+// skal excludeQuery på plads, præcis som på Transfers-parret nedenfor.
+test("#3102 etape 2 /resultater?tab=* → hub-punktet er aktivt på alle faner", () => {
+  const results = { to: "/resultater" };
+  for (const search of ["", "?tab=archive", "?tab=points"]) {
+    assert.equal(pathMatchesNavItem(loc("/resultater", search), results), true, `fane ${search || "(default)"}`);
+    assert.deepEqual(activeOf(loc("/resultater", search)), []);
+  }
 });
 
 test("#1681 /races?tab=calendar → kun Holdudtagelse er aktiv", () => {

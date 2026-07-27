@@ -365,7 +365,7 @@
       },
       "racesAndResults": {
         "title": "Løb og resultater",
-        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
+        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Resultater, hvor fanen Seneste viser de løb der er kørt færdigt i din division. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
       },
       "latestTeamResult": {
         "title": "Hvor ser jeg hvordan det gik mit hold?",
@@ -385,7 +385,7 @@
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Resultater, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -397,8 +397,8 @@
         ]
       },
       "raceLibrary": {
-        "title": "Løbsbibliotek",
-        "text": "Under Resultater, Løb, Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Listen er sorteret nyeste-først, og et 'Kun min division'-filter indsnævrer den til løb i din egen division, så du hurtigt kan finde det du kørte i dag. Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb."
+        "title": "Løbsarkiv",
+        "text": "Under Resultater, Arkiv kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Listen er sorteret nyeste-først, og et 'Kun min division'-filter indsnævrer den til løb i din egen division, så du hurtigt kan finde det du kørte i dag. Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb. Hver udgave linker direkte til den udgaves fulde resultat."
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
@@ -441,9 +441,9 @@
       },
       "fullTable": {
         "title": "Den fulde pointtabel",
-        "text": "Under Resultater, Løb, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
+        "text": "Under Resultater, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
         "ctaLabel": "Åbn Point & præmier →",
-        "ctaTo": "/races?tab=points",
+        "ctaTo": "/resultater?tab=points",
         "disclaimer": "Præmiebeløb kan stadig justeres i løbet af den åbne beta."
       }
     },
