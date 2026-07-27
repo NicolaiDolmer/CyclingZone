@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.69",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "The Clubhouse menu is ordered by what you actually open",
+          "body": "The menu had grown in the order things were built, not in the order you use them. Your inbox is the third most opened page in the game and sat tenth in the list. Finance sat below the boardroom despite more than twice the traffic. Clubhouse now reads: Dashboard, Inbox, My Team, Daily Training, Finance, Academy, Board, Scouting, Club, Staff. Your manager profile moved down to Settings, where the other personal pages live. Nothing was renamed and no page moved."
+        },
+        "da": {
+          "title": "Klubhus-menuen står i den rækkefølge du faktisk åbner den i",
+          "body": "Menuen var vokset i den rækkefølge tingene blev bygget, ikke i den rækkefølge du bruger dem. Din indbakke er den tredje mest åbnede side i spillet og lå nummer ti på listen. Økonomi lå under bestyrelsen selv om den har mere end dobbelt så meget trafik. Klubhus står nu: Dashboard, Indbakke, Mit Hold, Daglig træning, Økonomi, Akademi, Bestyrelse, Spejder, Klub, Personale. Din managerprofil er flyttet ned til Indstillinger, hvor de andre personlige sider ligger. Intet er omdøbt, og ingen side er flyttet."
+        },
+        "refs": [3104]
+      }
+    ]
+  },
+  {
     "version": "7.68",
     "date": "2026-07-27",
     "label": "Beta",

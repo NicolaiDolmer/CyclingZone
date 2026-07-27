@@ -57,8 +57,12 @@ function isFullBleedRoute(pathname) {
   return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p)) && !FULL_BLEED_EXCLUDE.has(pathname);
 }
 
-function buildBottomItems(t) {
+// #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
+// spillets daglige arbejdsflade med under 245 sessions/30 dage; den hører til
+// de personlige punkter ved Indstillinger, ikke mellem Økonomi og Indbakke.
+function buildBottomItems(t, team) {
   return [
+    ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
     { to: "/profile",     label: t("nav.item.profile") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
@@ -84,24 +88,33 @@ function buildAdminGroup(t) {
   };
 }
 
-function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
+// #3104: `team` udgik som parameter da Min Managerprofil (det eneste punkt der
+// brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
+// flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
+// forskellige menuer for samme bruger.
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
   return [
     {
+      // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
+      // målt 27/7) i stedet for den historiske rækkefølge punkterne blev tilføjet i.
+      // Indbakke var appens 3.-mest besøgte side (6.152) men lå på 10. plads, og
+      // Økonomi (2.258) lå efter Bestyrelse (959). Grupperingen er stadig efter
+      // opgave — kun rækkefølgen indeni følger tallene.
       key: "klubhus", label: t("nav.group.klubhus"),
       items: [
-        { to: "/dashboard",      label: t("nav.item.dashboard") },
-        { to: "/team",           label: t("nav.item.team") },
-        { to: "/training",       label: t("nav.item.training") },
-        ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
-        ...scoutingNavItem(scoutSystemEnabled, t),
-        { to: "/board",          label: t("nav.item.board") },
-        { to: "/finance",        label: t("nav.item.finance") },
-        ...facilitiesNavItem(facilitiesEnabled, t),
+        { to: "/dashboard",      label: t("nav.item.dashboard") },     // 7.350
+        { to: "/notifications",  label: t("nav.item.notifications"), badge: true }, // 6.152
+        { to: "/team",           label: t("nav.item.team") },          // 5.955
+        { to: "/training",       label: t("nav.item.training") },      // 2.732
+        { to: "/finance",        label: t("nav.item.finance") },       // 2.258
+        ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
+        { to: "/board",          label: t("nav.item.board") },         // 959
+        ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
+        ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
         // #2450: personale-oversigten forudsætter faciliteter (staff ansættes der),
         // så den deler samme flag-gate/kilde som Klub-nav-item'et lige ovenfor.
+        // #3104: ~400 sessions — bliver en fane i Klub i etape C.
         ...(facilitiesEnabled ? [{ to: "/staff", label: t("nav.item.staffOverview") }] : []),
-        { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
-        ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
       ],
     },
     {
@@ -353,7 +366,6 @@ export default function Layout() {
   // flag /api/peak-plans/board rapporterer til selve /planner-siden.
   const { enabled: peakPlannerEnabled } = usePlanner();
   const heartbeatRef = useRef(null);
-  const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
   async function fetchOnlineCount(headers) {
@@ -367,14 +379,15 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
     if (isAdmin) groups.push(buildAdminGroup(t));
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)))
-      || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
+    // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
+    // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
+    // foldbar gruppe, så der er ingen gruppe at åbne for den rute længere.
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, teamId, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
+  }, [location, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -517,9 +530,9 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t)] : baseGroups;
-  const bottomItems = buildBottomItems(t);
+  const bottomItems = buildBottomItems(t, team);
 
   const needsSetup = teamLoaded && !team?.manager_name;
   const sidebarProps = {
