@@ -4,6 +4,111 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.66",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "The assistant's picks no longer lock you out of your own squad",
+          "body": "When season 2 opened, the assistant had already entered your riders in races across the whole season. Those automatic picks then blocked you: try to put a rider in another race on the same day and he showed up as taken, by a choice you never made. Only your own manual picks and races already under way hold a rider now. The assistant suggests, it does not decide."
+        },
+        "da": {
+          "title": "Assistentens valg låser dig ikke længere ude af din egen trup",
+          "body": "Da sæson 2 åbnede, havde assistenten allerede meldt dine ryttere til løb i hele sæsonen. De automatiske valg spærrede så for dig: forsøgte du at sætte en rytter i et andet løb samme dag, stod han som optaget af et valg du aldrig havde truffet. Nu binder kun dine egne manuelle valg og løb der allerede er i gang. Assistenten foreslår, den bestemmer ikke."
+        },
+        "refs": [3041]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Clearing your squad now tells you which races it withdraws you from",
+          "body": "\"Clear all\" removed your riders from every scheduled race for the rest of the season behind a plain confirmation box, so a team could end up out of races without knowing it. It now names the races you would be withdrawn from, with the time until each one starts, and makes keeping your squad the easy answer."
+        },
+        "da": {
+          "title": "Rydder du din trup, får du nu at vide hvilke løb det melder dig fra",
+          "body": "\"Ryd alt\" fjernede dine ryttere fra alle planlagte løb resten af sæsonen bag en almindelig bekræftelsesboks, så et hold kunne ende uden for løb uden at vide det. Den viser nu hvilke løb du meldes fra, hvor længe der er til hvert af dem starter, og gør det nemme svar til at beholde truppen."
+        },
+        "refs": [3061]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer says your squad is missing when it is full",
+          "body": "The reminder counted only riders you had picked by hand, so a squad the assistant had filled completely still showed up as incomplete. It now reads the same squad the race page does."
+        },
+        "da": {
+          "title": "Dashboardet siger ikke længere at truppen mangler, når den er fuld",
+          "body": "Påmindelsen talte kun ryttere du selv havde valgt, så en trup assistenten havde fyldt helt op stod stadig som ufuldstændig. Den læser nu den samme trup som løbssiden gør."
+        },
+        "refs": [3042]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Intermediate sprints have moved off the climbs",
+          "body": "Some stages placed their intermediate sprint part way up a categorised climb, where a sprinter has no chance and the climbers took the points instead. Sprints now sit on the longest stretch of road without a climb, closest to the middle of the stage. Season 2's calendar has been corrected on 137 stages before any points were awarded."
+        },
+        "da": {
+          "title": "Mellemsprinterne er flyttet væk fra stigningerne",
+          "body": "Nogle etaper lagde deres mellemsprint et stykke oppe ad en kategoriseret stigning, hvor en spurter ingen chance har, og klatrerne tog pointene i stedet. Spurterne ligger nu på den længste strækning uden stigning, tættest på midten af etapen. Sæson 2's kalender er rettet på 137 etaper, før der blev uddelt et eneste point."
+        },
+        "refs": [3048]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The sponsor card says plainly that the cap is the same in every division",
+          "body": "The division picker on a sponsor offer looked like it changed what you could earn in total. It does not, in season 2: only the rate per race day differs. The card now says so, instead of leaving you to work it out."
+        },
+        "da": {
+          "title": "Sponsorkortet siger nu ligeud at loftet er det samme i alle divisioner",
+          "body": "Divisionsvælgeren på et sponsortilbud så ud som om den ændrede hvad du kunne tjene i alt. Det gør den ikke i sæson 2: kun raten pr. løbsdag er forskellig. Det står der nu, i stedet for at du selv skal regne det ud."
+        },
+        "refs": [3020]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Achievements are in English when the game is in English",
+          "body": "All 46 achievement titles and descriptions were stored in Danish only, so English players read Danish text on their profile. Every one of them is now translated."
+        },
+        "da": {
+          "title": "Achievements er på engelsk, når spillet er på engelsk",
+          "body": "Alle 46 achievement-titler og -beskrivelser lå kun på dansk, så engelske spillere læste dansk tekst på deres profil. De er nu oversat alle sammen."
+        },
+        "refs": [3044]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider names in scouting reports, and the team name on a profile, are links again",
+          "body": "A scouting report listed the rider it was about without a way to open him. And the team name in the bar at the top of a rider profile was plain text, though the same name just below it was a link. Both take you where you expect now."
+        },
+        "da": {
+          "title": "Rytternavne i scoutingrapporter og holdnavnet på en profil er links igen",
+          "body": "En scoutingrapport nævnte rytteren den handlede om uden en vej til at åbne ham. Og holdnavnet i baren øverst på en rytterprofil var ren tekst, selv om det samme navn lige nedenunder var et link. Begge fører nu hen hvor du forventer."
+        },
+        "refs": [3046, 3047]
+      }
+    ]
+  },
+  {
     "version": "7.65",
     "date": "2026-07-26",
     "label": "Beta",
