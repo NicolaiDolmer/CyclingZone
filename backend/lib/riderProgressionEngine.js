@@ -41,14 +41,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
-export const LAUNCH_REFERENCE_YEAR = 2026;
-
-export function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
-  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
-}
+//
+// Formlen bor nu i riderSeasonAge.js (dependency-fri SSOT) og re-eksporteres her, så
+// de fem eksisterende importører af denne fil er upåvirkede. Flytningen fjernede to
+// duplikater der kun fandtes fordi DENNE fil trækker DB + node:fs med sig, og libs med
+// en renheds-kontrakt derfor ikke kunne importere den. Se riderSeasonAge.js for de to
+// bugs duplikaterne kostede (#3071, #3081).
+export { LAUNCH_REFERENCE_YEAR, ageForSeason } from "./riderSeasonAge.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 let cachedModel = null;
 function defaultModel() {

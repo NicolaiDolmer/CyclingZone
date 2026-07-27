@@ -246,9 +246,14 @@ test("#3081 forward-guard: peakSuggestions.js har ingen wall-clock alderskilde o
     /todayYear\s*-\s*birthYear|new Date\(\)\.getFullYear\(\)|getUTCFullYear\(\)\s*-\s*.*getUTCFullYear\(\)/,
     "Wall-clock alders-mønster fundet i peakSuggestions.js (#3081/#3071-fejlklassen) — brug ageForSeason(birthdate, seasonNumber) i stedet",
   );
+  // Alderen skal komme fra den dependency-frie SSOT (riderSeasonAge.js), ikke fra en
+  // lokal kopi. Den oprindelige guard krævede en `function ageForSeason(`-definition
+  // HER, hvilket cementerede duplikaten den skulle beskytte mod — se
+  // riderSeasonAge.test.js's forward-guard, der nu håndhæver at konstanten kun
+  // erklæres ét sted i backend/lib.
   assert.match(
     src,
-    /function ageForSeason\(/,
-    "peakSuggestions.js skal fortsat have en sæson-forankret ageForSeason (SSOT: riderProgressionEngine.ageForSeason) — ingen tredje alders-konvention",
+    /import \{[^}]*\bageForSeason\b[^}]*\} from "\.\/riderSeasonAge\.js"/,
+    "peakSuggestions.js skal importere ageForSeason fra riderSeasonAge.js (SSOT) — ingen lokal alders-konvention",
   );
 });
