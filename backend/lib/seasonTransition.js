@@ -54,6 +54,7 @@ import { renownTarget } from "./renownEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
+import { detectAndNotifySquadsBelowMinimum as defaultDetectAndNotifySquadsBelowMinimum } from "./squadBelowMinimumCheck.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
@@ -1083,6 +1084,32 @@ export async function transitionToNextSeason({
     log.push({ phase: "retirement_release", error: err.message, ...(err.partialStats || {}) });
     captureException(err, {
       tags: { phase: "retirement_release" },
+      extra: { fromSeasonId, toSeasonNumber: plan.to_season.number },
+    });
+  }
+
+  // Phase 6f (#3043): detektér + varsl hold der er under MIN_RIDERS_FOR_RACE (8)
+  // EFTER de to frigivelses-faser ovenfor (kontraktudløb + pension er nu endelige
+  // for denne transition). #2748/#2834's squad-spærre (squadRiskGuard.js) gater
+  // kun FRIVILLIGE handlinger (salg/frigivelse/auktion) — den rører aldrig selve
+  // de automatiske faser, og intet tjekkede hidtil EFTER dem om et hold rent
+  // faktisk endte under minimum. Ejerens egen worst-case-måling (23/7, #2748)
+  // viser 0 hold under 8 i dagens bestand, så fasen forventes en no-op i praksis —
+  // den er sikkerhedsnettet for når den antagelse ændrer sig. Additivt + isoleret:
+  // REN detekt+varsl, intet auto-køb/auto-fill (ejer-beslutning 23/7: "ingen
+  // automatisk erstatning denne gang"), og en fejl her må ALDRIG vælte
+  // sæson-transitionen (samme disciplin som de to nabo-faser).
+  const detectSquadsBelowMinimumFn =
+    deps.detectAndNotifySquadsBelowMinimum ?? defaultDetectAndNotifySquadsBelowMinimum;
+  try {
+    log.push({
+      phase: "squad_below_minimum_check",
+      ...(await detectSquadsBelowMinimumFn({ supabase })),
+    });
+  } catch (err) {
+    log.push({ phase: "squad_below_minimum_check", error: err.message, ...(err.partialStats || {}) });
+    captureException(err, {
+      tags: { phase: "squad_below_minimum_check" },
       extra: { fromSeasonId, toSeasonNumber: plan.to_season.number },
     });
   }
