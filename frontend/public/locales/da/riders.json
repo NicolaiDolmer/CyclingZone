@@ -10,6 +10,8 @@
   "table": {
     "nation": "Nation",
     "rider": "Rytter",
+    "rating": "Rating",
+    "ratingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
     "team": "Hold",
     "badges": "Status",
     "age": "Alder",

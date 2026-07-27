@@ -11,7 +11,8 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
-import { statStyle } from "../lib/statColor";
+import { statStyle, statPlateStyle } from "../lib/statColor";
+import { riderOverallRating } from "../lib/riderRating";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
@@ -38,6 +39,8 @@ const TOAST_DURATION_MS = 4000;
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("watchlist");
+  // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
+  const { t: tTypes } = useTranslation("riderTypes");
   const scouting = useScouting();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,9 +169,15 @@ export default function WatchlistPage() {
   }
 
   // #1162: dekorér med estimat-midtpunkt så potentiale-kolonnen kan sorteres
-  // uden den rå (server-skjulte) potentiale.
+  // uden den rå (server-skjulte) potentiale. #3045: _ovr = samme 1-99-rating
+  // som holdsiden/auktionerne (riderOverallRating) — bruges til rating-
+  // kolonnen der foldes ind i portræt-underlinjen.
   const riderFilters = useClientRiderFilters(
-    entries.map(e => ({ ...e.rider, _scoutMid: scoutSortValue(scouting.estimateFor(e.rider.id)) }))
+    entries.map(e => ({
+      ...e.rider,
+      _scoutMid: scoutSortValue(scouting.estimateFor(e.rider.id)),
+      _ovr: riderOverallRating(e.rider),
+    }))
   );
   const filteredRiders = new Set(riderFilters.filtered.map(r => r.id));
   const sort = riderFilters.filters.sort;
@@ -198,15 +207,17 @@ export default function WatchlistPage() {
     <PageLoader />
   );
 
-  // #2849 bølge 2 — kolonne-definitioner til den kanoniske DataTable. Sticky
-  // navnecelle (rytter) + resten som almindelige/fold-kolonner (T2-recepten).
-  // Compare/stjerne/note/handling er interaktive og foldes IKKE ind i mobil-
-  // underlinjen (giver ikke mening som tekst) — de forbliver almindelige
-  // kolonner der scroller vandret bag den pinnede navnekolonne.
+  // #3045 — kolonne-definitioner til den kanoniske DataTable. Sticky
+  // navnecelle (rytter). Portræt-kolonnekontrakten (samme regel som rytter-
+  // databasen/holdsiden): Rating + Type + Værdi foldes ind i navnecellens
+  // underlinje ≤640px — de tre ting man vurderer en rytter på. Nation/Hold/
+  // Status/Alder er sekundær identitet og forbliver almindelige (scrollbare)
+  // kolonner. Compare/stjerne/note/handling er interaktive og foldes IKKE ind
+  // i mobil-underlinjen (giver ikke mening som tekst) — de forbliver
+  // almindelige kolonner der scroller vandret bag den pinnede navnekolonne.
   const columns = [
     {
-      key: "nation", header: t("thNation"), fold: true, sortKey: "nationality_code",
-      foldValue: (entry) => entry.rider.nationality_code ? entry.rider.nationality_code.toUpperCase() : null,
+      key: "nation", header: t("thNation"), sortKey: "nationality_code",
       render: (entry) => <NationCell code={entry.rider.nationality_code} />,
     },
     {
@@ -234,13 +245,35 @@ export default function WatchlistPage() {
       key: "star", header: "",
       render: (entry) => <WatchlistStar active onToggle={() => removeFromWatchlist(entry.rider.id)} />,
     },
+    // #3045: samlet 1-99-rating (samme model + plade-styling som holdsiden/
+    // auktionskortet — riderOverallRating). Ønskelisten havde ingen rating-
+    // kolonne overhovedet.
     {
-      key: "team", header: t("thTeam"), fold: true, sortKey: "team_id",
-      foldValue: (entry) => entry.rider.team?.name || t("teamFree"),
+      key: "rating",
+      header: <span title={t("thRatingTitle")}>{t("thRating")}</span>,
+      sortKey: "_ovr",
+      numeric: true,
+      fold: true,
+      foldValue: (entry) => {
+        const ovr = riderOverallRating(entry.rider);
+        return ovr ? String(ovr) : "—";
+      },
+      render: (entry) => {
+        const ovr = riderOverallRating(entry.rider);
+        return ovr ? (
+          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+            style={statPlateStyle(ovr)}>
+            {ovr}
+          </span>
+        ) : <span className="text-cz-3">—</span>;
+      },
+    },
+    {
+      key: "team", header: t("thTeam"), sortKey: "team_id",
       render: (entry) => <TeamCell team={entry.rider.team} freeLabel={t("teamFree")} />,
     },
     {
-      key: "badges", header: t("thBadges"), fold: true, sortKey: "is_u25",
+      key: "badges", header: t("thBadges"), sortKey: "is_u25",
       render: (entry) => (
         <div className="flex flex-wrap items-center gap-1">
           <RiderBadges badges={[ageBadgeKey(entry.rider)]} />
@@ -248,16 +281,24 @@ export default function WatchlistPage() {
       ),
     },
     {
-      key: "age", header: t("thAge"), fold: true, numeric: true, sortKey: "birthdate",
-      foldValue: (entry) => String(getRiderAge(entry.rider.birthdate) ?? "—"),
+      key: "age", header: t("thAge"), numeric: true, sortKey: "birthdate",
       render: (entry) => getRiderAge(entry.rider.birthdate) ?? "—",
     },
     {
       key: "type", header: t("thType"), fold: true, sortKey: "primary_type",
+      foldValue: (entry) => {
+        const r = entry.rider;
+        if (!r.primary_type) return "";
+        const primary = tTypes(`types.${r.primary_type}`);
+        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
+        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+      },
       render: (entry) => <RiderTypeBadge primaryType={entry.rider.primary_type} secondaryType={entry.rider.secondary_type} />,
     },
     {
       key: "value", header: t("thValue"), numeric: true, sortKey: "value",
+      fold: true,
+      foldValue: (entry) => formatNumber(getRiderMarketValue(entry.rider)),
       render: (entry) => (
         <span className="font-bold text-cz-accent-t">
           {formatCz(getRiderMarketValue(entry.rider)).replace(" CZ$", "")}

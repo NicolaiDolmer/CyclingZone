@@ -7,6 +7,8 @@
   "emptyCta": "Go to Riders",
   "thNation": "Nation",
   "thRider": "Rider",
+  "thRating": "Rating",
+  "thRatingTitle": "Overall rating 1-99, weighted for the rider's type.",
   "compareTooltip": "Select for comparison",
   "thTeam": "Team",
   "thBadges": "Status",

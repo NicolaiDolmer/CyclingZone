@@ -9,7 +9,8 @@ import {
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
-import { statStyle } from "../lib/statColor";
+import { statStyle, statPlateStyle } from "../lib/statColor";
+import { riderOverallRating } from "../lib/riderRating";
 import { useNavigate, Link, useSearchParams } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -18,7 +19,6 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
-import { getCountryCode3 } from "../lib/countryUtils";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
@@ -343,19 +343,22 @@ export default function RidersPage() {
     setFilters(f => ({ ...f, sort: next.sort, sort_dir: next.dir, page: 1 }));
   }
 
-  // #2849 bølge 2 — DataTable-kolonner (T2 wide-data-recipe). Sticky navnekolonne
-  // + fold-kolonner (Nation/Hold/Status/Alder/Type skjules ≤640px og foldes ind i
-  // navnecellens underlinje i stedet for at forsvinde sporløst som før). Compare/
-  // watchlist forbliver egne, altid-synlige kolonner (ikke fold — de er aktive
-  // kontroller, ikke sekundær tekst). Numerik (alder/værdi/løn/evner) højrestilles
+  // #3045 — DataTable-kolonner (T2 wide-data-recipe). Sticky navnekolonne +
+  // fold-kolonner skjules ≤640px og foldes ind i navnecellens underlinje i
+  // stedet for at forsvinde sporløst. Portræt-kolonnekontrakten (#3045, samme
+  // regel på tværs af rytterdatabase/holdside/ønskeliste): Rating + Type +
+  // Værdi følger ALTID navnet — det er de tre ting man vurderer en rytter på
+  // (hvor god, hvad laver han, hvad koster han). Nation/Hold/Status/Alder er
+  // sekundær identitet og forbliver almindelige (scrollbare) kolonner i stedet
+  // for at konkurrere om samme underlinje. Compare/watchlist forbliver egne,
+  // altid-synlige kolonner (ikke fold — de er aktive kontroller, ikke
+  // sekundær tekst). Numerik (alder/rating/værdi/løn/evner) højrestilles
   // tabular via DataTable's numeric-flag.
   const columns = [
     {
       key: "nation",
       header: t("table.nation"),
       sortKey: "nationality_code",
-      fold: true,
-      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
       render: (r) => <NationCell code={r.nationality_code} />,
     },
     {
@@ -395,12 +398,36 @@ export default function RidersPage() {
         <WatchlistStar active={watchlist.has(r.id)} onToggle={() => toggleWatchlist(r.id)} />
       ),
     },
+    // #3045: samlet 1-99-rating (samme model + plade-styling som holdsiden/
+    // auktionskortet — riderOverallRating). Rytterdatabasen havde ingen
+    // rating-kolonne overhovedet; den mangler nu for at kunne fold'es ind i
+    // portræt-underlinjen som #1 af de 3 kontrakt-felter. INGEN sortKey —
+    // rytterdatabasen er server-paginéret (fetchRidersPage), og ratingen er
+    // klient-udregnet (ikke en DB-kolonne der kan ORDER BY'es på tværs af sider).
+    {
+      key: "rating",
+      header: <span title={t("table.ratingTitle")}>{t("table.rating")}</span>,
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => {
+        const ovr = riderOverallRating(r);
+        return ovr ? String(ovr) : "—";
+      },
+      render: (r) => {
+        const ovr = riderOverallRating(r);
+        return ovr ? (
+          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+            style={statPlateStyle(ovr)}>
+            {ovr}
+          </span>
+        ) : <span className="text-cz-3">—</span>;
+      },
+    },
     {
       key: "team",
       header: t("table.team"),
       sortKey: "team_id",
-      fold: true,
-      foldValue: (r) => r.team?.name || t("table.teamFree"),
       render: (r) => (
         <TeamCell
           team={r.team}
@@ -417,11 +444,6 @@ export default function RidersPage() {
       key: "badges",
       header: t("table.badges"),
       sortKey: "is_u25",
-      fold: true,
-      foldValue: (r) => {
-        const keys = [ageBadgeKey(r), activeAuctionRiders.has(r.id) && "auction"].filter(Boolean);
-        return keys.map((k) => tRider(`badges.label.${k}`)).join("/");
-      },
       render: (r) => (
         <div className="flex flex-wrap items-center gap-1">
           <RiderBadges badges={[ageBadgeKey(r), activeAuctionRiders.has(r.id) && "auction"]} />
@@ -434,8 +456,6 @@ export default function RidersPage() {
       header: t("table.age"),
       sortKey: "birthdate",
       numeric: true,
-      fold: true,
-      foldValue: (r) => String(getRiderAge(r.birthdate) ?? "—"),
       render: (r) => <span className="text-cz-2 text-xs">{getRiderAge(r.birthdate) ?? "—"}</span>,
     },
     {
@@ -457,6 +477,8 @@ export default function RidersPage() {
       header: t("table.value"),
       sortKey: "value",
       numeric: true,
+      fold: true,
+      foldValue: (r) => formatNumber(getRiderMarketValue(r)),
       render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
     },
     {
