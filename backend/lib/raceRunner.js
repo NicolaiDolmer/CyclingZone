@@ -583,7 +583,38 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
   if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
 
-  const otherRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  // #3076 (samme rod-årsag som #3070, tredje lag): binding-nøglen er game_day, som er
+  // SÆSON-RELATIV og nulstilles hver sæson (prod: både S1 og S2 spænder 0..~100000).
+  // Uden sæson-filter ser excludeBoundRiders en forrige-sæsons entry som en aktiv binding
+  // og udelader rytteren fra startfeltet — samme "for tyndt felt"-udfald som kommentaren
+  // om game_day ovenfor advarer mod, blot udløst af sæsonskiftet i stedet for manglende
+  // backfill. Sæsonen opløses HER frem for at stole på at hver kaldevej har season_id med
+  // på race-objektet: loadEntrantsForRace nås fra flere steder (stage-løkken, admin-
+  // simulering), og en kalder der glemmer feltet ville ellers slå binding helt fra i
+  // tavshed — netop den fejlklasse dette fix findes for.
+  let seasonId = race?.season_id ?? null;
+  if (!seasonId && race?.id) {
+    const { data: raceRow, error: eSeason } = await supabase
+      .from("races").select("season_id").eq("id", race.id).maybeSingle();
+    if (eSeason) throw new Error(`races season (binding this): ${eSeason.message}`);
+    seasonId = raceRow?.season_id ?? null;
+  }
+  if (!seasonId) {
+    throw new Error(`loadFieldBindingContext: could not resolve season_id for race ${race?.id}; binding would cross the season boundary (#3076)`);
+  }
+
+  const candidateRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const seasonRows = [];
+  for (let i = 0; i < candidateRaceIds.length; i += 200) {
+    const { data, error } = await supabase
+      .from("races").select("id, season_id").in("id", candidateRaceIds.slice(i, i + 200));
+    if (error) throw new Error(`races season (binding others): ${error.message}`);
+    seasonRows.push(...(data || []));
+  }
+  const seasonByRaceId = new Map(seasonRows.map((r) => [r.id, r.season_id]));
+  const otherRaceIds = candidateRaceIds.filter((rid) => seasonByRaceId.get(rid) === seasonId);
+  if (!otherRaceIds.length) return { thisWindow, otherRacesByTeam: new Map() };
+
   const scheds = [];
   for (let i = 0; i < otherRaceIds.length; i += 200) {
     const chunk = otherRaceIds.slice(i, i + 200);

@@ -17,6 +17,7 @@ function makeSupabase(state) {
     let result = rows;
     for (const [op, col, val] of filters) {
       if (op === "eq") result = result.filter((r) => r[col] === val);
+      if (op === "neq") result = result.filter((r) => r[col] !== val);
       if (op === "in") result = result.filter((r) => val.includes(r[col]));
       if (op === "gte") result = result.filter((r) => r[col] != null && r[col] >= val);
       if (op === "is") result = result.filter((r) => (r[col] ?? null) === val);
@@ -28,6 +29,14 @@ function makeSupabase(state) {
     const api = {
       select() { return api; },
       eq(col, val) { q.filters.push(["eq", col, val]); return api; },
+      // #3076: binding-stien bruger .neq() (andre løb end dette) og .maybeSingle()
+      // (season_id-opslaget). Mocken ramte dem aldrig før, fordi state uden
+      // race_stage_schedule gav thisWindow=null og loaderen returnerede tidligt.
+      neq(col, val) { q.filters.push(["neq", col, val]); return api; },
+      maybeSingle() {
+        const rows = applyFilters([...(state[table] || [])], q.filters);
+        return Promise.resolve({ data: rows[0] ?? null, error: null });
+      },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
       or() { return api; },
       is(col, val) { q.filters.push(["is", col, val]); return api; },
@@ -166,4 +175,53 @@ test("afmeldt hold autofyldes IKKE", async () => {
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
   assert.equal(entrants.filter((e) => e.team_id === "t2").length, 0, "t2 er afmeldt → ingen entries");
   assert.ok(entrants.filter((e) => e.team_id === "t1").length > 0, "t1 fyldes stadig");
+});
+
+// #3076 (tredje lag af rod-årsagen i #3070): binding-nøglen game_day er SÆSON-RELATIV og
+// nulstilles hver sæson — i prod spænder både S1 og S2 game_day 0..~100000. Uden sæson-
+// filter så excludeBoundRiders en forrige-sæsons entry som aktiv binding og udelod
+// rytteren fra startfeltet, hvilket giver et for tyndt felt ved sæsonstart.
+function bindingState() {
+  const state = baseState();
+  state.races = [
+    { id: "race1", season_id: "s1" },
+    { id: "raceOld", season_id: "s0" },  // FORRIGE sæson, samme game_day-rum
+    { id: "raceSame", season_id: "s1" }, // samme sæson — skal stadig binde
+  ];
+  state.race_stage_schedule = [
+    { race_id: "race1", scheduled_at: "2026-07-27T18:00:00Z", game_day: 0 },
+    { race_id: "race1", scheduled_at: "2026-07-30T18:00:00Z", game_day: 6 },
+    { race_id: "raceOld", scheduled_at: "2026-07-01T13:00:00Z", game_day: 4 },
+    { race_id: "raceSame", scheduled_at: "2026-07-28T13:00:00Z", game_day: 4 },
+  ];
+  state.race_withdrawals = [];
+  return state;
+}
+
+test("#3076: entry fra FORRIGE sæson udelukker ikke rytteren fra autofill", async () => {
+  const state = bindingState();
+  // t1-r0 er holdets topscorer og er udtaget til et løb i sæson s0 på game_day 4,
+  // som overlapper race1's game_day-span 0-6 i det (sæson-relative) nøgle-rum.
+  state.race_entries = [
+    { race_id: "raceOld", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
+  assert.ok(
+    entrants.some((e) => e.rider_id === "t1-r0"),
+    "rytter bundet i en ANDEN sæson skal være fri til autofill i den nye sæson"
+  );
+});
+
+test("#3076: entry i SAMME sæson binder stadig (1 rytter = 1 løb pr. in-game løbsdag)", async () => {
+  const state = bindingState();
+  state.race_entries = [
+    { race_id: "raceSame", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
+  assert.ok(
+    !entrants.some((e) => e.rider_id === "t1-r0"),
+    "samme-sæson-binding er uændret: rytteren må ikke dobbeltbookes"
+  );
 });
