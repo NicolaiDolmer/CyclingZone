@@ -163,12 +163,49 @@ function buildClimbs(rng, profileType, finaleType, distanceKm, namer) {
   return climbs;
 }
 
-function buildSprints(rng, profileType, finaleType, distanceKm, isStageRace) {
+// #3048: en kategoriseret stignings "klatresegment" er [crest_km - length_km, crest_km]
+// (samme grænse som frontend stageRouteProfile.js bruger til den visuelle "top"-bump og
+// som raceSimulator/racePassages implicit forudsætter for KOM-passager). En mellemsprint
+// der lander heri belønner klatrere med sprint-point/bonussekunder de ikke skal have —
+// KOM-passager SKAL fortsat ligge på stigninger; kun mellemsprints flyttes.
+function isOnClimb(km, climbs) {
+  return climbs.some((c) => km >= Number(c.crest_km) - Number(c.length_km) && km <= Number(c.crest_km));
+}
+
+// Flyt en km-værdi der lander midt i en stigning til nærmeste gyldige flad/nedkørsels-
+// punkt. Nedkørsel (lige efter toppen) foretrækkes (#3048-issue accepterer eksplicit
+// nedkørsel); falder den løsning uden for et fornuftigt bånd, prøves flad tilgang (lige
+// før foden) i stedet. Ingen ekstra rng-forbrug — deterministisk ud fra allerede-trukne
+// climbs, så resten af rute-strømmen (sectors) er upåvirket.
+function clampSprintKm(km, climbs, distanceKm) {
+  if (!climbs.length || !isOnClimb(km, climbs)) return km;
+
+  let after = km;
+  for (let guard = 0; guard < 20 && isOnClimb(after, climbs); guard++) {
+    const hit = climbs.find((c) => after >= Number(c.crest_km) - Number(c.length_km) && after <= Number(c.crest_km));
+    after = Number(hit.crest_km) + 1;
+  }
+  if (after <= distanceKm - 2 && !isOnClimb(after, climbs)) return Math.round(after);
+
+  let before = km;
+  for (let guard = 0; guard < 20 && isOnClimb(before, climbs); guard++) {
+    const hit = climbs.find((c) => before >= Number(c.crest_km) - Number(c.length_km) && before <= Number(c.crest_km));
+    before = Number(hit.crest_km) - Number(hit.length_km) - 1;
+  }
+  if (before >= 2 && !isOnClimb(before, climbs)) return Math.round(before);
+
+  // Defensivt fald-tilbage (bør ikke rammes for reelle climb-specs): behold original km
+  // fremfor at kaste — en uændret km er stadig bedre end en crash i rute-generatoren.
+  return Math.round(km);
+}
+
+function buildSprints(rng, profileType, finaleType, distanceKm, isStageRace, climbs = []) {
   const sprints = [];
   const summit = SUMMIT_FINALE.has(finaleType);
   const wantIntermediate = isStageRace && profileType !== "itt" && profileType !== "ttt" && !(summit && rng() < 0.5);
   if (wantIntermediate) {
-    sprints.push({ name: "Intermediate Sprint", km: Math.round(distanceKm * randFloat(rng, 0.4, 0.65, 2)), kind: "intermediate" });
+    const rawKm = Math.round(distanceKm * randFloat(rng, 0.4, 0.65, 2));
+    sprints.push({ name: "Intermediate Sprint", km: clampSprintKm(rawKm, climbs, distanceKm), kind: "intermediate" });
   }
   sprints.push({ name: "Finish", km: Math.round(distanceKm), kind: "finish" });
   return sprints;
@@ -220,7 +257,7 @@ export function attachRoute(stage, race, isStageRace) {
   if (distance_km > hi) distance_km = hi;
 
   const climbs = buildClimbs(rng, pt, stage.finale_type, distance_km, namer);
-  const sprints = buildSprints(rng, pt, stage.finale_type, distance_km, isStageRace);
+  const sprints = buildSprints(rng, pt, stage.finale_type, distance_km, isStageRace, climbs);
   const sectors = buildSectors(rng, pt, distance_km, namer);
   return { distance_km, elevation_gain_m: elevationGain(climbs, pt), climbs, sprints, sectors };
 }

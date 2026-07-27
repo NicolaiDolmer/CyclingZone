@@ -129,3 +129,32 @@ test("climb-navne er region-flavoured + ikke-tomme", () => {
   const es = attachRoute(stage("high_mountain", "long_climb"), { ...race, name: "Vuelta Burgalesa" }, true);
   assert.ok(es.climbs.every((c) => typeof c.name === "string" && c.name.length > 0));
 });
+
+// ── #3048: mellemsprint må aldrig lande inde i et klassificeret klatresegment ──
+// Klatresegment = [crest_km - length_km, crest_km] (samme grænse som frontend
+// stageRouteProfile.js's visuelle top-bump). KOM-passager SKAL fortsat ligge på
+// stigninger — denne invariant gælder KUN "intermediate"-sprints, aldrig climbs.
+test("invariant (#3048): mellemsprint ligger aldrig inden for et klatresegment", () => {
+  const profiles = ["hilly", "mountain", "high_mountain", "classic", "cobbles", "rolling"];
+  const finales = ["punch", "reduced_sprint", "breakaway", "descent", "long_climb", null];
+  let checkedWithClimbs = 0;
+  for (let i = 0; i < 300; i++) {
+    const pt = profiles[i % profiles.length];
+    const finale = finales[i % finales.length];
+    const r = attachRoute(stage(pt, finale, 1), { external_id: `route-3048-${i}`, season_id: `s${i % 5}`, name: "Test Tour" }, true);
+    const intermediates = r.sprints.filter((s) => s.kind === "intermediate");
+    if (r.climbs.length) checkedWithClimbs++;
+    for (const s of intermediates) {
+      for (const c of r.climbs) {
+        const foot = c.crest_km - c.length_km;
+        assert.ok(
+          !(s.km >= foot && s.km <= c.crest_km),
+          `seed ${i} (${pt}/${finale}): mellemsprint km=${s.km} inde i klatresegment "${c.name}" [${foot},${c.crest_km}]`,
+        );
+      }
+    }
+  }
+  // Sanity: testen skal faktisk have prøvet scenarier MED stigninger, ellers
+  // beviser den ingenting.
+  assert.ok(checkedWithClimbs > 50, `for få seeds havde climbs (${checkedWithClimbs}/300) — testen dækker ikke reelt`);
+});
