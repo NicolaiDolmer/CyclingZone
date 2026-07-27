@@ -17,7 +17,9 @@
 
 > **Næste sessioner:** (a) mandag 17:45: aftenvagt (skridt 8: scheduler-logs, første S2-etaper, race_stage_passages #2811, præmie-sweep, bjergklassikere #2755) · (b) patch-note-PR · (c) "allerede løst"-verifikation (30-50 closes) · (d) ejer-beslutnings-batch · (e) s2_uge1-bølge · (f) planner-design-session (#2905).
 
-> **🤖 Working agent:** Ingen aktiv session. (Cutover-sessionen 26/7 lukkede 22:45; 2 reddede worktree-branches venter stadig på review: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` — sidstnævnte overlapper #3031/#3040, kræver rebase-tjek.)
+> **🤖 Working agent:** ⚠️ SÆSONSTART-BØLGE AKTIV (startet 27/7, ejer-go). Chunk 1 = 6 agenter i worktrees på #3041 #3042 #3043 #3032 #3013 #3048 (run `wf_fd373e96-019`). Merge-policy (ejer): grønne backend-only auto-merges; frontend/UI + migrationer venter på ejer. Agenter er read-only mod prod. Chunk 2 (#3044 #3046 #3047 #3045 #2699) følger efter checkpoint. (Cutover-sessionen 26/7 lukkede 22:45; 2 reddede worktree-branches venter stadig på review: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` — sidstnævnte overlapper #3031/#3040, kræver rebase-tjek.)
+
+> **🆕 Discord-sweep 26/7-27/7 → 11 nye issues:** #3041 (P0 låst holdudtagelse) · #3042 (falsk "trup ikke fuld") · #3043 (hold under 8 ryttere — overlapper #3037) · #3044 (achievements dansk-only for EN-spillere, 46 DB-rækker uden i18n) · #3045 (mobil portræt skjuler rytter-stats) · #3046 (scoutingrapport-links) · #3047 (holdnavn ikke klikbart) · #3048 (bonus-sprints på stigninger) · #3049 (rollevalg i klassikere) · #3050 (venskabsløb) · #3051 (for-sjov-achievements). Dubletter udeladt: planner-kalender=#3018, auktionsvarighed=#2884/#1905, sponsor-divisionsloft=#3020, økonomisk sæsonstart=#2889; mobil z-index + standings-gruppefaner blev shippet 25/7 og skal kun verificeres. Sweep-dump: `scripts/discord/.sweep-2026-07-26-pm.md`.
 
 ## Standing context (forever-relaunch)
 
