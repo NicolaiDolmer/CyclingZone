@@ -20,6 +20,12 @@ import {
 // med løbsdage (#2862), deadline-banner + default-regel (#1778/#2914) og
 // Review & sign-bekræftelse (ejer-godkendt mockup 25/7). Valg propageres via
 // onAccept(variant) efter eksplicit bekræftelse.
+//
+// #3020 (ejer-beslutning 27/7): divisionsskalering af loftet er UDSKUDT til
+// sæson 3 (for stort et økonomi-indgreb midt i S2-valgvinduet). Denne omgang
+// er copy-only: divisionNote gør eksplicit at MAKS-udbetalingen er den samme
+// uanset hvilken pill man klikker, kun raten pr. etape ændrer sig — det svarer
+// direkte på cuchiets Discord-spørgsmål uden at røre projections()/udbetaling.
 
 const VARIANT_ICONS = {
   safe: LockIcon,
