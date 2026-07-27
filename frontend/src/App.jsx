@@ -76,7 +76,6 @@ const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const SeasonFinanceReport = lazy(() => import("./pages/SeasonFinanceReport"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
@@ -271,7 +270,11 @@ export default function App() {
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="seasons/:seasonId/finance/:teamId" element={<SeasonFinanceReport />} />
-            <Route path="race-points" element={<RacePointsPage />} />
+            {/* #3102 etape 1: /race-points var en orphan — ingen nav-indgang og
+                ingen links siden point-tabellen blev en fane i /races. Samme
+                redirect-mønster som /race-archive ovenfor (siden selv lever
+                videre som tab-indhold i RacesPage). */}
+            <Route path="race-points" element={<Navigate to="/races?tab=points" replace />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             {/* Redirect-målene er ABSOLUTTE med vilje. React Router v7 opløser relative
                 paths inde i en splat-route mod HELE den matchede location (splat

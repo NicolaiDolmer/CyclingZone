@@ -2,8 +2,9 @@
   "nav": {
     "group": {
       "klubhus": "Klubhus",
+      "planlaegning": "Planlægning",
       "marked": "Marked",
-      "saeson": "Sæson & Resultater",
+      "resultater": "Resultater",
       "min": "Min",
       "admin": "Admin"
     },
@@ -33,6 +34,7 @@
       "globalRank": "Global Rank",
       "races": "Løb",
       "teamSelection": "Holdudtagelse",
+      "strategy": "Holdstrategi",
       "seasons": "Sæson-snapshot",
       "hallOfFame": "Hall of Fame",
       "profile": "Indstillinger",

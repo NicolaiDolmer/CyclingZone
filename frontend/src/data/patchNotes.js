@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.68",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Everything you plan with now sits in one menu group",
+          "body": "Team selection sat under Season & Results, the season planner sat in the Clubhouse, and team strategy had no menu entry at all. The three of them are now a Planning group in the sidebar, in the order you use them: team selection, season planner, team strategy, calendar. Results keeps what you go there to read: overview, races, standings, rider rankings, global rank and season snapshot. Nothing moved inside the pages themselves, so team selection opens exactly where it did before."
+        },
+        "da": {
+          "title": "Alt du planlægger med ligger nu i én menugruppe",
+          "body": "Holdudtagelse lå under Sæson & Resultater, sæsonplanlæggeren lå i Klubhuset, og holdstrategi havde slet ingen indgang i menuen. De tre er nu gruppen Planlægning i sidemenuen, i den rækkefølge du bruger dem: holdudtagelse, sæsonplanlægger, holdstrategi, kalender. Resultater beholder det du går derind for at læse: overblik, løb, ranglisten, rytterrangliste, global rank og sæson-snapshot. Intet er flyttet inde på selve siderne, så holdudtagelse åbner præcis hvor den plejer."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Team strategy is finally in the menu",
+          "body": "Your standing preferences decide how the assistant builds every lineup, but the only way in was a small link on the squad board. Team strategy now has its own entry under Planning. The link on the board still works."
+        },
+        "da": {
+          "title": "Holdstrategi er endelig i menuen",
+          "body": "Dine stående præferencer afgør hvordan assistenten bygger hver opstilling, men den eneste vej ind var et lille link på trup-brættet. Holdstrategi har nu sin egen indgang under Planlægning. Linket på brættet virker stadig."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
     "version": "7.67",
     "date": "2026-07-27",
     "label": "Beta",

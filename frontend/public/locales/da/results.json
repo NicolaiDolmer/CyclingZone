@@ -9,7 +9,6 @@
     "riderRankings": { "label": "Rytterrangliste", "desc": "Individuelle resultater for alle ryttere" },
     "library": { "label": "Løbsbibliotek", "desc": "Alle løb på tværs af sæsoner · søg & filtrér" },
     "seasonSnapshot": { "label": "Sæson-snapshot", "desc": "Kalender, slutstilling og sæsonens vindere" },
-    "hallOfFame": { "label": "Hall of Fame", "desc": "Rekorder og manager-rangliste" },
     "points": { "label": "Point & præmier", "desc": "Point og præmieformler pr. løbsklasse" }
   },
   "loadingAria": "Indlæser resultater",
