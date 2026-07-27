@@ -3346,7 +3346,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     // #3041: bindingRiderIds er kun et internt hjælpefelt til at bygge bindingMap ovenfor —
     // ikke en del af wire-kontrakten, så det strippes fra hver kolonne før respons.
-    const wireColumns = columns.map(({ bindingRiderIds, ...c }) => c);
+    const wireColumns = columns.map(({ bindingRiderIds: _bindingRiderIds, ...c }) => c);
     res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns: wireColumns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
