@@ -10,6 +10,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
 import { initialsFrom } from "../components/ui/avatarStyles.js";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -67,6 +68,8 @@ export default function TeamProfilePage() {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation("team");
   const { t: tGR } = useTranslation("globalRank");
+  // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
@@ -407,11 +410,11 @@ export default function TeamProfilePage() {
                             <td className="px-4 py-2.5 hidden sm:table-cell">
                               <div className="flex flex-wrap items-center gap-1">
                                 {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
-                                <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                                <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r, seasonYear), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                               </div>
                             </td>
                             {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}
-                            <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
+                            <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</td>
                             <td className="px-3 py-2.5 hidden sm:table-cell">
                               <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
                             </td>

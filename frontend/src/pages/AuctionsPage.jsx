@@ -46,7 +46,8 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { riderOverallRating } from "../lib/riderRating";
-import { ageBadgeKey, retirementRiskBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
@@ -187,7 +188,7 @@ function BidDestinationHint({ destination, t }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -212,7 +213,8 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
-  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
+  const age = ageForSeason(r?.birthdate, seasonYear);
   // #2464: ét-blik-vurdering — OVR (spillets kanoniske 1-99-rating, #2000) og
   // delta mellem aktuelt bud og estimeret markedsværdi.
   const ovr = riderOverallRating(r);
@@ -282,7 +284,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
           {/* #2943: pensions-risiko-advarsel til KØBEREN før bud (alder ≥35,
               retirementRiskBadgeKey) — samme badge-kolonne/RiderBadges-mønster
               som alders-badget lige ovenfor. Advarsel, ikke blokering. */}
-          <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
+          <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
           {auction.is_youth && (
             <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
@@ -356,7 +358,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Potentiale */}
       <td className="px-3 py-1.5">
-        <ScoutablePotentiale rider={r} scouting={scouting} showScout />
+        <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
       </td>
 
       {/* Sælger — lige før stats */}
@@ -505,7 +507,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -515,7 +517,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   // #2701 bud-gate (samme logik som AuctionRow).
   const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
   const roomBlocked = canBid && !imWinning && bidRoom.blocked;
-  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
+  const age = ageForSeason(r?.birthdate, seasonYear);
   // #2464: ét-blik-vurdering — OVR (1-99, type-vægtet #2000) + bud-vs-vurdering.
   const ovr = riderOverallRating(r);
   const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
@@ -581,7 +584,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
               {/* #2943: samme pensions-risiko-badge som AuctionRow (desktop). */}
-              <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
+              <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
               {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
@@ -639,7 +642,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
       {r?.id && scouting.estimateFor(r.id) !== null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.potential")}</span>
-          <ScoutablePotentiale rider={r} scouting={scouting} showScout />
+          <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
         </div>
       )}
       {visibleStatsArr.length > 0 && (
@@ -794,6 +797,8 @@ export default function AuctionsPage() {
   // #1162: hoisted hertil (fra AuctionsContent) så rider-listen kan dekoreres med
   // estimat-midtpunkter (_scoutMid) til klient-side potentiale-sortering.
   const scouting = useScouting();
+  // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -1352,7 +1357,8 @@ export default function AuctionsPage() {
         ...r,
         _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
         _ovr: riderOverallRating(r),
-      }))
+      })),
+    seasonYear,
   );
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
@@ -1643,6 +1649,7 @@ export default function AuctionsPage() {
           filter={filter}
           filtered={filtered}
           scouting={scouting}
+          seasonYear={seasonYear}
           wishlistOnly={wishlistOnly}
           mySituationBuckets={{
             leading: sortByRiderOrder(myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
@@ -1798,6 +1805,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
             visibleStats={sharedProps.visibleStats}
             scouting={sharedProps.scouting}
+            seasonYear={sharedProps.seasonYear}
           />
         ))}
       </div>
@@ -1832,6 +1840,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
                   visibleStats={sharedProps.visibleStats}
                   scouting={sharedProps.scouting}
+                  seasonYear={sharedProps.seasonYear}
                 />
               ))}
             </tbody>

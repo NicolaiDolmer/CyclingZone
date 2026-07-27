@@ -11,6 +11,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
@@ -39,6 +40,8 @@ export default function WatchlistPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("watchlist");
   const scouting = useScouting();
+  // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -168,7 +171,8 @@ export default function WatchlistPage() {
   // #1162: dekorér med estimat-midtpunkt så potentiale-kolonnen kan sorteres
   // uden den rå (server-skjulte) potentiale.
   const riderFilters = useClientRiderFilters(
-    entries.map(e => ({ ...e.rider, _scoutMid: scoutSortValue(scouting.estimateFor(e.rider.id)) }))
+    entries.map(e => ({ ...e.rider, _scoutMid: scoutSortValue(scouting.estimateFor(e.rider.id)) })),
+    seasonYear,
   );
   const filteredRiders = new Set(riderFilters.filtered.map(r => r.id));
   const sort = riderFilters.filters.sort;
@@ -243,14 +247,14 @@ export default function WatchlistPage() {
       key: "badges", header: t("thBadges"), fold: true, sortKey: "is_u25",
       render: (entry) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[ageBadgeKey(entry.rider)]} />
+          <RiderBadges badges={[ageBadgeKey(entry.rider, seasonYear)]} />
         </div>
       ),
     },
     {
       key: "age", header: t("thAge"), fold: true, numeric: true, sortKey: "birthdate",
-      foldValue: (entry) => String(getRiderAge(entry.rider.birthdate) ?? "—"),
-      render: (entry) => getRiderAge(entry.rider.birthdate) ?? "—",
+      foldValue: (entry) => String(getRiderAge(entry.rider.birthdate, seasonYear) ?? "—"),
+      render: (entry) => getRiderAge(entry.rider.birthdate, seasonYear) ?? "—",
     },
     {
       key: "type", header: t("thType"), fold: true, sortKey: "primary_type",
@@ -270,7 +274,7 @@ export default function WatchlistPage() {
     },
     {
       key: "potential", header: t("thPotential"), sortKey: "_scoutMid",
-      render: (entry) => <ScoutablePotentiale rider={entry.rider} scouting={scouting} />,
+      render: (entry) => <ScoutablePotentiale rider={entry.rider} scouting={scouting} seasonYear={seasonYear} />,
     },
     ...STATS.map(({ key, label }) => ({
       key, header: label, numeric: true, sortKey: key,

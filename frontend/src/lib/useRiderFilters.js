@@ -12,8 +12,6 @@ import {
   ABILITY_KEYS, ABILITY_SELECT, ABILITY_SELECT_INNER, ABILITY_TABLE, flattenAbilities,
 } from "./abilities";
 
-const CURRENT_YEAR = new Date().getFullYear();
-
 // Evner spænder 1-99 (mod PCM's klumpede 50-85). Et evne-filter er kun "aktivt"
 // når en grænse afviger fra fuld skala.
 const STAT_MIN_DEFAULT = 0;
@@ -21,7 +19,12 @@ const STAT_MAX_DEFAULT = 99;
 
 const ABILITY_SET = new Set(ABILITY_KEYS);
 
-export function useClientRiderFilters(riders = []) {
+// #3071: `seasonYear` er det aktive sæsons referenceår (useActiveSeasonYear,
+// riderAge.js's seasonReferenceYear) — erstatter det tidligere modul-niveau
+// wall-clock CURRENT_YEAR. `null` (sæson endnu ikke hentet) → alders-/U23-/
+// U25-filtrene matcher intet (bedre end at filtrere forkert) i stedet for at
+// gætte med dags dato.
+export function useClientRiderFilters(riders = [], seasonYear = null) {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
 
   function onChange(key, value) {
@@ -49,7 +52,7 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.min_age || filters.max_age) {
       result = result.filter(r => {
-        const age = getRiderAge(r.birthdate);
+        const age = getRiderAge(r.birthdate, seasonYear);
         if (age == null) return true;
         if (filters.min_age && age < parseInt(filters.min_age)) return false;
         if (filters.max_age && age > parseInt(filters.max_age)) return false;
@@ -59,12 +62,13 @@ export function useClientRiderFilters(riders = []) {
 
     // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
     // (statisk DEFAULT FALSE → 16-18-årige oprettet uden flag forblev false for
-    // evigt). isU25: sæson-alder < 25. CURRENT_YEAR er klientens sæson-referenceår.
-    if (filters.u25) result = result.filter(r => isU25(r.birthdate, CURRENT_YEAR));
+    // evigt). isU25: sæson-alder < 25. #3071: seasonYear (prop) er klientens
+    // sæson-referenceår, IKKE længere en wall-clock modul-konstant.
+    if (filters.u25) result = result.filter(r => isU25(r.birthdate, seasonYear));
     // U23 = samme grænse som u23-badge (isU23: alder < 23, dvs. ≤22 år) — delt
     // helper så filter + badge aldrig divergerer. En 23-årig bærer u25-badge og
     // må derfor IKKE matche U23-filteret (#42).
-    if (filters.u23) result = result.filter(r => isU23(r.birthdate));
+    if (filters.u23) result = result.filter(r => isU23(r.birthdate, seasonYear));
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
     // #2238: show_ai er RidersPage-only (server-pathen fetchRidersPage). Denne
@@ -140,7 +144,7 @@ export function useClientRiderFilters(riders = []) {
     });
 
     return result;
-  }, [riders, filters]);
+  }, [riders, filters, seasonYear]);
 
   const nationalities = useMemo(() => {
     const seen = new Set();
@@ -164,7 +168,12 @@ function anyAbilityFilterActive(filters) {
 
 // Riders-kolonne-filtre. prefix=""/ref=null når vi driver fra riders; prefix="riders."
 // + ref="riders" når riders er embedded (drevet fra rider_derived_abilities ved evne-sort).
-function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {}) {
+// #3071: `seasonYear` (det aktive sæsons referenceår, se seasonReferenceYear i
+// riderAge.js) erstatter den tidligere wall-clock CURRENT_YEAR-modulkonstant —
+// birthdate-range-filtrene (u25/u23/min_age/max_age) skal matche SÆSONENS
+// alder, ikke dags dato. Mangler seasonYear (sæson endnu ikke hentet), springes
+// disse fire filtre over — bedre end at filtrere med et gættet referenceår.
+function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {}, seasonYear = null) {
   const col = (c) => `${prefix}${c}`;
   query = query.eq(col("is_retired"), false);
   query = applyNameSearch(query, filters.q, ref ? { referencedTable: ref } : undefined); // #47 token-set
@@ -179,12 +188,12 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
     query = ref ? query.or(salaryOr, { referencedTable: ref }) : query.or(salaryOr);
   }
 
-  if (filters.u25) {
+  if (filters.u25 && Number.isFinite(seasonYear)) {
     // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
     // (statisk DEFAULT FALSE → aldrig re-deriveret; 368 unge havde false i prod).
-    // Sæson-alder < 25 ⇔ fødselsår > CURRENT_YEAR-25 ⇔ født ≥ (CURRENT_YEAR-24)-01-01.
+    // Sæson-alder < 25 ⇔ fødselsår > seasonYear-25 ⇔ født ≥ (seasonYear-24)-01-01.
     // Spejler u23-birthdate-grænsen nedenfor så server- og klient-filter er ens.
-    const minBirth = new Date(`${CURRENT_YEAR - 24}-01-01`).toISOString().split("T")[0];
+    const minBirth = new Date(`${seasonYear - 24}-01-01`).toISOString().split("T")[0];
     query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.free_agent) query = query.is(col("team_id"), null);
@@ -202,19 +211,19 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
 
   // #1162: INGEN filter/order på potentiale — ikke klient-læsbar (oracle-lækage).
 
-  if (filters.min_age) {
-    const maxBirth = new Date(`${CURRENT_YEAR - parseInt(filters.min_age)}-12-31`).toISOString().split("T")[0];
+  if (filters.min_age && Number.isFinite(seasonYear)) {
+    const maxBirth = new Date(`${seasonYear - parseInt(filters.min_age)}-12-31`).toISOString().split("T")[0];
     query = query.lte(col("birthdate"), maxBirth);
   }
-  if (filters.max_age) {
-    const minBirth = new Date(`${CURRENT_YEAR - parseInt(filters.max_age)}-01-01`).toISOString().split("T")[0];
+  if (filters.max_age && Number.isFinite(seasonYear)) {
+    const minBirth = new Date(`${seasonYear - parseInt(filters.max_age)}-01-01`).toISOString().split("T")[0];
     query = query.gte(col("birthdate"), minBirth);
   }
-  if (filters.u23) {
+  if (filters.u23 && Number.isFinite(seasonYear)) {
     // Match u23-badge-grænsen (riderAge.js: alder < 23, dvs. ≤22 år). Yngste
-    // 23-årige er født CURRENT_YEAR-23 og bærer u25-badge — de skal ekskluderes,
-    // så nedre fødselsår-grænse er CURRENT_YEAR-22 (≤22 år), ikke -23 (#42).
-    const minBirth = new Date(`${CURRENT_YEAR - 22}-01-01`).toISOString().split("T")[0];
+    // 23-årige er født seasonYear-23 og bærer u25-badge — de skal ekskluderes,
+    // så nedre fødselsår-grænse er seasonYear-22 (≤22 år), ikke -23 (#42).
+    const minBirth = new Date(`${seasonYear - 22}-01-01`).toISOString().split("T")[0];
     query = query.gte(col("birthdate"), minBirth);
   }
   return query;
@@ -252,7 +261,7 @@ function applyRiderColumnSort(query, filters) {
 // riders med abilities embedded (!inner kun når et evne-filter er aktivt, ellers
 // left join så evne-løse ryttere stadig vises). Evnerne flades op på rytter-objektet
 // (rider.climbing osv.) så render + klient-sort virker uændret.
-export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, riderSelect }) {
+export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, riderSelect, seasonYear = null }) {
   const from = (page - 1) * pageSize;
   const to = page * pageSize - 1;
 
@@ -261,7 +270,7 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
       .from(ABILITY_TABLE)
       .select(`${ABILITY_KEYS.join(", ")}, riders!inner(${riderSelect})`, { count: "exact" })
       .range(from, to);
-    q = applyRiderColumnFilters(q, filters, { prefix: "riders.", ref: "riders" });
+    q = applyRiderColumnFilters(q, filters, { prefix: "riders.", ref: "riders" }, seasonYear);
     q = applyAbilityFilters(q, filters, { prefix: "" });
     q = q.order(filters.sort, { ascending: filters.sort_dir === "asc", nullsFirst: false });
     const { data, count, error } = await q;
@@ -279,7 +288,7 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
     .from("riders")
     .select(`${riderSelect}, ${abilSelect}`, { count: "exact" })
     .range(from, to);
-  q = applyRiderColumnFilters(q, filters, { prefix: "" });
+  q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
   q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
   q = applyRiderColumnSort(q, filters);
   const { data, count, error } = await q;

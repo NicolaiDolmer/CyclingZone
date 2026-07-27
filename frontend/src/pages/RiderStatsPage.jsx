@@ -30,6 +30,8 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
+import { ageForSeason } from "../lib/riderAge.js";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { BlockedNote, Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
@@ -689,6 +691,9 @@ export default function RiderStatsPage() {
   const { t: tTypes } = useTranslation("riderTypes");
 
   const scouting = useScouting();
+  // #3071: sæson-referenceår (samme mønster som resten af appens sæson-hentning)
+  // — erstatter det tidligere wall-clock `new Date().getFullYear()` nedenfor.
+  const seasonYear = useActiveSeasonYear();
   const training = useTraining();
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
   const trainingHistory = useTrainingHistory();
@@ -1376,9 +1381,9 @@ export default function RiderStatsPage() {
     : t("auctionStart.label.free");
   // Racing-age (year-arithmetic) — matches U25/filter-logik andre steder i appen.
   // Ellers kunne profil vise "24 år" mens max_age=25-filteret tæller rytteren som 25.
-  const age = rider.birthdate
-    ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
-    : null;
+  // #3071: sæson-år (useActiveSeasonYear), IKKE wall-clock — ellers fryser den
+  // viste alder på launch-sæsonens tal efter et sæsonskifte.
+  const age = ageForSeason(rider.birthdate, seasonYear);
   // #2000: type-label-fallbacken (vist når primary_type mangler) afledes nu af de
   // udledte CZ-evner via abilities.js-SSOT'en — ikke længere af PCM stat_*-kolonner.
   const typeLabel = (() => {
@@ -1500,6 +1505,7 @@ export default function RiderStatsPage() {
             showTeam={!hasSwitcher}
             overallRating={overallRating}
             age={age}
+            seasonYear={seasonYear}
             typeLabel={typeLabel}
             divisionLabel={divisionLabel}
             valueAmount={riderValueAmount}
@@ -1557,6 +1563,7 @@ export default function RiderStatsPage() {
                 <RiderManageActions
                   rider={rider}
                   onChanged={loadRider}
+                  seasonYear={seasonYear}
                   marketActions={
                     <>
                       {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
@@ -1689,7 +1696,7 @@ export default function RiderStatsPage() {
       {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
           stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
           scout-knap) lever indtil da i hero'en. */}
-      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} />}
+      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} seasonYear={seasonYear} />}
       </div>
     </div>
   );

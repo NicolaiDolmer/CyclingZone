@@ -9,6 +9,7 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { statColor, statStyle } from "../lib/statColor";
 import { ABILITY_STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import {
@@ -103,6 +104,8 @@ export default function RiderComparePage() {
   const { t } = useTranslation("rider");
   const [searchParams, setSearchParams] = useSearchParams();
   const scouting = useScouting();
+  // #3071: sæson-referenceår til potentiale-stjernernes "gammel rytter"-tint (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [fullRiders, setFullRiders] = useState([]);
   const initialIdsRef = useRef(searchParams.get("ids") || "");
   // #2849 bølge 6 (audit-fund): siden havde INGEN loading-UI for deep-link-hentningen
@@ -262,7 +265,7 @@ export default function RiderComparePage() {
                 </div>
                 {fullRiders.map(r => (
                   <div key={r.id} className="px-2">
-                    <ScoutablePotentiale rider={r} scouting={scouting} />
+                    <ScoutablePotentiale rider={r} scouting={scouting} seasonYear={seasonYear} />
                   </div>
                 ))}
               </div>
