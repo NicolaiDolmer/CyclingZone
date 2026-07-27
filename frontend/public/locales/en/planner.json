@@ -22,14 +22,54 @@
     "dismiss": "Dismiss",
     "bodyUpcoming": "The season {number} calendar is ready to explore. Your division for that season is decided at the season rollover, so peaks open once it is confirmed."
   },
-  "firstRun": {
-    "title": "Plan your first peak",
-    "body": "Every rider is riding flat right now. Target a race and the planner builds a lead-up that lifts their form for the day that matters. Each rider can peak for up to {max} races a season, so choose where it counts.",
-    "cta": "Pick a rider lane to start, or open a race to see who fits it."
+  "tabs": {
+    "squad": "Squad",
+    "season": "Season",
+    "races": "Races"
+  },
+  "board": {
+    "title": "Season board"
+  },
+  "statusLine": {
+    "peaks": "{count, plural, =0 {No peaks planned} one {# peak planned} other {# peaks planned}}",
+    "needsAction": "{count, plural, one {# needs action} other {# need action}}",
+    "allClear": "Nothing needs action",
+    "nextLeadup": "{count, plural, =0 {A lead-up starts today} one {Next lead-up in # day} other {Next lead-up in # days}}",
+    "noLeadup": "No lead-up scheduled"
+  },
+  "squad": {
+    "title": "Your squad",
+    "count": "{count, plural, one {# rider} other {# riders}}",
+    "colRider": "Rider",
+    "colForm": "Form",
+    "colTarget": "Peak target",
+    "colValue": "What it is worth",
+    "noPeak": "No peak",
+    "pickRace": "Peak target for {name}",
+    "raceOption": "{date} · {race} · fit {fit}",
+    "age": "{age}y",
+    "formInline": "Form {value}",
+    "remove": "Remove peak",
+    "window": "Lead-up {start} to {end}",
+    "value": {
+      "range": "+{floor} to +{ceiling} form",
+      "current": "+{current} form",
+      "rangeHint": "Depends on how the lead-up is ridden. Then {payback} form for {days} days after.",
+      "currentHint": "Then {payback} form for {days} days after.",
+      "unset": "Set a target to see what a peak is worth."
+    },
+    "payback": {
+      "collision": "The dip after this peak covers {race}, {days, plural, one {# day} other {# days}} later. Expect {payback} form there.",
+      "unknownRace": "another race on this rider's program"
+    }
   },
   "assistant": {
-    "bannerTitle": "The assistant has drafted your form programs",
-    "bannerBody": "Every rider below already has a suggested peak plan, built from their race calendar, type, and age. Accept it as-is, tweak individual peaks, or reset a rider to blank.",
+    "cardTitle": "The assistant drafted {peaks, plural, one {# peak} other {# peaks}} for {riders, plural, one {# rider} other {# riders}}",
+    "cardWhy": "Each one is picked from that rider's own race calendar, their type, and their age. Accept the lot, or change any of them in the list below.",
+    "cardRule": "Each rider can peak for up to {max} races a season, so choose where it counts.",
+    "acceptAll": "Accept all",
+    "acceptedAll": "{count, plural, one {# peak set} other {# peaks set}}. Change any of them in the list.",
+    "acceptedPartial": "{created} set, {skipped} could not be. The list shows what stuck.",
     "badge": "Assistant suggestion",
     "accept": "Accept",
     "reset": "Reset to blank",

@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.67",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "The season planner is a list you fill in, not a board you drag",
+          "body": "Setting a peak used to mean dragging a bracket across a timeline, and almost nobody found it. The planner now opens on a Squad tab: one row per rider, with a dropdown to pick the race he peaks for. The board and the race list moved into their own tabs, and dragging still works there. A status line sits above all three, so how many peaks are planned and how many need your attention is the first thing you see."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren er en liste du udfylder, ikke et bræt du trækker i",
+          "body": "At sætte en peak krævede før at man trak en bracket hen over en tidslinje, og næsten ingen fandt ud af det. Planlæggeren åbner nu på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Brættet og løbslisten har fået hver sin fane, og trækket virker stadig dér. En statuslinje ligger over alle tre, så hvor mange peaks der er planlagt, og hvor mange der kræver noget af dig, er det første du ser."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "You can see what a peak is worth before you commit to it",
+          "body": "Every peak now shows what it does to a rider's form on the day, in the same points you already read in your squad: from +6 for a sloppy lead-up to +29 for a perfect one, tightening to a single number once the lead-up is being ridden. It also shows the bill. A peak costs form for the days after it, and if one of your rider's other races falls in that dip, the planner names the race and how many days after it lands."
+        },
+        "da": {
+          "title": "Du kan se hvad en peak er værd, før du binder dig til den",
+          "body": "Hver peak viser nu hvad den gør ved rytterens form på dagen, i de samme point du allerede læser i truppen: fra +6 for en sjusket optakt til +29 for en perfekt, og strammet til ét tal så snart optakten køres. Den viser også regningen. En peak koster form i dagene efter, og falder et af rytterens andre løb i det hul, siger planlæggeren hvilket løb det er, og hvor mange dage efter det ligger."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Accept the assistant's whole plan in one click",
+          "body": "The assistant already drafted a peak programme for every rider, but the only way to take it was one peak at a time. The banner is now a card that says how many peaks it has drafted and why it picked those races, with a button that accepts the lot. Change any of them afterwards in the list."
+        },
+        "da": {
+          "title": "Acceptér hele assistentens plan med ét klik",
+          "body": "Assistenten udkastede allerede et peak-program til hver rytter, men den eneste måde at tage imod var én peak ad gangen. Banneret er nu et kort der siger hvor mange peaks den har udkastet og hvorfor den valgte netop de løb, med en knap der accepterer det hele. Ret dem enkeltvis i listen bagefter."
+        },
+        "refs": [3086, 2455]
+      }
+    ]
+  },
+  {
     "version": "7.66",
     "date": "2026-07-27",
     "label": "Beta",

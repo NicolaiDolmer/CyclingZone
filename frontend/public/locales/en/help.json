@@ -778,11 +778,19 @@
   "faq": {
     "seasonPlanner": {
       "q": "What is the Season Planner?",
-      "a": "The Season Planner is where you plan form peaks for your whole squad. Target a key race for a rider and the planner builds a lead-up that lifts their form for that day. Form is earned through training in the lead-up, so a peak you prepare for pays off more than one you leave to chance. Each rider can peak for up to two races a season, and the target race must be in your division's calendar."
+      "a": "The Season Planner is where you plan form peaks for your whole squad. It opens on the Squad tab: one row per rider, with a dropdown where you pick the race he peaks for. The Season tab shows the same plan as a board you can drag on, and the Races tab lists the season's calendar. Form is earned through training in the lead-up, so a peak you prepare for pays off more than one you leave to chance. Each rider can peak for up to two races a season, and the target race must be in your division's calendar."
     },
     "peakTraining": {
       "q": "How does peak training work?",
       "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak locks three days before its window starts, so plan ahead."
+    },
+    "peakValue": {
+      "q": "How much is a peak actually worth?",
+      "a": "A peak is worth between +6 and +29 form on the day, and where you land in that range depends entirely on how the lead-up is ridden: a sloppy lead-up is worth about a fifth of a perfect one. Until the lead-up starts the planner can only show you the range, because the number does not exist yet. Once training is under way it tightens to a single figure. For scale, +29 is the difference between a rider on 50 form and the same rider on 79."
+    },
+    "peakPayback": {
+      "q": "Does a peak cost me anything afterwards?",
+      "a": "Yes. After a peak's window closes the rider carries about -14 form for the next seven days. That is the price of the top, and it is why a peak is a choice rather than a free upgrade. If one of the rider's other races falls inside that dip, the Squad tab names the race and how many days after the peak it lands, so you can move the peak or accept the cost with your eyes open."
     },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
