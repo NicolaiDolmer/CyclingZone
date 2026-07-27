@@ -5,6 +5,8 @@ import {
   buildColumnSet,
   buildBindingMap,
   buildExternalBindings,
+  columnBindingRiderIds,
+  filterBindingEntries,
   dominantTerrain,
   lockedWindowsFromEntries,
   partitionRegenTargets,
@@ -54,6 +56,61 @@ test("buildBindingMap: afmeldt kolonne binder ikke (frigør ryttere)", () => {
   assert.equal(map["r1"], undefined, "r1 i afmeldt a binder ikke");
   assert.equal(map["r2"], undefined);
   assert.equal(map["r3"], undefined, "b overlapper kun det afmeldte a → r3 fri");
+});
+
+// #3041: assistentens auto-udtagne picks må aldrig gråne en rytter for et andet
+// overlappende løb (de viger automatisk ved gem, #2637) — kun MANUELLE picks og
+// entries i allerede STARTEDE løb (frys, #1825) må binde.
+test("columnBindingRiderIds: auto-filled binder ikke (løb ikke startet)", () => {
+  const selection = { rider_ids: ["r1", "r2"], manual_rider_ids: [] }; // begge auto-udtaget
+  assert.deepEqual(columnBindingRiderIds({ selection, startedHere: false }), []);
+});
+
+test("columnBindingRiderIds: manuelt udtagne binder altid", () => {
+  const selection = { rider_ids: ["r1", "r2"], manual_rider_ids: ["r1"] }; // r1 manuel, r2 auto
+  assert.deepEqual(columnBindingRiderIds({ selection, startedHere: false }), ["r1"]);
+});
+
+test("columnBindingRiderIds: startet løb (frys) binder ALT, også auto-udtagne", () => {
+  const selection = { rider_ids: ["r1", "r2"], manual_rider_ids: [] }; // begge auto-udtaget
+  assert.deepEqual(columnBindingRiderIds({ selection, startedHere: true }), ["r1", "r2"]);
+});
+
+test("columnBindingRiderIds: ingen udtagelse → tom liste", () => {
+  assert.deepEqual(columnBindingRiderIds({ selection: null, startedHere: false }), []);
+});
+
+test("buildBindingMap: auto-udtaget entry i ikke-startet løb låser ikke andre kolonner (#3041)", () => {
+  // Kalderens ansvar (api.js): riderIds er allerede filtreret via columnBindingRiderIds
+  // FØR de når buildBindingMap — her simuleres det: kolonne 'a' har et auto-pick af r1,
+  // der ER filtreret fra (tom riderIds), så r1 er fri til det overlappende løb 'b'.
+  const columns = [
+    { id: "a", window: W("12"), riderIds: [] }, // r1 var auto-udtaget her, men er filtreret ud
+    { id: "b", window: W("12"), riderIds: [] }, // overlapper a
+  ];
+  const map = buildBindingMap({ columns });
+  assert.equal(map["r1"], undefined, "auto-udtaget r1 gråner ikke løb b");
+});
+
+test("filterBindingEntries: auto-filled i ikke-startet løb filtreres væk", () => {
+  const entries = [
+    { race_id: "a", rider_id: "r1", is_auto_filled: true },
+    { race_id: "b", rider_id: "r2", is_auto_filled: false }, // manuel
+  ];
+  const result = filterBindingEntries({ entries, startedRaceIds: new Set() });
+  assert.deepEqual(result, [{ race_id: "b", rider_id: "r2", is_auto_filled: false }]);
+});
+
+test("filterBindingEntries: manuelle entries beholdes uanset løbsstatus", () => {
+  const entries = [{ race_id: "a", rider_id: "r1", is_auto_filled: false }];
+  const result = filterBindingEntries({ entries, startedRaceIds: new Set() });
+  assert.deepEqual(result, entries);
+});
+
+test("filterBindingEntries: auto-filled i STARTET løb beholdes (frys, #1825)", () => {
+  const entries = [{ race_id: "a", rider_id: "r1", is_auto_filled: true }];
+  const result = filterBindingEntries({ entries, startedRaceIds: new Set(["a"]) });
+  assert.deepEqual(result, entries);
 });
 
 test("dominantTerrain: flertal vinder, lige → mixed", () => {

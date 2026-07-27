@@ -21,6 +21,10 @@ export function buildColumnSet({ races = [], teamDivisionId, dayWindow }) {
 
 // For hver rytter: de kolonne-løb han er udtaget i, der overlapper MINDST ét andet
 // kolonne-løb (dvs. binder ham væk fra det andet). `columns` = [{id, window, riderIds}].
+// #3041: `riderIds` pr. kolonne skal allerede være FILTRERET af kalderen til kun de
+// bindende entries — manuelle valg + entries i et løb der er gået i gang (frys, #1825).
+// Et auto-udtaget pick i et løb der IKKE er startet må ALDRIG stå her: det viger
+// automatisk ved gem (#2637), og skal derfor heller ikke gråne rytteren i UI'et.
 export function buildBindingMap({ columns = [], withdrawnIds } = {}) {
   // Rod A (#1823): afmeldte kolonne-løb binder ikke — deres ryttere er frie til de
   // overlappende løb. Filtrér dem ud før overlap-beregningen.
@@ -42,7 +46,9 @@ export function buildBindingMap({ columns = [], withdrawnIds } = {}) {
 // så brættet kan gråne en rytter der er optaget i et løb på en anden dag/pulje (buildBindingMap
 // ser kun kolonnerne). Shape matcher frontendens bindingMap-entries ({ id, window }) + name til
 // "optaget i <løbsnavn>". Afmeldte løb binder ikke (Rod A, #1823); løb uden binding-vindue kan
-// ikke binde. Pure — ingen DB.
+// ikke binde. #3041: `entries` skal allerede være FILTRERET af kalderen til kun bindende
+// entries (manuelle + entries i startede løb) — se buildBindingMap ovenfor for samme kontrakt.
+// Pure — ingen DB.
 export function buildExternalBindings({ entries = [], columnIds, withdrawnIds, windowByRace, nameByRace } = {}) {
   const cols = columnIds instanceof Set ? columnIds : new Set(columnIds || []);
   const withdrawn = withdrawnIds instanceof Set ? withdrawnIds : new Set(withdrawnIds || []);
@@ -121,6 +127,26 @@ export function partitionClearTargets({ cols = [] }) {
     target.push(r);
   }
   return { target, skipped };
+}
+
+// #3041: hvilke af en kolonnes rider_ids skal FODRES ind i buildBindingMap som bindende?
+// Rod-årsag: bindingMap brugte hidtil ALLE entries (auto+manuelt) i en kolonne, så et
+// auto-udtaget pick i et endnu-ikke-startet løb låste rytteren for et andet overlappende
+// løb — selvom picket vige automatisk ved gem (#2637, "assistentens forslag vinder aldrig
+// over et manuelt valg"). Kun MANUELLE entries binder; er løbet allerede i gang (frys,
+// #1825) er der intet at frigive, og da binder ALT (auto som manuelt). Pure.
+export function columnBindingRiderIds({ selection, startedHere }) {
+  if (!selection) return [];
+  return startedHere ? (selection.rider_ids || []) : (selection.manual_rider_ids || []);
+}
+
+// #3041: samme regel for eksterne bindings (entries i løb UDEN FOR dagens kolonner) —
+// en auto-udtaget entry i et løb der ikke er startet endnu binder ikke; manuelle entries
+// og entries i startede løb (stages_completed>0) binder altid. `startedRaceIds` = Set af
+// race_id'er hvor stages_completed>0. Pure.
+export function filterBindingEntries({ entries = [], startedRaceIds } = {}) {
+  const started = startedRaceIds instanceof Set ? startedRaceIds : new Set(startedRaceIds || []);
+  return entries.filter((e) => !e.is_auto_filled || started.has(e.race_id));
 }
 
 export function lockedWindowsFromEntries({ entries = [], windowByRace, excludeRaceIds = new Set() }) {

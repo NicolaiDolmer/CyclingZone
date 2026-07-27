@@ -148,7 +148,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
@@ -3286,6 +3286,12 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
       // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges
       // til bindingMap så samme-dag-løb regnes som overlappende (#1823).
+      // #3041: en race stadig UDEN første etape gennemført kan altid frigive sine auto-
+      // udtagne ryttere ved gem (#2637) — så kun de MANUELT udtagne skal binde andre
+      // kolonners valg her. Et igangværende løb (frys, #1825) binder derimod ALT, auto
+      // som manuelt, for der er intet at frigive fra (truppen er reel).
+      const startedHere = (race.stages_completed ?? 0) > 0;
+      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere });
       columns.push({
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
         stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
@@ -3298,13 +3304,14 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
         withdrawn: withdrawnSet.has(race.id),
-        lineup_locked: (race.stages_completed ?? 0) > 0,
+        lineup_locked: startedHere,
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
+        bindingRiderIds,
       });
     }
 
     const bindingMap = buildBindingMap({
-      columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.selection?.rider_ids || [] })),
+      columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.bindingRiderIds })),
       withdrawnIds: withdrawnSet, // Rod A: afmeldte kolonner binder ikke
     });
 
@@ -3316,11 +3323,16 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     const { data: teamEntries, error: teamEntriesErr } = await loadEligibleEntries({
       supabase,
       baseQuery: () => supabase
-        .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", req.team.id),
+        .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id),
     });
     if (teamEntriesErr) throw new Error(`race_entries (external bindings): ${teamEntriesErr.message}`);
+    // #3041: samme regel som ovenfor for kolonnerne — en auto-udtaget entry i et løb der
+    // ikke er startet endnu binder ikke (den viger automatisk ved gem, #2637); kun manuelle
+    // entries og allerede startede løb binder. `races` dækker HELE sæsonen (inkl. eksterne).
+    const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
+    const bindingTeamEntries = filterBindingEntries({ entries: teamEntries || [], startedRaceIds });
     const externalBindings = buildExternalBindings({
-      entries: teamEntries || [],
+      entries: bindingTeamEntries,
       columnIds: new Set(colRaceIds),
       withdrawnIds: withdrawnSet,
       windowByRace: bindingWindowByRace,
@@ -3332,7 +3344,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       teamDivisionId: req.team.league_division_id, currentDay, totalDays,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
+    // #3041: bindingRiderIds er kun et internt hjælpefelt til at bygge bindingMap ovenfor —
+    // ikke en del af wire-kontrakten, så det strippes fra hver kolonne før respons.
+    const wireColumns = columns.map(({ bindingRiderIds, ...c }) => c);
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns: wireColumns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
