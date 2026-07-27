@@ -3542,7 +3542,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id")
+      // #3070: season_id SKAL med — loadTeamBindingContext bruger den til at
+      // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
