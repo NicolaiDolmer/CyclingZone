@@ -43,6 +43,14 @@
     },
     "clearDayWarn": "Remove every rider from today's races? This cannot be undone, and the assistant will not refill them until you ask it to.",
     "clearAllWarn": "Remove every rider from ALL your remaining races this season? This cannot be undone, and the assistant will not refill them until you ask it to.",
+    "clearAllDialog": {
+      "title": "Clear all selections?",
+      "body": "A race you have no squad for is a race your team does not start. This removes your riders from {count, plural, one {1 race} other {# races}}.",
+      "startsIn": "starts in {time}",
+      "reassurance": "You can pick a new squad at any time before a race starts.",
+      "keepSquad": "Keep my squad",
+      "clearAnyway": "Clear anyway"
+    },
     "column": {
       "add": "Add from available",
       "withdraw": "Withdraw",

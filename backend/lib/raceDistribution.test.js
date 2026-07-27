@@ -11,6 +11,7 @@ import {
   lockedWindowsFromEntries,
   partitionRegenTargets,
   partitionClearTargets,
+  buildClearPreview,
   startListVisible,
   daysUntilStart,
   groupGrossSquads,
@@ -195,6 +196,41 @@ test("partitionClearTargets: tom kolonne-liste → intet target, intet skipped",
   const { target, skipped } = partitionClearTargets({ cols: [] });
   assert.deepEqual(target, []);
   assert.equal(skipped, 0);
+});
+
+// buildClearPreview (#3061): konsekvens-forhåndsvisning til "Clear all"-dialogen.
+const PREVIEW_NOW = Date.parse("2026-07-26T10:00:00Z");
+test("buildClearPreview: kun reelt KOMMENDE løb, sorteret efter starttidspunkt", () => {
+  const cols = [
+    { id: "soon", name: "Tour Belge", stages_completed: 0 },
+    { id: "later", name: "Roskilde Rundt", stages_completed: 0 },
+    { id: "started", name: "Igangværende", stages_completed: 3 }, // frys — udelades helt
+  ];
+  const windowByRace = new Map([
+    ["soon", { start: PREVIEW_NOW + 4 * 3_600_000 }],
+    ["later", { start: PREVIEW_NOW + 26 * 3_600_000 }],
+    ["started", { start: PREVIEW_NOW - 3_600_000 }],
+  ]);
+  const { races } = buildClearPreview({ cols, windowByRace, nowMs: PREVIEW_NOW });
+  assert.deepEqual(races.map((r) => r.id), ["soon", "later"]); // nærmeste først, "started" fryses væk
+  assert.equal(races[0].name, "Tour Belge");
+});
+
+test("buildClearPreview: løb uden schedule-data eller allerede forbi sin starttid tælles ikke med", () => {
+  const cols = [
+    { id: "no-window", name: "Ukendt tid", stages_completed: 0 },
+    { id: "past", name: "Skulle være kørt", stages_completed: 0 },
+  ];
+  const windowByRace = new Map([
+    ["no-window", null],
+    ["past", { start: PREVIEW_NOW - 1000 }],
+  ]);
+  const { races } = buildClearPreview({ cols, windowByRace, nowMs: PREVIEW_NOW });
+  assert.deepEqual(races, []);
+});
+
+test("buildClearPreview: ingen kolonner → tom liste (dialogen skal ikke vises)", () => {
+  assert.deepEqual(buildClearPreview({ cols: [], windowByRace: new Map(), nowMs: PREVIEW_NOW }), { races: [] });
 });
 
 // Race Hub Fase 5 (#1835 / S6): read-only "andre divisioner"-browse — bruttotrupper.
