@@ -600,7 +600,7 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
     seasonId = raceRow?.season_id ?? null;
   }
   if (!seasonId) {
-    throw new Error(`loadFieldBindingContext: kunne ikke opløse season_id for race ${race?.id} — binding ville krydse sæsongrænsen (#3076)`);
+    throw new Error(`loadFieldBindingContext: could not resolve season_id for race ${race?.id}; binding would cross the season boundary (#3076)`);
   }
 
   const candidateRaceIds = [...new Set(entries.map((e) => e.race_id))];
