@@ -1485,6 +1485,7 @@ export default function RiderStatsPage() {
           <RiderSwitcherBar
             prevRider={prevRider}
             nextRider={nextRider}
+            teamId={rider.team?.id}
             teamName={rider.team?.name ?? t(isRetired ? "header.retired" : "header.freeAgent")}
             index={rosterIdx + 1}
             total={roster.length}
