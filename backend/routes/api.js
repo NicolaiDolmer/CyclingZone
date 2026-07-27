@@ -3953,11 +3953,17 @@ router.get("/races/distribution/clear-preview", requireAuth, async (req, res) =>
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
 
-    const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+    // {data,error} destruktureres begge: en tavst droppet fejl her ville vise en TOM
+    // konsekvens-liste, og dialogen ville dermed berolige manageren om at intet rammes
+    // netop når vi ikke kan se hvad der rammes. Fail loud i stedet.
+    const { data: season, error: seasonErr } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`clear-preview seasons: ${seasonErr.message}`);
     if (!season) return res.json({ ok: true, races: [] });
 
-    const { data: races } = await supabase
+    const { data: races, error: racesErr } = await supabase
       .from("races").select("id, name, stages_completed, status, league_division_id").eq("season_id", season.id);
+    if (racesErr) throw new Error(`clear-preview races: ${racesErr.message}`);
 
     const cols = (races || []).filter((r) =>
       r.status === "scheduled" &&
