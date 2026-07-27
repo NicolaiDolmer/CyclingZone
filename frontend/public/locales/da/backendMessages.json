@@ -186,6 +186,10 @@
       "title": "Rytter frigivet: kontrakt udløbet",
       "message": "{rider}s kontrakt udløb ved udgangen af sæson {season}. Han er nu fri agent."
     },
+    "squadBelowMinimum": {
+      "title": "Trup under løbs-minimum",
+      "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb."
+    },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
       "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."

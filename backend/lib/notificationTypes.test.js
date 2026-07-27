@@ -11,11 +11,12 @@ import { CONTRACT_EXPIRED_RELEASE_TYPE } from "./contractExpiryRelease.js";
 import { SCOUT_REPORT_READY_TYPE } from "./notificationService.js";
 import { isKnownNotificationType, NOTIFICATION_TYPES } from "./notificationTypes.js";
 import { SEASON_TRANSITION_RISK_TYPE } from "./seasonTransitionNotice.js";
+import { SQUAD_BELOW_MINIMUM_TYPE } from "./squadBelowMinimumCheck.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = join(
   __dirname,
-  "../../database/2026-07-26-3016-notification-type-constraint.sql",
+  "../../database/2026-07-27-3043-notification-type-constraint.sql",
 );
 
 test("alle kode-typekonstanter findes i NOTIFICATION_TYPES", () => {
@@ -23,6 +24,7 @@ test("alle kode-typekonstanter findes i NOTIFICATION_TYPES", () => {
     SCOUT_REPORT_READY_TYPE,
     CONTRACT_EXPIRED_RELEASE_TYPE,
     SEASON_TRANSITION_RISK_TYPE,
+    SQUAD_BELOW_MINIMUM_TYPE,
   ]) {
     assert.ok(isKnownNotificationType(t), `"${t}" mangler i NOTIFICATION_TYPES`);
   }
