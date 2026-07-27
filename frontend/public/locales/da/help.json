@@ -778,11 +778,19 @@
   "faq": {
     "seasonPlanner": {
       "q": "Hvad er Sæsonplanlæggeren?",
-      "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Sigt mod et nøgleløb for en rytter, så bygger planlæggeren en optakt der løfter hans form til den dag. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
+      "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Den åbner på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Fanen Sæson viser den samme plan som et bræt du kan trække i, og fanen Løb viser sæsonens kalender. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
     },
     "peakTraining": {
       "q": "Hvordan virker peak-træning?",
       "a": "Når du sætter en peak, foreslår planlæggeren en opbygningsuge og en taper-uge til optakten. Accepter en fra rytter-skuffen, så skrives den rytme til rytterens ugentlige træning. At træne det rigtige fokus for løbets profil, holde konsistensen og nå taperen udhvilet løfter alt sammen hvor meget af peaket du realiserer. En peak låses tre dage før dens vindue starter, så planlæg i forvejen."
+    },
+    "peakValue": {
+      "q": "Hvor meget er en peak egentlig værd?",
+      "a": "En peak er værd mellem +6 og +29 form på dagen, og hvor du lander i det spænd afhænger udelukkende af hvordan optakten køres: en sjusket optakt er cirka en femtedel værd af en perfekt. Indtil optakten begynder kan planlæggeren kun vise dig spændet, for tallet findes ikke endnu. Så snart træningen er i gang, strammer det til ét tal. Til sammenligning er +29 forskellen på en rytter i form 50 og den samme rytter i form 79."
+    },
+    "peakPayback": {
+      "q": "Koster en peak mig noget bagefter?",
+      "a": "Ja. Når en peaks vindue lukker, bærer rytteren omkring -14 form de næste syv dage. Det er prisen for toppen, og det er derfor en peak er et valg og ikke en gratis opgradering. Falder et af rytterens andre løb inde i det dyk, siger fanen Trup hvilket løb det er, og hvor mange dage efter peaken det ligger, så du kan flytte peaken eller tage omkostningen med åbne øjne."
     },
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",

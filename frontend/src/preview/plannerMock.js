@@ -9,6 +9,16 @@
 
 const DAY_MS = 86_400_000;
 const LEADUP = 14, MAX_PER_RIDER = 2, RADIUS = 2, LOCK_LEAD = 3;
+// #3086: konsekvens-tallene. I produktion afledes de af motorens tuning-konstanter
+// (backend/lib/plannerBoard.js peakValueFormPoints); her er de en MOCK-SPEJLING af
+// de samme vaerdier, saa preview'et viser samme stoerrelsesorden som prod. Aendres
+// RACE_V3_TUNING, er det prod der er sandheden, ikke denne fil.
+const VALUE_FLOOR = 6, VALUE_CEILING = 29, VALUE_PAYBACK = -14, PAYBACK_DAYS = 7, TQ_FLOOR = 0.2;
+
+function peakValue(tq) {
+  const current = tq == null ? null : Math.round(VALUE_CEILING * Math.min(1, Math.max(TQ_FLOOR, tq)));
+  return { floor: VALUE_FLOOR, ceiling: VALUE_CEILING, current, payback: VALUE_PAYBACK };
+}
 const TODAY = "2026-06-01"; // fast "nu" så form-kurver/lås er deterministiske i preview
 
 function ord(iso) { return Date.parse(`${String(iso).slice(0, 10)}T00:00:00Z`) / DAY_MS; }
@@ -58,6 +68,10 @@ const RACES = [
   makeRace("r-hill", "Hill GP", "hilly", "2026-05-10", true, 1, 0, 3, 2),
   makeRace("r-alpine", "Alpine Classic", "mountain", "2026-06-14", true, 6, 2, 3, 3),
   makeRace("r-nat", "Nationals TT", "itt", "2026-06-25", false, 1, 0, 2, 0),
+  // #3086: ligger 3 dage inde i r-alpine's payback-vindue (vindue slutter 16/6),
+  // og rd-verm er tilmeldt det. Uden et loeb i hullet kunne payback-kollisionen
+  // ikke ses paa preview overhovedet.
+  makeRace("r-midsummer", "Midsummer Criterium", "sprint", "2026-06-19", true, 1, 0, 3, 0),
   makeRace("r-tour", "Grand Tour", "mountain", "2026-07-15", true, 8, 3, 3, 4),
   makeRace("r-monument", "Autumn Monument", "hilly", "2026-09-05", true, 1, 0, 3, 1),
 ];
@@ -89,11 +103,11 @@ const AVAILABLE_SEASONS = [SEASON_S1, SEASON_S2];
 // matchet Flag'ens /^[a-z]{2}$/-regex, og derfor ville have vist INGEN flag i
 // preview/E2E-skærmbilleder efter denne PR's Flag-genbrug.
 const RIDERS = [
-  { id: "rd-verm", firstname: "Lars", lastname: "Vermeulen", nationality: "be", primaryType: "climber", secondaryType: "puncheur", isAcademy: true, form: 54, fatigue: 22, injuredUntil: null, abilities: ability({ climbing: 74, tempo: 62, endurance: 60, recovery: 56, punch: 52 }) },
-  { id: "rd-krist", firstname: "Henrik", lastname: "Kristiansen", nationality: "no", primaryType: "sprinter", secondaryType: null, isAcademy: false, form: 60, fatigue: 30, injuredUntil: null, abilities: ability({ sprint: 76, acceleration: 70, flat: 58, positioning: 56, climbing: 30 }) },
-  { id: "rd-soren", firstname: "Mikkel", lastname: "Sørensen", nationality: "dk", primaryType: "puncheur", secondaryType: "climber", isAcademy: false, form: 50, fatigue: 26, injuredUntil: null, abilities: ability({ punch: 66, tempo: 60, climbing: 50, endurance: 54 }) },
-  { id: "rd-novak", firstname: "Tomaz", lastname: "Novak", nationality: "si", primaryType: "gc", secondaryType: "tt", isAcademy: true, form: 57, fatigue: 24, injuredUntil: null, abilities: ability({ climbing: 72, time_trial: 66, tempo: 62, recovery: 58, endurance: 58 }) },
-  { id: "rd-bianchi", firstname: "Giulio", lastname: "Bianchi", nationality: "it", primaryType: "rouleur", secondaryType: null, isAcademy: false, form: 48, fatigue: 20, injuredUntil: null, abilities: ability({ flat: 62, endurance: 60, tempo: 54 }) },
+  { id: "rd-verm", firstname: "Lars", lastname: "Vermeulen", nationality: "be", age: 22, primaryType: "climber", secondaryType: "puncheur", isAcademy: true, form: 54, fatigue: 22, injuredUntil: null, abilities: ability({ climbing: 74, tempo: 62, endurance: 60, recovery: 56, punch: 52 }) },
+  { id: "rd-krist", firstname: "Henrik", lastname: "Kristiansen", nationality: "no", age: 28, primaryType: "sprinter", secondaryType: null, isAcademy: false, form: 60, fatigue: 30, injuredUntil: null, abilities: ability({ sprint: 76, acceleration: 70, flat: 58, positioning: 56, climbing: 30 }) },
+  { id: "rd-soren", firstname: "Mikkel", lastname: "Sørensen", nationality: "dk", age: 31, primaryType: "puncheur", secondaryType: "climber", isAcademy: false, form: 50, fatigue: 26, injuredUntil: null, abilities: ability({ punch: 66, tempo: 60, climbing: 50, endurance: 54 }) },
+  { id: "rd-novak", firstname: "Tomaz", lastname: "Novak", nationality: "si", age: 24, primaryType: "gc", secondaryType: "tt", isAcademy: true, form: 57, fatigue: 24, injuredUntil: null, abilities: ability({ climbing: 72, time_trial: 66, tempo: 62, recovery: 58, endurance: 58 }) },
+  { id: "rd-bianchi", firstname: "Giulio", lastname: "Bianchi", nationality: "it", age: 33, primaryType: "rouleur", secondaryType: null, isAcademy: false, form: 48, fatigue: 20, injuredUntil: null, abilities: ability({ flat: 62, endurance: 60, tempo: 54 }) },
 ];
 
 let counter = 0;
@@ -133,7 +147,7 @@ function ensure() { if (!peaks) peaks = seedPeaks(); }
 // flippes (feedback_owner_must_be_able_to_test_on_preview).
 const SUGGESTION_SEED = [
   { riderId: "rd-novak", raceId: "r-tour", reason: "suitability" },    // GC-type → bjerg-grand-tour
-  { riderId: "rd-bianchi", raceId: "r-coastal", reason: "suitability" }, // rouleur → fladt sprint-løb
+  { riderId: "rd-bianchi", raceId: "r-monument", reason: "suitability" }, // rouleur → kuperet endagsløb (FREMTIDIGT; et forslag mod et kørt løb er ikke en tilstand serveren kan producere)
 ];
 
 let dismissedRiders = null;
@@ -153,6 +167,7 @@ function suggestionsFor(riderId, realPeaksForRider) {
         windowStart: addDays(race.date, -RADIUS), windowEnd: addDays(race.date, RADIUS),
         lockedAt: null, locked: false, createdAt: null,
         trainingQuality: null, status: "pending",
+        value: peakValue(null), paybackCollisions: [],
         recommendedFocus: focus,
         suggestedTrainingBlock: { recommendedFocus: focus, leadupDays: LEADUP, weekRhythms: { build: BUILD_WEEK, taper: TAPER_WEEK } },
         isSuggestion: true, suggestionReason: s.reason,
@@ -166,7 +181,33 @@ function status(p) {
   return p.trainingQuality >= 0.6 ? "on_track" : "at_risk";
 }
 function serialize(p) {
-  return { ...p, locked: locked(p), status: status(p) };
+  const st = status(p);
+  return { ...p, locked: locked(p), status: st, value: peakValue(p.trainingQuality), paybackCollisions: [] };
+}
+
+// #3086: hvilke loeb er rytteren manuelt tilmeldt? I prod er det race_entries med
+// is_auto_filled=false; her er det et seed, saa payback-kollisionen kan ses paa
+// preview i stedet for kun i produktion.
+const REGISTERED = new Map([
+  ["rd-verm", ["r-midsummer", "r-alpine"]],
+  ["rd-krist", ["r-coastal"]],
+]);
+
+// Mock-spejling af backend/lib/plannerBoard.js findPaybackCollisions: hvilke af
+// rytterens OEVRIGE loeb falder i formhullet efter en peak.
+function withPaybackCollisions(riderId, peakList) {
+  const raceIds = new Set(REGISTERED.get(riderId) || []);
+  for (const p of peakList) if (p.targetRaceId) raceIds.add(p.targetRaceId);
+  return peakList.map((p) => {
+    const end = ord(p.windowEnd);
+    const hits = [...raceIds]
+      .filter((id) => id !== p.targetRaceId)
+      .map((id) => ({ id, days: ord(RACE_BY_ID.get(id)?.date ?? "") - end }))
+      .filter((x) => Number.isFinite(x.days) && x.days >= 1 && x.days <= PAYBACK_DAYS)
+      .sort((a, b) => a.days - b.days)
+      .map((x) => ({ raceId: x.id, raceName: RACE_BY_ID.get(x.id).name, daysAfterPeak: x.days }));
+    return { ...p, paybackCollisions: hits };
+  });
 }
 
 function buildBoard(peakList) {
@@ -178,9 +219,10 @@ function buildBoard(peakList) {
     maxPerRider: MAX_PER_RIDER,
     today: TODAY,
     leadupDays: LEADUP,
+    paybackDays: PAYBACK_DAYS,
     riders: RIDERS.map((r) => {
       const real = peakList.filter((p) => p.riderId === r.id).map(serialize);
-      return { ...r, peaks: [...real, ...suggestionsFor(r.id, real)] };
+      return { ...r, peaks: withPaybackCollisions(r.id, [...real, ...suggestionsFor(r.id, real)]) };
     }),
     races: RACES,
   };
@@ -199,6 +241,7 @@ function buildPendingBoard() {
     maxPerRider: MAX_PER_RIDER,
     today: TODAY,
     leadupDays: LEADUP,
+    paybackDays: PAYBACK_DAYS,
     riders: RIDERS.map((r) => ({ ...r, peaks: [] })),
     races: RACES_S2,
   };
@@ -231,6 +274,8 @@ export function previewPlannerBoard() {
 export function plannerMockRoute(method, pathname, search, body) {
   ensure();
   const m = pathname.match(/^\/api\/peak-plans(?:\/([^/]+)(?:\/(accept-training))?)?$/);
+  // Rækkefølgen betyder noget: "bulk" matcher også :id-grenen, så den skal
+  // håndteres FØR de generiske plan-id-ruter længere nede.
   if (!m) return null;
   const seg = m[1], sub = m[2];
 
@@ -246,6 +291,31 @@ export function plannerMockRoute(method, pathname, search, body) {
     return { status: 409, body: { error: "division_not_settled" } };
   }
   if (!seg && method === "GET") return { status: 200, body: { enabled: true, season: board().season, maxPerRider: MAX_PER_RIDER, plans: peaks.map(serialize) } };
+
+  // POST /api/peak-plans/bulk — "Accept all" (#3086). Samme per-element-guards
+  // som enkelt-POST'en; et element der ikke kan sættes springes over og
+  // rapporteres i `skipped`, så preview'et viser den samme delvise-succes-toast
+  // som produktion kan give.
+  if (seg === "bulk" && method === "POST") {
+    const list = Array.isArray(body?.plans) ? body.plans : null;
+    if (!list || !list.length) return { status: 400, body: { error: "invalid_plans" } };
+    if (list.length > 60) return { status: 400, body: { error: "too_many_plans" } };
+    let created = 0;
+    const skipped = [];
+    for (const item of list) {
+      const riderId = item?.rider_id, raceId = item?.target_race_id;
+      const rider = RIDERS.find((r) => r.id === riderId);
+      const race = RACE_BY_ID.get(raceId);
+      if (!rider) return { status: 404, body: { error: "Rider not found" } };
+      const mine = peaks.filter((p) => p.riderId === riderId);
+      if (!race || !race.isMine) { skipped.push({ rider_id: riderId, target_race_id: raceId, reason: "race_not_in_calendar" }); continue; }
+      if (mine.some((p) => p.targetRaceId === raceId)) { skipped.push({ rider_id: riderId, target_race_id: raceId, reason: "duplicate_target" }); continue; }
+      if (mine.length >= MAX_PER_RIDER) { skipped.push({ rider_id: riderId, target_race_id: raceId, reason: "max_reached" }); continue; }
+      peaks.push(makePeak(riderId, raceId, 0.72));
+      created += 1;
+    }
+    return { status: 200, body: { ok: true, created, skipped } };
+  }
 
   // POST /api/peak-plans/dismiss-suggestions — nulstil assistent-forslaget til
   // blank for én rytter (#2455 krav 2/3). Sæson-scoped i den ægte API'en; her er

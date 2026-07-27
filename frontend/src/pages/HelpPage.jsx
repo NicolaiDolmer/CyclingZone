@@ -317,6 +317,11 @@ const FAQ_KEYS = [
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
   "peakTraining",
+  // #3086: konsekvensen af en peak (spænd + payback) var indtil nu usynlig for
+  // spilleren — den stod hverken i UI'et eller i hjælpen, selvom motoren har
+  // regnet med den siden 13/7.
+  "peakValue",
+  "peakPayback",
   "raceSignupFaq",
   "raceClassificationsFaq",
   "raceJerseysFaq",
