@@ -35,3 +35,14 @@ Pre-filter: hent sæsonens bogførte idempotency-nøgler i én pagineret SELECT,
 ## Guard
 
 Ny test asserterer `rpcCalls.length === 0` ved andet tick — den fejler hvis nogen genindfører prøv-og-fejl-stien. Plus en pagination-test: PostgREST afkorter tavst ved 1000 rækker, og en afkortet nøgle ville falde tilbage på præcis den 23505-sti fixet fjerner.
+
+## Efterspil: fixet havde selv en fejl
+
+CodeRabbit fandt at pre-filterets `.range()` manglede `.order()`. Offset-pagination over et uordnet resultatsæt er udefineret i Postgres — en nøgle kan hoppe mellem sider og blive sprunget over, hvorefter den falder tilbage på præcis den 23505-sti fixet skulle fjerne. Rettet i `f8b69eab` med `.order("idempotency_key")` (unik → totalordning).
+
+**Læring om testen:** første version af pagineringstesten ville ikke have fanget det, fordi mocken returnerede deterministisk rækkefølge. En mock der er *pænere* end virkeligheden gør testen blind. Mocken returnerer nu bevidst **ustabil rækkefølge pr. kald** når `.order()` mangler, præcis som Postgres må — og guarden er verificeret ved at fjerne `.order()` og se testen fejle.
+
+## Backwards-check
+
+- **#3126** — samme paginerings-fejl i `api.js`' tre cap-sikre schedule-helpere. Konsekvens dér: ufuldstændigt binding-vindue → dobbeltbooking (#3113/#3120). Latent (761 rækker mod `PAGE = 1000`).
+- **#3127** — de resterende 12 `allowDuplicate: true`-callsites gennemgås for om de er event-drevne (constraint som backstop = korrekt) eller sweep-agtige (kræver pre-filter).
