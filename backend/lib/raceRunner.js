@@ -1433,7 +1433,7 @@ export async function simulateRace({
 
   // #2175: løbet er afviklet → refresh rangliste-matviews så /standings +
   // /rider-rankings viser de nye tal. Best-effort (resultaterne er skrevet).
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
 
   return {
     rowsImported: applied.rowsImported,
@@ -2100,7 +2100,7 @@ export async function simulateStageByIndex({
 
   // #2175: etapeløbet er finaliseret → refresh rangliste-matviews. Best-effort;
   // cron-fallback holder ranglisten fersk under selve etapeløbet (mellem-etaper).
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
 
   return {
     stageNumber, isFinalStage,
