@@ -3,12 +3,14 @@ import { statColor } from "../../../lib/statColor.js";
 import { staffColumnsFor } from "../../../lib/staffAbilities.js";
 import Tooltip from "../../ui/Tooltip.jsx";
 
+// #2890: egen "staffAbility"-skala — staff dimensions/levels/roleSkills genereres via
+// tier-bånd (28-90 + jitter), en helt anden fordeling end rytter-evner (median 55 vs. 12).
 function AbilityRow({ label, value }) {
   return (
     <div className="flex items-center gap-[9px] py-[3.5px]">
       <span className="flex-1 min-w-0 text-2xs text-cz-2 truncate">{label}</span>
       <span className="font-mono tabular-nums font-bold text-[12.5px] text-right flex-none min-w-[19px]"
-        style={{ color: statColor(value) }}>
+        style={{ color: statColor(value, { scale: "staffAbility" }) }}>
         {Number.isFinite(value) ? value : "—"}
       </span>
     </div>

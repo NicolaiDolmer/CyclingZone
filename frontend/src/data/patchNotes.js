@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.72",
+    "date": "2026-07-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider and staff numbers are colour-coded against the real field",
+          "body": "The colour scale behind every ability and rating was anchored to numbers that no longer matched the game. Green meant \"solid\" from 42 up, but the median rider ability is 12 and only the top 3% clear 53 — so almost every rider on a human team rendered the same grey, and the colour told you nothing. The scale is now anchored to the actual population: grey is typical, green is top quarter, yellow is top tenth, gold is top 3%. Staff get their own scale, because staff numbers come from a different model and were reading far too high on the rider one. The top of the scale is amber instead of red, so an elite rider no longer shares a colour with errors and warnings. No rider or staff member changed — only the colour used to show them."
+        },
+        "da": {
+          "title": "Rytter- og staff-tal er nu farvet efter det rigtige felt",
+          "body": "Farveskalaen bag alle evner og ratings var ankret til tal der ikke længere passede til spillet. Grøn betød \"solid\" fra 42 og op, men en median rytterevne er 12, og kun de øverste 3 % kommer over 53 — så næsten alle ryttere på et menneskehold stod i samme grå, og farven fortalte dig ingenting. Skalaen er nu ankret til den faktiske population: grå er typisk, grøn er øverste fjerdedel, gul er øverste tiendedel, guld er øverste 3 %. Staff har fået deres egen skala, fordi staff-tal kommer fra en anden model og lå alt for højt på rytter-skalaen. Toppen af skalaen er rav i stedet for rød, så en elite-rytter ikke længere deler farve med fejl og advarsler. Ingen rytter eller ansat har ændret sig — kun farven de vises med."
+        },
+        "refs": [2890]
+      }
+    ]
+  },
+  {
     "version": "7.71",
     "date": "2026-07-28",
     "label": "Beta",
