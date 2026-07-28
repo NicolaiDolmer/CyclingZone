@@ -368,8 +368,16 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         if (isWithdrawn || fullManual || isStarted || isCleared) {
           skipped += 1;
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte/ryddede gør ikke).
-          if (hasManual) lockedWindows.push({ window, riderIds: manualRiders });
-          else if (isStarted) lockedWindows.push({ window, riderIds: startedRidersByRaceTeam.get(key) || [] });
+          // #3113: de to tilfælde er IKKE gensidigt udelukkende — et igangværende løb kan sagtens
+          // have en DELVIS manuel trup. Den gamle `else if` lod da hasManual-grenen vinde og låste
+          // KUN de manuelle ryttere, så løbets auto-fyldte stod som "frie" og blev genudtaget til
+          // et overlappende søsterløb i næste kørsel. Præcis prod-bruddet 27/7 (Team Brutaliste:
+          // Hauts Plateaux var startet med 1 manuel + 4 auto → de 4 kørte OGSÅ Tour de Malaisie
+          // på game_day 0-1). Lås derfor UNIONEN.
+          const lockedRiderIds = new Set();
+          if (hasManual) for (const rid of manualRiders) lockedRiderIds.add(rid);
+          if (isStarted) for (const rid of startedRidersByRaceTeam.get(key) || []) lockedRiderIds.add(rid);
+          if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
           continue;
         }
         // Delvis manuel trup (ejer 28/6): TOP-FYLD gabet — lås de manuelle rytteres tid (så de
@@ -387,7 +395,12 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         strategy: strategyByTeam.get(team.id) ?? null,
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
-        if (!picks.length) continue;
+        // #3113: en enhed med NUL picks skal STADIG stages. Tidligere sprang vi den over,
+        // så enhedens forældede auto-rækker fra en tidligere kørsel aldrig blev diffet væk:
+        // rytteren stod fortsat i løb A i databasen, mens denne kørsels tildeling regnede
+        // ham som fri og gav ham det overlappende løb B (prod 27/7, Aquila–L3gatus: Tour du
+        // Danube stod tilbage med præcis ÉN residual-entry). applyUnitDiff med tomt `desired`
+        // sletter kun is_auto_filled=true-rækker — manuelle entries røres aldrig.
         // Top-up: neutralisér roller til "helper" (manuel trup ejer kaptajn/sprint-kaptajn).
         const finalPicks = topUpKeys.has(`${race_id}|${team.id}`)
           ? picks.map((p) => ({ ...p, race_role: "helper" }))
