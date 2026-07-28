@@ -28,7 +28,7 @@ async function authHeaders() {
 // endnu (sæsonen er 'upcoming'; op/nedrykning sker ved sæsonskiftet). Så er intet
 // løb markeret isMine, og siden viser en ærlig forklaring frem for den gamle
 // divisions kalender. Default false → uændret adfærd for den aktive sæson.
-const EMPTY = { season: null, availableSeasons: [], divisionPending: false, maxPerRider: 2, today: null, leadupDays: 14, riders: [], races: [] };
+const EMPTY = { season: null, availableSeasons: [], divisionPending: false, maxPerRider: 2, today: null, leadupDays: 14, paybackDays: 7, riders: [], races: [] };
 
 // #2518: seasonNumber = null → backend defaulter til aktiv sæson (uændret
 // adfærd); et eksplicit nummer (fra sæson-vælgeren i SeasonPlannerPage) lader
@@ -61,6 +61,7 @@ export function usePlanner(seasonNumber = null) {
           maxPerRider: data.maxPerRider ?? 2,
           today: data.today ?? null,
           leadupDays: data.leadupDays ?? 14,
+          paybackDays: data.paybackDays ?? 7,
           riders: data.riders ?? [],
           races: data.races ?? [],
         });
@@ -111,10 +112,17 @@ export function usePlanner(seasonNumber = null) {
     mutate("", "POST", { rider_id: riderId, target_race_id: targetRaceId }), [mutate]);
   const dismissSuggestions = useCallback((riderId) =>
     mutate("/dismiss-suggestions", "POST", { rider_id: riderId }), [mutate]);
+  // #3086 "Accept all": ÉT kald frem for en løkke over createPeak. En fuld trup
+  // kan have op mod 60 forslag, og marketWriteLimiter tillader 30 skriv i
+  // minuttet — en klient-løkke ville fejle midtvejs og efterlade manageren med en
+  // halvt accepteret plan. Serveren validerer hvert par efter samme regler som
+  // enkelt-POST'en og rapporterer de sprungne i `skipped`.
+  const createPeaksBulk = useCallback((pairs) =>
+    mutate("/bulk", "POST", { plans: (pairs || []).map((p) => ({ rider_id: p.riderId, target_race_id: p.raceId })) }), [mutate]);
 
   return {
     enabled, ...board, loading, error, busy,
     refresh, createPeak, retargetPeak, deletePeak, acceptTraining,
-    acceptSuggestion, dismissSuggestions,
+    acceptSuggestion, dismissSuggestions, createPeaksBulk,
   };
 }

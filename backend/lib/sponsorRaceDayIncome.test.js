@@ -126,6 +126,7 @@ test("computeResultBonusCredits: remainingCapByTeam muterer IKKE (caller-ansvar)
 //   races:            .select(...).eq("season_id").eq("status","completed")  (thenable)
 //   sponsor_contracts:.select("id, team_id, per_race_day_rate, bonus_clauses, results_bonus_paid").eq("status","active") (thenable)
 //   race_results:     .select("team_id, result_type, rank").eq("race_id", id) (thenable)
+//   finance_transactions:.select("idempotency_key").eq("season_id").in("type",[..]).range(from,to) (#3123 pre-filter)
 //   sponsor_contracts.update({results_bonus_paid}).eq("id", id)              (registreres i state.updates)
 //   rpc:              increment_balance_with_audit (via incrementBalanceWithAudit)
 // rpc-mocken kører den ÆGTE incrementBalanceWithAudit-wrapper igennem, så vi tester
@@ -135,8 +136,9 @@ function makeSupabase({
   contracts = [],
   resultsByRaceId = {},     // { [raceId]: [{ team_id, result_type, rank }] }
   skipKeys = new Set(),     // idempotency_keys der skal returnere 23505 (skip)
+  paidKeys = [],            // #3123: nøgler der allerede står i finance_transactions
 } = {}) {
-  const state = { rpcCalls: [], updates: [] };
+  const state = { rpcCalls: [], updates: [], keyPages: [] };
 
   function thenable(rows) {
     const b = {
@@ -189,6 +191,39 @@ function makeSupabase({
             return u;
           },
           then: (resolve) => resolve({ data: contracts, error: null }),
+        };
+        return b;
+      }
+      if (table === "finance_transactions") {
+        // Modellerer PostgREST's range-baserede pagination over de betalte nøgler.
+        //
+        // Uden .order() returnerer mocken bevidst USTABIL rækkefølge pr. kald
+        // (roteret), præcis som Postgres må gøre for en query uden ORDER BY. Det
+        // gør pagineringstesten til en ægte guard: fjerner nogen .order(), hopper
+        // nøgler mellem sider og testen fejler.
+        let ordered = null;
+        const b = {
+          select: () => b,
+          eq: () => b,
+          in: () => b,
+          order(col, { ascending = true } = {}) {
+            ordered = { col, ascending };
+            return b;
+          },
+          range(from, to) {
+            let rows;
+            if (ordered) {
+              rows = [...paidKeys].sort();
+              if (!ordered.ascending) rows.reverse();
+            } else {
+              // Ustabil plan-rækkefølge: roter én position pr. kald.
+              const shift = state.keyPages.length % Math.max(paidKeys.length, 1);
+              rows = [...paidKeys.slice(shift), ...paidKeys.slice(0, shift)];
+            }
+            const page = rows.slice(from, to + 1).map((k) => ({ idempotency_key: k }));
+            state.keyPages.push({ from, to, returned: page.length, ordered });
+            return Promise.resolve({ data: page, error: null });
+          },
         };
         return b;
       }
@@ -412,4 +447,117 @@ test("payRaceDaySponsorsToDate: hold uden klausuler (safe/racing) ignoreres i re
 
   assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
   assert.equal(supabase.state.updates.length, 0, "ingen results_bonus_paid-opdatering uden klausuler");
+});
+
+// ─── #3123: pre-filter på allerede-bogførte nøgler ─────────────────────────────
+
+test("#3123: andet tick rammer IKKE DB'en — allerede bogførte krediteringer genforsøges ikke", async () => {
+  const opts = {
+    races: [{ id: "r1", stages: 2, status: "completed" }],
+    contracts: [
+      { id: "c1", team_id: "t1", per_race_day_rate: 2000 },
+      { id: "c2", team_id: "t2", per_race_day_rate: 1000 },
+    ],
+    resultsByRaceId: { r1: [{ team_id: "t1" }, { team_id: "t2" }] },
+  };
+
+  // Første tick: begge hold krediteres.
+  const first = makeSupabase(opts);
+  assert.deepEqual(await payRaceDaySponsorsToDate("season-1", first), {
+    credited: 2,
+    result_bonuses: 0,
+  });
+  const written = first.state.rpcCalls.map((c) => c.payload.idempotency_key);
+
+  // Andet tick over samme data, med første ticks nøgler nu i finance_transactions.
+  const second = makeSupabase({ ...opts, paidKeys: written });
+  const result = await payRaceDaySponsorsToDate("season-1", second);
+
+  assert.deepEqual(result, { credited: 0, result_bonuses: 0 });
+  assert.equal(
+    second.state.rpcCalls.length,
+    0,
+    "ingen RPC-kald overhovedet — 23505-stien må ikke rammes"
+  );
+});
+
+test("#3123: resultat-bonus genforsøges ikke, og results_bonus_paid opdateres ikke igen", async () => {
+  const opts = {
+    races: [{ id: "r1", stages: 1, status: "completed" }],
+    contracts: [
+      {
+        id: "c1",
+        team_id: "t1",
+        per_race_day_rate: 1000,
+        bonus_clauses: [
+          { type: "stage_win", amount: 5000 },
+          { type: "results_cap", amount: 20000 },
+        ],
+        results_bonus_paid: 5000, // bonussen er allerede bogført
+      },
+    ],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+  };
+
+  const supabase = makeSupabase({
+    ...opts,
+    paidKeys: ["sponsor_race_day:r1:t1", "sponsor_results:r1:t1"],
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 0, result_bonuses: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 0);
+  assert.equal(
+    supabase.state.updates.length,
+    0,
+    "loftet må ikke decrementeres igen — forbruget ligger allerede i results_bonus_paid"
+  );
+});
+
+test("#3123: nye løb krediteres stadig når sæsonen har bogførte nøgler i forvejen", async () => {
+  const supabase = makeSupabase({
+    races: [
+      { id: "r1", stages: 1, status: "completed" }, // allerede betalt
+      { id: "r2", stages: 1, status: "completed" }, // nyt
+    ],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1" }], r2: [{ team_id: "t1" }] },
+    paidKeys: ["sponsor_race_day:r1:t1"],
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.rpcCalls[0].payload.idempotency_key, "sponsor_race_day:r2:t1");
+});
+
+test("#3123: nøgle-hentningen paginerer forbi PostgREST's 1000-rækkers loft", async () => {
+  // 1001 bogførte nøgler + 1 upaid. Uden pagination ville nøgle nr. 1001 blive
+  // afkortet væk og falde tilbage på 23505-stien.
+  const paidKeys = Array.from({ length: 1001 }, (_, i) => `sponsor_race_day:r${i}:t1`);
+  const races = Array.from({ length: 1002 }, (_, i) => ({
+    id: `r${i}`,
+    stages: 1,
+    status: "completed",
+  }));
+
+  const supabase = makeSupabase({
+    races,
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: Object.fromEntries(races.map((r) => [r.id, [{ team_id: "t1" }]])),
+    paidKeys,
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.equal(supabase.state.keyPages.length, 2, "to sider hentet (1000 + 1)");
+  assert.ok(
+    supabase.state.keyPages.every((p) => p.ordered?.col === "idempotency_key"),
+    "hver side SKAL være ordnet — offset-pagination uden ORDER BY kan springe nøgler over"
+  );
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 1, "kun det ene ubetalte løb forsøges");
+  assert.equal(supabase.state.rpcCalls[0].payload.idempotency_key, "sponsor_race_day:r1001:t1");
 });

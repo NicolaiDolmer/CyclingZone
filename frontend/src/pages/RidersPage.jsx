@@ -18,6 +18,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
@@ -175,6 +176,8 @@ export default function RidersPage() {
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
   const navigate = useNavigate();
+  // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -273,7 +276,7 @@ export default function RidersPage() {
     const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
       const [{ rows, count }, { data: auctionData }] = await Promise.all([
-        fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect }),
+        fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
         supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
       ]);
       setRiders(rows);
@@ -295,7 +298,7 @@ export default function RidersPage() {
     }
   }
 
-  useEffect(() => { loadRiders(); }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRiders(); }, [filters, seasonYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #916: realtime — opdatér listen når en rytter ændres (fx solgt til AI-hold →
   // team_id skifter), så TeamCell ikke bliver ved at vise "Fri" på stale data.
@@ -444,9 +447,14 @@ export default function RidersPage() {
       key: "badges",
       header: t("table.badges"),
       sortKey: "is_u25",
+      fold: true,
+      foldValue: (r) => {
+        const keys = [ageBadgeKey(r, seasonYear), activeAuctionRiders.has(r.id) && "auction"].filter(Boolean);
+        return keys.map((k) => tRider(`badges.label.${k}`)).join("/");
+      },
       render: (r) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[ageBadgeKey(r), activeAuctionRiders.has(r.id) && "auction"]} />
+          <RiderBadges badges={[ageBadgeKey(r, seasonYear), activeAuctionRiders.has(r.id) && "auction"]} />
         </div>
       ),
     },
@@ -456,7 +464,9 @@ export default function RidersPage() {
       header: t("table.age"),
       sortKey: "birthdate",
       numeric: true,
-      render: (r) => <span className="text-cz-2 text-xs">{getRiderAge(r.birthdate) ?? "—"}</span>,
+      fold: true,
+      foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
+      render: (r) => <span className="text-cz-2 text-xs">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
     },
     {
       key: "type",

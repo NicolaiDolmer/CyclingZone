@@ -11,12 +11,114 @@
 // den fra board'ets abilities + demandVector via en spejling af raceSimulator's
 // terrainScore — det holder payloaden lille (én demand-vektor pr. løb frem for et
 // N×M rangerings-kryds) og lader UI'et rangere/tooltip'e uden ekstra kald.
+//
+// Eneste afhængighed er motorens tuning-konstanter (rene tal, ingen I/O) — samme
+// import som racePeaks.js bruger. Konsekvens-omregningen nedenfor SKAL afledes af
+// dem frem for at være hardkodet.
+
+import { RACE_V3_TUNING } from "./raceRoles.js";
 
 // Trænings-status-tærskel: en peak hvis realiserede træningskvalitet er under dette
 // får "↓ Peak at risk"-chippen (spec §3A); over → "✓ Taper on track". Rundt tal,
 // afstemt mod PEAK_TQ_FLOOR=0.2 (elendig optakt) og 1.0 (perfekt) — 0.6 er "klart i
 // den gode halvdel". Præsentations-konstant (ikke score-balance), så den bor her.
 export const PEAK_STATUS_ONTRACK_TQ = 0.6;
+
+// ── Konsekvens i formpoint (#2905) ──────────────────────────────────────────
+//
+// Motoren regner i score-space: form bidrager ((form−50)/50)×FORM_RACE_WEIGHT_V3,
+// og en peak adderer PEAK_MAX×traeningskvalitet oveni. De tal betyder intet for en
+// manager. Formpoint gør: han læser allerede 0-100-formen i sin trup, så "denne peak
+// er +24" er en størrelse han kan sammenligne med rytterens egen form.
+//
+// Omregningen afledes af konstanterne frem for at blive skrevet i en tekststreng.
+// Ellers divergerer copy'en i samme øjeblik balancen tunes — PEAK_MAX-kommentaren i
+// raceRoles.js siger selv at værdierne er startkandidater indtil S5-harness-sweepet.
+// Det er samme fejlklasse som #3071 (to alders-formler der var ens indtil de ikke var).
+
+/**
+ * Score-space-komponent → formpoint. Ét formpoint bidrager
+ * FORM_RACE_WEIGHT_V3/50 til finalScore, så en komponent svarer til
+ * komponent ÷ (vægt/50) formpoint. Vægt 0 (flag/env-override) → null frem for
+ * en division med nul.
+ *
+ * @param {number} component  score-space-bidrag (fortegnsbærende)
+ * @param {object} [tuning]
+ * @returns {number|null}  afrundet til hele formpoint (spiller-vendt enhed)
+ */
+export function scoreComponentToFormPoints(component, tuning = RACE_V3_TUNING) {
+  const weight = Number(tuning?.FORM_RACE_WEIGHT_V3);
+  const c = Number(component);
+  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(c)) return null;
+  return Math.round((c * 50) / weight);
+}
+
+/**
+ * Hvad en peak er værd, i formpoint — gulvet, loftet, det aktuelle estimat, og
+ * hvad den koster bagefter. Ét objekt pr. peak, så UI'et kan vise hele spændet
+ * (ejer-valg 27/7: option C) uden selv at kende motorens konstanter.
+ *
+ * `trainingQuality` er PR. VINDUE (racePeaks addendum §2) og ligger i
+ * [PEAK_TQ_FLOOR, 1] efter computeTrainingQuality's clamp. Er den endnu ukendt
+ * (optakten er ikke begyndt), er `current` null — spændet gulv..loft står alene,
+ * hvilket er den ærlige tilstand på planlægningstidspunktet.
+ *
+ * @param {{trainingQuality?:number|null, tuning?:object}} [args]
+ * @returns {{floor:number|null, ceiling:number|null, current:number|null, payback:number|null}}
+ */
+export function peakValueFormPoints({ trainingQuality = null, tuning = RACE_V3_TUNING } = {}) {
+  const max = Number(tuning?.PEAK_MAX);
+  const tqFloor = Number(tuning?.PEAK_TQ_FLOOR);
+  const ceiling = scoreComponentToFormPoints(max, tuning);
+  const floor = scoreComponentToFormPoints(max * tqFloor, tuning);
+  const payback = scoreComponentToFormPoints(-Number(tuning?.PEAK_PAYBACK), tuning);
+
+  let current = null;
+  const tq = Number(trainingQuality);
+  if (trainingQuality != null && Number.isFinite(tq)) {
+    // Samme clamp som computeTrainingQuality, så et rå-signal udefra ikke kan
+    // vise en værdi motoren aldrig ville realisere.
+    const clamped = Math.min(1, Math.max(tqFloor, tq));
+    current = scoreComponentToFormPoints(max * clamped, tuning);
+  }
+  return { floor, ceiling, current, payback };
+}
+
+/**
+ * Payback-kollisioner: hvilke af rytterens ANDRE løb falder i formhullet efter en
+ * peak? Det er den beslutning planlæggeren i dag slet ikke understøtter — man
+ * sætter en peak uden at kunne se at man betaler for den i et løb man også vil vinde.
+ *
+ * Payback-vinduet er de PEAK_PAYBACK_DAYS dage EFTER peak-vinduets sidste dag
+ * (samme afgrænsning som racePeaks.peakPhaseForWindow, der regner payback fra
+ * end+1 til end+paybackDays). Ren funktion: kalderen leverer allerede-hentede
+ * ordinaler, ingen DB her.
+ *
+ * @param {object} [args]
+ * @param {Array<{targetRaceId?:string|null, endOrdinal:number}>} [args.windows]  rytterens peak-vinduer
+ * @param {Array<{raceId:string, ord:number}>} [args.otherRaces]  løb rytteren er udtaget til (ikke peak-målene selv)
+ * @param {object} [args.tuning]
+ * @returns {Array<{peakTargetRaceId:string|null, raceId:string, daysAfterPeak:number}>}  kronologisk
+ */
+export function findPaybackCollisions({ windows = [], otherRaces = [], tuning = RACE_V3_TUNING } = {}) {
+  const paybackDays = Number(tuning?.PEAK_PAYBACK_DAYS);
+  if (!Number.isFinite(paybackDays) || paybackDays <= 0) return [];
+  const hits = [];
+  for (const w of windows) {
+    const end = Number(w?.endOrdinal);
+    if (!Number.isFinite(end)) continue;
+    for (const r of otherRaces) {
+      const ord = Number(r?.ord);
+      if (!Number.isFinite(ord)) continue;
+      const daysAfterPeak = ord - end;
+      if (daysAfterPeak < 1 || daysAfterPeak > paybackDays) continue;
+      hits.push({ peakTargetRaceId: w?.targetRaceId ?? null, raceId: r.raceId, daysAfterPeak });
+    }
+  }
+  return hits.sort((a, b) =>
+    a.daysAfterPeak - b.daysAfterPeak || String(a.raceId).localeCompare(String(b.raceId))
+  );
+}
 
 /**
  * Er holdets division KENDT for den sæson planlæggeren kigger på? (#3018)

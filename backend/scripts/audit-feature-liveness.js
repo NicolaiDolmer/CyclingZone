@@ -95,12 +95,9 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // academy_season_intake_runs. Se den registrering for den fulde forklaring;
   // pointen er at auditen nu selv læser app_config.email_loop_enabled ved hver
   // kørsel i stedet for at stole på en kommentar der ikke opdager en flag-flip.
-  // race_stage_passages (#2811): Sub-2's passage-persistens. Skrive-stien i
-  // raceRunner.js er reviewet, men tabellen kan først få rows efter første
-  // S2-etape (27/7) — sæson 1 kørte på den gamle sti. Bevidst tom indtil da.
-  // FJERN ENTRY efter første S2-etapedag; er den stadig tom dér, er #2811's
-  // åbne spørgsmål besvaret med et NEJ og det er en ægte bug.
-  "race_stage_passages",
+  // (race_stage_passages (#2811) fjernet 27/7 efter instruktionen i entryen selv:
+  // første S2-etapedag gav 757 rows, så Sub-2's passage-persistens er bevist
+  // levende og Detector A overvåger tabellen normalt igen.)
   // (player_feedback (#2602) fjernet 23/7: første spillerindsendelse landede 23/7
   // 12:07 CEST — skrive-stien er bevist levende, så Detector A overvåger tabellen
   // normalt igen. NB: der findes stadig INGEN læse-flade for indsendelserne, se

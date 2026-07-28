@@ -6,8 +6,11 @@ import { useTranslation } from "react-i18next";
 
 export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange }) {
   const { t } = useTranslation("races");
-  const total = timeline?.totalDays ?? 60;
   const days = timeline?.days ?? [];
+  // #3107: ingen opdigtet 60-dages-fallback. Backend leverer altid sæsonens faktiske
+  // antal KALENDERDAGE (28 i S2); mangler tallet, er de dage vi rent faktisk fik det
+  // ærlige svar — ikke et gæt der lækker ud som "60 løbsdage" i UI'et (#1774).
+  const total = timeline?.totalDays ?? days.length;
   const scopes = [
     { key: "mine", enabled: true },
     { key: "division", enabled: true },

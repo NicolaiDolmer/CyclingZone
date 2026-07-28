@@ -5,7 +5,7 @@ import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, seasonReferenceYear } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
@@ -104,6 +104,9 @@ export default function RiderRankingsPage() {
   // useRiderRankings — ÉN let query mod rider_rankings_mv + display-join i stedet
   // for den gamle client-agg over ~38k race_results. error → fejl-UI, ikke spinner.
   const { riders, season, loading, error, reload } = useRiderRankings();
+  // #3071: genbruger allerede-hentet aktiv sæson (useRiderRankings) frem for at
+  // fetche den igen — samme referenceårs-formel som riderAge.js's øvrige kaldere.
+  const seasonYear = seasonReferenceYear(season?.number);
   const [sortKey, setSortKey] = useState("points");
   const [sortAsc, setSortAsc] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -217,12 +220,12 @@ export default function RiderRankingsPage() {
       header: t("rankings.thBadges"),
       fold: true,
       foldValue: (rider) => {
-        const key = ageBadgeKey(rider);
+        const key = ageBadgeKey(rider, seasonYear);
         return key ? t(`badges.label.${key}`, { ns: "rider" }) : "";
       },
       render: (rider) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[ageBadgeKey(rider), rider.team?.is_ai && "ai"]} />
+          <RiderBadges badges={[ageBadgeKey(rider, seasonYear), rider.team?.is_ai && "ai"]} />
         </div>
       ),
     },

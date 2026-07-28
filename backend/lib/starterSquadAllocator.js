@@ -577,6 +577,15 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
     await applyContractFieldsForRiders(supabase, existingIds, { division, startSeason, rng: contractRng });
     assigned = n;
     recovered = "re-derived";
+  } else if (n > SIZE) {
+    // n>SIZE kan IKKE være et halvt signup-forsøg — bootstrappen indsætter præcis
+    // SIZE ryttere i ét batch. Et markør-NULL hold med FLERE ryttere hører derfor
+    // til en anden sti (CYCLINGZONE-42: AI-fyld, hvis trup er AI_SQUAD-stor). Kast
+    // i stedet for at slette: den gamle else-gren tog n>SIZE med og ville rydde HELE
+    // truppen for at bygge en 12-mands manager-trup i stedet.
+    throw new Error(
+      `starter-squad bootstrap ${teamId}: ${n} ryttere > forventet ${SIZE} — ikke et delvist signup-forsøg, nægter at slette truppen`
+    );
   } else {
     // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
     await deleteRiders(supabase, existingIds);

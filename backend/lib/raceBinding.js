@@ -4,6 +4,7 @@
 
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
+import { selectInChunks } from "./dbChunk.js";
 
 const DAY_MS = 86_400_000;
 
@@ -190,6 +191,14 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
 // DB-loader: hent det aktuelle løbs tidsvindue + holdets udtagne ryttere i ANDRE
 // løb (grupperet pr. løb med deres tidsvindue), så findRiderBindingConflicts kan
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.
+//
+// #3070 rod-årsag: binding-nøglen (raceBindingWindow) er game_day, som er SÆSON-
+// RELATIV og nulstilles hver sæson (S1 og S2 spænder begge game_day 0..~100000 i
+// prod). Uden sæson-filter binder en forrige-sæson-entry på game_day 4 et løb i den
+// nye sæson der overlapper samme dag-tal — 102/156 ægte hold blev blokeret af netop
+// dette. `race.season_id` SKAL derfor være med i kalderens select (begge kaldere i
+// api.js gør det). Vi filtrerer FØR raceBindingWindow bygges, så en anden sæsons
+// entries aldrig når ind i otherRaces.
 export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const { data: thisSched, error: e1 } = await supabase
     .from("race_stage_schedule").select("race_id, scheduled_at, game_day").eq("race_id", race.id);
@@ -222,7 +231,21 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
     if (!ridersByRace.has(e.race_id)) ridersByRace.set(e.race_id, []);
     ridersByRace.get(e.race_id).push(e.rider_id);
   }
-  const otherRaceIds = [...ridersByRace.keys()];
+  let otherRaceIds = [...ridersByRace.keys()];
+  if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
+
+  // Sæson-filter (#3070): et separat opslag mod races (ikke et embedded
+  // race_entries.select("...,races!inner(season_id)")-filter) — vi har allerede
+  // otherRaceIds fra entries-krydsningen ovenfor, og et separat, eksplicit opslag er
+  // lettere at verificere mod den ægte PostgREST-kontrakt end at stole på embedded-
+  // filter-semantik vi ikke har testet ende-til-ende her. Chunket (#3030/#3031-
+  // mønster): et hold kan i teorien have entries i mange løb på tværs af sæsoner.
+  const { data: otherRaceRows, error: e3Season } = await selectInChunks({
+    supabase, table: "races", columns: "id, season_id", inColumn: "id", ids: otherRaceIds,
+  });
+  if (e3Season) throw new Error(`races season lookup (binding): ${e3Season.message}`);
+  const seasonByRaceId = new Map((otherRaceRows || []).map((r) => [r.id, r.season_id]));
+  otherRaceIds = otherRaceIds.filter((rid) => seasonByRaceId.get(rid) === race.season_id);
   if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
 
   const { data: scheds, error: e3 } = await supabase
@@ -238,5 +261,22 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const otherRaces = otherRaceIds
     .map((rid) => ({ raceId: rid, window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
     .filter((o) => o.window); // løb uden schedule kan ikke binde
+
+  // Forward-guard (#3070): sæson-filtret ovenfor er den ENESTE ting der forhindrer
+  // game_day-nøglerummet (sæson-relativt, nulstilles hver sæson) i at blande to
+  // sæsoners løb igen. Assertion i stedet for en stille regression: hvis en fremtidig
+  // ændring omgår filteret (fx en ny kaldevej der glemmer race.season_id), skal det
+  // crashe højlydt her — som en tydelig 500 med rod-årsagen i beskeden — frem for at
+  // gengive #3070 (102/156 hold blokeret) tavst i prod. Se også regressionstesten i
+  // raceBinding.test.js ("entry fra en ANDEN sæson binder ikke").
+  for (const o of otherRaces) {
+    const s = seasonByRaceId.get(o.raceId);
+    if (s !== race.season_id) {
+      throw new Error(
+        `loadTeamBindingContext: race ${o.raceId} season_id=${s} matcher ikke race.season_id=${race.season_id} — sæson-filter blev omgået (#3070)`
+      );
+    }
+  }
+
   return { thisWindow, otherRaces };
 }

@@ -4,6 +4,300 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.71",
+    "date": "2026-07-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race days now line up with the calendar",
+          "body": "A race day in the Race Hub was a rolling 24 hours counted from the season's very first stage, not an actual day. Because the racing block runs across the afternoon and evening, anything early in the day landed in the previous day's bucket — so a day mixed one evening with the next morning, and 61% of this season's stages showed up under the wrong day. A race day is a real calendar day now. Day links point at the day they say, the timeline counts the season's actual days instead of a fixed 60, and the \"today\" marker moves at midnight instead of in the middle of the afternoon."
+        },
+        "da": {
+          "title": "Løbsdage passer nu med kalenderen",
+          "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape — ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
+        },
+        "refs": [3107]
+      }
+    ]
+  },
+  {
+    "version": "7.70",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "Results actually shows results now",
+          "body": "The Results page was a page of links to other pages. It opens on Latest now: the races that have finished in your division, each with its podium and a way straight into the full result. The race library and the points and prize tables moved in as tabs, so Results is one place with three tabs: Latest, Archive, Points and prizes. Old links still work."
+        },
+        "da": {
+          "title": "Resultater viser faktisk resultater nu",
+          "body": "Resultatsiden var en side med links til andre sider. Den åbner på Seneste nu: de løb, der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "A race's history is no longer a dead end",
+          "body": "Opening a race from the archive showed you every edition and who won it, but there was no way from there into the race itself. Each season in the edition list is a link now, straight to that edition's full result."
+        },
+        "da": {
+          "title": "Et løbs historik er ikke længere en blindgyde",
+          "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgavelisten er et link nu, direkte til den udgaves fulde resultat."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
+    "version": "7.69",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "The Clubhouse menu is ordered by what you actually open",
+          "body": "The menu had grown in the order things were built, not in the order you use them. Your inbox is the third most opened page in the game and sat tenth in the list. Finance sat below the boardroom despite more than twice the traffic. Clubhouse now reads: Dashboard, Inbox, My Team, Daily Training, Finance, Academy, Board, Scouting, Club, Staff. Your manager profile moved down to Settings, where the other personal pages live. Nothing was renamed and no page moved."
+        },
+        "da": {
+          "title": "Klubhus-menuen står i den rækkefølge du faktisk åbner den i",
+          "body": "Menuen var vokset i den rækkefølge tingene blev bygget, ikke i den rækkefølge du bruger dem. Din indbakke er den tredje mest åbnede side i spillet og lå nummer ti på listen. Økonomi lå under bestyrelsen selv om den har mere end dobbelt så meget trafik. Klubhus står nu: Dashboard, Indbakke, Mit Hold, Daglig træning, Økonomi, Akademi, Bestyrelse, Spejder, Klub, Personale. Din managerprofil er flyttet ned til Indstillinger, hvor de andre personlige sider ligger. Intet er omdøbt, og ingen side er flyttet."
+        },
+        "refs": [3104]
+      }
+    ]
+  },
+  {
+    "version": "7.68",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Everything you plan with now sits in one menu group",
+          "body": "Team selection sat under Season & Results, the season planner sat in the Clubhouse, and team strategy had no menu entry at all. The three of them are now a Planning group in the sidebar, in the order you use them: team selection, season planner, team strategy, calendar. Results keeps what you go there to read: overview, races, standings, rider rankings, global rank and season snapshot. Nothing moved inside the pages themselves, so team selection opens exactly where it did before."
+        },
+        "da": {
+          "title": "Alt du planlægger med ligger nu i én menugruppe",
+          "body": "Holdudtagelse lå under Sæson & Resultater, sæsonplanlæggeren lå i Klubhuset, og holdstrategi havde slet ingen indgang i menuen. De tre er nu gruppen Planlægning i sidemenuen, i den rækkefølge du bruger dem: holdudtagelse, sæsonplanlægger, holdstrategi, kalender. Resultater beholder det du går derind for at læse: overblik, løb, ranglisten, rytterrangliste, global rank og sæson-snapshot. Intet er flyttet inde på selve siderne, så holdudtagelse åbner præcis hvor den plejer."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Team strategy is finally in the menu",
+          "body": "Your standing preferences decide how the assistant builds every lineup, but the only way in was a small link on the squad board. Team strategy now has its own entry under Planning. The link on the board still works."
+        },
+        "da": {
+          "title": "Holdstrategi er endelig i menuen",
+          "body": "Dine stående præferencer afgør hvordan assistenten bygger hver opstilling, men den eneste vej ind var et lille link på trup-brættet. Holdstrategi har nu sin egen indgang under Planlægning. Linket på brættet virker stadig."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
+    "version": "7.67",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "The season planner is a list you fill in, not a board you drag",
+          "body": "Setting a peak used to mean dragging a bracket across a timeline, and almost nobody found it. The planner now opens on a Squad tab: one row per rider, with a dropdown to pick the race he peaks for. The board and the race list moved into their own tabs, and dragging still works there. A status line sits above all three, so how many peaks are planned and how many need your attention is the first thing you see."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren er en liste du udfylder, ikke et bræt du trækker i",
+          "body": "At sætte en peak krævede før at man trak en bracket hen over en tidslinje, og næsten ingen fandt ud af det. Planlæggeren åbner nu på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Brættet og løbslisten har fået hver sin fane, og trækket virker stadig dér. En statuslinje ligger over alle tre, så hvor mange peaks der er planlagt, og hvor mange der kræver noget af dig, er det første du ser."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "You can see what a peak is worth before you commit to it",
+          "body": "Every peak now shows what it does to a rider's form on the day, in the same points you already read in your squad: from +6 for a sloppy lead-up to +29 for a perfect one, tightening to a single number once the lead-up is being ridden. It also shows the bill. A peak costs form for the days after it, and if one of your rider's other races falls in that dip, the planner names the race and how many days after it lands."
+        },
+        "da": {
+          "title": "Du kan se hvad en peak er værd, før du binder dig til den",
+          "body": "Hver peak viser nu hvad den gør ved rytterens form på dagen, i de samme point du allerede læser i truppen: fra +6 for en sjusket optakt til +29 for en perfekt, og strammet til ét tal så snart optakten køres. Den viser også regningen. En peak koster form i dagene efter, og falder et af rytterens andre løb i det hul, siger planlæggeren hvilket løb det er, og hvor mange dage efter det ligger."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Accept the assistant's whole plan in one click",
+          "body": "The assistant already drafted a peak programme for every rider, but the only way to take it was one peak at a time. The banner is now a card that says how many peaks it has drafted and why it picked those races, with a button that accepts the lot. Change any of them afterwards in the list."
+        },
+        "da": {
+          "title": "Acceptér hele assistentens plan med ét klik",
+          "body": "Assistenten udkastede allerede et peak-program til hver rytter, men den eneste måde at tage imod var én peak ad gangen. Banneret er nu et kort der siger hvor mange peaks den har udkastet og hvorfor den valgte netop de løb, med en knap der accepterer det hele. Ret dem enkeltvis i listen bagefter."
+        },
+        "refs": [3086, 2455]
+      }
+    ]
+  },
+  {
+    "version": "7.66",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "The assistant's picks no longer lock you out of your own squad",
+          "body": "When season 2 opened, the assistant had already entered your riders in races across the whole season. Those automatic picks then blocked you: try to put a rider in another race on the same day and he showed up as taken, by a choice you never made. Only your own manual picks and races already under way hold a rider now. The assistant suggests, it does not decide."
+        },
+        "da": {
+          "title": "Assistentens valg låser dig ikke længere ude af din egen trup",
+          "body": "Da sæson 2 åbnede, havde assistenten allerede meldt dine ryttere til løb i hele sæsonen. De automatiske valg spærrede så for dig: forsøgte du at sætte en rytter i et andet løb samme dag, stod han som optaget af et valg du aldrig havde truffet. Nu binder kun dine egne manuelle valg og løb der allerede er i gang. Assistenten foreslår, den bestemmer ikke."
+        },
+        "refs": [3041]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Riders are no longer held by last season's races",
+          "body": "After the move up, riders showed as taken by races from season 1, often in the division you had just left, and the squad would not save at all. Race days are counted from the start of each season, so last season's day 4 and this season's day 4 read as the same day. A race now only holds a rider inside its own season. Starting line-ups are filled from the same rule, so no one is left out of a field for a race they rode last year."
+        },
+        "da": {
+          "title": "Ryttere holdes ikke længere af sidste sæsons løb",
+          "body": "Efter oprykningen stod ryttere som optaget af løb fra sæson 1, ofte i den division du lige havde forladt, og truppen kunne slet ikke gemmes. Løbsdage tælles fra hver sæsons start, så sidste sæsons dag 4 og denne sæsons dag 4 blev læst som samme dag. Et løb holder nu kun en rytter inden for sin egen sæson. Startfelter fyldes efter samme regel, så ingen udelades af et felt på grund af et løb han kørte sidste år."
+        },
+        "refs": [3070, 3076]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders show their real age again",
+          "body": "Everyone turned a year older when season 2 began, and training and values moved with it, but the age on screen stayed on last season's number. Young prospects could read as 30 and over in the market, and the retirement warning pointed at the wrong riders. Ages, the under-23 and under-25 badges and the age filters now follow the season."
+        },
+        "da": {
+          "title": "Ryttere viser deres rigtige alder igen",
+          "body": "Alle blev et år ældre da sæson 2 begyndte, og træning og værdier fulgte med, men alderen på skærmen blev stående på sidste sæsons tal. Unge talenter kunne stå som 30 og derover på markedet, og pensionsadvarslen pegede på de forkerte ryttere. Alder, U23- og U25-mærkerne og aldersfiltrene følger nu sæsonen."
+        },
+        "refs": [3071]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Clearing your squad now tells you which races it withdraws you from",
+          "body": "\"Clear all\" removed your riders from every scheduled race for the rest of the season behind a plain confirmation box, so a team could end up out of races without knowing it. It now names the races you would be withdrawn from, with the time until each one starts, and makes keeping your squad the easy answer."
+        },
+        "da": {
+          "title": "Rydder du din trup, får du nu at vide hvilke løb det melder dig fra",
+          "body": "\"Ryd alt\" fjernede dine ryttere fra alle planlagte løb resten af sæsonen bag en almindelig bekræftelsesboks, så et hold kunne ende uden for løb uden at vide det. Den viser nu hvilke løb du meldes fra, hvor længe der er til hvert af dem starter, og gør det nemme svar til at beholde truppen."
+        },
+        "refs": [3061]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer says your squad is missing when it is full",
+          "body": "The reminder counted only riders you had picked by hand, so a squad the assistant had filled completely still showed up as incomplete. It now reads the same squad the race page does."
+        },
+        "da": {
+          "title": "Dashboardet siger ikke længere at truppen mangler, når den er fuld",
+          "body": "Påmindelsen talte kun ryttere du selv havde valgt, så en trup assistenten havde fyldt helt op stod stadig som ufuldstændig. Den læser nu den samme trup som løbssiden gør."
+        },
+        "refs": [3042]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Intermediate sprints have moved off the climbs",
+          "body": "Some stages placed their intermediate sprint part way up a categorised climb, where a sprinter has no chance and the climbers took the points instead. Sprints now sit on the longest stretch of road without a climb, closest to the middle of the stage. Season 2's calendar has been corrected on 137 stages before any points were awarded."
+        },
+        "da": {
+          "title": "Mellemsprinterne er flyttet væk fra stigningerne",
+          "body": "Nogle etaper lagde deres mellemsprint et stykke oppe ad en kategoriseret stigning, hvor en spurter ingen chance har, og klatrerne tog pointene i stedet. Spurterne ligger nu på den længste strækning uden stigning, tættest på midten af etapen. Sæson 2's kalender er rettet på 137 etaper, før der blev uddelt et eneste point."
+        },
+        "refs": [3048]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The sponsor card says plainly that the cap is the same in every division",
+          "body": "The division picker on a sponsor offer looked like it changed what you could earn in total. It does not, in season 2: only the rate per race day differs. The card now says so, instead of leaving you to work it out."
+        },
+        "da": {
+          "title": "Sponsorkortet siger nu ligeud at loftet er det samme i alle divisioner",
+          "body": "Divisionsvælgeren på et sponsortilbud så ud som om den ændrede hvad du kunne tjene i alt. Det gør den ikke i sæson 2: kun raten pr. løbsdag er forskellig. Det står der nu, i stedet for at du selv skal regne det ud."
+        },
+        "refs": [3020]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Achievements are in English when the game is in English",
+          "body": "All 46 achievement titles and descriptions were stored in Danish only, so English players read Danish text on their profile. Every one of them is now translated."
+        },
+        "da": {
+          "title": "Achievements er på engelsk, når spillet er på engelsk",
+          "body": "Alle 46 achievement-titler og -beskrivelser lå kun på dansk, så engelske spillere læste dansk tekst på deres profil. De er nu oversat alle sammen."
+        },
+        "refs": [3044]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider names in scouting reports, and the team name on a profile, are links again",
+          "body": "A scouting report listed the rider it was about without a way to open him. And the team name in the bar at the top of a rider profile was plain text, though the same name just below it was a link. Both take you where you expect now."
+        },
+        "da": {
+          "title": "Rytternavne i scoutingrapporter og holdnavnet på en profil er links igen",
+          "body": "En scoutingrapport nævnte rytteren den handlede om uden en vej til at åbne ham. Og holdnavnet i baren øverst på en rytterprofil var ren tekst, selv om det samme navn lige nedenunder var et link. Begge fører nu hen hvor du forventer."
+        },
+        "refs": [3046, 3047]
+      }
+    ]
+  },
+  {
     "version": "7.65",
     "date": "2026-07-26",
     "label": "Beta",

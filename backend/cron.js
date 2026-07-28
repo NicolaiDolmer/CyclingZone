@@ -69,6 +69,7 @@ import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
+import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
@@ -860,7 +861,7 @@ async function runStageSchedulerCron() {
 // + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper). Best-
 // effort i sig selv (refreshRankingMatviewsSafe sluger + logger fejl).
 async function runRankingMatviewRefreshCron() {
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: sentryCapture });
 }
 
 // ─── Global Rank ugentligt bevægelses-snapshot (#2453) ────────────────────────
@@ -918,6 +919,24 @@ async function runOwnershipInvariantWatchCron() {
     console.error(
       `🚨 Ownership-invariant-vagt: brud fundet — youthOwned=${result.findings.youthOwned}, ` +
       `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake} (#2647)`
+    );
+  }
+}
+
+// ─── Binding-invariant-vagt (#3113) ───────────────────────────────────────────
+// Daglig READ-ONLY kontrol af den låste ejer-regel "1 rytter = 1 løb pr. løbsdag,
+// i ALLE divisioner". Sæson-auditen 28/7 fandt 6 brud i S2 — 4 ryttere nåede at
+// køre to løb på game_day 0-1, opdaget tre dage for sent af en manuel audit.
+// Rod-årsagen (to læk i raceEntryGenerator) er rettet; dette er safety-nettet der
+// fanger et brud uanset hvilken kodevej der måtte introducere det næste gang.
+// Reparerer INTET — alarmerer.
+
+async function runRiderDoubleBookingWatchCron() {
+  const result = await runRiderDoubleBookingWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (result.alerted) {
+    console.error(
+      `🚨 Binding-invariant-vagt: ${result.conflicts} dobbeltbookede rytter-par ` +
+      `(${result.actionable} kan stadig nås før afvikling) (#3113)`
     );
   }
 }
@@ -1232,6 +1251,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: binding-invariant-vagt (#3113) — daglig READ-ONLY kontrol af
+  // "1 rytter = 1 løb pr. løbsdag". Alarmerer; reparerer intet.
+  setInterval(
+    trackedTick("rider-double-booking-watch", monitorCron("rider-double-booking-watch", runRiderDoubleBookingWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
   // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
   // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
@@ -1297,6 +1323,9 @@ export function startCron() {
   // #2647: read-only invariant-vagt — boot-run gør den 24h-monitoren ærlig og er
   // sikkert (ingen writes, alarmerer blot hvis en invariant allerede er brudt).
   trackedTick("ownership-invariant-watch", runOwnershipInvariantWatchCron)();
+  // #3113: samme begrundelse — read-only, ingen writes. Boot-run betyder at et brud
+  // opdages ved næste deploy i stedet for at vente op til 24 timer.
+  trackedTick("rider-double-booking-watch", runRiderDoubleBookingWatchCron)();
   // #2627: samme idempotens-begrundelse (WHERE status='offered') — boot-run gør
   // 24h-monitoren ærlig og fylder ikke ventende tilbud unødigt hvis en deploy
   // rammer lige efter det normale tick.

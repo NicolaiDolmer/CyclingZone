@@ -43,6 +43,14 @@
     },
     "clearDayWarn": "Fjern alle ryttere fra dagens løb? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
     "clearAllWarn": "Fjern alle ryttere fra ALLE dine resterende løb resten af sæsonen? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
+    "clearAllDialog": {
+      "title": "Ryd alle udtagelser?",
+      "body": "Et løb du ikke har en trup til, er et løb dit hold ikke stiller til. Dette fjerner dine ryttere fra {count, plural, one {1 løb} other {# løb}}.",
+      "startsIn": "starter om {time}",
+      "reassurance": "Du kan altid udtage en ny trup, før et løb starter.",
+      "keepSquad": "Behold min trup",
+      "clearAnyway": "Ryd alligevel"
+    },
     "column": {
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
@@ -156,15 +164,12 @@
   "subtitle": {
     "withSeason": "Sæson {number} · {count} løb",
     "noSeason": "Ingen aktiv sæson",
-    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb",
-    "library": "{count} løb på tværs af alle sæsoner",
-    "points": "Pointtabeller og præmieformel"
+    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb"
   },
   "tabs": {
     "calendar": "Kalender",
     "library": "Bibliotek",
-    "world": "Verdens-kalender",
-    "points": "Point & præmier"
+    "world": "Verdens-kalender"
   },
   "raceType": {
     "stageRace": "Etapeløb",
@@ -265,7 +270,6 @@
   "points": {
     "loadError": "Kunne ikke indlæse pointtabellen. Prøv igen.",
     "retry": "Prøv igen",
-    "title": "Point- og præmieoversigt",
     "subtitle": "Sådan beregnes dine løbspræmier fra dine placeringer",
     "help": "Hjælp & Regler",
     "formula": "Præmieformlen: 1 point = {amount} CZ$",

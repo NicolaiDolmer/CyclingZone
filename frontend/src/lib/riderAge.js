@@ -8,11 +8,35 @@
 //   alder 23–24 → "u25"
 //   alder ≥ 25 → ingen alders-badge (aldrig begge på samme rytter).
 
+// #3071: FRYSET SÆSON-ALDER-BUG. Frontend brugte wall-clock (`now.getFullYear()`)
+// som alders-reference, mens backend (riderProgressionEngine.js:46) altid har
+// brugt sæsonens år. De to formler gav samme tal i sæson 1 (launch-året) og
+// divergerede usynligt derefter — en spiller opdagede det ved S1→S2-skiftet
+// (ryttere ældedes i evner/værdi/pension, men ikke i UI'ets alders-tal/badges).
+// LAUNCH_REFERENCE_YEAR ligger nu ÉT sted i frontenden (denne fil) — matcher
+// backend/lib/riderProgressionEngine.js's konstant af samme navn. Al alders-
+// beregning skal gå via `ageForSeason`/`seasonReferenceYear` med et eksplicit
+// sæson-år — ALDRIG `new Date().getFullYear()`. Mangler en kalder sæson-året
+// (fx en komponent der endnu ikke har hentet aktiv sæson), er kontrakten at
+// give `null`/`undefined` videre: helperne herunder returnerer da `null` i
+// stedet for at gætte med dags dato — en manglende alder er bedre end en forkert.
+export const LAUNCH_REFERENCE_YEAR = 2026;
+
+// seasonNumber → referenceår, SAMME formel som backend's ageForSeason
+// (riderProgressionEngine.js:46: LAUNCH_REFERENCE_YEAR + (seasonNumber-1)).
+// Bruges af useActiveSeasonYear (hooks/useActiveSeasonYear.js) til at omsætte
+// den hentede `seasons.number` til det referenceår rytter-alder-helperne tager.
+export function seasonReferenceYear(seasonNumber) {
+  if (!Number.isFinite(seasonNumber)) return null;
+  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1);
+}
+
 // Sæson-alder = referenceåret − fødselsår (cykelsport-konvention: alderen en
 // rytter FYLDER i sæsonens kalenderår, uafhængigt af fødselsdag). Referenceåret
-// er sæsonens år (fx `seasons.start_date`s år) — IKKE dags dato. Det gør U23/U25-
-// gaten sæson-drevet i stedet for wall-clock-drevet (#2032/#109/#2073): en rytter
-// skifter alders-tier ved sæsonskift, ikke midt i en sæson på sin fødselsdag.
+// er sæsonens år (`seasonReferenceYear(seasonNumber)`) — IKKE dags dato. Det gør
+// U23/U25-gaten sæson-drevet i stedet for wall-clock-drevet (#2032/#109/#2073/
+// #3071): en rytter skifter alders-tier ved sæsonskift, ikke midt i en sæson på
+// sin fødselsdag, og bliver ikke permanent hængende på launch-årets alder.
 // Returnerer null ved manglende fødselsdato eller ugyldigt referenceår.
 export function ageForSeason(birthdate, seasonYear) {
   if (!birthdate || !Number.isFinite(seasonYear)) return null;
@@ -21,22 +45,22 @@ export function ageForSeason(birthdate, seasonYear) {
   return seasonYear - birthYear;
 }
 
-// Alder i hele år baseret på fødselsår (samme formel som rytter-filtrene).
-// Wall-clock-varianten: referenceår = `now`s kalenderår. Nye kald bør bruge
-// `ageForSeason(birthdate, seasonYear)` direkte hvor sæson-året kendes.
-export function getRiderAge(birthdate, now = new Date()) {
-  return ageForSeason(birthdate, now.getFullYear());
+// Alder i hele år baseret på fødselsår og et EKSPLICIT sæson-referenceår (fra
+// useActiveSeasonYear/seasonReferenceYear) — ren delegering til ageForSeason.
+// #3071: der er IKKE længere en wall-clock-fallback. Kaldere uden kendt
+// sæson-år skal give `null`/`undefined` videre og selv vise "—", ikke et
+// gættet (og potentielt forkert) tal.
+export function getRiderAge(birthdate, seasonYear) {
+  return ageForSeason(birthdate, seasonYear);
 }
 
 // U23-grænse som ÉN kilde til sandhed (#42): en rytter er U23 ved alder < 23
 // (dvs. ≤22 år) — præcis samme grænse som u23-badge nedenfor. Bruges af
 // rytter-filtrene (useRiderFilters) så filter + badge aldrig divergerer; en
 // 23-årig bærer u25-badge og må derfor ikke matche U23. Returnerer false ved
-// manglende fødselsdato (kan ikke bekræftes som U23). `now` defaulter til dags
-// dato (wall-clock); kaldere med sæson-kontekst kan give et fast referenceår
-// (fx `new Date(Date.UTC(seasonYear, 0, 1))`) så gaten følger sæsonen.
-export function isU23(birthdate, now = new Date()) {
-  const age = getRiderAge(birthdate, now);
+// manglende fødselsdato eller manglende sæson-år (kan ikke bekræftes som U23).
+export function isU23(birthdate, seasonYear) {
+  const age = getRiderAge(birthdate, seasonYear);
   return age != null && age < 23;
 }
 
@@ -53,9 +77,9 @@ export function isU25(birthdate, seasonYear) {
 
 // Returnér badge-nøglen for rytterens alders-tier, eller null. Nøglen er en
 // gyldig RiderBadges-key ("u23"/"u25"), så kaldersiden kan sætte den direkte
-// ind i badges-arrayet: badges={[ageBadgeKey(rider), ...]}.
-export function ageBadgeKey(rider, now = new Date()) {
-  const age = getRiderAge(rider?.birthdate, now);
+// ind i badges-arrayet: badges={[ageBadgeKey(rider, seasonYear), ...]}.
+export function ageBadgeKey(rider, seasonYear) {
+  const age = getRiderAge(rider?.birthdate, seasonYear);
   if (age == null) return null;
   if (age < 23) return "u23";
   if (age < 25) return "u25";
@@ -75,17 +99,17 @@ const RETIREMENT_NOTICE_SEASONS = 1;
 export const RETIREMENT_WARNING_AGE = RETIREMENT_WINDOW_START_AGE - RETIREMENT_NOTICE_SEASONS; // 35
 
 // True når rytteren er gammel nok til at pensionsrisikoen bør vises til en
-// potentiel køber (alder ≥ RETIREMENT_WARNING_AGE). Bruger samme wall-clock
-// alders-konvention som getRiderAge (matcher den øvrige auktions-UI, der også
-// viser rå kalenderårs-alder, ikke sæson-alder).
-export function isRetirementRisk(birthdate, now = new Date()) {
-  const age = getRiderAge(birthdate, now);
+// potentiel køber (alder ≥ RETIREMENT_WARNING_AGE). #3071: sæson-alder (samme
+// referenceår-kontrakt som getRiderAge ovenfor), IKKE længere wall-clock — ellers
+// matcher badget ikke den alder backend faktisk pensionerer rytteren ved.
+export function isRetirementRisk(birthdate, seasonYear) {
+  const age = getRiderAge(birthdate, seasonYear);
   return age != null && age >= RETIREMENT_WARNING_AGE;
 }
 
 // Badge-nøgle til RiderBadges (uafhængig af ageBadgeKey — en rytter kan aldrig
 // ramme begge, men de er separate klassifikationer og bør ikke deles ind i ét
-// gensidigt udelukkende felt). Returnerer null ved manglende fødselsdato.
-export function retirementRiskBadgeKey(rider, now = new Date()) {
-  return isRetirementRisk(rider?.birthdate, now) ? "retireRisk" : null;
+// gensidigt udelukkende felt). Returnerer null ved manglende fødselsdato/sæson-år.
+export function retirementRiskBadgeKey(rider, seasonYear) {
+  return isRetirementRisk(rider?.birthdate, seasonYear) ? "retireRisk" : null;
 }

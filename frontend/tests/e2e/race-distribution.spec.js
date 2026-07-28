@@ -323,3 +323,94 @@ test("board: igangværende løb vises som trup-låst (#1825)", async ({ page }) 
   await expect(board.getByText("Trup låst").first()).toBeVisible();
   await expect(board.getByText(/Truppen er endelig/)).toBeVisible();
 });
+
+// #3061: "Ryd alt" fik en prod-hændelse (to rigtige D2-hold ryddede hele sæsonen via et
+// tavst window.confirm). Erstattet af en navngivet konsekvens-dialog der kender de konkrete
+// ramte løb + deres ægte starttidspunkt. Mocker GET .../clear-preview (den nye forhåndsvisning)
+// OG POST .../clear (selve ryd-handlingen) i én handler, adskilt på URL — se kommentar nedenfor
+// for hvorfor de ikke kan være to separate page.route-kald (glob-overlap).
+function mockClearAllPreview(page, { races, onClear }) {
+  // BEMÆRK: "**/api/races/distribution/clear**" matcher BÅDE .../clear?... og
+  // .../clear-preview?... (glob-suffix). To separate page.route-registreringer ville
+  // konkurrere om LIFO-præcedens; én handler der grener på URL'en er utvetydig.
+  return page.route("**/api/races/distribution/clear**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.url().includes("clear-preview")) {
+      return route.fulfill({
+        status: 200, contentType: "application/json", headers: corsHeaders(request),
+        body: JSON.stringify({ ok: true, races }),
+      });
+    }
+    onClear?.();
+    return route.fulfill({
+      status: 200, contentType: "application/json", headers: corsHeaders(request),
+      body: JSON.stringify({ ok: true, cleared: races.length, skipped: 0, scope: "all" }),
+    });
+  });
+}
+
+test("board: 'Ryd alt' viser konsekvens-dialog med de ramte løb + ægte nedtælling, rydder først ved bekræftelse (#3061)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page, FULL_RACE_A);
+
+  const now = Date.now();
+  const previewRaces = [
+    { id: "race-x", name: "Tour Belge", startAt: now + 4 * 3_600_000 + 12 * 60_000 },
+    { id: "race-y", name: "Roskilde Rundt", startAt: now + 26 * 3_600_000 },
+  ];
+  let clearCalled = false;
+  await mockClearAllPreview(page, { races: previewRaces, onClear: () => { clearCalled = true; } });
+
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  await board.getByRole("button", { name: "Ryd alt" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Ryd alle udtagelser?")).toBeVisible();
+  await expect(dialog.getByText(/Dette fjerner dine ryttere fra 2 løb/)).toBeVisible();
+  await expect(dialog.getByText("Tour Belge")).toBeVisible();
+  await expect(dialog.getByText(/starter om 4h 12m/)).toBeVisible();
+  await expect(dialog.getByText("Roskilde Rundt")).toBeVisible();
+  await expect(dialog.getByText(/starter om 1d 2h/)).toBeVisible();
+  await expect(dialog.getByText(/Du kan altid udtage en ny trup/)).toBeVisible();
+
+  await dialog.screenshot({ path: "test-results/clear-all-dialog-3061.png" });
+
+  // "Behold min trup" er den sikre, fremhævede vej — lukker dialogen uden at ryde noget.
+  await dialog.getByRole("button", { name: "Behold min trup" }).click();
+  await expect(dialog).toBeHidden();
+  expect(clearCalled).toBe(false);
+
+  // Åbn igen + bekræft "Ryd alligevel" → selve ryd-kaldet sker først NU.
+  await board.getByRole("button", { name: "Ryd alt" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Ryd alligevel" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  expect(clearCalled).toBe(true);
+});
+
+test("board: 'Ryd alt' rydder direkte UDEN dialog når ingen kommende løb rammes (#3061)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page, FULL_RACE_A);
+
+  let clearCalled = false;
+  // Alt allerede kørt / intet valgt → forhåndsvisningen returnerer en tom liste. Dialogen
+  // må ikke poppe op som støj — handlingen skal bare udføres.
+  await mockClearAllPreview(page, { races: [], onClear: () => { clearCalled = true; } });
+
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  await board.getByRole("button", { name: "Ryd alt" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect.poll(() => clearCalled).toBe(true);
+});

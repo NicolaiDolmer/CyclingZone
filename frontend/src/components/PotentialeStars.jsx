@@ -1,6 +1,5 @@
 import { useId } from "react";
-
-const CURRENT_YEAR = new Date().getFullYear();
+import { ageForSeason } from "../lib/riderAge.js";
 
 // Delt stjerne-geometri (samme path som ui/icons StarIcon) — renderes nu som
 // SVG i stedet for ★-glyf, så potentiale-stjernerne deler stroke/fyld-system med
@@ -47,13 +46,16 @@ const clamp01 = (n) => Math.max(0, Math.min(1, n));
 // den der vil have den. Opt-in, så eksisterende kald-sites er uændrede — og
 // den fjerner samtidig den nowrap-span der presser tætte containere ud i
 // vandret overløb (samme mønster som #2720 rapporterer for "Verdensklasse-emne").
-export default function PotentialeStars({ value, range, label, birthdate, large = false, labelAsTitle = false }) {
+export default function PotentialeStars({ value, range, label, birthdate, seasonYear, large = false, labelAsTitle = false }) {
   const showLabel = label && !labelAsTitle;
   const titleAttrs = label && labelAsTitle ? { title: label, "aria-label": label } : {};
   // Unik pr. instans, så clipPath-id'er ikke kolliderer mellem flere stjerne-rækker
   // på samme side (SVG-id'er er dokument-globale). Sanitér useId's koloner.
   const uid = useId().replace(/:/g, "");
-  const age = birthdate ? CURRENT_YEAR - new Date(birthdate).getFullYear() : null;
+  // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden), IKKE wall-clock.
+  // Manglende seasonYear → age=null → "gammel rytter"-tonen udebliver i stedet for
+  // at gætte forkert (en manglende alder er bedre end en forkert).
+  const age = ageForSeason(birthdate, seasonYear);
   const isOld = age !== null && age >= 30;
   // Token-baserede toner (ingen rå hex): gamle ryttere = neutral (text-3),
   // ellers brand-guld (accent). Lysere "måske"-tone = accent ved lav alpha.

@@ -2,8 +2,9 @@
   "nav": {
     "group": {
       "klubhus": "Clubhouse",
+      "planlaegning": "Planning",
       "marked": "Market",
-      "saeson": "Season & Results",
+      "resultater": "Results",
       "min": "My",
       "admin": "Admin"
     },
@@ -33,6 +34,7 @@
       "globalRank": "Global Rank",
       "races": "Races",
       "teamSelection": "Team selection",
+      "strategy": "Team strategy",
       "seasons": "Season Snapshot",
       "hallOfFame": "Hall of Fame",
       "profile": "Settings",

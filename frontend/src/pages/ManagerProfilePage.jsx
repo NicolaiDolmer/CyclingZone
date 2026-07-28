@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { ageBadgeKey } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
@@ -117,6 +118,8 @@ export default function ManagerProfilePage() {
   const { t } = useTranslation("team");
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider");
+  // #3071: sæson-referenceår til alders-badget (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState("overview");
@@ -374,7 +377,7 @@ export default function ManagerProfilePage() {
                           {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
                               via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
                           {(() => {
-                            const ageTier = ageBadgeKey(r);
+                            const ageTier = ageBadgeKey(r, seasonYear);
                             return ageTier ? (
                               <span className="text-3xs bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
                             ) : null;

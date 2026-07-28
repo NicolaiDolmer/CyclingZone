@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import {
-  Card, PageLoader, PageHeader, EmptyState, ErrorState, Button,
+  Card, PageLoader, EmptyState, ErrorState, Button,
   CoinIcon, InfoIcon,
 } from "../components/ui";
 import { SCROLLER, TABLE, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
@@ -107,7 +107,6 @@ export default function RacePointsPage() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
-        <PageHeader title={t("points.title")} subtitle={t("points.subtitle")} />
         <ErrorState
           title={t("points.loadError")}
           action={
@@ -125,20 +124,22 @@ export default function RacePointsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <PageHeader
-        title={t("points.title")}
-        subtitle={t("points.subtitle")}
-        actions={
-          <Link
-            to="/help"
-            className="flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors"
-            title={t("points.help")}
-          >
-            <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("points.help")}</span>
-          </Link>
-        }
-      />
+      {/* #3102 etape 2: siden er udelukkende fane-indhold nu (/race-points
+          redirecter til /resultater?tab=points), så dens egen PageHeader ville
+          være side nummer to på samme skærm. Skabelonen har ét sidehoved pr.
+          side, og det ejer hubben. Undertitlen + hjælpe-linket bliver, som en
+          almindelig fane-intro. */}
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="text-[13px] text-cz-2">{t("points.subtitle")}</p>
+        <Link
+          to="/help"
+          className="flex flex-shrink-0 items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors"
+          title={t("points.help")}
+        >
+          <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">{t("points.help")}</span>
+        </Link>
+      </div>
 
       {/* Prize formula */}
       <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 space-y-3">

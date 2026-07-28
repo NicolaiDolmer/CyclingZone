@@ -3,14 +3,22 @@
 // mobilt stakket spor. Launch-gated: mens peak_planner_enabled er 'off' viser siden
 // en tom-state (samme kill-switch-mønster som Scouting/Facilities).
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageLoader, EmptyState, ErrorState, Section, Button, StarIcon, GripVerticalIcon, CalendarIcon, XIcon } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Section, Button, GripVerticalIcon, CalendarIcon, XIcon, Tabs, TabList, Tab, TabPanel } from "../components/ui";
 import { usePlanner } from "../lib/usePlanner";
 import { nextPlannableSeason, effectivePlannerFilter } from "../components/planner/plannerShared";
+import { plannerStatusSummary, pendingSuggestionPairs, ridersWithSuggestions } from "../components/planner/plannerSquadModel";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
 import PlannerDrawer from "../components/planner/PlannerDrawer";
 import PlannerRaceList from "../components/planner/PlannerRaceList";
+import PlannerSquad from "../components/planner/PlannerSquad";
+import PlannerStatusLine from "../components/planner/PlannerStatusLine";
+import PlannerAssistantCard from "../components/planner/PlannerAssistantCard";
+
+// #3086: Squad er default — listen er indgangen, brættet er overblikket.
+const PLANNER_TABS = ["squad", "season", "races"];
 
 function LegendItem({ children }) {
   return <span className="flex items-center gap-1.5">{children}</span>;
@@ -107,7 +115,19 @@ export default function SeasonPlannerPage() {
   // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
   const [seasonNumber, setSeasonNumber] = useState(null);
   const planner = usePlanner(seasonNumber);
-  const { enabled, loading, error, season, availableSeasons, divisionPending, riders, races, maxPerRider, today, leadupDays, busy } = planner;
+  const { enabled, loading, error, season, availableSeasons, divisionPending, riders, races, maxPerRider, today, leadupDays, paybackDays, busy } = planner;
+
+  // #3086: fanerne synkroniseres til ?tab= (samme mønster som Finance/#986), så
+  // et dybt link til fx Races lander rigtigt og en refresh ikke smider manageren
+  // tilbage til Squad midt i en gennemgang.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = PLANNER_TABS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "squad";
+  const setTab = (tab) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", tab);
+      return p;
+    }, { replace: true });
 
   const [filter, setFilter] = useState("mine");
   // #3018: uden en afgjort division findes der ingen "mine løb" — tving hele
@@ -166,6 +186,25 @@ export default function SeasonPlannerPage() {
   const onAcceptSuggestion = (riderId, raceId) => runMutation(() => planner.acceptSuggestion(riderId, raceId));
   const onDismissSuggestion = (riderId) => runMutation(() => planner.dismissSuggestions(riderId), t("assistant.resetDone"));
 
+  // #3086 "Accept all": ét bulk-kald frem for N enkelt-kald (limiteren tillader
+  // 30 skriv/minut, en fuld trup kan have op mod 60 forslag). Serveren kan
+  // springe enkelte par over (fx et løb der er blevet uskemalagt siden boardet
+  // blev hentet) — så siger toasten hvad der rent faktisk landede i stedet for
+  // at melde alt accepteret.
+  const onAcceptAll = async () => {
+    const pairs = pendingSuggestionPairs(riders);
+    if (!pairs.length) return;
+    const res = await planner.createPeaksBulk(pairs);
+    if (!res.ok) { setToast({ kind: "error", text: errText(res.error) }); return; }
+    const skipped = (res.skipped || []).length;
+    setToast({
+      kind: skipped ? "error" : "ok",
+      text: skipped
+        ? t("assistant.acceptedPartial", { created: res.created, skipped })
+        : t("assistant.acceptedAll", { count: res.created }),
+    });
+  };
+
   if (loading) return <PageLoader />;
 
   // #2849 bølge 6 — audit-fund "L/E/F ✓/✓/÷": board-hentningen havde ingen
@@ -194,11 +233,14 @@ export default function SeasonPlannerPage() {
   }
 
   const hasRiders = (riders || []).length > 0;
-  // #2455: mens der findes MINDST ét uaccepteret assistent-forslag, erstatter
-  // "assistenten har udkastet..."-banneret det gamle "planlæg din første
-  // peak"-nudge — ellers ser manageren begge (modstridende) beskeder på én gang.
-  const hasSuggestions = (riders || []).some((r) => (r.peaks || []).some((p) => p.isSuggestion));
-  const totalRealPeaks = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => !p.isSuggestion).length, 0);
+  // #3086: assistent-forslagene er nu et HANDLINGSKORT ("Accept all"), ikke et
+  // banner der kun beskriver. Det gamle firstRun-nudge er væk: med assistent-
+  // først findes tilstanden "tomt bræt, ingen peaks" ikke, så nudget kunne aldrig
+  // vises. Dets ene unikke spilregel (maks {max} peaks pr. rytter) er flyttet ind
+  // i handlingskortet, ikke slettet.
+  const suggestionCount = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => p.isSuggestion).length, 0);
+  const suggestionRiderCount = ridersWithSuggestions(riders);
+  const statusSummary = plannerStatusSummary({ riders, today, leadupDays });
   // #2518: sæsonen findes (er oprettet), men kalenderen (#2449) er ikke genereret
   // endnu — vis en forklarende tom-state i stedet for det generiske "ingen
   // ryttere"-empty-state (holdet HAR ryttere, sæsonen mangler bare et program).
@@ -277,98 +319,117 @@ export default function SeasonPlannerPage() {
 
       {!seasonNotReady && !hasRiders && <EmptyState title={t("empty.title")} description={t("empty.description")} />}
 
-      {/* #2455: assistenten har allerede udkastet form-programmerne — banneret
-          gør forslagene OPDAGELIGE (issue-krav 3), i stedet for det gamle
-          tomme-lærred-nudge (som kun vises hvis der reelt intet er, hverken
-          ægte eller foreslået — fx ingen fremtidige egen-divisions-løb endnu). */}
-      {hasRiders && hasSuggestions && (
-        // #2849 bølge 6: border-color sat via inline style, ikke className —
-        // Tailwind's kompilerede rækkefølge lader .border-cz-border (Card's
-        // default) vinde over en tilføjet .border-cz-accent-t-klasse uanset
-        // className-strengens rækkefølge (verificeret i dist-bundlen); inline
-        // style er den eneste cascade-sikre override uden at røre Card selv.
-        <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
-          <div className="flex items-start gap-2">
-            <StarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
-            <div>
-              <p className="text-[15px] font-semibold text-cz-1">{t("assistant.bannerTitle")}</p>
-              <p className="mt-1 text-[13px] text-cz-2">{t("assistant.bannerBody")}</p>
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {/* #3018: "planlæg din første peak"-nudget lover noget man ikke kan gøre
-          endnu, når divisionen ikke er afgjort — DivisionPendingNotice ovenfor
-          er den rigtige besked i den tilstand. */}
-      {hasRiders && !hasSuggestions && !divisionPending && totalRealPeaks === 0 && (
-        <Section className="mb-[14px] bg-cz-subtle">
-          <p className="text-[15px] font-semibold text-cz-1">{t("firstRun.title")}</p>
-          <p className="mt-1 text-[13px] text-cz-2">{t("firstRun.body", { max: maxPerRider })}</p>
-          <p className="mt-1 text-2xs text-cz-3">{t("firstRun.cta")}</p>
-        </Section>
+      {/* #3086: assistent-kortet står OVER fanerne sammen med status-linjen. Det
+          er den ene handling der gør assistent-først reelt for en casual, og en
+          knap gemt inde i en fane kan ikke udfylde den rolle. Forsvinder af sig
+          selv når der ikke er flere uaccepterede forslag. */}
+      {hasRiders && suggestionCount > 0 && (
+        <PlannerAssistantCard
+          suggestionCount={suggestionCount}
+          riderCount={suggestionRiderCount}
+          maxPerRider={maxPerRider}
+          busy={busy}
+          onAcceptAll={onAcceptAll}
+        />
       )}
 
       {hasRiders && (
-        <div className="flex flex-col gap-[14px]">
-          {/* Desktop master-canvas */}
-          <div className="hidden md:block bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-            <MasterCanvas
-              riders={riders} races={races} today={today} leadupDays={leadupDays}
-              filter={viewFilter}
-              selectedRaceId={selected?.mode === "race" ? selected.id : null}
-              selectedRiderId={selected?.mode === "rider" ? selected.id : null}
-              onSelectRace={(id) => setSelected({ mode: "race", id })}
-              onSelectRider={(id) => setSelected({ mode: "rider", id })}
-              onRetarget={onRetarget}
-              onCreatePeak={onCreatePeak}
-            />
-          </div>
+        <>
+          {/* Status-linjen ligger UDEN FOR Tabs, så "N kræver handling" er synlig
+              fra alle tre faner (ejer-krav 27/7). */}
+          <PlannerStatusLine summary={statusSummary} />
 
-          {/* Mobil stakket spor */}
-          <div className="md:hidden">
-            <MobileLanes
-              riders={riders} races={races} filter={viewFilter} today={today}
-              selectedRaceId={selected?.mode === "race" ? selected.id : null}
-              selectedRiderId={selected?.mode === "rider" ? selected.id : null}
-              onSelectRace={(id) => setSelected({ mode: "race", id })}
-              onSelectRider={(id) => setSelected({ mode: "rider", id })}
-            />
-          </div>
+          <Tabs value={activeTab} onChange={setTab}>
+            <TabList label={t("page.title")} className="mb-[14px]">
+              <Tab value="squad">{t("tabs.squad")}</Tab>
+              <Tab value="season">{t("tabs.season")}</Tab>
+              <Tab value="races">{t("tabs.races")}</Tab>
+            </TabList>
 
-          {/* Legende */}
-          <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1.5 text-3xs text-cz-2">
-            <LegendItem><svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="rgb(var(--accent-t))" strokeWidth="1.5" strokeDasharray="3 2" /></svg>{t("legend.potential")}</LegendItem>
-            <LegendItem><svg width="22" height="10" aria-hidden="true"><rect x="0" y="1" width="22" height="8" fill="var(--text-1)" opacity="0.16" /><line x1="0" y1="1.5" x2="22" y2="1.5" stroke="var(--text-1)" strokeWidth="1.5" /></svg>{t("legend.realized")}</LegendItem>
-            <LegendItem><svg width="18" height="12" aria-hidden="true"><rect x="2" y="1" width="14" height="10" fill="var(--text-1)" opacity="0.09" /></svg>{t("legend.block")}</LegendItem>
-            <LegendItem><span className="w-2 h-2 rounded-full" style={{ background: "rgb(var(--accent))", border: "1px solid rgb(var(--accent-t))" }} />{t("legend.token")}</LegendItem>
-            <LegendItem><GripVerticalIcon size={13} className="text-cz-accent-t" aria-hidden="true" />{t("legend.drag")}</LegendItem>
-          </div>
+            {/* Squad — den nye arbejdsflade: listen ER input. */}
+            <TabPanel value="squad">
+              <PlannerSquad
+                riders={riders} races={races} maxPerRider={maxPerRider} months={months}
+                today={today} paybackDays={paybackDays} busy={busy} divisionPending={divisionPending}
+                selectedRiderId={selected?.mode === "rider" ? selected.id : null}
+                onCreatePeak={onCreatePeak}
+                onRetarget={onRetarget}
+                onRemovePeak={onRemovePeak}
+                onSelectRider={(id) => setSelected({ mode: "rider", id })}
+              />
+            </TabPanel>
 
-          {/* #2568: scannbar sæson-løbs-liste — den kanoniske "hvilke løb, hvornår"-
-              flade (tidslinjen er for tæt til løbs-navne). Vist på begge viewports. */}
-          <PlannerRaceList
-            riders={riders} races={races} filter={viewFilter} today={today}
-            selectedRaceId={selected?.mode === "race" ? selected.id : null}
-            onSelectRace={(id) => setSelected({ mode: "race", id })}
-          />
+            {/* Season — brættet uændret, men med hele skærmen. Træk bevaret. */}
+            <TabPanel value="season">
+              {/* #3086: legenden er flyttet IND i bræt-kortet, og træk-instruktionen
+                  op i kortets hoved. Den lå før som en løs stribe under kortet, hvor
+                  den læste som en fodnote til noget andet. */}
+              <div className="hidden overflow-hidden rounded-cz border border-cz-border bg-cz-card md:block">
+                <div className="flex items-center justify-between gap-3 border-b border-cz-border px-4 py-2.5">
+                  <span className="text-[13px] font-medium text-cz-1">{t("board.title")}</span>
+                  <span className="flex items-center gap-1.5 text-3xs text-cz-2">
+                    <GripVerticalIcon size={13} className="text-cz-accent-t" aria-hidden="true" />{t("legend.drag")}
+                  </span>
+                </div>
+                <MasterCanvas
+                  riders={riders} races={races} today={today} leadupDays={leadupDays}
+                  filter={viewFilter}
+                  selectedRaceId={selected?.mode === "race" ? selected.id : null}
+                  selectedRiderId={selected?.mode === "rider" ? selected.id : null}
+                  onSelectRace={(id) => setSelected({ mode: "race", id })}
+                  onSelectRider={(id) => setSelected({ mode: "rider", id })}
+                  onRetarget={onRetarget}
+                  onCreatePeak={onCreatePeak}
+                />
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-cz-border px-4 py-2.5 text-3xs text-cz-2">
+                  <LegendItem><svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="rgb(var(--accent-t))" strokeWidth="1.5" strokeDasharray="3 2" /></svg>{t("legend.potential")}</LegendItem>
+                  <LegendItem><svg width="22" height="10" aria-hidden="true"><rect x="0" y="1" width="22" height="8" fill="var(--text-1)" opacity="0.16" /><line x1="0" y1="1.5" x2="22" y2="1.5" stroke="var(--text-1)" strokeWidth="1.5" /></svg>{t("legend.realized")}</LegendItem>
+                  <LegendItem><svg width="18" height="12" aria-hidden="true"><rect x="2" y="1" width="14" height="10" fill="var(--text-1)" opacity="0.09" /></svg>{t("legend.block")}</LegendItem>
+                  <LegendItem><span className="w-2 h-2 rounded-full" style={{ background: "rgb(var(--accent))", border: "1px solid rgb(var(--accent-t))" }} />{t("legend.token")}</LegendItem>
+                </div>
+              </div>
 
-          {/* Kontekst-skuffe */}
+              {/* Mobil stakket spor — uændret. */}
+              <div className="md:hidden">
+                <MobileLanes
+                  riders={riders} races={races} filter={viewFilter} today={today}
+                  selectedRaceId={selected?.mode === "race" ? selected.id : null}
+                  selectedRiderId={selected?.mode === "rider" ? selected.id : null}
+                  onSelectRace={(id) => setSelected({ mode: "race", id })}
+                  onSelectRider={(id) => setSelected({ mode: "rider", id })}
+                />
+              </div>
+            </TabPanel>
+
+            {/* #2568: scannbar sæson-løbs-liste — uændret, nu med sin egen fane. */}
+            <TabPanel value="races">
+              <PlannerRaceList
+                riders={riders} races={races} filter={viewFilter} today={today}
+                selectedRaceId={selected?.mode === "race" ? selected.id : null}
+                onSelectRace={(id) => setSelected({ mode: "race", id })}
+              />
+            </TabPanel>
+          </Tabs>
+
+          {/* Kontekst-skuffe: ligger UNDER fanerne, så et valg truffet i Squad,
+              Season eller Races åbner den samme skuffe det samme sted. */}
           {(selectedRace || selectedRider) && (
-            <PlannerDrawer
-              mode={selectedRace ? "race" : "rider"}
-              race={selectedRace} rider={selectedRider}
-              riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
-              busy={busy} divisionPending={divisionPending}
-              onClose={() => setSelected(null)}
-              onCreatePeak={onCreatePeak}
-              onRemovePeak={onRemovePeak}
-              onAccept={onAccept}
-              onAcceptSuggestion={onAcceptSuggestion}
-              onDismissSuggestion={onDismissSuggestion}
-            />
+            <div className="mt-[14px]">
+              <PlannerDrawer
+                mode={selectedRace ? "race" : "rider"}
+                race={selectedRace} rider={selectedRider}
+                riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
+                busy={busy} divisionPending={divisionPending}
+                onClose={() => setSelected(null)}
+                onCreatePeak={onCreatePeak}
+                onRemovePeak={onRemovePeak}
+                onAccept={onAccept}
+                onAcceptSuggestion={onAcceptSuggestion}
+                onDismissSuggestion={onDismissSuggestion}
+              />
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
