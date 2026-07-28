@@ -196,13 +196,32 @@ function makeSupabase({
       }
       if (table === "finance_transactions") {
         // Modellerer PostgREST's range-baserede pagination over de betalte nøgler.
+        //
+        // Uden .order() returnerer mocken bevidst USTABIL rækkefølge pr. kald
+        // (roteret), præcis som Postgres må gøre for en query uden ORDER BY. Det
+        // gør pagineringstesten til en ægte guard: fjerner nogen .order(), hopper
+        // nøgler mellem sider og testen fejler.
+        let ordered = null;
         const b = {
           select: () => b,
           eq: () => b,
           in: () => b,
+          order(col, { ascending = true } = {}) {
+            ordered = { col, ascending };
+            return b;
+          },
           range(from, to) {
-            const page = paidKeys.slice(from, to + 1).map((k) => ({ idempotency_key: k }));
-            state.keyPages.push({ from, to, returned: page.length });
+            let rows;
+            if (ordered) {
+              rows = [...paidKeys].sort();
+              if (!ordered.ascending) rows.reverse();
+            } else {
+              // Ustabil plan-rækkefølge: roter én position pr. kald.
+              const shift = state.keyPages.length % Math.max(paidKeys.length, 1);
+              rows = [...paidKeys.slice(shift), ...paidKeys.slice(0, shift)];
+            }
+            const page = rows.slice(from, to + 1).map((k) => ({ idempotency_key: k }));
+            state.keyPages.push({ from, to, returned: page.length, ordered });
             return Promise.resolve({ data: page, error: null });
           },
         };
@@ -534,6 +553,10 @@ test("#3123: nøgle-hentningen paginerer forbi PostgREST's 1000-rækkers loft", 
   const result = await payRaceDaySponsorsToDate("season-1", supabase);
 
   assert.equal(supabase.state.keyPages.length, 2, "to sider hentet (1000 + 1)");
+  assert.ok(
+    supabase.state.keyPages.every((p) => p.ordered?.col === "idempotency_key"),
+    "hver side SKAL være ordnet — offset-pagination uden ORDER BY kan springe nøgler over"
+  );
   assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
   assert.equal(supabase.state.rpcCalls.length, 1, "kun det ene ubetalte løb forsøges");
   assert.equal(supabase.state.rpcCalls[0].payload.idempotency_key, "sponsor_race_day:r1001:t1");

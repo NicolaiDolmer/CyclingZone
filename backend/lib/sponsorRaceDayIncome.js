@@ -35,6 +35,12 @@ import { incrementBalanceWithAudit } from "./balanceRpc.js";
 const KEY_PAGE_SIZE = 1000;
 
 // Hent alle allerede-bogførte sponsor-idempotency-nøgler for sæsonen.
+//
+// `.order()` er IKKE valgfri: offset-pagination over et uordnet resultatsæt er
+// udefineret i Postgres — to queries kan give hver sin rækkefølge, og så kan en
+// nøgle hoppe mellem sider og blive sprunget helt over. Den oversprungne nøgle
+// falder tilbage på 23505-stien vi fjerner her. idempotency_key er unik, så den
+// er en totalordning og dermed et stabilt paginerings-anker.
 export async function fetchPaidSponsorKeys(seasonId, supabase) {
   const paid = new Set();
   for (let from = 0; ; from += KEY_PAGE_SIZE) {
@@ -43,6 +49,7 @@ export async function fetchPaidSponsorKeys(seasonId, supabase) {
       .select("idempotency_key")
       .eq("season_id", seasonId)
       .in("type", ["sponsor_race_day", "sponsor_result_bonus"])
+      .order("idempotency_key", { ascending: true })
       .range(from, from + KEY_PAGE_SIZE - 1);
     if (error) throw new Error(`finance_transactions: ${error.message}`);
     for (const row of data || []) {
