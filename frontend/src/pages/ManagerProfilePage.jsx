@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { ageBadgeKey } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
@@ -117,6 +118,8 @@ export default function ManagerProfilePage() {
   const { t } = useTranslation("team");
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider");
+  // #3071: sæson-referenceår til alders-badget (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState("overview");
@@ -173,10 +176,24 @@ export default function ManagerProfilePage() {
     </div>
   );
 
-  const { team, user, riders: rawRiders, season_history, achievements, transfer_activity } = data;
+  const {
+    team, user,
+    riders: rawRiders,
+    season_history: rawSeasonHistory,
+    achievements: rawAchievements,
+    transfer_activity: rawTransferActivity,
+  } = data;
   // #1529: backend leverer rytteren med nested rider_derived_abilities — flad evnerne
   // op på rytter-objektet så r.climbing osv. virker i render-cellerne nedenfor.
   const riders = (rawRiders || []).map(flattenAbilities);
+  // #2876: achievements/season_history/transfer_activity guardes nu på samme måde
+  // som riders — et 200-svar der mangler et af felterne (delvist svar eller en
+  // fremtidig kontraktændring) skal degradere til en tom liste, ikke crashe hele
+  // siden i error boundary. Backend leverer altid arrayet (evt. tomt, #2876), men
+  // frontend skal ikke stole blindt på det.
+  const season_history = rawSeasonHistory || [];
+  const achievements = rawAchievements || [];
+  const transfer_activity = rawTransferActivity || [];
   const sortedRiders = sortRows(riders, riderSort.sort ? MANAGER_RIDER_ACCESSORS[riderSort.sort] : null, riderSort.sortDir);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
@@ -244,12 +261,17 @@ export default function ManagerProfilePage() {
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
                   <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
-                    {t("manager.managerPrefix")} {user.username} · {t("manager.division", { n: team.division })}
+                    {t("manager.managerPrefix")} {user?.username ?? t("manager.aiManaged")} · {t("manager.division", { n: team.division })}
                   </span>
                 </div>
-                <div className="mt-2">
-                  <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
-                </div>
+                {/* #2876 backwards-check: user kan være null (AI-styret hold, ingen
+                    tilknyttet brugerkonto) — nås reelt via transfer-historikkens
+                    køber/sælger-links. OnlineBadge forudsætter et user-objekt. */}
+                {user && (
+                  <div className="mt-2">
+                    <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
+                  </div>
+                )}
               </div>
             </div>
             {isOwnProfile && (
@@ -281,14 +303,21 @@ export default function ManagerProfilePage() {
         <Tabs value={tab} onChange={setTab}>
           <TabPanel value="overview">
             <div className="flex flex-col gap-[14px]">
-              {recentlyUnlocked.length > 0 && (
-                <Card className="p-5">
-                  <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+              {/* #2917: kortet blev tidligere skjult helt når intet var låst op, så en
+                  ny manager aldrig så at achievements fandtes. Nu står det med en
+                  tomtilstand — samme tekst-mønster som "Ingen transfers" nedenfor.
+                  Egen nøgle (noRecentAchievements): #2876's manager.noAchievements
+                  hører til Achievements-FANENS EmptyState og har sin egen ordlyd. */}
+              <Card className="p-5">
+                <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentlyUnlocked")}</h2>
+                {recentlyUnlocked.length === 0 ? (
+                  <p className="text-cz-3 text-sm text-center py-4">{t("manager.noRecentAchievements")}</p>
+                ) : (
                   <div className="flex gap-2 flex-wrap">
                     {recentlyUnlocked.map(a => <AchievementBadge key={a.id} achievement={a} />)}
                   </div>
-                </Card>
-              )}
+                )}
+              </Card>
               <Card className="p-5">
                 <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
                 {transfer_activity.length === 0 ? (
@@ -348,7 +377,7 @@ export default function ManagerProfilePage() {
                           {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
                               via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
                           {(() => {
-                            const ageTier = ageBadgeKey(r);
+                            const ageTier = ageBadgeKey(r, seasonYear);
                             return ageTier ? (
                               <span className="text-3xs bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
                             ) : null;
@@ -397,10 +426,15 @@ export default function ManagerProfilePage() {
                         </Td>
                         <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
                         <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
+                        {/* #2917: kolonnen læste `s.final_rank` — den findes ikke i
+                            season_standings (og ingen andre steder i koden), så
+                            placeringen har altid vist "#—" for alle. Den rigtige
+                            kolonne er rank_in_division (rangen i holdets pulje) —
+                            samme tal sæson-achievements nu måles på. */}
                         <Td numeric>
-                          {s.final_rank === 1
+                          {s.rank_in_division === 1
                             ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
-                            : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
+                            : <span className="text-cz-2">#{s.rank_in_division || "—"}</span>}
                         </Td>
                       </Tr>
                     ))}
@@ -411,28 +445,34 @@ export default function ManagerProfilePage() {
           </TabPanel>
 
           <TabPanel value="achievements">
-            <div className="flex flex-col gap-[14px]">
-              {Object.entries(achByCategory).map(([cat, achs]) => {
-                const inProgress = achs.filter(a => a.progress);
-                return (
-                  <Card key={cat} className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
-                      <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
-                    </div>
-                    {inProgress.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
-                        <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("manager.inProgress")}</p>
-                        {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+            {/* #2876: tom achievements-liste (fx et delvist svar) skal vise en rigtig
+                tom-tilstand, ikke et blankt panel — samme opskrift som Riders/Season-fanerne. */}
+            {Object.keys(achByCategory).length === 0 ? (
+              <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noAchievements")} />
+            ) : (
+              <div className="flex flex-col gap-[14px]">
+                {Object.entries(achByCategory).map(([cat, achs]) => {
+                  const inProgress = achs.filter(a => a.progress);
+                  return (
+                    <Card key={cat} className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
+                        <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
                       </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
+                      <div className="flex flex-wrap gap-2">
+                        {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
+                      </div>
+                      {inProgress.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
+                          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("manager.inProgress")}</p>
+                          {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabPanel>
         </Tabs>
       </div>

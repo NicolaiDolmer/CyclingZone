@@ -652,6 +652,45 @@ test("#2898 simulateRace: races.status=completed update-fejl → synlig fejl (in
   assert.ok(del, "race_results-delete skulle være kørt før status-update-fejlen opstod");
 });
 
+// ── #2974: samme utjekkede delete-mønster i persist-laget ────────────────────
+// persistRuns/persistIncidents/persistPassages brugte alle det samme
+// delete-then-insert uden fejltjek som #2898 fixede for race_results. Fejler
+// deletet tavst, kører insertet ALLIGEVEL og lægger de nye rækker oven på de
+// gamle → dublerede snapshots/hændelser/passager for samme (race_id, stage).
+test("#2974 simulateRace: race_simulation_runs delete-fejl → abort FØR insert (ingen dublerede run-snapshots)", async () => {
+  const supabase = withInjectedError(simulateRaceCanned(), "race_simulation_runs", "delete", "statement timeout");
+  await assert.rejects(
+    () => simulateRace({
+      supabase,
+      race: STAGE_RACE,
+      applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+      recomputeRaceDays: async () => {},
+    }),
+    /race_simulation_runs delete failed/,
+    "et fejlet delete skal kastes synligt, så retry-laget (#2878) kan gribe det — ikke sluges tavst",
+  );
+  const insert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+  assert.equal(
+    insert,
+    undefined,
+    "insert MÅ IKKE køre efter en fejlet delete — ville lægge et dublet run-snapshot oven på det gamle",
+  );
+});
+
+test("#2974 simulateRace: happy path skriver stadig run-snapshot (fejltjekket ændrer ikke normal-adfærd)", async () => {
+  const supabase = makeSupabase(simulateRaceCanned());
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => {},
+  });
+  const del = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "delete");
+  const insert = supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert");
+  assert.ok(del, "delete skal stadig køre (idempotens-mønsteret er uændret)");
+  assert.ok(insert, "insert skal stadig køre når deletet lykkedes");
+});
+
 // #2352 (Race v3 S1): checkV3Enabled=false (default-mock) → INGEN
 // race_simulation_rider_scores-skrivning, race_simulation_runs uden client-side id.
 test("simulateRace: v3=false (kill-switch off) — ingen race_simulation_rider_scores skrives", async () => {

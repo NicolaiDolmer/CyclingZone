@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { getMinimumAuctionBid } from "./marketValues";
 import { formatBidWarning, computeAvailableForBid } from "./auctionLogic";
 import { logEvent, logFirstEvent } from "./logEvent";
+import { formatNumber } from "./intl";
+import { useBlockedAction } from "./useBlockedAction.js";
+import { reportActionFailure } from "./actionTelemetry.js";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
 // AuctionCard (mobil card) og RiderStatsPage (rytter-profil) — så vi har ÉN kilde
@@ -15,6 +18,14 @@ import { logEvent, logFirstEvent } from "./logEvent";
 // #1184: balance-gaten beregnes HER (ikke hos kalderne) ud fra rå saldo +
 // samlet worst-case-reservation, så ekskluder-denne-auktion-semantikken matcher
 // backend-gaten (auctionRules.js) ens på alle tre flader.
+//
+// #2719: begge knapper (Byd + autobud-Gem) var tidligere `disabled` når beløbet
+// lå under min-buddet — uden ét ord om hvorfor. Autobud-panelet forudfylder med
+// dit GEMTE loft, og prisen stiger under auktionen, så loftet er ofte allerede
+// under min-buddet i det sekund panelet åbner: Gem-knappen fødes død. (Målt i
+// prod: 101 af 354 gemte lofter lå på eller under auktionens aktuelle pris.)
+// Blokade-begrundelserne beregnes derfor HER, ét sted, og alle tre flader viser
+// dem — se useBlockedAction.js for hvorfor det er aria-disabled og ikke disabled.
 
 export function useAuctionBidding({
   auction,
@@ -41,6 +52,21 @@ export function useAuctionBidding({
   const [proxyErrorText, setProxyErrorText] = useState("");
 
   const myProxy = auction.myProxyMax || null;
+
+  // #2719: hvorfor kan knappen ikke køre? Færdige, lokaliserede sætninger — null
+  // = ikke blokeret. Bemærk at proxyInput bevidst IKKE nulstilles når minBid
+  // stiger (det ville overskrive det spilleren selv har tastet); i stedet siger
+  // vi det højt, så et forældet loft aldrig bliver et dødt klik.
+  const minBidText = formatNumber(minBid);
+  const bidBlockedReason = bidAmount < minBid
+    ? t("auctions:bid.blockedBelowMin", { amount: minBidText })
+    : null;
+  const proxyBlockedReason = proxyInput < minBid
+    ? t("auctions:bid.proxy.blockedBelowMin", { amount: minBidText })
+    : null;
+
+  const bidBlock = useBlockedAction(bidBlockedReason);
+  const proxyBlock = useBlockedAction(proxyBlockedReason);
 
   useEffect(() => {
     setBidAmount(minBid);
@@ -78,6 +104,12 @@ export function useAuctionBidding({
         }
         setBidStatus(result.ok ? "success" : "error");
         setErrorText(result.error || "");
+        if (!result.ok) {
+          reportActionFailure("auction_bid", {
+            reason: result.error,
+            context: { auctionId: auction.id, amount: bidAmount },
+          });
+        }
         if (result.ok) {
           logEvent("auction_bid_placed", { auction_id: auction.id, amount: bidAmount });
           // #1583: aktiverings-funnel — kun brugerens FØRSTE bud (de-dup pr. bruger).
@@ -108,14 +140,48 @@ export function useAuctionBidding({
         } else {
           // #174: vis fejlbesked fra backend (egen rytter, max-loft, balance, ...)
           setProxyErrorText(result.error || t("auctions:error.proxyFailed"));
+          reportActionFailure("auction_proxy_save", {
+            reason: result.error,
+            context: { auctionId: auction.id, maxAmount: proxyInput },
+          });
         }
         setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
       },
     });
   }
 
+  // #2719: kastede tidligere resultatet væk (`await onRemoveProxy(...)` og intet
+  // andet). Fejlede kaldet, blev autobud-badget stående, spilleren trykkede
+  // "Fjern" igen — og igen. Nu: loading-state, fejlbesked på spillerens sprog,
+  // og en Sentry-event så et fejlende fjern-kald ikke længere er usynligt.
   async function handleRemoveProxy() {
-    await onRemoveProxy(auction.id);
+    setProxyStatus("loading");
+    setProxyErrorText("");
+    function fail(detail) {
+      setProxyStatus("error");
+      setProxyErrorText(detail.text);
+      reportActionFailure("auction_proxy_remove", {
+        reason: detail.reason,
+        cause: detail.cause,
+        context: { auctionId: auction.id },
+      });
+      setTimeout(() => setProxyStatus(null), 4000);
+    }
+    let result;
+    try {
+      result = await onRemoveProxy(auction.id);
+    } catch (cause) {
+      fail({ text: t("auctions:error.proxyRemoveFailed"), cause });
+      return;
+    }
+    // Bagudkompatibelt: en kalder må returnere undefined ved succes.
+    if (result && result.ok === false) {
+      const text = result.error || t("auctions:error.proxyRemoveFailed");
+      fail({ text, reason: result.error });
+      return;
+    }
+    setProxyStatus("removed");
+    setTimeout(() => setProxyStatus(null), 2000);
   }
 
   return {
@@ -126,6 +192,13 @@ export function useAuctionBidding({
     proxyExpanded, setProxyExpanded,
     proxyInput, setProxyInput,
     proxyStatus, proxyErrorText,
-    handleBid, handleSaveProxy, handleRemoveProxy,
+    // #2719: blokade-kontrakten. Kalderen spreder `*BlockedProps` på knappen,
+    // pakker sin onClick i `*Guard(...)` og rendrer <BlockedNote> med reason.
+    bidBlock, proxyBlock,
+    // Klik-handlere er allerede pakket ind, så en blokeret knap aldrig kan
+    // "gøre ingenting" — den viser begrundelsen i stedet.
+    handleBid: bidBlock.guard(handleBid),
+    handleSaveProxy: proxyBlock.guard(handleSaveProxy),
+    handleRemoveProxy,
   };
 }

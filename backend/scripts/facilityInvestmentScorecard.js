@@ -228,6 +228,9 @@ function main() {
   console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2/A4/Plan-B-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
   console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"} · specialiserings-balance ${spec.allPass ? "✅" : "❌"} · live-wiring ${wiringPass ? "✅" : "❌"}`);
   console.log("NOTE: flag-flip er en separat EJER-beslutning — harness grøn er forudsætningen, ikke beslutningen.\n");
+  // #2854 (backwards-check): merge-gatens verdict skal også nå exit-koden — ellers
+  // ser en caller/CI succes på en kørsel der printede FAIL.
+  process.exitCode = allPass ? 0 : 1;
 }
 
 main();

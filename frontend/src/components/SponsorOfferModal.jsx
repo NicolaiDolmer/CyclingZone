@@ -20,6 +20,12 @@ import {
 // med løbsdage (#2862), deadline-banner + default-regel (#1778/#2914) og
 // Review & sign-bekræftelse (ejer-godkendt mockup 25/7). Valg propageres via
 // onAccept(variant) efter eksplicit bekræftelse.
+//
+// #3020 (ejer-beslutning 27/7): divisionsskalering af loftet er UDSKUDT til
+// sæson 3 (for stort et økonomi-indgreb midt i S2-valgvinduet). Denne omgang
+// er copy-only: divisionNote gør eksplicit at MAKS-udbetalingen er den samme
+// uanset hvilken pill man klikker, kun raten pr. etape ændrer sig — det svarer
+// direkte på cuchiets Discord-spørgsmål uden at røre projections()/udbetaling.
 
 const VARIANT_ICONS = {
   safe: LockIcon,
@@ -91,6 +97,13 @@ export default function SponsorOfferModal({
     (activeDivision != null ? stageCounts?.byTier?.[activeDivision] : null) ??
     stageCounts?.fallbackDays ??
     null;
+  // Sæsonens kalenderlængde (seasons.race_days_total). Bruges KUN til at forklare
+  // forholdet mellem etaper og kalenderdage — spillerne læste "race day" som en
+  // IRL-dag (#2862). Sætningen vises kun når der faktisk er >1 etape pr. dag, så
+  // den ikke lyver hvis raceDays selv er faldet tilbage til kalenderlængden.
+  const calendarDays = Number(stageCounts?.fallbackDays) || null;
+  const stagesPerDay =
+    Number(raceDays) > 0 && calendarDays > 0 ? Number(raceDays) / calendarDays : null;
 
   const confirmingOffer = offers.find((o) => o.variant === confirming) || null;
 
@@ -100,7 +113,7 @@ export default function SponsorOfferModal({
     const fraction = Number(offer.guaranteedFraction);
     const share = Number(offer.raceDayShare);
     if (!(fraction > 0) || !Number.isFinite(share) || !(Number(raceDays) > 0)) {
-      return { rate: offer.perRaceDayRate ?? 0, max: null };
+      return { rate: offer.perRaceDayRate ?? 0, raceDayPool: null, certain: null, upside: 0 };
     }
     const target = Math.round(offer.guaranteedBase / fraction);
     const raceDayPool = Math.round(target * share);
@@ -110,7 +123,13 @@ export default function SponsorOfferModal({
     const objective = Number(clauses.find((c) => c.type === "season_objective")?.amount) || 0;
     return {
       rate: Math.round(raceDayPool / Number(raceDays)),
-      max: offer.guaranteedBase + raceDayPool + signing + cap + objective,
+      raceDayPool,
+      // Det holdet får hvis det bare stiller til start hver etape — underskrifts-
+      // bonussen hører med, den betales ved aktivering uanset resultater.
+      certain: offer.guaranteedBase + raceDayPool + signing,
+      // Betinget top: resultatloft + sæsonmål. Holdes UDE af "certain" så kortet
+      // ikke lover penge der kræver sejre (den gamle "Maks"-linje blandede dem).
+      upside: cap + objective,
     };
   }
 
@@ -131,8 +150,7 @@ export default function SponsorOfferModal({
             {t("offers.title")}
           </h2>
           <p className="mt-1.5 text-sm text-cz-2">
-            {t("offers.subtitle", { season: upcomingSeasonNumber })}{" "}
-            <span className="text-cz-3">{t("offers.unitDefinition")}</span>
+            {t("offers.subtitle", { season: upcomingSeasonNumber })}
           </p>
         </div>
         {divisions.length > 1 && (
@@ -158,6 +176,40 @@ export default function SponsorOfferModal({
         )}
       </div>
 
+      {/* #2862: enheden forklaret med holdets egne tal. Spillerne læste "race day"
+          som en kalenderdag og byggede regneark for at gætte forholdet — her står
+          det direkte: hvor mange etaper divisionen kører, og hvor mange dage de
+          ligger på. */}
+      <div className="mb-3 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2.5">
+        <div className="flex items-start gap-2">
+          <BikeIcon size={15} className="mt-0.5 flex-shrink-0 text-cz-accent-t" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-cz-1">{t("offers.unitDefinition")}</p>
+            {Number(raceDays) > 0 && activeDivision != null && (
+              <p className="mt-1 text-xs tabular-nums text-cz-2">
+                {t("offers.unitCount", {
+                  division: activeDivision,
+                  count: Number(raceDays),
+                  season: upcomingSeasonNumber,
+                })}
+                {stagesPerDay > 1.05 && (
+                  <>
+                    {" "}
+                    {t("offers.unitPerDay", {
+                      days: calendarDays,
+                      perDay: Math.round(stagesPerDay),
+                    })}
+                  </>
+                )}
+              </p>
+            )}
+            {divisions.length > 1 && (
+              <p className="mt-1 text-xs text-cz-3">{t("offers.divisionNote")}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="mb-4 flex items-center gap-2 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2">
         <ClockIcon size={15} className="flex-shrink-0 text-cz-2" aria-hidden="true" />
         <p className="text-xs text-cz-2">{t("offers.deadline", { season: upcomingSeasonNumber })}</p>
@@ -170,7 +222,7 @@ export default function SponsorOfferModal({
           {offers.map((offer) => {
             const selected = pendingVariant === offer.variant;
             const Icon = VARIANT_ICONS[offer.variant] ?? BriefcaseIcon;
-            const { rate, max } = projections(offer);
+            const { rate, raceDayPool, certain, upside } = projections(offer);
             const lines = clauseLines(offer.clauses, t);
             const fractionPct = Number(offer.guaranteedFraction) > 0
               ? Math.round(Number(offer.guaranteedFraction) * 100)
@@ -213,26 +265,48 @@ export default function SponsorOfferModal({
                   </div>
                 )}
 
+                {/* Regnestykket i stedet for en formel: garanteret + løbsdage ×
+                    rate = hvad holdet får ved at stille til start. Betingede
+                    bonusser står for sig, så kortet ikke lover sejrspenge. */}
                 <dl className="flex flex-col gap-1.5 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-cz-3">{t("field.guaranteedBase")}</dt>
-                    <dd className="font-mono text-cz-1">{formatNumber(offer.guaranteedBase)} CZ$</dd>
+                    <dd className="whitespace-nowrap font-mono tabular-nums text-cz-1">
+                      {formatNumber(offer.guaranteedBase)} CZ$
+                    </dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-cz-3">{t("field.perRaceDay")}</dt>
-                    <dd className="font-mono text-cz-1">{formatNumber(rate)} CZ$</dd>
+                    <dt className="text-cz-3">
+                      {raceDayPool !== null
+                        ? t("field.raceDayMath", {
+                            count: Number(raceDays) || 0,
+                            rate: formatNumber(rate),
+                          })
+                        : t("field.perRaceDay")}
+                    </dt>
+                    <dd className="whitespace-nowrap font-mono tabular-nums text-cz-1">
+                      {formatNumber(raceDayPool !== null ? raceDayPool : rate)} CZ$
+                    </dd>
                   </div>
-                  {max !== null && (
+                  {certain !== null && (
+                    <div className="flex items-center justify-between gap-2 border-t border-cz-border pt-1.5">
+                      <dt className="text-cz-2">{t("field.ifYouStartEveryStage")}</dt>
+                      <dd className="whitespace-nowrap font-mono tabular-nums font-semibold text-cz-1">
+                        {formatNumber(certain)} CZ$
+                      </dd>
+                    </div>
+                  )}
+                  {certain !== null && upside > 0 && (
                     <div className="flex items-center justify-between gap-2">
-                      <dt className="text-cz-3">
-                        {t("field.projectedMax", { count: Number(raceDays) || 0 })}
-                      </dt>
-                      <dd className="font-mono text-cz-1 font-semibold">{formatNumber(max)} CZ$</dd>
+                      <dt className="text-cz-3">{t("field.bonusUpside")}</dt>
+                      <dd className="whitespace-nowrap font-mono tabular-nums text-cz-2">
+                        +{formatNumber(upside)} CZ$
+                      </dd>
                     </div>
                   )}
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-cz-3">{t("field.length")}</dt>
-                    <dd className="font-mono text-cz-1">
+                    <dd className="whitespace-nowrap font-mono tabular-nums text-cz-1">
                       {t("field.seasons", { count: offer.lengthSeasons })}
                     </dd>
                   </div>
@@ -295,9 +369,12 @@ export default function SponsorOfferModal({
         </div>
       )}
 
-      <p className="mt-4 flex items-center gap-1.5 text-xs text-cz-3">
-        <TeamIcon size={13} className="flex-shrink-0" aria-hidden="true" />
-        {t("offers.boardNote")}
+      {/* Svarer cuchiets spørgsmål 25/7: bestyrelsens modifier rammer KUN den
+          garanterede base (economyEngine gross_sponsor), ikke løbsdags-pengene
+          eller bonusserne — de krediteres rå i sponsorRaceDayIncome. */}
+      <p className="mt-4 flex items-start gap-1.5 text-xs text-cz-3">
+        <TeamIcon size={13} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+        <span>{t("offers.boardNote")}</span>
       </p>
     </Modal>
   );

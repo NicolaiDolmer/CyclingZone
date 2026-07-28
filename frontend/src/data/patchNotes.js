@@ -4,6 +4,573 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.71",
+    "date": "2026-07-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race days now line up with the calendar",
+          "body": "A race day in the Race Hub was a rolling 24 hours counted from the season's very first stage, not an actual day. Because the racing block runs across the afternoon and evening, anything early in the day landed in the previous day's bucket — so a day mixed one evening with the next morning, and 61% of this season's stages showed up under the wrong day. A race day is a real calendar day now. Day links point at the day they say, the timeline counts the season's actual days instead of a fixed 60, and the \"today\" marker moves at midnight instead of in the middle of the afternoon."
+        },
+        "da": {
+          "title": "Løbsdage passer nu med kalenderen",
+          "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape — ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
+        },
+        "refs": [3107]
+      }
+    ]
+  },
+  {
+    "version": "7.70",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "Results actually shows results now",
+          "body": "The Results page was a page of links to other pages. It opens on Latest now: the races that have finished in your division, each with its podium and a way straight into the full result. The race library and the points and prize tables moved in as tabs, so Results is one place with three tabs: Latest, Archive, Points and prizes. Old links still work."
+        },
+        "da": {
+          "title": "Resultater viser faktisk resultater nu",
+          "body": "Resultatsiden var en side med links til andre sider. Den åbner på Seneste nu: de løb, der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "A race's history is no longer a dead end",
+          "body": "Opening a race from the archive showed you every edition and who won it, but there was no way from there into the race itself. Each season in the edition list is a link now, straight to that edition's full result."
+        },
+        "da": {
+          "title": "Et løbs historik er ikke længere en blindgyde",
+          "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgavelisten er et link nu, direkte til den udgaves fulde resultat."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
+    "version": "7.69",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "The Clubhouse menu is ordered by what you actually open",
+          "body": "The menu had grown in the order things were built, not in the order you use them. Your inbox is the third most opened page in the game and sat tenth in the list. Finance sat below the boardroom despite more than twice the traffic. Clubhouse now reads: Dashboard, Inbox, My Team, Daily Training, Finance, Academy, Board, Scouting, Club, Staff. Your manager profile moved down to Settings, where the other personal pages live. Nothing was renamed and no page moved."
+        },
+        "da": {
+          "title": "Klubhus-menuen står i den rækkefølge du faktisk åbner den i",
+          "body": "Menuen var vokset i den rækkefølge tingene blev bygget, ikke i den rækkefølge du bruger dem. Din indbakke er den tredje mest åbnede side i spillet og lå nummer ti på listen. Økonomi lå under bestyrelsen selv om den har mere end dobbelt så meget trafik. Klubhus står nu: Dashboard, Indbakke, Mit Hold, Daglig træning, Økonomi, Akademi, Bestyrelse, Spejder, Klub, Personale. Din managerprofil er flyttet ned til Indstillinger, hvor de andre personlige sider ligger. Intet er omdøbt, og ingen side er flyttet."
+        },
+        "refs": [3104]
+      }
+    ]
+  },
+  {
+    "version": "7.68",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Everything you plan with now sits in one menu group",
+          "body": "Team selection sat under Season & Results, the season planner sat in the Clubhouse, and team strategy had no menu entry at all. The three of them are now a Planning group in the sidebar, in the order you use them: team selection, season planner, team strategy, calendar. Results keeps what you go there to read: overview, races, standings, rider rankings, global rank and season snapshot. Nothing moved inside the pages themselves, so team selection opens exactly where it did before."
+        },
+        "da": {
+          "title": "Alt du planlægger med ligger nu i én menugruppe",
+          "body": "Holdudtagelse lå under Sæson & Resultater, sæsonplanlæggeren lå i Klubhuset, og holdstrategi havde slet ingen indgang i menuen. De tre er nu gruppen Planlægning i sidemenuen, i den rækkefølge du bruger dem: holdudtagelse, sæsonplanlægger, holdstrategi, kalender. Resultater beholder det du går derind for at læse: overblik, løb, ranglisten, rytterrangliste, global rank og sæson-snapshot. Intet er flyttet inde på selve siderne, så holdudtagelse åbner præcis hvor den plejer."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Team strategy is finally in the menu",
+          "body": "Your standing preferences decide how the assistant builds every lineup, but the only way in was a small link on the squad board. Team strategy now has its own entry under Planning. The link on the board still works."
+        },
+        "da": {
+          "title": "Holdstrategi er endelig i menuen",
+          "body": "Dine stående præferencer afgør hvordan assistenten bygger hver opstilling, men den eneste vej ind var et lille link på trup-brættet. Holdstrategi har nu sin egen indgang under Planlægning. Linket på brættet virker stadig."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
+    "version": "7.67",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "The season planner is a list you fill in, not a board you drag",
+          "body": "Setting a peak used to mean dragging a bracket across a timeline, and almost nobody found it. The planner now opens on a Squad tab: one row per rider, with a dropdown to pick the race he peaks for. The board and the race list moved into their own tabs, and dragging still works there. A status line sits above all three, so how many peaks are planned and how many need your attention is the first thing you see."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren er en liste du udfylder, ikke et bræt du trækker i",
+          "body": "At sætte en peak krævede før at man trak en bracket hen over en tidslinje, og næsten ingen fandt ud af det. Planlæggeren åbner nu på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Brættet og løbslisten har fået hver sin fane, og trækket virker stadig dér. En statuslinje ligger over alle tre, så hvor mange peaks der er planlagt, og hvor mange der kræver noget af dig, er det første du ser."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "You can see what a peak is worth before you commit to it",
+          "body": "Every peak now shows what it does to a rider's form on the day, in the same points you already read in your squad: from +6 for a sloppy lead-up to +29 for a perfect one, tightening to a single number once the lead-up is being ridden. It also shows the bill. A peak costs form for the days after it, and if one of your rider's other races falls in that dip, the planner names the race and how many days after it lands."
+        },
+        "da": {
+          "title": "Du kan se hvad en peak er værd, før du binder dig til den",
+          "body": "Hver peak viser nu hvad den gør ved rytterens form på dagen, i de samme point du allerede læser i truppen: fra +6 for en sjusket optakt til +29 for en perfekt, og strammet til ét tal så snart optakten køres. Den viser også regningen. En peak koster form i dagene efter, og falder et af rytterens andre løb i det hul, siger planlæggeren hvilket løb det er, og hvor mange dage efter det ligger."
+        },
+        "refs": [3086, 2905]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season planner",
+        "en": {
+          "title": "Accept the assistant's whole plan in one click",
+          "body": "The assistant already drafted a peak programme for every rider, but the only way to take it was one peak at a time. The banner is now a card that says how many peaks it has drafted and why it picked those races, with a button that accepts the lot. Change any of them afterwards in the list."
+        },
+        "da": {
+          "title": "Acceptér hele assistentens plan med ét klik",
+          "body": "Assistenten udkastede allerede et peak-program til hver rytter, men den eneste måde at tage imod var én peak ad gangen. Banneret er nu et kort der siger hvor mange peaks den har udkastet og hvorfor den valgte netop de løb, med en knap der accepterer det hele. Ret dem enkeltvis i listen bagefter."
+        },
+        "refs": [3086, 2455]
+      }
+    ]
+  },
+  {
+    "version": "7.66",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "The assistant's picks no longer lock you out of your own squad",
+          "body": "When season 2 opened, the assistant had already entered your riders in races across the whole season. Those automatic picks then blocked you: try to put a rider in another race on the same day and he showed up as taken, by a choice you never made. Only your own manual picks and races already under way hold a rider now. The assistant suggests, it does not decide."
+        },
+        "da": {
+          "title": "Assistentens valg låser dig ikke længere ude af din egen trup",
+          "body": "Da sæson 2 åbnede, havde assistenten allerede meldt dine ryttere til løb i hele sæsonen. De automatiske valg spærrede så for dig: forsøgte du at sætte en rytter i et andet løb samme dag, stod han som optaget af et valg du aldrig havde truffet. Nu binder kun dine egne manuelle valg og løb der allerede er i gang. Assistenten foreslår, den bestemmer ikke."
+        },
+        "refs": [3041]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Riders are no longer held by last season's races",
+          "body": "After the move up, riders showed as taken by races from season 1, often in the division you had just left, and the squad would not save at all. Race days are counted from the start of each season, so last season's day 4 and this season's day 4 read as the same day. A race now only holds a rider inside its own season. Starting line-ups are filled from the same rule, so no one is left out of a field for a race they rode last year."
+        },
+        "da": {
+          "title": "Ryttere holdes ikke længere af sidste sæsons løb",
+          "body": "Efter oprykningen stod ryttere som optaget af løb fra sæson 1, ofte i den division du lige havde forladt, og truppen kunne slet ikke gemmes. Løbsdage tælles fra hver sæsons start, så sidste sæsons dag 4 og denne sæsons dag 4 blev læst som samme dag. Et løb holder nu kun en rytter inden for sin egen sæson. Startfelter fyldes efter samme regel, så ingen udelades af et felt på grund af et løb han kørte sidste år."
+        },
+        "refs": [3070, 3076]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders show their real age again",
+          "body": "Everyone turned a year older when season 2 began, and training and values moved with it, but the age on screen stayed on last season's number. Young prospects could read as 30 and over in the market, and the retirement warning pointed at the wrong riders. Ages, the under-23 and under-25 badges and the age filters now follow the season."
+        },
+        "da": {
+          "title": "Ryttere viser deres rigtige alder igen",
+          "body": "Alle blev et år ældre da sæson 2 begyndte, og træning og værdier fulgte med, men alderen på skærmen blev stående på sidste sæsons tal. Unge talenter kunne stå som 30 og derover på markedet, og pensionsadvarslen pegede på de forkerte ryttere. Alder, U23- og U25-mærkerne og aldersfiltrene følger nu sæsonen."
+        },
+        "refs": [3071]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Clearing your squad now tells you which races it withdraws you from",
+          "body": "\"Clear all\" removed your riders from every scheduled race for the rest of the season behind a plain confirmation box, so a team could end up out of races without knowing it. It now names the races you would be withdrawn from, with the time until each one starts, and makes keeping your squad the easy answer."
+        },
+        "da": {
+          "title": "Rydder du din trup, får du nu at vide hvilke løb det melder dig fra",
+          "body": "\"Ryd alt\" fjernede dine ryttere fra alle planlagte løb resten af sæsonen bag en almindelig bekræftelsesboks, så et hold kunne ende uden for løb uden at vide det. Den viser nu hvilke løb du meldes fra, hvor længe der er til hvert af dem starter, og gør det nemme svar til at beholde truppen."
+        },
+        "refs": [3061]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard no longer says your squad is missing when it is full",
+          "body": "The reminder counted only riders you had picked by hand, so a squad the assistant had filled completely still showed up as incomplete. It now reads the same squad the race page does."
+        },
+        "da": {
+          "title": "Dashboardet siger ikke længere at truppen mangler, når den er fuld",
+          "body": "Påmindelsen talte kun ryttere du selv havde valgt, så en trup assistenten havde fyldt helt op stod stadig som ufuldstændig. Den læser nu den samme trup som løbssiden gør."
+        },
+        "refs": [3042]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Intermediate sprints have moved off the climbs",
+          "body": "Some stages placed their intermediate sprint part way up a categorised climb, where a sprinter has no chance and the climbers took the points instead. Sprints now sit on the longest stretch of road without a climb, closest to the middle of the stage. Season 2's calendar has been corrected on 137 stages before any points were awarded."
+        },
+        "da": {
+          "title": "Mellemsprinterne er flyttet væk fra stigningerne",
+          "body": "Nogle etaper lagde deres mellemsprint et stykke oppe ad en kategoriseret stigning, hvor en spurter ingen chance har, og klatrerne tog pointene i stedet. Spurterne ligger nu på den længste strækning uden stigning, tættest på midten af etapen. Sæson 2's kalender er rettet på 137 etaper, før der blev uddelt et eneste point."
+        },
+        "refs": [3048]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The sponsor card says plainly that the cap is the same in every division",
+          "body": "The division picker on a sponsor offer looked like it changed what you could earn in total. It does not, in season 2: only the rate per race day differs. The card now says so, instead of leaving you to work it out."
+        },
+        "da": {
+          "title": "Sponsorkortet siger nu ligeud at loftet er det samme i alle divisioner",
+          "body": "Divisionsvælgeren på et sponsortilbud så ud som om den ændrede hvad du kunne tjene i alt. Det gør den ikke i sæson 2: kun raten pr. løbsdag er forskellig. Det står der nu, i stedet for at du selv skal regne det ud."
+        },
+        "refs": [3020]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Achievements are in English when the game is in English",
+          "body": "All 46 achievement titles and descriptions were stored in Danish only, so English players read Danish text on their profile. Every one of them is now translated."
+        },
+        "da": {
+          "title": "Achievements er på engelsk, når spillet er på engelsk",
+          "body": "Alle 46 achievement-titler og -beskrivelser lå kun på dansk, så engelske spillere læste dansk tekst på deres profil. De er nu oversat alle sammen."
+        },
+        "refs": [3044]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider names in scouting reports, and the team name on a profile, are links again",
+          "body": "A scouting report listed the rider it was about without a way to open him. And the team name in the bar at the top of a rider profile was plain text, though the same name just below it was a link. Both take you where you expect now."
+        },
+        "da": {
+          "title": "Rytternavne i scoutingrapporter og holdnavnet på en profil er links igen",
+          "body": "En scoutingrapport nævnte rytteren den handlede om uden en vej til at åbne ham. Og holdnavnet i baren øverst på en rytterprofil var ren tekst, selv om det samme navn lige nedenunder var et link. Begge fører nu hen hvor du forventer."
+        },
+        "refs": [3046, 3047]
+      }
+    ]
+  },
+  {
+    "version": "7.65",
+    "date": "2026-07-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help pages no longer describe rules the game doesn't have",
+          "body": "The training help claimed you only get 3 training focus slots per season — in reality you can set a focus on as many riders as you like, and always could. The division table in the help also listed only Divisions 1-3; the pyramid has four divisions, and the table now shows all of them."
+        },
+        "da": {
+          "title": "Hjælpesiderne beskriver ikke længere regler spillet ikke har",
+          "body": "Trænings-hjælpen påstod at du kun har 3 trænings-fokus-slots pr. sæson — i virkeligheden kan du sætte fokus på så mange ryttere du vil, og det har du altid kunnet. Divisions-tabellen i hjælpen viste desuden kun Division 1-3; pyramiden har fire divisioner, og tabellen viser nu dem alle."
+        },
+        "refs": [1914]
+      }
+    ]
+  },
+  {
+    "version": "7.64",
+    "date": "2026-07-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season Planner",
+        "en": {
+          "title": "Season Planner no longer shows your old division's calendar",
+          "body": "If your team changed division at the season change, the planner kept showing your previous division's race calendar for the new season, so nearly every promoted or relegated team was planning against races it would never ride. The planner now resolves the calendar for the season you're actually viewing. While a season's promotions and relegations are not yet decided, it says so plainly instead of guessing."
+        },
+        "da": {
+          "title": "Sæsonplanlæggeren viser ikke længere din gamle divisions kalender",
+          "body": "Skiftede dit hold division ved sæsonskiftet, blev planlæggeren ved med at vise den forrige divisions kalender for den nye sæson, så næsten alle op- og nedrykkede hold planlagde mod løb de aldrig skulle køre. Planlæggeren opløser nu kalenderen for den sæson du rent faktisk kigger på. Er en sæsons op- og nedrykninger ikke afgjort endnu, siger den det ligeud i stedet for at gætte."
+        },
+        "refs": [3018]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "The sponsor card now shows the math behind a race day",
+          "body": "Each sponsor offer card stated a rate per race day and a single \"Max\" figure, which left you guessing what the rate actually adds up to over a season and made every offer look about the same. The card now breaks it down: what's guaranteed at season start, your division's race days times the rate, and what that totals to if you start every stage, with any conditional bonuses shown separately instead of folded into the max."
+        },
+        "da": {
+          "title": "Sponsorkortet viser nu regnestykket bag en løbsdag",
+          "body": "Hvert sponsor-tilbudskort viste en rate pr. løbsdag og et enkelt \"Maks\"-tal, hvilket lod dig gætte hvad raten faktisk løber op i over en sæson og fik alle tilbud til at ligne hinanden. Kortet deler nu regnestykket op: hvad der er garanteret ved sæsonstart, din divisions løbsdage gange raten, og hvad det bliver til i alt hvis du starter hver etape, med eventuelle betingede bonusser vist separat i stedet for lagt ind i maks-tallet."
+        },
+        "refs": [2862]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season page now shows the season's best riders",
+          "body": "The Seasons page lists the top riders when a season ends: most points and most wins, each with the runners-up beneath. It's a count, not a championship, since real international titles are planned separately, so the labels read \"Most points\" and \"Most wins\" rather than any title. While the season is still running, you see the same board marked as provisional."
+        },
+        "da": {
+          "title": "Sæson-siden viser nu sæsonens bedste ryttere",
+          "body": "Sæson-siden lister topspillerne når en sæson slutter: flest point og flest sejre, med nr. 2 til 5 under hver. Det er en optælling, ikke en kåring, da rigtige internationale mesterskaber er planlagt separat, så labels er \"Flest point\" og \"Flest sejre\" i stedet for en titel. Mens sæsonen stadig kører, ser du samme tavle markeret som foreløbig."
+        },
+        "refs": [2863]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Every rider starts the new season fresh",
+          "body": "At the season change, your whole squad's fatigue now resets to zero instead of carrying over whatever load riders had built up in the previous season. All riders, on every team, start the new season equally fresh."
+        },
+        "da": {
+          "title": "Alle ryttere starter den nye sæson friske",
+          "body": "Ved sæsonskiftet nulstilles hele din trups træthed nu til nul, i stedet for at bære den belastning rytterne havde bygget op i den foregående sæson videre. Alle ryttere, på alle hold, starter den nye sæson lige friske."
+        },
+        "refs": [2910]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Season achievements now work",
+          "body": "Thirteen season achievements, including top 10, division winner, promotion, relegation and finishing in the money three seasons running, were visible on your profile but nothing in the game could ever award them. They can now be unlocked going forward, and season 1 has been awarded retroactively."
+        },
+        "da": {
+          "title": "Sæson-achievements virker nu",
+          "body": "Tretten sæson-achievements, herunder top 10, divisionsvinder, oprykning, nedrykning og tre sæsoner i træk i pengene, var synlige på din profil, men intet i spillet kunne nogensinde tildele dem. De kan nu låses op fremadrettet, og sæson 1 er tildelt med tilbagevirkende kraft."
+        },
+        "refs": [2917]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season history now shows where you actually finished",
+          "body": "Your season history table always showed a dash in the placement column, no matter how the season actually went. It now shows where you actually finished, like #1 or #2, so a season you won reads as won."
+        },
+        "da": {
+          "title": "Sæsonhistorikken viser nu hvor du rent faktisk sluttede",
+          "body": "Sæsonhistorik-tabellen viste altid en streg i placerings-kolonnen, uanset hvordan sæsonen faktisk gik. Den viser nu hvor du rent faktisk sluttede, som #1 eller #2, så en sæson du vandt også fremstår som vundet."
+        },
+        "refs": [2917]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "The calendar page loads in under a second instead of up to 13",
+          "body": "As the season grew past roughly 400 races, one of the calendar's background requests silently failed every single time, adding around 8 seconds to every page load without showing an error. That request is now gone, the remaining ones run in parallel, and the page only fetches the fields it actually displays. Server response time dropped from up to 9.4 seconds to under 0.7, and first paint on mobile from up to 13 seconds to about 5 on a cold load."
+        },
+        "da": {
+          "title": "Kalender-siden loader nu på under et sekund i stedet for op til 13",
+          "body": "Da sæsonen voksede forbi omkring 400 løb, fejlede et af kalenderens baggrundskald i stilhed hver eneste gang, hvilket lagde omkring 8 sekunder til hver sidevisning uden at vise nogen fejl. Det kald er nu væk, de resterende kører parallelt, og siden henter kun de felter den rent faktisk viser. Server-svartiden faldt fra op til 9,4 sekunder til under 0,7, og første visning på mobil fra op til 13 sekunder til omkring 5 ved en kold indlæsning."
+        },
+        "refs": [2861]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "The guided \"Show me how\" tour now covers all 4 onboarding steps",
+          "body": "The dashboard's getting-started card only offered a guided walkthrough for two of its four steps; the other two, daily training and squad selection, had no explanation and the help button simply didn't appear. All four steps now open a tour, including the training focus screen and the squad selection page where most new managers actually got stuck."
+        },
+        "da": {
+          "title": "Den guidede \"Vis mig hvordan\"-rundvisning dækker nu alle 4 onboarding-trin",
+          "body": "Dashboardets onboarding-kort tilbød kun en guidet rundvisning på to af sine fire trin; de andre to, daglig træning og holdudtagelse, havde ingen forklaring og hjælpe-knappen dukkede simpelthen ikke op. Alle fire trin åbner nu en rundvisning, inklusive træningsfokus-siden og holdudtagelsen, hvor de fleste nye managere rent faktisk sad fast."
+        },
+        "refs": [2819]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sign-up",
+        "en": {
+          "title": "Signing up with an unconfirmed email now gives you a way forward",
+          "body": "If you finished signup but never confirmed your email, there was no way back: the only button led to a login that was guaranteed to fail. The confirmation screen now suggests a fix if your address looks mistyped (like a missing letter in gmail.com), shows a countdown instead of a rate-limit error when you resend, and lets you correct your email without losing the team name and manager name you already entered."
+        },
+        "da": {
+          "title": "Tilmelding med en ubekræftet email giver dig nu en vej videre",
+          "body": "Gennemførte du tilmeldingen men bekræftede aldrig din email, var der ingen vej tilbage: den eneste knap førte til et login der var garanteret at fejle. Bekræftelsesskærmen foreslår nu en rettelse hvis din adresse ser forkert tastet ud (som et manglende bogstav i gmail.com), viser en nedtælling i stedet for en rate-limit-fejl når du sender igen, og lader dig rette din email uden at miste det holdnavn og managernavn du allerede har tastet."
+        },
+        "refs": [2826]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "Feedback you send can now get a reply",
+          "body": "Messages sent through the in-app feedback form used to disappear into a queue nobody read. They now reach an admin inbox where they can be triaged and answered, and if you get a reply, it lands as a notification in the game, the same way other messages do."
+        },
+        "da": {
+          "title": "Feedback du sender kan nu få et svar",
+          "body": "Beskeder sendt via feedback-formularen i appen forsvandt tidligere ind i en kø som ingen læste. De havner nu i en admin-indbakke hvor de kan triageres og besvares, og får du et svar, lander det som en notifikation i spillet, på samme måde som andre beskeder."
+        },
+        "refs": [2842]
+      }
+    ]
+  },
+  {
+    "version": "7.63",
+    "date": "2026-07-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "\"How your team did\" now shows more than the latest race",
+          "body": "The dashboard card now lists your team's earlier races this season, with best finish, points and prize money for each one, plus a running season total for points, prize money and race count. The five most recent races show by default, with a toggle to see the rest."
+        },
+        "da": {
+          "title": "\"How your team did\" viser nu mere end det seneste løb",
+          "body": "Dashboard-kortet lister nu holdets tidligere løb i denne sæson med bedste placering, point og præmiepenge for hvert løb, plus en løbende sæson-total for point, præmiepenge og antal løb. De fem seneste løb vises som standard, med en knap til at se resten."
+        },
+        "refs": [2886]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Your training plans now carry over between seasons",
+          "body": "When a new season started, every rider's training plan used to reset silently to an automatic default, even if you had set your own focus and intensity. Training plans now carry over intact as long as the rider is still on your squad."
+        },
+        "da": {
+          "title": "Dine træningsplaner videreføres nu mellem sæsoner",
+          "body": "Når en ny sæson startede, blev alle rytteres træningsplan tidligere nulstillet tavst til et automatisk standardprogram, selvom du selv havde sat fokus og intensitet. Træningsplaner videreføres nu intakt, så længe rytteren stadig er på din trup."
+        },
+        "refs": [2916]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Forced sales for unpaid debt no longer happen silently",
+          "body": "If your debt stays over your division's cap for two seasons in a row, the board sells your most valuable rider to close the gap, and until now that sale happened without a word. You now get a warning the season before it can happen, and if the sale goes through, a message names the rider sold, what it raised and where your debt stands afterwards."
+        },
+        "da": {
+          "title": "Tvangssalg ved ubetalt gæld sker ikke længere i stilhed",
+          "body": "Bliver din gæld ved med at ligge over din divisions loft to sæsoner i træk, sælger bestyrelsen din mest værdifulde rytter for at lukke hullet, og indtil nu skete det salg uden et ord. Du får nu en advarsel sæsonen før det kan ske, og gennemføres salget, navngiver en besked den solgte rytter, hvad det indbragte, og hvor din gæld står bagefter."
+        },
+        "refs": [2976]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Manager profile pages no longer fail to load on missing data",
+          "body": "A manager's profile page, including pages for AI-controlled teams that you reach through transfer history, could fail to load if some of the team's data was missing. It now shows the page normally, with an empty state where the data is missing."
+        },
+        "da": {
+          "title": "Manager-profilsider fejler ikke længere ved manglende data",
+          "body": "En managers profilside, herunder sider for AI-styrede hold du når via transfer-historikken, kunne fejle ved indlæsning hvis noget af holdets data manglede. Den viser nu siden normalt, med en tom-tilstand hvor data mangler."
+        },
+        "refs": [2876]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Buttons that refused to work now tell you why",
+          "body": "The Bid button and the Save button in the auto-bid box went grey and silent whenever your amount was below the current minimum bid. Nothing explained that, so the click just seemed to do nothing. This happened most often when you reopened the auto-bid box on an auction whose price had risen past the limit you saved earlier, because the box fills in your old limit. Both buttons now stay clickable and show the exact amount you need to reach. Removing an auto-bid limit also shows that it is working, and tells you if it failed instead of leaving the limit quietly in place."
+        },
+        "da": {
+          "title": "Knapper der nægtede at virke fortæller nu hvorfor",
+          "body": "Byd-knappen og Gem-knappen i autobud-boksen blev grå og tavse hvis dit beløb lå under det aktuelle minimumsbud. Intet forklarede det, så klikket så bare ud som om det ikke gjorde noget. Det skete oftest når du åbnede autobud-boksen igen på en auktion hvor prisen var steget forbi det loft du gemte tidligere, fordi boksen udfylder dit gamle loft. Begge knapper kan nu klikkes og viser præcis hvilket beløb du skal op på. At fjerne et autobud-loft viser nu også at det er i gang, og siger til hvis det fejlede i stedet for at lade loftet blive stående i stilhed."
+        },
+        "refs": [2719, 2254]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Extending a contract shows that it is working",
+          "body": "When you opened the extend panel on a rider, the app fetched the renegotiated salary in the background while the confirm button sat there greyed out without a word. If that fetch was slow, the button looked ready but did nothing. The panel now shows a spinner and says whether it is loading the terms or running the extension, the button cannot fire twice, and the terms are refetched next time so you never confirm against an old salary. The same fix is on the squad page."
+        },
+        "da": {
+          "title": "Forlængelse af en kontrakt viser nu at den arbejder",
+          "body": "Når du åbnede forlæng-panelet på en rytter, hentede appen den genforhandlede løn i baggrunden mens bekræft-knappen stod grå uden et ord. Var hentningen langsom, så knappen klar ud men gjorde ingenting. Panelet viser nu en spinner og fortæller om det er vilkårene der hentes eller forlængelsen der kører, knappen kan ikke udløses to gange, og vilkårene hentes forfra næste gang så du aldrig bekræfter mod en gammel løn. Samme rettelse er lavet på trup-siden."
+        },
+        "refs": [2718]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "A facility purchase or plan renewal that fails now says so",
+          "body": "Buying or upgrading a facility closed the dialog whether or not the purchase went through, so a rejected purchase looked exactly like a completed one. Renewing a board plan had the same problem and no working indicator at all. Both now keep you informed: the dialog stays open with the reason if the purchase is refused, and the renew button shows that it is running and reports a failure instead of staying quiet."
+        },
+        "da": {
+          "title": "Et facilitetskøb eller en planfornyelse der fejler siger nu til",
+          "body": "Køb eller opgradering af en facilitet lukkede dialogen uanset om købet gik igennem, så et afvist køb så præcis ud som et gennemført. Fornyelse af en bestyrelsesplan havde samme problem og slet ingen indikator for at den arbejdede. Begge holder dig nu orienteret: dialogen bliver stående med årsagen hvis købet afvises, og forny-knappen viser at den kører og melder fejl i stedet for at tie."
+        },
+        "refs": [2718, 2719]
+      }
+    ]
+  },
+  {
     "version": "7.62",
     "date": "2026-07-25",
     "label": "Beta",

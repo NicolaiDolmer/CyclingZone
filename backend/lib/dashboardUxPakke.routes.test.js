@@ -153,13 +153,82 @@ test("rider-ranking: season- + RPC-fejl kastes (throw), ikke tavst || []", () =>
 // (nulstiller sig pr. enhed/browser; 54,9% af besøg er mobil). Fix:
 // server-persisteret seen-flag (teams.my_result_seen_race_id), samme mønster
 // som teams.onboarding_progress_dismissed_at (#2439).
+// routeBodyBlock (ikke routeBlock med et tegn-loft): ruten voksede med #2886's
+// historik-gren, og et fast 5000-tegns vindue klippede res.json væk, så en
+// grøn test ikke længere beviste noget. Skær til næste router.-registrering i
+// stedet, så vinduet følger ruten.
 test("my-latest-result: GET inkluderer race.seen afledt af teams.my_result_seen_race_id (ingen ekstra roundtrip for at læse status)", () => {
-  const block = routeBlock('router.get("/dashboard/my-latest-result"', 5000);
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
   assert.match(
     block,
     /seen:\s*raceId\s*===\s*req\.team\.my_result_seen_race_id/,
     "race-objektet i GET-responsen skal inkludere et seen-felt afledt af den persisterede kolonne",
   );
+});
+
+// #2886 (spillerønske, Discord 24/7) — kortet viser nu også de foregående løb
+// i sæsonen + akkumulerede totaler. Aggregeringen SKAL blive i Postgres: et
+// etableret hold har 1.400-4.300 race_results-rækker i sæsonen, og at hente dem
+// alle og gruppere pr. løb i Node er præcis mønsteret der gav ~8s
+// Consecutive-HTTP for rider-ranking (#2692, CYCLINGZONE-36).
+test("my-latest-result: sæson-historikken kommer fra dashboard_my_team_season_races-RPC'en med hold + sæson + division + loft (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(
+    block,
+    /supabase\.rpc\(\s*"dashboard_my_team_season_races"\s*,\s*\{[\s\S]*?p_team_id:\s*req\.team\.id[\s\S]*?p_season_id:\s*season\.id[\s\S]*?p_league_division_id:\s*req\.team\.league_division_id[\s\S]*?p_limit:[\s\S]*?\}\s*\)/,
+    "historikken skal hentes via RPC'en med hold-, sæson-, divisions- og limit-argument",
+  );
+  assert.doesNotMatch(block, /fetchAllRows/, "historikken må ikke paginere race_results i Node");
+});
+
+test("my-latest-result: RPC-loftet er en konstant (ingen ubegrænset SELECT, ingen OFFSET-paginering) (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(block, /p_limit:\s*MY_TEAM_SEASON_RACES_LIMIT/, "limit skal være den delte konstant, ikke et magisk tal");
+  assert.match(apiSource, /const MY_TEAM_SEASON_RACES_LIMIT = \d+;/, "konstanten skal være defineret i api.js");
+  assert.doesNotMatch(block, /\.range\(/, "ingen OFFSET/range-paginering i dette endpoint");
+});
+
+test("my-latest-result: historik-fejl kastes — kun 'funktionen findes ikke' degraderer (ingen tavs || []) (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(
+    block,
+    /if\s*\(\s*seasonRacesRes\.error\s*\)[\s\S]*?code\s*!==\s*"PGRST202"\s*&&\s*code\s*!==\s*"42883"[\s\S]*?throw\s+seasonRacesRes\.error/,
+    "alle andre RPC-fejl end 'function not found' skal kastes",
+  );
+});
+
+// Degraderingen dækker den tilstand hvor en migration er glemt. Netop derfor må
+// den ikke være tavs: uden en larm ser den ud som "kortet mangler bare den
+// nederste halvdel", og det er ikke noget en spiller melder.
+test("my-latest-result: degraderingen er hørbar — console + Sentry med RPC, migration, hold og sæson (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(
+    block,
+    /console\.warn\([\s\S]*?dashboard_my_team_season_races/,
+    "degraderingen skal logge hvilken RPC der mangler",
+  );
+  assert.match(
+    block,
+    /captureException\(seasonRacesRes\.error,\s*\{[\s\S]*?teamId:\s*req\.team\.id[\s\S]*?seasonId:\s*season\.id[\s\S]*?\}\)/,
+    "Sentry-eventet skal bære hold og sæson, så vinduets omfang kan aflæses",
+  );
+  assert.match(
+    block,
+    /fingerprint:\s*\["dashboard-my-team-season-races-rpc-missing"\]/,
+    "fast fingerprint samler alle hold i ÉT issue, så first→last seen aflæser hvor længe migrationen har manglet",
+  );
+  assert.match(
+    block,
+    /migration:\s*"database\/2026-07-25-dashboard-my-team-season-races-rpc\.sql"/,
+    "eventet skal pege på den migration der mangler at blive anvendt",
+  );
+});
+
+test("my-latest-result: svaret bærer history + season_totals (#2886)", () => {
+  const block = routeBodyBlock('router.get("/dashboard/my-latest-result"');
+  assert.match(block, /buildSeasonHistory\(\{[\s\S]*?latestRaceId:\s*raceId/, "historikken skal bygges med det viste løb som filter");
+  assert.match(block, /\n\s+history,\s/, "res.json skal inkludere history");
+  assert.match(block, /\n\s+season_totals,\s/, "res.json skal inkludere season_totals");
 });
 
 test("POST /dashboard/my-latest-result/seen: team udledes udelukkende server-side (req.team), ikke fra request-body", () => {

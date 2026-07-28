@@ -92,7 +92,11 @@ async function installSponsorMocks(page) {
 }
 
 test.describe("#2948 sponsor UI", () => {
-  test("Finance sponsor tab renders contract + earnings; Board modal shows 5 archetype offers with clauses", async ({ page }) => {
+  test("Finance sponsor tab renders contract + earnings; Board modal shows 5 archetype offers with clauses", async ({ page }, testInfo) => {
+    // Screenshot-artefakterne skrives KUN fra desktop-chromium. Før #2862 skrev
+    // alle 3 projekter til samme filnavn, så den committede PNG afhang af hvilket
+    // projekt der kørte sidst.
+    const capture = testInfo.project.name === "desktop-chromium";
     const pageErrors = [];
     const consoleErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -125,7 +129,9 @@ test.describe("#2948 sponsor UI", () => {
     await expect(page.getByText("Tjent på denne kontrakt")).toBeVisible();
     await expect(page.getByText("657.800 CZ$")).toBeVisible();
 
-    await page.screenshot({ path: "tests/screenshots/sponsor-contract-panel.png", fullPage: true });
+    if (capture) {
+      await page.screenshot({ path: "tests/screenshots/sponsor-contract-panel.png", fullPage: true });
+    }
 
     // ── Board → "Se tilbud"-CTA → tilbuds-modal med 5 arketyper ─────────────
     await page.goto("/board");
@@ -146,11 +152,52 @@ test.describe("#2948 sponsor UI", () => {
 
     // Enheds-definition + deadline/default-regel (#2862/#1778/#2914).
     await expect(page.getByText(/1 løbsdag = én etape dit hold stiller til start i/)).toBeVisible();
+    await expect(page.getByText(/Ikke en kalenderdag/)).toBeVisible();
     await expect(page.getByText(/Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale/)).toBeVisible();
+
+    // #2862: enheden oversat til holdets EGNE tal — etapetal for den valgte
+    // division + forholdet til kalenderdagene (84 etaper / 28 dage = 3 pr. dag).
+    // Det var præcis regnestykket spillerne byggede regneark for at gætte.
+    await expect(
+      page.getByText(/Division 3 kører 84 etaper i sæson 2, altså 84 løbsdage du kan tjene på/)
+    ).toBeVisible();
+    await expect(
+      page.getByText(/fordelt over 28 kalenderdage, så de fleste dage bærer omkring 3 etaper/)
+    ).toBeVisible();
 
     // Divisionsvælger med løbsdage fra kalenderdata (#2862).
     await expect(page.getByRole("button", { name: "Division 3 · 84 løbsdage" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Division 2 · 112 løbsdage" })).toBeVisible();
+
+    // cuchiet 25/7 spørgsmål 1: hvorfor flytter totalen sig ikke når man skifter
+    // division? Fordi divisionen kun omfordeler den samme pulje over flere etaper.
+    // #3020 (ejer-beslutning 27/7): eksplicit copy-fix — maks-udbetalingen er den
+    // samme uanset valgt division, kun raten pr. etape ændrer sig.
+    await expect(
+      page.getByText(/Din maksimale udbetaling ændrer sig ikke, uanset hvilken division du vælger/)
+    ).toBeVisible();
+
+    // cuchiet 25/7 spørgsmål 2: rører bestyrelsens modifier løbsdags-pengene? Nej.
+    await expect(
+      page.getByText(/Den rører ikke løbsdags-pengene eller bonusserne/)
+    ).toBeVisible();
+
+    // Regnestykket på kortene: løbsdage × rate, og hvad man ender med ved at
+    // stille til start hver etape. Tallene er BEREGNEDE (ikke perRaceDayRate fra
+    // payloaden), så assertionen fanger hvis projektionen driver.
+    await expect(page.getByText("84 løbsdage × 455 CZ$")).toBeVisible();
+    await expect(page.getByText("478.261 CZ$")).toBeVisible();
+    await expect(page.getByText("84 løbsdage × 3.300 CZ$")).toBeVisible();
+    await expect(page.getByText("516.240 CZ$")).toBeVisible();
+    await expect(page.getByText(/Hvis du starter hver etape/).first()).toBeVisible();
+    // Betinget bonus-top holdes adskilt fra det sikre beløb (results-kortet).
+    await expect(page.getByText("+239.000 CZ$")).toBeVisible();
+
+    // Skift division → raten skal ændre sig (112 etaper i D2), totalen ikke.
+    await page.getByRole("button", { name: "Division 2 · 112 løbsdage" }).click();
+    await expect(page.getByText("112 løbsdage × 342 CZ$")).toBeVisible();
+    await expect(page.getByText("478.261 CZ$")).toBeVisible();
+    await page.getByRole("button", { name: "Division 3 · 84 løbsdage" }).click();
 
     // Klausul-linjer på kortene.
     await expect(page.getByText(/38\.240 CZ\$ underskriftsbonus/)).toBeVisible();
@@ -169,7 +216,22 @@ test.describe("#2948 sponsor UI", () => {
     await expect(page.getByRole("button", { name: "Underskriv aftale" })).toBeVisible();
     await page.getByRole("button", { name: "Annullér" }).click();
 
-    await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal.png", fullPage: true });
+    if (capture) {
+      // Modalen har intern scroll og står nede ved Review-knappen efter flowet
+      // ovenfor. Rul tilbage til toppen, så artefaktet viser enheds-forklaringen
+      // og ikke bare midten af kort-griddet.
+      const modalTop = page.getByRole("heading", { name: "Vælg din sponsor", exact: true });
+      await modalTop.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal.png", fullPage: true });
+
+      // 360px: den smalleste udbredte telefon. Mobil er 54,9 % af trafikken, så
+      // regnestykket på kortet skal kunne læses uden vandret scroll her.
+      await page.setViewportSize({ width: 360, height: 900 });
+      await expect(page.getByText("84 løbsdage × 455 CZ$")).toBeVisible();
+      await modalTop.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: "tests/screenshots/sponsor-offer-modal-360.png", fullPage: true });
+      await page.setViewportSize({ width: 1280, height: 800 });
+    }
 
     // ── Ingen uncaught fejl undervejs ───────────────────────────────────────
     expect(pageErrors, `pageerror(s): ${pageErrors.join(" | ")}`).toEqual([]);

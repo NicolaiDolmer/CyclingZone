@@ -228,7 +228,7 @@
       },
       "headToHead": {
         "title": "Compare two teams (Head-to-Head)",
-        "text": "Open League & standings (under Season & Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
+        "text": "Open League & standings (under Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
       },
       "contactSupport": {
         "title": "Contact & feedback",
@@ -285,6 +285,10 @@
           ["Season", "Division winner, Podium, Board favourite, Veteran"],
           ["Secret", "Unlocked by unexpected events, not described upfront"]
         ]
+      },
+      "seasonAchievements": {
+        "title": "Season achievements",
+        "text": "Placings, promotion, relegation and survival are decided at the season change, not while the season is running. Your placing is your rank in your own division group, so every group has a winner. Promotion and relegation are awarded once the new divisions are set."
       },
       "secretAchievements": {
         "title": "Secret achievements",
@@ -361,7 +365,7 @@
       },
       "racesAndResults": {
         "title": "Races and results",
-        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
+        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Results, where Latest shows the races that have finished in your division. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself. You get an in-app notification after every stage you take part in, not just the final one, so a multi-day race never goes quiet."
       },
       "latestTeamResult": {
         "title": "Where do I see how my team did?",
@@ -381,7 +385,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Results, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -393,8 +397,8 @@
         ]
       },
       "raceLibrary": {
-        "title": "Race library",
-        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
+        "title": "Race archive",
+        "text": "Under Results, Archive you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race. Each edition links straight to that edition's full result."
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
@@ -437,9 +441,9 @@
       },
       "fullTable": {
         "title": "The full points table",
-        "text": "Under Season & Results, Races, Points & prizes you'll find every race class's complete points and prize scale with all places.",
+        "text": "Under Results, Points & prizes you'll find every race class's complete points and prize scale with all places.",
         "ctaLabel": "Open Points & prizes →",
-        "ctaTo": "/races?tab=points",
+        "ctaTo": "/resultater?tab=points",
         "disclaimer": "Prize amounts may still be adjusted during the open beta."
       }
     },
@@ -455,7 +459,8 @@
           ["Division", "Minimum riders", "Maximum riders"],
           ["Division 1", "0", "30"],
           ["Division 2", "0", "30"],
-          ["Division 3", "0", "30"]
+          ["Division 3", "0", "30"],
+          ["Division 4", "0", "30"]
         ]
       },
       "promotionRelegation": {
@@ -527,7 +532,7 @@
       },
       "trainingFocus": {
         "title": "Training focus",
-        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You have 3 focus slots per season, so pick your key riders; changing an existing focus costs nothing. Training is free and does not cost money."
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -754,7 +759,7 @@
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
-        "text": "Open Team strategy from the squad board to set preferences your assistant follows when it auto-fills the calendar. Rank an A-chain of core riders. They get priority for the races you mark as targets. Give a rider a fixed role (always captain, or always sprint captain when selected). Rank captains 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial); the assistant picks the highest-ranked rider who makes that race's lineup. Mark your target races so your strongest riders go there. Preview shows exactly how your strategy changes selections before you save, and Regenerate suggestions applies it without touching the picks you made by hand."
+        "text": "Open Team strategy under Planning, or from the squad board, to set preferences your assistant follows when it auto-fills the calendar. Rank an A-chain of core riders. They get priority for the races you mark as targets. Give a rider a fixed role (always captain, or always sprint captain when selected). Rank captains 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial); the assistant picks the highest-ranked rider who makes that race's lineup. Mark your target races so your strongest riders go there. Preview shows exactly how your strategy changes selections before you save, and Regenerate suggestions applies it without touching the picks you made by hand."
       },
       "breakaway": {
         "title": "Breakaways",
@@ -773,19 +778,27 @@
   "faq": {
     "seasonPlanner": {
       "q": "What is the Season Planner?",
-      "a": "The Season Planner is where you plan form peaks for your whole squad. Target a key race for a rider and the planner builds a lead-up that lifts their form for that day. Form is earned through training in the lead-up, so a peak you prepare for pays off more than one you leave to chance. Each rider can peak for up to two races a season, and the target race must be in your division's calendar."
+      "a": "The Season Planner is where you plan form peaks for your whole squad. It opens on the Squad tab: one row per rider, with a dropdown where you pick the race he peaks for. The Season tab shows the same plan as a board you can drag on, and the Races tab lists the season's calendar. Form is earned through training in the lead-up, so a peak you prepare for pays off more than one you leave to chance. Each rider can peak for up to two races a season, and the target race must be in your division's calendar."
     },
     "peakTraining": {
       "q": "How does peak training work?",
       "a": "When you set a peak, the planner suggests a build week and a taper week for the lead-up. Accept one from the rider drawer and it writes that rhythm to the rider's weekly training. Training the right focus for the race profile, staying consistent, and reaching the taper rested all raise how much of the peak you realize. A peak locks three days before its window starts, so plan ahead."
     },
+    "peakValue": {
+      "q": "How much is a peak actually worth?",
+      "a": "A peak is worth between +6 and +29 form on the day, and where you land in that range depends entirely on how the lead-up is ridden: a sloppy lead-up is worth about a fifth of a perfect one. Until the lead-up starts the planner can only show you the range, because the number does not exist yet. Once training is under way it tightens to a single figure. For scale, +29 is the difference between a rider on 50 form and the same rider on 79."
+    },
+    "peakPayback": {
+      "q": "Does a peak cost me anything afterwards?",
+      "a": "Yes. After a peak's window closes the rider carries about -14 form for the next seven days. That is the price of the top, and it is why a peak is a choice rather than a free upgrade. If one of the rider's other races falls inside that dip, the Squad tab names the race and how many days after the peak it lands, so you can move the peak or accept the cost with your eyes open."
+    },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
-      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
+      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view (Planning -> Team selection) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
     },
     "teamStrategyFaq": {
       "q": "How do I make the assistant pick my best riders for big races?",
-      "a": "Open Team strategy from the squad board. Add your best riders to the A-chain and mark the races that matter most as targets, and the assistant then prioritizes your A-chain for those races. You can also rank captains 1/2/3 per terrain and give riders a fixed role. Use Preview changes to see exactly how it affects your lineups, then Save and Regenerate suggestions. Picks you set by hand are never overwritten."
+      "a": "Open Team strategy under Planning. Add your best riders to the A-chain and mark the races that matter most as targets, and the assistant then prioritizes your A-chain for those races. You can also rank captains 1/2/3 per terrain and give riders a fixed role. Use Preview changes to see exactly how it affects your lineups, then Save and Regenerate suggestions. Picks you set by hand are never overwritten."
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
@@ -877,7 +890,7 @@
     },
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You have 3 focus slots per season. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",
@@ -906,6 +919,14 @@
     "sponsorNegotiation": {
       "q": "How do I negotiate my sponsor, and what do the offers mean?",
       "a": "You choose your sponsor on the Board page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-race-day rate: 1 race day = one stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap), or a season objective that pays out at season end if you finish in the top half of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Finance page under the Sponsor tab; you negotiate again when it expires."
+    },
+    "sponsorRaceDayUnit": {
+      "q": "What exactly is a race day, and how many are there?",
+      "a": "A race day is one stage your team starts, not a calendar day. That is the unit every sponsor's per-race-day rate is counted in. Season 2 runs over 28 calendar days, but each division rides far more stages than that: Division 1 has 140 stages, Division 2 has 112, Division 3 has 84 and Division 4 has 56. So a Division 2 team has 112 race days to earn on, spread across 28 days, which is about four stages on a typical day. The rate is set against your own division's stage count when the contract activates, so the variable part of the deal adds up to the same total whichever division you are in: a bigger division pays a smaller amount per stage over more stages. What does change between divisions is the size of the whole deal, because the offers are built from your club's reputation, and that starts from a division-scaled base. You earn a race day by starting the stage, and the money is credited as each race finalises."
+    },
+    "sponsorBoardModifierScope": {
+      "q": "Does board satisfaction affect my race-day money?",
+      "a": "No. The board's modifier only applies to the guaranteed part of the deal, the lump sum paid at season start, and it can move that by up to plus/minus 20 percent. Race-day income and every bonus clause (signing bonus, stage win, podium, season objective) are paid in full at their face value, on top, as you earn them. A sponsor pullout works the same way: it reduces the guaranteed season-start payout, not what you earn while racing."
     },
     "seasonFinanceReport": {
       "q": "What does the season finance report show, and where do I find it?",
@@ -1049,7 +1070,7 @@
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
-      "a": "Season 1's calendar is designed before the window closes and is published on the Races page (Season & Results → Races → Calendar). WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
+      "a": "Season 1's calendar is designed before the window closes and is published under Planning → Team selection. WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
     },
     "howToWinRace": {
       "q": "How do I win a race, and what decides the result?",
@@ -1065,7 +1086,7 @@
     },
     "raceSignupFaq": {
       "q": "Where do I sign up for a race?",
-      "a": "Go to Season & Results, Races (or open /races directly). The Calendar tab opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
+      "a": "Go to Planning, Team selection (or open /races directly). It opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
     },
     "raceClassificationsFaq": {
       "q": "What's the difference between GC, Classic/Monument and stage wins?",

@@ -1,0 +1,121 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  squadSlots, targetableRacesFor, peakNeedsAction, plannerStatusSummary,
+  pendingSuggestionPairs, ridersWithSuggestions,
+} from "./plannerSquadModel.js";
+
+const race = (id, date, isMine = true) => ({ id, name: `Race ${id}`, date, isMine });
+
+const peak = (over = {}) => ({
+  id: `p:${over.targetRaceId ?? "x"}`,
+  targetRaceId: "r1",
+  windowStart: "2026-08-05",
+  windowEnd: "2026-08-15",
+  status: "pending",
+  isSuggestion: false,
+  paybackCollisions: [],
+  ...over,
+});
+
+test("squadSlots: peaks først (kronologisk), derefter tomme pladser op til loftet", () => {
+  const rider = { id: "rd1", peaks: [peak({ targetRaceId: "b", windowStart: "2026-09-01" }), peak({ targetRaceId: "a", windowStart: "2026-06-01" })] };
+  const slots = squadSlots(rider, 3);
+  assert.equal(slots.length, 3);
+  assert.equal(slots[0].peak.targetRaceId, "a", "tidligste vindue først");
+  assert.equal(slots[1].peak.targetRaceId, "b");
+  assert.equal(slots[2].peak, null, "resten er tomme pladser");
+});
+
+test("squadSlots: flere peaks end loftet trunkeres ALDRIG væk", () => {
+  // Loftet kan sænkes uden at eksisterende planer slettes — en plan der ikke
+  // kan ses, kan heller ikke fjernes.
+  const rider = { id: "rd1", peaks: [peak({ targetRaceId: "a" }), peak({ targetRaceId: "b" }), peak({ targetRaceId: "c" })] };
+  assert.equal(squadSlots(rider, 2).filter((s) => s.peak).length, 3);
+});
+
+test("squadSlots: rytter uden peaks får tomme pladser, ikke en tom liste", () => {
+  const slots = squadSlots({ id: "rd1", peaks: [] }, 2);
+  assert.equal(slots.length, 2);
+  assert.ok(slots.every((s) => s.peak === null));
+  assert.notEqual(slots[0].key, slots[1].key, "nøglerne skal være unikke");
+});
+
+test("targetableRacesFor: kun egne fremtidige løb, kronologisk", () => {
+  const races = [race("r3", "2026-09-01"), race("r1", "2026-06-01"), race("r2", "2026-08-01"), race("r4", "2026-08-10", false)];
+  const out = targetableRacesFor({ rider: { peaks: [] }, races, todayOrd: 20640 /* 2026-07-13 */ });
+  assert.deepEqual(out.map((r) => r.id), ["r2", "r3"], "fortid og fremmed-divisions løb er ude");
+});
+
+test("targetableRacesFor: rytterens ANDRE mål er ude, pladsens eget mål er med", () => {
+  const races = [race("r1", "2026-08-01"), race("r2", "2026-08-20"), race("r3", "2026-09-05")];
+  const rider = { peaks: [peak({ targetRaceId: "r1" }), peak({ targetRaceId: "r2" })] };
+  const out = targetableRacesFor({ rider, races, todayOrd: 20640, currentTargetId: "r1" });
+  assert.deepEqual(out.map((r) => r.id), ["r1", "r3"], "r2 (den anden plads) er ude, r1 (egen) er med");
+});
+
+test("targetableRacesFor: et mål i fortiden kan stadig LÆSES i kontrollen", () => {
+  const races = [race("r1", "2026-05-01"), race("r2", "2026-09-01")];
+  const out = targetableRacesFor({ rider: { peaks: [] }, races, todayOrd: 20640, currentTargetId: "r1" });
+  assert.deepEqual(out.map((r) => r.id), ["r1", "r2"]);
+});
+
+test("peakNeedsAction: at_risk ELLER payback-kollision", () => {
+  assert.equal(peakNeedsAction(peak()), false);
+  assert.equal(peakNeedsAction(peak({ status: "at_risk" })), true);
+  assert.equal(peakNeedsAction(peak({ paybackCollisions: [{ raceId: "r9", daysAfterPeak: 4 }] })), true);
+  assert.equal(peakNeedsAction(null), false);
+});
+
+test("plannerStatusSummary: tæller ægte peaks, handlinger og dage til næste optakt", () => {
+  const riders = [
+    { id: "a", peaks: [peak({ targetRaceId: "r1", windowStart: "2026-08-05" })] },
+    { id: "b", peaks: [peak({ targetRaceId: "r2", windowStart: "2026-07-25", status: "at_risk" })] },
+    { id: "c", peaks: [peak({ targetRaceId: "r3", windowStart: "2026-07-20", isSuggestion: true })] },
+  ];
+  const s = plannerStatusSummary({ riders, today: "2026-07-13", leadupDays: 14 });
+  assert.equal(s.peaksPlanned, 2, "forslaget tæller ikke som planlagt");
+  assert.equal(s.needsAction, 1);
+  // b's vindue starter 25/7; optakten begynder 14 dage før = 11/7, altså i gang.
+  // a's vindue starter 5/8 → optakt fra 22/7 → 9 dage.
+  assert.equal(s.daysToNextLeadup, 9, "kun optakter der ikke er begyndt tæller");
+});
+
+test("plannerStatusSummary: et FORSLAG med payback-kollision tæller som handling", () => {
+  // Ellers kunne 'Accept all' skjule et sammenstød manageren burde se først.
+  const riders = [{ id: "a", peaks: [peak({ isSuggestion: true, paybackCollisions: [{ raceId: "r9", daysAfterPeak: 3 }] })] }];
+  const s = plannerStatusSummary({ riders, today: "2026-07-13", leadupDays: 14 });
+  assert.equal(s.peaksPlanned, 0);
+  assert.equal(s.needsAction, 1);
+});
+
+test("plannerStatusSummary: tomt bræt giver nul og null, ikke NaN", () => {
+  const s = plannerStatusSummary({ riders: [], today: "2026-07-13", leadupDays: 14 });
+  assert.deepEqual(s, { peaksPlanned: 0, needsAction: 0, daysToNextLeadup: null });
+});
+
+test("plannerStatusSummary: ukendt dags dato → ingen nedtælling, men stadig tællinger", () => {
+  const riders = [{ id: "a", peaks: [peak({ status: "at_risk" })] }];
+  const s = plannerStatusSummary({ riders, today: null, leadupDays: 14 });
+  assert.equal(s.peaksPlanned, 1);
+  assert.equal(s.needsAction, 1);
+  assert.equal(s.daysToNextLeadup, null);
+});
+
+test("pendingSuggestionPairs + ridersWithSuggestions: kun uaccepterede forslag", () => {
+  const riders = [
+    { id: "a", peaks: [peak({ targetRaceId: "r1" }), peak({ targetRaceId: "r2", windowStart: "2026-09-01", isSuggestion: true })] },
+    { id: "b", peaks: [peak({ targetRaceId: "r3", windowStart: "2026-06-01", isSuggestion: true })] },
+    { id: "c", peaks: [] },
+  ];
+  assert.deepEqual(pendingSuggestionPairs(riders), [
+    { riderId: "a", raceId: "r2" },
+    { riderId: "b", raceId: "r3" },
+  ]);
+  assert.equal(ridersWithSuggestions(riders), 2);
+});
+
+test("pendingSuggestionPairs: forslag uden mål-løb sendes aldrig videre", () => {
+  const riders = [{ id: "a", peaks: [peak({ targetRaceId: null, isSuggestion: true })] }];
+  assert.deepEqual(pendingSuggestionPairs(riders), []);
+});

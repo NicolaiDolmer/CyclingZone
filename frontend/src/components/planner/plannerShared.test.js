@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, racesForList, myPeakCountByRace, nextPlannableSeason } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, racesForList, myPeakCountByRace, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -113,4 +113,32 @@ test("myPeakCountByRace: tæller egne rytteres peaks pr. løb (ægte + forslag)"
   assert.equal(m.get("b"), 1);
   assert.equal(m.has(null), false, "peaks uden mål-løb tælles ikke");
   assert.deepEqual(myPeakCountByRace(null), new Map());
+});
+
+// ── #3018 · ingen "mine løb" før divisionen er afgjort ────────────────────────
+// thelamba 26/7: planlæggeren viste D3's kalender for S2 til et hold på vej op i
+// D2. Boardet markerer nu intet som isMine i den situation, så default-filteret
+// "mine" ville tegne et TOMT bræt. effectivePlannerFilter tvinger hele
+// kalenderen frem i stedet, så manageren stadig kan orientere sig.
+
+test("effectivePlannerFilter: divisionPending tvinger 'all' uanset valgt filter", () => {
+  assert.equal(effectivePlannerFilter("mine", true), "all");
+  assert.equal(effectivePlannerFilter("all", true), "all");
+});
+
+test("effectivePlannerFilter: uden divisionPending er managerens valg urørt", () => {
+  assert.equal(effectivePlannerFilter("mine", false), "mine");
+  assert.equal(effectivePlannerFilter("all", false), "all");
+});
+
+test("effectivePlannerFilter + racesForList: pending viser ALLE divisioners løb", () => {
+  // Boardet sætter isMine:false på alt når divisionen ikke er afgjort. Med det
+  // rå "mine"-filter ville listen være tom; med det effektive filter er den hel.
+  const races = [
+    { id: "r1", date: "2026-08-01", isMine: false },
+    { id: "r2", date: "2026-08-08", isMine: false },
+    { id: "r3", date: "2026-08-15", isMine: false },
+  ];
+  assert.equal(racesForList(races, "mine", null).length, 0, "rå mine-filter ville give det tomme bræt testerne klagede over");
+  assert.equal(racesForList(races, effectivePlannerFilter("mine", true), null).length, 3);
 });

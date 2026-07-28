@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { RACE_V3_TUNING } from "./raceRoles.js";
 import {
+  scoreComponentToFormPoints,
+  peakValueFormPoints,
+  findPaybackCollisions,
   peakStatus,
   terrainKey,
   isSummitFinish,
   stageProfileStrip,
   raceProfileSummary,
   countRivalPeaks,
+  teamDivisionKnownForSeason,
   PEAK_STATUS_ONTRACK_TQ,
 } from "./plannerBoard.js";
 
@@ -88,4 +93,125 @@ test("countRivalPeaks: distinkte rival-hold pr. løb, mit hold ekskluderet", () 
 test("countRivalPeaks: løb hvor kun mit hold topper → ingen entry", () => {
   const counts = countRivalPeaks([{ target_race_id: "r1", team_id: "me" }], "me");
   assert.equal(counts.has("r1"), false);
+});
+
+// ── #3018 · holdets division er ikke afgjort for en kommende sæson ────────────
+
+test("teamDivisionKnownForSeason: 'upcoming' → divisionen er IKKE afgjort", () => {
+  // Kernen i #3018: teams.league_division_id beskriver den AKTIVE sæson. For en
+  // sæson der ikke er startet, afgøres divisionen først ved sæsonskiftet, så den
+  // nuværende division må ikke bruges til at markere "mine løb".
+  assert.equal(teamDivisionKnownForSeason("upcoming"), false);
+});
+
+test("teamDivisionKnownForSeason: aktiv/afsluttet sæson → divisionen ER afgjort", () => {
+  assert.equal(teamDivisionKnownForSeason("active"), true);
+  assert.equal(teamDivisionKnownForSeason("completed"), true);
+});
+
+test("teamDivisionKnownForSeason: gaten ophæver sig selv ved cutoveren", () => {
+  // compressPyramid.js skriver de nye league_division_id FØR transitionen
+  // promoverer sæsonen 'upcoming' → 'active'. I det øjeblik status flipper er
+  // divisionen både opdateret og korrekt, uden ny deploy.
+  assert.equal(teamDivisionKnownForSeason("upcoming"), false);
+  assert.equal(teamDivisionKnownForSeason("active"), true);
+});
+
+test("teamDivisionKnownForSeason: ukendt/manglende status blokerer ikke planlægning", () => {
+  // Fail-open er det rigtige her: kun 'upcoming' er den kendte usikre tilstand.
+  // En uventet status må ikke låse den aktive sæsons planlægger ned.
+  assert.equal(teamDivisionKnownForSeason(null), true);
+  assert.equal(teamDivisionKnownForSeason(undefined), true);
+});
+
+// ── Konsekvens i formpoint (#2905) ──────────────────────────────────────────
+// Assertions bindes til KONSTANTERNE, ikke til hardkodede tal. Tunes balancen
+// (PEAK_MAX m.fl. er startkandidater indtil S5-harness-sweepet, jf. raceRoles.js),
+// skal testene følge med af sig selv i stedet for at blive falsk røde — og en
+// hardkodet forventning her ville være præcis den divergens omregningen findes for.
+
+test("scoreComponentToFormPoints: ét formpoint er FORM_RACE_WEIGHT_V3/50 i score-space", () => {
+  const w = RACE_V3_TUNING.FORM_RACE_WEIGHT_V3;
+  assert.equal(scoreComponentToFormPoints(w / 50), 1);
+  assert.equal(scoreComponentToFormPoints(w), 50, "fuld vægt = halvdelen af 0-100-spændet");
+  assert.equal(scoreComponentToFormPoints(0), 0);
+  assert.equal(scoreComponentToFormPoints(-w / 50), -1, "fortegn bevares");
+});
+
+test("scoreComponentToFormPoints: ugyldig vægt eller komponent → null (ingen division med nul)", () => {
+  assert.equal(scoreComponentToFormPoints(0.02, { FORM_RACE_WEIGHT_V3: 0 }), null);
+  assert.equal(scoreComponentToFormPoints(0.02, { FORM_RACE_WEIGHT_V3: -1 }), null);
+  assert.equal(scoreComponentToFormPoints(Number.NaN), null);
+  assert.equal(scoreComponentToFormPoints(undefined), null);
+});
+
+test("peakValueFormPoints: gulv og loft følger PEAK_MAX × PEAK_TQ_FLOOR..1", () => {
+  const v = peakValueFormPoints({});
+  assert.equal(v.ceiling, scoreComponentToFormPoints(RACE_V3_TUNING.PEAK_MAX));
+  assert.equal(v.floor, scoreComponentToFormPoints(RACE_V3_TUNING.PEAK_MAX * RACE_V3_TUNING.PEAK_TQ_FLOOR));
+  assert.equal(v.payback, scoreComponentToFormPoints(-RACE_V3_TUNING.PEAK_PAYBACK));
+  assert.ok(v.ceiling > v.floor, "loftet skal ligge over gulvet, ellers er peaken meningsløs");
+  assert.ok(v.payback < 0, "payback er en omkostning");
+});
+
+test("peakValueFormPoints: ukendt træningskvalitet → current er null, spændet står alene", () => {
+  // Den ærlige tilstand på planlægningstidspunktet: optakten er ikke redet endnu,
+  // så et konkret estimat ville være opdigtet.
+  assert.equal(peakValueFormPoints({}).current, null);
+  assert.equal(peakValueFormPoints({ trainingQuality: null }).current, null);
+  assert.equal(peakValueFormPoints({ trainingQuality: Number.NaN }).current, null);
+});
+
+test("peakValueFormPoints: current skalerer med træningskvalitet og clampes som motoren", () => {
+  const v = peakValueFormPoints({});
+  assert.equal(peakValueFormPoints({ trainingQuality: 1 }).current, v.ceiling);
+  assert.equal(peakValueFormPoints({ trainingQuality: RACE_V3_TUNING.PEAK_TQ_FLOOR }).current, v.floor);
+  // Under gulvet clampes op (computeTrainingQuality gør det samme), så UI'et aldrig
+  // lover en værdi motoren ikke ville realisere.
+  assert.equal(peakValueFormPoints({ trainingQuality: 0 }).current, v.floor);
+  assert.equal(peakValueFormPoints({ trainingQuality: -5 }).current, v.floor);
+  assert.equal(peakValueFormPoints({ trainingQuality: 99 }).current, v.ceiling);
+  // Monotont: bedre optakt er aldrig værd mindre.
+  const mid = peakValueFormPoints({ trainingQuality: 0.75 }).current;
+  assert.ok(mid > v.floor && mid < v.ceiling, "midt-optakt ligger mellem gulv og loft");
+});
+
+test("findPaybackCollisions: kun løb i vinduet EFTER peaken tæller", () => {
+  const paybackDays = RACE_V3_TUNING.PEAK_PAYBACK_DAYS;
+  const windows = [{ targetRaceId: "peak-race", endOrdinal: 100 }];
+  const otherRaces = [
+    { raceId: "before", ord: 99 },            // før peaken
+    { raceId: "same-day", ord: 100 },         // selve peak-vinduets sidste dag
+    { raceId: "first-day-after", ord: 101 },  // første payback-dag
+    { raceId: "last-day-after", ord: 100 + paybackDays },
+    { raceId: "just-outside", ord: 100 + paybackDays + 1 },
+  ];
+  const hits = findPaybackCollisions({ windows, otherRaces });
+  assert.deepEqual(hits.map((h) => h.raceId), ["first-day-after", "last-day-after"]);
+  assert.equal(hits[0].daysAfterPeak, 1);
+  assert.equal(hits[0].peakTargetRaceId, "peak-race");
+  assert.equal(hits[1].daysAfterPeak, paybackDays);
+});
+
+test("findPaybackCollisions: tomt/ugyldigt input giver tom liste, ikke et brag", () => {
+  assert.deepEqual(findPaybackCollisions({}), []);
+  assert.deepEqual(findPaybackCollisions({ windows: [{ endOrdinal: Number.NaN }], otherRaces: [{ raceId: "r", ord: 5 }] }), []);
+  assert.deepEqual(findPaybackCollisions({ windows: [{ endOrdinal: 10 }], otherRaces: [{ raceId: "r", ord: Number.NaN }] }), []);
+  assert.deepEqual(
+    findPaybackCollisions({ windows: [{ endOrdinal: 10 }], otherRaces: [{ raceId: "r", ord: 11 }], tuning: { PEAK_PAYBACK_DAYS: 0 } }),
+    [], "payback-vindue på 0 dage kan ikke kollidere"
+  );
+});
+
+test("findPaybackCollisions: flere peaks rapporteres hver for sig, kronologisk", () => {
+  const windows = [
+    { targetRaceId: "peak-b", endOrdinal: 200 },
+    { targetRaceId: "peak-a", endOrdinal: 100 },
+  ];
+  const otherRaces = [{ raceId: "after-b", ord: 203 }, { raceId: "after-a", ord: 102 }];
+  const hits = findPaybackCollisions({ windows, otherRaces });
+  assert.equal(hits.length, 2);
+  assert.deepEqual(hits.map((h) => h.daysAfterPeak), [2, 3], "sorteret på afstand til peaken");
+  assert.equal(hits.find((h) => h.raceId === "after-a").peakTargetRaceId, "peak-a");
+  assert.equal(hits.find((h) => h.raceId === "after-b").peakTargetRaceId, "peak-b");
 });

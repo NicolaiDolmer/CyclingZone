@@ -17,10 +17,14 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// #3102 etape 2: Bibliotek-fanen flyttede fra RacesPage til Resultat-hubbens
+// Arkiv-fane (components/race/RaceArchiveTable.jsx). Sæson-vælgeren fulgte med,
+// så invarianten skal guardes dér nu — ikke i RacesPage, som ikke længere
+// henter en sæson-liste overhovedet.
 const PAGES = [
   { file: "SeasonEndPage.jsx", label: "SeasonEndPage (sæson-vælgeren i headeren)" },
   { file: "FinancePage.jsx", label: "FinancePage (Historik-fanens sæson-vælger)" },
-  { file: "RacesPage.jsx", label: "RacesPage (Bibliotek-fanens sæson-vælger)" },
+  { file: "../components/race/RaceArchiveTable.jsx", label: "RaceArchiveTable (Arkiv-fanens sæson-vælger)" },
 ];
 
 for (const { file, label } of PAGES) {

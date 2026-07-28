@@ -138,5 +138,19 @@
   "momentRest_0": "Restitutionsdag for hele truppen: ingen sessioner logget, benene får hvile i stedet.",
   "momentRest_1": "Fuld hvile for truppen i dag, i morgen starter træningen med friskere ben.",
   "momentRest_2": "Stille på træningscentret i dag: alle har fridag.",
-  "momentRest_3": "Hele truppen tog den med ro i dag, restitution frem for output."
+  "momentRest_3": "Hele truppen tog den med ro i dag, restitution frem for output.",
+  "tour": {
+    "focus": {
+      "title": "Vælg hvad hver rytter træner",
+      "body": "Fokus bestemmer hvilke evner der vokser hurtigst. Match det til rytterens type: et fokus hans type er svag i rykker næsten ikke, uanset intensitet. Lader du feltet stå tomt, vælger din assistent et der passer."
+    },
+    "runToday": {
+      "title": "Træn én gang om dagen",
+      "body": "Trykker du her, træner truppen med +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+    },
+    "nextUp": {
+      "title": "Hvor træningen viser sig",
+      "body": "Baren viser hvor tæt rytteren er på næste hele +1 i fokus-evnen. Der sker intet på hans kort før den er fuld, så aflæs baren i stedet for dagen. Det +1 er hvad han tager med i næste løb."
+    }
+  }
 }

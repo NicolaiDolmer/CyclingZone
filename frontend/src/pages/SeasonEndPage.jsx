@@ -6,8 +6,10 @@ import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPr
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
+import SeasonHonours from "../components/SeasonHonours";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
+import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
@@ -70,6 +72,13 @@ export default function SeasonEndPage() {
   const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
   const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
+  // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
+  // additiv: get_season_honours() applies efter merge, og ~150 managere lander
+  // på denne side samtidig ved cutover. En manglende eller fejlende RPC må
+  // derfor aldrig kunne tage slutstilling og kalender med sig ned.
+  //   status: "loading" | "ready" | "failed" | "unavailable"
+  //   "unavailable" = funktionen findes ikke endnu → blokken rendres slet ikke.
+  const [honours, setHonours] = useState({ status: "loading", data: null });
   const [myTeamId, setMyTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
   // #2849 bølge 3 — canonisk ErrorState i stedet for stille fejl-degradering.
@@ -106,9 +115,36 @@ export default function SeasonEndPage() {
     navigate(`/seasons/${season.id}`);
   };
 
+  // #2863 — sæsonens bedste ryttere. Egen fetch, egen fejl-håndtering, bevidst
+  // IKKE en del af loadSeason's try/catch: blokken er en tilføjelse til
+  // opsamlingen, ikke en forudsætning for den.
+  const loadHonours = async (season) => {
+    setHonours({ status: "loading", data: null });
+    try {
+      const { data, error: honoursError } = await supabase
+        .rpc("get_season_honours", { p_season_id: season.id });
+      if (honoursError) throw honoursError;
+      setHonours({ status: "ready", data: normalizeHonours(data) });
+    } catch (e) {
+      // Migrationen (database/2026-07-26-2863-season-honours.sql) applies EFTER
+      // merge. I vinduet indtil da svarer PostgREST "could not find the
+      // function" — så udelader vi blokken i stedet for at vise en fejl for
+      // noget der endnu ikke er slået til.
+      if (isMissingFunctionError(e)) {
+        setHonours({ status: "unavailable", data: null });
+        return;
+      }
+      // Alt andet er en ægte fejl og skal SES. en tom liste der ser bevidst ud
+      // er værre end en synlig fejl (#1851-klassen).
+      console.error("SeasonEndPage: get_season_honours failed", e);
+      setHonours({ status: "failed", data: null });
+    }
+  };
+
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
+    loadHonours(season);
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
         supabase.from("season_standings")
@@ -251,6 +287,10 @@ export default function SeasonEndPage() {
     else loadInit();
   };
 
+  // #2863: blokken retry'er KUN sit eget kald — resten af siden er allerede
+  // hentet og skal ikke gen-hentes for at prøve ét RPC-kald igen.
+  const retryHonours = () => { if (selectedSeason) loadHonours(selectedSeason); };
+
   const seasonExpectedTotal = useMemo(() => {
     if (!races.length || !racePoints.length) return 0;
     return races.reduce((sum, race) => sum + computeExpectedRacePrize({
@@ -329,14 +369,32 @@ export default function SeasonEndPage() {
           title={t("loadError")}
           action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("retry")}</Button>}
         />
-      ) : standings.length === 0 ? (
-        <EmptyState
-          icon={<FlagIcon size={26} aria-hidden="true" />}
-          title={t("empty.title")}
-          description={t("empty.body")}
-        />
       ) : (
         <div className="flex flex-col gap-[14px]">
+          {/* #2863 Sæsonens bedste ryttere. Står ØVERST og uden for
+              standings-guarden nedenfor: listerne er årbogssidens overskrift,
+              og den bygger på race_results (via rider_rankings_mv), ikke på om
+              der findes menneskehold i slutstillingen. "unavailable" =
+              migrationen er ikke applied endnu → ingen blok. */}
+          {honours.status !== "unavailable" && (
+            <SeasonHonours
+              honours={honours.data}
+              loading={honours.status === "loading"}
+              failed={honours.status === "failed"}
+              onRetry={retryHonours}
+              provisional={selectedSeason?.status !== "completed"}
+              seasonNumber={selectedSeason?.number}
+            />
+          )}
+
+          {standings.length === 0 ? (
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.title")}
+              description={t("empty.body")}
+            />
+          ) : (
+        <>
           {/* Sæsonens vindere */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <WinnerCard
@@ -543,6 +601,8 @@ export default function SeasonEndPage() {
                 labels={races.map(r => r.name)}
                 color="rgb(var(--accent))" />
             </Section>
+          )}
+        </>
           )}
         </div>
       )}

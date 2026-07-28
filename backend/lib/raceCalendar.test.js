@@ -12,6 +12,7 @@ import {
   dominantCalendarBucket,
   tierToDivision,
   buildDivisionTree,
+  toCalendarWireEntry,
 } from "./raceCalendar.js";
 
 // ── toCopenhagenISODate / game_day → dato ────────────────────────────────────
@@ -211,4 +212,30 @@ test("buildCalendarModel returnerer division-træ + dag-liste", () => {
   const { divisions, days } = buildCalendarModel(sampleInput());
   assert.equal(divisions.length, 2, "tier 1 + tier 3");
   assert.deepEqual(days.map((d) => d.gameDay), [0, 2, 3]);
+});
+
+// ── toCalendarWireEntry (#2861 payload-trim) ─────────────────────────────────
+
+test("toCalendarWireEntry bevarer PRÆCIS de felter kalender-fladen renderer", () => {
+  const [entry] = buildCalendarModel(sampleInput()).entries;
+  const wire = toCalendarWireEntry(entry);
+  assert.deepEqual(
+    Object.keys(wire).sort(),
+    ["date", "division", "id", "isMine", "leaderSet", "name", "poolLabel", "raceType", "stageSchedule", "stages", "terrain"],
+    "wire-formatet er kontrakten mod frontend/src/lib/calendarGrid.js — expandStageEvents læser netop disse",
+  );
+  for (const key of Object.keys(wire)) {
+    assert.deepEqual(wire[key], entry[key], `${key} skal videreføres uændret fra read-modellen`);
+  }
+});
+
+test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)", () => {
+  const [entry] = buildCalendarModel(sampleInput()).entries;
+  const wire = toCalendarWireEntry(entry);
+  // Felterne findes STADIG i read-modellen (peak-plans-board'et bruger dem) — de
+  // sendes bare ikke til kalenderen, hvor de kostede 67-73 kB rå JSON pr. load.
+  for (const dead of ["raceClass", "status", "poolId", "poolIndex", "gameDayStart", "gameDayEnd", "terrainStages", "entered"]) {
+    assert.ok(dead in entry, `${dead} skal stadig findes i den fulde read-model`);
+    assert.ok(!(dead in wire), `${dead} må ikke sendes til kalender-klienten`);
+  }
 });

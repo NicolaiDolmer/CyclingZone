@@ -15,6 +15,31 @@
     "active": "Igang",
     "scheduled": "Kommende"
   },
+  "honours": {
+    "heading": "Sæsonens bedste ryttere",
+    "metaFinal": "Sæson {number} · endelig",
+    "metaProvisional": "Foreløbig",
+    "title": {
+      "points": "Flest point",
+      "wins": "Flest sejre"
+    },
+    "unit": {
+      "points": "point",
+      "wins": "sejre"
+    },
+    "tieBreak": {
+      "points": "Lige på point. Alfabetisk rækkefølge afgør hvem der står først.",
+      "wins": "Lige på sejre. Point afgør rækkefølgen."
+    },
+    "note": "Sejre tæller etape, samlet klassement, endagsløb, pointtrøje, bjergtrøje og ungdomstrøje, samme total som Sejre-kolonnen på rytter-ranglisten.",
+    "noRider": "Ingen rytter endnu.",
+    "noTeam": "Intet hold",
+    "empty": {
+      "title": "Ingen rytterresultater endnu",
+      "body": "Ryttere optjener point og sejre når sæsonens løb er kørt."
+    },
+    "error": "Kunne ikke indlæse sæsonens bedste ryttere."
+  },
   "winners": {
     "prize": { "title": "Præmie-leader", "secondary": "+{amount} tjent", "empty": "Ingen præmier endnu" },
     "transfer": { "title": "Største transfer", "fallback": "Transfer", "empty": "Ingen transfers" },

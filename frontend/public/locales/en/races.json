@@ -43,6 +43,14 @@
     },
     "clearDayWarn": "Remove every rider from today's races? This cannot be undone, and the assistant will not refill them until you ask it to.",
     "clearAllWarn": "Remove every rider from ALL your remaining races this season? This cannot be undone, and the assistant will not refill them until you ask it to.",
+    "clearAllDialog": {
+      "title": "Clear all selections?",
+      "body": "A race you have no squad for is a race your team does not start. This removes your riders from {count, plural, one {1 race} other {# races}}.",
+      "startsIn": "starts in {time}",
+      "reassurance": "You can pick a new squad at any time before a race starts.",
+      "keepSquad": "Keep my squad",
+      "clearAnyway": "Clear anyway"
+    },
     "column": {
       "add": "Add from available",
       "withdraw": "Withdraw",
@@ -156,15 +164,12 @@
   "subtitle": {
     "withSeason": "Season {number} · {count} races",
     "noSeason": "No active season",
-    "noSeasonWithCount": "No active season · {count} races",
-    "library": "{count} races across all seasons",
-    "points": "Points tables and prize formula"
+    "noSeasonWithCount": "No active season · {count} races"
   },
   "tabs": {
     "calendar": "Calendar",
     "library": "Library",
-    "world": "World calendar",
-    "points": "Points & prizes"
+    "world": "World calendar"
   },
   "raceType": {
     "stageRace": "Stage race",
@@ -265,7 +270,6 @@
   "points": {
     "loadError": "Couldn't load the points table. Please try again.",
     "retry": "Try again",
-    "title": "Points & prize overview",
     "subtitle": "How your race prizes are calculated from your placements",
     "help": "Help & Rules",
     "formula": "Prize formula: 1 point = {amount} CZ$",
@@ -779,5 +783,19 @@
     "poolPicker": "Pool",
     "you": "you",
     "unknownTeam": "Unknown"
+  },
+  "tour": {
+    "pickRace": {
+      "title": "One column per race today",
+      "body": "The chip shows how many riders you have entered out of the slots this race gives you. Ride understaffed and you have no one to work for your leader. Tap a rider to make him captain, sprint captain or breakaway hunter."
+    },
+    "pickRiders": {
+      "title": "Your riders live here",
+      "body": "Tap a rider, or drag him onto a race, to enter him. A greyed-out chip is already committed: one rider races once per race day. Auto-fill closes the gaps and keeps what you picked yourself. Nothing counts until you press Save changes."
+    },
+    "tactics": {
+      "title": "Set your preferences once",
+      "body": "Team strategy stores the riders you build around, your captains per terrain and the races that matter most. Your assistant reuses it every time it fills a lineup for you. Tactics inside a stage race are set on the race itself."
+    }
   }
 }

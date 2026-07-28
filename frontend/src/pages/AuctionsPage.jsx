@@ -46,12 +46,13 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { riderOverallRating } from "../lib/riderRating";
-import { ageBadgeKey, retirementRiskBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import {
   Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
-  PageHeader, Section, EmptyState, ErrorState,
+  PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
 } from "../components/ui";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
 // selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
@@ -187,7 +188,7 @@ function BidDestinationHint({ destination, t }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -206,13 +207,14 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
     minBid, myProxy,
     bidAmount, setBidAmount, bidStatus, errorText, warningText,
     proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
-    proxyStatus, proxyErrorText,
+    proxyStatus, proxyErrorText, bidBlock, proxyBlock,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
-  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
+  const age = ageForSeason(r?.birthdate, seasonYear);
   // #2464: ét-blik-vurdering — OVR (spillets kanoniske 1-99-rating, #2000) og
   // delta mellem aktuelt bud og estimeret markedsværdi.
   const ovr = riderOverallRating(r);
@@ -282,7 +284,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
           {/* #2943: pensions-risiko-advarsel til KØBEREN før bud (alder ≥35,
               retirementRiskBadgeKey) — samme badge-kolonne/RiderBadges-mønster
               som alders-badget lige ovenfor. Advarsel, ikke blokering. */}
-          <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
+          <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
           {auction.is_youth && (
             <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded whitespace-nowrap">{t("auctions:badge.youth")}</span>
           )}
@@ -356,7 +358,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* Potentiale */}
       <td className="px-3 py-1.5">
-        <ScoutablePotentiale rider={r} scouting={scouting} showScout />
+        <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
       </td>
 
       {/* Sælger — lige før stats */}
@@ -401,8 +403,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
               <button
+                type="button"
                 onClick={handleBid}
-                disabled={bidStatus === "loading" || bidAmount < minBid}
+                disabled={bidStatus === "loading"}
+                {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
@@ -410,7 +414,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     imWinning
                       ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
                       : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                  disabled:opacity-50`}>
+                  disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") :
                  bidStatus === "error"   ? t("auctions:bid.buttonError") :
                  bidStatus === "success" ? t("common:actions.success") :
@@ -422,8 +426,13 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                   <span className="text-3xs bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
                     {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
-                  <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
-                  <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-3xs text-cz-3 hover:text-cz-danger">{t("auctions:bid.proxy.removeButton")}</button>
+                  <button type="button" onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-3xs text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
+                  {/* #2719: fjern-kaldet havde hverken loading- eller fejl-state. */}
+                  <button type="button" onClick={handleRemoveProxy} disabled={proxyStatus === "loading"}
+                    aria-label={t("auctions:bid.proxy.remove")}
+                    className="text-3xs text-cz-3 hover:text-cz-danger disabled:opacity-50">
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : t("auctions:bid.proxy.removeButton")}
+                  </button>
                 </div>
               ) : (
                 <button
@@ -438,6 +447,15 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 <p className="text-3xs text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
               )}
             </div>
+            {/* #2719: min-buddet stod kun som title-tooltip på inputtet — usynligt
+                på mobil og aldrig knyttet til den knap der nægter at reagere. */}
+            <BlockedNote id={bidBlock.reasonId} pulseKey={bidBlock.pulseKey} className="text-3xs max-w-[240px]">
+              {bidBlock.reason}
+            </BlockedNote>
+            {/* Fejl fra "fjern autobud" — vises også når panelet er foldet sammen. */}
+            {!proxyExpanded && proxyStatus === "error" && proxyErrorText && (
+              <p className="text-3xs text-cz-danger max-w-[240px] leading-tight">{proxyErrorText}</p>
+            )}
             {proxyExpanded && (
               <div className="flex flex-col gap-0.5 mt-0.5">
                 <div className="flex items-center gap-1">
@@ -451,18 +469,23 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    disabled={proxyStatus === "loading"}
+                    {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
                     className={`px-2 py-1 rounded text-3xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
+                      disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-3xs text-cz-3 hover:text-cz-2"><span aria-hidden="true">✕</span></button>
+                  <button type="button" onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-3xs text-cz-3 hover:text-cz-2"><XIcon size={12} aria-hidden="true" /></button>
                 </div>
+                <BlockedNote id={proxyBlock.reasonId} pulseKey={proxyBlock.pulseKey} className="text-3xs max-w-[180px]">
+                  {proxyBlock.reason}
+                </BlockedNote>
                 <p className="text-3xs text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-3xs text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
@@ -484,7 +507,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting, seasonYear }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -494,7 +517,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   // #2701 bud-gate (samme logik som AuctionRow).
   const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
   const roomBlocked = canBid && !imWinning && bidRoom.blocked;
-  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+  // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
+  const age = ageForSeason(r?.birthdate, seasonYear);
   // #2464: ét-blik-vurdering — OVR (1-99, type-vægtet #2000) + bud-vs-vurdering.
   const ovr = riderOverallRating(r);
   const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
@@ -506,7 +530,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     minBid, myProxy,
     bidAmount, setBidAmount, bidStatus, errorText, warningText,
     proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
-    proxyStatus, proxyErrorText,
+    proxyStatus, proxyErrorText, bidBlock, proxyBlock,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
@@ -560,7 +584,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {/* #228/#1824: alders-badge via delt RiderBadges-komponent (samme
                   mønster som de andre rytteroversigter) — ageBadgeKey, ikke rå is_u25. */}
               {/* #2943: samme pensions-risiko-badge som AuctionRow (desktop). */}
-              <RiderBadges badges={[ageBadgeKey(r), retirementRiskBadgeKey(r)]} />
+              <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
               {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
@@ -618,7 +642,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
       {r?.id && scouting.estimateFor(r.id) !== null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.potential")}</span>
-          <ScoutablePotentiale rider={r} scouting={scouting} showScout />
+          <ScoutablePotentiale rider={r} scouting={scouting} showScout seasonYear={seasonYear} />
         </div>
       )}
       {visibleStatsArr.length > 0 && (
@@ -657,14 +681,16 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 className="min-w-0 flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
               />
               <button
+                type="button"
                 onClick={handleBid}
-                disabled={bidStatus === "loading" || bidAmount < minBid}
+                disabled={bidStatus === "loading"}
+                {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                     imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
-                  disabled:opacity-50`}>
+                  disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctions:bid.buttonError") : bidStatus === "success" ? t("common:actions.success") : imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
               {/* Proxy bid section — vandret til højre for bud-knappen */}
@@ -681,11 +707,13 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     {t("auctions:bid.proxy.editButton")}
                   </button>
                   <button
+                    type="button"
                     onClick={handleRemoveProxy}
+                    disabled={proxyStatus === "loading"}
                     aria-label={t("auctions:bid.proxy.remove")}
-                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
+                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger disabled:opacity-50"
                   >
-                    {t("auctions:bid.proxy.removeButton")}
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : t("auctions:bid.proxy.removeButton")}
                   </button>
                 </div>
               ) : (
@@ -699,9 +727,15 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               ))}
             </div>
             <p className="text-3xs text-cz-3">{t("auctions:bid.minBidCard", { amount: formatNumber(minBid) })}</p>
+            <BlockedNote id={bidBlock.reasonId} pulseKey={bidBlock.pulseKey} className="text-2xs">
+              {bidBlock.reason}
+            </BlockedNote>
             {bidStatus === "error" && errorText && <p className="text-2xs text-cz-danger">{errorText}</p>}
             {warningText && (
               <p className="text-2xs text-cz-warning leading-snug">{warningText}</p>
+            )}
+            {!proxyExpanded && proxyStatus === "error" && proxyErrorText && (
+              <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
             )}
             {proxyExpanded && (
               <div className="flex flex-col gap-1">
@@ -716,24 +750,30 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    disabled={proxyStatus === "loading"}
+                    {...proxyBlock.blockedProps}
                     aria-label={t("auctions:bid.proxy.save")}
                     className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
+                      disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setProxyExpanded(false)}
                     aria-label={t("auctions:bid.proxy.cancel")}
                     className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                   >
-                    ✕
+                    <XIcon size={14} aria-hidden="true" />
                   </button>
                 </div>
+                <BlockedNote id={proxyBlock.reasonId} pulseKey={proxyBlock.pulseKey} className="text-2xs">
+                  {proxyBlock.reason}
+                </BlockedNote>
                 <p className="text-2xs text-cz-3 leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
@@ -757,6 +797,8 @@ export default function AuctionsPage() {
   // #1162: hoisted hertil (fra AuctionsContent) så rider-listen kan dekoreres med
   // estimat-midtpunkter (_scoutMid) til klient-side potentiale-sortering.
   const scouting = useScouting();
+  // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -1237,14 +1279,20 @@ export default function AuctionsPage() {
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
   }
 
+  // #2719: returnerer nu { ok } så useAuctionBidding kan vise fejl + rapportere.
+  // Tidligere blev responsen kastet væk: en fejlet DELETE så præcis ud som en
+  // succes indtil næste reload, hvor autobud-badget dukkede op igen.
   async function handleRemoveProxy(auctionId) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
-    await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-    loadAll();
+    if (res.ok) { loadAll(); return { ok: true }; }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };
   }
 
   function showWatchlistError() {
@@ -1309,7 +1357,8 @@ export default function AuctionsPage() {
         ...r,
         _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
         _ovr: riderOverallRating(r),
-      }))
+      })),
+    seasonYear,
   );
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
@@ -1600,6 +1649,7 @@ export default function AuctionsPage() {
           filter={filter}
           filtered={filtered}
           scouting={scouting}
+          seasonYear={seasonYear}
           wishlistOnly={wishlistOnly}
           mySituationBuckets={{
             leading: sortByRiderOrder(myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
@@ -1755,6 +1805,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
             visibleStats={sharedProps.visibleStats}
             scouting={sharedProps.scouting}
+            seasonYear={sharedProps.seasonYear}
           />
         ))}
       </div>
@@ -1789,6 +1840,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
                   visibleStats={sharedProps.visibleStats}
                   scouting={sharedProps.scouting}
+                  seasonYear={sharedProps.seasonYear}
                 />
               ))}
             </tbody>

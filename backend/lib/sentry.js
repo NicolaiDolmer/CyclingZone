@@ -41,6 +41,99 @@ function sampleRateFromEnv() {
   return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
+function positiveIntFromEnv(raw, fallback) {
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
+// #2900 — SDK-level volumen-guard (defense-in-depth BAG app-lags fingerprinting).
+// CYCLINGZONE-31 brændte 11.992 events på ét døgn (97,9 % af 90-dages-kvoten,
+// verificeret via Sentry search_events 25/7) fordi runAiTeamTrimHealSweepCron
+// capturede ÉN Error PR HOLD PR TICK uden fast fingerprint (65 hold × 5-min-
+// kadence). #2434/#2435 fixede DEN specifikke sweep (aggregeret capture, fast
+// fingerprint — se cron.js linje ~668/698). Denne guard er backstoppen for
+// NÆSTE tilsvarende bug et vilkårligt andet sted i koden: uanset om en
+// udvikler glemmer en fingerprint, kan ÉN fejl-gruppe aldrig sende mere end
+// VOLUME_LIMIT_MAX_PER_WINDOW events pr. VOLUME_LIMIT_WINDOW_MS til Sentry.
+//
+// Bevidst IKKE et globalt sampleRate (som ville droppe et tilfældigt udsnit,
+// inkl. potentielt den FØRSTE forekomst af en helt ny fejl) — i stedet et
+// per-gruppe token-vindue: tælleren for en gruppe starter ved 0 for hvert nyt
+// vindue, så den FØRSTE event i en ny fejl-gruppe altid slipper igennem
+// (0 < max er altid sandt). Kun GENTAGELSER ud over loftet inden for samme
+// vindue droppes — nye fejltyper og nye issues opdages stadig med det samme,
+// og alert-regel 559456 ("notification for high priority issues") fyrer
+// stadig på issue-oprettelse, ikke på event-volumen.
+const VOLUME_LIMIT_WINDOW_MS = positiveIntFromEnv(process.env.SENTRY_VOLUME_LIMIT_WINDOW_MS, 10 * 60 * 1000);
+const VOLUME_LIMIT_MAX_PER_WINDOW = positiveIntFromEnv(process.env.SENTRY_VOLUME_LIMIT_MAX_PER_WINDOW, 20);
+const VOLUME_LIMIT_MAX_TRACKED_KEYS = positiveIntFromEnv(process.env.SENTRY_VOLUME_LIMIT_MAX_TRACKED_KEYS, 500);
+
+// UUID + tal erstattes med pladsholdere, så en loop der capturer "hold <id>
+// fejlede: <besked>" for 65 forskellige hold grupperes som ÉN nøgle her, selv
+// uden en eksplicit Sentry-fingerprint på call-site'et (netop CYCLINGZONE-31-
+// mønstret). Eksporteret for test.
+export function normalizeMessageForGrouping(message) {
+  return String(message ?? "")
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<uuid>")
+    .replace(/\d+/g, "<n>")
+    .slice(0, 160);
+}
+
+// Grupperingsnøgle for volumen-guarden. Bruger en eksplicit fingerprint hvis
+// call-site'et har sat en (fx de aggregerede #2407/#2434-captures i cron.js —
+// de ligger allerede langt under loftet, så guarden er no-op for dem). Ellers
+// falder den tilbage til exception-type + normaliseret besked. Eksporteret
+// for test.
+export function getEventGroupKey(event) {
+  if (Array.isArray(event?.fingerprint) && event.fingerprint.length) {
+    return `fp:${event.fingerprint.join("|")}`;
+  }
+  const exception = event?.exception?.values?.[0];
+  const type = exception?.type || "Error";
+  const message = exception?.value || event?.message || "";
+  return `msg:${type}:${normalizeMessageForGrouping(message)}`;
+}
+
+// Ren, testbar factory (ingen modul-scoped state) — et lille per-nøgle
+// tælle-vindue. Map'en ryddes ikke aktivt for udløbne nøgler mellem kald, men
+// er hård-begrænset til maxTrackedKeys distinkte grupper (FIFO-eviction) så
+// en lang-levende proces ikke vokser ubegrænset selv med mange fejltyper.
+export function createVolumeLimiter({
+  maxPerWindow = VOLUME_LIMIT_MAX_PER_WINDOW,
+  windowMs = VOLUME_LIMIT_WINDOW_MS,
+  maxTrackedKeys = VOLUME_LIMIT_MAX_TRACKED_KEYS,
+} = {}) {
+  const buckets = new Map(); // key -> { windowStart, count, suppressed }
+
+  return {
+    // Returnerer { allow, suppressedInWindow }. allow=false ⇒ drop eventet.
+    // suppressedInWindow tælles op pr. drop og nulstilles ved nyt vindue —
+    // bruges af kalderen til at logge "har nået loftet" kun ÉN gang pr. vindue.
+    check(key, now = Date.now()) {
+      let bucket = buckets.get(key);
+      if (!bucket || now - bucket.windowStart >= windowMs) {
+        if (!bucket && buckets.size >= maxTrackedKeys) {
+          const oldestKey = buckets.keys().next().value;
+          if (oldestKey !== undefined) buckets.delete(oldestKey);
+        }
+        bucket = { windowStart: now, count: 0, suppressed: 0 };
+        buckets.set(key, bucket);
+      }
+      bucket.count += 1;
+      if (bucket.count > maxPerWindow) {
+        bucket.suppressed += 1;
+        return { allow: false, suppressedInWindow: bucket.suppressed };
+      }
+      return { allow: true, suppressedInWindow: 0 };
+    },
+    size() {
+      return buckets.size;
+    },
+  };
+}
+
+const defaultVolumeLimiter = createVolumeLimiter();
+
 export function initSentry() {
   if (enabled || !process.env.SENTRY_DSN) return;
 
@@ -52,6 +145,23 @@ export function initSentry() {
     beforeSend(event) {
       const message = event.message || event.exception?.values?.[0]?.value || "";
       if (/rate limit exceeded/i.test(message)) return null;
+
+      // #2900: volumen-guard — se kommentaren ved VOLUME_LIMIT_* ovenfor.
+      const groupKey = getEventGroupKey(event);
+      const { allow, suppressedInWindow } = defaultVolumeLimiter.check(groupKey);
+      if (!allow) {
+        if (suppressedInWindow === 1) {
+          // Log kun ÉN gang pr. vindue at loftet er nået — Railway-logs koster
+          // intet ekstra og forbliver den operationelle synlighed, mens vi
+          // netop beskytter Sentry-kvoten mod at blive brændt af gentagelser.
+          console.warn(
+            `[sentry] volumen-guard: gruppe "${groupKey}" har ramt loftet ` +
+            `(${VOLUME_LIMIT_MAX_PER_WINDOW} events / ${VOLUME_LIMIT_WINDOW_MS}ms) — ` +
+            `yderligere gentagelser i dette vindue droppes fra Sentry (#2900)`
+          );
+        }
+        return null;
+      }
       return event;
     },
   });

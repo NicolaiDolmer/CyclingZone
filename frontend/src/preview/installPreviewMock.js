@@ -5,11 +5,11 @@
 // Interceptoren må ALDRIG kaste: enhver umatchet route eller fejl falder tilbage
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
-import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
-import { TEST_USER } from "./seedData.js";
+import { TEST_USER, SEED_ONBOARDING_PROGRESS, SEED_TRAINING } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
 // objekt, eller helt fraværende (når input er et Request-objekt med egne headers).
@@ -72,6 +72,10 @@ export function installPreviewMock() {
       // Supabase REST (PostgREST).
       if (/\/rest\/v1\//.test(url)) {
         if (["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
+          // #2863: en RPC med seed-data svares FØR den generiske mutations-linje,
+          // ellers ville enhver RPC-drevet flade stå tom på preview.
+          const rpcPayload = rpcResponse(parseRpc(url));
+          if (rpcPayload !== undefined) return jsonResponse(rpcPayload);
           // Optimistisk mutation: ét objekt eller tomt array afhængig af Prefer/Accept.
           return jsonResponse(wantsObject(accept) ? {} : []);
         }
@@ -113,11 +117,24 @@ export function installPreviewMock() {
         if (res) return jsonResponse(res.body, res.status);
       }
 
+      // #2819: onboarding-kortet + trænings-fladen. Rout FØR den generiske /api-
+      // blok, så preview viser den ÆGTE onboarding-respons (4 trin, "Show me how"
+      // klikbar) og en rigtig trænings-roster at hænge tour-ankrene på. Bevidst
+      // KUN her og ikke i mockHandlers: Playwright-fixtures deler den fil, og et
+      // synligt onboarding-kort ville flytte dashboard-snapshots (samme lagdeling
+      // som scouting-mocken ovenfor).
+      if (method === "GET" && /\/api\/me\/onboarding-progress$/.test(url)) {
+        return jsonResponse(SEED_ONBOARDING_PROGRESS);
+      }
+      if (method === "GET" && /\/api\/training\/me$/.test(url)) {
+        return jsonResponse(SEED_TRAINING);
+      }
+
       // Express-API (/api/...).
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
-        const pathname = new URL(url, window.location.origin).pathname;
-        return jsonResponse(apiResponse(pathname));
+        const parsed = new URL(url, window.location.origin);
+        return jsonResponse(apiResponse(parsed.pathname, parsed.search));
       }
     } catch (err) {
       // Aldrig kaste fra interceptoren — fald tilbage til ægte fetch.

@@ -14,5 +14,173 @@
   "transfer_bargain": {
     "title": "The Steal",
     "description": "Buy a rider for less than half his value."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Finish a season in the top 10 of your division."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Finish a season in the top 5 of your division."
+  },
+  "season_top3": {
+    "title": "Podium",
+    "description": "Finish a season in the top 3 of your division."
+  },
+  "season_winner": {
+    "title": "Division winner",
+    "description": "Win your division in a season."
+  },
+  "season_div1_winner": {
+    "title": "Champion",
+    "description": "Win Division 1."
+  },
+  "season_div3_winner": {
+    "title": "Newly promoted",
+    "description": "Win Division 3."
+  },
+  "season_3_top3": {
+    "title": "Consistent",
+    "description": "Finish in the top 3 three seasons in a row."
+  },
+  "season_2_seasons": {
+    "title": "Two seasons in",
+    "description": "Complete 2 seasons."
+  },
+  "season_5_seasons": {
+    "title": "Veteran",
+    "description": "Complete 5 seasons."
+  },
+  "season_grand_tour_rider": {
+    "title": "Grand Tour team",
+    "description": "Have a rider start a Grand Tour."
+  },
+  "team_promotion": {
+    "title": "Promoted",
+    "description": "Move up to a higher division."
+  },
+  "team_relegation": {
+    "title": "Relegated",
+    "description": "Drop down to a lower division."
+  },
+  "team_survived": {
+    "title": "Survived",
+    "description": "Avoid relegation after finishing in the danger zone."
+  },
+  "auction_first_bid": {
+    "title": "First bid",
+    "description": "Place your first bid in an auction."
+  },
+  "auction_first_win": {
+    "title": "First win",
+    "description": "Win your first auction."
+  },
+  "auction_5_wins": {
+    "title": "5 auctions won",
+    "description": "Win 5 auctions in total."
+  },
+  "auction_10_wins": {
+    "title": "10 auctions won",
+    "description": "Win 10 auctions in total."
+  },
+  "auction_25_wins": {
+    "title": "25 auctions won",
+    "description": "Win 25 auctions in total."
+  },
+  "auction_50_wins": {
+    "title": "50 auctions won",
+    "description": "Win 50 auctions in total."
+  },
+  "auction_sniper": {
+    "title": "Sniper",
+    "description": "Win an auction with the minimum bid."
+  },
+  "auction_last_second": {
+    "title": "Last Second",
+    "description": "Win an auction during the extension."
+  },
+  "auction_high_roller": {
+    "title": "High Roller",
+    "description": "Place a bid over 500,000 CZ$."
+  },
+  "auction_5_streak": {
+    "title": "Dominance",
+    "description": "Win 5 auctions in a row."
+  },
+  "secret_rival": {
+    "title": "Bitter Rival",
+    "description": "Bid against the same manager in 10 auctions."
+  },
+  "secret_heartbreak": {
+    "title": "Heartbreaker",
+    "description": "Lose an auction in the last second 3 times."
+  },
+  "secret_streak_7": {
+    "title": "Weekly",
+    "description": "Log in for 7 days in a row."
+  },
+  "secret_streak_30": {
+    "title": "Dedicated",
+    "description": "Log in for 30 days in a row."
+  },
+  "secret_watchlist_50": {
+    "title": "Scout",
+    "description": "Add 50 riders to your watchlist."
+  },
+  "team_15_riders": {
+    "title": "Growing squad",
+    "description": "Have 15 riders on your team at the same time."
+  },
+  "team_20_riders": {
+    "title": "Full squad",
+    "description": "Have 20 riders on your team at the same time."
+  },
+  "team_25_riders": {
+    "title": "Large squad",
+    "description": "Have 25 riders on your team at the same time."
+  },
+  "team_30_riders": {
+    "title": "Maximum squad",
+    "description": "Reach the maximum number of riders (30)."
+  },
+  "team_youth": {
+    "title": "Youth team",
+    "description": "Have at least 50% U25 riders on your team."
+  },
+  "team_5_achievements": {
+    "title": "Trophy case",
+    "description": "Unlock 5 achievements."
+  },
+  "season_board_100": {
+    "title": "Board's favorite",
+    "description": "Reach 100% board satisfaction."
+  },
+  "transfer_first": {
+    "title": "First deal",
+    "description": "Complete your first transfer."
+  },
+  "transfer_5": {
+    "title": "5 transfers",
+    "description": "Complete 5 transfers in total."
+  },
+  "transfer_15": {
+    "title": "15 transfers",
+    "description": "Complete 15 transfers in total."
+  },
+  "transfer_30": {
+    "title": "30 transfers",
+    "description": "Complete 30 transfers in total."
+  },
+  "transfer_seller_10": {
+    "title": "Seller",
+    "description": "Sell 10 riders via transfer."
+  },
+  "transfer_buyer_10": {
+    "title": "Buyer",
+    "description": "Buy 10 riders via transfer."
+  },
+  "transfer_negotiator": {
+    "title": "Negotiator",
+    "description": "Complete a transfer after at least 3 rounds of counter-offers."
   }
 }

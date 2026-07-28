@@ -18,7 +18,7 @@
 // (ingen glow/gradient/emoji), forlæng/fyr som inline udvidelses-paneler (samme
 // mønster som TransferListButton), akademi op/ned via den konsekvens-bevidste
 // AcademyTransferConfirmModal. Player-facing copy: EN først, DA under.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
@@ -26,6 +26,7 @@ import { isU23 } from "../../lib/riderAge.js";
 import { projectSeniorSalary, projectYouthSalary } from "../../lib/marketValues.js";
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
 import { useAcademy } from "../../lib/useAcademy.js";
+import { reportActionFailure } from "../../lib/actionTelemetry.js";
 import { AcademyTransferConfirmModal } from "../AcademyTransferConfirmModal.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { buttonClass } from "../ui/buttonStyles.js";
@@ -37,7 +38,19 @@ import { buttonClass } from "../ui/buttonStyles.js";
 // ACTION_PANEL) — den tintede/ring-markerede trigger viser tilhørsforholdet.
 const ACTION_PANEL = "order-2 w-full";
 // Bekræft-knap inde i udfoldede paneler (fuld bredde i panelet).
-const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-lg text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50";
+const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-lg text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50 inline-flex items-center justify-center gap-2";
+
+// #2718: en knap der arbejder skal SE ud som om den arbejder. Den bare "..." vi
+// viste før er ikke et arbejds-signal — spilleren tror knappen er død og trykker
+// igen (målt: 15 gange i træk). Samme spinner-markup som ui/Button.jsx.
+function BusyDot() {
+  return (
+    <span
+      aria-hidden="true"
+      className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+    />
+  );
+}
 
 // Akademi returnerer rå fejl-koder i `error` (ikke { errorCode }) — pak dem så
 // resolveApiError kan oversætte via errors:api.<code>.
@@ -139,27 +152,38 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   );
 }
 
-export default function RiderManageActions({ rider, onChanged, marketActions = null }) {
+export default function RiderManageActions({ rider, onChanged, marketActions = null, seasonYear = null }) {
   const { t } = useTranslation("rider");
 
   const isAcademyRider = Boolean(rider.is_academy);
-  const canDemote = !isAcademyRider && isU23(rider.birthdate);
+  // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden RiderStatsPage),
+  // ikke wall-clock — ellers kunne en 23-årig i S2 stadig demotes som U23.
+  const canDemote = !isAcademyRider && isU23(rider.birthdate, seasonYear);
 
   // Inline udvidelses-paneler (forlæng/fyr).
   const [extendOpen, setExtendOpen] = useState(false);
   const [extendQuote, setExtendQuote] = useState(null);
   const [extendErr, setExtendErr] = useState(null);
   const [extendBusy, setExtendBusy] = useState(false);
+  // #2718: tilbuddet hentes når panelet åbnes. Uden en eksplicit loading-state
+  // så spilleren en helt normal "Bekræft forlængelse"-knap der bare var disabled
+  // (opacity-50) og tav — han trykkede 15 gange. Nu er ventetiden synlig.
+  const [extendLoading, setExtendLoading] = useState(false);
 
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
   const [releaseErr, setReleaseErr] = useState(null);
   const [releaseBusy, setReleaseBusy] = useState(false);
+  const [releaseLoading, setReleaseLoading] = useState(false);
+
+  // Dobbelt-submit-værn. `extendBusy` er state og opdateres først ved næste
+  // render, så to hurtige tryk i samme frame kunne begge nå at POST'e.
+  const inFlight = useRef(false);
 
   const [result, setResult] = useState(null);
   function flashResult(ok, msg) {
     setResult({ ok, msg });
-    setTimeout(() => setResult(null), 4000);
+    setTimeout(() => setResult(null), 6000);
   }
 
   // ── Forlæng kontrakt (#1720) ────────────────────────────────────────────────
@@ -167,28 +191,52 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     const next = !extendOpen;
     setExtendOpen(next);
     if (next) setReleaseOpen(false);
-    if (next && extendQuote === null && extendErr === null) {
+    // extendLoading i guarden: åbn/luk/åbn under en igangværende hentning må
+    // ikke starte en parallel request.
+    if (next && extendQuote === null && extendErr === null && !extendLoading) {
+      setExtendLoading(true);
       try {
         const { ok, data } = await fetchRiderQuote(rider.id, "extend-quote");
         if (ok) setExtendQuote(data);
-        else setExtendErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
-      } catch { setExtendErr(t("auth:error.connectionFailed")); }
+        else {
+          setExtendErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
+          reportActionFailure("rider_extend_quote", {
+            reason: data?.errorCode || data?.error,
+            context: { riderId: rider.id },
+          });
+        }
+      } catch (cause) {
+        setExtendErr(t("auth:error.connectionFailed"));
+        reportActionFailure("rider_extend_quote", { cause, context: { riderId: rider.id } });
+      } finally { setExtendLoading(false); }
     }
   }
 
   async function confirmExtend() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setExtendBusy(true);
     try {
       const { ok, data } = await postRiderContractAction(rider.id, "extend-contract");
       if (ok) {
         setExtendOpen(false);
+        // Tilbuddet er brugt op — smid det væk, så en ny åbning henter de
+        // FRISKE vilkår i stedet for at vise den løn der lige er forhandlet væk.
+        setExtendQuote(null);
         flashResult(true, t("manage.extend.success"));
         onChanged?.();
       } else {
         flashResult(false, `${t("manage.extend.errorPrefix")} ${resolveApiError(data, t)}`);
+        reportActionFailure("rider_contract_extend", {
+          reason: data?.errorCode || data?.error,
+          context: { riderId: rider.id },
+        });
       }
-    } catch { flashResult(false, t("auth:error.connectionFailed")); }
-    finally { setExtendBusy(false); }
+    } catch (cause) {
+      flashResult(false, t("auth:error.connectionFailed"));
+      reportActionFailure("rider_contract_extend", { cause, context: { riderId: rider.id } });
+    }
+    finally { setExtendBusy(false); inFlight.current = false; }
   }
 
   // ── Fyr/release (#1719) ─────────────────────────────────────────────────────
@@ -196,28 +244,48 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     const next = !releaseOpen;
     setReleaseOpen(next);
     if (next) setExtendOpen(false);
-    if (next && releaseQuote === null && releaseErr === null) {
+    if (next && releaseQuote === null && releaseErr === null && !releaseLoading) {
+      setReleaseLoading(true);
       try {
         const { ok, data } = await fetchRiderQuote(rider.id, "release-quote");
         if (ok) setReleaseQuote(data);
-        else setReleaseErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
-      } catch { setReleaseErr(t("auth:error.connectionFailed")); }
+        else {
+          setReleaseErr(resolveApiError(data, t, t("auth:error.connectionFailed")));
+          reportActionFailure("rider_release_quote", {
+            reason: data?.errorCode || data?.error,
+            context: { riderId: rider.id },
+          });
+        }
+      } catch (cause) {
+        setReleaseErr(t("auth:error.connectionFailed"));
+        reportActionFailure("rider_release_quote", { cause, context: { riderId: rider.id } });
+      } finally { setReleaseLoading(false); }
     }
   }
 
   async function confirmReleaseAction() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setReleaseBusy(true);
     try {
       const { ok, data } = await postRiderContractAction(rider.id, "release");
       if (ok) {
         setReleaseOpen(false);
+        setReleaseQuote(null);
         flashResult(true, t("manage.release.success"));
         onChanged?.();
       } else {
         flashResult(false, `${t("manage.release.errorPrefix")} ${resolveApiError(data, t)}`);
+        reportActionFailure("rider_release", {
+          reason: data?.errorCode || data?.error,
+          context: { riderId: rider.id },
+        });
       }
-    } catch { flashResult(false, t("auth:error.connectionFailed")); }
-    finally { setReleaseBusy(false); }
+    } catch (cause) {
+      flashResult(false, t("auth:error.connectionFailed"));
+      reportActionFailure("rider_release", { cause, context: { riderId: rider.id } });
+    }
+    finally { setReleaseBusy(false); inFlight.current = false; }
   }
 
   // Forlæng kontrakt (#1720) — delt panel for BÅDE senior- og akademi-ryttere
@@ -225,8 +293,11 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   // Samme knap/panel-markup begge steder, kun placeringen i rækken varierer.
   const extendPanel = (
     <div className="contents">
-      <button type="button" onClick={openExtend}
+      {/* #2718: triggeren viser selv at den henter vilkårene — ellers ser det
+          ud som om klikket ikke gjorde noget mens requesten er undervejs. */}
+      <button type="button" onClick={openExtend} aria-busy={extendLoading || undefined}
         className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
+        {extendLoading && <BusyDot />}
         {t("manage.extend.button")}
       </button>
       {extendOpen && (
@@ -256,8 +327,19 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
                   </div>
                 )}
               </div>
-              <button onClick={confirmExtend} disabled={extendBusy || !extendQuote} className={BTN_PRIMARY}>
-                {extendBusy ? "..." : t("manage.extend.confirm")}
+              {/* #2718: knappen er kun disabled mens noget FAKTISK kører, og den
+                  siger hvad. Tidligere var den disabled + tavs mens tilbuddet
+                  blev hentet — spilleren så en knap, trykkede, og fik intet. */}
+              <button type="button" onClick={confirmExtend}
+                disabled={extendBusy || !extendQuote}
+                aria-busy={extendBusy || extendLoading || undefined}
+                className={BTN_PRIMARY}>
+                {(extendBusy || !extendQuote) && <BusyDot />}
+                {extendBusy
+                  ? t("manage.extend.working")
+                  : !extendQuote
+                    ? t("manage.extend.loadingTerms")
+                    : t("manage.extend.confirm")}
               </button>
             </>
           )}
@@ -270,8 +352,11 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     /* display:contents — knapperne bliver direkte flex-items i hero'ens
        handlingsrække; paneler/feedback tager selv fuld bredde. */
     <div className="contents">
+      {/* role="status" → skærmlæsere annoncerer kvitteringen; aria-live gør at
+          den også fanges når den skifter uden remount (#2718). */}
       {result && (
-        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
+        <div role="status" aria-live="polite"
+          className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
@@ -302,8 +387,9 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
 
           {/* Fyr rytter (destruktiv) — udvid (viser gebyr som speed-bump) → bekræft/annullér. */}
           <div className="contents">
-            <button type="button" onClick={openRelease}
+            <button type="button" onClick={openRelease} aria-busy={releaseLoading || undefined}
               className={`${buttonClass({ variant: "danger" })} ${releaseOpen ? "ring-1 ring-cz-danger/40" : ""}`}>
+              {releaseLoading && <BusyDot />}
               {t("manage.release.button")}
             </button>
             {releaseOpen && (
@@ -334,12 +420,18 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
                       <p className="text-cz-danger text-xs">{t("manage.release.cannotAfford")}</p>
                     )}
                     <div className="flex gap-2">
-                      <button onClick={confirmReleaseAction}
+                      <button type="button" onClick={confirmReleaseAction}
                         disabled={releaseBusy || !releaseQuote || releaseQuote.affordable === false}
-                        className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-                        {releaseBusy ? "..." : t("manage.release.confirm")}
+                        aria-busy={releaseBusy || releaseLoading || undefined}
+                        className="flex-1 min-h-[44px] py-2 bg-cz-danger text-white font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all inline-flex items-center justify-center gap-2">
+                        {(releaseBusy || !releaseQuote) && <BusyDot />}
+                        {releaseBusy
+                          ? t("manage.release.working")
+                          : !releaseQuote
+                            ? t("manage.release.loadingTerms")
+                            : t("manage.release.confirm")}
                       </button>
-                      <button onClick={() => setReleaseOpen(false)} disabled={releaseBusy}
+                      <button type="button" onClick={() => setReleaseOpen(false)} disabled={releaseBusy}
                         className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
                         {t("manage.release.cancel")}
                       </button>

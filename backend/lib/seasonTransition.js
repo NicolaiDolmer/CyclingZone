@@ -46,9 +46,15 @@ import { notifyUser, emitContractExpiringNotifications } from "./notificationSer
 import {
   expireAndRenewContracts as defaultExpireAndRenewContracts,
   evaluateSeasonObjectives as defaultEvaluateSeasonObjectives,
+  resolveContractForNewSeason,
+  contractRaceDayPool,
+  contractSigningBonus,
 } from "./sponsorContractsService.js";
+import { renownTarget } from "./renownEngine.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { releaseExpiredContractRiders as defaultReleaseExpiredContractRiders } from "./contractExpiryRelease.js";
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
+import { detectAndNotifySquadsBelowMinimum as defaultDetectAndNotifySquadsBelowMinimum } from "./squadBelowMinimumCheck.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
@@ -58,6 +64,8 @@ import {
   loadSeasonEndedPersonalization,
   buildPersonalSeasonEndedMessage,
 } from "./seasonEndedPersonalization.js";
+import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { carryOverManagerSetup as defaultCarryOverManagerSetup } from "./seasonCarryOver.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -77,6 +85,16 @@ async function getMaterializeTierCalendars() {
     materializeTierCalendarsImpl = (await import("./tierCalendarMaterializer.js")).materializeTierCalendars;
   }
   return materializeTierCalendarsImpl;
+}
+
+// #2910 + #2911 · Lazy import (samme mønster som ovenstående) — sæsonstart-hooksene
+// er flag-gatede og fail-safe OFF, så modulet loades kun når transitionen kører.
+let runSeasonStartHooksImpl;
+async function getRunSeasonStartHooks() {
+  if (!runSeasonStartHooksImpl) {
+    runSeasonStartHooksImpl = (await import("./seasonStartHooks.js")).runSeasonStartHooks;
+  }
+  return runSeasonStartHooksImpl;
 }
 
 let runRaceEntryGeneratorImpl;
@@ -348,8 +366,9 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   const toSeasonId = computeSeasonUuid(toSeasonNumber);
   const toWindowId = computeTransferWindowUuid(toSeasonNumber);
 
-  const { data: existingTo } = await supabase
+  const { data: existingTo, error: existingToError } = await supabase
     .from("seasons").select("id, status").eq("id", toSeasonId).maybeSingle();
+  if (existingToError) throw new Error(`Could not check next season ${toSeasonId}: ${existingToError.message}`);
 
   // Resume-support (#578): tillad completed fromSeason når toSeason eksisterer.
   // Signatur på partial failure efter mark_previous_completed (fase 3) — fase 4-8
@@ -363,26 +382,44 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     );
   }
 
-  const { data: humanTeams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, sponsor_income, division")
-    .eq("is_ai", false)
-    .eq("is_frozen", false);
+  // #2926: samme menneske-hold-diskriminator som processSeasonStart og
+  // expireAndRenewContracts (is_bank=false manglede → previewet kunne tælle
+  // bank-pseudo-holdet med selvom udbetalingen aldrig rammer det).
+  // #2852 · udvidet med is_test_account og flyttet ind i den fælles helper: den
+  // forkortede udgave lod også de 3 test-konti ("Test A"/"Test B"/"Test Seller")
+  // tælle med i teams_affected og sponsor_base_total — 159 hold i prod-preview
+  // 25/7 mod korrekte 156. Diskriminatoren bor nu ét sted (humanTeamFilter.js),
+  // så den ikke kan drive fra notifikations-/board-stierne igen.
+  const { data: humanTeams, error: teamsError } = await applyHumanTeamFilter(
+    supabase.from("teams").select("id, name, sponsor_income, division")
+  );
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
     supabase,
     fromSeasonId: fromSeason.id,
     toSeasonNumber,
   });
+  const contractsByTeamId = await loadSponsorContractStock({ supabase });
 
-  // Sponsor-preview viser base før board/pullout-modifier. Den samme sponsor-engine
-  // bruges i processSeasonStart, så admin-preview og faktisk payout ikke driver.
+  // Sponsor-preview viser den GARANTEREDE base før board/pullout-modifier —
+  // altså præcis det beløb processSeasonStart udbetaler efter at
+  // expireAndRenewContracts har gjort én kontrakt aktiv pr. hold (#2926).
   const sponsorPreview = (humanTeams || []).map((team) => ({
     team_id: team.id,
     team_name: team.name,
     division: team.division,
-    ...buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext),
+    ...buildSponsorPreviewRow(
+      team,
+      toSeasonNumber,
+      sponsorStandingsContext,
+      contractsByTeamId.get(team.id) || {}
+    ),
   }));
+
+  const sponsorContractSources = { locked: 0, pending: 0, default: 0 };
+  for (const row of sponsorPreview) {
+    sponsorContractSources[row.sponsor_contract_source] += 1;
+  }
 
   return {
     from_season: {
@@ -397,9 +434,39 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     },
     already_transitioned: Boolean(existingTo),
     teams_affected: sponsorPreview.length,
+    // Udbetales ved sæsonstart (board-modifier lægges oveni i processSeasonStart).
     sponsor_base_total: sponsorPreview.reduce((s, p) => s + p.sponsor_base, 0),
+    // Udbetales ÉN gang ved aktivering af et pending valg (loyal-arketypen, #2948).
+    sponsor_signing_bonus_total: sponsorPreview.reduce((s, p) => s + p.sponsor_signing_bonus, 0),
+    // IKKE en udbetaling ved skiftet: den variable puljes samlede størrelse, som
+    // holdene optjener pr. etape hen over sæsonen ved fuld deltagelse.
+    sponsor_race_day_pool_total: sponsorPreview.reduce((s, p) => s + p.sponsor_race_day_pool, 0),
+    sponsor_contract_sources: sponsorContractSources,
     sponsor_breakdown: sponsorPreview,
   };
+}
+
+/**
+ * #2926 · Kontraktbestanden i to bulk-queries (ikke N+1 pr. hold). De delvise
+ * UNIQUE-indekser på sponsor_contracts garanterer højst én 'active' og én
+ * 'pending' pr. hold, så et Map pr. status er en fuldstændig repræsentation.
+ */
+async function loadSponsorContractStock({ supabase }) {
+  const byTeamId = new Map();
+  for (const status of ["active", "pending"]) {
+    // Pagineret (#2951-klassen): ét hold = én kontrakt pr. status, så rækketallet
+    // vokser 1:1 med populationen og ville stille blive kappet ved 1000.
+    const data = await fetchAllRows(() =>
+      supabase.from("sponsor_contracts").select("*").eq("status", status).order("id")
+    );
+    for (const row of data || []) {
+      if (!row?.team_id) continue;
+      const entry = byTeamId.get(row.team_id) || {};
+      entry[status === "active" ? "activeContract" : "pendingContract"] = row;
+      byTeamId.set(row.team_id, entry);
+    }
+  }
+  return byTeamId;
 }
 
 async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNumber }) {
@@ -414,22 +481,57 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
   return buildSponsorStandingsContext(data || []);
 }
 
-function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext) {
+/**
+ * #2926 · Previewet modellerede tidligere en KONTRAKTFRI tilstand (division-base
+ * + variabel pulje) — men udbetalingen sker EFTER fase 5b (expireAndRenewContracts),
+ * hvor hvert menneskehold har præcis én aktiv kontrakt, og processSeasonStart
+ * udbetaler dens (typisk lavere) guaranteed_base. Preview'et overvurderede derfor
+ * sæsonstartens pengeinjektion markant. Her resolves den kontrakt der FAKTISK vil
+ * være aktiv, via samme rene regel som fornyelsen bruger.
+ */
+function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext, contracts = {}) {
   const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
+  const divisionStandings = lastSeasonStanding
+    ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
+    : [];
+
+  // Samme input som sponsorContractsService.loadRenownTargetValue henter i drift:
+  // holdets NUVÆRENDE division + forrige sæsons standing/divisionsfelt.
+  const renownTargetValue = renownTarget({
+    division: team.division ?? lastSeasonStanding?.division ?? null,
+    lastSeasonStanding,
+    divisionStandings,
+  });
+  const { source, contract } = resolveContractForNewSeason({
+    teamId: team.id,
+    newSeasonNumber: toSeasonNumber,
+    activeContract: contracts.activeContract ?? null,
+    pendingContract: contracts.pendingContract ?? null,
+    renownTargetValue,
+  });
+
   const breakdown = computeSponsorForSeason({
     seasonNumber: toSeasonNumber,
     team,
     lastSeasonStanding,
-    divisionStandings: lastSeasonStanding
-      ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
-      : [],
+    divisionStandings,
+    activeContract: contract,
   });
+
   return {
     sponsor_base: breakdown.gross_sponsor,
     sponsor_mode: breakdown.mode,
     sponsor_variable: breakdown.variable,
     sponsor_formula_base: breakdown.base,
     sponsor_breakdown: breakdown,
+    // Kontrakt-kontekst (#2926) så dry-run-rapporten kan vise HVORFOR tallet er
+    // som det er — låst aftale, managerens valg, eller auto-default.
+    sponsor_contract_source: source,
+    sponsor_contract_variant: contract.variant ?? null,
+    sponsor_name: contract.sponsor_name ?? null,
+    sponsor_signing_bonus: source === "pending" ? contractSigningBonus(contract) : 0,
+    sponsor_race_day_pool: contractRaceDayPool(contract),
+    sponsor_renown_target: renownTargetValue,
   };
 }
 
@@ -481,8 +583,9 @@ export async function resolveTransitionSourceSeason({ supabase }) {
 // ─── Idempotent fase-helpers ──────────────────────────────────────────────────
 
 async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitionAtIso) {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("seasons").select("id, status, start_date").eq("id", seasonId).maybeSingle();
+  if (existingError) throw new Error(`Could not check season ${seasonNumber}: ${existingError.message}`);
 
   if (existing) {
     // Legacy /admin/seasons-endpoint kan have pre-created rowen med status='upcoming'
@@ -516,8 +619,9 @@ async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitio
 }
 
 async function markSeasonCompleted(supabase, seasonId, transitionAtIso) {
-  const { data: current } = await supabase
+  const { data: current, error: currentError } = await supabase
     .from("seasons").select("status, end_date").eq("id", seasonId).maybeSingle();
+  if (currentError) throw new Error(`Could not load season ${seasonId}: ${currentError.message}`);
 
   if (!current) throw new Error(`Season ${seasonId} disappeared mid-transition`);
   if (current.status === "completed") {
@@ -541,13 +645,17 @@ async function markSeasonCompleted(supabase, seasonId, transitionAtIso) {
  * kan konvergere med engine — manual flow åbnede ikke nye windows.
  */
 export async function closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso) {
-  const { data: window } = await supabase
+  // #2897: `error` SKAL destruktureres. Uden den returnerede en fejlet select
+  // `window === null` → funktionen rapporterede "no transfer_window for prev
+  // season" og skiftet fortsatte MED VINDUET ÅBENT, uden spor nogen steder.
+  const { data: window, error: windowError } = await supabase
     .from("transfer_windows")
     .select("id, status")
     .eq("season_id", fromSeasonId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (windowError) throw new Error(`Could not load prev transfer_window: ${windowError.message}`);
 
   if (!window) {
     return { skipped: true, reason: "no transfer_window for prev season" };
@@ -574,8 +682,9 @@ export async function closePrevTransferWindow(supabase, fromSeasonId, transition
  * kan oprette deterministisk UUID-window matching engine's pattern.
  */
 export async function insertTransferWindowIfMissing(supabase, windowId, seasonId, transitionAtIso) {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("transfer_windows").select("id, status").eq("id", windowId).maybeSingle();
+  if (existingError) throw new Error(`Could not check transfer_window ${windowId}: ${existingError.message}`);
 
   if (existing) {
     return { skipped: true, reason: "window already exists", status: existing.status };
@@ -599,12 +708,13 @@ async function writeAdminLog(supabase, payload) {
 
   // Idempotency: tjek om vi allerede har logget denne transition.
   // Vi bruger metadata.from_season_id + metadata.to_season_id for at matche eksisterende rows.
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("admin_log")
     .select("id")
     .eq("action_type", ADMIN_ACTION_TYPE.SEASON_TRANSITION)
     .contains("meta", { from_season_id: fromSeasonId, to_season_id: toSeasonId })
     .maybeSingle();
+  if (existingError) throw new Error(`Could not check admin_log idempotency: ${existingError.message}`);
 
   if (existing) {
     return { skipped: true, reason: "admin_log entry already exists", id: existing.id };
@@ -678,7 +788,31 @@ export async function transitionToNextSeason({
   const plan = await buildTransitionPlan({ supabase, fromSeasonId });
 
   if (dryRun) {
-    return { ok: true, dryRun: true, plan };
+    // #2916 · vis carry-over-tallene i preview'et, så man kan se HVOR MANGE
+    // træningsplaner der bæres over FØR man trykker på knappen. Rent læsende
+    // (dryRun=true) og best-effort — et preview må aldrig fejle på den her konto.
+    let carryOverPreview = null;
+    try {
+      const carryOverFn = deps.carryOverManagerSetup ?? defaultCarryOverManagerSetup;
+      carryOverPreview = await carryOverFn({
+        supabase,
+        fromSeasonId,
+        toSeasonId: plan.to_season.id,
+        dryRun: true,
+      });
+    } catch (err) {
+      // Previewet må aldrig fejle på carry-over-probens konto — men fejlen må
+      // heller ikke være usynlig: præcis denne kode kører for alvor få minutter
+      // senere, og ejeren bruger tallet som go/no-go-gate før cutoveren. Derfor
+      // både i svaret (så det ses i dialogen), i loggen og i Sentry.
+      carryOverPreview = { error: err.message };
+      console.error("season-transition preview: carry-over-probe fejlede:", err?.message || err);
+      captureException(err, {
+        tags: { phase: "manager_setup_carry_over", stage: "preview" },
+        extra: { fromSeasonId, toSeasonId: plan.to_season.id },
+      });
+    }
+    return { ok: true, dryRun: true, plan, carryOverPreview };
   }
 
   if (plan.already_transitioned) {
@@ -760,13 +894,24 @@ export async function transitionToNextSeason({
   // tæller rigtigt fra sæson 2. Kører FØR processSeasonStart så de genskabte
   // baseline-rows (modifier 1.0) anvendes i sponsor-payout. Sæson 2 er allerede
   // 'active' efter insert_next_season, så resetBetaBoardProfiles rammer den rigtigt.
-  const { data: prevWindow } = await supabase
+  const { data: prevWindow, error: prevWindowError } = await supabase
     .from("transfer_windows")
     .select("board_test_mode")
     .eq("season_id", fromSeasonId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (prevWindowError) {
+    // best-effort: board-test-reset er additiv-isoleret som søsterfaserne nedenfor
+    // og må ikke vælte selve skiftet — men den skal være SYNLIG (#2897). Uden
+    // error-destrukturering blev prevWindow bare null og resetten sprang tavst over,
+    // så sæson 2 arvede beta-bestyrelsens budget_modifiers uden spor nogen steder.
+    log.push({ phase: "reset_board_test_data", error: prevWindowError.message });
+    captureException(new Error(`Could not read prev transfer_window board_test_mode: ${prevWindowError.message}`), {
+      tags: { phase: "reset_board_test_data" },
+      extra: { fromSeasonId },
+    });
+  }
   if (prevWindow?.board_test_mode === true) {
     const resetBetaBoardProfilesFn = deps.resetBetaBoardProfiles ?? (await getResetBetaBoardProfiles());
     log.push({
@@ -807,17 +952,16 @@ export async function transitionToNextSeason({
   // (expires_after_season >= ny sæson) — ellers udløbes den gamle og default-
   // varianten ("safe", 1 sæson — #2914) for den nye sæson auto-tildeles. Garanterer at hvert
   // hold har en aktiv kontrakt hvis guaranteed_base processSeasonStart betaler.
-  // Samme menneske-hold-diskriminator som processSeasonStart (is_ai=false,
-  // is_bank=false, is_frozen=false; #1077). expireAndRenewContracts er
-  // injicerbar via deps for test (mirror'er processSeasonStart-mønstret).
+  // Samme menneske-hold-diskriminator som processSeasonStart (#1077), nu via den
+  // fælles helper og INKLUSIV is_test_account (#2852) — ellers ville test-kontiene
+  // få tildelt rigtige sponsorkontrakter som processSeasonStart bagefter nægter at
+  // betale, altså en ny form for drift mellem de to faser.
+  // expireAndRenewContracts er injicerbar via deps for test.
   const expireAndRenewContractsFn =
     deps.expireAndRenewContracts ?? defaultExpireAndRenewContracts;
-  const { data: renewTeams, error: renewTeamsError } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("is_ai", false)
-    .eq("is_bank", false)
-    .eq("is_frozen", false);
+  const { data: renewTeams, error: renewTeamsError } = await applyHumanTeamFilter(
+    supabase.from("teams").select("id")
+  );
   if (renewTeamsError) {
     throw new Error(`Could not load teams for contract renewal: ${renewTeamsError.message}`);
   }
@@ -944,6 +1088,48 @@ export async function transitionToNextSeason({
     });
   }
 
+  // Phase 6f (#3043): detektér + varsl hold der er under MIN_RIDERS_FOR_RACE (8)
+  // EFTER de to frigivelses-faser ovenfor (kontraktudløb + pension er nu endelige
+  // for denne transition). #2748/#2834's squad-spærre (squadRiskGuard.js) gater
+  // kun FRIVILLIGE handlinger (salg/frigivelse/auktion) — den rører aldrig selve
+  // de automatiske faser, og intet tjekkede hidtil EFTER dem om et hold rent
+  // faktisk endte under minimum. Ejerens egen worst-case-måling (23/7, #2748)
+  // viser 0 hold under 8 i dagens bestand, så fasen forventes en no-op i praksis —
+  // den er sikkerhedsnettet for når den antagelse ændrer sig. Additivt + isoleret:
+  // REN detekt+varsl, intet auto-køb/auto-fill (ejer-beslutning 23/7: "ingen
+  // automatisk erstatning denne gang"), og en fejl her må ALDRIG vælte
+  // sæson-transitionen (samme disciplin som de to nabo-faser).
+  const detectSquadsBelowMinimumFn =
+    deps.detectAndNotifySquadsBelowMinimum ?? defaultDetectAndNotifySquadsBelowMinimum;
+  try {
+    log.push({
+      phase: "squad_below_minimum_check",
+      ...(await detectSquadsBelowMinimumFn({ supabase })),
+    });
+  } catch (err) {
+    log.push({ phase: "squad_below_minimum_check", error: err.message, ...(err.partialStats || {}) });
+    captureException(err, {
+      tags: { phase: "squad_below_minimum_check" },
+      extra: { fromSeasonId, toSeasonNumber: plan.to_season.number },
+    });
+  }
+
+  // ─── #2910 + #2911 · SÆSONSTART-HOOKS (ENESTE KALDEPUNKT) ──────────────────
+  // To flag-gatede mekanikker der begge er fail-safe OFF (= nuværende adfærd):
+  //   season_fatigue_reset_enabled   → sæsonskifte-restitution (#2910)
+  //   season_academy_intake_enabled  → sæson-optagelse til akademiet (#2911)
+  // Al logik bor i backend/lib/seasonStartHooks.js + de to nye moduler; her står
+  // KUN kaldet, så filen kan rebases uden konflikt. Kører EFTER retirement_release
+  // (progression + akademi-graduering er afsluttet, så optagelsen ser den rigtige
+  // bestand) og FØR kalender/entry-generatoren. Kaster aldrig.
+  const runSeasonStartHooksFn = deps.runSeasonStartHooks ?? (await getRunSeasonStartHooks());
+  log.push(...(await runSeasonStartHooksFn({
+    supabase,
+    now: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
+    toSeasonNumber: plan.to_season.number,
+  })));
+  // ─── slut #2910 + #2911 ────────────────────────────────────────────────────
+
   // #1704 · Per-division-kalender (forever). Gated bag auto_calendar_enabled (fail-safe OFF):
   // uden flaget sker INTET, så en buggy auto-kalender aldrig spammer en live sæson
   // (2026-05-21-incident-disciplin). Betinget fase (mønster som reset_board_test_data:
@@ -980,6 +1166,43 @@ export async function transitionToNextSeason({
         log.push({ phase: "season_entry_generator", error: err.message });
       }
     }
+  }
+
+  // Phase 6f (#2916) · Carry-over af managerens egen opsætning.
+  //
+  // Placeringen er bevidst SENT: først her er den nye sæsons trup og kalender
+  // endelige (contract_expiry_release + rider_progression + retirement_release
+  // har frigivet ryttere, og auto-kalenderen er materialiseret). Kopierer vi
+  // tidligere, bærer vi planer over for ryttere der er på vej ud, og
+  // peak/udtagelses-valideringen ville køre mod en kalender der ikke findes endnu.
+  //
+  // Additivt + isoleret: fasen skriver KUN nye training_plans-rækker til den nye
+  // sæson og TÆLLER resten. En fejl her må aldrig vælte sæsonskiftet — samme
+  // disciplin som contract_expiry_release/retirement_release ovenfor.
+  const carryOverFn = deps.carryOverManagerSetup ?? defaultCarryOverManagerSetup;
+  try {
+    const carry = await carryOverFn({
+      supabase,
+      fromSeasonId,
+      toSeasonId: plan.to_season.id,
+      dryRun: false,
+    });
+    log.push({ phase: "manager_setup_carry_over", ...carry });
+  } catch (err) {
+    log.push({
+      phase: "manager_setup_carry_over",
+      error: err.message,
+      ...(err.partialStats || {}),
+    });
+    captureException(err, {
+      tags: { phase: "manager_setup_carry_over" },
+      extra: {
+        fromSeasonId,
+        toSeasonId: plan.to_season.id,
+        partialStats: err.partialStats ?? null,
+        note: "managerens træningsplaner blev IKKE båret over — ryttere falder tilbage på auto-programmer indtil fasen køres igen (den er idempotent)",
+      },
+    });
   }
 
   log.push({

@@ -165,3 +165,47 @@ test("multiple divisions: only the ones deviating from 24 are reported", async (
   assert.equal(summary.findings[0].label, "Division 2 — A");
   assert.equal(summary.findings[0].delta, 2);
 });
+
+// ── Dormant-undtagelsen (#2851/#1688, S1→S2-cutover 26/7) ─────────────────────
+
+test("dormant tier 4-pulje (0 ægte managere, 0 hold) giver ingen findings (#2851)", async () => {
+  const divisions = [makeDivision(9, 4, 2, "Division 4 — C")];
+  const supabase = makeMock({ divisions, teams: [], riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase });
+  assert.equal(summary.total_findings, 0, "tom tier 3/4-pulje uden ægte managere er forventet tilstand");
+});
+
+test("dormant tier 4-pulje med AI-rest flagges (forventet 0)", async () => {
+  const divisions = [makeDivision(9, 4, 2, "Division 4 — C")];
+  const teams = Array.from({ length: 16 }, (_, i) => makeTeam(`ai${i}`, { league_division_id: 9, is_ai: true }));
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase });
+  assert.equal(summary.total_findings, 1, "AI-rest i en dormant pulje er et fund (heal-sweep skal trimme)");
+  assert.equal(summary.findings[0].required, 0);
+  assert.equal(summary.findings[0].delta, 16);
+});
+
+test("tier 4-pulje MED ægte manager kræver stadig præcis 24", async () => {
+  const divisions = [makeDivision(8, 4, 1, "Division 4 — B")];
+  const teams = [
+    makeTeam("human", { league_division_id: 8 }),
+    ...Array.from({ length: 18 }, (_, i) => makeTeam(`ai${i}`, { league_division_id: 8, is_ai: true })),
+  ];
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase });
+  assert.equal(summary.total_findings, 1, "19 hold i en aktiv tier 4-pulje = shortage");
+  assert.equal(summary.findings[0].required, 24);
+  assert.equal(summary.findings[0].delta, -5);
+});
+
+test("tier 1/2-puljer kræver 24 selv uden ægte managere (alwaysFill-politikken)", async () => {
+  const divisions = [makeDivision(1, 1, 0, "Division 1")];
+  const supabase = makeMock({ divisions, teams: [], riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase });
+  assert.equal(summary.total_findings, 1, "tom D1 er ALDRIG ok — toppen skal altid være fyldt");
+  assert.equal(summary.findings[0].required, 24);
+});

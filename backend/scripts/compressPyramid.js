@@ -38,6 +38,8 @@ import {
 import { SEASON_END_SKIP_MOVEMENT_FLAG_KEY } from "../lib/seasonEndMovementFlag.js";
 import { UPKEEP_BY_DIVISION } from "../lib/economyConstants.js";
 import { buildSponsorStandingsContext, computeSponsorForSeason } from "../lib/sponsorEngine.js";
+import { renownTarget } from "../lib/renownEngine.js";
+import { resolveContractForNewSeason } from "../lib/sponsorContractsService.js";
 import { reconcileAiTeamsForPool } from "../lib/aiTeamGenerator.js";
 import { notifyTeamOwner } from "../lib/notificationService.js";
 
@@ -147,12 +149,28 @@ for (const line of [48, 144]) {
 }
 
 // ─── 3 · Økonomi-simulering (ejer-gate 1) ────────────────────────────────────
-// Base-model uden kontrakt-låste valg: de ~73 hold der selv HAR valgt sponsor
-// har låst guaranteed_base (påvirkes ikke af flytningen); de øvrige følger
-// division-basen her. Upkeep rammer ALLE managerhold uanset kontrakt.
+// #2926: KONTRAKT-BEVIDST. Sponsor-udbetalingen ved sæsonstart er kontrakternes
+// guaranteed_base — sat EFTER transitionens fase 5b (expireAndRenewContracts).
+// Et hold med en låst aftale eller et allerede valgt S2-tilbud har en FROSSEN
+// base: flytningen ændrer den ikke (Δ = 0). Kun kontraktfri hold, der auto-
+// defaulter til 'safe', følger den nye divisions renown. Den gamle model her
+// regnede kontraktfrit for ALLE hold og overvurderede derfor både niveauet og
+// flytningens effekt. Upkeep rammer ALLE managerhold uanset kontrakt.
+
+const toSeasonNumber = fromSeason.number + 1;
+const contractRows = await fetchAllRows(() =>
+  supabase.from("sponsor_contracts").select("*").in("status", ["active", "pending"]).order("id"));
+const contractsByTeam = new Map();
+for (const row of contractRows || []) {
+  if (!row?.team_id) continue;
+  const entry = contractsByTeam.get(row.team_id) || {};
+  entry[row.status === "active" ? "activeContract" : "pendingContract"] = row;
+  contractsByTeam.set(row.team_id, entry);
+}
 
 const sponsorCtx = buildSponsorStandingsContext(standings);
 let upkeepBefore = 0, upkeepAfter = 0, sponsorBefore = 0, sponsorAfter = 0;
+const sponsorSources = { locked: 0, pending: 0, default: 0 };
 const deltas = [];
 for (const a of assignments) {
   const team = managerTeams.find((t) => t.id === a.teamId);
@@ -162,44 +180,61 @@ for (const a of assignments) {
   const divisionStandings = lastSeasonStanding
     ? sponsorCtx.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
     : [];
-  const before = computeSponsorForSeason({
-    seasonNumber: fromSeason.number + 1,
-    team: { ...team, division: a.fromTier },
-    lastSeasonStanding,
-    divisionStandings,
-  });
-  const after = computeSponsorForSeason({
-    seasonNumber: fromSeason.number + 1,
-    team: { ...team, division: a.toTier },
-    lastSeasonStanding,
-    divisionStandings,
-  });
-  sponsorBefore += before.gross_sponsor;
-  sponsorAfter += after.gross_sponsor;
-  if (after.gross_sponsor !== before.gross_sponsor || a.toTier !== a.fromTier) {
+  const { activeContract = null, pendingContract = null } = contractsByTeam.get(a.teamId) || {};
+
+  // Samme resolver som sæson-transitionens preview og fornyelsen bruger.
+  const grossFor = (division) => {
+    const { source, contract } = resolveContractForNewSeason({
+      teamId: a.teamId,
+      newSeasonNumber: toSeasonNumber,
+      activeContract,
+      pendingContract,
+      renownTargetValue: renownTarget({ division, lastSeasonStanding, divisionStandings }),
+    });
+    const breakdown = computeSponsorForSeason({
+      seasonNumber: toSeasonNumber,
+      team: { ...team, division },
+      lastSeasonStanding,
+      divisionStandings,
+      activeContract: contract,
+    });
+    return { source, gross: breakdown.gross_sponsor };
+  };
+
+  const before = grossFor(a.fromTier);
+  const after = grossFor(a.toTier);
+  sponsorSources[after.source] += 1;
+  sponsorBefore += before.gross;
+  sponsorAfter += after.gross;
+  if (after.gross !== before.gross || a.toTier !== a.fromTier) {
     deltas.push({
       name: a.name, rank: a.rank, fromTier: a.fromTier, toTier: a.toTier,
-      sponsorDelta: after.gross_sponsor - before.gross_sponsor,
+      source: after.source,
+      sponsorDelta: after.gross - before.gross,
       upkeepDelta: (UPKEEP_BY_DIVISION[a.toTier] ?? 0) - (UPKEEP_BY_DIVISION[a.fromTier] ?? 0),
     });
   }
 }
 
-console.log(`\n── ØKONOMI-SIM (S${fromSeason.number + 1}-base, uden kontrakt-låste sponsorvalg) ──`);
+console.log(`\n── ØKONOMI-SIM (S${toSeasonNumber}-garanteret sponsor, KONTRAKT-BEVIDST — #2926) ──`);
 const tierCount = (tier, key) => assignments.filter((x) => x[key] === tier).length;
 console.log(`  Divisions-fordeling (managerhold): før D1/${tierCount(1, "fromTier")} D2/${tierCount(2, "fromTier")} D3/${tierCount(3, "fromTier")} D4/${tierCount(4, "fromTier")} → efter D1/${tierCount(1, "toTier")} D2/${tierCount(2, "toTier")} D3/${tierCount(3, "toTier")} D4/${tierCount(4, "toTier")}`);
 console.log(`  Divisions-upkeep i alt: ${kr(upkeepBefore)} → ${kr(upkeepAfter)}  (Δ ${kr(upkeepAfter - upkeepBefore)})`);
-console.log(`  Sponsor-base i alt:     ${kr(sponsorBefore)} → ${kr(sponsorAfter)}  (Δ ${kr(sponsorAfter - sponsorBefore)})`);
+console.log(`  Sponsor garanteret i alt: ${kr(sponsorBefore)} → ${kr(sponsorAfter)}  (Δ ${kr(sponsorAfter - sponsorBefore)})`);
+console.log(`  Kontrakt-kilder efter flytning: ${sponsorSources.locked} låst · ${sponsorSources.pending} managervalg · ${sponsorSources.default} auto-default ('safe')`);
+console.log(`  NB: låste + valgte kontrakter har FROSSEN base — flytningen ændrer dem ikke (Δ = 0). Kun de ${sponsorSources.default} kontraktfri hold følger den nye divisions renown.`);
 console.log(`  Netto liga-økonomi Δ (sponsor-Δ minus upkeep-Δ): ${kr((sponsorAfter - sponsorBefore) - (upkeepAfter - upkeepBefore))}`);
 deltas.sort((a, b) => (b.sponsorDelta - b.upkeepDelta) - (a.sponsorDelta - a.upkeepDelta));
-// NB: netto-Δ her er KUN base-sponsor minus upkeep. Oprykkere står "negativt"
-// fordi D2-upkeep (140k) vokser mere end base-sponsoren (+60k) — den variable
-// sponsor-del, renown og de større D2-præmier er IKKE med. Det er en bevidst
+// NB: netto-Δ her er KUN garanteret sponsor minus upkeep. Oprykkere står
+// "negativt" fordi D2-upkeep (140k) vokser mere end sponsor-basen — den variable
+// per-etape-del og de større D2-præmier er IKKE med. Det er en bevidst
 // konservativ visning: ejeren skal se gulvet, ikke det optimistiske skøn.
-console.log(`  Bedste netto-base-Δ (sponsor-Δ − upkeep-Δ; variabel del + præmier IKKE medregnet):`);
-for (const d of deltas.slice(0, 5)) console.log(`     ${pad(d.name, 28)} D${d.fromTier}→D${d.toTier}  sponsor ${kr(d.sponsorDelta)} · upkeep ${kr(d.upkeepDelta)}`);
-console.log(`  Dårligste netto-base-Δ (oprykkere: mere upkeep end base-løft — præmier/variabel del opvejer):`);
-for (const d of deltas.slice(-5).reverse()) console.log(`     ${pad(d.name, 28)} D${d.fromTier}→D${d.toTier}  sponsor ${kr(d.sponsorDelta)} · upkeep ${kr(d.upkeepDelta)}`);
+// #2926: hold med låst/valgt kontrakt har sponsor-Δ = 0 (frossen base) og står
+// derfor med den fulde upkeep-stigning i kolonnen — det er korrekt, ikke en fejl.
+console.log(`  Bedste netto-Δ (sponsor-Δ − upkeep-Δ; variabel del + præmier IKKE medregnet):`);
+for (const d of deltas.slice(0, 5)) console.log(`     ${pad(d.name, 28)} D${d.fromTier}→D${d.toTier}  sponsor ${kr(d.sponsorDelta)} · upkeep ${kr(d.upkeepDelta)} · ${d.source}`);
+console.log(`  Dårligste netto-Δ (oprykkere: mere upkeep end sponsor-løft — præmier/variabel del opvejer):`);
+for (const d of deltas.slice(-5).reverse()) console.log(`     ${pad(d.name, 28)} D${d.fromTier}→D${d.toTier}  sponsor ${kr(d.sponsorDelta)} · upkeep ${kr(d.upkeepDelta)} · ${d.source}`);
 
 // ─── 4 · Pulje-fyld-prognose ─────────────────────────────────────────────────
 

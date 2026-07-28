@@ -22,6 +22,9 @@ import {
   SEED_RIDER_PALMARES_RESULTS,
   SEED_TEAM_SEASON_STANDINGS,
   SEED_TEAM_HALL_OF_FAME,
+  SEED_SEASON_STANDINGS,
+  SEED_RIDER_RANKINGS,
+  SEED_RACE_POINTS,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
@@ -31,6 +34,9 @@ import {
   SEED_CALENDAR,
   SEED_DEVELOPMENT,
   SEED_PROJECTION,
+  SEED_MANAGER_TRANSFERS,
+  seedManagerAchievements,
+  SEED_SEASON_HONOURS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -44,6 +50,29 @@ export function parseTable(requestUrl) {
   const url = new URL(requestUrl);
   const parts = url.pathname.split("/").filter(Boolean);
   return parts[parts.length - 1];
+}
+
+// #2863: PostgREST-RPC'er er POST mod /rest/v1/rpc/<navn>. Både preview-mocken
+// og Playwright-fixturen svarede før med `{}`/`[]` på ENHVER POST mod /rest/v1,
+// hvilket betød at en RPC-drevet flade var usynlig på preview. Returnerer null
+// for alt der ikke er en rpc-sti, så kaldere kan falde tilbage til den gamle
+// mutations-adfærd uændret.
+export function parseRpc(requestUrl) {
+  const url = new URL(requestUrl);
+  const match = url.pathname.match(/\/rest\/v1\/rpc\/([^/]+)\/?$/);
+  return match ? match[1] : null;
+}
+
+// undefined = "denne RPC har ingen mock" → kalderen falder tilbage til sin
+// eksisterende POST-adfærd. Kun RPC'er der driver en synlig flade seedes her.
+export function rpcResponse(name) {
+  switch (name) {
+    // #2863 sæsonens kåringer på /seasons.
+    case "get_season_honours":
+      return SEED_SEASON_HONOURS;
+    default:
+      return undefined;
+  }
 }
 
 export function restRows(table, requestUrl = "") {
@@ -75,10 +104,19 @@ export function restRows(table, requestUrl = "") {
         if (url.search.includes("pool_race")) return SEED_RACES;
         return POOL_RACES;
       }
-      const idMatch = url.search.match(/id=eq\.([^&]+)/);
+      // Ankret på ? eller & med vilje: et uankret /id=eq\./ matcher også inde i
+      // "season_id=eq.…", så hubbens sæson-scopede query (#3102 etape 2) blev
+      // læst som et opslag på ét løb med sæsonens id og gav tom liste.
+      const idMatch = url.search.match(/[?&]id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACES.filter(r => r.id === id);
+      }
+      // #3102 etape 2: Resultat-hubben henter kun de AFSLUTTEDE løb
+      // (status=eq.completed). Uden filteret her ville hubben også vise det
+      // kommende og det igangværende løb, som i prod aldrig ville nå frem.
+      if (url.search.includes("status=eq.completed")) {
+        return SEED_RACES.filter(r => r.status === "completed");
       }
       return SEED_RACES;
     }
@@ -126,6 +164,19 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(riderMatch[1]);
         return id === "rider-1" ? SEED_RIDER_PALMARES_RESULTS : [];
       }
+      // #3102 etape 2: Resultat-hubben henter podiet for FLERE løb i ét kald
+      // (race_id=in.(a,b,c) + rank≤3). Uden denne gren faldt den igennem til []
+      // nedenfor, så hvert løbskort viste "ingen klassement" på preview.
+      // supabase-js URL-koder parenteserne i in.(…), så matchet sker mod den
+      // dekodede søgestreng — ikke url.search som den står.
+      const inMatch = decodeURIComponent(url.search).match(/race_id=in\.\(([^)]*)\)/);
+      if (inMatch) {
+        const ids = new Set(
+          inMatch[1].split(",").map(s => s.trim().replace(/^"|"$/g, ""))
+        );
+        const maxRank = Number(url.search.match(/rank=lte\.(\d+)/)?.[1] ?? Infinity);
+        return SEED_RACE_RESULTS.filter(r => ids.has(r.race_id) && (r.rank ?? 0) <= maxRank);
+      }
       // Alle andre race_results-queries (dashboard/standings/season-aggregater) →
       // tom, præcis som før → uændrede core-smoke-snapshots.
       return [];
@@ -162,8 +213,17 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(idMatch[1]);
         return id === TEST_TEAM.id ? SEED_TEAM_SEASON_STANDINGS : [];
       }
+      // #3102 etape 2: den sæson-scopede query (Resultat-hubbens tophold-boks).
+      // Lå før i default-grenen og gav [], så boksen aldrig kunne ses på preview.
+      if (url.search.includes("season_id=eq.")) return SEED_SEASON_STANDINGS;
       return [];
     }
+    // #3102 etape 2: rider_rankings_mv (hubbens topscorere + RiderRankingsPage).
+    case "rider_rankings_mv":
+      return SEED_RIDER_RANKINGS;
+    // #3102 etape 2: pointtabellen bag Point & præmier-fanen.
+    case "race_points":
+      return SEED_RACE_POINTS;
     case "hall_of_fame": {
       const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
       if (idMatch) {
@@ -203,7 +263,40 @@ export function restObject(table, requestUrl = "") {
   }
 }
 
-export function apiResponse(pathname) {
+// #2917 · GET /api/managers/:teamId — manglede helt, så ManagerProfilePage kollapsede
+// til sin fejl-tilstand på preview og kunne ikke klik-testes før noget gik live.
+// Kontrakten spejler routes/api.js: team/user/riders/season_history/achievements/
+// transfer_activity, med redigerede hemmeligheder (#1666) og progress (#1008).
+//
+// Rival-holdet er bevidst uden oplåste achievements — det er den eneste vej til at
+// se tomtilstanden på "Senest låst op" uden at rode i data.
+export function managerProfile(teamId) {
+  const isRival = teamId === RIVAL_TEAM.id;
+  const team = isRival ? RIVAL_TEAM : TEST_TEAM;
+  return {
+    team: { id: team.id, name: team.name, division: team.division },
+    user: {
+      id: team.user_id,
+      username: team.manager_name,
+      last_seen: isRival ? "2026-07-24T19:00:00.000Z" : "2026-07-25T20:55:00.000Z",
+      login_streak: isRival ? 1 : 9,
+      is_online: !isRival,
+    },
+    riders: RIDERS.filter((rider) => rider.team_id === team.id),
+    season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
+    achievements: seedManagerAchievements({ unlocked: !isRival }),
+    transfer_activity: isRival ? [] : SEED_MANAGER_TRANSFERS,
+  };
+}
+
+// `search` er valgfri (default "") så eksisterende kaldesteder — Playwright-
+// fixtures og de øvrige preview-ruter — er uændrede. Kun ruter der faktisk
+// filtrerer server-side (feedback-indbakken) læser den.
+export function apiResponse(pathname, search = "") {
+  // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
+  const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
+  if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));
+
   if (pathname.endsWith("/api/board/status")) {
     return {
       is_baseline_phase: true,
@@ -264,6 +357,12 @@ export function apiResponse(pathname) {
     return { sent: [], received: [], archivedSent: [], archivedReceived: [] };
   }
   if (pathname.endsWith("/api/transfers/swaps")) return { sent: [], received: [] };
+  // NB: i preview-interceptoren (installPreviewMock) fanges /api/me/onboarding-
+  // progress + /api/training/me af #2819-blokken FØR denne linje, så onboarding-
+  // kortet har rigtige trin og /training har en roster at vise touren på. Denne
+  // tomme variant rammes kun af Playwright-fixtures, hvor kortet bevidst forbliver
+  // skjult så dashboard-snapshots ikke ændrer sig (samme lagdeling som scouting
+  // nedenfor). Formen her er historisk og læses ikke af nogen komponent.
   if (pathname.endsWith("/api/me/onboarding-progress")) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }
@@ -314,6 +413,32 @@ export function apiResponse(pathname) {
     const finalRows = SEED_RACE_RESULTS.filter(
       (r) => r.race_id === "race-done-2" && r.stage_number === 2
     );
+    // #2886: sæson-historik + akkumulerede totaler. Afledt af seedet (ikke
+    // hardkodet), så preview og prod svarer på samme regnestykke: point/præmie
+    // = SUM over ALLE holdets rækker i løbet, best_rank = bedste rytter-rang i
+    // gc/stage. Seedet har kun to gennemførte løb, så "Vis alle N"-knappen
+    // (>5 tidligere løb) ses først i prod. Det viste løb filtreres fra, præcis
+    // som backend gør.
+    const seasonRaces = SEED_RACES
+      .filter((ra) => ra.status === "completed")
+      .map((ra) => {
+        const mine = SEED_RACE_RESULTS.filter(
+          (r) => r.race_id === ra.id && r.team_id === TEST_TEAM.id
+        );
+        const ranked = mine
+          .filter((r) => r.rider_id && r.rank != null && ["gc", "stage"].includes(r.result_type))
+          .map((r) => r.rank);
+        return {
+          race_id: ra.id,
+          name: ra.name,
+          race_type: ra.race_type,
+          stages: ra.stages,
+          best_rank: ranked.length ? Math.min(...ranked) : null,
+          points: mine.reduce((s, r) => s + (r.points_earned || 0), 0),
+          prize_money: mine.reduce((s, r) => s + (r.prize_money || 0), 0),
+        };
+      })
+      .filter((r) => r.points > 0 || r.prize_money > 0);
     return {
       // seen:false — #2593 (del 2): matcher det ægte endpoints kontrakt (server-side
       // seen-flag i samme payload). false lader preview'ens "Nyt"-badge vises som
@@ -324,6 +449,12 @@ export function apiResponse(pathname) {
       ],
       stage_wins: 1,
       totals: { points: 80, prize_money: 194000 },
+      history: seasonRaces.filter((r) => r.race_id !== "race-done-2"),
+      season_totals: {
+        points: seasonRaces.reduce((s, r) => s + r.points, 0),
+        prize_money: seasonRaces.reduce((s, r) => s + r.prize_money, 0),
+        races: seasonRaces.length,
+      },
       recap: {
         results: finalRows,
         incidents: SEED_RACE_INCIDENTS.filter((i) => i.race_id === "race-done-2"),
@@ -340,5 +471,61 @@ export function apiResponse(pathname) {
   if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
 
+  // #2842 admin-feedback-indbakke. Uden en seed her ville fladen stå tom på
+  // preview, og ejeren kunne ikke se den før den var live (det har bidt før).
+  // Indholdet er OPDIGTET — ægte indsendelser er fritekst fra spillere og hører
+  // ikke til i et committed seed.
+  if (pathname.endsWith("/api/admin/feedback")) return feedbackInboxResponse(search);
+
   return {};
 }
+
+// Filtrerer på status/kategori som den ægte route gør, så preview-fladen ikke
+// viser "Nye 1" ved siden af tre rækker.
+function feedbackInboxResponse(search) {
+  const params = new URLSearchParams(search || "");
+  const status = params.get("status");
+  const category = params.get("category");
+  const items = SEED_FEEDBACK_INBOX.items.filter(
+    (i) => (!status || i.status === status) && (!category || i.category === category)
+  );
+  return { ...SEED_FEEDBACK_INBOX, items };
+}
+
+// Bevidst kun ét "svaret"-eksempel, så både den ubesvarede og den besvarede
+// tilstand er synlig i preview uden at man skal skifte filter.
+const SEED_FEEDBACK_INBOX = {
+  items: [
+    {
+      id: "fb-3", seq: 3, created_at: "2026-07-25T18:42:00.000Z",
+      category: "bug", status: "new",
+      message: "The transfer summary says cash payment positive means I receive money, but my balance went down after I accepted an offer. Either the label is backwards or the payment is.",
+      page_path: "/transfers", viewport: "1440x900",
+      reply_message: null, replied_at: null,
+      user: { id: "u-3", username: "Bergfahrer", email: "bergfahrer@example.com" },
+      team: { id: "team-3", name: "Alpenwerk Pro" },
+    },
+    {
+      id: "fb-2", seq: 2, created_at: "2026-07-24T09:15:00.000Z",
+      category: "idea", status: "in_progress",
+      message: "Would love to be able to compare two riders side by side before bidding. Right now I have to open two tabs and flip between them during the auction.",
+      page_path: "/auctions", viewport: "390x844",
+      reply_message: null, replied_at: null,
+      user: { id: "u-2", username: "Domestique", email: "domestique@example.com" },
+      team: { id: "team-2", name: "Nordkap Cycling" },
+    },
+    {
+      id: "fb-1", seq: 1, created_at: "2026-07-22T20:03:00.000Z",
+      category: "feedback", status: "closed",
+      message: "Really enjoying the season calendar. One thing: the race list does not make it obvious which races my riders are already entered in.",
+      page_path: "/races", viewport: "1280x800",
+      reply_message: "Good catch. Entered races now show a jersey marker in the race list, shipping with this week's patch.",
+      replied_at: "2026-07-23T07:30:00.000Z",
+      user: { id: "u-1", username: "Rouleur", email: "rouleur@example.com" },
+      team: null,
+    },
+  ],
+  next_cursor: null,
+  limit: 25,
+  counts: { new: 1, in_progress: 1, closed: 1, total: 3 },
+};

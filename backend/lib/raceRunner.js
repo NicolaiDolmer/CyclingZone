@@ -583,7 +583,38 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
   if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
 
-  const otherRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  // #3076 (samme rod-årsag som #3070, tredje lag): binding-nøglen er game_day, som er
+  // SÆSON-RELATIV og nulstilles hver sæson (prod: både S1 og S2 spænder 0..~100000).
+  // Uden sæson-filter ser excludeBoundRiders en forrige-sæsons entry som en aktiv binding
+  // og udelader rytteren fra startfeltet — samme "for tyndt felt"-udfald som kommentaren
+  // om game_day ovenfor advarer mod, blot udløst af sæsonskiftet i stedet for manglende
+  // backfill. Sæsonen opløses HER frem for at stole på at hver kaldevej har season_id med
+  // på race-objektet: loadEntrantsForRace nås fra flere steder (stage-løkken, admin-
+  // simulering), og en kalder der glemmer feltet ville ellers slå binding helt fra i
+  // tavshed — netop den fejlklasse dette fix findes for.
+  let seasonId = race?.season_id ?? null;
+  if (!seasonId && race?.id) {
+    const { data: raceRow, error: eSeason } = await supabase
+      .from("races").select("season_id").eq("id", race.id).maybeSingle();
+    if (eSeason) throw new Error(`races season (binding this): ${eSeason.message}`);
+    seasonId = raceRow?.season_id ?? null;
+  }
+  if (!seasonId) {
+    throw new Error(`loadFieldBindingContext: could not resolve season_id for race ${race?.id}; binding would cross the season boundary (#3076)`);
+  }
+
+  const candidateRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const seasonRows = [];
+  for (let i = 0; i < candidateRaceIds.length; i += 200) {
+    const { data, error } = await supabase
+      .from("races").select("id, season_id").in("id", candidateRaceIds.slice(i, i + 200));
+    if (error) throw new Error(`races season (binding others): ${error.message}`);
+    seasonRows.push(...(data || []));
+  }
+  const seasonByRaceId = new Map(seasonRows.map((r) => [r.id, r.season_id]));
+  const otherRaceIds = candidateRaceIds.filter((rid) => seasonByRaceId.get(rid) === seasonId);
+  if (!otherRaceIds.length) return { thisWindow, otherRacesByTeam: new Map() };
+
   const scheds = [];
   for (let i = 0; i < otherRaceIds.length; i += 200) {
     const chunk = otherRaceIds.slice(i, i + 200);
@@ -988,8 +1019,27 @@ async function persistRuns({ supabase, race, runs, source = null }) {
   // race_simulation_rider_scores.run_id har ON DELETE CASCADE → gamle
   // rider_scores-rækker ryddes automatisk op sammen med deres run — ingen
   // separat delete af rider_scores nødvendig.
-  await supabase.from("race_simulation_runs").delete().eq("race_id", race.id)
-    .in("stage_number", [...new Set(rows.map((r) => r.stage_number))]);
+  //
+  // #2974: eksplicit error-tjek er PÅKRÆVET — samme fejlklasse som #2898.
+  // supabase-js kaster ikke: fejler denne delete tavst, kører insertet nedenfor
+  // alligevel og lægger de nye runs OVEN PÅ de gamle. Resultatet er dublerede
+  // run-snapshots for samme (race_id, stage_number) — og dermed også dublerede
+  // rider_scores, fordi hver dublet-run trækker sit eget sæt med. Abort FØR insert.
+  const stageNumbersInRun = [...new Set(rows.map((r) => r.stage_number))];
+  const { error: deleteError } = await supabase
+    .from("race_simulation_runs")
+    .delete()
+    .eq("race_id", race.id)
+    .in("stage_number", stageNumbersInRun);
+  if (deleteError) {
+    const err = new Error(
+      `race_simulation_runs delete failed for race ${race.id} (stages ${stageNumbersInRun.join(",")}) — ` +
+        `aborting BEFORE insert to prevent duplicated run snapshots: ${deleteError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "sim-runs-delete" }, raceId: race.id });
+    throw err;
+  }
   const { error } = await supabase.from("race_simulation_runs").insert(rows);
   if (error) throw new Error(`race_simulation_runs: ${error.message}`);
 
@@ -1037,8 +1087,24 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
     time_loss_seconds: inc.time_loss_seconds,
     injury_days: inc.injury_days,
   }));
-  await supabase.from("race_incidents").delete().eq("race_id", race.id)
-    .in("stage_number", [...new Set(stageNumbers)]);
+  // #2974: samme utjekkede delete-før-insert som #2898. Et tavst fejlet delete
+  // efterfølges alligevel af insertet → dublerede hændelser i etape-loggen, og
+  // dermed dobbelt-tællende skades-/styrt-visninger. Abort FØR insert.
+  const incidentStages = [...new Set(stageNumbers)];
+  const { error: deleteError } = await supabase
+    .from("race_incidents")
+    .delete()
+    .eq("race_id", race.id)
+    .in("stage_number", incidentStages);
+  if (deleteError) {
+    const err = new Error(
+      `race_incidents delete failed for race ${race.id} (stages ${incidentStages.join(",")}) — ` +
+        `aborting BEFORE insert to prevent duplicated incidents: ${deleteError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "incidents-delete" }, raceId: race.id });
+    throw err;
+  }
   const { error } = await supabase.from("race_incidents").insert(rows);
   if (error) throw new Error(`race_incidents: ${error.message}`);
 
@@ -1064,8 +1130,24 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
 const PASSAGE_INSERT_CHUNK_SIZE = 500;
 async function persistPassages({ supabase, race, passageRows, stageNumbers }) {
   if (!passageRows?.length) return;
-  await supabase.from("race_stage_passages").delete().eq("race_id", race.id)
-    .in("stage_number", [...new Set(stageNumbers)]);
+  // #2974: samme utjekkede delete-før-insert som #2898. Fejler den tavst, lægger
+  // chunk-insertet nedenfor de nye passager OVEN PÅ de gamle → dublerede
+  // waypoints på etape-profilen. Abort FØR insert.
+  const passageStages = [...new Set(stageNumbers)];
+  const { error: deleteError } = await supabase
+    .from("race_stage_passages")
+    .delete()
+    .eq("race_id", race.id)
+    .in("stage_number", passageStages);
+  if (deleteError) {
+    const err = new Error(
+      `race_stage_passages delete failed for race ${race.id} (stages ${passageStages.join(",")}) — ` +
+        `aborting BEFORE insert to prevent duplicated passages: ${deleteError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "passages-delete" }, raceId: race.id });
+    throw err;
+  }
   for (let i = 0; i < passageRows.length; i += PASSAGE_INSERT_CHUNK_SIZE) {
     const chunk = passageRows.slice(i, i + PASSAGE_INSERT_CHUNK_SIZE);
     const { error } = await supabase.from("race_stage_passages").insert(chunk);
@@ -1097,8 +1179,18 @@ async function persistStageMoments({ supabase, race, moments, stageNumbers }) {
       rider_ids: m.rider_ids ?? [],
       team_ids: m.team_ids ?? [],
     }));
-    await supabase.from("race_stage_moments").delete().eq("race_id", race.id)
+    // #2974: tjek delete-fejlen FØR insertet. Funktionen degraderer bevidst
+    // gracefully (catch'en nedenfor), men et TAVST fejlet delete er noget andet
+    // end en degradering: så kører insertet alligevel og lægger momenterne OVEN
+    // PÅ de gamle → dublerede why-momenter i etape-rapporten. Kastes fejlen i
+    // stedet, rammer den catch'en og fladen degraderer som dokumenteret — til
+    // INGEN nye momenter, ikke dobbelte.
+    const { error: deleteError } = await supabase
+      .from("race_stage_moments")
+      .delete()
+      .eq("race_id", race.id)
       .in("stage_number", [...new Set(stageNumbers)]);
+    if (deleteError) throw deleteError;
     const { error } = await supabase.from("race_stage_moments").insert(rows);
     if (error) throw error;
   } catch (err) {
@@ -1341,7 +1433,7 @@ export async function simulateRace({
 
   // #2175: løbet er afviklet → refresh rangliste-matviews så /standings +
   // /rider-rankings viser de nye tal. Best-effort (resultaterne er skrevet).
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
 
   return {
     rowsImported: applied.rowsImported,
@@ -1984,10 +2076,23 @@ export async function simulateStageByIndex({
   // FIX 1: status='completed' sættes SIDST — efter al finalization er lykkedes. Idempotent
   // (en recovery-genkørsel sætter samme værdi). stages_completed sættes også (recovery-sti
   // hvor låsen ikke kørte; normal-sti har allerede sat den via låsen, så dette er en no-op-værdi).
-  await supabase
+  // #2974: samme tjek som fuld-sim-stien fik i #2898. Resultaterne ER skrevet på
+  // dette tidspunkt; fejler status-flaget tavst, står løbet som "ikke afviklet"
+  // trods skrevne race_results — og recovery-genkørslen vil forsøge at afvikle
+  // det igen oven på dem. Tjek + kast, så retry-laget kan gribe det.
+  const { error: statusError } = await supabase
     .from("races")
     .update({ status: "completed", stages_completed: totalStages })
     .eq("id", race.id);
+  if (statusError) {
+    const err = new Error(
+      `Failed to mark race ${race.id} as completed after stage finalization — results ARE written, ` +
+        `only the status flag failed: ${statusError.message}`,
+    );
+    console.error(`  ⚠️  ${err.message}`);
+    captureException(err, { tags: { flow: "race-run", stage: "race-status-completed" }, raceId: race.id });
+    throw err;
+  }
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
@@ -1995,7 +2100,7 @@ export async function simulateStageByIndex({
 
   // #2175: etapeløbet er finaliseret → refresh rangliste-matviews. Best-effort;
   // cron-fallback holder ranglisten fersk under selve etapeløbet (mellem-etaper).
-  await refreshRankingMatviewsSafe(supabase);
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
 
   return {
     stageNumber, isFinalStage,

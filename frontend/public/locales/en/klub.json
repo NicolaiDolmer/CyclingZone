@@ -119,6 +119,11 @@
       "title": "Couldn't load the club",
       "description": "Nothing was lost. Your facilities and staff are safe. Try again.",
       "retry": "Try again"
+    },
+    "upgrade": {
+      "failed": "The purchase could not be completed. Nothing was deducted.",
+      "network": "No connection to the server. Nothing was deducted.",
+      "auth": "Your session expired. Sign in again and retry."
     }
   }
 }

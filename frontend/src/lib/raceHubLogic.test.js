@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -244,4 +244,29 @@ test("overlapConflictColumn: løb uden for brættet → navn fra binding-entry (
   const map = { r1: [{ id: "ext", window: W(9), name: "Vuelta al Sol" }] };
   const hit = overlapConflictColumn({ column: colB, columns: [colB], bindingMap: map, riderId: "r1" });
   assert.deepEqual(hit, { id: "ext", name: "Vuelta al Sol" });
+});
+
+// formatStartsIn (#3061): "Clear all"-dialogens nedtælling. Minut-præcision, altid rundet OP.
+test("formatStartsIn: dage/timer/minutter, altid rundet op", () => {
+  assert.equal(formatStartsIn(4 * 3_600_000 + 12 * 60_000), "4h 12m");
+  assert.equal(formatStartsIn(30_000), "1m", "30 sekunder rundes op til 1m, aldrig 0m");
+  assert.equal(formatStartsIn(90_000), "2m");
+  assert.equal(formatStartsIn(26 * 3_600_000), "1d 2h");
+  assert.equal(formatStartsIn(59_000), "1m");
+});
+
+test("formatStartsIn: ikke-positive/ugyldige differencer → null", () => {
+  assert.equal(formatStartsIn(0), null);
+  assert.equal(formatStartsIn(-1000), null);
+  assert.equal(formatStartsIn(NaN), null);
+  assert.equal(formatStartsIn(undefined), null);
+});
+
+// shouldShowClearAllDialog (#3061): ALDRIG støj — kun vis dialogen når mindst ét ægte
+// kommende løb rammes.
+test("shouldShowClearAllDialog: tom/manglende liste → false; mindst ét løb → true", () => {
+  assert.equal(shouldShowClearAllDialog([]), false);
+  assert.equal(shouldShowClearAllDialog(undefined), false);
+  assert.equal(shouldShowClearAllDialog(null), false);
+  assert.equal(shouldShowClearAllDialog([{ id: "a", name: "Tour Belge", startAt: 1 }]), true);
 });

@@ -15,11 +15,50 @@
 // start-sponsor) og krediteres når løb finaliseres, ved siden af præmierne.
 //
 // Idempotent per (race, team) via idempotency_keys "sponsor_race_day:<raceId>:<teamId>"
-// og "sponsor_results:<raceId>:<teamId>" + uniq_finance_idempotency_key i DB —
-// gentagne sweep-ticks er harmløse (samme mønster som prizePayoutEngine).
+// og "sponsor_results:<raceId>:<teamId>".
+//
+// #3123: idempotensen håndhæves i TO lag. Primært et pre-filter — sweep'en henter
+// sæsonens allerede-bogførte nøgler op front og springer dem over. Sekundært
+// uniq_finance_idempotency_key i DB, som backstop mod to samtidige ticks.
+// Uden pre-filteret genforsøgte hver tick ALLE betalte krediteringer og fik dem
+// afvist med 23505 — funktionelt harmløst, men O(alle completede løb) sekventielle
+// round-trips pr. tick (~40 ms stykket). Ved sæsonslut ville ét tick tage længere
+// end sit eget 5-minutters-interval og begynde at overlappe.
 
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+
+// PostgREST returnerer maks 1000 rækker pr. request uanset filter. Sæsonens
+// sponsor-nøgler overstiger det længe før sæsonslut, så vi SKAL paginere —
+// en tavs afkortning ville lade de afkortede nøgler falde tilbage på 23505-stien
+// og genindføre præcis den fejl vi fjerner her.
+const KEY_PAGE_SIZE = 1000;
+
+// Hent alle allerede-bogførte sponsor-idempotency-nøgler for sæsonen.
+//
+// `.order()` er IKKE valgfri: offset-pagination over et uordnet resultatsæt er
+// udefineret i Postgres — to queries kan give hver sin rækkefølge, og så kan en
+// nøgle hoppe mellem sider og blive sprunget helt over. Den oversprungne nøgle
+// falder tilbage på 23505-stien vi fjerner her. idempotency_key er unik, så den
+// er en totalordning og dermed et stabilt paginerings-anker.
+export async function fetchPaidSponsorKeys(seasonId, supabase) {
+  const paid = new Set();
+  for (let from = 0; ; from += KEY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("finance_transactions")
+      .select("idempotency_key")
+      .eq("season_id", seasonId)
+      .in("type", ["sponsor_race_day", "sponsor_result_bonus"])
+      .order("idempotency_key", { ascending: true })
+      .range(from, from + KEY_PAGE_SIZE - 1);
+    if (error) throw new Error(`finance_transactions: ${error.message}`);
+    for (const row of data || []) {
+      if (row?.idempotency_key) paid.add(row.idempotency_key);
+    }
+    if ((data?.length || 0) < KEY_PAGE_SIZE) break;
+  }
+  return paid;
+}
 
 // Pure: beregn race-day-kreditter for ét løb. stages defaulter til 1 (endagsløb);
 // hold uden aktiv kontrakt eller med rate <= 0 springes over.
@@ -105,6 +144,9 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     (contracts || []).map((c) => [c.team_id, c])
   );
 
+  // #3123: allerede-bogførte nøgler, så vi ikke genforsøger dem mod DB'en.
+  const paidKeys = await fetchPaidSponsorKeys(seasonId, supabase);
+
   // Resterende resultat-loft pr. hold (results_cap-klausul − allerede udbetalt).
   // Holdes i memory gennem sweepen og persisteres pr. kreditering.
   const remainingCapByTeam = {};
@@ -130,6 +172,7 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     const credits = computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam });
 
     for (const c of credits) {
+      if (paidKeys.has(c.idempotencyKey)) continue;
       const { skipped } = await incrementBalanceWithAudit(
         supabase,
         {
@@ -165,6 +208,10 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     });
 
     for (const b of bonusCredits) {
+      // #3123: allerede bogført → spring over UDEN at decrementere loftet igen
+      // (forbruget ligger allerede i contract.results_bonus_paid). Samme semantik
+      // som `skipped`-stien nedenfor.
+      if (paidKeys.has(b.idempotencyKey)) continue;
       const { skipped } = await incrementBalanceWithAudit(
         supabase,
         {

@@ -402,9 +402,10 @@ export default function RaceDetailPage() {
     return Number.isNaN(d.getTime()) ? null : { stageNumber: next.stage_number, date: d };
   }, [schedule, race?.stages_completed]);
 
-  // Kontekst-bevarende tilbage-link (board/dashboard/bibliotek).
+  // Kontekst-bevarende tilbage-link (board/dashboard/arkiv).
+  // #3102 etape 2: arkivet er en fane i Resultat-hubben nu, ikke på /races.
   const backFrom = location.state?.from;
-  const backTo = backFrom === "board" ? "/races" : backFrom === "dashboard" ? "/dashboard" : "/races?tab=library";
+  const backTo = backFrom === "board" ? "/races" : backFrom === "dashboard" ? "/dashboard" : "/resultater?tab=archive";
   const backLabel = backFrom ? t("detail.back") : t("detail.backToLibrary");
 
   // Endeligt klassement pr. type = rækkerne ved højeste etape-nummer for den type

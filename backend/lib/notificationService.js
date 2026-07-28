@@ -1,4 +1,6 @@
+import { isKnownNotificationType } from "./notificationTypes.js";
 import { captureException } from "./sentry.js";
+import { SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -49,6 +51,15 @@ export async function notifyUser({
 }) {
   if (!userId) {
     return { delivered: false, deduped: false, reason: "missing_user" };
+  }
+
+  // #3016: en type uden for notifications_type_check afvises tavst af Postgres
+  // (per-item try/catch hos kalderne). Gør det højlydt ved kilden — insert
+  // forsøges stadig, så adfærden er uændret hvis constrainten er nyere end listen.
+  if (!isKnownNotificationType(type)) {
+    captureException(new Error(
+      `Ukendt notifikationstype "${type}" — mangler i NOTIFICATION_TYPES/notifications_type_check (#3016)`,
+    ));
   }
 
   const sinceIso = new Date(now.getTime() - dedupeWindowMs).toISOString();
@@ -351,12 +362,19 @@ export async function notifyAndClearWatchlistForRiders({ supabase, riders, notif
   stats.riders = list.length;
 
   const riderIds = list.map((r) => r.id);
-  const { data: watchRows, error } = await supabase
-    .from("rider_watchlist")
-    .select("id, user_id, rider_id")
-    .in("rider_id", riderIds);
-  if (error) {
-    throw new Error(`notifyAndClearWatchlistForRiders lookup: ${error.message}`);
+  // #3030-klassen: riderIds er ubunden (AI-trim af en hel pulje ≈ 576 ryttere)
+  // — rå .in() sprænger gateway-URL-grænsen (~16 KB). Chunket (ramte 26/7).
+  const watchRows = [];
+  for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("rider_watchlist")
+      .select("id, user_id, rider_id")
+      .in("rider_id", chunk);
+    if (error) {
+      throw new Error(`notifyAndClearWatchlistForRiders lookup: ${error.message}`);
+    }
+    watchRows.push(...(data || []));
   }
 
   const byRiderId = new Map(list.map((r) => [r.id, r]));
@@ -392,15 +410,19 @@ export async function notifyAndClearWatchlistForRiders({ supabase, riders, notif
     }
   }
 
-  const { data: cleared, error: delErr } = await supabase
-    .from("rider_watchlist")
-    .delete()
-    .in("rider_id", riderIds)
-    .select("id");
-  if (delErr) {
-    throw new Error(`notifyAndClearWatchlistForRiders cleanup: ${delErr.message}`);
+  // Samme URL-grænse gælder delete-filteret — chunket manuelt (#3030-klassen).
+  for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const { data: cleared, error: delErr } = await supabase
+      .from("rider_watchlist")
+      .delete()
+      .in("rider_id", chunk)
+      .select("id");
+    if (delErr) {
+      throw new Error(`notifyAndClearWatchlistForRiders cleanup: ${delErr.message}`);
+    }
+    stats.cleared += (cleared ?? []).length;
   }
-  stats.cleared = (cleared ?? []).length;
 
   return stats;
 }

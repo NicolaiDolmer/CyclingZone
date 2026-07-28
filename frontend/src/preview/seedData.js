@@ -53,6 +53,10 @@ export const RIVAL_TEAM = {
 export const ACTIVE_SEASON = {
   id: "season-e2e",
   season_number: 1,
+  // #2863: `number` er kolonnenavnet i seasons-tabellen; `season_number` er den
+  // form embeds andre steder i seedet bruger. Uden `number` rendrede /seasons
+  // sin overskrift som "Season " med et tomt tal på enhver preview.
+  number: 1,
   name: "Sæson 1",
   status: "active",
   started_at: "2026-05-01T00:00:00.000Z",
@@ -421,6 +425,153 @@ export const SEED_TEAM_HALL_OF_FAME = [
   { id: "hof-e2e-1", team_id: TEST_TEAM.id, category: "most_points_season", value: 11250, season_number: 2 },
 ];
 
+// ── Resultat-hub-seed (#3102 etape 2) ────────────────────────────────────────
+// /resultater var utestbar på preview: season_standings svarede kun på den
+// team_id-scopede palmarès-query, rider_rankings_mv og race_points havde slet
+// ingen handler, så hubben stod tom uanset hvad man klikkede på. Samme fælde som
+// StrategyPage i etape 1.
+
+// season_standings scopet på sæsonen (hubbens tophold-boks). AI-holdet er med
+// med vilje: hubben filtrerer is_ai fra, og filteret skal kunne ses virke.
+export const SEED_SEASON_STANDINGS = [
+  { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2 } },
+  { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2 } },
+];
+
+// rider_rankings_mv — matview'en hubben og RiderRankingsPage læser top-5 fra.
+// rider_id peger på seedede ryttere, så display-joinet mod riders faktisk finder
+// dem (ellers filtreres rækken væk som "pensioneret siden matview-refresh").
+export const SEED_RIDER_RANKINGS = [
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-1", points: 1840, stage_wins: 3, gc_wins: 1 },
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-2", points: 1610, stage_wins: 2, gc_wins: 1 },
+];
+
+// race_points — pointtabellen bag Point & præmier-fanen. Ikke hele prod-tabellen:
+// tre klasser × de klassementer fanen faktisk grupperer på, så både klasse-
+// skifteren, per-dag-trøjekortene og præmieformlen kan klikkes igennem.
+export const SEED_RACE_POINTS = [
+  { race_class: "TourFrance", result_type: "Klassement", rank: 1, points: 1300 },
+  { race_class: "TourFrance", result_type: "Klassement", rank: 2, points: 900 },
+  { race_class: "TourFrance", result_type: "Klassement", rank: 3, points: 700 },
+  { race_class: "TourFrance", result_type: "Etapeplacering", rank: 1, points: 210 },
+  { race_class: "TourFrance", result_type: "Etapeplacering", rank: 2, points: 160 },
+  { race_class: "TourFrance", result_type: "Pointtroje", rank: 1, points: 400 },
+  { race_class: "TourFrance", result_type: "Forertroje", rank: 1, points: 60 },
+  { race_class: "Monuments", result_type: "Klassiker", rank: 1, points: 800 },
+  { race_class: "Monuments", result_type: "Klassiker", rank: 2, points: 600 },
+  { race_class: "Monuments", result_type: "KlassikerHold", rank: 1, points: 120 },
+  { race_class: "Class2", result_type: "Klassiker", rank: 1, points: 40 },
+  { race_class: "Class2", result_type: "Klassiker", rank: 2, points: 30 },
+];
+
+// #2917 · GET /api/managers/:teamId — managerprofilen havde INGEN mock-handler, så
+// hele siden var utestbar på preview. Titler/beskrivelser matcher prods
+// achievements-tabel (frontend oversætter dem via locales/*/achievements.json når
+// nøglen findes; DB-værdien er fallback — præcis som i prod).
+//
+// Sammensætningen er valgt så begge tilstande kan ses: TEST_TEAM har et realistisk
+// miks af oplåste, låste, låste-hemmelige og igangværende (progress), mens
+// RIVAL_TEAM har nul oplåste og derfor viser tomtilstanden på "Senest låst op".
+const MANAGER_ACHIEVEMENT_DEFS = [
+  ["auction_first_bid", "auktioner", "Første bud", "Afgiv dit første bud på en auktion.", false],
+  ["auction_first_win", "auktioner", "Første sejr", "Vind din første auktion.", false],
+  ["auction_5_wins", "auktioner", "5 auktioner vundet", "Vind 5 auktioner i alt.", false],
+  ["auction_25_wins", "auktioner", "25 auktioner vundet", "Vind 25 auktioner i alt.", false],
+  ["auction_sniper", "auktioner", "Sniper", "Vind en auktion med minimumsbud.", false],
+  ["transfer_first", "transfers", "Første handel", "Gennemfør din første transfer.", false],
+  ["transfer_5", "transfers", "5 transfers", "Gennemfør 5 transfers i alt.", false],
+  ["transfer_bargain", "transfers", "The Steal", "Buy a rider for less than half his value.", true],
+  ["team_15_riders", "hold", "Voksende hold", "Hav 15 ryttere på dit hold samtidig.", false],
+  ["team_youth", "hold", "Ungdomshold", "Hav mindst 50% U25-ryttere på dit hold.", false],
+  ["team_star", "hold", "Star team", "Have a star rider on your team: a rider valued at 8,000,000 CZ$ or more.", false],
+  ["team_5_achievements", "hold", "Trofæskab", "Lås op for 5 achievements.", false],
+  ["team_promotion", "hold", "Oprykket!", "Ryk op i en højere division.", false],
+  ["team_relegation", "hold", "Nedrykning", "Ryk ned i en lavere division.", false],
+  ["team_survived", "hold", "Overlevede", "Undgå nedrykning i en sæson hvor du var i farezonerne.", true],
+  ["founder_badge", "sæson", "Founding Manager", "Here from the opening season. Permanent. Survives every reset.", false],
+  ["season_first_result", "sæson", "Første resultat", "Få dit første løbsresultat registreret.", false],
+  ["season_top10", "sæson", "Top 10", "Slut en sæson i top 10 i din division.", false],
+  ["season_top5", "sæson", "Top 5", "Slut en sæson i top 5 i din division.", false],
+  ["season_top3", "sæson", "Podium", "Slut en sæson i top 3 i din division.", false],
+  ["season_winner", "sæson", "Divisionsvinder", "Vind din division i en sæson.", false],
+  ["season_div1_winner", "sæson", "Mester", "Vind Division 1.", false],
+  ["season_3_top3", "sæson", "Konstant", "Slut i top 3 tre sæsoner i træk.", true],
+  ["season_2_seasons", "sæson", "2 sæsoner overlevet", "Gennemfør 2 sæsoner.", false],
+  ["season_grand_tour_rider", "sæson", "Grand Tour Hold", "Hav en rytter der deltager i en Grand Tour.", false],
+  ["secret_streak_7", "hemmelig", "Ugentlig", "Log ind 7 dage i træk.", true],
+  ["secret_watchlist_50", "hemmelig", "Spejder", "Tilføj 50 ryttere til din ønskeliste.", true],
+];
+
+// Oplåste for TEST_TEAM, med spredte tidsstempler så "Senest låst op" sorterer synligt.
+const MANAGER_UNLOCKED_AT = {
+  auction_first_bid: "2026-06-23T09:12:00.000Z",
+  auction_first_win: "2026-06-24T18:40:00.000Z",
+  auction_5_wins: "2026-07-02T20:05:00.000Z",
+  auction_sniper: "2026-07-05T19:31:00.000Z",
+  transfer_first: "2026-06-28T11:20:00.000Z",
+  transfer_bargain: "2026-07-09T14:02:00.000Z",
+  team_15_riders: "2026-06-23T09:45:00.000Z",
+  team_youth: "2026-06-30T08:15:00.000Z",
+  team_5_achievements: "2026-07-02T20:05:00.000Z",
+  founder_badge: "2026-06-22T12:00:00.000Z",
+  season_first_result: "2026-06-25T21:10:00.000Z",
+  // De nye sæson-achievements (#2917) — tildelt ved sæsonskiftet, samme tidsstempel.
+  season_top10: "2026-07-26T17:30:00.000Z",
+  season_top5: "2026-07-26T17:30:00.000Z",
+  season_top3: "2026-07-26T17:30:00.000Z",
+  season_winner: "2026-07-26T17:30:00.000Z",
+  team_promotion: "2026-07-26T17:30:00.000Z",
+  secret_streak_7: "2026-07-01T07:05:00.000Z",
+};
+
+// Progress mod næste mål for låste, ikke-hemmelige tæller-achievements (#1008).
+const MANAGER_PROGRESS = {
+  auction_25_wins: { current: 9, target: 25 },
+  transfer_5: { current: 2, target: 5 },
+  season_2_seasons: { current: 1, target: 2 },
+};
+
+export function seedManagerAchievements({ unlocked = true } = {}) {
+  return MANAGER_ACHIEVEMENT_DEFS.map(([id, category, title, description, isSecret], index) => {
+    const unlockedAt = unlocked ? MANAGER_UNLOCKED_AT[id] || null : null;
+    const isUnlocked = Boolean(unlockedAt);
+    // Backend redigerer titel/beskrivelse væk for LÅSTE hemmeligheder (#1666) —
+    // mocken skal gøre præcis det samme, ellers tester preview en anden kontrakt.
+    const hideSecret = !isUnlocked && isSecret;
+    return {
+      id,
+      category,
+      title: hideSecret ? null : title,
+      description: hideSecret ? null : description,
+      is_secret: isSecret,
+      sort_order: index,
+      unlocked: isUnlocked,
+      unlocked_at: unlockedAt,
+      progress: !isUnlocked && !isSecret ? MANAGER_PROGRESS[id] || null : null,
+    };
+  });
+}
+
+export const SEED_MANAGER_TRANSFERS = [
+  {
+    id: "tx-e2e-1",
+    offer_amount: 640000,
+    created_at: "2026-07-09T14:02:00.000Z",
+    rider: { id: "rider-3", firstname: "Sofie", lastname: "Lund" },
+    buyer_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    seller_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+  },
+  {
+    id: "tx-e2e-2",
+    offer_amount: 415000,
+    created_at: "2026-06-28T11:20:00.000Z",
+    rider: { id: "rider-4", firstname: "Jonas", lastname: "Brandt" },
+    buyer_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    seller_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+  },
+];
+
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
@@ -594,7 +745,12 @@ export const SEED_STRATEGY = {
     suitabilities: { flat: 82, hills: 64, mountains: 41, cobbles: 55, time_trial: 60 },
   })),
   a_chain: [RIDERS[0].id],
-  captain_priorities: { flat: RIDERS[0].id, hills: RIDERS[0].id, mountains: null, cobbles: RIDERS[0].id, time_trial: null },
+  // #3102: buckets + rangordnede LISTER — samme form som backend leverer
+  // (raceStrategy.js / raceStrategy.test.js) og som CaptainBoard læser via
+  // TERRAIN_BUCKETS. Fixturen stod med skalar-id'er og de gamle bucket-navne
+  // (hills/mountains/time_trial), så preview-mocken crashede StrategyPage på
+  // list.map — dvs. ejeren kunne ikke teste strategisiden på preview.
+  captain_priorities: { flat: [RIDERS[0].id], hilly: [RIDERS[0].id], mountain: [], cobbles: [RIDERS[0].id], itt: [] },
   role_rules: [
     { rider_id: RIDERS[0].id, bucket: "flat", role: "captain" },
   ],
@@ -869,4 +1025,82 @@ export const SEED_PROJECTION = {
   ],
   timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
   pastPeak: false,
+};
+
+// #2819 preview-seed: onboarding-progress i den ÆGTE respons-form fra
+// GET /api/me/onboarding-progress (steps[{key,done}] + completed_count/total_count
+// + dismissed/established). Den gamle mock returnerede {steps:[], completed_steps,
+// completion_pct} — en form ingen kode læser, så dashboard-kortet stod uden trin og
+// "Show me how"-knappen kunne slet ikke klikkes i preview. Trin 1 er markeret done,
+// så NÆSTE trin er træning (trin 2) og touren på /training kan startes fra kortet.
+export const SEED_ONBOARDING_PROGRESS = {
+  steps: [
+    { key: "first_bid_placed", done: true },
+    { key: "first_training_run", done: false },
+    { key: "first_squad_selected", done: false },
+    { key: "board_plan_set", done: false },
+  ],
+  completed_count: 1,
+  total_count: 4,
+  dismissed: false,
+  established: false,
+};
+
+// #2819 preview-seed: /api/training/me. Uden den var /training tom i preview-mocken
+// (ingen roster-tabel, ingen fokus-select), så trin 2's tour havde ingen ankre at
+// pege på. Formen spejler useTraining.js' refresh(): plans/condition/progress/
+// capped/trainability/smartDefaultFocus. Ada har et fokus + en bar tæt på gennembrud
+// (0.82 → "82%"); Mikkel står uden fokus, så assistent-hintet også er synligt.
+export const SEED_TRAINING = {
+  enabled: true,
+  teamId: TEST_TEAM.id,
+  slots: { total: 2, used: 1 },
+  todayRun: null,
+  plans: {
+    "rider-1": { focus: "sprint", intensity: "normal" },
+  },
+  condition: {
+    "rider-1": { form: 72, fatigue: 38, risk: 0.02, injured_until: null },
+    "rider-2": { form: 64, fatigue: 51, risk: 0.03, injured_until: null },
+  },
+  progress: {
+    "rider-1": { sprint: 0.82, acceleration: 0.41 },
+    "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
+  },
+  capped: {},
+  trainability: {
+    "rider-1": { sprint: "high", acceleration: "high", vo2max: "limited", threshold: "limited" },
+    "rider-2": { vo2max: "high", sprint: "blocked", aero: "limited" },
+  },
+  smartDefaultFocus: { "rider-2": "vo2max" },
+  weekPlan: null,
+  riderWeekPlans: {},
+};
+
+// ── #2863 · Sæsonens bedste ryttere (get_season_honours-RPC) ───────────────────────
+// Payloaden fra public.get_season_honours(p_season_id): to top-5-lister, points
+// og wins, allerede sorteret af serveren. Tallene serialiseres som STRENGE
+// ligesom PostgREST gør med bigint, så preview/e2e faktisk afprøver den
+// coercion normalizeHonours laver (uden den ville "9" > "28" sortere som tekst).
+//
+// Formen efterligner sæson 1 med vilje på to punkter, fordi det er dér den er
+// nem at bygge forkert:
+//   1. flest point er en AI-ejet rytter → AI-badget skal være synligt øverst
+//   2. toppen af sejrs-listen er DELT (11 og 11) → tie-break-noten skal vises
+// De to øverste peger på rigtige seed-ryttere, så navnene kan klikkes igennem.
+export const SEED_SEASON_HONOURS = {
+  points: [
+    { rider_id: "rider-2", firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, is_ai: true, points: "3412", wins: "8" },
+    { rider_id: "rider-1", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, is_ai: false, points: "2988", wins: "11" },
+    { rider_id: "rider-honours-3", firstname: "Luca", lastname: "Bernasconi", nationality_code: "ch", team_id: "team-honours-3", team_name: "Preview Continental", is_ai: false, points: "2455", wins: "6" },
+    { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
+    { rider_id: "rider-honours-5", firstname: "Timo", lastname: "Vogel", nationality_code: "de", team_id: "team-honours-5", team_name: "Nordwind Pro", is_ai: true, points: "1877", wins: "3" },
+  ],
+  wins: [
+    { rider_id: "rider-1", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, is_ai: false, points: "2988", wins: "11" },
+    { rider_id: "rider-honours-6", firstname: "Nils", lastname: "Ostergaard", nationality_code: "no", team_id: "team-honours-6", team_name: "Fjord Cycling", is_ai: false, points: "1640", wins: "11" },
+    { rider_id: "rider-2", firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, is_ai: true, points: "3412", wins: "8" },
+    { rider_id: "rider-honours-3", firstname: "Luca", lastname: "Bernasconi", nationality_code: "ch", team_id: "team-honours-3", team_name: "Preview Continental", is_ai: false, points: "2455", wins: "6" },
+    { rider_id: "rider-honours-4", firstname: "Owen", lastname: "Delaney", nationality_code: "ie", team_id: "team-honours-4", team_name: "Harbour Racing", is_ai: false, points: "2103", wins: "4" },
+  ],
 };

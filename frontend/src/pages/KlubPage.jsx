@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader } from "../components/ui";
 import { formatNumber } from "../lib/intl";
 import { useFacilities } from "../lib/useFacilities";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { TRACK_ORDER } from "../lib/facilityDisplay";
 import FacilityTrackCard from "../components/klub/FacilityTrackCard";
 import StaffPanel from "../components/klub/StaffPanel";
@@ -24,6 +25,7 @@ export default function KlubPage() {
   const [staffTrack, setStaffTrack] = useState(null);
   const [busyTrack, setBusyTrack] = useState(null);
   const [pendingUpgrade, setPendingUpgrade] = useState(null);
+  const [upgradeError, setUpgradeError] = useState(null);
 
   if (facs.loading) return <PageLoader />;
 
@@ -64,11 +66,27 @@ export default function KlubPage() {
 
   // Køb/opgradering binder gold nu → åbn bekræftelses-dialog i stedet for at
   // købe direkte fra kortet (ejer-feedback #1441 A3).
+  // #2718-sweep (tavs fejl): resultatet blev kastet væk og dialogen lukkede
+  // uanset udfald. Et afvist køb (for lidt gold, backend nede) så derfor præcis
+  // ud som et gennemført køb — bortset fra at intet ændrede sig. Nu bliver
+  // dialogen stående med årsagen, og fejlen tælles i Sentry.
   const confirmUpgrade = async () => {
     const track = pendingUpgrade;
     setBusyTrack(track);
-    await facs.upgrade(track);
+    setUpgradeError(null);
+    const res = await facs.upgrade(track);
     setBusyTrack(null);
+    if (res && res.ok === false) {
+      // Faste nøgler, ikke backendens rå `error`-streng: den er dansk legacy-tekst
+      // og ville lække DA til EN-spillere (samme regel som resolveApiError, #678).
+      setUpgradeError(
+        res.error === "network" ? t("error.upgrade.network")
+          : res.error === "auth" ? t("error.upgrade.auth")
+            : t("error.upgrade.failed"),
+      );
+      reportActionFailure("club_facility_upgrade", { reason: res.error, context: { track } });
+      return;
+    }
     setPendingUpgrade(null);
   };
 
@@ -132,8 +150,9 @@ export default function KlubPage() {
         note={t("confirm.deductNote")}
         confirmLabel={t("confirm.confirm")}
         busy={busyTrack === pendingUpgrade}
+        error={upgradeError}
         onConfirm={confirmUpgrade}
-        onClose={() => setPendingUpgrade(null)}
+        onClose={() => { setPendingUpgrade(null); setUpgradeError(null); }}
       />
     </div>
   );

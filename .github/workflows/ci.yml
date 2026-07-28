@@ -272,6 +272,8 @@ jobs:
     # skjuler fejl for Sentry (Sentry-hærdningen 12/7 fandt ~20 sådanne, flere ægte).
     # Ratchet pr. fil: baseline låst efter audit-oprydningen — en net-ny svaltet
     # catch fejler CI. Statisk (heuristik-scanner), ingen DB/runtime nødvendig.
+    # #2897 (26/7): backend/routes/** kom i scope — api.js (hele HTTP-fladen,
+    # 174 svaltede catches) lå udenfor, hvilket var hele pointen i issuet.
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -310,3 +312,70 @@ jobs:
 
       - name: Run silent-mutation guard
         run: node scripts/lint-silent-mutations.mjs
+
+  finance-type-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod #2948-bug-klassen (#1463/#1465-twin): en finance_transactions.type
+    # brugt i backend-koden (backend/lib + backend/routes + backend/scripts), men uden en
+    # tilsvarende værdi i den nyeste finance_transactions_type_check-CHECK i database/*.sql.
+    # #2948 fandt 'sponsor_race_day' (sponsorRaceDayIncome.js, #1663) manuelt 25/7 — en ægte
+    # udbetaling havde aldrig kørt (#2913), så INSERT'en var aldrig detoneret, men ville have
+    # væltet ved cutoveren 27/7 med 153 live sponsor-kontrakter. En tidligere guard for samme
+    # bug-klasse (#1464/#1465) fandtes allerede, men brugte en hårdkodet fil-liste der aldrig
+    # blev udvidet til de filer der senere begyndte at skrive finance-rækker — netop den
+    # allowlist-drift denne guard eliminerer ved at directory-walke i stedet for at navngive
+    # filer. Statisk (parser database/*.sql + grep-ankre i backend-koden), ingen DB-adgang
+    # nødvendig i CI. Kendt scope-grænse (dokumenteret i scripts/lint-finance-types.mjs): én
+    # RPC (repay_loan_atomic) hardkoder sin type direkte i SQL frem for JS-payload'en — uden
+    # for #2957's scope, ikke aktuel drift (verificeret mod prod 26/7).
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test finance-type guard
+        run: node --test scripts/lint-finance-types.test.mjs
+
+      - name: Run finance-type guard
+        run: node scripts/lint-finance-types.mjs
+
+  dropped-supabase-error-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod NYE droppede Supabase-errors (#2897, rodårsagen bag #2861).
+    # supabase-js kaster ikke — den returnerer { data, error }. Destrukturerer man
+    # kun `data`, forsvinder fejlen sporløst: ingen throw, ingen 500, ingen Sentry.
+    # Kalender-siden brændte 8-9 sek. pr. load på et kald der aldrig kunne lykkes,
+    # og ingen opdagede det. Fejlklassen har ramt tre gange (#2861, #2898, #2877);
+    # swallowed-catch-guarden fanger den IKKE (der er ingen catch involveret).
+    # Ratchet pr. fil, samme mønster som søster-guardsene. Statisk, ingen DB.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test dropped-supabase-error guard
+        run: node --test scripts/lint-dropped-supabase-error.test.mjs
+
+      - name: Run dropped-supabase-error guard
+        run: node scripts/lint-dropped-supabase-error.mjs
+
+      # #2974: søsterguard mod fire-and-forget mutationer (delete/insert/update/upsert
+      # uden binding). Dropped-error-guarden ovenfor kræver en `data`-binding og
+      # rammer derfor IKKE det bare `await supabase.from(...).delete()`.
+      - name: Test unchecked-supabase-mutation guard
+        run: node --test scripts/lint-unchecked-supabase-mutation.test.mjs
+
+      - name: Run unchecked-supabase-mutation guard
+        run: node scripts/lint-unchecked-supabase-mutation.mjs

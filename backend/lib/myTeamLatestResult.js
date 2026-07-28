@@ -8,6 +8,8 @@
 //   summarizeTeamRace   — holdets placeringer + totaler i det løb
 //   trimRecapRows       — minimal delmængde af løbets resultatrækker som
 //                         frontendens buildRaceRecap() stadig kan fortælle ud fra
+//   buildSeasonHistory  — #2886: de FOREGÅENDE løb + sæson-totaler, normaliseret
+//                         fra dashboard_my_team_season_races-RPC'ens rækker
 // Ruten i routes/api.js komponerer dem over trimmede SELECTs.
 
 // Seneste løb = løbet med den nyeste imported_at blandt holdets egne
@@ -87,4 +89,46 @@ export function trimRecapRows(rows) {
   return rows.filter(
     (r) => (r.rank != null && r.rank <= 10) || r.in_breakaway || r.breakaway_caught
   );
+}
+
+// #2886 — "flere løb end det seneste". Normaliserer rækkerne fra
+// dashboard_my_team_season_races (database/2026-07-25-...-rpc.sql) til kortets
+// kontrakt. RPC'en gentager sæson-totalerne på HVER række (CROSS JOIN over hele
+// sæsonen, beregnet FØR LIMIT), så totalerne læses af den første række — de er
+// pr. definition ens på alle rækker og dækker hele sæsonen, ikke kun de
+// returnerede løb.
+//
+// Det seneste løb filtreres UD af historikken: det vises allerede i fuld
+// detalje øverst i kortet, og en dublet ville læse som om holdet kørte det to
+// gange. latestRaceId er kortets egen udvælgelse (pickLatestTeamRace) — hvis de
+// to kilder mod forventning peger forskelligt, er filtreringen stadig korrekt
+// (den fjerner præcis det løb der vises ovenfor).
+//
+// Postgres' bigint serialiseres af PostgREST som JSON-tal ELLER streng afhængigt
+// af størrelse/driver — derfor Number()-koercion hele vejen, så frontendens
+// formatNumber aldrig får "16249" som streng.
+export function buildSeasonHistory({ rows, latestRaceId = null } = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length === 0) return { history: [], season_totals: null };
+
+  const first = list[0];
+  const season_totals = {
+    points: Number(first.season_points) || 0,
+    prize_money: Number(first.season_prize_money) || 0,
+    races: Number(first.season_races) || 0,
+  };
+
+  const history = list
+    .filter((r) => r.race_id && r.race_id !== latestRaceId)
+    .map((r) => ({
+      race_id: r.race_id,
+      name: r.race_name ?? null,
+      race_type: r.race_type ?? null,
+      stages: r.stages == null ? null : Number(r.stages),
+      best_rank: r.best_rank == null ? null : Number(r.best_rank),
+      points: Number(r.points) || 0,
+      prize_money: Number(r.prize_money) || 0,
+    }));
+
+  return { history, season_totals };
 }

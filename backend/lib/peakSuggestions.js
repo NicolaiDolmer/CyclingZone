@@ -27,6 +27,7 @@
 
 import { ABILITY_KEYS, terrainScore } from "./raceSimulator.js";
 import { snapPeakWindow, MAX_PEAK_PLANS_PER_SEASON } from "./riderPeakPlans.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 export const YOUNG_AGE_THRESHOLD = 23;
 export const YOUNG_RIDER_PEAK_COUNT = 1;
@@ -44,22 +45,18 @@ export function minPeakSpacingDays(leadupDays, windowRadiusDays) {
   return Math.max(0, Number(leadupDays) || 0) + 2 * (Math.max(0, Number(windowRadiusDays) || 0));
 }
 
-/**
- * Alder i hele kalenderår fra fødselsdato — samme simple års-differens-
- * konvention som resten af backend (routes/api.js's type-ceiling-verdict),
- * ikke fødselsdags-præcis, men konsistent og deterministisk givet et
- * eksplicit "i dag"-input (INGEN Date.now() her).
- * @param {string|null} birthdate  "YYYY-MM-DD"
- * @param {string|null} todayDateString  "YYYY-MM-DD"
- * @returns {number|null}
- */
-export function ageFromBirthdate(birthdate, todayDateString) {
-  if (!birthdate || !todayDateString) return null;
-  const birthYear = new Date(`${String(birthdate).slice(0, 10)}T00:00:00Z`).getUTCFullYear();
-  const todayYear = new Date(`${String(todayDateString).slice(0, 10)}T00:00:00Z`).getUTCFullYear();
-  if (!Number.isFinite(birthYear) || !Number.isFinite(todayYear)) return null;
-  return todayYear - birthYear;
-}
+// Sæson-forankret alder, IKKE wall-clock (#3081). Alderen kommer fra
+// riderSeasonAge.js — en dependency-fri SSOT, så denne fils renheds-kontrakt
+// ("REN lib, ingen DB/Date/Math.random", se topkommentaren) holder uden en duplikat.
+// Re-eksporteres, så kaldere og tests der importerer ageForSeason herfra er upåvirkede.
+//
+// #3081: assistenten regnede tidligere alder på wall-clock (den nu fjernede
+// ageFromBirthdate(birthdate, todayDateString) = todayYear − birthYear). Det
+// stemte kun overens med sæson-alderen i sæson 1 (launch-året); fra sæson 2
+// driftede det, fordi sæson-cutover ikke sker på nytår — wall-clock-året lå
+// stadig i 2026 langt ind i sæson 2, mens sæson-alderen allerede skulle regnes
+// fra 2027. Se forward-guard-testen nederst i peakSuggestions.test.js.
+export { ageForSeason };
 
 /**
  * Hvor mange peaks assistenten foreslår for én rytter. Ukendt alder (ingen
@@ -157,7 +154,7 @@ export function pickTargetRaces({ candidateRaces = [], abilities = {}, registere
  * @param {Set<string>} [args.registeredRaceIds]
  * @param {number} [args.existingPeakCount]  ANTAL ægte peak-planer rytteren allerede har (fylder kun resterende slots op til assistentens alders-loft)
  * @param {number[]} [args.reservedOrds]  ordinaler for ægte peak-vinduers centre (spacing mod suggestions)
- * @param {string} args.todayDateString
+ * @param {number} args.seasonNumber  sæsonens nummer — SSOT-alderen (#3081) regnes VED denne sæsons referenceår, ikke wall-clock
  * @param {number} args.leadupDays
  * @param {number} args.windowRadiusDays
  * @returns {Array<{targetRaceId:string, windowStart:string, windowEnd:string, reason:"registered"|"suitability"}>}
@@ -165,9 +162,9 @@ export function pickTargetRaces({ candidateRaces = [], abilities = {}, registere
 export function suggestPeaksForRider({
   rider, abilities, candidateRaces, stageDatesByRaceId, registeredRaceIds = new Set(),
   existingPeakCount = 0, reservedOrds = [],
-  todayDateString, leadupDays, windowRadiusDays,
+  seasonNumber, leadupDays, windowRadiusDays,
 }) {
-  const age = ageFromBirthdate(rider?.birthdate, todayDateString);
+  const age = ageForSeason(rider?.birthdate, seasonNumber);
   const maxPeaks = Math.max(0, suggestedPeakCount(age) - existingPeakCount);
   const minSpacing = minPeakSpacingDays(leadupDays, windowRadiusDays);
   const picks = pickTargetRaces({ candidateRaces, abilities, registeredRaceIds, maxPeaks, minSpacingDays: minSpacing, reservedOrds });

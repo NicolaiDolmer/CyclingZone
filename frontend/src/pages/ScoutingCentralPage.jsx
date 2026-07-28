@@ -28,6 +28,7 @@ import {
   EmptyState, ErrorState, PageLoader, Button, Select,
   Section, SectionStack, SectionHeader, ChevronRightIcon,
 } from "../components/ui";
+import RiderLink from "../components/RiderLink";
 import { getSession } from "../lib/supabase";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
@@ -142,7 +143,16 @@ function ActiveQueue({ active, riderNames, onCancel, cancellingId, jobConfig, t 
                 <span className="text-3xs font-mono uppercase tracking-[0.1em] text-cz-3">
                   {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
                 </span>
-                <p className="text-cz-1 text-[13px] m-0 mt-0.5">{label}</p>
+                {/* #3046: målrettede opgaver kender rytterens id — link til profilen
+                    i stedet for statisk tekst. Missioner har intet enkelt rytter-id
+                    (kriteriet er et scope), så de forbliver ren tekst. */}
+                <p className="text-cz-1 text-[13px] m-0 mt-0.5">
+                  {a.kind === "target" ? (
+                    <RiderLink id={a.rider_id} className="hover:text-cz-accent-t transition-colors">
+                      {label}
+                    </RiderLink>
+                  ) : label}
+                </p>
                 <p className="text-cz-2 text-2xs m-0 mt-0.5">{reportLabel}</p>
               </div>
               <Button
@@ -308,7 +318,9 @@ function ShortlistFeed({ completed, riderNames, t }) {
                     : null;
                 return (
                   <li key={riderId} className="text-cz-1 text-[13px]">
-                    {riderNames[riderId] ?? t("queue.loadingRider")}
+                    <RiderLink id={riderId} className="hover:text-cz-accent-t transition-colors">
+                      {riderNames[riderId] ?? t("queue.loadingRider")}
+                    </RiderLink>
                     {statusLabel && (
                       <span className="ms-1.5 text-2xs text-cz-3">· {statusLabel}</span>
                     )}

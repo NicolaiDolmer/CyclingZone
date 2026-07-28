@@ -13,9 +13,10 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
+import ClearAllDialog from "./ClearAllDialog.jsx";
 import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -62,6 +63,10 @@ export default function RaceHubBoard() {
   const [reuseNoteDismissed, setReuseNoteDismissed] = useState(() => {
     try { return localStorage.getItem("cz_learn_reuse") === "1"; } catch { return false; }
   });
+  // #3061: "Clear all"-konsekvens-dialogens data — { races, now } | null. races = de ægte
+  // kommende løb GET /clear-preview fandt; `now` fryses ved åbning så nedtællingerne i
+  // dialogen ikke tikker mens man læser (statisk, ærligt snapshot af øjeblikket man klikkede).
+  const [clearAllPreview, setClearAllPreview] = useState(null);
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -352,11 +357,44 @@ export default function RaceHubBoard() {
   // periodiske entry-generator-sweep ikke fylder ud igen — se raceEntryGenerator.js.
   // Lokale kladder ryddes bagefter (mirror discardAll): en gammel kladde for et nu-tomt
   // løb ville ellers vise "spøgelses-ryttere" indtil næste dag/scope-skift.
+  //
+  // #3061: "Ryd alt" (scope=all) fik en prod-hændelse — to rigtige D2-hold ryddede hele
+  // resten af sæsonen via et tavst window.confirm og opdagede det først da løbet var kørt
+  // uden dem. scope=all bruger nu en navngivet konsekvens-dialog (ClearAllDialog) i stedet:
+  // hent PRÆCIST hvilke kommende løb der rammes (GET /clear-preview, samme frys-guard som
+  // selve ryd-handlingen) og vis dem MED deres ægte starttidspunkt, før noget rydes.
+  // "Ryd dag" (scope=day) er uændret — det er ikke kilden til den observerede hændelse.
   function clearSquad(scope) {
-    const warnKey = scope === "all" ? "racehub.clearAllWarn" : "racehub.clearDayWarn";
-    if (!window.confirm(t(warnKey))) return;
+    if (scope !== "all") {
+      if (!window.confirm(t("racehub.clearDayWarn"))) return;
+      mutate((headers) =>
+        fetch(`${API}/api/races/distribution/clear?day=${day}&scope=day`, { method: "POST", headers }))
+        .then(() => setDrafts({}));
+      return;
+    }
+    (async () => {
+      const headers = await authHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch(`${API}/api/races/distribution/clear-preview?scope=all`, { headers });
+        if (!res.ok) throw new Error("preview_failed");
+        const { races } = await res.json();
+        if (shouldShowClearAllDialog(races)) { setClearAllPreview({ races, now: Date.now() }); return; }
+        // Ingen ægte kommende løb rammes (alt allerede kørt, eller intet valgt) — intet at
+        // advare om, dialogen ville kun være støj man klikker forbi (#3061-krav).
+        doClearAll();
+      } catch {
+        // Forhåndsvisningen kunne ikke hentes (netværk/5xx) — fald tilbage til den simple
+        // bekræftelse i stedet for enten at ryde tavst eller blokere handlingen helt.
+        if (window.confirm(t("racehub.clearAllWarn"))) doClearAll();
+      }
+    })();
+  }
+
+  function doClearAll() {
+    setClearAllPreview(null);
     mutate((headers) =>
-      fetch(`${API}/api/races/distribution/clear?day=${day}&scope=${scope}`, { method: "POST", headers }))
+      fetch(`${API}/api/races/distribution/clear?day=${day}&scope=all`, { method: "POST", headers }))
       .then(() => setDrafts({}));
   }
 
@@ -419,6 +457,16 @@ export default function RaceHubBoard() {
 
   return (
     <div data-testid="race-hub-board">
+      {/* #3061: "Clear all"-konsekvens-dialog — kun mounted/synlig når clearSquad("all") fandt
+          mindst ét ægte kommende løb (shouldShowClearAllDialog). */}
+      <ClearAllDialog
+        open={!!clearAllPreview}
+        races={clearAllPreview?.races || []}
+        now={clearAllPreview?.now ?? Date.now()}
+        busy={busy}
+        onKeep={() => setClearAllPreview(null)}
+        onClearAnyway={doClearAll}
+      />
       <ContextBand scope={scope} day={day} currentDay={data.currentDay} timeline={data.timeline} onScopeChange={setScope} onDayChange={setDay} />
       {error && (
         <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-cz border border-cz-danger/30 bg-cz-danger/10 px-3 py-2">
@@ -429,7 +477,8 @@ export default function RaceHubBoard() {
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
         <span className="flex items-baseline gap-3">
-          <Link to="/races/strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
+          {/* #2819: tour-anker — sidste trin i /races-rundvisningen peger på taktik-linket. */}
+          <Link to="/races/strategy" data-tour="races-strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
           <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
         </span>
       </div>
@@ -466,7 +515,7 @@ export default function RaceHubBoard() {
             </div>
           )}
           {multiDay ? (
-            dayGroups.map((g) => (
+            dayGroups.map((g, gi) => (
               <div key={g.gameDay ?? "no-day"} className="mb-4">
                 {g.gameDay != null && (
                   // Gruppen defineres af den delte binding-dag (start). Et etapeløbs fulde span
@@ -476,20 +525,22 @@ export default function RaceHubBoard() {
                   </p>
                 )}
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {g.columns.map((c) => (
+                  {g.columns.map((c, ci) => (
                     <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                       onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                      raceV3Enabled={!!data.race_v3_enabled} />
+                      raceV3Enabled={!!data.race_v3_enabled}
+                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} />
                   ))}
                 </div>
               </div>
             ))
           ) : (
             <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {effectiveColumns.map((c) => (
+              {effectiveColumns.map((c, ci) => (
                 <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                   onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                  raceV3Enabled={!!data.race_v3_enabled} />
+                  raceV3Enabled={!!data.race_v3_enabled}
+                  dataTour={ci === 0 ? "races-column" : undefined} />
               ))}
             </div>
           )}

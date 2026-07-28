@@ -42,6 +42,7 @@ import { resolvePcmTeamName, PCM_TEAMS_WITHOUT_OWNER } from "./pcmTeamAliases.js
 import { buildRiderMatcher, buildTeamMatcher } from "./pcmRiderMatcher.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
+import { captureException } from "./sentry.js";
 
 // Normalisér løbsnavn til match mod DB-`races`.name. Folder accenter, sænker,
 // erstatter tegnsætning med mellemrum. "Hauts-de-France" == "Hauts de France".
@@ -475,13 +476,28 @@ export async function importPcmResults({
       // ikke hele løbet. Ellers wiper en genupload af én etape de øvrige etaper
       // (slutetapen bærer stage_number = sidste etape, så dens gc/trøje-rækker
       //  røres ikke når en mellem-etape lægges ind). Gør "én fil ad gangen" sikkert.
+      //
+      // #2974: PRÆCIS samme fejlklasse som #2898 ramte fuld-sim-stien med, bare i
+      // import-stien. supabase-js kaster ikke — fejler denne delete tavst (fx et
+      // statement timeout), indsætter applyRaceResults nedenfor de nye rækker OVEN
+      // PÅ de gamle. Konsekvens: dublerede points_earned og DOBBELT prize_money
+      // (prizePayoutEngine.js betaler pr. point-række). Abort FØR insert.
       const stagesInUpload = [...new Set(built.resultRows.map((r) => r.stage_number))];
       if (stagesInUpload.length) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from("race_results")
           .delete()
           .eq("race_id", race.id)
           .in("stage_number", stagesInUpload);
+        if (deleteError) {
+          const err = new Error(
+            `race_results delete failed for race ${race.id} (stages ${stagesInUpload.join(",")}) — ` +
+              `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
+          );
+          console.error(`  ⚠️  ${err.message}`);
+          captureException(err, { tags: { flow: "pcm-import", stage: "race-results-delete" }, raceId: race.id });
+          throw err;
+        }
       }
       const insertRows = stripInternal(built.resultRows);
       const applied = await applyRaceResults({
@@ -492,7 +508,21 @@ export async function importPcmResults({
         updateStandings,
       });
       totalRowsWritten += applied.rowsImported;
-      await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+      // #2974: samme tjek som fuld-sim-stien fik i #2898. Resultaterne ER skrevet
+      // her; fejler status-flaget tavst, står løbet som "ikke afviklet" trods
+      // skrevne race_results, og recompute af race_days_completed nedenfor tæller
+      // forkert. Tjek + kast.
+      const { error: statusError } = await supabase
+        .from("races").update({ status: "completed" }).eq("id", race.id);
+      if (statusError) {
+        const err = new Error(
+          `Failed to mark race ${race.id} as completed after PCM import — results ARE written, ` +
+            `only the status flag failed: ${statusError.message}`,
+        );
+        console.error(`  ⚠️  ${err.message}`);
+        captureException(err, { tags: { flow: "pcm-import", stage: "race-status-completed" }, raceId: race.id });
+        throw err;
+      }
       lastImportedRace = { id: race.id, name: race.name };
 
       if (notifyDiscord) {

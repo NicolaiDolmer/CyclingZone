@@ -62,6 +62,11 @@
     }
   },
   "notif": {
+    "admin": {
+      "feedbackReply": {
+        "title": "Svar på din besked"
+      }
+    },
     "loanCreatedShort": {
       "title": "Lån oprettet",
       "message": "Du har optaget et kort lån på {principal} CZ$. Gebyr: {fee} CZ$. Samlet tilbagebetaling: {totalOwed} CZ$."
@@ -85,6 +90,14 @@
     "debtCeilingFreeze": {
       "title": "Transfers frosset: gæld over loftet",
       "message": "Din gæld på {debt} CZ$ er over divisionsloftet på {ceiling} CZ$. Bestyrelsen fryser transfers, indtil du er under loftet igen. Betal gæld af eller sælg ryttere inden næste sæson, ellers gennemtvinger bestyrelsen et salg."
+    },
+    "debtCeilingFinalWarning": {
+      "title": "Én sæson før et tvunget salg",
+      "message": "Din gæld på {debt} CZ$ er over divisionsloftet på {ceiling} CZ$, og transfers er allerede frosset. Er du stadig over loftet ved næste sæsonskifte, sælger bestyrelsen dine mest værdifulde ryttere for at lukke hullet. Betal lån af, sælg selv ryttere, eller skær ned på lønnen inden da."
+    },
+    "debtCeilingForcedSale": {
+      "title": "Bestyrelsen gennemtvang et salg",
+      "message": "Din gæld på {debt} CZ$ har været over divisionsloftet på {ceiling} CZ$ i {streak} sæsoner i træk, så bestyrelsen solgte {riders} for {proceeds} CZ$ og satte pengene direkte i dine lån. Din gæld er nu {remainingDebt} CZ$, og transfers forbliver frosset, indtil du er under loftet igen. Er du stadig over det ved næste sæsonskifte, sælger bestyrelsen igen. Betal lån af, sælg selv ryttere, eller skær ned på lønnen inden da."
     },
     "loanPaidOff": {
       "title": "✅ Lån tilbagebetalt",
@@ -172,6 +185,10 @@
     "contractExpiredRelease": {
       "title": "Rytter frigivet: kontrakt udløbet",
       "message": "{rider}s kontrakt udløb ved udgangen af sæson {season}. Han er nu fri agent."
+    },
+    "squadBelowMinimum": {
+      "title": "Trup under løbs-minimum",
+      "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb."
     },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",

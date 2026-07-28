@@ -90,23 +90,14 @@ const WHITELIST_EMPTY_TABLES = new Set([
   //
   // hall_of_fame: fyldes først ved sæson-transition (sæson ≥2). Fjern når rows.
   "hall_of_fame",
-  // email_log (#2725/#2853): retention-loopet er merged men DORMANT by design.
-  // emailLoopFlag.js tolker et fravær af app_config.email_loop_enabled som "off"
-  // (fail-safe), og flaget er aldrig blevet oprettet — bekræftet i prod 25/7:
-  // `select count(*) from app_config where key='email_loop_enabled'` = 0, og
-  // email_log har 0 rows nogensinde. Det er altså IKKE drift: alle tre sweeps
-  // no-op'er internt indtil flaget flippes.
-  // BLOKERET PÅ EJER: 3 tekstgodkendelser + RESEND_API_KEY + EMAIL_UNSUB_SECRET
-  // i Railway (#2853). Ejer-beslutning 25/7: skal ordnes "indenfor et par dage".
-  // FJERN ENTRY når flaget flippes til dry_run/on — så SKAL tabellen have rows,
-  // og Detector A er igen den rigtige vagt for at loopet faktisk sender.
-  "email_log",
-  // race_stage_passages (#2811): Sub-2's passage-persistens. Skrive-stien i
-  // raceRunner.js er reviewet, men tabellen kan først få rows efter første
-  // S2-etape (27/7) — sæson 1 kørte på den gamle sti. Bevidst tom indtil da.
-  // FJERN ENTRY efter første S2-etapedag; er den stadig tom dér, er #2811's
-  // åbne spørgsmål besvaret med et NEJ og det er en ægte bug.
-  "race_stage_passages",
+  // email_log (#2725/#2853): var her som en manuel "jeg tjekkede engang"-entry.
+  // Flyttet 26/7 (#2985) til FLAG_GATED_EMPTY_TABLES — samme mekanisme som
+  // academy_season_intake_runs. Se den registrering for den fulde forklaring;
+  // pointen er at auditen nu selv læser app_config.email_loop_enabled ved hver
+  // kørsel i stedet for at stole på en kommentar der ikke opdager en flag-flip.
+  // (race_stage_passages (#2811) fjernet 27/7 efter instruktionen i entryen selv:
+  // første S2-etapedag gav 757 rows, så Sub-2's passage-persistens er bevist
+  // levende og Detector A overvåger tabellen normalt igen.)
   // (player_feedback (#2602) fjernet 23/7: første spillerindsendelse landede 23/7
   // 12:07 CEST — skrive-stien er bevist levende, så Detector A overvåger tabellen
   // normalt igen. NB: der findes stadig INGEN læse-flade for indsendelserne, se
@@ -117,16 +108,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // + 2 incidents. Alle tre tabeller har nu rows i prod og daekkes af Detector A igen
   // (#2224 / #2393). Detector A tjekker total row-count, saa loebsfrie dage giver ikke
   // false positives.
-  // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
-  // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
-  // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
-  // tabellen har rows.
-  "rider_development_log",
-  // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
-  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22. Tabellen
-  // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
-  // i academyGraduation.js. Fjern denne entry når tabellen har rows.
-  "academy_graduation",
+  // (rider_development_log (#1137) fjernet 26/7: S1→S2-transitionen skrev 4.869
+  // rows via rider_progression — featuren er levende, Detector A overvåger igen.)
+  // (academy_graduation (#932/#1467) fjernet 26/7: 23 graduation-rows landede ved
+  // S1→S2-transitionen — featuren er levende, Detector A overvåger igen.)
   // (subscriptions (#1903) fjernet 25/7: første checkout.completed-række landede kl.
   // 17:45 lokal (Alunta-checkout live) — featuren er levende, Detector A overvåger igen.)
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine
@@ -147,6 +132,36 @@ const PERMANENT_EMPTY_TABLES = new Set([
   // Pending-imports er per-batch state — tomme uden for et aktivt import-run.
   "pending_race_results",
   "pending_race_result_rows",
+]);
+
+// Detector A: tabeller hvis tomhed er STYRET af et app_config-flag, ikke af en
+// engangs-manuel-verifikation. I modsætning til WHITELIST_EMPTY_TABLES (statisk,
+// "fjern entry når tabellen får rows" — kræver at nogen husker at rydde op) er
+// denne selv-korrigerende: auditen læser flagets LIVE værdi i app_config ved
+// HVER kørsel (fetchAppConfigFlags). Flag "off" (eller fraværende — fail-safe,
+// spejrer featureStage.js/emailLoopFlag.js) → tom tabel er den forventede
+// tilstand, intet fund. Flag IKKE "off" ("on"/"beta"/"dry_run"/true) → tom
+// tabel er nu en ægte død feature, og Detector A flager den som normalt (se
+// evaluateDetectorARow + isFlagOff).
+//
+// Byg IKKE endnu en statisk "jeg tjekkede engang"-whitelist-entry for en
+// flag-gated feature — brug denne registrering i stedet, så en fremtidig
+// flag-flip uden data bliver fanget automatisk næste gang auditen kører (#2985).
+const FLAG_GATED_EMPTY_TABLES = new Map([
+  // Sæson-optagelse til akademiet (#2911): season_academy_intake_enabled = "off"
+  // (ejer-beslutning 25/7, database/2026-07-25-season-start-hooks.sql). Koden
+  // (seasonAcademyIntake.js) er klar men bevidst slukket — 0 rows er forventet.
+  // Flippes flaget til "on" og tabellen forbliver tom efter næste sæsonskifte,
+  // er det en ægte bug, og Detector A skal flage det (bevist i
+  // audit-feature-liveness.test.js).
+  ["academy_season_intake_runs", { flagKey: "season_academy_intake_enabled" }],
+  // Email retention-loop (#2725/#2853): email_loop_enabled findes slet ikke i
+  // app_config endnu (fail-safe off, se emailLoopFlag.js). Tidligere en manuel
+  // WHITELIST_EMPTY_TABLES-entry (flyttet hertil 26/7, #2985). off → "dry_run"
+  // eller "on" giver rows (emailService logger til email_log i alle stadier
+  // undtagen off), så en fremtidig flip fanges automatisk uden at nogen skal
+  // huske at rydde whitelisten.
+  ["email_log", { flagKey: "email_loop_enabled" }],
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
@@ -323,6 +338,75 @@ async function fetchTableCounts() {
   return data || [];
 }
 
+// Live app_config-snapshot til FLAG_GATED_EMPTY_TABLES — læses fra samme
+// key/value-tabel featureStage.js/emailLoopFlag.js selv læser runtime-flags fra,
+// så auditen ser PRÆCIS den værdi backend-koden ville evaluere.
+async function fetchAppConfigFlags() {
+  const { data, error } = await supabase.from("app_config").select("key, value");
+  if (error) {
+    throw new Error(formatSupabaseAuditError(
+      "app_config select (Detector A flag-gate)",
+      error,
+      "Verificér at app_config-tabellen findes og at service-role-nøglen har select-adgang."
+    ));
+  }
+  const flags = new Map();
+  for (const row of data || []) flags.set(row.key, row.value);
+  return flags;
+}
+
+// Fail-safe: manglende/ukendt/false/"off" = off. Alt andet ("on", true, "beta",
+// "dry_run", eller enhver anden streng) = IKKE off. Bevidst løsere end
+// featureStage.js's evaluateFlagStage (som kun kender off/beta/on) fordi
+// Detector A skal virke for BEGGE flag-familier der forekommer i kodebasen:
+// tre-tilstand off/beta/on (featureStage.js) OG off/dry_run/on (emailLoopFlag.js).
+export function isFlagOff(value) {
+  return value === undefined || value === null || value === false || value === "off";
+}
+
+// Ren beslutningsfunktion for ÉN Detector A-tabelrække — ingen supabase/fs,
+// kun allerede-hentet data. Gør flag-bevidstheden testbar uden mocks (se
+// audit-feature-liveness.test.js).
+export function evaluateDetectorARow(row, { insertPaths, flags }) {
+  // Forward-guard (#2299): en midlertidig whitelist-entry hvis tabel nu HAR
+  // rows er stale — flag den, så whitelisten selv-rydder i stedet for at
+  // rådne (20/28 entries var forfaldne pr. 2026-07-10, se #2298).
+  if (row.row_count > 0) {
+    if (WHITELIST_EMPTY_TABLES.has(row.table_name)) {
+      return {
+        detector: "A",
+        severity: "info",
+        table: row.table_name,
+        rows: row.row_count,
+        reason: `Stale whitelist-entry: tabellen har nu ${row.row_count} rows — fjern "${row.table_name}" fra WHITELIST_EMPTY_TABLES`,
+      };
+    }
+    return null;
+  }
+  if (WHITELIST_EMPTY_TABLES.has(row.table_name)) return null;
+  if (PERMANENT_EMPTY_TABLES.has(row.table_name)) return null;
+
+  // Flag-bevidst gate: tom tabel er den FORVENTEDE tilstand mens flaget er off
+  // (intet fund) — men IKKE længere når flaget er sat til beta/dry_run/on, hvor
+  // en fortsat tom tabel er en ægte død feature og skal flages som normalt.
+  const flagGate = FLAG_GATED_EMPTY_TABLES.get(row.table_name);
+  const flagValue = flagGate ? flags.get(flagGate.flagKey) : undefined;
+  if (flagGate && isFlagOff(flagValue)) return null;
+
+  const paths = insertPaths.get(row.table_name);
+  if (!paths || paths.size === 0) return null; // ingen backend-write — ikke vores problem
+
+  return {
+    detector: "A",
+    severity: "warning",
+    table: row.table_name,
+    reason: flagGate
+      ? `Tabel har 0 rows, backend har INSERT/UPSERT-paths, OG flag "${flagGate.flagKey}"=${JSON.stringify(flagValue ?? null)} er IKKE off — featuren burde skrive rows`
+      : "Tabel har 0 rows men backend har INSERT/UPSERT-paths",
+    backend_files: [...paths].sort(),
+  };
+}
+
 async function findBackendInsertPaths() {
   const files = await walk(BACKEND_DIR, (n) => /\.(jsx?|tsx?)$/.test(n) && !n.endsWith(".test.js"));
   // Match supabase.from("X").insert/upsert — pattern tillader optional method-chain mellem from() og insert()
@@ -341,38 +425,15 @@ async function findBackendInsertPaths() {
 }
 
 async function detectorA() {
-  const [counts, insertPaths] = await Promise.all([
+  const [counts, insertPaths, flags] = await Promise.all([
     fetchTableCounts(),
     findBackendInsertPaths(),
+    fetchAppConfigFlags(),
   ]);
   const findings = [];
   for (const row of counts) {
-    // Forward-guard (#2299): en midlertidig whitelist-entry hvis tabel nu HAR
-    // rows er stale — flag den, så whitelisten selv-rydder i stedet for at
-    // rådne (20/28 entries var forfaldne pr. 2026-07-10, se #2298).
-    if (row.row_count > 0) {
-      if (WHITELIST_EMPTY_TABLES.has(row.table_name)) {
-        findings.push({
-          detector: "A",
-          severity: "info",
-          table: row.table_name,
-          rows: row.row_count,
-          reason: `Stale whitelist-entry: tabellen har nu ${row.row_count} rows — fjern "${row.table_name}" fra WHITELIST_EMPTY_TABLES`,
-        });
-      }
-      continue;
-    }
-    if (WHITELIST_EMPTY_TABLES.has(row.table_name)) continue;
-    if (PERMANENT_EMPTY_TABLES.has(row.table_name)) continue;
-    const paths = insertPaths.get(row.table_name);
-    if (!paths || paths.size === 0) continue; // ingen backend-write — ikke vores problem
-    findings.push({
-      detector: "A",
-      severity: "warning",
-      table: row.table_name,
-      reason: "Tabel har 0 rows men backend har INSERT/UPSERT-paths",
-      backend_files: [...paths].sort(),
-    });
+    const finding = evaluateDetectorARow(row, { insertPaths, flags });
+    if (finding) findings.push(finding);
   }
   return findings;
 }
@@ -670,80 +731,90 @@ async function detectorE() {
 // Main
 // ---------------------------------------------------------------------------
 
-const detectors = [
-  detectorEnabled("A") ? detectorA() : Promise.resolve([]),
-  detectorEnabled("B") ? detectorB() : Promise.resolve([]),
-  detectorEnabled("C") ? detectorC() : Promise.resolve([]),
-  detectorEnabled("D") ? detectorD() : Promise.resolve([]),
-  detectorEnabled("E") ? detectorE() : Promise.resolve([]),
-];
-const [findingsA, findingsB, findingsC, findingsD, findingsE] = await Promise.all(detectors);
-const allFindings = [...findingsA, ...findingsB, ...findingsC, ...findingsD, ...findingsE];
+// ---------------------------------------------------------------------------
+// CLI entry — kun når scriptet køres direkte (ikke ved import i tests).
+// Spejler samme isMain-mønster som audit-league-size-invariant.js, så
+// evaluateDetectorARow/isFlagOff kan importeres og unit-testes uden at det
+// udløser hele auditten (netværkskald + evt. process.exit) som en side-effekt
+// af importet (#2985).
+// ---------------------------------------------------------------------------
+const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+if (isMain) {
+  const detectors = [
+    detectorEnabled("A") ? detectorA() : Promise.resolve([]),
+    detectorEnabled("B") ? detectorB() : Promise.resolve([]),
+    detectorEnabled("C") ? detectorC() : Promise.resolve([]),
+    detectorEnabled("D") ? detectorD() : Promise.resolve([]),
+    detectorEnabled("E") ? detectorE() : Promise.resolve([]),
+  ];
+  const [findingsA, findingsB, findingsC, findingsD, findingsE] = await Promise.all(detectors);
+  const allFindings = [...findingsA, ...findingsB, ...findingsC, ...findingsD, ...findingsE];
 
-const summary = {
-  generated_at: new Date().toISOString(),
-  detectors_run: ["A", "B", "C", "D", "E"].filter(detectorEnabled),
-  total_findings: allFindings.length,
-  by_detector: {
-    A: findingsA.length,
-    B: findingsB.length,
-    C: findingsC.length,
-    D: findingsD.length,
-    E: findingsE.length,
-  },
-  findings: allFindings,
-};
+  const summary = {
+    generated_at: new Date().toISOString(),
+    detectors_run: ["A", "B", "C", "D", "E"].filter(detectorEnabled),
+    total_findings: allFindings.length,
+    by_detector: {
+      A: findingsA.length,
+      B: findingsB.length,
+      C: findingsC.length,
+      D: findingsD.length,
+      E: findingsE.length,
+    },
+    findings: allFindings,
+  };
 
-if (JSON_OUT) {
-  console.log(JSON.stringify(summary, null, 2));
-} else {
-  console.log(`Feature-liveness audit — ${summary.generated_at}`);
-  console.log(`Detectors: ${summary.detectors_run.join(", ")}`);
-  console.log(`Total findings: ${summary.total_findings} (A=${summary.by_detector.A} B=${summary.by_detector.B} C=${summary.by_detector.C} D=${summary.by_detector.D} E=${summary.by_detector.E})\n`);
+  if (JSON_OUT) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`Feature-liveness audit — ${summary.generated_at}`);
+    console.log(`Detectors: ${summary.detectors_run.join(", ")}`);
+    console.log(`Total findings: ${summary.total_findings} (A=${summary.by_detector.A} B=${summary.by_detector.B} C=${summary.by_detector.C} D=${summary.by_detector.D} E=${summary.by_detector.E})\n`);
 
-  if (findingsA.length > 0) {
-    console.log(`Detector A — write-but-no-data (${findingsA.length}):`);
-    for (const f of findingsA) {
-      console.log(`  ${f.table}`);
-      console.log(`    reason: ${f.reason}`);
-      if (f.backend_files) console.log(`    backend: ${f.backend_files.join(", ")}`);
+    if (findingsA.length > 0) {
+      console.log(`Detector A — write-but-no-data (${findingsA.length}):`);
+      for (const f of findingsA) {
+        console.log(`  ${f.table}`);
+        console.log(`    reason: ${f.reason}`);
+        if (f.backend_files) console.log(`    backend: ${f.backend_files.join(", ")}`);
+      }
+      console.log();
     }
-    console.log();
-  }
-  if (findingsB.length > 0) {
-    console.log(`Detector B — orphaned-endpoints (${findingsB.length}):`);
-    for (const f of findingsB) {
-      console.log(`  ${f.method} ${f.path}`);
+    if (findingsB.length > 0) {
+      console.log(`Detector B — orphaned-endpoints (${findingsB.length}):`);
+      for (const f of findingsB) {
+        console.log(`  ${f.method} ${f.path}`);
+      }
+      console.log();
     }
-    console.log();
-  }
-  if (findingsC.length > 0) {
-    console.log(`Detector C — migration-drift (${findingsC.length}):`);
-    for (const f of findingsC) {
-      console.log(`  ${f.filename}`);
-      console.log(`    ${f.reason}`);
+    if (findingsC.length > 0) {
+      console.log(`Detector C — migration-drift (${findingsC.length}):`);
+      for (const f of findingsC) {
+        console.log(`  ${f.filename}`);
+        console.log(`    ${f.reason}`);
+      }
+      console.log();
     }
-    console.log();
-  }
-  if (findingsD.length > 0) {
-    console.log(`Detector D — schema-drift (${findingsD.length}):`);
-    for (const f of findingsD) {
-      console.log(`  ${f.table}`);
-      console.log(`    ${f.reason}`);
+    if (findingsD.length > 0) {
+      console.log(`Detector D — schema-drift (${findingsD.length}):`);
+      for (const f of findingsD) {
+        console.log(`  ${f.table}`);
+        console.log(`    ${f.reason}`);
+      }
+      console.log();
     }
-    console.log();
-  }
-  if (findingsE.length > 0) {
-    console.log(`Detector E — zero-impression-features (${findingsE.length}):`);
-    for (const f of findingsE) {
-      console.log(`  ${f.event_name}`);
-      console.log(`    ${f.reason}`);
+    if (findingsE.length > 0) {
+      console.log(`Detector E — zero-impression-features (${findingsE.length}):`);
+      for (const f of findingsE) {
+        console.log(`  ${f.event_name}`);
+        console.log(`    ${f.reason}`);
+      }
+      console.log();
     }
-    console.log();
+    if (allFindings.length === 0) {
+      console.log("OK — no liveness findings.\n");
+    }
   }
-  if (allFindings.length === 0) {
-    console.log("OK — no liveness findings.\n");
-  }
+
+  if (STRICT && allFindings.length > 0) process.exit(1);
 }
-
-if (STRICT && allFindings.length > 0) process.exit(1);

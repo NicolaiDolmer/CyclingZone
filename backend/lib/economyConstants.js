@@ -138,6 +138,20 @@ export const POOL_TARGET_SIZE = 24;
 // applikationskode i economyEngine.processDivisionEnd (ingen migration).
 export const FIRST_PROMOTION_RELEGATION_SEASON = 1;
 
+// #1152 per-pulje op/nedrykning: top PROMOTION_SLOTS rykker op til forælder-puljen,
+// bund RELEGATION_SLOTS rykker ned delt 2+2 i børne-puljerne. 2 søsterpuljer × 2 op =
+// 4 op samlet i forælderen = 4 ned fra forælderen → balancerer eksakt.
+// #2917: flyttet hertil fra economyEngine (var modul-lokale konstanter) så
+// sæson-achievements (seasonAchievements.js) kan udlede den samme nedrykningsgrænse
+// uden at duplikere tallene eller importere hele økonomi-motoren.
+export const PROMOTION_SLOTS = 2;
+export const RELEGATION_SLOTS = 4;
+
+// #2917 · "Overlevede"-achievementet (team_survived): hvor mange pladser OVER
+// nedrykningsstregen der tæller som farezone. Med en 24-holds pulje og 4
+// nedrykningspladser er stregen rank 20, og farezonen dermed rank 18-20.
+export const SURVIVAL_DANGER_MARGIN = 3;
+
 // -- Saeson-skift kontrol-flags (#1155, ejer-beslutning 2026-06-08) ------------
 // Tre bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).
 // Alle er rene applikationskode-gates (ingen migration) og taendes igen ved at

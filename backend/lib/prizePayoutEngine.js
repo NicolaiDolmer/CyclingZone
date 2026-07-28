@@ -1,6 +1,6 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { captureException } from "./sentry.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { updateRiderValues } from "./economyEngine.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -40,21 +40,23 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
   // ALLE sæsoner. Fixet er en covering partial index, ikke en kodeændring her —
   // se database/2026-07-23-2764-prize-preview-index.sql for rod-årsags-analysen
   // (EXPLAIN ANALYZE + hypopg mod prod).
-  const allResults = await fetchAllRows(() => supabase
+  // #3030: chunk .in()-listen — 399+ completed løb sprængte gatewayens
+  // URL-grænse (~16 KB) → "fetch failed" på hvert sweep-tick, 688k CZ$ ubetalt.
+  const allResults = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase
     .from("race_results")
     .select("race_id, team_id, prize_money")
-    .in("race_id", raceIds)
+    .in("race_id", chunk)
     .gt("prize_money", 0)
     .order("id", { ascending: true }));
 
-  // Batch-fetch existing prize transactions for paid races (også pagineret).
+  // Batch-fetch existing prize transactions for paid races (også pagineret + chunket).
   const paidRaceIds = races.filter(r => r.prize_paid_at).map(r => r.id);
   let paidTransactions = [];
   if (paidRaceIds.length) {
-    paidTransactions = await fetchAllRows(() => supabase
+    paidTransactions = await fetchAllRowsChunkedIn(paidRaceIds, (chunk) => supabase
       .from("finance_transactions")
       .select("race_id, team_id, amount")
-      .in("race_id", paidRaceIds)
+      .in("race_id", chunk)
       .eq("type", "prize")
       .order("id", { ascending: true }));
   }
@@ -66,11 +68,15 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
   ].filter(Boolean))];
   const teamNameById = new Map();
   if (teamIds.length) {
-    const { data: teams } = await supabase
+    // #3030: også chunket — 361 team-ids var ~13,5 KB URL og få dage fra samme
+    // klippe. fetchAllRows-vejen betyder samtidig at en fejl nu kaster i stedet
+    // for tavst at give unavngivne hold.
+    const teams = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
       .from("teams")
       .select("id, name")
-      .in("id", teamIds);
-    for (const t of teams || []) teamNameById.set(t.id, t.name);
+      .in("id", chunk)
+      .order("id", { ascending: true }));
+    for (const t of teams) teamNameById.set(t.id, t.name);
   }
 
   const resultsByRace = groupBy(allResults || [], r => r.race_id);

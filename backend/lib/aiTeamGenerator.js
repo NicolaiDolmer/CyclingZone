@@ -37,7 +37,7 @@ import {
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName, AI_TEAM_NAME_PREFIX } from "./aiTeamNames.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
 import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
 
@@ -236,11 +236,19 @@ async function markPendingRemoval(supabase, teamIds) {
 export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
   if (!teamIds.length) return { riderNames: 0, teamNames: 0 };
 
-  const { data: riders, error: rErr } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname")
-    .in("team_id", teamIds);
-  if (rErr) throw new Error(`navne-snapshot (riders for trim): ${rErr.message}`);
+  // #3030-klassen: id-lister her er ubundne (INSERT_BATCH=500 hold ≈ 12.000+
+  // ryttere) — rå .in() sprænger gateway-URL-grænsen (~16 KB; ramte 26/7 ved
+  // 24 hold ≈ 600 rider-ids = 22,6 KB URL). Chunket via fetchAllRowsChunkedIn.
+  let riders;
+  try {
+    riders = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
+      .from("riders")
+      .select("id, firstname, lastname")
+      .in("team_id", chunk)
+      .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`navne-snapshot (riders for trim): ${e.message}`, { cause: e });
+  }
   const nameByRider = new Map(
     (riders || []).map((r) => [r.id, [r.firstname, r.lastname].filter(Boolean).join(" ") || null]),
   );
@@ -248,10 +256,10 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
   let riderNames = 0;
   const riderIds = [...nameByRider.keys()];
   if (riderIds.length) {
-    const atRisk = await fetchAllRows(() => supabase
+    const atRisk = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
       .from("race_results")
       .select("id, rider_id")
-      .in("rider_id", riderIds)
+      .in("rider_id", chunk)
       .is("rider_name", null)
       .order("id", { ascending: true }));
     for (const riderId of new Set(atRisk.map((row) => row.rider_id))) {
@@ -267,18 +275,23 @@ export async function snapshotRaceResultNamesForTeams(supabase, teamIds) {
     }
   }
 
-  const { data: teams, error: tErr } = await supabase
-    .from("teams")
-    .select("id, name")
-    .in("id", teamIds);
-  if (tErr) throw new Error(`navne-snapshot (teams for trim): ${tErr.message}`);
+  let teams;
+  try {
+    teams = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
+      .from("teams")
+      .select("id, name")
+      .in("id", chunk)
+      .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`navne-snapshot (teams for trim): ${e.message}`, { cause: e });
+  }
   const nameByTeam = new Map((teams || []).map((t) => [t.id, t.name || null]));
 
   let teamNames = 0;
-  const teamAtRisk = await fetchAllRows(() => supabase
+  const teamAtRisk = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
     .from("race_results")
     .select("id, team_id")
-    .in("team_id", teamIds)
+    .in("team_id", chunk)
     .is("team_name", null)
     .order("id", { ascending: true }));
   for (const teamId of new Set(teamAtRisk.map((row) => row.team_id))) {

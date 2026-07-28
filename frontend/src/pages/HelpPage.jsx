@@ -136,6 +136,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatAchievements", kind: "text" },
       { id: "categories", kind: "rows" },
+      // #2917: sæson-achievements afgøres først ved sæsonskiftet — det er den
+      // eneste kategori der ikke reagerer med det samme.
+      { id: "seasonAchievements", kind: "text" },
       { id: "secretAchievements", kind: "text" },
       { id: "notifications", kind: "text" },
     ],
@@ -314,6 +317,11 @@ const FAQ_KEYS = [
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
   "peakTraining",
+  // #3086: konsekvensen af en peak (spænd + payback) var indtil nu usynlig for
+  // spilleren — den stod hverken i UI'et eller i hjælpen, selvom motoren har
+  // regnet med den siden 13/7.
+  "peakValue",
+  "peakPayback",
   "raceSignupFaq",
   "raceClassificationsFaq",
   "raceJerseysFaq",
@@ -328,6 +336,8 @@ const FAQ_KEYS = [
   "divisionBonusFaq",
   "sponsorPayoutTiming",
   "sponsorNegotiation",
+  "sponsorRaceDayUnit",
+  "sponsorBoardModifierScope",
   "seasonFinanceReport",
   "forecastCalculation",
   "standingsUpdate",

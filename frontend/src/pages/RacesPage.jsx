@@ -1,22 +1,20 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useNavigate, useSearchParams, Link } from "react-router";
+import { useSearchParams, Link, Navigate } from "react-router";
 import RiderLink from "../components/RiderLink";
-import RacePointsPage from "./RacePointsPage";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { racesForPool } from "../lib/racesByPool";
-import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
+import { RACE_CLASS_OPTIONS } from "../lib/raceFilterOptions.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { hasRouteData, sharedYMax } from "../lib/stageRouteProfile.js";
 import StageProfileGraph from "../components/race/StageProfileGraph.jsx";
 import {
   Card,
-  Input,
-  Select,
   Tabs,
   TabList,
   Tab,
@@ -29,7 +27,6 @@ import {
   DataTable,
   SkeletonLines,
 } from "../components/ui";
-import { labelClass } from "../components/ui/fieldStyles.js";
 
 // Labels resolves via t() ved render — se races-namespacet (resultType.*, classOption.*, status.*).
 const RESULT_TYPES = [
@@ -40,37 +37,42 @@ const RESULT_TYPES = [
   { key: "young" },
 ];
 
-const RACE_CLASS_OPTIONS = [
-  { value: "TourFrance" },
-  { value: "GiroVuelta" },
-  { value: "Monuments" },
-  { value: "OtherWorldTourA" },
-  { value: "OtherWorldTourB" },
-  { value: "OtherWorldTourC" },
-  { value: "ProSeries" },
-  { value: "Class1" },
-  { value: "Class2" },
-];
+const VALID_TABS = ["calendar", "world"];
 
-const RACE_STATUS_OPTIONS = [
-  { value: "completed" },
-  { value: "active" },
-  { value: "scheduled" },
-];
+// #3102 etape 2: bibliotek + point & præmier er flyttet til Resultat-hubben —
+// de er rene KIGGE-flader og hørte ikke sammen med holdudtagelses-boardet.
+// Gamle deep-links (nav-genveje, patch notes, /race-archive- og
+// /race-points-redirectene) lander på den rigtige fane i stedet for at falde
+// tilbage til kalenderen, som ville se ud som om fanen bare forsvandt.
+const MOVED_TABS = { library: "archive", points: "points" };
 
-const VALID_TABS = ["calendar", "library", "world", "points"];
+// #2819 — guidet tour på /races (aktiveres fra dashboardets "Show me how" når
+// onboarding-trin 3, first_squad_selected, er næste trin). Ankrene bor i Race Hub-
+// brættet (kalender-fanen): første løbs-kolonne → ledige-ryttere-puljen → taktik-
+// linket. Samme mønster som AuctionsPage's getAuctionsTourSteps.
+function getRacesTourSteps(t) {
+  return [
+    {
+      target: "[data-tour='races-column']",
+      title: t("tour.pickRace.title"),
+      body: t("tour.pickRace.body"),
+    },
+    {
+      target: "[data-tour='races-pool']",
+      title: t("tour.pickRiders.title"),
+      body: t("tour.pickRiders.body"),
+    },
+    {
+      target: "[data-tour='races-strategy']",
+      title: t("tour.tactics.title"),
+      body: t("tour.tactics.body"),
+    },
+  ];
+}
 
-// Sorterbare kolonner i løbs-bibliotek + verdens-katalog (klient-side, delt
-// useSortState/sortRows). Tekst-kolonner starter stigende; sæson/etaper (tal)
-// starter faldende (nyeste/flest først) via descFirstKeys.
-const LIBRARY_ACCESSORS = {
-  name: (r) => r.name,
-  season: (r) => r.season?.number ?? 0,
-  race_class: (r) => r.race_class ?? "",
-  race_type: (r) => r.race_type ?? "",
-  status: (r) => deriveRaceStatus(r.status, r.stages_completed, r.stages),
-};
-const LIBRARY_DESC_FIRST = new Set(["season"]);
+// Sorterbare kolonner i verdens-kataloget (klient-side, delt useSortState/
+// sortRows). Tekst-kolonner starter stigende; etaper (tal) starter faldende
+// (flest først) via descFirstKeys.
 const WORLD_ACCESSORS = {
   name: (r) => r.name,
   race_class: (r) => r.race_class ?? "",
@@ -120,9 +122,19 @@ function RaceCardRouteThumbnail({ race, profiles }) {
   );
 }
 
-export default function RacesPage() {
+// Rute-wrapper: kun ét hook, så redirecten sker FØR RacesPage mounter og
+// begynder at hente kalender-data den alligevel smider væk.
+export default function RacesPageRoute() {
+  const [searchParams] = useSearchParams();
+  const movedTo = MOVED_TABS[searchParams.get("tab")];
+  if (movedTo) return <Navigate to={`/resultater?tab=${movedTo}`} replace />;
+  return <RacesPage />;
+}
+
+function RacesPage() {
   const { t } = useTranslation("races");
-  const navigate = useNavigate();
+  // #2819: guidet rundvisning for onboarding-trin 3 (first_squad_selected).
+  const racesTourSteps = useMemo(() => getRacesTourSteps(t), [t]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialTab = VALID_TABS.includes(searchParams.get("tab"))
@@ -141,20 +153,6 @@ export default function RacesPage() {
   // blandes i én liste (gav dublet-lignende visning).
   const [myPoolId, setMyPoolId] = useState(null);
 
-  // Library state (lazy loaded når tab="library" åbnes første gang)
-  const [libRaces, setLibRaces] = useState([]);
-  const [libSeasons, setLibSeasons] = useState([]);
-  const [libLoaded, setLibLoaded] = useState(false);
-  const [libLoading, setLibLoading] = useState(false);
-  const [libFilterSeason, setLibFilterSeason] = useState("");
-  const [libFilterClass, setLibFilterClass] = useState("");
-  const [libFilterStatus, setLibFilterStatus] = useState("");
-  const [libSearch, setLibSearch] = useState("");
-  // #2081 (zootne, Discord 2/7): "hvad kørte jeg i dag" er lettere at finde når
-  // listen er begrænset til egen pulje. Genbruger myPoolId (allerede hentet i
-  // loadAll for kalender-fanen — samme state, ikke division-specifik data).
-  const [libMyDivisionOnly, setLibMyDivisionOnly] = useState(false);
-
   // World pool state (Slice 09 — lazy load når tab="world" åbnes)
   const [worldPool, setWorldPool] = useState([]);
   const [worldSummary, setWorldSummary] = useState({});
@@ -162,11 +160,10 @@ export default function RacesPage() {
   const [worldLoading, setWorldLoading] = useState(false);
   const [worldFilterClass, setWorldFilterClass] = useState("");
 
-  // Klient-sortering af bibliotek- + verdens-tabellerne (klikbare headers).
-  const librarySort = useSortState({ descFirstKeys: LIBRARY_DESC_FIRST });
+  // Klient-sortering af verdens-tabellen (klikbare headers).
   const worldSort = useSortState({ descFirstKeys: WORLD_DESC_FIRST });
 
-  // Tab → URL sync (deep-linkbar fra eksterne kilder, fx /races?tab=library)
+  // Tab → URL sync (deep-linkbar fra eksterne kilder, fx /races?tab=world)
   function changeTab(next) {
     setTab(next);
     if (next === "calendar") {
@@ -214,51 +211,13 @@ export default function RacesPage() {
     }
   }
 
-  async function loadLibrary() {
-    setLibLoading(true);
-    const [racesRes, seasonsRes] = await Promise.all([
-      supabase
-        .from("races")
-        .select("id, name, race_type, race_class, stages, stages_completed, status, edition_year, league_division_id, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
-        .order("name"),
-      // #2763: sæson 0 (bogførings-sæson, 0 løb) filtreres ud af biblioteks-
-      // vælgeren — samme diskriminator som #2600 (.gt("number", 0)).
-      supabase
-        .from("seasons")
-        .select("id, number, status")
-        .gt("number", 0)
-        .order("number", { ascending: false }),
-    ]);
-    setLibRaces(racesRes.data || []);
-    setLibSeasons(seasonsRes.data || []);
-    setLibLoaded(true);
-    setLibLoading(false);
-  }
-
   useEffect(() => { loadAll(); }, []);
 
   useEffect(() => {
-    if (tab === "library" && !libLoaded && !libLoading) {
-      loadLibrary();
-    }
     if (tab === "world" && !worldLoaded && !worldLoading) {
       loadWorld();
     }
-  }, [tab, libLoaded, libLoading, worldLoaded, worldLoading]);
-
-  const filteredLibRaces = useMemo(() => {
-    const base = libMyDivisionOnly ? racesForPool(libRaces, myPoolId) : libRaces;
-    const filtered = base.filter(r => {
-      if (libFilterSeason && r.season?.id !== libFilterSeason) return false;
-      if (libFilterClass && r.race_class !== libFilterClass) return false;
-      if (libFilterStatus && r.status !== libFilterStatus) return false;
-      if (libSearch && !r.name.toLowerCase().includes(libSearch.toLowerCase())) return false;
-      return true;
-    });
-    // #2081: nyeste (afsluttede) løb først i stedet for alfabetisk — "hvad kørte
-    // jeg i dag" skal ligge øverst uden at spilleren skal gennemgå hele listen.
-    return sortRacesByDateDesc(filtered);
-  }, [libRaces, libFilterSeason, libFilterClass, libFilterStatus, libSearch, libMyDivisionOnly, myPoolId]);
+  }, [tab, worldLoaded, worldLoading]);
 
   async function loadRaceResults(raceId) {
     const { data } = await supabase
@@ -342,14 +301,14 @@ export default function RacesPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto">
+      {/* #2819: ankrene bor i Race Hub-brættet på kalender-fanen — touren mountes
+          uanset fane, og OnboardingTour's egen "target ikke fundet"-fallback giver
+          en escape hvis manageren står på en anden fane. */}
+      <OnboardingTour pageKey="races" steps={racesTourSteps} />
       <PageHeader
         title={t("title")}
         subtitle={
-          tab === "library"
-            ? t("subtitle.library", { count: libRaces.length })
-            : tab === "points"
-            ? t("subtitle.points")
-            : season
+          season
             ? t("subtitle.withSeason", { number: season.number, count: myRaces.length })
             : t("subtitle.noSeasonWithCount", { count: myRaces.length })
         }
@@ -360,9 +319,7 @@ export default function RacesPage() {
         <TabList label={t("title")}>
           {[
             { key: "calendar", label: t("tabs.calendar") },
-            { key: "library", label: t("tabs.library") },
             { key: "world", label: t("tabs.world") },
-            { key: "points", label: t("tabs.points") },
           ].map(tb => (
             <Tab key={tb.key} value={tb.key}>{tb.label}</Tab>
           ))}
@@ -490,163 +447,6 @@ export default function RacesPage() {
         </div>
       )}
 
-      {/* Library tab — alle løb på tværs af sæsoner med filtre */}
-      {tab === "library" && (
-        <div>
-          {/* Filter bar */}
-          <Card className="p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <label htmlFor="lib-search" className={labelClass()}>{t("library.searchLabel")}</label>
-              <Input id="lib-search" type="text" value={libSearch} onChange={e => setLibSearch(e.target.value)}
-                placeholder={t("library.searchPlaceholder")} />
-            </div>
-            <div>
-              <label htmlFor="lib-season" className={labelClass()}>{t("library.seasonLabel")}</label>
-              <Select id="lib-season" value={libFilterSeason} onChange={e => setLibFilterSeason(e.target.value)}>
-                <option value="">{t("library.allSeasons")}</option>
-                {libSeasons.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.status === "active"
-                      ? t("library.seasonOptionActive", { number: s.number })
-                      : t("library.seasonOption", { number: s.number })}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="lib-class" className={labelClass()}>{t("library.classLabel")}</label>
-              <Select id="lib-class" value={libFilterClass} onChange={e => setLibFilterClass(e.target.value)}>
-                <option value="">{t("library.allClasses")}</option>
-                {RACE_CLASS_OPTIONS.map(c => (
-                  <option key={c.value} value={c.value}>{t(`classOption.${c.value}`)}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="lib-status" className={labelClass()}>{t("library.statusLabel")}</label>
-              <Select id="lib-status" value={libFilterStatus} onChange={e => setLibFilterStatus(e.target.value)}>
-                <option value="">{t("library.allStatuses")}</option>
-                {RACE_STATUS_OPTIONS.map(s => (
-                  <option key={s.value} value={s.value}>{t(`status.${s.value}`)}</option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="lib-my-division" className={labelClass()}>{t("library.myDivisionOnly")}</label>
-              <label htmlFor="lib-my-division" className="flex items-center gap-2 h-10 px-1 cursor-pointer select-none">
-                <input id="lib-my-division" type="checkbox" checked={libMyDivisionOnly}
-                  onChange={e => setLibMyDivisionOnly(e.target.checked)}
-                  className="rounded border-cz-border" />
-                <span className="text-sm text-cz-2">{t("library.myDivisionOnly")}</span>
-              </label>
-            </div>
-          </Card>
-
-          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch || libMyDivisionOnly) && (
-            <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-cz-3 text-xs">
-                {t("library.filteredCount", { filtered: filteredLibRaces.length, total: libRaces.length })}
-              </p>
-              <button
-                onClick={() => {
-                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch(""); setLibMyDivisionOnly(false);
-                }}
-                className="text-cz-accent-t text-xs hover:underline">
-                {t("library.clearFilters")}
-              </button>
-            </div>
-          )}
-
-          {libLoading ? (
-            <Section><SkeletonLines lines={5} /></Section>
-          ) : filteredLibRaces.length === 0 ? (
-            <EmptyState icon={<FlagIcon size={28} />} title={t("empty.noRacesMatch")} />
-          ) : (
-            <DataTable
-              label={t("tabs.library")}
-              rowKey={(r) => r.id}
-              sort={librarySort.sort}
-              sortDir={librarySort.sortDir}
-              onSort={librarySort.handleSort}
-              rows={sortRows(filteredLibRaces, librarySort.sort ? LIBRARY_ACCESSORS[librarySort.sort] : null, librarySort.sortDir)}
-              columns={[
-                {
-                  key: "name",
-                  header: t("library.thRace"),
-                  sticky: true,
-                  sortKey: "name",
-                  // Kun navnet er klik-mål (DataTable understøtter ikke helrække-klik) —
-                  // bevidst afvigelse fra den tidligere hel-rækkes klikbare Tr.
-                  render: (r) => (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
-                      className="text-left hover:text-cz-accent-t transition-colors"
-                    >
-                      {r.name}
-                    </button>
-                  ),
-                },
-                {
-                  key: "season",
-                  header: t("library.thSeason"),
-                  sortKey: "season",
-                  fold: true,
-                  foldValue: (r) => (r.season ? t("library.seasonLink", { number: r.season.number }) : "—"),
-                  render: (r) =>
-                    r.season ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
-                        className="text-cz-accent-t hover:underline">
-                        {t("library.seasonLink", { number: r.season.number })}
-                      </button>
-                    ) : "—",
-                },
-                {
-                  key: "race_class",
-                  header: t("library.thClass"),
-                  sortKey: "race_class",
-                  fold: true,
-                  foldValue: (r) => {
-                    const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
-                    return classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—");
-                  },
-                  render: (r) => {
-                    const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
-                    return classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—");
-                  },
-                },
-                {
-                  key: "race_type",
-                  header: t("library.thType"),
-                  sortKey: "race_type",
-                  fold: true,
-                  foldValue: (r) => (r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")),
-                  render: (r) => (r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")),
-                },
-                {
-                  key: "status",
-                  header: t("library.thStatus"),
-                  sortKey: "status",
-                  render: (r) => {
-                    // Afled visnings-status (#1828): igangværende etapeløb vises "Live", ikke "Kommende".
-                    const derivedStatus = deriveRaceStatus(r.status, r.stages_completed, r.stages);
-                    return (
-                      <span className={`inline-block px-2 py-0.5 rounded-full border text-3xs uppercase
-                        ${derivedStatus === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                          : derivedStatus === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                          : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                        {t(`status.${derivedStatus}`)}
-                      </span>
-                    );
-                  },
-                },
-              ]}
-            />
-          )}
-        </div>
-      )}
-
       {/* Verdens-kalender tab (Slice 09) — read-only katalog af alle løb */}
       {tab === "world" && (
         <div>
@@ -716,12 +516,6 @@ export default function RacesPage() {
         </div>
       )}
 
-      {/* Point & præmier tab — embedder RacePointsPage som tab-indhold */}
-      {tab === "points" && (
-        <div className="-mt-2">
-          <RacePointsPage />
-        </div>
-      )}
     </div>
   );
 }

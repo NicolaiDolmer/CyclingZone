@@ -11,8 +11,11 @@
   "offers": {
     "title": "Vælg din sponsor",
     "subtitle": "Fem sponsorer, fem måder at tjene på i sæson {season}.",
-    "unitDefinition": "1 løbsdag = én etape dit hold stiller til start i.",
-    "divisionPicker": "Se indtjening for en division",
+    "unitDefinition": "1 løbsdag = én etape dit hold stiller til start i. Ikke en kalenderdag.",
+    "unitCount": "Division {division} kører {count} etaper i sæson {season}, altså {count} løbsdage du kan tjene på.",
+    "unitPerDay": "De ligger fordelt over {days} kalenderdage, så de fleste dage bærer omkring {perDay} etaper.",
+    "divisionNote": "Din maksimale udbetaling ændrer sig ikke, uanset hvilken division du vælger ovenfor. Division ændrer kun hvor mange løbsdage du har til at tjene den over, og det sætter raten pr. etape.",
+    "divisionPicker": "Se rate for en division",
     "divisionPill": "Division {division} · {count} løbsdage",
     "deadline": "Dit valg låses når sæson {season} starter. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig.",
     "empty": "Der er ingen tilbud lige nu. En ny aftale kan forhandles, når den nuværende kontrakt skal fornyes.",
@@ -23,7 +26,7 @@
     "signDeal": "Underskriv aftale",
     "cancel": "Annullér",
     "guaranteedShare": "{pct} % af aftalen er garanteret",
-    "boardNote": "Bestyrelsens tilfredshed justerer den garanterede udbetaling med op til ±20 %. Bonusser udbetales løbende."
+    "boardNote": "Bestyrelsens tilfredshed justerer den garanterede del med op til ±20 %. Den rører ikke løbsdags-pengene eller bonusserne: de udbetales fuldt ud oveni, i takt med at du tjener dem."
   },
   "variant": {
     "safe": "Den sikre aftale",
@@ -43,9 +46,11 @@
     "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning"
   },
   "field": {
-    "guaranteedBase": "Garanteret",
+    "guaranteedBase": "Garanteret ved sæsonstart",
     "perRaceDay": "Pr. løbsdag",
-    "projectedMax": "Maks (alle {count} løbsdage)",
+    "raceDayMath": "{count} løbsdage × {rate} CZ$",
+    "ifYouStartEveryStage": "Hvis du starter hver etape",
+    "bonusUpside": "Bonusser oveni, hvis de opnås",
     "length": "Længde",
     "seasons": "{count, plural, one {# sæson} other {# sæsoner}}"
   },

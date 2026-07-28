@@ -157,7 +157,12 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 // Loaderen (#1906) henter nu riders til eligibility-krydsning: default returnerer
 // alle entry-ryttere som berettigede (team_id=teamId, ej akademi/pensioneret).
 // ghostRiderIds gør specifikke ryttere ubrettigede.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [] } = {}) {
+// raceSeasonById (#3070): valgfri map race_id→season_id til "races"-opslaget
+// loadTeamBindingContext bruger til sæson-filtret. Udeladt (null) → "races"-tabellen
+// svarer tomt, ligesom før #3070; season_id bliver undefined på begge sider af
+// sammenligningen i loaderen, så eksisterende tests (der ikke sætter season_id på
+// hverken race eller entries) er upåvirkede.
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -182,6 +187,9 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           }));
         } else if (table === "race_withdrawals") {
           data = withdrawnRaceIds.map((race_id) => ({ race_id }));
+        } else if (table === "races" && raceSeasonById) {
+          const ids = f.in_id || [];
+          data = ids.map((id) => ({ id, season_id: raceSeasonById[id] ?? null }));
         }
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
@@ -257,6 +265,32 @@ test("loadTeamBindingContext: ghost-entries phantom-binder ikke (rod-årsag)", a
   assert.deepEqual(
     findRiderBindingConflicts({ riderIds: ["ghost"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
     [], "ghost-rytter er fri til det overlappende løb");
+});
+
+// #3070 rod-årsag: game_day er SÆSON-RELATIV og nulstilles hver sæson (S1 og S2
+// spænder i prod begge game_day 0..~100000). Uden sæson-filter binder en sæson-1-
+// entry på game_day 4 et sæson-2-løb der spænder game_day 0-6, fordi vinduerne
+// (nøglet på samme tal-rum) fremstår overlappende. 102/156 ægte hold ramt i prod.
+test("loadTeamBindingContext: entry fra en ANDEN sæson binder ikke, selvom game_day overlapper (#3070)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-this": [ // S2-etapeløb, game_day 0-6
+        { race_id: "race-this", game_day: 0 },
+        { race_id: "race-this", game_day: 6 },
+      ],
+      "race-s1": [{ race_id: "race-s1", game_day: 4 }], // S1-løb, SAMME game_day, anden sæson
+    },
+    teamEntries: [{ race_id: "race-s1", rider_id: "r1" }],
+    raceSeasonById: { "race-s1": "season-1" },
+  });
+  const ctx = await loadTeamBindingContext({
+    supabase, race: { id: "race-this", season_id: "season-2" }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.otherRaces, [], "sæson-1-entryen må ikke dukke op som binding for et sæson-2-løb");
+  assert.deepEqual(
+    findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
+    [], "r1 skal være fri til at udtages i race-this på tværs af sæsongrænsen"
+  );
 });
 
 test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {

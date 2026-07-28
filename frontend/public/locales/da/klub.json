@@ -119,6 +119,11 @@
       "title": "Kunne ikke indlæse klubben",
       "description": "Intet gik tabt. Dine faciliteter og staff er sikre. Prøv igen.",
       "retry": "Prøv igen"
+    },
+    "upgrade": {
+      "failed": "Købet kunne ikke gennemføres. Der blev ikke trukket noget.",
+      "network": "Ingen forbindelse til serveren. Der blev ikke trukket noget.",
+      "auth": "Din session er udløbet. Log ind igen og prøv igen."
     }
   }
 }

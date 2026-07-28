@@ -19,16 +19,57 @@
     "title": "Sæson {number} er åben for planlægning",
     "body": "Kalenderen for sæson {number} er klar. Du kan sætte peaks for den nu, inden sæsonen starter.",
     "cta": "Skift til sæson {number}",
-    "dismiss": "Afvis"
+    "dismiss": "Afvis",
+    "bodyUpcoming": "Kalenderen for sæson {number} er klar til at kigge i. Din division for den sæson afgøres ved sæsonskiftet, så peaks åbner når den er bekræftet."
   },
-  "firstRun": {
-    "title": "Planlæg din første peak",
-    "body": "Alle ryttere kører fladt lige nu. Sigt mod et løb, så bygger planlæggeren en optakt der løfter deres form til den dag der tæller. Hver rytter kan peake mod op til {max} løb pr. sæson, så vælg hvor det gør en forskel.",
-    "cta": "Vælg en rytter-lane for at starte, eller åbn et løb for at se hvem der passer til det."
+  "tabs": {
+    "squad": "Trup",
+    "season": "Sæson",
+    "races": "Løb"
+  },
+  "board": {
+    "title": "Sæsonbræt"
+  },
+  "statusLine": {
+    "peaks": "{count, plural, =0 {Ingen peaks planlagt} one {# peak planlagt} other {# peaks planlagt}}",
+    "needsAction": "{count, plural, one {# kræver handling} other {# kræver handling}}",
+    "allClear": "Intet kræver handling",
+    "nextLeadup": "{count, plural, =0 {En optakt begynder i dag} one {Næste optakt om # dag} other {Næste optakt om # dage}}",
+    "noLeadup": "Ingen optakt planlagt"
+  },
+  "squad": {
+    "title": "Din trup",
+    "count": "{count, plural, one {# rytter} other {# ryttere}}",
+    "colRider": "Rytter",
+    "colForm": "Form",
+    "colTarget": "Peak-mål",
+    "colValue": "Hvad den er værd",
+    "noPeak": "Ingen peak",
+    "pickRace": "Peak-mål for {name}",
+    "raceOption": "{date} · {race} · match {fit}",
+    "age": "{age} år",
+    "formInline": "Form {value}",
+    "remove": "Fjern peak",
+    "window": "Optakt {start} til {end}",
+    "value": {
+      "range": "+{floor} til +{ceiling} form",
+      "current": "+{current} form",
+      "rangeHint": "Afhænger af hvordan optakten køres. Derefter {payback} form i {days} dage.",
+      "currentHint": "Derefter {payback} form i {days} dage.",
+      "unset": "Sæt et mål for at se hvad en peak er værd."
+    },
+    "payback": {
+      "collision": "Dykket efter denne peak dækker {race}, {days, plural, one {# dag} other {# dage}} senere. Regn med {payback} form dér.",
+      "unknownRace": "et andet løb på rytterens program"
+    }
   },
   "assistant": {
-    "bannerTitle": "Assistenten har udkastet jeres form-programmer",
-    "bannerBody": "Hver rytter herunder har allerede et foreslået peak-program, bygget ud fra løbskalender, type og alder. Acceptér som det er, justér enkelt-peaks, eller nulstil en rytter til blank.",
+    "cardTitle": "Assistenten har udkastet {peaks, plural, one {# peak} other {# peaks}} til {riders, plural, one {# rytter} other {# ryttere}}",
+    "cardWhy": "Hver enkelt er valgt ud fra rytterens egen løbskalender, type og alder. Acceptér det hele, eller ret dem enkeltvis i listen nedenfor.",
+    "cardRule": "Hver rytter kan peake mod op til {max} løb pr. sæson, så vælg hvor det gør en forskel.",
+    "acceptAll": "Acceptér alle",
+    "acceptedAll": "{count, plural, one {# peak sat} other {# peaks sat}}. Ret dem enkeltvis i listen.",
+    "acceptedPartial": "{created} sat, {skipped} kunne ikke sættes. Listen viser hvad der landede.",
     "badge": "Assistentens forslag",
     "accept": "Acceptér",
     "reset": "Nulstil til blank",
@@ -93,7 +134,8 @@
       "demands": "Dette løb kræver",
       "alreadyPeaking": "Topper her",
       "suggestedHere": "Assistenten foreslår her",
-      "viewPage": "Se løbsside"
+      "viewPage": "Se løbsside",
+      "peaksLocked": "Division afventer"
     },
     "rider": {
       "abilities": "Evner",
@@ -135,7 +177,8 @@
     "generic": "Noget gik galt. Prøv igen.",
     "title": "Kunne ikke indlæse sæsonplanlæggeren",
     "description": "Intet gik tabt. Dine peaks og træningsplaner er sikre. Prøv igen.",
-    "retry": "Prøv igen"
+    "retry": "Prøv igen",
+    "division_not_settled": "Din division for den sæson afgøres ved sæsonskiftet, så peaks kan ikke sættes endnu."
   },
   "months": [
     "jan",
@@ -150,5 +193,10 @@
     "okt",
     "nov",
     "dec"
-  ]
+  ],
+  "divisionPending": {
+    "title": "Din division i sæson {number} afgøres ved sæsonskiftet",
+    "body": "Op- og nedrykning falder først på plads når den nuværende sæson lukker, så vi kan ikke vise dig hvilken kalender der er din endnu. Alle divisioners løb i sæson {number} står nedenfor, så du kan nå at studere ruterne.",
+    "hint": "Peaks for sæson {number} åbner så snart din division er bekræftet."
+  }
 }

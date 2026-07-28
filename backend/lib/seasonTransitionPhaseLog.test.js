@@ -158,17 +158,20 @@ function createTransitionMock({ adminLogFails = false } = {}) {
     });
   }
 
-  function chain(table, filters = {}) {
+  function chain(table, filters = {}, range = null) {
+    const rows = () => state[table].filter((r) => matches(r, filters));
     return {
-      eq: (col, val) => chain(table, { ...filters, [col]: val }),
-      gte: () => chain(table, filters),
-      is: (col, val) => chain(table, { ...filters, [col]: val }),
-      order: () => chain(table, filters),
-      limit: () => chain(table, filters),
-      contains: () => chain(table, { ...filters, __contains: true }),
-      maybeSingle: async () => ({ data: state[table].find((r) => matches(r, filters)) || null, error: null }),
-      single: async () => ({ data: state[table].find((r) => matches(r, filters)) || null, error: null }),
-      then: (resolve) => resolve({ data: state[table].filter((r) => matches(r, filters)), error: null }),
+      eq: (col, val) => chain(table, { ...filters, [col]: val }, range),
+      gte: () => chain(table, filters, range),
+      is: (col, val) => chain(table, { ...filters, [col]: val }, range),
+      order: () => chain(table, filters, range),
+      limit: () => chain(table, filters, range),
+      // #2926: buildTransitionPlan henter sponsor_contracts pagineret via fetchAllRows.
+      range: (from, to) => chain(table, filters, { from, to }),
+      contains: () => chain(table, { ...filters, __contains: true }, range),
+      maybeSingle: async () => ({ data: rows()[0] || null, error: null }),
+      single: async () => ({ data: rows()[0] || null, error: null }),
+      then: (resolve) => resolve({ data: range ? rows().slice(range.from, range.to + 1) : rows(), error: null }),
     };
   }
 

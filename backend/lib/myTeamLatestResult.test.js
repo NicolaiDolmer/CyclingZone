@@ -7,6 +7,7 @@ import {
   pickLatestTeamRace,
   summarizeTeamRace,
   trimRecapRows,
+  buildSeasonHistory,
 } from "./myTeamLatestResult.js";
 
 // ── pickLatestTeamRace ────────────────────────────────────────────────────────
@@ -126,4 +127,68 @@ test("trimRecapRows beholder top-10 + udbruds-flaggede rækker, dropper resten",
 test("trimRecapRows: ugyldig input → tom liste", () => {
   assert.deepEqual(trimRecapRows(null), []);
   assert.deepEqual(trimRecapRows(undefined), []);
+});
+
+// ── buildSeasonHistory (#2886) ────────────────────────────────────────────────
+// Rækkerne kommer fra dashboard_my_team_season_races-RPC'en, som gentager
+// sæson-totalerne på hver række (beregnet over HELE sæsonen, før LIMIT).
+
+const RPC_ROWS = [
+  { race_id: "race-c", race_name: "Classique de Touraine", race_type: "single", stages: 1, best_rank: 4, points: 92, prize_money: 6900, season_points: 6819, season_prize_money: 511425, season_races: 44 },
+  { race_id: "race-b", race_name: "Klassieker van Kuurne", race_type: "single", stages: 1, best_rank: 4, points: 94, prize_money: 7050, season_points: 6819, season_prize_money: 511425, season_races: 44 },
+  { race_id: "race-a", race_name: "Tour des Fjords", race_type: "stage_race", stages: 4, best_rank: 3, points: 108, prize_money: 8100, season_points: 6819, season_prize_money: 511425, season_races: 44 },
+];
+
+test("buildSeasonHistory: sæson-totaler læses af første række og dækker HELE sæsonen, ikke kun de returnerede løb", () => {
+  const { season_totals } = buildSeasonHistory({ rows: RPC_ROWS, latestRaceId: "race-c" });
+  assert.deepEqual(season_totals, { points: 6819, prize_money: 511425, races: 44 });
+});
+
+test("buildSeasonHistory: det viste løb filtreres ud af historikken (ingen dublet med kortets top-blok)", () => {
+  const { history } = buildSeasonHistory({ rows: RPC_ROWS, latestRaceId: "race-c" });
+  assert.deepEqual(history.map((h) => h.race_id), ["race-b", "race-a"]);
+  assert.deepEqual(history[0], {
+    race_id: "race-b",
+    name: "Klassieker van Kuurne",
+    race_type: "single",
+    stages: 1,
+    best_rank: 4,
+    points: 94,
+    prize_money: 7050,
+  });
+});
+
+test("buildSeasonHistory: RPC'ens rækkefølge (nyeste import først) bevares", () => {
+  const { history } = buildSeasonHistory({ rows: RPC_ROWS, latestRaceId: null });
+  assert.deepEqual(history.map((h) => h.name), [
+    "Classique de Touraine",
+    "Klassieker van Kuurne",
+    "Tour des Fjords",
+  ]);
+});
+
+test("buildSeasonHistory: bigint fra PostgREST kan komme som streng — koerceres til tal så formatNumber ikke får \"16249\"", () => {
+  const { history, season_totals } = buildSeasonHistory({
+    rows: [{ race_id: "r1", race_name: "R", points: "212", prize_money: "15900", best_rank: "3", stages: "4", season_points: "16249", season_prize_money: "1218675", season_races: "44" }],
+    latestRaceId: null,
+  });
+  assert.equal(history[0].points, 212);
+  assert.equal(history[0].prize_money, 15900);
+  assert.equal(history[0].best_rank, 3);
+  assert.equal(history[0].stages, 4);
+  assert.deepEqual(season_totals, { points: 16249, prize_money: 1218675, races: 44 });
+});
+
+test("buildSeasonHistory: løb uden placering (kun trøje-/holdklassement) beholder best_rank null i stedet for 0", () => {
+  const { history } = buildSeasonHistory({
+    rows: [{ race_id: "r1", race_name: "R", best_rank: null, points: 15, prize_money: 24000, season_points: 15, season_prize_money: 24000, season_races: 1 }],
+    latestRaceId: null,
+  });
+  assert.equal(history[0].best_rank, null);
+});
+
+test("buildSeasonHistory: ingen rækker → tom historik og season_totals null (sektionerne skjules frem for at vise 0 point)", () => {
+  assert.deepEqual(buildSeasonHistory({ rows: [], latestRaceId: "x" }), { history: [], season_totals: null });
+  assert.deepEqual(buildSeasonHistory({ rows: null }), { history: [], season_totals: null });
+  assert.deepEqual(buildSeasonHistory(), { history: [], season_totals: null });
 });

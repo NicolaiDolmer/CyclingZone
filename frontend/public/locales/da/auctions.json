@@ -148,7 +148,9 @@
     "buttonPlaceAria": "Afgiv bud",
     "buttonRaiseAria": "Hæv dit bud",
     "sellerLabel": "Du sælger",
+    "blockedBelowMin": "Hæv dit bud til mindst {amount} CZ$ for at byde.",
     "proxy": {
+      "blockedBelowMin": "Dit autobud-loft skal være mindst {amount} CZ$, som er det aktuelle minimumsbud.",
       "display": "Autobud: max {amount} CZ$",
       "help": "Vi byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
       "set": "Sæt autobud-loft",
@@ -221,6 +223,7 @@
   "error": {
     "bidFailed": "Buddet kunne ikke placeres",
     "proxyFailed": "Fejl ved sæt autobud",
+    "proxyRemoveFailed": "Autobud-loftet kunne ikke fjernes. Det er stadig aktivt.",
     "insufficientBalance": "Buddet overstiger din tilgængelige saldo"
   },
   "warning": {

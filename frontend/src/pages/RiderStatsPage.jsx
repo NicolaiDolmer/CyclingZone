@@ -30,7 +30,9 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
-import { Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
+import { ageForSeason } from "../lib/riderAge.js";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
+import { BlockedNote, Button, Card, CheckIcon, ErrorState, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -449,7 +451,8 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
   // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
   // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
   // og spilleren så ingen fejl overhovedet (#1184).
-  const { t } = useTranslation(["rider", "auctions"]);
+  // #2719: "common" tilføjet — knappernes loading-label bruger common:actions.
+  const { t } = useTranslation(["rider", "auctions", "common"]);
   const r = auction?.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -461,7 +464,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
     minBid, myProxy,
     bidAmount, setBidAmount, bidStatus, errorText, warningText,
     proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
-    proxyStatus, proxyErrorText,
+    proxyStatus, proxyErrorText, bidBlock, proxyBlock,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
@@ -515,18 +518,23 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
               className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
             <button
+              type="button"
               onClick={handleBid}
-              disabled={bidStatus === "loading" || bidAmount < minBid}
+              disabled={bidStatus === "loading"}
+              {...bidBlock.blockedProps}
               aria-label={imWinning ? t("auctionPanel.bidRaiseAria") : t("auctionPanel.bidPlaceAria")}
               className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
                 ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                   bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
+                disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
+              {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
           <p className="text-3xs text-cz-3">{t("auctionPanel.minBid", { amount: formatNumber(minBid) })}</p>
+          <BlockedNote id={bidBlock.reasonId} pulseKey={bidBlock.pulseKey} className="text-2xs">
+            {bidBlock.reason}
+          </BlockedNote>
           {bidStatus === "error" && errorText && <p className="text-2xs text-cz-danger">{errorText}</p>}
           {warningText && <p className="text-2xs text-cz-warning leading-snug">{warningText}</p>}
 
@@ -545,11 +553,13 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                   {t("auctionPanel.proxy.edit")}
                 </button>
                 <button
+                  type="button"
                   onClick={handleRemoveProxy}
+                  disabled={proxyStatus === "loading"}
                   aria-label={t("auctionPanel.proxy.removeAria")}
-                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
+                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger disabled:opacity-50"
                 >
-                  {t("auctionPanel.proxy.remove")}
+                  {proxyStatus === "loading" ? t("common:actions.loadingShort") : t("auctionPanel.proxy.remove")}
                 </button>
               </div>
             ) : !proxyExpanded ? (
@@ -573,15 +583,17 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                     className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    disabled={proxyStatus === "loading"}
+                    {...proxyBlock.blockedProps}
                     aria-label={t("auctionPanel.proxy.saveAria")}
                     className={`min-h-[44px] px-3 py-2 rounded-cz text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
-                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? t("auctionPanel.proxy.error") : proxyStatus === "saved" ? t("auctionPanel.proxy.saved") : t("auctionPanel.proxy.save")}
+                      disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctionPanel.proxy.error") : proxyStatus === "saved" ? t("auctionPanel.proxy.saved") : t("auctionPanel.proxy.save")}
                   </button>
                   <button
                     onClick={() => setProxyExpanded(false)}
@@ -591,10 +603,17 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
                     <XIcon size={14} aria-hidden="true" />
                   </button>
                 </div>
+                <BlockedNote id={proxyBlock.reasonId} pulseKey={proxyBlock.pulseKey} className="text-2xs">
+                  {proxyBlock.reason}
+                </BlockedNote>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-2xs text-cz-danger leading-tight">{proxyErrorText}</p>
                 )}
               </div>
+            )}
+            {/* Fejl fra "fjern autobud" — panelet er foldet sammen når man fjerner. */}
+            {!proxyExpanded && proxyStatus === "error" && proxyErrorText && (
+              <p className="text-2xs text-cz-danger leading-tight mt-1">{proxyErrorText}</p>
             )}
           </div>
         </div>
@@ -672,6 +691,9 @@ export default function RiderStatsPage() {
   const { t: tTypes } = useTranslation("riderTypes");
 
   const scouting = useScouting();
+  // #3071: sæson-referenceår (samme mønster som resten af appens sæson-hentning)
+  // — erstatter det tidligere wall-clock `new Date().getFullYear()` nedenfor.
+  const seasonYear = useActiveSeasonYear();
   const training = useTraining();
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
   const trainingHistory = useTrainingHistory();
@@ -1240,13 +1262,17 @@ export default function RiderStatsPage() {
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyErrorFallback")) };
   }
 
+  // #2719: se AuctionsPage.handleRemoveProxy — samme tavse fejl, samme rettelse.
   async function handleRemoveProxy(auctionId) {
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-    loadActiveAuctionFull(rider);
+    if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyRemoveErrorFallback")) };
   }
 
   function requestBidConfirm(payload) {
@@ -1355,9 +1381,9 @@ export default function RiderStatsPage() {
     : t("auctionStart.label.free");
   // Racing-age (year-arithmetic) — matches U25/filter-logik andre steder i appen.
   // Ellers kunne profil vise "24 år" mens max_age=25-filteret tæller rytteren som 25.
-  const age = rider.birthdate
-    ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
-    : null;
+  // #3071: sæson-år (useActiveSeasonYear), IKKE wall-clock — ellers fryser den
+  // viste alder på launch-sæsonens tal efter et sæsonskifte.
+  const age = ageForSeason(rider.birthdate, seasonYear);
   // #2000: type-label-fallbacken (vist når primary_type mangler) afledes nu af de
   // udledte CZ-evner via abilities.js-SSOT'en — ikke længere af PCM stat_*-kolonner.
   const typeLabel = (() => {
@@ -1464,6 +1490,7 @@ export default function RiderStatsPage() {
           <RiderSwitcherBar
             prevRider={prevRider}
             nextRider={nextRider}
+            teamId={rider.team?.id}
             teamName={rider.team?.name ?? t(isRetired ? "header.retired" : "header.freeAgent")}
             index={rosterIdx + 1}
             total={roster.length}
@@ -1478,6 +1505,7 @@ export default function RiderStatsPage() {
             showTeam={!hasSwitcher}
             overallRating={overallRating}
             age={age}
+            seasonYear={seasonYear}
             typeLabel={typeLabel}
             divisionLabel={divisionLabel}
             valueAmount={riderValueAmount}
@@ -1535,6 +1563,7 @@ export default function RiderStatsPage() {
                 <RiderManageActions
                   rider={rider}
                   onChanged={loadRider}
+                  seasonYear={seasonYear}
                   marketActions={
                     <>
                       {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
@@ -1667,7 +1696,7 @@ export default function RiderStatsPage() {
       {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
           stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
           scout-knap) lever indtil da i hero'en. */}
-      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} />}
+      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} seasonYear={seasonYear} />}
       </div>
     </div>
   );

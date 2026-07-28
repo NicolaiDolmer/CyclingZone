@@ -122,6 +122,16 @@ export function nextPlannableSeason(availableSeasons, viewingNumber) {
   return candidates.reduce((a, b) => (a.number < b.number ? a : b));
 }
 
+// #3018: hvilket løbs-filter brættet reelt skal tegne med. Når holdets division
+// for den valgte sæson ikke er afgjort endnu (divisionPending), findes der ingen
+// "mine løb" — boardet markerer intet som isMine, fordi den gamle divisions løb
+// IKKE er holdets kommende kalender. Uden denne tvang ville "Mine løb" (default)
+// matche nul løb og give præcis den tomme flade testerne kaldte ubrugelig; vi
+// viser hele kalenderen på tværs af divisioner i stedet. Ren funktion.
+export function effectivePlannerFilter(filter, divisionPending) {
+  return divisionPending ? "all" : filter;
+}
+
 // Trænings-status-chip: farve + redundant ikon-glyf (ikke kun farve — a11y §5.4).
 export function statusMeta(status) {
   switch (status) {

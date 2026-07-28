@@ -73,6 +73,13 @@
       "moreRiders": "+{count, plural, one {# more rider} other {# more riders}}",
       "points": "Points",
       "prize": "Prize money",
+      "pointsShort": "{value} pt",
+      "thisRace": "This race",
+      "earlier": "Earlier races",
+      "showAll": "Show all {count}",
+      "showLess": "Show less",
+      "season": "This season",
+      "seasonRaces": "{count, plural, one {# race} other {# races}}",
       "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
       "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",
       "emptyCta": "Open the race calendar →"

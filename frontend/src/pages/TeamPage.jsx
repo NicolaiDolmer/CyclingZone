@@ -11,6 +11,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
@@ -22,6 +23,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
+import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import { cycleSortState } from "../lib/riderSort";
 import { PageHeader, Button, Input, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
@@ -30,11 +32,11 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive }) {
+function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive, seasonYear }) {
   const { t } = useTranslation("team");
   // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
-  // ikke allerede akademi). Samme grænse som backend D5-gaten.
-  const canDemote = !rider.is_academy && isU23(rider.birthdate);
+  // ikke allerede akademi). Samme grænse som backend D5-gaten. #3071: sæson-alder.
+  const canDemote = !rider.is_academy && isU23(rider.birthdate, seasonYear);
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
   const [transferPrice, setTransferPrice] = useState(riderValue);
@@ -93,9 +95,18 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
       // #2007: delt body-løs POST-helper (riderContractActions.js).
       const { ok, data } = await postRiderContractAction(rider.id, path);
       if (ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
-    } catch {
+      else {
+        setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
+        // #2718: en afvist kontrakt-handling var kun synlig i UI'et — nu tælles
+        // den også i Sentry, så vi kan se HVOR tit spillere bliver afvist.
+        reportActionFailure(`rider_${path.replace(/-/g, "_")}`, {
+          reason: data?.errorCode || data?.error,
+          context: { riderId: rider.id },
+        });
+      }
+    } catch (cause) {
       setMsgOk(false); setMsg(t("auth:error.connectionFailed"));
+      reportActionFailure(`rider_${path.replace(/-/g, "_")}`, { cause, context: { riderId: rider.id } });
     } finally {
       setLoading(false);
     }
@@ -170,7 +181,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
           {scouting.estimateFor(rider.id) !== null && (
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-cz-border">
               <span className="text-cz-3 text-xs">{t("actionModal.potentialLabel")}</span>
-              <ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle hideLevel />
+              <ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle hideLevel seasonYear={seasonYear} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
@@ -271,9 +282,15 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                       </div>
                     )}
                   </div>
+                  {/* #2718: mens tilbuddet hentes var knappen disabled og tavs —
+                      samme døde klik som på rytterprofilen. Nu spinner + label. */}
                   <Button onClick={() => postRiderAction("extend-contract", "actionModal.extend.successMsg")}
-                    disabled={loading || !extendQuote} className="w-full">
-                    {loading ? t("actionModal.loadingShort") : t("actionModal.extend.confirmButton")}
+                    loading={loading || !extendQuote} className="w-full">
+                    {loading
+                      ? t("actionModal.extend.workingButton")
+                      : !extendQuote
+                        ? t("actionModal.extend.loadingTermsButton")
+                        : t("actionModal.extend.confirmButton")}
                   </Button>
                 </>
               )}
@@ -384,7 +401,7 @@ function OwnAuctionBadge({ auction }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -440,7 +457,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
       _ovr: riderOverallRating(r),
     }));
-  const riderFilters = useClientRiderFilters(displayRidersBase);
+  const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
@@ -542,7 +559,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       compact: true,
       // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
       // tooltip'en (labelAsTitle) og scout-niveauet i scouting-fanen (hideLevel).
-      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel seasonYear={seasonYear} />,
     },
     {
       key: "value",
@@ -568,7 +585,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       compact: true,
       render: (r) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r, seasonYear), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
           {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
           {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
         </div>
@@ -582,8 +599,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
       numeric: true,
       compact: true,
       fold: true,
-      foldValue: (r) => String(getRiderAge(r.birthdate) ?? "—"),
-      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate) ?? "—"}</span>,
+      foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
+      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
     },
     typeColumn,
     // #1482: Kontraktudløb. #2888: cellen viser den korte sæson-form ("S4") med
@@ -740,6 +757,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions }) {
 export function TeamPage() {
   const { t } = useTranslation("team");
   const scouting = useScouting();
+  // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [activeTab, setActiveTab] = useState("squad");
@@ -983,14 +1002,14 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} seasonYear={seasonYear} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} team={team} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} onDemote={handleDemote} ddActive={ddActive} />
+        <RiderActionModal rider={selectedRider} team={team} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} onDemote={handleDemote} ddActive={ddActive} seasonYear={seasonYear} />
       )}
 
       {/* #932 S7: Demote-bekræftelse (senior → akademi) — løn-delta + akademi-cap +

@@ -14,5 +14,173 @@
   "transfer_bargain": {
     "title": "Kuppet",
     "description": "Køb en rytter for under halvdelen af hans værdi."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Slut en sæson i top 10 i din division."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Slut en sæson i top 5 i din division."
+  },
+  "season_top3": {
+    "title": "Podium",
+    "description": "Slut en sæson i top 3 i din division."
+  },
+  "season_winner": {
+    "title": "Divisionsvinder",
+    "description": "Vind din division i en sæson."
+  },
+  "season_div1_winner": {
+    "title": "Mester",
+    "description": "Vind Division 1."
+  },
+  "season_div3_winner": {
+    "title": "Nyoprykkede",
+    "description": "Vind Division 3."
+  },
+  "season_3_top3": {
+    "title": "Konstant",
+    "description": "Slut i top 3 tre sæsoner i træk."
+  },
+  "season_2_seasons": {
+    "title": "To sæsoner",
+    "description": "Gennemfør 2 sæsoner."
+  },
+  "season_5_seasons": {
+    "title": "Veteran",
+    "description": "Gennemfør 5 sæsoner."
+  },
+  "season_grand_tour_rider": {
+    "title": "Grand Tour-hold",
+    "description": "Hav en rytter med til start i et Grand Tour."
+  },
+  "team_promotion": {
+    "title": "Oprykket",
+    "description": "Ryk op i en højere division."
+  },
+  "team_relegation": {
+    "title": "Nedrykket",
+    "description": "Ryk ned i en lavere division."
+  },
+  "team_survived": {
+    "title": "Overlevede",
+    "description": "Undgå nedrykning efter at have sluttet i farezonen."
+  },
+  "auction_first_bid": {
+    "title": "Første bud",
+    "description": "Afgiv dit første bud på en auktion."
+  },
+  "auction_first_win": {
+    "title": "Første sejr",
+    "description": "Vind din første auktion."
+  },
+  "auction_5_wins": {
+    "title": "5 auktioner vundet",
+    "description": "Vind 5 auktioner i alt."
+  },
+  "auction_10_wins": {
+    "title": "10 auktioner vundet",
+    "description": "Vind 10 auktioner i alt."
+  },
+  "auction_25_wins": {
+    "title": "25 auktioner vundet",
+    "description": "Vind 25 auktioner i alt."
+  },
+  "auction_50_wins": {
+    "title": "50 auktioner vundet",
+    "description": "Vind 50 auktioner i alt."
+  },
+  "auction_sniper": {
+    "title": "Sniper",
+    "description": "Vind en auktion med minimumsbud."
+  },
+  "auction_last_second": {
+    "title": "Last Second",
+    "description": "Vind en auktion i forlænget tid."
+  },
+  "auction_high_roller": {
+    "title": "High Roller",
+    "description": "Afgiv et bud på over 500.000 CZ$."
+  },
+  "auction_5_streak": {
+    "title": "Dominans",
+    "description": "Vind 5 auktioner i træk."
+  },
+  "secret_rival": {
+    "title": "Bitter Rival",
+    "description": "Byd mod den samme manager i 10 auktioner."
+  },
+  "secret_heartbreak": {
+    "title": "Hjerteknuser",
+    "description": "Tab en auktion i sidste sekund 3 gange."
+  },
+  "secret_streak_7": {
+    "title": "Ugentlig",
+    "description": "Log ind 7 dage i træk."
+  },
+  "secret_streak_30": {
+    "title": "Dedikeret",
+    "description": "Log ind 30 dage i træk."
+  },
+  "secret_watchlist_50": {
+    "title": "Spejder",
+    "description": "Tilføj 50 ryttere til din ønskeliste."
+  },
+  "team_15_riders": {
+    "title": "Voksende hold",
+    "description": "Hav 15 ryttere på dit hold samtidig."
+  },
+  "team_20_riders": {
+    "title": "Fuldt hold",
+    "description": "Hav 20 ryttere på dit hold samtidig."
+  },
+  "team_25_riders": {
+    "title": "Stor trup",
+    "description": "Hav 25 ryttere på dit hold samtidig."
+  },
+  "team_30_riders": {
+    "title": "Maksimal trup",
+    "description": "Nå det maksimale antal ryttere (30)."
+  },
+  "team_youth": {
+    "title": "Ungdomshold",
+    "description": "Hav mindst 50% U25-ryttere på dit hold."
+  },
+  "team_5_achievements": {
+    "title": "Trofæskab",
+    "description": "Lås op for 5 achievements."
+  },
+  "season_board_100": {
+    "title": "Bestyrelsens yndling",
+    "description": "Opnå 100% bestyrelsestilfredshed."
+  },
+  "transfer_first": {
+    "title": "Første handel",
+    "description": "Gennemfør din første transfer."
+  },
+  "transfer_5": {
+    "title": "5 transfers",
+    "description": "Gennemfør 5 transfers i alt."
+  },
+  "transfer_15": {
+    "title": "15 transfers",
+    "description": "Gennemfør 15 transfers i alt."
+  },
+  "transfer_30": {
+    "title": "30 transfers",
+    "description": "Gennemfør 30 transfers i alt."
+  },
+  "transfer_seller_10": {
+    "title": "Sælger",
+    "description": "Sælg 10 ryttere via transfer."
+  },
+  "transfer_buyer_10": {
+    "title": "Køber",
+    "description": "Køb 10 ryttere via transfer."
+  },
+  "transfer_negotiator": {
+    "title": "Forhandler",
+    "description": "Gennemfør en transfer efter mindst 3 modbudsrunder."
   }
 }
