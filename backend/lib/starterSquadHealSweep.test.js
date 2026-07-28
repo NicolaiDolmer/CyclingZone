@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { runStarterSquadHealSweep, HEAL_MIN_AGE_MS } from "./starterSquadHealSweep.js";
 
 // Mock af teams-tabellen for sweep-queryen:
-//   select("id, created_at").is("starter_squad_allocated_at", null).lt("created_at", cutoff).order().range()
+//   select("id, created_at").eq("is_ai", false).is("starter_squad_allocated_at", null)
+//     .lt("created_at", cutoff).order().range()
 function teamsMock(rows) {
   return {
     from(table) {
@@ -12,8 +13,10 @@ function teamsMock(rows) {
       let isNullCol = null;
       let ltCol = null;
       let ltVal = null;
+      const eqFilters = [];
       const b = {
         select() { return b; },
+        eq(col, val) { eqFilters.push([col, val]); return b; },
         is(col, val) { if (val === null) isNullCol = col; return b; },
         lt(col, val) { ltCol = col; ltVal = val; return b; },
         order() { return b; },
@@ -21,6 +24,9 @@ function teamsMock(rows) {
           let out = [...rows];
           if (isNullCol) out = out.filter((r) => r[isNullCol] == null);
           if (ltCol) out = out.filter((r) => r[ltCol] < ltVal);
+          // Ikke-seedet is_ai betyder "ægte hold" i disse fixtures (mirror af DB'ens
+          // NOT NULL DEFAULT false), så ældre tests behøver ikke sætte feltet.
+          for (const [col, val] of eqFilters) out = out.filter((r) => (r[col] ?? false) === val);
           return Promise.resolve({ data: out.map((r) => ({ id: r.id, created_at: r.created_at })), error: null });
         },
       };
@@ -47,6 +53,27 @@ test("#1563 sweep: heler markør-NULL hold ældre end alders-guarden, springer f
   assert.equal(res.candidates, 1);
   assert.equal(res.healed, 1);
   assert.equal(res.failed, 0);
+});
+
+// CYCLINGZONE-42: AI-hold får aldrig markøren sat af aiTeamGenerator, så uden
+// is_ai-gaten blev hvert nyt AI-hold kandidat — og manager-stien forsøgte at slette
+// AI-truppen (prod 27/7: 23 blokerede sletninger i ét tick).
+test("CYCLINGZONE-42 sweep: AI-hold er ALDRIG kandidater, uanset markør + alder", async () => {
+  const now = new Date("2026-07-28T12:00:00Z");
+  const old = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const rows = [
+    { id: "manager-stuck", created_at: old, is_ai: false, starter_squad_allocated_at: null },
+    { id: "ai-fill-1", created_at: old, is_ai: true, starter_squad_allocated_at: null },
+    { id: "ai-fill-2", created_at: old, is_ai: true, starter_squad_allocated_at: null },
+  ];
+  const calls = [];
+  const allocate = async (_sb, id) => { calls.push(id); return { teamId: id, assigned: 12 }; };
+
+  const res = await runStarterSquadHealSweep({ supabase: teamsMock(rows), now, allocate });
+
+  assert.deepEqual(calls, ["manager-stuck"], "kun ægte manager-hold heales — AI-hold røres aldrig");
+  assert.equal(res.candidates, 1);
+  assert.equal(res.healed, 1);
 });
 
 test("#1563 sweep: alders-guarden bruger HEAL_MIN_AGE_MS", () => {

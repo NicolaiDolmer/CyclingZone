@@ -625,3 +625,27 @@ test("#1563 heal delvis-insert: markør null + 3 ryttere → ryd det halve + re-
   assert.ok(!store.has("partial-0"), "den delvise trup blev ryddet");
   assert.ok(teams.get("partial-team").starter_squad_allocated_at, "markør sat efter heal");
 });
+
+// CYCLINGZONE-42: den gamle else-gren tog OGSÅ n>SIZE og slettede hele truppen for at
+// bygge en 12-mands manager-trup. Et markør-NULL hold med FLERE end SIZE ryttere er per
+// definition ikke et halvt signup-forsøg (bootstrappen indsætter præcis SIZE i ét batch)
+// — det er et hold fra en anden sti (AI-fyld, AI_SQUAD = op til 24). Kast, slet aldrig.
+test("CYCLINGZONE-42: markør null + FLERE end 12 ryttere → kast, ingen ryttere slettet", async () => {
+  const oversized = STARTER_SQUAD.TOTAL_SIZE + 8;
+  const seedRiders = Array.from({ length: oversized }, (_, i) => ({
+    id: `ai-${i}`, team_id: "ai-fill-team", firstname: `F${i}`, lastname: `L${i}`,
+  }));
+  const { supabase, store, teams, fakeDerive } = createRidersMock({ seedRiders });
+
+  await assert.rejects(
+    () => allocateStarterSquadForTeam(supabase, "ai-fill-team", {
+      seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+    }),
+    /nægter at slette truppen/,
+    "en for stor trup må aldrig ryddes af manager-bootstrappen"
+  );
+
+  assert.equal(store.size, oversized, "ingen ryttere slettet");
+  assert.equal([...store.values()].filter((r) => r.team_id === "ai-fill-team").length, oversized);
+  assert.equal(teams.get("ai-fill-team").starter_squad_allocated_at, null, "markør IKKE sat ved afvisning");
+});
