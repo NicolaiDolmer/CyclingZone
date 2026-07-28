@@ -148,6 +148,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
+import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
@@ -3449,19 +3450,18 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
-    // som standard lander på en dag med løb i stedet for et tomt "i dag" (de fleste af de
-    // 60 dage har ingen løb). firstMs gentages fra resolveSeasonDay (1 linje, idempotent).
-    const DAY_MS = 86_400_000;
-    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    // som standard lander på en dag med løb i stedet for et tomt "i dag".
+    // #3107: dags-ordinalen er dansk KALENDERDAG (seasonDay.js), ikke en rullende 24t-bøtte.
+    const seasonAxis = seasonDayAxis(schedRows, season.start_date);
     const myRaceDays = [...new Set(
       withWindow
         .filter((r) => r.status === "scheduled" && r.window
           && teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
-        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+        .map((r) => seasonDayForTime(r.window.start, seasonAxis?.firstOrdinal))
+        .filter((d) => Number.isFinite(d))
     )].sort((a, b) => a - b);
 
-    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
+    const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
 
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
@@ -3546,7 +3546,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
-      teamDivisionId: req.team.league_division_id, currentDay, totalDays,
+      teamDivisionId: req.team.league_division_id, currentDay, totalDays, firstOrdinal,
     });
 
     // #3041: bindingRiderIds er kun et internt hjælpefelt til at bygge bindingMap ovenfor —
@@ -3600,17 +3600,17 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Puljens kolonne-egnede løbsdage → board'et åbner på en dag med løb i puljen.
-    const DAY_MS = 86_400_000;
-    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    // #3107: samme kalenderdags-SSOT som hoved-endpointet (var duplikeret 24t-formel).
+    const seasonAxis = seasonDayAxis(schedRows, season.start_date);
     const poolRaceDays = [...new Set(
       withWindow
         .filter((r) => r.status === "scheduled" && r.window
           && teamInRacePool({ teamDivisionId: pool.id, racePoolId: r.league_division_id }))
-        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+        .map((r) => seasonDayForTime(r.window.start, seasonAxis?.firstOrdinal))
+        .filter((d) => Number.isFinite(d))
     )].sort((a, b) => a - b);
 
-    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays: poolRaceDays });
+    const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays: poolRaceDays });
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: pool.id, dayWindow });
 
     // Terræn-glyf pr. kolonne-løb (genbrug stage-profil-mønsteret fra hoved-endpointet).
@@ -3668,7 +3668,7 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
-      teamDivisionId: pool.id, currentDay, totalDays,
+      teamDivisionId: pool.id, currentDay, totalDays, firstOrdinal,
     });
 
     res.json({
@@ -3682,31 +3682,12 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
   }
 });
 
-// Sæson-dag → CET-døgnvindue. day 1 = sæsonens første race-dag (tidligste scheduled_at).
-// focusDay = den dag board'et viser: eksplicit ?day=N, ellers holdets nærmeste kommende
-// løbsdag (myRaceDays), ellers i dag. Så board'et åbner aldrig tomt når holdet har løb.
-function resolveSeasonDay({ season, schedRows, dayParam, myRaceDays = [] }) {
-  const times = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-  const firstMs = times.length ? Math.min(...times) : Date.parse(season.start_date || "2026-01-01");
-  const DAY = 86_400_000;
-  const lastMs = times.length ? Math.max(...times) : firstMs;
-  const totalDays = Math.max(1, Math.round((lastMs - firstMs) / DAY) + 1);
-  const today = Math.floor((Date.now() - firstMs) / DAY) + 1;
-  const currentDay = Math.min(Math.max(today, 1), totalDays);
-  let focusDay;
-  if (Number.isFinite(dayParam)) {
-    focusDay = Math.min(Math.max(dayParam, 1), totalDays);
-  } else if (myRaceDays.length) {
-    focusDay = myRaceDays.find((d) => d >= currentDay) ?? myRaceDays[myRaceDays.length - 1];
-  } else {
-    focusDay = currentDay;
-  }
-  const start = firstMs + (focusDay - 1) * DAY;
-  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, focusDay, totalDays };
-}
-
 // Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.
-async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays }) {
+// #3107: `firstOrdinal` gives ind fra kalderens resolveSeasonDay, så tidslinjen og
+// ?day=-parameteren PR. DEFINITION deler dags-akse. Tidligere udledte denne funktion sit
+// eget anker af sine EGNE løb (et pulje-filtreret undersæt!) med en tredje kopi af den
+// rullende 24t-formel — så tidslinje-labelen og dagsvinduet kunne pege på hver sin dag.
+async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays, firstOrdinal }) {
   const raceIds = races.map((r) => r.id);
   const profiles = await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type");
   const profByRace = new Map();
@@ -3714,15 +3695,13 @@ async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, cur
     if (!profByRace.has(p.race_id)) profByRace.set(p.race_id, []);
     profByRace.get(p.race_id).push(p.profile_type);
   }
-  const allTimes = races.flatMap((r) => (schedByRace.get(r.id) || []).map((s) => Date.parse(s.scheduled_at))).filter(Number.isFinite);
-  if (!allTimes.length) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
-  const firstMs = Math.min(...allTimes);
-  const DAY = 86_400_000;
+  if (!Number.isFinite(firstOrdinal)) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
   const dayProfiles = new Map();
   for (const r of races) {
     const mine = teamInRacePool({ teamDivisionId, racePoolId: r.league_division_id });
     for (const s of schedByRace.get(r.id) || []) {
-      const day = Math.floor((Date.parse(s.scheduled_at) - firstMs) / DAY) + 1;
+      const day = seasonDayForTime(s.scheduled_at, firstOrdinal);
+      if (!Number.isFinite(day)) continue;
       const prev = dayProfiles.get(day) || { terrainTypes: [], hasMyRace: false, dateText: null };
       prev.terrainTypes.push(...(profByRace.get(r.id) || []));
       if (mine) prev.hasMyRace = true;

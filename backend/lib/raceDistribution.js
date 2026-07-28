@@ -62,9 +62,13 @@ export function buildExternalBindings({ entries = [], columnIds, withdrawnIds, w
   return map;
 }
 
-// Tidslinje-projektion: 60 dage med dato-tekst + terræn-glyf-nøgle + om holdet har et løb.
-// `dayProfiles` = Map<day, { dateText, terrain, hasMyRace }>. Manglende dag → tom standard.
-export function seasonDayProjection({ totalDays = 60, currentDay, dayProfiles = new Map() }) {
+// Tidslinje-projektion: sæsonens dage med dato-tekst + terræn-glyf-nøgle + om holdet har
+// et løb. `dayProfiles` = Map<day, { dateText, terrain, hasMyRace }>. Manglende dag → tom
+// standard. #3107: totalDays kommer ALTID fra sæsonens faktiske kalenderdage (28 i S2) —
+// den gamle `= 60`-default var en gætte-værdi der lækkede ud i UI'et ("60 løbsdage" på
+// forsiden, #1774). Uden et gyldigt tal er den ærlige projektion tom, ikke opdigtet.
+export function seasonDayProjection({ totalDays, currentDay, dayProfiles = new Map() }) {
+  if (!Number.isFinite(totalDays) || totalDays < 1) return { totalDays: 0, currentDay: currentDay ?? null, days: [] };
   const days = [];
   for (let day = 1; day <= totalDays; day++) {
     const p = dayProfiles.get(day) || {};
