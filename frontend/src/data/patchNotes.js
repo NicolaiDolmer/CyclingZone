@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.71",
+    "date": "2026-07-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race days now line up with the calendar",
+          "body": "A race day in the Race Hub was a rolling 24 hours counted from the season's very first stage, not an actual day. Because the racing block runs across the afternoon and evening, anything early in the day landed in the previous day's bucket — so a day mixed one evening with the next morning, and 61% of this season's stages showed up under the wrong day. A race day is a real calendar day now. Day links point at the day they say, the timeline counts the season's actual days instead of a fixed 60, and the \"today\" marker moves at midnight instead of in the middle of the afternoon."
+        },
+        "da": {
+          "title": "Løbsdage passer nu med kalenderen",
+          "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape — ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
+        },
+        "refs": [3107]
+      }
+    ]
+  },
+  {
     "version": "7.70",
     "date": "2026-07-27",
     "label": "Beta",
