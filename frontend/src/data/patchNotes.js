@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.70",
+    "date": "2026-07-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "Results actually shows results now",
+          "body": "The Results page was a page of links to other pages. It opens on Latest now: the races that have finished in your division, each with its podium and a way straight into the full result. The race library and the points and prize tables moved in as tabs, so Results is one place with three tabs: Latest, Archive, Points and prizes. Old links still work."
+        },
+        "da": {
+          "title": "Resultater viser faktisk resultater nu",
+          "body": "Resultatsiden var en side med links til andre sider. Den åbner på Seneste nu: de løb, der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
+        },
+        "refs": [3102]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "A race's history is no longer a dead end",
+          "body": "Opening a race from the archive showed you every edition and who won it, but there was no way from there into the race itself. Each season in the edition list is a link now, straight to that edition's full result."
+        },
+        "da": {
+          "title": "Et løbs historik er ikke længere en blindgyde",
+          "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgavelisten er et link nu, direkte til den udgaves fulde resultat."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
     "version": "7.69",
     "date": "2026-07-27",
     "label": "Beta",

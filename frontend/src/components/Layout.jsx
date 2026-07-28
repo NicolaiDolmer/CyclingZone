@@ -41,7 +41,10 @@ const API = import.meta.env.VITE_API_URL;
 // tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
 // "/global-rank" tilføjet per #2849 bølge 3 — T2 wide data-side (rank-tabellen
 // cappes per-side på max-w-[1600px] ligesom /races).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/global-rank"]);
+// "/resultater" tilføjet per #3102 etape 2 — hubben er T2 nu: arkiv-fanen er
+// biblioteks-tabellen (5 kolonner) og point-fanen er point-tabellerne pr.
+// løbsklasse. Uden ruten her ville begge være klemt i max-w-6xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/resultater", "/global-rank"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -159,6 +162,11 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
         // #3102: excludePaths så den heller ikke lyser op sammen med det nye
         // Holdstrategi-punkt (prefix-matchet ville ellers ramme /races/strategy).
+        // #3102 etape 2 — eksplicit beslutning: punktet BLIVER på /races selv om
+        // bibliotek + point er flyttet til hubben ovenfor. /races har fortsat
+        // kalenderen og verdens-kataloget, og etape 3 er den der opløser ruten;
+        // at flytte punktets mål to gange på to uger ville koste mere
+        // muskelhukommelse (11k sessions) end det ville rydde op.
         { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },

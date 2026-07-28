@@ -7,7 +7,7 @@ import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import {
-  FlagIcon, Button,
+  FlagIcon, ChevronRightIcon, Button,
   PageHeader, Section, SectionStack, SectionHeader,
   EmptyState, ErrorState, SkeletonLines,
 } from "../components/ui";
@@ -116,7 +116,8 @@ export default function RaceHistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/races?tab=library" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">
+      {/* #3102 etape 2: arkivet bor i Resultat-hubben nu. */}
+      <Link to="/resultater?tab=archive" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">
         {t("history.backToLibrary")}
       </Link>
 
@@ -159,7 +160,19 @@ export default function RaceHistoryPage() {
               <div className="divide-y divide-cz-border">
                 {editions.map(ed => (
                   <div key={ed.id} className="flex items-center justify-between gap-3 py-[13px]">
-                    <p className="text-[13.5px] font-medium text-cz-1">{t("history.season", { number: ed.season?.number })}</p>
+                    {/* #3102 etape 2: biblioteket var en dødvej — man kunne se HVEM
+                        der vandt en udgave, men ikke selve resultatet. Løbets id
+                        ligger allerede i editions-rækken (races-selecten ovenfor),
+                        så drill-downet til RaceDetailPage koster ingen ny query. */}
+                    <Link to={`/races/${ed.id}`}
+                      className="group inline-flex items-center gap-1 text-[13.5px] font-medium text-cz-1 transition-colors hover:text-cz-accent-t">
+                      {t("history.season", { number: ed.season?.number })}
+                      {/* Affordance: uden en pil ligner rækken almindelig tekst, og
+                          drill-downet bliver fundet lige så sjældent som da det slet
+                          ikke fandtes. */}
+                      <ChevronRightIcon size={13} aria-hidden="true"
+                        className="text-cz-3 transition-colors group-hover:text-cz-accent-t" />
+                    </Link>
                     <div className="text-right">
                       {ed.winner ? (
                         <div>
