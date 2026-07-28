@@ -79,20 +79,24 @@ export default function ResultaterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [tab, setTab] = useState(
-    VALID_TABS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "latest"
-  );
+  // URL'en ER fane-tilstanden — ikke en kopi i state der seedes ved mount.
+  // Med en useState-kopi skifter fanen ikke når location'en ændrer sig uden en
+  // remount: browserens tilbage/frem mellem ?tab=archive og ?tab=points ville
+  // flytte URL'en men efterlade indholdet på den gamle fane.
+  const tabParam = searchParams.get("tab");
+  const tab = VALID_TABS.includes(tabParam) ? tabParam : "latest";
 
-  // Tab → URL sync (deep-linkbar: /resultater?tab=archive), samme mønster som
-  // /races og Finance. "latest" er default og skriver ingen param.
+  // Tab → URL sync (deep-linkbar: /resultater?tab=archive). "latest" er default
+  // og skriver ingen param. Opdateringen sker på en KOPI af params — instansen
+  // fra hooken ejes af React Router, og at mutere den er samme fælde som
+  // FinancePage/TransfersPage allerede undgår.
   function changeTab(next) {
-    setTab(next);
-    if (next === "latest") {
-      searchParams.delete("tab");
-    } else {
-      searchParams.set("tab", next);
-    }
-    setSearchParams(searchParams, { replace: true });
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (next === "latest") params.delete("tab");
+      else params.set("tab", next);
+      return params;
+    }, { replace: true });
   }
 
   // #2849 bølge 3 — wrapper med try/catch/finally, så en fejlet query giver

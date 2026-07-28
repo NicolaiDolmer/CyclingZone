@@ -19,8 +19,11 @@ export const RACE_CLASS_OPTIONS = [
   { value: "Class2" },
 ];
 
+// Status-filteret sammenligner mod deriveRaceStatus, ikke mod races.status —
+// se RaceArchiveTable. Derfor "live" (det afledte ord), ikke "active" (som kun
+// findes i DB og aldrig kommer ud af deriveRaceStatus).
 export const RACE_STATUS_OPTIONS = [
   { value: "completed" },
-  { value: "active" },
+  { value: "live" },
   { value: "scheduled" },
 ];

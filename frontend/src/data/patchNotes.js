@@ -18,7 +18,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Resultater viser faktisk resultater nu",
-          "body": "Resultat-siden var en side med links til andre sider. Den åbner på Seneste nu: de løb der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
+          "body": "Resultatsiden var en side med links til andre sider. Den åbner på Seneste nu: de løb, der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
         },
         "refs": [3102]
       },
@@ -32,7 +32,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Et løbs historik er ikke længere en blindgyde",
-          "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgave-listen er et link nu, direkte til den udgaves fulde resultat."
+          "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgavelisten er et link nu, direkte til den udgaves fulde resultat."
         },
         "refs": [3102]
       }

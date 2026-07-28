@@ -97,7 +97,12 @@ export default function RaceArchiveTable() {
     const rows = base.filter(r => {
       if (filterSeason && r.season?.id !== filterSeason) return false;
       if (filterClass && r.race_class !== filterClass) return false;
-      if (filterStatus && r.status !== filterStatus) return false;
+      // Filtrér på den AFLEDTE status — det er den kolonnen viser. Med den rå
+      // status matchede "Live" aldrig noget (deriveRaceStatus returnerer "live",
+      // races.status gør ikke), og "Kommende" tog igangværende etapeløb med,
+      // fordi de stadig står som scheduled i DB. Fejlen fulgte med fra
+      // /races?tab=library; den er rettet her, ikke flyttet videre.
+      if (filterStatus && deriveRaceStatus(r.status, r.stages_completed, r.stages) !== filterStatus) return false;
       if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
