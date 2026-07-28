@@ -349,7 +349,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       <td className="px-2 py-1.5 text-center">
         <span
           className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded"
-          style={statStyle(ovr)}
+          style={statStyle(ovr, { scale: "rating" })}
           title={t("auctions:table.ovrTitle")}
         >
           {ovr || "—"}
@@ -568,7 +568,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {ovr > 0 && (
                 <span
                   className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
-                  style={statStyle(ovr)}
+                  style={statStyle(ovr, { scale: "rating" })}
                   title={t("auctions:card.ovrTitle")}
                 >
                   {ovr}

@@ -79,7 +79,9 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
                     <span className="text-2xs text-cz-2"> · {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}{c.topSpecialization && <> · {tStaff(`axes.${c.topSpecialization}`)}</>}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-data tabular-nums font-bold text-sm" style={{ color: statColor(c.overall) }}>{c.overall}</span>
+                    {/* #2890: staffRating, ikke rating — staff-overall (tier-bånd 28-90) er en
+                        anden fordeling end rytter-overallRating (median 48 vs. 21). */}
+                    <span className="font-data tabular-nums font-bold text-sm" style={{ color: statColor(c.overall, { scale: "staffRating" }) }}>{c.overall}</span>
                     <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
                   </div>
                 </div>
