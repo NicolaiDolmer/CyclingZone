@@ -11,6 +11,18 @@
 // squad-marker.sql), så sweep'en rører KUN hold oprettet EFTER migrationen. En
 // ALDERS-guard (created_at < cutoff) sikrer at den ikke racer med et signup, der
 // er midt i sin synkrone allokering lige nu.
+//
+// KUN ÆGTE MANAGER-HOLD (2026-07-28, CYCLINGZONE-42): AI-hold oprettes af
+// aiTeamGenerator.createAiTeam, som ALDRIG sætter markøren — den er signup-flowets
+// kvittering, ikke AI-fyldets. Uden is_ai-gaten blev hvert eneste nye AI-hold derfor
+// kandidat 5 minutter efter oprettelsen (prod: 27/27 AI-hold på 14 dage fik markøren
+// sat af DENNE sweep, mod 0/33 ægte hold), og allocateStarterSquadForTeam kørte
+// MANAGER-stien på dem. AI-truppen har sin egen størrelse (AI_SQUAD, op til 24) og
+// matcher ikke STARTER_SQUAD.TOTAL_SIZE, så heal'en landede i "ryd delvist forsøg"-
+// grenen og forsøgte at SLETTE hele AI-holdets trup. 27/7 blev 23 sådanne sletninger
+// kun stoppet af DB-guarden block_rider_delete_with_inflight_entries (#2074) — dvs.
+// af det tilfælde at rytterne allerede var i et løb. Et AI-hold uden entries endnu
+// ville være blevet tømt lydløst.
 
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { fetchAllRows } from "./supabasePagination.js";
@@ -29,13 +41,16 @@ export async function runStarterSquadHealSweep({
 
   const cutoffIso = new Date(now.getTime() - minAgeMs).toISOString();
 
-  // Hold der aldrig fik fuldført start-trup-bootstrap (markør NULL) og er ældre end
-  // alders-guarden. allocateStarterSquadForTeam er selv markør-gatet + idempotent,
-  // så et hold der når at blive markeret mellem query og kald bliver et no-op.
+  // Ægte manager-hold der aldrig fik fuldført start-trup-bootstrap (markør NULL) og
+  // er ældre end alders-guarden. allocateStarterSquadForTeam er selv markør-gatet +
+  // idempotent, så et hold der når at blive markeret mellem query og kald bliver et
+  // no-op. is_ai=false er en HARD gate (CYCLINGZONE-42): AI-hold har deres egen
+  // trup-allokering og må aldrig røres af manager-stien.
   const candidates = await fetchAllRows(() =>
     supabase
       .from("teams")
       .select("id, created_at")
+      .eq("is_ai", false)
       .is("starter_squad_allocated_at", null)
       .lt("created_at", cutoffIso)
       .order("created_at"));
