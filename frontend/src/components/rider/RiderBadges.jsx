@@ -10,7 +10,8 @@ import { useTranslation } from "react-i18next";
 // Strenge: kort label i `rider`-ns under `badges.label.<key>` (EN + DA —
 // fx incoming = EN "IN" / DA "IND"), fuld tooltip under `badges.<key>`.
 //
-// Brug: <RiderBadges badges={[ageBadgeKey(rider), isInAuction && "auction"]} />
+// Brug: <RiderBadges badges={[ageBadgeKey(rider, seasonYear), isInAuction && "auction"]} />
+// (seasonYear = det aktive sæsons referenceår, #3071 — se riderAge.js/useActiveSeasonYear.js)
 // Hver entry er en nøgle i BADGE_DEFS. Ukendte/falsy nøgler ignoreres, så
 // kaldersiden kan bygge listen med betingelser.
 

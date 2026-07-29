@@ -215,6 +215,31 @@ export function draftBindingMap(columns = []) {
 // committede entries i løb UDEN FOR brættet), så en rytter optaget i et løb på en anden
 // dag/pulje også greyes korrekt. Eksterne entries bærer { id, name, window } — navnet bruges
 // til "optaget i <løbsnavn>" for løb der ikke er kolonner. Muterer ikke input. Pure → testbar.
+// #3061: menneskelæsbar nedtælling til "Clear all"-konsekvens-dialogen — ægte differens til
+// løbets faktiske starttidspunkt (ikke en kalenderdato). Minut-præcision, altid rundet OP
+// (aldrig "0m" for et løb der reelt stadig er sekunder ude — det ville læse som "starter nu").
+// null for ikke-positive/ugyldige differencer (kaldestedet filtrerer allerede disse fra —
+// defensiv, ikke en forventet sti). Pure → testbar uden Date.now()-mocking (tager ms-diff).
+export function formatStartsIn(diffMs) {
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return null;
+  const totalMinutes = Math.ceil(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+// #3061: hvilke af de kandidat-løb backend'ens clear-preview returnerede skal dialogen vise,
+// og skal den vises overhovedet? `races` = [{ id, name, startAt }] (allerede filtreret+sorteret
+// server-side af buildClearPreview). Ren UI-beslutning: INGEN dialog uden mindst ét ægte
+// kommende løb — en tom liste betyder alt allerede er kørt eller intet var valgt, og en dialog
+// uden indhold ville kun være støj man klikker forbi (#3061-krav). Pure → testbar.
+export function shouldShowClearAllDialog(races) {
+  return Array.isArray(races) && races.length > 0;
+}
+
 export function mergeBindingMaps(base = {}, extra = {}) {
   const map = {};
   for (const [rid, entries] of Object.entries(base)) map[rid] = [...entries];

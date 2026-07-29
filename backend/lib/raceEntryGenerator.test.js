@@ -501,6 +501,90 @@ test("runRaceEntryGenerator: igangværende løb (stages_completed>0) regenereres
   for (const e of bRiders) assert.ok(!lRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket med igangværende L`);
 });
 
+// #3113 læk 1 (P0, prod 27/7): et IGANGVÆRENDE løb med en DELVIS manuel trup låste kun de
+// MANUELLE ryttere. Skip-grenen var `if (hasManual) ... else if (isStarted) ...` — de to
+// tilfælde udelukkede hinanden, så et startet løb hvor manageren havde udtaget bare ÉN
+// rytter manuelt tabte låsen på sine auto-fyldte. Præcis Team Brutalistes form: Hauts
+// Plateaux var startet, havde 1 manuel (Lie) + 4 auto — og de 4 blev genudtaget til det
+// overlappende Tour de Malaisie i næste sweep-kørsel og kørte BEGGE løb på game_day 0-1.
+test("runRaceEntryGenerator: igangværende løb med DELVIS manuel trup låser OGSÅ sine auto-ryttere (#3113)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // L = igangværende (stages_completed>0) med 1 manuel + 2 auto. B = ikke-startet, samme dag.
+  state.races = [
+    { id: "L", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 2 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "L", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-07-01T14:00:00Z" }, // samme CET-dag → overlap
+  ];
+  state.race_stage_profiles = [{ race_id: "L", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  state.race_entries = [
+    // Manageren har selv udtaget r0 (manuel) — det er DENNE række der fik hasManual-grenen
+    // til at vinde og efterlade r1/r2 ulåste.
+    { race_id: "L", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "L", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: true },
+    { race_id: "L", rider_id: "t1-r2", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  // L er frosset → urørt.
+  const lRiders = new Set(state.race_entries.filter((e) => e.race_id === "L").map((e) => e.rider_id));
+  assert.deepEqual([...lRiders].sort(), ["t1-r0", "t1-r1", "t1-r2"], "L's igangværende lineup uændret");
+  // B må ALDRIG genbruge en rytter fra L — hverken den manuelle ELLER de auto-fyldte.
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B");
+  assert.ok(bRiders.length > 0, "B genereret");
+  for (const e of bRiders) {
+    assert.ok(!lRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket med igangværende L (#3113)`);
+  }
+});
+
+// #3113 læk 2 (prod 27/7, Aquila–L3gatus): en (race,team)-enhed hvis nye tildeling giver NUL
+// picks blev sprunget helt over i staging (`if (!picks.length) continue`) — så enhedens
+// FORÆLDEDE auto-rækker fra en tidligere kørsel aldrig blev diffet væk. Rytteren stod dermed
+// stadig i løb A i databasen, mens tildelingen troede han var fri og gav ham løb B.
+// Symptom i prod: Tour du Danube havde præcis ÉN entry tilbage (en residual), og samme
+// rytter blev udtaget til det overlappende Københavns Klassiker i en senere kørsel.
+test("runRaceEntryGenerator: enhed med NUL nye picks får sine forældede auto-rækker fjernet (#3113)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // A og B overlapper (samme CET-dag). Truppen er kun lige stor nok til ÉT fuldt felt,
+  // så B ender med 0 picks — og A's stale række skal så ikke overleve som dobbeltbooking.
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-07-01T14:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 6);
+  // Residual fra en tidligere kørsel: r0 står i B. Han er også den stærkeste og bliver
+  // valgt til A i denne kørsel → uden diff af B er han dobbeltbooket.
+  state.race_entries = [
+    { race_id: "B", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  const byRider = new Map();
+  for (const e of state.race_entries) {
+    if (!byRider.has(e.rider_id)) byRider.set(e.rider_id, new Set());
+    byRider.get(e.rider_id).add(e.race_id);
+  }
+  for (const [riderId, races] of byRider) {
+    assert.ok(races.size <= 1, `${riderId} står i flere overlappende løb: ${[...races].join("+")} (#3113)`);
+  }
+});
+
 // Rod B (#1742/#1800): assistenten må KUN vælge løbs-berettigede ryttere. Generatoren
 // manglede is_academy-filteret (kun is_retired), så en akademirytter med stærke evner
 // blev auto-valgt (264 ghosts i prod 2026-06-25). Repro: stærkeste rytter er akademi.

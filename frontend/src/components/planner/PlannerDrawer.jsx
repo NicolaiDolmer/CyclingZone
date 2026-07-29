@@ -204,7 +204,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
         {/* #2447: OVR-badge farvet efter statStyle (samme SSOT som auktioner/rytter-
             profil) i stedet for plain cz-1-tekst uden nogen farve-signal. */}
         <div className="text-right flex flex-col items-end gap-1">
-          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded-cz" style={statStyle(ovr)}>{ovr}</span>
+          <span className="inline-flex items-center justify-center min-w-[34px] font-mono font-bold text-[16px] px-1.5 py-0.5 rounded-cz" style={statStyle(ovr, { scale: "rating" })}>{ovr}</span>
           <div className="text-3xs text-cz-3 font-mono">{t("ovr.label")}</div>
         </div>
       </div>

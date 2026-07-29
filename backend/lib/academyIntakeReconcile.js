@@ -32,7 +32,7 @@
 // ALDRIG rider-ejerskab, balance, finance eller auktioner — ejerskabet er allerede
 // korrekt (rytteren ER hos sit rette hold); kun intake-sporet er bagud.
 
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 /**
  * Find stale 'offered' intake-rækker (rytter ejet) og afgør deres korrekte status.
@@ -57,22 +57,19 @@ export async function findStaleOfferedIntake(supabase) {
 
   if (offered.length === 0) return [];
 
-  // Slå rytter-ejerskab op for de tilbudte rytter-id'er. .in() kan også ramme
-  // 1000-loftet hvis der nogensinde bliver mange stale rækker; paginer derfor
-  // rytter-opslaget i chunks for at være på den sikre side.
+  // Slå rytter-ejerskab op for de tilbudte rytter-id'er. #3030: chunk 1000 var
+  // for stor — 459 offered-rækker gav én .in() på ~17 KB URL, over gatewayens
+  // grænse for request-linjen → "fetch failed" (Sentry CYCLINGZONE-3G). Den
+  // fælles helper chunker ved 100 ids (~3,7 KB).
   const riderIds = offered.map((r) => r.rider_id);
   const ownerById = new Map();
-  const CHUNK = 1000;
-  for (let i = 0; i < riderIds.length; i += CHUNK) {
-    const chunk = riderIds.slice(i, i + CHUNK);
-    const riders = await fetchAllRows(() =>
-      supabase
-        .from("riders")
-        .select("id, team_id")
-        .in("id", chunk)
-        .order("id"));
-    for (const r of riders) ownerById.set(r.id, r.team_id ?? null);
-  }
+  const riders = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
+    supabase
+      .from("riders")
+      .select("id, team_id")
+      .in("id", chunk)
+      .order("id"));
+  for (const r of riders) ownerById.set(r.id, r.team_id ?? null);
 
   const plan = [];
   for (const row of offered) {

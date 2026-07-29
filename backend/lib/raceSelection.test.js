@@ -228,6 +228,28 @@ test("getSelectionContext: selection.free_role_ids samler ALLE free_role-entries
   assert.equal(ctx.selection.captain_id, "r1");
 });
 
+// #3041: selection.manual_rider_ids skal kun indeholde de MANUELT udtagne (ikke
+// auto-filled) — bruges af distribution-endpointet til at bygge binding-map'et, så et
+// auto-pick ikke gråner rytteren for et andet overlappende løb (viger ved gem, #2637).
+test("getSelectionContext: selection.manual_rider_ids indeholder kun ikke-auto-filled entries", async () => {
+  const teamId = "t1";
+  const state = {
+    riders: ["r1", "r2", "r3"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [{ race_id: "race1", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [
+      { race_id: "race1", team_id: teamId, rider_id: "r1", race_role: "captain", is_auto_filled: false }, // manuel
+      { race_id: "race1", team_id: teamId, rider_id: "r2", race_role: "helper", is_auto_filled: true }, // auto
+      { race_id: "race1", team_id: teamId, rider_id: "r3", race_role: "helper", is_auto_filled: true }, // auto
+    ],
+    rider_derived_abilities: [],
+    rider_condition: [],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({ supabase, race: { id: "race1", race_class: "Class2" }, teamId });
+  assert.deepEqual(ctx.selection.rider_ids.sort(), ["r1", "r2", "r3"], "rider_ids forbliver ALT (auto+manuelt)");
+  assert.deepEqual(ctx.selection.manual_rider_ids, ["r1"], "manual_rider_ids kun den manuelle");
+});
+
 // S4: per-etape rute-match — buildRiderRows mapper evner+profiler til riderRows.
 test("buildRiderRows: hver rytter får stageSuitability-array (længde = antal etaper)", () => {
   const stages = [

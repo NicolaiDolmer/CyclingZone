@@ -285,8 +285,8 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                 SSOT for ALLE rating-visninger) i stedet for en fast ink/gold-kombination
                 der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på
                 hvid bund). */}
-            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr)} />
-            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr)} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
+            <rect x={RAIL - 44} y={y0 + 15} width="36" height="22" rx="2" fill={statColor(ovr, { scale: "rating" })} />
+            <text x={RAIL - 26} y={y0 + 30} textAnchor="middle" fontSize="14" fill={statTextColor(ovr, { scale: "rating" })} style={{ fontFamily: "Inter Tight, monospace", fontWeight: 500 }}>{ovr}</text>
             <text x={RAIL - 26} y={y0 + 45} textAnchor="middle" fontSize="10" fill={CZ.t3} style={{ fontFamily: "Inter Tight, monospace" }}>{t("ovr.label")}</text>
 
             {/* Baseline */}

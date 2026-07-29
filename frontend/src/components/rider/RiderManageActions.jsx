@@ -152,11 +152,13 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   );
 }
 
-export default function RiderManageActions({ rider, onChanged, marketActions = null }) {
+export default function RiderManageActions({ rider, onChanged, marketActions = null, seasonYear = null }) {
   const { t } = useTranslation("rider");
 
   const isAcademyRider = Boolean(rider.is_academy);
-  const canDemote = !isAcademyRider && isU23(rider.birthdate);
+  // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden RiderStatsPage),
+  // ikke wall-clock — ellers kunne en 23-årig i S2 stadig demotes som U23.
+  const canDemote = !isAcademyRider && isU23(rider.birthdate, seasonYear);
 
   // Inline udvidelses-paneler (forlæng/fyr).
   const [extendOpen, setExtendOpen] = useState(false);

@@ -13,7 +13,7 @@
 | Hvad | Værdi |
 |---|---|
 | Sidste S1-etape | **26/7 17:00 UTC** (19:00 dansk) |
-| Første S2-etape | **27/7 09:00 UTC** (11:00 dansk) — vinduet er ~16 timer, helt manuelt |
+| Første S2-etape | **27/7 16:00 UTC** (18:00 dansk) — dag 1 retimet til mandag AFTEN 18:00-20:40 (ejer-valg 26/7, post-verificeret i prod); vinduet er ~21 timer |
 | S1-løb ikke afviklet ⏱ | **30 løb / 49 etaper** (26/7 09:50; første udestående etape 09:00 UTC, sidste 17:00 UTC) — skal være **0** før "Afslut sæson"; #2805-spærren håndhæver det |
 | S2-kalender | 455 løb / 1.148 etaper, allerede materialiseret, sidste løbsdag 23/8 |
 | S2 i `seasons`-tabellen | **Findes allerede** som `status='upcoming'` → transitionen *promoverer* i stedet for at oprette (`already_transitioned: JA ⚠️` i preview er FORVENTET, ikke en fejl) |
@@ -337,9 +337,9 @@ Idempotent (UNIQUE på `user_id, achievement_id`) — re-run er sikkert. Vil eje
 5. **Gentag afstemningen fra skridt 1b** (`mv_points` = `raw_points` for S1). Det er den sidste gate før managerne møder listerne mandag morgen, og den er hurtig. Kør derefter `database/2026-07-26-2863-season-honours.sql` (#2863, bevidst FØRST her: listerne giver ingen mening før sæsonen er lukket) og åbn `/seasons` for den afsluttede sæson: "Sæsonens bedste ryttere" skal vise to navne, ikke en fejl-tilstand.
 6. Kør post-cutover-tjeklisten **#2846**.
 
-### Skridt 8 — Morgenvagt (mandag 08:45–09:30)
+### Skridt 8 — Aftenvagt (mandag 17:45–18:30 — dag 1 retimet til 18:00-20:40, ejer-valg 26/7)
 
-Claude-session åben FØR 09:00: følg stage-scheduler-logs + første etapers afvikling (455 løbs S2-premiere), tjek `race_stage_passages` begynder at fyldes (#2811, Sub-2-persistens — første reelle måling), og at præmie-sweepen betaler S2-løb. Berede på `detectInFlightRacesWithoutEntries`-alarmer (skulle være umulige efter skridt 6-verifikationen).
+Claude-session åben FØR 18:00 dansk: følg stage-scheduler-logs + første etapers afvikling (455 løbs S2-premiere), tjek `race_stage_passages` begynder at fyldes (#2811, Sub-2-persistens — første reelle måling), og at præmie-sweepen betaler S2-løb. Berede på `detectInFlightRacesWithoutEntries`-alarmer (skulle være umulige efter skridt 6-verifikationen).
 
 ---
 

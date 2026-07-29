@@ -228,7 +228,7 @@
       },
       "headToHead": {
         "title": "Sammenlign to hold (Head-to-Head)",
-        "text": "Åbn Liga & rangliste (under Sæson & Resultater). Klik på rang-tallet ved to hold for at vælge dem, og tryk Sammenlign for at åbne en side-om-side-drawer: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Dit eget hold er valgt først som standard."
+        "text": "Åbn Liga & rangliste (under Resultater). Klik på rang-tallet ved to hold for at vælge dem, og tryk Sammenlign for at åbne en side-om-side-drawer: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Dit eget hold er valgt først som standard."
       },
       "contactSupport": {
         "title": "Kontakt & feedback",
@@ -365,7 +365,7 @@
       },
       "racesAndResults": {
         "title": "Løb og resultater",
-        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
+        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Resultater, hvor fanen Seneste viser de løb der er kørt færdigt i din division. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter. Du får en in-app-notifikation efter hver etape du deltager i, ikke kun den sidste, så et flerdages-løb aldrig går i stå."
       },
       "latestTeamResult": {
         "title": "Hvor ser jeg hvordan det gik mit hold?",
@@ -385,7 +385,7 @@
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Resultater, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -397,8 +397,8 @@
         ]
       },
       "raceLibrary": {
-        "title": "Løbsbibliotek",
-        "text": "Under Sæson & Resultater, Løb, Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Listen er sorteret nyeste-først, og et 'Kun min division'-filter indsnævrer den til løb i din egen division, så du hurtigt kan finde det du kørte i dag. Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb."
+        "title": "Løbsarkiv",
+        "text": "Under Resultater, Arkiv kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Listen er sorteret nyeste-først, og et 'Kun min division'-filter indsnævrer den til løb i din egen division, så du hurtigt kan finde det du kørte i dag. Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb. Hver udgave linker direkte til den udgaves fulde resultat."
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
@@ -441,9 +441,9 @@
       },
       "fullTable": {
         "title": "Den fulde pointtabel",
-        "text": "Under Sæson & Resultater, Løb, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
+        "text": "Under Resultater, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
         "ctaLabel": "Åbn Point & præmier →",
-        "ctaTo": "/races?tab=points",
+        "ctaTo": "/resultater?tab=points",
         "disclaimer": "Præmiebeløb kan stadig justeres i løbet af den åbne beta."
       }
     },
@@ -759,7 +759,7 @@
       },
       "strategy": {
         "title": "Holdstrategi (stående præferencer)",
-        "text": "Åbn Holdstrategi fra trup-boardet for at sætte præferencer din assistent følger, når den auto-udfylder kalenderen. Rangordn en A-kæde af kerne-ryttere. De prioriteres til de løb du markerer som mål. Giv en rytter en fast rolle (altid kaptajn, eller altid sprint-kaptajn når udtaget). Rangordn kaptajner 1/2/3 for hver terræntype (flad, bakke, bjerg, brosten, enkeltstart); assistenten vælger den højest-rangerede rytter der kommer med i det løbs opstilling. Marker dine mål-løb, så dine stærkeste ryttere kører dér. Forhåndsvisning viser præcis hvordan din strategi ændrer udtagelserne, før du gemmer, og Generér forslag igen anvender den uden at røre de valg du selv har sat."
+        "text": "Åbn Holdstrategi under Planlægning, eller fra trup-boardet, for at sætte præferencer din assistent følger, når den auto-udfylder kalenderen. Rangordn en A-kæde af kerne-ryttere. De prioriteres til de løb du markerer som mål. Giv en rytter en fast rolle (altid kaptajn, eller altid sprint-kaptajn når udtaget). Rangordn kaptajner 1/2/3 for hver terræntype (flad, bakke, bjerg, brosten, enkeltstart); assistenten vælger den højest-rangerede rytter der kommer med i det løbs opstilling. Marker dine mål-løb, så dine stærkeste ryttere kører dér. Forhåndsvisning viser præcis hvordan din strategi ændrer udtagelserne, før du gemmer, og Generér forslag igen anvender den uden at røre de valg du selv har sat."
       },
       "breakaway": {
         "title": "Udbrud",
@@ -778,19 +778,27 @@
   "faq": {
     "seasonPlanner": {
       "q": "Hvad er Sæsonplanlæggeren?",
-      "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Sigt mod et nøgleløb for en rytter, så bygger planlæggeren en optakt der løfter hans form til den dag. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
+      "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Den åbner på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Fanen Sæson viser den samme plan som et bræt du kan trække i, og fanen Løb viser sæsonens kalender. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
     },
     "peakTraining": {
       "q": "Hvordan virker peak-træning?",
       "a": "Når du sætter en peak, foreslår planlæggeren en opbygningsuge og en taper-uge til optakten. Accepter en fra rytter-skuffen, så skrives den rytme til rytterens ugentlige træning. At træne det rigtige fokus for løbets profil, holde konsistensen og nå taperen udhvilet løfter alt sammen hvor meget af peaket du realiserer. En peak låses tre dage før dens vindue starter, så planlæg i forvejen."
     },
+    "peakValue": {
+      "q": "Hvor meget er en peak egentlig værd?",
+      "a": "En peak er værd mellem +6 og +29 form på dagen, og hvor du lander i det spænd afhænger udelukkende af hvordan optakten køres: en sjusket optakt er cirka en femtedel værd af en perfekt. Indtil optakten begynder kan planlæggeren kun vise dig spændet, for tallet findes ikke endnu. Så snart træningen er i gang, strammer det til ét tal. Til sammenligning er +29 forskellen på en rytter i form 50 og den samme rytter i form 79."
+    },
+    "peakPayback": {
+      "q": "Koster en peak mig noget bagefter?",
+      "a": "Ja. Når en peaks vindue lukker, bærer rytteren omkring -14 form de næste syv dage. Det er prisen for toppen, og det er derfor en peak er et valg og ikke en gratis opgradering. Falder et af rytterens andre løb inde i det dyk, siger fanen Trup hvilket løb det er, og hvor mange dage efter peaken det ligger, så du kan flytte peaken eller tage omkostningen med åbne øjne."
+    },
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",
-      "a": "Løb overlapper når deres etaper falder på samme in-game-løbsdag, og en rytter kan kun køre ét løb pr. in-game-dag, så det er et strategisk valg at fordele truppen mellem overlappende løb. Flere løb kan ligge på samme kalenderdato uden at konflikte, når de falder på forskellige in-game-dage. Hvert løb viser sin løbsdag (for eksempel Løbsdag 11), så to løb på samme eftermiddag tydeligt er forskellige spil-dage; at genbruge en rytter på tværs af to løbsdage er tilladt, men han bærer træthed med ind i det senere løb, så det er et trade-off. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det, men fjerner du ham, er han straks ledig igen til et andet løb. Dine ændringer holdes lokalt indtil du trykker Gem ændringer (en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer). Du kan også gemme en delvis trup: de pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."
+      "a": "Løb overlapper når deres etaper falder på samme in-game-løbsdag, og en rytter kan kun køre ét løb pr. in-game-dag, så det er et strategisk valg at fordele truppen mellem overlappende løb. Flere løb kan ligge på samme kalenderdato uden at konflikte, når de falder på forskellige in-game-dage. Hvert løb viser sin løbsdag (for eksempel Løbsdag 11), så to løb på samme eftermiddag tydeligt er forskellige spil-dage; at genbruge en rytter på tværs af to løbsdage er tilladt, men han bærer træthed med ind i det senere løb, så det er et trade-off. Trup-fordelingen (Planlægning -> Holdudtagelse) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det, men fjerner du ham, er han straks ledig igen til et andet løb. Dine ændringer holdes lokalt indtil du trykker Gem ændringer (en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer). Du kan også gemme en delvis trup: de pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."
     },
     "teamStrategyFaq": {
       "q": "Hvordan får jeg assistenten til at vælge mine bedste ryttere til de store løb?",
-      "a": "Åbn Holdstrategi fra trup-boardet. Tilføj dine bedste ryttere til A-kæden og marker de vigtigste løb som mål, så prioriterer assistenten din A-kæde til de løb. Du kan også rangordne kaptajner 1/2/3 pr. terræn og give ryttere en fast rolle. Brug Vis ændringer for at se præcis hvordan det påvirker dine opstillinger, og derefter Gem og Generér forslag igen. Valg du selv har sat, overskrives aldrig."
+      "a": "Åbn Holdstrategi under Planlægning. Tilføj dine bedste ryttere til A-kæden og marker de vigtigste løb som mål, så prioriterer assistenten din A-kæde til de løb. Du kan også rangordne kaptajner 1/2/3 pr. terræn og give ryttere en fast rolle. Brug Vis ændringer for at se præcis hvordan det påvirker dine opstillinger, og derefter Gem og Generér forslag igen. Valg du selv har sat, overskrives aldrig."
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
@@ -1062,7 +1070,7 @@
     },
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",
-      "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres på Løb-siden (Sæson & Resultater → Løb → Kalender). WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
+      "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres under Planlægning → Holdudtagelse. WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
     },
     "howToWinRace": {
       "q": "Hvordan vinder jeg et løb, og hvad afgør resultatet?",
@@ -1078,7 +1086,7 @@
     },
     "raceSignupFaq": {
       "q": "Hvor tilmelder jeg mig et løb?",
-      "a": "Gå til Sæson & Resultater, Løb (eller åbn /races direkte). Kalender-fanen åbner som standard på din nuværende løbsdag, hvilket kan se tomt eller allerede i gang ud, hvis der ikke er noget tilbage at tilmelde sig i dag. Brug dag-navigationen (pilene Forrige/Næste dag) til at hoppe frem til en kommende løbsdag, og tilføj derefter ryttere til et af de løb der vises der. Vælger du ikke selv, udfylder din assistent automatisk en opstilling for dig, inden løbet starter."
+      "a": "Gå til Planlægning, Holdudtagelse (eller åbn /races direkte). Den åbner som standard på din nuværende løbsdag, hvilket kan se tomt eller allerede i gang ud, hvis der ikke er noget tilbage at tilmelde sig i dag. Brug dag-navigationen (pilene Forrige/Næste dag) til at hoppe frem til en kommende løbsdag, og tilføj derefter ryttere til et af de løb der vises der. Vælger du ikke selv, udfylder din assistent automatisk en opstilling for dig, inden løbet starter."
     },
     "raceClassificationsFaq": {
       "q": "Hvad er forskellen på GC, Klassiker/Monument og etapesejre?",

@@ -36,6 +36,7 @@ import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, Table, Tr
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { scoutSortValue } from "../lib/scouting.js";
 
@@ -59,7 +60,11 @@ const ROSTER_ACCESSORS = {
   nationality_code: (r) => r.nationality_code,
   name: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
   primary_type: (r) => r.primary_type,
-  age: (r) => getRiderAge(r.birthdate),
+  // #3071: modul-konstant kan ikke se komponentens seasonYear-state — men
+  // alders-SORTERING er ordinalt uafhængig af referenceåret (samme offset for
+  // alle ryttere), så vi sorterer på det negerede fødselsår i stedet (ældre
+  // fødselsår = højere alder). Ingen wall-clock involveret.
+  age: (r) => (r.birthdate ? -new Date(r.birthdate).getFullYear() : null),
   potential: (r) => r._potMid,
   market_value: (r) => getRiderMarketValue(r),
   salary: (r) => (r.salary == null ? null : Number(r.salary)),
@@ -72,6 +77,8 @@ const ROSTER_DESC_FIRST = new Set(["age", "potential", "market_value", "salary",
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
   const scouting = useScouting();
+  // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
+  const seasonYear = useActiveSeasonYear();
   const {
     enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division,
     loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
@@ -306,7 +313,7 @@ export default function AcademyPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {intake.map((item) => {
               const rider = item.rider;
-              const age = getRiderAge(rider.birthdate);
+              const age = getRiderAge(rider.birthdate, seasonYear);
               const busy = actionState[rider.id] != null;
               const err = actionErrors[rider.id];
               const potential = item.potentialEstimate;
@@ -359,7 +366,7 @@ export default function AcademyPage() {
                   {potential && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-cz-3">{t("potential")}</span>
-                      <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} birthdate={rider.birthdate} />
+                      <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} birthdate={rider.birthdate} seasonYear={seasonYear} />
                     </div>
                   )}
 
@@ -430,7 +437,7 @@ export default function AcademyPage() {
               </thead>
               <tbody>
                 {sortedRoster.map((rider) => {
-                  const age = getRiderAge(rider.birthdate);
+                  const age = getRiderAge(rider.birthdate, seasonYear);
                   const busy = actionState[rider.id] != null;
                   const err = actionErrors[rider.id];
                   return (
@@ -449,7 +456,7 @@ export default function AcademyPage() {
                       <Td numeric>{age != null ? age : "–"}</Td>
                       {/* #2796: labelAsTitle — stjernerne bærer informationen,
                           den kvalitative tekst ligger i tooltip'en. */}
-                      <Td><ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle /></Td>
+                      <Td><ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle seasonYear={seasonYear} /></Td>
                       <Td numeric>{formatMoney(getRiderMarketValue(rider))}</Td>
                       <Td numeric>{formatMoney(rider.salary)}</Td>
                       <Td>

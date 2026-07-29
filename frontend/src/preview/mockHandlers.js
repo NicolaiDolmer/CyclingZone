@@ -22,6 +22,9 @@ import {
   SEED_RIDER_PALMARES_RESULTS,
   SEED_TEAM_SEASON_STANDINGS,
   SEED_TEAM_HALL_OF_FAME,
+  SEED_SEASON_STANDINGS,
+  SEED_RIDER_RANKINGS,
+  SEED_RACE_POINTS,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
@@ -101,10 +104,19 @@ export function restRows(table, requestUrl = "") {
         if (url.search.includes("pool_race")) return SEED_RACES;
         return POOL_RACES;
       }
-      const idMatch = url.search.match(/id=eq\.([^&]+)/);
+      // Ankret på ? eller & med vilje: et uankret /id=eq\./ matcher også inde i
+      // "season_id=eq.…", så hubbens sæson-scopede query (#3102 etape 2) blev
+      // læst som et opslag på ét løb med sæsonens id og gav tom liste.
+      const idMatch = url.search.match(/[?&]id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_RACES.filter(r => r.id === id);
+      }
+      // #3102 etape 2: Resultat-hubben henter kun de AFSLUTTEDE løb
+      // (status=eq.completed). Uden filteret her ville hubben også vise det
+      // kommende og det igangværende løb, som i prod aldrig ville nå frem.
+      if (url.search.includes("status=eq.completed")) {
+        return SEED_RACES.filter(r => r.status === "completed");
       }
       return SEED_RACES;
     }
@@ -152,6 +164,19 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(riderMatch[1]);
         return id === "rider-1" ? SEED_RIDER_PALMARES_RESULTS : [];
       }
+      // #3102 etape 2: Resultat-hubben henter podiet for FLERE løb i ét kald
+      // (race_id=in.(a,b,c) + rank≤3). Uden denne gren faldt den igennem til []
+      // nedenfor, så hvert løbskort viste "ingen klassement" på preview.
+      // supabase-js URL-koder parenteserne i in.(…), så matchet sker mod den
+      // dekodede søgestreng — ikke url.search som den står.
+      const inMatch = decodeURIComponent(url.search).match(/race_id=in\.\(([^)]*)\)/);
+      if (inMatch) {
+        const ids = new Set(
+          inMatch[1].split(",").map(s => s.trim().replace(/^"|"$/g, ""))
+        );
+        const maxRank = Number(url.search.match(/rank=lte\.(\d+)/)?.[1] ?? Infinity);
+        return SEED_RACE_RESULTS.filter(r => ids.has(r.race_id) && (r.rank ?? 0) <= maxRank);
+      }
       // Alle andre race_results-queries (dashboard/standings/season-aggregater) →
       // tom, præcis som før → uændrede core-smoke-snapshots.
       return [];
@@ -188,8 +213,17 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(idMatch[1]);
         return id === TEST_TEAM.id ? SEED_TEAM_SEASON_STANDINGS : [];
       }
+      // #3102 etape 2: den sæson-scopede query (Resultat-hubbens tophold-boks).
+      // Lå før i default-grenen og gav [], så boksen aldrig kunne ses på preview.
+      if (url.search.includes("season_id=eq.")) return SEED_SEASON_STANDINGS;
       return [];
     }
+    // #3102 etape 2: rider_rankings_mv (hubbens topscorere + RiderRankingsPage).
+    case "rider_rankings_mv":
+      return SEED_RIDER_RANKINGS;
+    // #3102 etape 2: pointtabellen bag Point & præmier-fanen.
+    case "race_points":
+      return SEED_RACE_POINTS;
     case "hall_of_fame": {
       const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
       if (idMatch) {

@@ -12,6 +12,7 @@
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import TeamLink from "../../TeamLink";
 
 // Kort navn: "F. Efternavn" (matcher prototypens ‹ L. Mørk / S. Beck ›).
 function shortName(rider) {
@@ -20,7 +21,7 @@ function shortName(rider) {
   return `${initial}${rider.lastname ?? ""}`.trim();
 }
 
-export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index, total, onNavigate }) {
+export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamName, index, total, onNavigate }) {
   const { t } = useTranslation("rider");
 
   // Keyboard ←/→ — kun når fokus ikke er i et input/textarea/select (så pile-
@@ -58,7 +59,12 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamName, index
         {/* Midte: hold + index + hint */}
         <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
           {teamName && (
-            <span className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate">{teamName}</span>
+            <TeamLink
+              id={teamId}
+              className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate hover:text-cz-accent-t transition-colors"
+            >
+              {teamName}
+            </TeamLink>
           )}
           {index != null && total != null && (
             <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">

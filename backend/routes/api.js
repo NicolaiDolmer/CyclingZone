@@ -148,13 +148,14 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter } from "../lib/riderEligibility.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
-import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason } from "../lib/plannerBoard.js";
+import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -2470,6 +2471,143 @@ router.post("/peak-plans", requireAuth, marketWriteLimiter, async (req, res) => 
   }
 });
 
+// Loft for ét bulk-kald. En trup kan maksimalt have MAX_PEAK_PLANS_PER_SEASON
+// forslag pr. rytter; 60 dækker en fuld trup med god margen og holder samtidig
+// batchen inde i én rimelig transaktion.
+const BULK_PEAK_PLAN_LIMIT = 60;
+
+// POST /api/peak-plans/bulk — opret flere peak-planer i ÉT kald. Body:
+// { plans: [{ rider_id, target_race_id }], season_number? }.
+//
+// Hvorfor den findes (#3086): assistent-handlingskortet har en "Accept all"-knap,
+// og en fuld trup kan have op mod 60 forslag. En klient-løkke over enkelt-POST'en
+// ville ramme marketWriteLimiter (30 skriv/minut) midtvejs og efterlade manageren
+// med en HALVT accepteret plan — værre end ingen knap. Ét kald, én limiter-token.
+//
+// Endpointet giver INGEN ny autoritet: hvert element valideres mod præcis de samme
+// regler som enkelt-POST'en (egen rytter, mål-løb i holdets sæson-kalender, maks
+// pr. rytter, ét vindue pr. mål-løb, løbet skal være skemalagt). Opslagene er bare
+// batchet, så antallet af DB-kald er konstant frem for lineært i batch-størrelsen.
+//
+// Ejerskabsbrud (fremmed rytter) afviser HELE kaldet — det er ikke en tilstand en
+// ægte klient kan komme i. Forretningsregler (maks nået, duplikat, uskemalagt løb)
+// springer det enkelte element over og rapporteres i `skipped`, så en enkelt
+// forældet række ikke koster manageren resten af sin accept.
+router.post("/peak-plans/bulk", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { plans: rawPlans, season_number: seasonNumber } = req.body ?? {};
+  if (!Array.isArray(rawPlans) || rawPlans.length === 0) return res.status(400).json({ error: "invalid_plans" });
+  if (rawPlans.length > BULK_PEAK_PLAN_LIMIT) return res.status(400).json({ error: "too_many_plans" });
+  const requested = [];
+  for (const p of rawPlans) {
+    const riderId = p?.rider_id;
+    const targetRaceId = p?.target_race_id;
+    if (typeof riderId !== "string" || !riderId) return res.status(400).json({ error: "invalid_rider_id" });
+    if (typeof targetRaceId !== "string" || !targetRaceId) return res.status(400).json({ error: "invalid_target_race_id" });
+    requested.push({ riderId, targetRaceId });
+  }
+
+  try {
+    if (!(await peakPlannerEnabledFor(req))) return res.status(404).json({ error: "not_found" });
+    const season = await resolvePlannerSeason(seasonNumber);
+    if (!season) return res.status(409).json({ error: "No active season" });
+
+    // #3018-reglen, opløst ÉN gang for hele batchen i stedet for pr. element.
+    const { divisionId, pending } = await resolveTeamDivisionForSeason({
+      teamId: req.team.id, season, currentDivisionId: req.team.league_division_id ?? null,
+    });
+    if (pending) return res.status(409).json({ error: "division_not_settled" });
+    if (divisionId == null) return res.status(403).json({ error: "race_not_in_calendar" });
+
+    const riderIds = [...new Set(requested.map((p) => p.riderId))];
+    const raceIds = [...new Set(requested.map((p) => p.targetRaceId))];
+
+    const [ridersRes, racesRes, existingRes, scheduleRes] = await Promise.all([
+      supabase.from("riders").select("id, team_id, is_retired").in("id", riderIds),
+      supabase.from("races").select("id, season_id, league_division_id").in("id", raceIds),
+      supabase.from("rider_peak_plans").select("rider_id, target_race_id").eq("season_id", season.id).in("rider_id", riderIds),
+      supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds),
+    ]);
+    if (ridersRes.error) throw new Error(`riders (bulk peak plans): ${ridersRes.error.message}`);
+    if (racesRes.error) throw new Error(`races (bulk peak plans): ${racesRes.error.message}`);
+    if (existingRes.error) throw new Error(`rider_peak_plans (bulk existing): ${existingRes.error.message}`);
+    if (scheduleRes.error) throw new Error(`race_stage_schedule (bulk peak window): ${scheduleRes.error.message}`);
+
+    const riderById = new Map((ridersRes.data || []).map((r) => [r.id, r]));
+    for (const id of riderIds) {
+      const rider = riderById.get(id);
+      if (!rider) return res.status(404).json({ error: "Rider not found" });
+      if (rider.team_id !== req.team.id) return res.status(403).json({ error: "not_own_rider" });
+    }
+
+    const raceById = new Map((racesRes.data || []).map((r) => [r.id, r]));
+    const stageDatesByRace = new Map();
+    for (const row of scheduleRes.data || []) {
+      const ms = Date.parse(row.scheduled_at);
+      if (!Number.isFinite(ms)) continue;
+      if (!stageDatesByRace.has(row.race_id)) stageDatesByRace.set(row.race_id, []);
+      stageDatesByRace.get(row.race_id).push(toCopenhagenISODate(ms));
+    }
+
+    // Eksisterende mål pr. rytter, som VOKSER mens batchen valideres — ellers
+    // kunne to elementer i samme kald tilsammen sprænge maks-grænsen.
+    const targetsByRider = new Map(riderIds.map((id) => [id, []]));
+    for (const row of existingRes.data || []) {
+      if (targetsByRider.has(row.rider_id)) targetsByRider.get(row.rider_id).push(row.target_race_id);
+    }
+
+    const rows = [];
+    const skipped = [];
+    for (const { riderId, targetRaceId } of requested) {
+      const race = raceById.get(targetRaceId);
+      if (!race || race.season_id !== season.id || race.league_division_id !== divisionId) {
+        skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: "race_not_in_calendar" });
+        continue;
+      }
+      const guard = canCreatePeakPlan({ existingTargetRaceIds: targetsByRider.get(riderId) || [], targetRaceId });
+      if (!guard.ok) {
+        skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: guard.reason });
+        continue;
+      }
+      const window = snapPeakWindow(stageDatesByRace.get(targetRaceId) || []);
+      if (!window) {
+        skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: "race_not_scheduled" });
+        continue;
+      }
+      targetsByRider.get(riderId).push(targetRaceId);
+      rows.push({
+        rider_id: riderId, season_id: season.id, target_race_id: targetRaceId,
+        window_start: window.window_start, window_end: window.window_end,
+      });
+    }
+
+    let created = 0;
+    if (rows.length) {
+      const { error: insErr } = await supabase.from("rider_peak_plans").insert(rows);
+      if (!insErr) {
+        created = rows.length;
+      } else if (insErr.code === "23505") {
+        // Kapløb mod en samtidig enkelt-POST: UNIQUE(rytter, sæson, mål-løb) er
+        // backstop. Fald tilbage til række-for-række, så de gyldige stadig lander
+        // i stedet for at hele batchen ruller tilbage på ét duplikat.
+        for (const row of rows) {
+          const { error } = await supabase.from("rider_peak_plans").insert(row);
+          if (!error) created += 1;
+          else if (error.code === "23505") skipped.push({ rider_id: row.rider_id, target_race_id: row.target_race_id, reason: "duplicate_target" });
+          else throw new Error(`rider_peak_plans (bulk insert row): ${error.message}`);
+        }
+      } else {
+        throw new Error(`rider_peak_plans (bulk insert): ${insErr.message}`);
+      }
+    }
+
+    res.json({ ok: true, created, skipped });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/peak-plans/:id — om-målret en plan (kun mens den er redigerbar).
 // Body: { target_race_id }. Serveren re-snapper vinduet.
 router.patch("/peak-plans/:id", requireAuth, marketWriteLimiter, async (req, res) => {
@@ -2737,6 +2875,11 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         primaryType: r.primary_type ?? null,
         secondaryType: r.secondary_type ?? null,
         isAcademy: !!r.is_academy,
+        // #3086: Squad-fanens rytterlinje viser "type · alder". Sæson-alderen er
+        // den samme SSOT resten af fladen bruger (#3071/#3081/#3085) — regnet på
+        // DEN sæson planlæggeren kigger på, ikke wall-clock. birthdate selv
+        // forbliver skjult, som overalt ellers på rytter-fladen.
+        age: ageForSeason(r.birthdate, season.number),
         abilities: abilByRider.get(r.id) || {},
         form: cond.form ?? null,
         fatigue: cond.fatigue ?? null,
@@ -2751,6 +2894,12 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
             targetRaceName: targetRace ? targetRace.name : null,
             trainingQuality: tq,
             status: peakStatus({ trainingQuality: tq, todayOrdinal: nowOrd, windowStartOrdinal: startOrd, leadupDays: leadup }),
+            // #3086/#2905: hvad peaken er værd, i formpoint. `current` er null
+            // indtil optakten er redet — så viser UI'et spændet gulv..loft alene
+            // (ejer-valg 27/7, option C). Afledt af motorens konstanter, aldrig
+            // hardkodet i copy.
+            value: peakValueFormPoints({ trainingQuality: tq }),
+            paybackCollisions: [], // udfyldes i payback-passet nedenfor
             recommendedFocus,
             suggestedTrainingBlock: buildSuggestedTrainingBlock({ recommendedFocus }),
           };
@@ -2791,15 +2940,18 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // `isMine`-løb, så de ville enten være tomme (isMine er nu false overalt) eller
     // — hvis nogen senere løsner det filter — anbefale løb i den gamle division.
     // Eksplicit guard frem for at hvile på en tom candidateRaces-liste.
+    // #3086: rytterens ægte løbsprogram hentes nu for HELE truppen, ikke kun de
+    // ryttere der får forslag — payback-kollisionen (nedenfor) skal kunne beregnes
+    // for en rytter der allerede har begge sine peaks sat. Samme ét-hold-scopede
+    // query som før, bare med hele rider-listen.
+    const registeredByRider = await loadManualRegisteredRaceIds(riderIds, allRaceIds);
+
     const suggestRiderIdSet = new Set(
       divisionSettled ? ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id) : [],
     );
     if (suggestRiderIdSet.size) {
       const suggestRiderIds = [...suggestRiderIdSet];
-      const [dismissedSet, registeredByRider] = await Promise.all([
-        loadPeakSuggestionDismissals(suggestRiderIds, season.id),
-        loadManualRegisteredRaceIds(suggestRiderIds, allRaceIds),
-      ]);
+      const dismissedSet = await loadPeakSuggestionDismissals(suggestRiderIds, season.id);
 
       // race_id → etape-datoer ("YYYY-MM-DD" CET), genbrugt fra den allerede
       // hentede sæson-schedule (scheduleRows) — intet ekstra DB-kald pr. rytter.
@@ -2832,7 +2984,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           registeredRaceIds: registeredByRider.get(rd.id) || new Set(),
           existingPeakCount: rd.peaks.length,
           reservedOrds,
-          todayDateString: today,
+          seasonNumber: season.number,
           leadupDays: leadup,
           windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
         });
@@ -2853,12 +3005,63 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
             createdAt: null,
             trainingQuality: null,
             status: "pending",
+            value: peakValueFormPoints({ trainingQuality: null }),
+            paybackCollisions: [],
             recommendedFocus,
             suggestedTrainingBlock: buildSuggestedTrainingBlock({ recommendedFocus }),
             isSuggestion: true,
             suggestionReason: s.reason,
           });
         }
+      }
+    }
+
+    // ── Payback-kollisioner (#3086/#2905) ─────────────────────────────────────
+    // Den beslutning planlæggeren indtil nu slet ikke understøttede: du betaler
+    // for en formtop, og betalingen (PEAK_PAYBACK i de PEAK_PAYBACK_DAYS dage
+    // efter vinduet) rammer et løb du også skulle køre. Regnet EFTER forslagene
+    // er lagt på, så et endnu-uaccepteret forslag advarer på præcis samme måde
+    // som en ægte peak — ellers ville "Accept all" kunne gemme kollisionen.
+    //
+    // "Løb rytteren er udtaget til" = de MANUELT tilmeldte entries (samme
+    // diskriminator som assistenten bruger: auto-fill sker først tæt på løbsdag
+    // og er ikke et manager-valg, #1835) PLUS rytterens øvrige peak-mål, som man
+    // per definition har tænkt sig at køre. Et vindues eget mål-løb ligger inde i
+    // vinduet og filtreres fra igen nedenfor.
+    const raceOrdById = new Map();
+    for (const r of racesOut) {
+      const ord = dateStringToOrdinal(r.date);
+      if (ord != null) raceOrdById.set(r.id, ord);
+    }
+    for (const rd of ridersOut) {
+      if (!rd.peaks.length) continue;
+      const windows = rd.peaks
+        .map((p) => ({ targetRaceId: p.targetRaceId ?? null, endOrdinal: dateStringToOrdinal(p.windowEnd) }))
+        .filter((w) => w.endOrdinal != null);
+      if (!windows.length) continue;
+
+      const raceIdsToCheck = new Set(registeredByRider.get(rd.id) || []);
+      for (const p of rd.peaks) if (p.targetRaceId) raceIdsToCheck.add(p.targetRaceId);
+      const otherRaces = [...raceIdsToCheck]
+        .map((raceId) => ({ raceId, ord: raceOrdById.get(raceId) }))
+        .filter((x) => x.ord != null);
+      if (!otherRaces.length) continue;
+
+      const hits = findPaybackCollisions({ windows, otherRaces })
+        .filter((h) => h.raceId !== h.peakTargetRaceId);
+      if (!hits.length) continue;
+
+      const byTarget = new Map();
+      for (const h of hits) {
+        if (!byTarget.has(h.peakTargetRaceId)) byTarget.set(h.peakTargetRaceId, []);
+        byTarget.get(h.peakTargetRaceId).push({
+          raceId: h.raceId,
+          raceName: raceById.get(h.raceId)?.name ?? null,
+          daysAfterPeak: h.daysAfterPeak,
+        });
+      }
+      for (const p of rd.peaks) {
+        p.paybackCollisions = byTarget.get(p.targetRaceId ?? null) || [];
       }
     }
 
@@ -2873,6 +3076,9 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       maxPerRider: MAX_PEAK_PLANS_PER_SEASON,
       today,
       leadupDays: leadup,
+      // #3086: payback-vinduets længde, så UI'et kan sige "koster −14 i 7 dage
+      // efter" uden at hardkode motorens konstant i en oversættelses-streng.
+      paybackDays: RACE_V3_TUNING.PEAK_PAYBACK_DAYS,
       riders: ridersOut,
       races: racesOut,
     });
@@ -3244,19 +3450,18 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
-    // som standard lander på en dag med løb i stedet for et tomt "i dag" (de fleste af de
-    // 60 dage har ingen løb). firstMs gentages fra resolveSeasonDay (1 linje, idempotent).
-    const DAY_MS = 86_400_000;
-    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    // som standard lander på en dag med løb i stedet for et tomt "i dag".
+    // #3107: dags-ordinalen er dansk KALENDERDAG (seasonDay.js), ikke en rullende 24t-bøtte.
+    const seasonAxis = seasonDayAxis(schedRows, season.start_date);
     const myRaceDays = [...new Set(
       withWindow
         .filter((r) => r.status === "scheduled" && r.window
           && teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
-        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+        .map((r) => seasonDayForTime(r.window.start, seasonAxis?.firstOrdinal))
+        .filter((d) => Number.isFinite(d))
     )].sort((a, b) => a - b);
 
-    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
+    const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
 
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
@@ -3286,6 +3491,12 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
       // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges
       // til bindingMap så samme-dag-løb regnes som overlappende (#1823).
+      // #3041: en race stadig UDEN første etape gennemført kan altid frigive sine auto-
+      // udtagne ryttere ved gem (#2637) — så kun de MANUELT udtagne skal binde andre
+      // kolonners valg her. Et igangværende løb (frys, #1825) binder derimod ALT, auto
+      // som manuelt, for der er intet at frigive fra (truppen er reel).
+      const startedHere = (race.stages_completed ?? 0) > 0;
+      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere });
       columns.push({
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
         stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
@@ -3298,13 +3509,14 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
         withdrawn: withdrawnSet.has(race.id),
-        lineup_locked: (race.stages_completed ?? 0) > 0,
+        lineup_locked: startedHere,
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
+        bindingRiderIds,
       });
     }
 
     const bindingMap = buildBindingMap({
-      columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.selection?.rider_ids || [] })),
+      columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.bindingRiderIds })),
       withdrawnIds: withdrawnSet, // Rod A: afmeldte kolonner binder ikke
     });
 
@@ -3316,11 +3528,16 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     const { data: teamEntries, error: teamEntriesErr } = await loadEligibleEntries({
       supabase,
       baseQuery: () => supabase
-        .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", req.team.id),
+        .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id),
     });
     if (teamEntriesErr) throw new Error(`race_entries (external bindings): ${teamEntriesErr.message}`);
+    // #3041: samme regel som ovenfor for kolonnerne — en auto-udtaget entry i et løb der
+    // ikke er startet endnu binder ikke (den viger automatisk ved gem, #2637); kun manuelle
+    // entries og allerede startede løb binder. `races` dækker HELE sæsonen (inkl. eksterne).
+    const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
+    const bindingTeamEntries = filterBindingEntries({ entries: teamEntries || [], startedRaceIds });
     const externalBindings = buildExternalBindings({
-      entries: teamEntries || [],
+      entries: bindingTeamEntries,
       columnIds: new Set(colRaceIds),
       withdrawnIds: withdrawnSet,
       windowByRace: bindingWindowByRace,
@@ -3329,10 +3546,13 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
-      teamDivisionId: req.team.league_division_id, currentDay, totalDays,
+      teamDivisionId: req.team.league_division_id, currentDay, totalDays, firstOrdinal,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
+    // #3041: bindingRiderIds er kun et internt hjælpefelt til at bygge bindingMap ovenfor —
+    // ikke en del af wire-kontrakten, så det strippes fra hver kolonne før respons.
+    const wireColumns = columns.map(({ bindingRiderIds: _bindingRiderIds, ...c }) => c);
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns: wireColumns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -3380,17 +3600,17 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Puljens kolonne-egnede løbsdage → board'et åbner på en dag med løb i puljen.
-    const DAY_MS = 86_400_000;
-    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    // #3107: samme kalenderdags-SSOT som hoved-endpointet (var duplikeret 24t-formel).
+    const seasonAxis = seasonDayAxis(schedRows, season.start_date);
     const poolRaceDays = [...new Set(
       withWindow
         .filter((r) => r.status === "scheduled" && r.window
           && teamInRacePool({ teamDivisionId: pool.id, racePoolId: r.league_division_id }))
-        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+        .map((r) => seasonDayForTime(r.window.start, seasonAxis?.firstOrdinal))
+        .filter((d) => Number.isFinite(d))
     )].sort((a, b) => a - b);
 
-    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays: poolRaceDays });
+    const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays: poolRaceDays });
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: pool.id, dayWindow });
 
     // Terræn-glyf pr. kolonne-løb (genbrug stage-profil-mønsteret fra hoved-endpointet).
@@ -3448,7 +3668,7 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
-      teamDivisionId: pool.id, currentDay, totalDays,
+      teamDivisionId: pool.id, currentDay, totalDays, firstOrdinal,
     });
 
     res.json({
@@ -3462,31 +3682,12 @@ router.get("/races/distribution/browse", requireAuth, async (req, res) => {
   }
 });
 
-// Sæson-dag → CET-døgnvindue. day 1 = sæsonens første race-dag (tidligste scheduled_at).
-// focusDay = den dag board'et viser: eksplicit ?day=N, ellers holdets nærmeste kommende
-// løbsdag (myRaceDays), ellers i dag. Så board'et åbner aldrig tomt når holdet har løb.
-function resolveSeasonDay({ season, schedRows, dayParam, myRaceDays = [] }) {
-  const times = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
-  const firstMs = times.length ? Math.min(...times) : Date.parse(season.start_date || "2026-01-01");
-  const DAY = 86_400_000;
-  const lastMs = times.length ? Math.max(...times) : firstMs;
-  const totalDays = Math.max(1, Math.round((lastMs - firstMs) / DAY) + 1);
-  const today = Math.floor((Date.now() - firstMs) / DAY) + 1;
-  const currentDay = Math.min(Math.max(today, 1), totalDays);
-  let focusDay;
-  if (Number.isFinite(dayParam)) {
-    focusDay = Math.min(Math.max(dayParam, 1), totalDays);
-  } else if (myRaceDays.length) {
-    focusDay = myRaceDays.find((d) => d >= currentDay) ?? myRaceDays[myRaceDays.length - 1];
-  } else {
-    focusDay = currentDay;
-  }
-  const start = firstMs + (focusDay - 1) * DAY;
-  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, focusDay, totalDays };
-}
-
 // Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.
-async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays }) {
+// #3107: `firstOrdinal` gives ind fra kalderens resolveSeasonDay, så tidslinjen og
+// ?day=-parameteren PR. DEFINITION deler dags-akse. Tidligere udledte denne funktion sit
+// eget anker af sine EGNE løb (et pulje-filtreret undersæt!) med en tredje kopi af den
+// rullende 24t-formel — så tidslinje-labelen og dagsvinduet kunne pege på hver sin dag.
+async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays, firstOrdinal }) {
   const raceIds = races.map((r) => r.id);
   const profiles = await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type");
   const profByRace = new Map();
@@ -3494,15 +3695,13 @@ async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, cur
     if (!profByRace.has(p.race_id)) profByRace.set(p.race_id, []);
     profByRace.get(p.race_id).push(p.profile_type);
   }
-  const allTimes = races.flatMap((r) => (schedByRace.get(r.id) || []).map((s) => Date.parse(s.scheduled_at))).filter(Number.isFinite);
-  if (!allTimes.length) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
-  const firstMs = Math.min(...allTimes);
-  const DAY = 86_400_000;
+  if (!Number.isFinite(firstOrdinal)) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
   const dayProfiles = new Map();
   for (const r of races) {
     const mine = teamInRacePool({ teamDivisionId, racePoolId: r.league_division_id });
     for (const s of schedByRace.get(r.id) || []) {
-      const day = Math.floor((Date.parse(s.scheduled_at) - firstMs) / DAY) + 1;
+      const day = seasonDayForTime(s.scheduled_at, firstOrdinal);
+      if (!Number.isFinite(day)) continue;
       const prev = dayProfiles.get(day) || { terrainTypes: [], hasMyRace: false, dateText: null };
       prev.terrainTypes.push(...(profByRace.get(r.id) || []));
       if (mine) prev.hasMyRace = true;
@@ -3527,7 +3726,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id")
+      // #3070: season_id SKAL med — loadTeamBindingContext bruger den til at
+      // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -3919,6 +4120,53 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       regenerated++;
     }
     res.json({ ok: true, regenerated, skipped, mode });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 1 — GET /api/races/distribution/clear-preview?scope=all (#3061)
+// Konsekvens-forhåndsvisning til "Clear all"-bekræftelsesdialogen: hvilke af holdets
+// planlagte (ikke-startede) løb resten af sæsonen ville blive ramt, MED hvert løbs ægte
+// starttidspunkt (til en sand nedtælling, ikke en kalenderdato). Read-only — rører intet.
+// Kun scope=all understøttes (det er den eneste "ryd alt"-handling #3061 dækker; "Ryd dag"
+// beholder sin simple bekræftelse, da den ikke er kilden til den observerede prod-hændelse).
+router.get("/races/distribution/clear-preview", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    // {data,error} destruktureres begge: en tavst droppet fejl her ville vise en TOM
+    // konsekvens-liste, og dialogen ville dermed berolige manageren om at intet rammes
+    // netop når vi ikke kan se hvad der rammes. Fail loud i stedet.
+    const { data: season, error: seasonErr } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`clear-preview seasons: ${seasonErr.message}`);
+    if (!season) return res.json({ ok: true, races: [] });
+
+    const { data: races, error: racesErr } = await supabase
+      .from("races").select("id, name, stages_completed, status, league_division_id").eq("season_id", season.id);
+    if (racesErr) throw new Error(`clear-preview races: ${racesErr.message}`);
+
+    const cols = (races || []).filter((r) =>
+      r.status === "scheduled" &&
+      teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
+    if (!cols.length) return res.json({ ok: true, races: [] });
+
+    const raceIds = cols.map((r) => r.id);
+    const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
+
+    const { races: preview } = buildClearPreview({ cols, windowByRace });
+    res.json({ ok: true, races: preview });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

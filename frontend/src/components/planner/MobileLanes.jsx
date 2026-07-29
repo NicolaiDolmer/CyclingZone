@@ -80,7 +80,7 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
                   rating-visninger (statStyle, SSOT) — den gamle faste --text-1/accent-
                   kombination blev til en næsten-hvid bund med gult tal (ulæselig) i
                   dark mode. */}
-              <span className="w-9 h-9 rounded-cz flex items-center justify-center shrink-0 font-mono text-[13px] font-medium" style={statStyle(ovr)}>
+              <span className="w-9 h-9 rounded-cz flex items-center justify-center shrink-0 font-mono text-[13px] font-medium" style={statStyle(ovr, { scale: "rating" })}>
                 {ovr}
               </span>
               <span className="flex-1 min-w-0">

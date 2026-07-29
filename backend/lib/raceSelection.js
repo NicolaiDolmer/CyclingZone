@@ -184,6 +184,11 @@ export async function getSelectionContext({ supabase, race, teamId }) {
         // #2376: free_role kan gælde FLERE ryttere → array (additiv, ikke ét *_id-felt).
         free_role_ids: entries.filter((e) => e.race_role === "free_role").map((e) => e.rider_id),
         is_auto_filled: entries.every((e) => e.is_auto_filled),
+        // #3041: kun de MANUELT udtagne af rider_ids — bruges til at bygge binding-map'et,
+        // så et auto-udtaget pick (der viger automatisk ved gem, #2637) heller ikke låser
+        // rytteren i UI'et for et andet overlappende løb. rider_ids ovenfor forbliver ALT
+        // (auto+manuelt) — den bruges til "allerede i denne kolonne"-tjek, som skal se begge.
+        manual_rider_ids: entries.filter((e) => !e.is_auto_filled).map((e) => e.rider_id),
       }
     : null;
 

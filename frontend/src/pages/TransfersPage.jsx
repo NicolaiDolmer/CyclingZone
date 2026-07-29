@@ -28,6 +28,7 @@ import {
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { getRiderAge } from "../lib/riderAge";
+import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import TeamCell from "../components/rider/TeamCell";
@@ -65,7 +66,11 @@ const MARKET_TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06
 const MARKET_SORT_ACCESSORS = {
   rider: (l) => (l.rider ? `${l.rider.firstname || ""} ${l.rider.lastname || ""}`.trim() || null : null),
   seller: (l) => l.seller?.name ?? null,
-  age: (l) => (l.rider ? getRiderAge(l.rider.birthdate) : null),
+  // #3071: modul-konstant kan ikke se komponentens seasonYear-state — men
+  // alders-SORTERING er ordinalt uafhængig af referenceåret (samme offset for
+  // alle ryttere), så vi sorterer på det negerede fødselsår i stedet (ældre
+  // fødselsår = højere alder). Ingen wall-clock involveret.
+  age: (l) => (l.rider?.birthdate ? -new Date(l.rider.birthdate).getFullYear() : null),
   listed: (l) => (l.created_at ? new Date(l.created_at).getTime() : null),
   value: (l) => (l.rider ? getRiderMarketValue(l.rider) : null),
   salary: (l) => (l.rider ? getRiderSalary(l.rider) : null),
@@ -814,7 +819,7 @@ function MarketOfferForm({ listing, onOffer }) {
 // Én listing = én rytterrække (+ optionel action-expander-række under).
 function MarketRow({
   listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice,
-  selected, onToggleSelect,
+  selected, onToggleSelect, seasonYear,
 }) {
   const { t } = useTranslation("transfers");
   const rider = listing.rider;
@@ -854,7 +859,7 @@ function MarketRow({
           <TeamCell team={listing.seller} freeLabel="—" />
         </td>
         <td className="px-2 py-2.5 text-center hidden md:table-cell">
-          <span className="text-cz-2 font-mono text-xs">{getRiderAge(rider?.birthdate) ?? "—"}</span>
+          <span className="text-cz-2 font-mono text-xs">{getRiderAge(rider?.birthdate, seasonYear) ?? "—"}</span>
         </td>
         <td className="px-3 py-2.5 hidden md:table-cell">
           <span className="text-cz-3 text-xs whitespace-nowrap">
@@ -1015,6 +1020,8 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
   const { t } = useTranslation("transfers");
+  // #3071: sæson-referenceår til alders-visning/filtre (se riderAge.js).
+  const seasonYear = useActiveSeasonYear();
   // #987: aktiv fane lever i URL'en (?tab=) så nav-genvejen "Transferliste"
   // (/transfers?tab=market) og delte links lander på den rigtige fane.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1319,7 +1326,7 @@ export default function TransfersPage() {
   const activeModeTabs = (TAB_MODES.find((m) => m.key === activeMode)?.tabs) || [];
   const showSubTabs = activeModeTabs.length > 1;
 
-  const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean));
+  const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean), seasonYear);
   const filteredIds = new Set(riderFilters.filtered.map(r => r.id));
   // #2522: min/max_asking_price filtrerer på listing.asking_price — IKKE et
   // rytter-felt, så useClientRiderFilters (som kun kender rytter-objektet) kan
@@ -1713,6 +1720,7 @@ export default function TransfersPage() {
                             onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
                             onRemove={handleRemoveListing}
                             onUpdatePrice={handleUpdateListingPrice}
+                            seasonYear={seasonYear}
                             selected={selectedListingIds.has(l.id)}
                             onToggleSelect={toggleListingSelection}
                           />

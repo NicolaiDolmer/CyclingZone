@@ -425,6 +425,46 @@ export const SEED_TEAM_HALL_OF_FAME = [
   { id: "hof-e2e-1", team_id: TEST_TEAM.id, category: "most_points_season", value: 11250, season_number: 2 },
 ];
 
+// ── Resultat-hub-seed (#3102 etape 2) ────────────────────────────────────────
+// /resultater var utestbar på preview: season_standings svarede kun på den
+// team_id-scopede palmarès-query, rider_rankings_mv og race_points havde slet
+// ingen handler, så hubben stod tom uanset hvad man klikkede på. Samme fælde som
+// StrategyPage i etape 1.
+
+// season_standings scopet på sæsonen (hubbens tophold-boks). AI-holdet er med
+// med vilje: hubben filtrerer is_ai fra, og filteret skal kunne ses virke.
+export const SEED_SEASON_STANDINGS = [
+  { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2 } },
+  { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2 } },
+];
+
+// rider_rankings_mv — matview'en hubben og RiderRankingsPage læser top-5 fra.
+// rider_id peger på seedede ryttere, så display-joinet mod riders faktisk finder
+// dem (ellers filtreres rækken væk som "pensioneret siden matview-refresh").
+export const SEED_RIDER_RANKINGS = [
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-1", points: 1840, stage_wins: 3, gc_wins: 1 },
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-2", points: 1610, stage_wins: 2, gc_wins: 1 },
+];
+
+// race_points — pointtabellen bag Point & præmier-fanen. Ikke hele prod-tabellen:
+// tre klasser × de klassementer fanen faktisk grupperer på, så både klasse-
+// skifteren, per-dag-trøjekortene og præmieformlen kan klikkes igennem.
+export const SEED_RACE_POINTS = [
+  { race_class: "TourFrance", result_type: "Klassement", rank: 1, points: 1300 },
+  { race_class: "TourFrance", result_type: "Klassement", rank: 2, points: 900 },
+  { race_class: "TourFrance", result_type: "Klassement", rank: 3, points: 700 },
+  { race_class: "TourFrance", result_type: "Etapeplacering", rank: 1, points: 210 },
+  { race_class: "TourFrance", result_type: "Etapeplacering", rank: 2, points: 160 },
+  { race_class: "TourFrance", result_type: "Pointtroje", rank: 1, points: 400 },
+  { race_class: "TourFrance", result_type: "Forertroje", rank: 1, points: 60 },
+  { race_class: "Monuments", result_type: "Klassiker", rank: 1, points: 800 },
+  { race_class: "Monuments", result_type: "Klassiker", rank: 2, points: 600 },
+  { race_class: "Monuments", result_type: "KlassikerHold", rank: 1, points: 120 },
+  { race_class: "Class2", result_type: "Klassiker", rank: 1, points: 40 },
+  { race_class: "Class2", result_type: "Klassiker", rank: 2, points: 30 },
+];
+
 // #2917 · GET /api/managers/:teamId — managerprofilen havde INGEN mock-handler, så
 // hele siden var utestbar på preview. Titler/beskrivelser matcher prods
 // achievements-tabel (frontend oversætter dem via locales/*/achievements.json når
@@ -705,7 +745,12 @@ export const SEED_STRATEGY = {
     suitabilities: { flat: 82, hills: 64, mountains: 41, cobbles: 55, time_trial: 60 },
   })),
   a_chain: [RIDERS[0].id],
-  captain_priorities: { flat: RIDERS[0].id, hills: RIDERS[0].id, mountains: null, cobbles: RIDERS[0].id, time_trial: null },
+  // #3102: buckets + rangordnede LISTER — samme form som backend leverer
+  // (raceStrategy.js / raceStrategy.test.js) og som CaptainBoard læser via
+  // TERRAIN_BUCKETS. Fixturen stod med skalar-id'er og de gamle bucket-navne
+  // (hills/mountains/time_trial), så preview-mocken crashede StrategyPage på
+  // list.map — dvs. ejeren kunne ikke teste strategisiden på preview.
+  captain_priorities: { flat: [RIDERS[0].id], hilly: [RIDERS[0].id], mountain: [], cobbles: [RIDERS[0].id], itt: [] },
   role_rules: [
     { rider_id: RIDERS[0].id, bucket: "flat", role: "captain" },
   ],

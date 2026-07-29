@@ -1,7 +1,14 @@
 // backend/lib/raceRouteGenerator.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { attachRoute, DISTANCE_BANDS, PROLOGUE_DISTANCE_BAND } from "./raceRouteGenerator.js";
+import {
+  attachRoute,
+  DISTANCE_BANDS,
+  PROLOGUE_DISTANCE_BAND,
+  clampSprintKm,
+  sprintValleys,
+  pickSprintValley,
+} from "./raceRouteGenerator.js";
 
 const race = { external_id: "abc123", season_id: "s1", name: "Vuelta Andaluza" };
 const stage = (profile_type, finale_type, stage_number = 1) =>
@@ -128,4 +135,88 @@ test("etapeløbs-etape → mellemsprint + målspurt; endagsløb → kun målspur
 test("climb-navne er region-flavoured + ikke-tomme", () => {
   const es = attachRoute(stage("high_mountain", "long_climb"), { ...race, name: "Vuelta Burgalesa" }, true);
   assert.ok(es.climbs.every((c) => typeof c.name === "string" && c.name.length > 0));
+});
+
+// ── #3048: mellemsprint må aldrig lande inde i et klassificeret klatresegment ──
+// Klatresegment = [crest_km - length_km, crest_km] (samme grænse som frontend
+// stageRouteProfile.js's visuelle top-bump). KOM-passager SKAL fortsat ligge på
+// stigninger — denne invariant gælder KUN "intermediate"-sprints, aldrig climbs.
+test("invariant (#3048): mellemsprint ligger aldrig inden for et klatresegment", () => {
+  const profiles = ["hilly", "mountain", "high_mountain", "classic", "cobbles", "rolling"];
+  const finales = ["punch", "reduced_sprint", "breakaway", "descent", "long_climb", null];
+  let checkedWithClimbs = 0;
+  for (let i = 0; i < 300; i++) {
+    const pt = profiles[i % profiles.length];
+    const finale = finales[i % finales.length];
+    const r = attachRoute(stage(pt, finale, 1), { external_id: `route-3048-${i}`, season_id: `s${i % 5}`, name: "Test Tour" }, true);
+    const intermediates = r.sprints.filter((s) => s.kind === "intermediate");
+    if (r.climbs.length) checkedWithClimbs++;
+    for (const s of intermediates) {
+      for (const c of r.climbs) {
+        const foot = c.crest_km - c.length_km;
+        assert.ok(
+          !(s.km >= foot && s.km <= c.crest_km),
+          `seed ${i} (${pt}/${finale}): mellemsprint km=${s.km} inde i klatresegment "${c.name}" [${foot},${c.crest_km}]`,
+        );
+      }
+    }
+  }
+  // Sanity: testen skal faktisk have prøvet scenarier MED stigninger, ellers
+  // beviser den ingenting.
+  assert.ok(checkedWithClimbs > 50, `for få seeds havde climbs (${checkedWithClimbs}/300) — testen dækker ikke reelt`);
+});
+
+// ── #3048: kanonisk dalregel (ejer-godkendt 27/7, erstatter crest+1) ──────────
+test("#3048 dalregel: clampSprintKm bruger dalens midtpunkt, ikke længere crest+1-nedkørslen", () => {
+  const distanceKm = 200;
+  const climbs = [{ crest_km: 100, length_km: 8 }]; // klatresegment [92,100]
+  const km = clampSprintKm(97, climbs, distanceKm); // rå km midt i stigningen
+  assert.notEqual(km, 101, "må ikke længere bruge den gamle crest+1-nedkørsel som førstevalg");
+  const chosen = pickSprintValley(sprintValleys(climbs, distanceKm), distanceKm);
+  assert.equal(km, Math.round((chosen[0] + chosen[1]) / 2), "skal matche dalreglens output direkte");
+});
+
+test("#3048 dalregel: 15-km-tærsklen respekteres — en tættere men lille dal springes over til fordel for en fjernere dal på >= 15 km", () => {
+  const distanceKm = 200; // søgevindue [40,170], target = 0.55*200 = 110
+  const climbs = [
+    { crest_km: 100, length_km: 1 }, // besat [98,101]
+    { crest_km: 110, length_km: 1 }, // besat [108,111] → lille dal [101,108] (7 km, midt 104.5, tæt på target)
+    { crest_km: 160, length_km: 2 }, // besat [157,161]
+  ];
+  const valleys = sprintValleys(climbs, distanceKm);
+  const chosen = pickSprintValley(valleys, distanceKm);
+  const size = chosen[1] - chosen[0];
+  assert.ok(size >= 15, `valgt dal er kun ${size} km — 15-km-tærsklen blev ikke respekteret`);
+  assert.equal(Math.round((chosen[0] + chosen[1]) / 2), 134);
+});
+
+test("#3048 dalregel: midtpunkts-præferencen vælger dalen (blandt dale >= 15 km) der ligger tættest på 55% af distancen", () => {
+  const distanceKm = 200; // target = 110
+  const climbs = [
+    { crest_km: 70, length_km: 2 }, // besat [67,71]
+    { crest_km: 130, length_km: 2 }, // besat [127,131]
+  ];
+  // Tre dale, alle >= 15 km: [40,67] (mid 53.5), [71,127] (mid 99), [131,170] (mid 150.5).
+  // Midterste dals midtpunkt (99) er tættest på target (110).
+  const valleys = sprintValleys(climbs, distanceKm);
+  const chosen = pickSprintValley(valleys, distanceKm);
+  assert.equal(Math.round((chosen[0] + chosen[1]) / 2), 99);
+});
+
+test("#3048 dalregel: findes ingen fri strækning i søgevinduet, falder clampSprintKm tilbage til nedkørsel/tilgang-logikken", () => {
+  const distanceKm = 100; // søgevindue [20,85]
+  const climbs = [{ crest_km: 90, length_km: 100 }]; // dækker hele søgevinduet
+  const valleys = sprintValleys(climbs, distanceKm);
+  assert.equal(valleys.length, 0, "test-setup burde ikke efterlade nogen fri strækning");
+  const km = clampSprintKm(50, climbs, distanceKm);
+  assert.ok(Number.isFinite(km) && km > 0 && km < distanceKm, "fallback skal stadig returnere en gyldig km");
+});
+
+test("#3048: clampSprintKm muterer aldrig climbs-arrayet — KOM-passager forbliver urørt", () => {
+  const climbs = [
+    { name: "Col de Test", category: "1", crest_km: 100, length_km: 8, avg_gradient: 7, summit_finish: false },
+  ];
+  const before = JSON.parse(JSON.stringify(climbs));
+  clampSprintKm(97, climbs, 200); // 97 ligger inde i klatresegmentet [92,100]
+  assert.deepEqual(climbs, before, "climbs-arrayet må ikke ændres af sprint-placeringen");
 });

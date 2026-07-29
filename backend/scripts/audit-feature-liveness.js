@@ -95,12 +95,9 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // academy_season_intake_runs. Se den registrering for den fulde forklaring;
   // pointen er at auditen nu selv læser app_config.email_loop_enabled ved hver
   // kørsel i stedet for at stole på en kommentar der ikke opdager en flag-flip.
-  // race_stage_passages (#2811): Sub-2's passage-persistens. Skrive-stien i
-  // raceRunner.js er reviewet, men tabellen kan først få rows efter første
-  // S2-etape (27/7) — sæson 1 kørte på den gamle sti. Bevidst tom indtil da.
-  // FJERN ENTRY efter første S2-etapedag; er den stadig tom dér, er #2811's
-  // åbne spørgsmål besvaret med et NEJ og det er en ægte bug.
-  "race_stage_passages",
+  // (race_stage_passages (#2811) fjernet 27/7 efter instruktionen i entryen selv:
+  // første S2-etapedag gav 757 rows, så Sub-2's passage-persistens er bevist
+  // levende og Detector A overvåger tabellen normalt igen.)
   // (player_feedback (#2602) fjernet 23/7: første spillerindsendelse landede 23/7
   // 12:07 CEST — skrive-stien er bevist levende, så Detector A overvåger tabellen
   // normalt igen. NB: der findes stadig INGEN læse-flade for indsendelserne, se
@@ -111,16 +108,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // + 2 incidents. Alle tre tabeller har nu rows i prod og daekkes af Detector A igen
   // (#2224 / #2393). Detector A tjekker total row-count, saa loebsfrie dage giver ikke
   // false positives.
-  // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
-  // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
-  // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
-  // tabellen har rows.
-  "rider_development_log",
-  // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
-  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22. Tabellen
-  // fyldes først når en akademirytter når graduation-alderen. Skriv-path verificeret
-  // i academyGraduation.js. Fjern denne entry når tabellen har rows.
-  "academy_graduation",
+  // (rider_development_log (#1137) fjernet 26/7: S1→S2-transitionen skrev 4.869
+  // rows via rider_progression — featuren er levende, Detector A overvåger igen.)
+  // (academy_graduation (#932/#1467) fjernet 26/7: 23 graduation-rows landede ved
+  // S1→S2-transitionen — featuren er levende, Detector A overvåger igen.)
   // (subscriptions (#1903) fjernet 25/7: første checkout.completed-række landede kl.
   // 17:45 lokal (Alunta-checkout live) — featuren er levende, Detector A overvåger igen.)
   // (training_week_plans (#1895) fjernet 11/7 samme aften: tabellen fik sine

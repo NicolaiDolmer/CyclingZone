@@ -171,8 +171,10 @@ test.describe("#2948 sponsor UI", () => {
 
     // cuchiet 25/7 spørgsmål 1: hvorfor flytter totalen sig ikke når man skifter
     // division? Fordi divisionen kun omfordeler den samme pulje over flere etaper.
+    // #3020 (ejer-beslutning 27/7): eksplicit copy-fix — maks-udbetalingen er den
+    // samme uanset valgt division, kun raten pr. etape ændrer sig.
     await expect(
-      page.getByText(/ændrer raten pr\. etape, ikke totalerne/)
+      page.getByText(/Din maksimale udbetaling ændrer sig ikke, uanset hvilken division du vælger/)
     ).toBeVisible();
 
     // cuchiet 25/7 spørgsmål 2: rører bestyrelsens modifier løbsdags-pengene? Nej.

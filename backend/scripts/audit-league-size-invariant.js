@@ -1,7 +1,14 @@
 #!/usr/bin/env node
-// Permanent forward-guard for #2377: hver liga-pulje (league_divisions) SKAL
-// have PRÆCIS 24 hold. Ikke 23, ikke 25 — ejer-kravet er absolut og gælder
-// ALLE grupper i ALLE divisioner, ingen undtagelser/whitelist.
+// Permanent forward-guard for #2377: hver AKTIV liga-pulje (league_divisions)
+// SKAL have PRÆCIS 24 hold. Ikke 23, ikke 25 — ejer-kravet er absolut.
+//
+// DORMANT-UNDTAGELSE (S1→S2-cutover 26/7, #2851): tier 3/4-puljer UDEN ægte
+// managere har forventet 0 hold — det er enginens frosne AI-politik (#1688,
+// targetAiCountForPool: bund/midte fyldes kun i puljer med >=1 ægte manager).
+// #2851-reconcilen tømte D4 C-H for legacy-AI, så "24 overalt" er ikke længere
+// sand invariant. Forventningen er nu: 24 for tier 1/2 og for tier 3/4 med
+// ægte managere; 0 for tier 3/4 uden. ALT andet (1-23, 25+, eller AI-rest i en
+// dormant pulje) er stadig et fund.
 //
 // BAGGRUND: prod-audit 12/7 fandt 9 overskudshold på tværs af 4 puljer
 // (Division 1: 25, Division 3 A-D: 25×4, Division 4 B/C: 26×2) — alle enten
@@ -90,7 +97,7 @@ export async function runLeagueSizeAudit({
     fetchAllRows(() =>
       supabase
         .from("teams")
-        .select("id, name, is_ai, is_frozen, is_bank, created_at, league_division_id, pending_removal_at")
+        .select("id, name, is_ai, is_frozen, is_bank, is_test_account, created_at, league_division_id, pending_removal_at")
         .order("id", { ascending: true })
     ).catch((error) => {
       throw new Error(formatSupabaseAuditError("teams select", error));
@@ -136,8 +143,14 @@ export async function runLeagueSizeAudit({
   for (const div of sortedDivisions) {
     const groupTeams = teamsByDivision.get(div.id) || [];
     const count = groupTeams.length;
-    if (count === requiredCount) continue;
-    const delta = count - requiredCount;
+    // Dormant-undtagelsen (#2851/#1688): tier 3/4 uden ægte managere → forventet 0.
+    // Samme diskriminator som enginens isRealManager (aiTeamGenerator.js).
+    const realManagers = groupTeams.filter(
+      (t) => t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account,
+    ).length;
+    const expected = div.tier <= 2 || realManagers > 0 ? requiredCount : 0;
+    if (count === expected) continue;
+    const delta = count - expected;
     const candidates = groupTeams
       .map((t) => toCandidate(t, riderCountByTeam))
       .sort((a, b) => excessScore(b) - excessScore(a) || new Date(b.created_at) - new Date(a.created_at))
@@ -148,7 +161,7 @@ export async function runLeagueSizeAudit({
       tier: div.tier,
       pool_index: div.pool_index,
       count,
-      required: requiredCount,
+      required: expected,
       delta,
       top_candidates: delta > 0 ? candidates : [],
     });
@@ -174,11 +187,11 @@ function formatCandidateLine(c) {
 
 function printHuman(summary) {
   console.log(`League-size invariant audit — ${summary.generated_at}`);
-  console.log(`Krav: præcis ${summary.required_team_count} hold pr. pulje (${summary.groups_checked} puljer tjekket)`);
+  console.log(`Krav: præcis ${summary.required_team_count} hold pr. aktiv pulje — 0 i dormant tier 3/4 uden ægte managere (#2851) — (${summary.groups_checked} puljer tjekket)`);
   console.log(`Total findings: ${summary.total_findings}\n`);
 
   if (summary.total_findings === 0) {
-    console.log("OK — alle puljer har præcis 24 hold.\n");
+    console.log("OK — alle aktive puljer har præcis 24 hold (dormant-puljer 0).\n");
     return;
   }
 

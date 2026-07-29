@@ -18,6 +18,7 @@ import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { plannerNavItem } from "../lib/plannerNavVisibility";
+import { pathMatchesNavItem } from "../lib/navMatching.js";
 import { usePlanner } from "../lib/usePlanner";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
@@ -40,7 +41,10 @@ const API = import.meta.env.VITE_API_URL;
 // tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
 // "/global-rank" tilføjet per #2849 bølge 3 — T2 wide data-side (rank-tabellen
 // cappes per-side på max-w-[1600px] ligesom /races).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/global-rank"]);
+// "/resultater" tilføjet per #3102 etape 2 — hubben er T2 nu: arkiv-fanen er
+// biblioteks-tabellen (5 kolonner) og point-fanen er point-tabellerne pr.
+// løbsklasse. Uden ruten her ville begge være klemt i max-w-6xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/resultater", "/global-rank"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -56,8 +60,12 @@ function isFullBleedRoute(pathname) {
   return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p)) && !FULL_BLEED_EXCLUDE.has(pathname);
 }
 
-function buildBottomItems(t) {
+// #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
+// spillets daglige arbejdsflade med under 245 sessions/30 dage; den hører til
+// de personlige punkter ved Indstillinger, ikke mellem Økonomi og Indbakke.
+function buildBottomItems(t, team) {
   return [
+    ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
     { to: "/profile",     label: t("nav.item.profile") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
@@ -66,25 +74,67 @@ function buildBottomItems(t) {
   ];
 }
 
-function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
+// #3102: admin-gruppen stod ordret to steder (gruppe-opslaget i useEffect og
+// navGroups i render) og var allerede drevet fra hinanden — kun det ene sted
+// havde exact:true på /admin, så "Admin" lyste op sammen med underpunktet på
+// hver /admin/*-side. Én kilde nu, så de ikke kan drifte igen.
+function buildAdminGroup(t) {
+  return {
+    key: "admin", label: t("nav.group.admin"),
+    items: [
+      { to: "/admin", label: t("nav.item.admin"), exact: true },
+      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
+      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
+      { to: "/admin/attribution", label: t("nav.item.attribution") },
+      { to: "/admin/retention", label: t("nav.item.retention") },
+    ],
+  };
+}
+
+// #3104: `team` udgik som parameter da Min Managerprofil (det eneste punkt der
+// brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
+// flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
+// forskellige menuer for samme bruger.
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
   return [
     {
+      // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
+      // målt 27/7) i stedet for den historiske rækkefølge punkterne blev tilføjet i.
+      // Indbakke var appens 3.-mest besøgte side (6.152) men lå på 10. plads, og
+      // Økonomi (2.258) lå efter Bestyrelse (959). Grupperingen er stadig efter
+      // opgave — kun rækkefølgen indeni følger tallene.
       key: "klubhus", label: t("nav.group.klubhus"),
       items: [
-        { to: "/dashboard",      label: t("nav.item.dashboard") },
-        { to: "/team",           label: t("nav.item.team") },
-        { to: "/training",       label: t("nav.item.training") },
-        ...plannerNavItem(peakPlannerEnabled, t),
-        ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
-        ...scoutingNavItem(scoutSystemEnabled, t),
-        { to: "/board",          label: t("nav.item.board") },
-        { to: "/finance",        label: t("nav.item.finance") },
-        ...facilitiesNavItem(facilitiesEnabled, t),
+        { to: "/dashboard",      label: t("nav.item.dashboard") },     // 7.350
+        { to: "/notifications",  label: t("nav.item.notifications"), badge: true }, // 6.152
+        { to: "/team",           label: t("nav.item.team") },          // 5.955
+        { to: "/training",       label: t("nav.item.training") },      // 2.732
+        { to: "/finance",        label: t("nav.item.finance") },       // 2.258
+        ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
+        { to: "/board",          label: t("nav.item.board") },         // 959
+        ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
+        ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
         // #2450: personale-oversigten forudsætter faciliteter (staff ansættes der),
         // så den deler samme flag-gate/kilde som Klub-nav-item'et lige ovenfor.
+        // #3104: ~400 sessions — bliver en fane i Klub i etape C.
         ...(facilitiesEnabled ? [{ to: "/staff", label: t("nav.item.staffOverview") }] : []),
-        { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
-        ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
+      ],
+    },
+    {
+      // #3102 etape 1: planlægnings-fladerne (holdudtagelse, formplan, strategi)
+      // lå spredt over Klubhus (planneren) og resultat-gruppen (holdudtagelse),
+      // og strategisiden havde slet ingen nav-indgang — eneste vej var et text-xs
+      // link i Race Hub-brættet. Rækkefølgen her spejler den kommende hub's faner
+      // (Holdudtagelse · Formplan · Strategi) fra kontraktens etape 3.
+      key: "planlaegning", label: t("nav.group.planlaegning"),
+      items: [
+        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
+        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
+        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
+        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
+        ...plannerNavItem(peakPlannerEnabled, t),
+        { to: "/races/strategy", label: t("nav.item.strategy") },
+        { to: "/calendar",       label: t("nav.item.calendar") },
       ],
     },
     {
@@ -103,20 +153,24 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
     {
       // #1609: "League"-gruppen nedlagt — Teams/H2H/Season-Preview er konsolideret
       // ind i Standings-hub'en (linse + drawer). Hub'en bor her som "League & standings".
-      key: "saeson-resultater", label: t("nav.group.saeson"),
+      // #3102 etape 1: gruppen er renset til rene KIGGE-flader — planlægnings-
+      // genvejene (holdudtagelse, kalender) er flyttet til Planlægning ovenfor.
+      key: "resultater", label: t("nav.group.resultater"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
-        { to: "/calendar",       label: t("nav.item.calendar") },
+        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
+        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
+        // #3102: excludePaths så den heller ikke lyser op sammen med det nye
+        // Holdstrategi-punkt (prefix-matchet ville ellers ramme /races/strategy).
+        // #3102 etape 2 — eksplicit beslutning: punktet BLIVER på /races selv om
+        // bibliotek + point er flyttet til hubben ovenfor. /races har fortsat
+        // kalenderen og verdens-kataloget, og etape 3 er den der opløser ruten;
+        // at flytte punktets mål to gange på to uger ville koste mere
+        // muskelhukommelse (11k sessions) end det ville rydde op.
+        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         { to: "/global-rank",    label: t("nav.item.globalRank") },
-        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
-        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
-        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar" },
-        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
-        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
-        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
-        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
         { to: "/seasons",        label: t("nav.item.seasons") },
       ],
     },
@@ -126,30 +180,6 @@ function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = fal
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
-}
-
-// #987: `to` kan indeholde en query (fx "/transfers?tab=market"). Aktiv kræver
-// at path matcher OG alle query-params i `to` findes i URL'en. `excludeQuery`
-// afaktiverer et item når en bestemt param-værdi ER sat (så søskende-genveje
-// til samme path ikke begge lyser op).
-function pathMatchesNavItem(location, to, exact = false, excludeQuery = null) {
-  const [toPath, toQuery] = to.split("?");
-  const pathOk = exact
-    ? location.pathname === toPath
-    : location.pathname === toPath || location.pathname.startsWith(`${toPath}/`);
-  if (!pathOk) return false;
-  const current = new URLSearchParams(location.search);
-  if (toQuery) {
-    for (const [k, v] of new URLSearchParams(toQuery)) {
-      if (current.get(k) !== v) return false;
-    }
-  }
-  if (excludeQuery) {
-    for (const [k, v] of new URLSearchParams(excludeQuery)) {
-      if (current.get(k) === v) return false;
-    }
-  }
-  return true;
 }
 
 // #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
@@ -164,11 +194,17 @@ async function fetchUnreadCount(userId) {
   return count || 0;
 }
 
-function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, title }) {
-  const isActive = pathMatchesNavItem(location, to, exact, excludeQuery);
+function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, excludePaths, title }) {
+  const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   const showBadge = badge && unread > 0;
+  // #3102: Link, ikke NavLink. NavLink beregner selv aktiv-tilstand på et rent
+  // prefix-match og sætter aria-current="page" ud fra DEN — den kender hverken
+  // excludeQuery eller excludePaths. Med tre nav-items under /races-prefixet
+  // (Løb · Holdudtagelse · Holdstrategi) annoncerede skærmlæsere derfor alle tre
+  // som current page, selv om kun én var fremhævet visuelt. Vi ejer allerede
+  // isActive her, så Link + vores eget aria-current er den ene sandhed.
   return (
-    <NavLink to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
+    <Link to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
       className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
@@ -191,7 +227,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
         <span aria-hidden="true"
           className="pointer-events-none absolute left-3 bottom-1 h-0.5 w-5 rounded-full bg-cz-accent origin-left scale-x-0 transition-transform duration-200 ease-out group-hover:scale-x-100 motion-reduce:transition-none" />
       )}
-    </NavLink>
+    </Link>
   );
 }
 
@@ -278,7 +314,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
 
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
             IKKE en flydende knap. Åbner FeedbackModal i stedet for at navigere,
-            derfor et rent button-element frem for NavItem (som altid er en NavLink). */}
+            derfor et rent button-element frem for NavItem (som altid er et Link). */}
         <button
           type="button"
           onClick={() => { onNav?.(); onOpenFeedback?.(); }}
@@ -338,7 +374,6 @@ export default function Layout() {
   // flag /api/peak-plans/board rapporterer til selve /planner-siden.
   const { enabled: peakPlannerEnabled } = usePlanner();
   const heartbeatRef = useRef(null);
-  const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
   async function fetchOnlineCount(headers) {
@@ -352,20 +387,15 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
-    if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
-      { to: "/admin", label: t("nav.item.admin"), exact: true },
-      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
-      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
-      { to: "/admin/attribution", label: t("nav.item.attribution") },
-      { to: "/admin/retention", label: t("nav.item.retention") },
-    ] });
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i.to, i.exact, i.excludeQuery)))
-      || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+    if (isAdmin) groups.push(buildAdminGroup(t));
+    // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
+    // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
+    // foldbar gruppe, så der er ingen gruppe at åbne for den rute længere.
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, teamId, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
+  }, [location, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -508,17 +538,9 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
-  const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
-        { to: "/admin", label: t("nav.item.admin") },
-        { to: "/admin/waitlist", label: t("nav.item.waitlist") },
-        { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
-        { to: "/admin/attribution", label: t("nav.item.attribution") },
-      { to: "/admin/retention", label: t("nav.item.retention") },
-      ] }]
-    : baseGroups;
-  const bottomItems = buildBottomItems(t);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+  const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t)] : baseGroups;
+  const bottomItems = buildBottomItems(t, team);
 
   const needsSetup = teamLoaded && !team?.manager_name;
   const sidebarProps = {

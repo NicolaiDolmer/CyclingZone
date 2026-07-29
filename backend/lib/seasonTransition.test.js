@@ -569,6 +569,10 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       // #2748: pensions-frigivelse stubbet — egen unit-test (retirementRelease.test.js)
       // dækker release-logikken; wiring-testen nedenfor dækker fase-placeringen.
       releaseRetiredRiders: async () => ({ candidates: 0, released: 0, failed: 0 }),
+      // #3043: squad-under-minimum-tjek stubbet — egen unit-test
+      // (squadBelowMinimumCheck.test.js) dækker detektions-/varslings-logikken;
+      // wiring-testen nedenfor dækker fase-placeringen.
+      detectAndNotifySquadsBelowMinimum: async () => ({ checked: 0, belowMinimum: 0, notified: 0, notifyFailed: 0, teams: [] }),
     },
   });
 
@@ -578,8 +582,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
   // #1980: +season_parachute; #2744-B: +contract_expiry_release;
   // #2748: +retirement_release; #2948: +sponsor_season_objectives;
-  // #2916: +manager_setup_carry_over = 17
-  assert.equal(result.log.length, 17);
+  // #2916: +manager_setup_carry_over; #3043: +squad_below_minimum_check = 18
+  assert.equal(result.log.length, 18);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -610,17 +614,21 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[10].total, 0);
   assert.equal(result.log[11].phase, "retirement_release");
   assert.equal(result.log[11].candidates, 0);
+  // #3043 · squad-under-minimum-tjek kører EFTER begge frigivelses-faser
+  // (kontraktudløb + pension) og FØR carry-over.
+  assert.equal(result.log[12].phase, "squad_below_minimum_check");
+  assert.equal(result.log[12].belowMinimum, 0);
   // #2916 · carry-over kører EFTER trup-frigivelserne og FØR admin_log.
-  assert.equal(result.log[12].phase, "manager_setup_carry_over");
-  assert.equal(result.log[12].error, undefined, "carry-over må ikke fejle i en tom mock");
-  assert.deepEqual(result.log[12].handler_drift, []);
-  assert.equal(result.log[12].carried_total, 0);
-  assert.equal(result.log[13].phase, "admin_log");
-  assert.equal(result.log[13].inserted, true);
-  assert.equal(result.log[14].phase, "discord_broadcast");
-  assert.equal(result.log[14].sent, true);
-  assert.equal(result.log[15].phase, "season_started_notifications");
-  assert.equal(result.log[16].phase, "contract_expiring_notifications");
+  assert.equal(result.log[13].phase, "manager_setup_carry_over");
+  assert.equal(result.log[13].error, undefined, "carry-over må ikke fejle i en tom mock");
+  assert.deepEqual(result.log[13].handler_drift, []);
+  assert.equal(result.log[13].carried_total, 0);
+  assert.equal(result.log[14].phase, "admin_log");
+  assert.equal(result.log[14].inserted, true);
+  assert.equal(result.log[15].phase, "discord_broadcast");
+  assert.equal(result.log[15].sent, true);
+  assert.equal(result.log[16].phase, "season_started_notifications");
+  assert.equal(result.log[17].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -723,6 +731,81 @@ test("transitionToNextSeason — releaseRetiredRiders kaldes EFTER sæson-start 
   assert.equal(phase.candidates, 12);
   assert.equal(phase.released, 12);
   assert.equal(phase.failed, 0);
+});
+
+// #3043 · Squad-under-minimum-tjek: skal køre EFTER BEGGE frigivelses-faser
+// (kontraktudløb + pension), så den ser den ENDELIGE post-transition trup, ikke
+// et mellemstadie hvor en af de to endnu ikke har fjernet ryttere.
+test("transitionToNextSeason — detectAndNotifySquadsBelowMinimum kaldes EFTER contract_expiry_release og retirement_release", async () => {
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+
+  let receivedSupabase = null;
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      releaseExpiredContractRiders: async () => { order.push("contractRelease"); return { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }; },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      releaseRetiredRiders: async () => { order.push("retirementRelease"); return { candidates: 0, released: 0, failed: 0 }; },
+      detectAndNotifySquadsBelowMinimum: async (args) => {
+        order.push("squadBelowMinimumCheck");
+        receivedSupabase = args.supabase;
+        return { checked: 1, belowMinimum: 1, notified: 1, notifyFailed: 0, teams: [{ teamId: "t1", name: "T1", activeRiders: 3 }] };
+      },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    order,
+    ["contractRelease", "seasonStart", "retirementRelease", "squadBelowMinimumCheck"],
+    "squad-tjekket skal ligge EFTER begge frigivelses-faser, så det ser den endelige post-transition trup"
+  );
+  assert.equal(receivedSupabase, supabase);
+
+  const phase = result.log.find((p) => p.phase === "squad_below_minimum_check");
+  assert.ok(phase, "squad_below_minimum_check-fasen skal logges");
+  assert.equal(phase.belowMinimum, 1);
+  assert.deepEqual(phase.teams, [{ teamId: "t1", name: "T1", activeRiders: 3 }]);
+});
+
+test("transitionToNextSeason — en fejl i squad_below_minimum_check isoleres og logger de PARTIELLE stats", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+
+  const boom = new Error("rider-count-fetch eksploderede efter 90 hold");
+  boom.partialStats = { checked: 90, belowMinimum: 0, notified: 0, notifyFailed: 0, teams: [] };
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      releaseRetiredRiders: async () => ({ candidates: 0, released: 0, failed: 0 }),
+      detectAndNotifySquadsBelowMinimum: async () => { throw boom; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true, "en fejlet squad-tjek-fase må ALDRIG vælte resten af sæson-transitionen");
+  const phase = result.log.find((p) => p.phase === "squad_below_minimum_check");
+  assert.ok(phase.error, "fejlen er synlig i loggen");
+  assert.equal(phase.checked, 90, "operatøren skal kunne se hvor langt kørslen nåede");
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "transitionen fortsætter efter den isolerede fejl");
 });
 
 // #2916 · end-to-end: en manager har lagt en træningsplan i sæson 0. Efter
