@@ -72,12 +72,18 @@ test("academy roster is a sortable design-system table (#2796)", async ({ page }
   await expect(table).toBeVisible();
 
   // Værdi-kolonnen er ny — markedsværdien var ikke på akademi-fladen før.
+  // #3045: i portræt lever værdien i navnecellens fold-underlinje i stedet for
+  // sin egen kolonne, så assertionen er på tabellen som helhed — ikke på et <th>.
   await expect(table).toContainText(/180[.,]000/);
 
   // Klik på en sorterbar header sætter aria-sort (den kanoniske Th-mekanisme).
-  const valueHeader = table.locator("th", { hasText: /^(Value|Værdi)$/ }).first();
-  await valueHeader.click();
-  await expect(valueHeader).toHaveAttribute("aria-sort", /ascending|descending/);
+  // #3045: Værdi-headeren er `fold: true` og dermed skjult under sm-breakpointet,
+  // så sorterings-kontrakten verificeres på den sticky navnekolonne, der er
+  // synlig i ALLE viewports. Vælges en foldet header her, timer klikket ud på
+  // mobile-chromium/webkit mens desktop passerer.
+  const nameHeader = table.locator("th", { hasText: /^(Rider|Rytter)$/ }).first();
+  await nameHeader.click();
+  await expect(nameHeader).toHaveAttribute("aria-sort", /ascending|descending/);
 });
 
 test("academy page shows disabled state gracefully when flag is off", async ({ page }) => {

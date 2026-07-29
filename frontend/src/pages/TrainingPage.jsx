@@ -449,6 +449,23 @@ export default function TrainingPage() {
               </span>
             )}
           </div>
+          {/* #3045: portræt-kolonnekontrakt — Type + Form + Træthed foldes ind
+              i navne-underlinjen ≤640px (samme "DataTable fold"-mønster som
+              RidersPage/TeamPage/WatchlistPage), så Fokus + Intensitet-
+              kolonnerne (dem man rent faktisk redigerer) ikke skal dele
+              skærmen med rent info-only kolonner i portræt. Skjult ≥640px,
+              hvor Type/Form/Træthed vises som deres egne kolonner (uændret). */}
+          <div className="mt-0.5 sm:hidden font-data text-3xs uppercase tracking-[.05em] text-cz-3 whitespace-nowrap">
+            {[
+              rider.primary_type
+                ? (rider.secondary_type && rider.secondary_type !== rider.primary_type
+                  ? `${tTypes(`types.${rider.primary_type}`)}/${tTypes(`types.${rider.secondary_type}`)}`
+                  : tTypes(`types.${rider.primary_type}`))
+                : null,
+              `${t("form")} ${cond.form ?? "—"}`,
+              `${t("fatigue")} ${cond.fatigue ?? "—"}`,
+            ].filter(Boolean).join(" · ")}
+          </div>
           <button
             type="button"
             onClick={() => toggleRiderWeekPlan(rider.id)}
@@ -459,7 +476,7 @@ export default function TrainingPage() {
         </td>
 
         {/* Ryttertype */}
-        <td className={tdClass({})}>
+        <td className={`${tdClass({})} hidden sm:table-cell`}>
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </td>
 
@@ -612,12 +629,12 @@ export default function TrainingPage() {
         </td>
 
         {/* Form */}
-        <td className={tdClass({})}>
+        <td className={`${tdClass({})} hidden sm:table-cell`}>
           <MiniBar value={cond.form} color="bg-cz-info" label={t("form")} />
         </td>
 
         {/* Træthed */}
-        <td className={tdClass({})}>
+        <td className={`${tdClass({})} hidden sm:table-cell`}>
           <MiniBar value={cond.fatigue} color="bg-cz-warning" label={t("fatigue")} />
         </td>
 
@@ -993,17 +1010,23 @@ export default function TrainingPage() {
                         className={`${thClass({})} sticky-name-cell sticky left-10 z-sticky border-r border-cz-border`}>
                         {t("colRider")}
                       </SortTh>
+                      {/* #3045: Type/Form/Træthed foldes ind i navne-underlinjen ≤640px
+                          (samme portræt-kolonnekontrakt som de andre rytterflader), så
+                          Fokus + Intensitet — de to felter man rent faktisk REDIGERER på
+                          denne side — beholder pladsen i portræt uden at konkurrere med
+                          info-only kolonner. Landskabs-visningen er uændret (kun hidden
+                          sm:table-cell tilføjet). */}
                       <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={thClass({})}>
+                        className={`${thClass({})} hidden sm:table-cell`}>
                         {t("colType")}
                       </SortTh>
                       <th className={thClass({})}>{tRider("training.focus")}</th>
                       <th className={thClass({})}>{tRider("training.intensity")}</th>
                       <th className={thClass({})}>{t("colNextUp")}</th>
-                      <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={thClass({})}>
+                      <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("form")}
                       </SortTh>
-                      <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={thClass({})}>
+                      <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
                         {t("fatigue")}
                       </SortTh>
                       <th className={thClass({})}>{t("colStatus")}</th>

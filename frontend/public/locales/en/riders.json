@@ -10,6 +10,8 @@
   "table": {
     "nation": "Nation",
     "rider": "Rider",
+    "rating": "Rating",
+    "ratingTitle": "Overall rating 1-99, weighted for the rider's type.",
     "team": "Team",
     "badges": "Status",
     "age": "Age",

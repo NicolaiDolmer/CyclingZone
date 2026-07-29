@@ -11,9 +11,10 @@
 // rullet tabel uden sortering, ingen ryttertype, ingen markedsværdi, og både
 // intake- og gradueringskort bad om irreversible valg uden at vise pris eller
 // frist. Den bruger nu de samme primitiver som auktions-/rytter-/holdsiden
-// (Table/Tr/Th/Td + useTableSort, NationCell, RiderTypeBadge, RiderBadges,
-// Card, Button, EmptyState, PageLoader), så akademiet ser ud og opfører sig som
-// resten af appen.
+// (useTableSort, NationCell, RiderTypeBadge, RiderBadges, Card, Button,
+// EmptyState, PageLoader), så akademiet ser ud og opfører sig som resten af
+// appen. #3045: rosteret migreret videre fra Table/Tr/Th/Td til den kanoniske
+// DataTable (sticky navnekolonne + mobil-fold — se rosterColumns).
 //
 // Flag-gated: siden er kun tilgængelig via nav når enabled=true (se Layout.jsx).
 // Hvis nogen alligevel navigerer hertil med flag slukket, vises en graceful
@@ -32,7 +33,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
-import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, Table, Tr, Th, Td } from "../components/ui";
+import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable } from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
@@ -76,6 +77,8 @@ const ROSTER_DESC_FIRST = new Set(["age", "potential", "market_value", "salary",
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
+  // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
+  const { t: tTypes } = useTranslation("riderTypes");
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
@@ -107,6 +110,112 @@ export default function AcademyPage() {
     ROSTER_ACCESSORS,
     { descFirstKeys: ROSTER_DESC_FIRST },
   );
+
+  // #3045 — rosteret migreret fra den hånd-rullede Table/Tr/Th/Td (ingen sticky
+  // navnekolonne, ingen fold-mekanisme — den var den eneste rytterflade der stod
+  // uden for den kanoniske DataTable/T2-recipe) til DataTable. Portræt-kolonne-
+  // kontrakten her: Type + Værdi følger navnet ind i mobil-underlinjen. Akademiet
+  // har INGEN rating-kolonne (evnerne hentes ikke til rosteret — unge, uformede
+  // ryttere vurderes på potentiale, ikke aktuel rating), så Potentiale erstatter
+  // Rating som kvalitetssignalet — men forbliver en almindelig (ikke-foldet)
+  // kolonne, fordi ScoutablePotentiale er et scoutet stjerne-bånd uden en kort,
+  // meningsfuld tekst-repræsentation til underlinjen (se PR-beskrivelsen).
+  const rosterColumns = [
+    {
+      key: "nation",
+      header: t("colNation"),
+      sortKey: "nationality_code",
+      render: (r) => <NationCell code={r.nationality_code} />,
+    },
+    {
+      key: "name",
+      header: t("colRider"),
+      sticky: true,
+      sortKey: "name",
+      render: (r) => (
+        <>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <RiderLink id={r.id} className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+              {r.firstname} {r.lastname}
+            </RiderLink>
+            <RiderBadges badges={["academy"]} />
+          </div>
+          {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
+        </>
+      ),
+    },
+    {
+      key: "type",
+      header: t("colType"),
+      sortKey: "primary_type",
+      fold: true,
+      foldValue: (r) => {
+        if (!r.primary_type) return "";
+        const primary = tTypes(`types.${r.primary_type}`);
+        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
+        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+      },
+      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
+    },
+    {
+      key: "age",
+      header: t("colAge"),
+      numeric: true,
+      sortKey: "age",
+      render: (r) => getRiderAge(r.birthdate, seasonYear) ?? "–",
+    },
+    {
+      key: "potential",
+      header: t("potential"),
+      sortKey: "potential",
+      // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
+      // tekst ligger i tooltip'en.
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle seasonYear={seasonYear} />,
+    },
+    {
+      key: "value",
+      header: t("colValue"),
+      numeric: true,
+      sortKey: "market_value",
+      fold: true,
+      foldValue: (r) => formatMoney(getRiderMarketValue(r)),
+      render: (r) => formatMoney(getRiderMarketValue(r)),
+    },
+    {
+      key: "salary",
+      header: t("colSalary"),
+      numeric: true,
+      sortKey: "salary",
+      render: (r) => formatMoney(r.salary),
+    },
+    {
+      key: "contract",
+      header: t("colContract"),
+      sortKey: "contract_end_season",
+      render: (r) => (r.contract_end_season != null ? t("contractUntil", { season: r.contract_end_season }) : "–"),
+    },
+    // #932 S7: promote-handlingen lever HER (på akademi-rosteret), ikke på
+    // holdsiden. Blokeres når senior-truppen er fuld.
+    {
+      key: "action",
+      header: t("colAction"),
+      render: (r) => {
+        const busy = actionState[r.id] != null;
+        return (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => handlePromote(r)}
+            disabled={busy || seniorFull}
+            loading={actionState[r.id] === "promoting"}
+            title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
+          >
+            {t("promoteBtn")}
+          </Button>
+        );
+      },
+    },
+  ];
 
   function mapActionError(err) {
     if (err === "academy_full") return t("error.academyFull");
@@ -413,77 +522,23 @@ export default function AcademyPage() {
         )}
       </section>
 
-      {/* ROSTER-sektion */}
+      {/* ROSTER-sektion — #3045: DataTable (T2-recipen), sticky navnekolonne +
+          Type/Værdi foldet ind i portræt-underlinjen (se rosterColumns). */}
       <section>
         <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("rosterHeading")}</h2>
 
         {roster.length === 0 ? (
           <EmptyState title={t("emptyRosterTitle")} description={t("emptyRoster")} />
         ) : (
-          <Card className="overflow-hidden">
-            <Table data-sortable>
-              <thead>
-                <tr>
-                  <Th className="w-px" sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colNation")}</Th>
-                  <Th sortKey="name" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colRider")}</Th>
-                  <Th sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colType")}</Th>
-                  <Th numeric sortKey="age" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colAge")}</Th>
-                  <Th sortKey="potential" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("potential")}</Th>
-                  <Th numeric sortKey="market_value" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colValue")}</Th>
-                  <Th numeric sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colSalary")}</Th>
-                  <Th sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}>{t("colContract")}</Th>
-                  <Th className="text-right">{t("colAction")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRoster.map((rider) => {
-                  const age = getRiderAge(rider.birthdate, seasonYear);
-                  const busy = actionState[rider.id] != null;
-                  const err = actionErrors[rider.id];
-                  return (
-                    <Tr key={rider.id}>
-                      <Td><NationCell code={rider.nationality_code} /></Td>
-                      <Td>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                            {rider.firstname} {rider.lastname}
-                          </RiderLink>
-                          <RiderBadges badges={["academy"]} />
-                        </div>
-                        {err && <p className="text-xs text-cz-danger mt-1">{err}</p>}
-                      </Td>
-                      <Td><RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} /></Td>
-                      <Td numeric>{age != null ? age : "–"}</Td>
-                      {/* #2796: labelAsTitle — stjernerne bærer informationen,
-                          den kvalitative tekst ligger i tooltip'en. */}
-                      <Td><ScoutablePotentiale rider={rider} scouting={scouting} labelAsTitle seasonYear={seasonYear} /></Td>
-                      <Td numeric>{formatMoney(getRiderMarketValue(rider))}</Td>
-                      <Td numeric>{formatMoney(rider.salary)}</Td>
-                      <Td>
-                        {rider.contract_end_season != null
-                          ? t("contractUntil", { season: rider.contract_end_season })
-                          : "–"}
-                      </Td>
-                      {/* #932 S7: promote-handlingen lever HER (på akademi-rosteret),
-                          ikke på holdsiden. Blokeres når senior-truppen er fuld. */}
-                      <Td className="text-right">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handlePromote(rider)}
-                          disabled={busy || seniorFull}
-                          loading={actionState[rider.id] === "promoting"}
-                          title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
-                        >
-                          {t("promoteBtn")}
-                        </Button>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </Card>
+          <DataTable
+            label={t("rosterHeading")}
+            columns={rosterColumns}
+            rows={sortedRoster}
+            rowKey={(r) => r.id}
+            sort={sort}
+            sortDir={sortDir}
+            onSort={handleSort}
+          />
         )}
       </section>
 

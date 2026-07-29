@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.73",
+    "date": "2026-07-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider stats no longer disappear when you hold your phone upright",
+          "body": "Rider tables dropped their numbers in portrait. The Rider database was the worst of it — upright you got a name, a nationality, a type, a team and an age, and nothing else; turn the phone sideways and the stats appeared. My team, Academy, Wishlist and Daily training had the same gap. All five now use the same rule: the name column stays put while you scroll sideways, and the columns that don't fit fold into a second line under the rider's name instead of vanishing. You get type, age, rating and value without rotating anything."
+        },
+        "da": {
+          "title": "Rytter-stats forsvinder ikke længere når du holder telefonen oprejst",
+          "body": "Rytter-tabeller tabte deres tal i portræt. Rytterdatabasen var værst — oprejst fik du navn, nationalitet, type, hold og alder, og intet andet; vippede du telefonen, kom stats frem. My team, Akademi, Wishlist og Daily training havde samme hul. Alle fem følger nu samme regel: navnekolonnen bliver stående når du scroller sidelæns, og de kolonner der ikke er plads til, foldes ind på en anden linje under rytterens navn i stedet for at forsvinde. Du får type, alder, rating og værdi uden at dreje noget."
+        },
+        "refs": [3045]
+      }
+    ]
+  },
+  {
     "version": "7.72",
     "date": "2026-07-28",
     "label": "Beta",

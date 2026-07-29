@@ -477,9 +477,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear }) 
     sortKey: "firstname",
     // INGEN subline (ejer 25/7: "navnet er helligt"). Ryttertypen stod her et
     // øjeblik i evne-tilstanden — den hører hjemme i sin egen kolonne som alle
-    // andre steder i appen. Det eneste der må lande under navnet er mobil-folden
-    // herunder, og den er skåret ned til nation + alder (samme to felter som
-    // /riders allerede folder, og som ejeren har accepteret dér).
+    // andre steder i appen; type folder derfor BEVIDST IKKE ind i mobil-
+    // underlinjen (#3045 holder sig til denne grænse selvom rating tilføjes
+    // nedenfor). Mobil-folden er nation + alder + rating (se ratingColumn).
     render: (r) => (
       <>
         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
@@ -497,12 +497,20 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear }) 
   // rytterprofilens hero (ejer 25/7: rating skal have farve, og den skal se ud
   // som den gør på profilen). At skalaen hælder mod gråt indtil #2890 er løst er
   // en accepteret afvejning; fixet sker ét sted (statColor), ikke her.
+  // #3045: rating fold'es ind i mobil-underlinjen (portræt-kolonnekontrakten —
+  // rating er det primære "hvor god er han"-signal). Type foldes BEVIDST IKKE
+  // her (se nameColumn/typeColumn-kommentarerne — ejer 25/7: "navnet er
+  // helligt", typen skal altid stå i sin egen kolonne). Fold-sættet på denne
+  // side er derfor nation+alder+rating, ikke rating+type+værdi som de andre
+  // fire rytterflader — se PR-beskrivelsen for afvejningen.
   const ratingColumn = {
     key: "rating",
     header: <span title={t("squad.headers.ratingTitle")}>{t("squad.headers.rating")}</span>,
     sortKey: "_ovr",
     numeric: true,
     compact: true,
+    fold: true,
+    foldValue: (r) => (r._ovr ? String(r._ovr) : "—"),
     render: (r) => (r._ovr ? (
       <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
         style={statPlateStyle(r._ovr)}>
