@@ -20,7 +20,10 @@ const ALLOWED_EQ_COLUMNS = {
 
 // Stateful in-memory supabase-mock der dækker præcis de queries
 // resolveProxyBids udfører. Hold den minimal — vi tester kun resolver-loopet.
-function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null }) {
+// #230: proxyDeleteError lader en test simulere at DELETE på auction_proxy_bids
+// fejler. supabase-js kaster ikke — den returnerer { error } — så det er den
+// eneste måde at dække "sletningen mislykkedes"-grenen på.
+function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null }) {
   const auctionState = { ...auction };
   // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
   const proxiesState = [...proxies];
@@ -82,6 +85,9 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
             const filters = {};
             const applyAndResolve = () => {
               proxyDeleteLog.push({ ...filters });
+              // #230: fejlende delete rører IKKE state — rækken bliver liggende,
+              // præcis som i Postgres når skrivningen afvises.
+              if (proxyDeleteError) return { data: null, error: proxyDeleteError };
               for (let i = proxiesState.length - 1; i >= 0; i--) {
                 const row = proxiesState[i];
                 let matches = true;
@@ -1286,6 +1292,57 @@ test("#230: stille-død proxy (loft under minBid, aldrig fører) slettes + cance
   assert.equal(cancelNotifs.length, 1, "præcis én annullerings-notif");
   assert.equal(cancelNotifs[0][1], "auction_proxy_outbid");
   assert.equal(cancelNotifs[0][5].messageParams.maxAmount, 50000);
+});
+
+test("#230: fejlet delete → INGEN 'saldo frigivet'-besked (rækken ligger der stadig)", async () => {
+  // Regressionsvagt: supabase-js kaster ikke ved en afvist skrivning. Sluger vi
+  // fejlen, overlever proxy-rækken — og dermed er saldoen STADIG reserveret
+  // (computeWorstCaseCommitment summerer max_amount fra netop de rækker).
+  // Sendte vi alligevel "din reserverede saldo er frigivet", ville manageren få
+  // en direkte usand besked. Så: ingen sletning → ingen annullerings-notif.
+  const auction = {
+    id: "auc-230-deadfail",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-230-deadfail", team_id: "team-b", max_amount: 50000 },
+  ];
+  const supabase = createMockSupabase({
+    auction,
+    proxies,
+    proxyDeleteError: { message: "permission denied for table auction_proxy_bids" },
+  });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-230-deadfail",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // Sletningen blev forsøgt, men rækken overlevede — saldoen er stadig låst.
+  assert.ok(
+    supabase.state.proxyDeletes.some((d) => d.team_id === "team-b"),
+    "delete skal være FORSØGT",
+  );
+  assert.equal(supabase.state.proxies.length, 1, "rækken ligger der stadig");
+
+  // Og derfor må der ikke være lovet en frigivelse.
+  const cancelNotifs = ownerCalls.filter(
+    (c) => c[5]?.messageCode === "notif.autoBidCancelled.message",
+  );
+  assert.equal(cancelNotifs.length, 0, "ingen 'saldo frigivet'-besked når sletningen fejlede");
+
+  // Cascaden vælter ikke — auktionen står uændret.
+  assert.equal(supabase.state.auction.current_price, 100000);
 });
 
 test("#230 + #1091: previousLeader's tie-break-kandidat (max == currentPrice) ryddes IKKE som død", async () => {

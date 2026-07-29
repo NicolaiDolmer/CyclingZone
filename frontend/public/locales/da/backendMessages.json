@@ -240,7 +240,8 @@
     },
     "autoBidExhausted": {
       "title": "Dit autobud er overbudt",
-      "message": "Dit autobud på {riderName} nåede sit loft og blev overbudt af {bidderName}. Autobuddet er annulleret og din reserverede saldo frigivet."
+      "message": "Dit autobud på {riderName} nåede sit loft og blev overbudt af {bidderName}. Autobuddet er annulleret og din reserverede saldo frigivet.",
+      "messageNotCancelled": "Dit autobud på {riderName} nåede sit max-loft og er overbudt af {bidderName}."
     },
     "autoBidCancelled": {
       "title": "Autobud annulleret",

@@ -13,6 +13,33 @@ const onProxyNotifFailed = (auctionId) => (e) => {
   captureException(e, { tags: { flow: "auction", stage: "proxy-notif" }, auctionId });
 };
 
+// #230: annullering af en proxy-række ER frigivelsen af den reserverede saldo —
+// commitment beregnes direkte fra auction_proxy_bids (computeWorstCaseCommitment
+// i auctionRules.js), så overlever rækken, forbliver pengene låst. supabase-js
+// kaster ikke: et fejlet delete returnerer bare { error }. Sluger vi den, sender
+// vi bagefter en besked om at reservationen er frigivet, mens rækken stadig
+// ligger der — en direkte usand besked til manageren, værre end den bug vi
+// fixer. Derfor: bind fejlen, rapportér til Sentry, og returnér false så
+// kalderen kan lade være med at love noget der ikke skete. Auktionen selv
+// vælter ikke — cascaden skal køre videre for de øvrige budgivere.
+async function cancelProxyRow(supabase, auctionId, teamId) {
+  const { error } = await supabase
+    .from("auction_proxy_bids")
+    .delete()
+    .eq("auction_id", auctionId)
+    .eq("team_id", teamId);
+  if (error) {
+    console.error("[proxy-cancel] delete failed", { auctionId, teamId, error });
+    captureException(error, {
+      tags: { flow: "auction", stage: "proxy-cancel" },
+      auctionId,
+      teamId,
+    });
+    return false;
+  }
+  return true;
+}
+
 const MAX_PROXY_ITERATIONS = 30;
 
 // #44: gate auto-bid mod current balance. Hvis en proxy ville pushe vinderen i
@@ -240,11 +267,11 @@ export async function resolveProxyBids({
         ),
     );
     for (const dead of deadProxies) {
-      await supabase
-        .from("auction_proxy_bids")
-        .delete()
-        .eq("auction_id", auctionId)
-        .eq("team_id", dead.team_id);
+      // Fejler sletningen, er saldoen IKKE frigivet — så spring beskeden over
+      // i stedet for at love manageren noget der ikke skete. Rækken bliver
+      // liggende (status quo ante) og ryddes ved næste cascade-kørsel.
+      const cancelled = await cancelProxyRow(supabase, auctionId, dead.team_id);
+      if (!cancelled) continue;
       if (cancelNotified.has(dead.team_id)) continue;
       cancelNotified.add(dead.team_id);
       if (notifyTeamOwner) {
@@ -378,13 +405,11 @@ export async function resolveProxyBids({
     // #230 (ejer-valg A, 11/6): når en proxy er slået over sit loft, annulleres
     // rækken straks så reservationen (worst-case-commitment) frigives — før fixet
     // blev den liggende og låste saldo indtil manageren selv slettede den.
-    if (exhaustedTeam) {
-      await supabase
-        .from("auction_proxy_bids")
-        .delete()
-        .eq("auction_id", auctionId)
-        .eq("team_id", exhaustedTeam);
-    }
+    // Lykkedes sletningen ikke, er reservationen ikke frigivet — beskeden
+    // nedenfor skal så ikke påstå det (se exhaustedCancelled).
+    const exhaustedCancelled = exhaustedTeam
+      ? await cancelProxyRow(supabase, auctionId, exhaustedTeam)
+      : false;
 
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
 
@@ -401,18 +426,24 @@ export async function resolveProxyBids({
     if (notifyTeamOwner) {
       if (exhaustedTeam) {
         // Proxy was beaten by a higher max — #230: rækken er annulleret ovenfor,
-        // så beskeden fortæller også at reservationen er frigivet.
+        // så beskeden fortæller også at reservationen er frigivet. Fejlede
+        // sletningen (exhaustedCancelled=false), ligger rækken der stadig og
+        // saldoen er stadig reserveret — så siger vi kun at buddet er overbudt.
         await trackedNotify(
           exhaustedTeam,
           "auction_proxy_outbid",
           "Dit autobud er stoppet",
-          `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName} — autobuddet er annulleret og din reserverede saldo frigivet`,
+          exhaustedCancelled
+            ? `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName} — autobuddet er annulleret og din reserverede saldo frigivet`
+            : `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
           auctionId,
           {
             riderId: auction.rider_id,
             titleCode: "notif.autoBidExhausted.title",
             titleParams: {},
-            messageCode: "notif.autoBidExhausted.message",
+            messageCode: exhaustedCancelled
+              ? "notif.autoBidExhausted.message"
+              : "notif.autoBidExhausted.messageNotCancelled",
             messageParams: { riderName, bidderName },
           }
         ).catch(onProxyNotifFailed(auctionId));

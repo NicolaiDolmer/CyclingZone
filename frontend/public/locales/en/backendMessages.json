@@ -240,7 +240,8 @@
     },
     "autoBidExhausted": {
       "title": "Your auto-bid was outbid",
-      "message": "Your auto-bid on {riderName} reached its cap and was outbid by {bidderName}. The auto-bid has been cancelled and your reserved balance released."
+      "message": "Your auto-bid on {riderName} reached its cap and was outbid by {bidderName}. The auto-bid has been cancelled and your reserved balance released.",
+      "messageNotCancelled": "Your auto-bid on {riderName} reached its cap and was outbid by {bidderName}."
     },
     "autoBidCancelled": {
       "title": "Auto-bid cancelled",
