@@ -65,15 +65,20 @@ test("intake-payloaden bærer pris og udløbsfrist (#2796)", () => {
   );
 });
 
-test("AcademyPage bruger de delte tabel-primitiver og er sorterbar (#2796)", () => {
-  assert.match(pageSource, /data-sortable/, "roster-tabellen skal erklære data-sortable");
+test("AcademyPage bruger den kanoniske DataTable og er sorterbar (#2796, migreret #3045)", () => {
+  // #3045: rosteret migreret fra de hånd-rullede Table/Tr/Th/Td (ingen sticky
+  // navnekolonne, ingen fold-mekanisme) til den kanoniske DataTable — samme
+  // T2-recipe som RidersPage/TeamPage/WatchlistPage. DataTable erklærer
+  // data-sortable internt på sit eget <table>-element, så AcademyPage.jsx
+  // behøver ikke længere den literale streng selv.
   assert.doesNotMatch(
     pageSource,
     /data-sort-exempt/,
     "akademi-rosteret er ikke længere sorterings-undtaget (Discord 22/7)",
   );
   assert.match(pageSource, /useTableSort/, "sortering skal bruge den delte useTableSort");
-  for (const comp of ["NationCell", "RiderTypeBadge", "Table", "Tr", "Th", "Td"]) {
+  assert.match(pageSource, /\bDataTable\b/, "roster-tabellen skal bruge den kanoniske DataTable (T2), ikke en hånd-rullet variant");
+  for (const comp of ["NationCell", "RiderTypeBadge"]) {
     assert.match(
       pageSource,
       new RegExp(`\\b${comp}\\b`),

@@ -7,6 +7,8 @@
   "emptyCta": "Gå til Ryttere",
   "thNation": "Nation",
   "thRider": "Rytter",
+  "thRating": "Rating",
+  "thRatingTitle": "Samlet rating 1-99, vægtet efter rytterens type.",
   "compareTooltip": "Vælg til sammenligning",
   "thTeam": "Hold",
   "thBadges": "Status",
