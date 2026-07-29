@@ -20,7 +20,10 @@ const ALLOWED_EQ_COLUMNS = {
 
 // Stateful in-memory supabase-mock der dækker præcis de queries
 // resolveProxyBids udfører. Hold den minimal — vi tester kun resolver-loopet.
-function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null }) {
+// #230: proxyDeleteError lader en test simulere at DELETE på auction_proxy_bids
+// fejler. supabase-js kaster ikke — den returnerer { error } — så det er den
+// eneste måde at dække "sletningen mislykkedes"-grenen på.
+function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null }) {
   const auctionState = { ...auction };
   // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
   const proxiesState = [...proxies];
@@ -82,6 +85,9 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
             const filters = {};
             const applyAndResolve = () => {
               proxyDeleteLog.push({ ...filters });
+              // #230: fejlende delete rører IKKE state — rækken bliver liggende,
+              // præcis som i Postgres når skrivningen afvises.
+              if (proxyDeleteError) return { data: null, error: proxyDeleteError };
               for (let i = proxiesState.length - 1; i >= 0; i--) {
                 const row = proxiesState[i];
                 let matches = true;
@@ -1185,4 +1191,190 @@ test("resolver: ikke-trigger INSERT-fejl propageres som exception (#269)", async
     }),
     (err) => err?.code === "23505",
   );
+});
+
+// =============================================================================
+// #230 — auto-annullering af udmattede proxies (ejer-valg A, 11/6)
+// =============================================================================
+
+test("#230: challenger overtager → udmattet winner-proxy slettes + exhausted-notif med messageCode", async () => {
+  // A leder med proxy 100K, B har proxy 200K. B overtager ved 100.001 —
+  // A's proxy er udmattet og skal SLETTES (før fixet blev rækken liggende og
+  // låste A's worst-case-commitment/reservation indtil A selv slettede den).
+  const auction = {
+    id: "auc-230-exhaust",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 90000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-230-exhaust", team_id: "team-a", max_amount: 100000 },
+    { auction_id: "auc-230-exhaust", team_id: "team-b", max_amount: 200000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-230-exhaust",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // B overtager ved A.max + 1
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+  assert.equal(supabase.state.auction.current_price, 100001);
+
+  // A's udmattede proxy-række er slettet
+  const deleted = supabase.state.proxyDeletes.find((d) => d.team_id === "team-a");
+  assert.ok(deleted, "delete skal være kaldt for team-a's udmattede proxy");
+  assert.equal(deleted.auction_id, "auc-230-exhaust");
+  assert.equal(
+    supabase.state.proxies.filter((p) => p.team_id === "team-a").length,
+    0,
+    "team-a's proxy må ikke ligge tilbage i DB",
+  );
+
+  // Notifikationen bærer i18n-koder + fortæller at reservationen er frigivet
+  const exhaustNotif = ownerCalls.find(
+    (c) => c[0] === "team-a" && c[1] === "auction_proxy_outbid",
+  );
+  assert.ok(exhaustNotif, "team-a skal notificeres om udmattet autobud");
+  assert.equal(exhaustNotif[5]?.messageCode, "notif.autoBidExhausted.message");
+  assert.match(exhaustNotif[3], /annulleret.*frigivet/);
+});
+
+test("#230: stille-død proxy (loft under minBid, aldrig fører) slettes + cancelled-notif — præcis én gang", async () => {
+  // team-b's proxy blev leapfrogget af manuelle bud uden nogensinde at føre —
+  // før fixet lå rækken evigt (prisen falder aldrig) og ejeren fik INGEN besked.
+  const auction = {
+    id: "auc-230-dead",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-230-dead", team_id: "team-b", max_amount: 50000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-230-dead",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // Ingen bud — kun oprydning
+  assert.equal(supabase.state.bids.length, 0);
+  assert.equal(supabase.state.auction.current_price, 100000);
+
+  // Rækken er slettet
+  const deleted = supabase.state.proxyDeletes.find((d) => d.team_id === "team-b");
+  assert.ok(deleted, "delete skal være kaldt for team-b's døde proxy");
+  assert.equal(supabase.state.proxies.length, 0);
+
+  // Præcis én cancelled-notif med i18n-koder
+  const cancelNotifs = ownerCalls.filter(
+    (c) => c[0] === "team-b" && c[5]?.messageCode === "notif.autoBidCancelled.message",
+  );
+  assert.equal(cancelNotifs.length, 1, "præcis én annullerings-notif");
+  assert.equal(cancelNotifs[0][1], "auction_proxy_outbid");
+  assert.equal(cancelNotifs[0][5].messageParams.maxAmount, 50000);
+});
+
+test("#230: fejlet delete → INGEN 'saldo frigivet'-besked (rækken ligger der stadig)", async () => {
+  // Regressionsvagt: supabase-js kaster ikke ved en afvist skrivning. Sluger vi
+  // fejlen, overlever proxy-rækken — og dermed er saldoen STADIG reserveret
+  // (computeWorstCaseCommitment summerer max_amount fra netop de rækker).
+  // Sendte vi alligevel "din reserverede saldo er frigivet", ville manageren få
+  // en direkte usand besked. Så: ingen sletning → ingen annullerings-notif.
+  const auction = {
+    id: "auc-230-deadfail",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-230-deadfail", team_id: "team-b", max_amount: 50000 },
+  ];
+  const supabase = createMockSupabase({
+    auction,
+    proxies,
+    proxyDeleteError: { message: "permission denied for table auction_proxy_bids" },
+  });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-230-deadfail",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // Sletningen blev forsøgt, men rækken overlevede — saldoen er stadig låst.
+  assert.ok(
+    supabase.state.proxyDeletes.some((d) => d.team_id === "team-b"),
+    "delete skal være FORSØGT",
+  );
+  assert.equal(supabase.state.proxies.length, 1, "rækken ligger der stadig");
+
+  // Og derfor må der ikke være lovet en frigivelse.
+  const cancelNotifs = ownerCalls.filter(
+    (c) => c[5]?.messageCode === "notif.autoBidCancelled.message",
+  );
+  assert.equal(cancelNotifs.length, 0, "ingen 'saldo frigivet'-besked når sletningen fejlede");
+
+  // Cascaden vælter ikke — auktionen står uændret.
+  assert.equal(supabase.state.auction.current_price, 100000);
+});
+
+test("#230 + #1091: previousLeader's tie-break-kandidat (max == currentPrice) ryddes IKKE som død", async () => {
+  // Tie-break-proxyen ligger under minBid, men er præcis den række #1091-grenen
+  // skal bruge — cleanup må ikke æde den. (Tie-break fyrer først, men guarden
+  // beskytter også scenariet hvor previousLeader er balance-afvist.)
+  const auction = {
+    id: "auc-230-tie",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-230-tie", team_id: "team-a", max_amount: 100000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBidsRaw({
+    supabase,
+    auctionId: "auc-230-tie",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    previousLeader: "team-a",
+    canAffordAutoBidFn: async () => false, // balance-afvist → tie-break fyrer ikke
+  });
+
+  // Rækken består (bevidst, jf. #44: balance-afviste proxies slettes ikke)
+  assert.equal(supabase.state.proxies.length, 1, "tie-break-kandidaten må ikke slettes");
+  assert.equal(supabase.state.proxyDeletes.length, 0, "ingen deletes overhovedet");
 });
