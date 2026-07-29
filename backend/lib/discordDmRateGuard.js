@@ -12,10 +12,11 @@
  *
  * Tæller forsøgte + skippede DM'er PR. CRON-KØRSEL (ikke pr. besked, ikke pr.
  * enkelt-DM) og capturer til Sentry hvis raten er 100% over N kørsler i træk
- * (ALL_SKIPPED_STREAK_THRESHOLD) OG antal forsøgte > 0 i de kørsler. En
- * kørsel med 0 forsøgte DM'er (fx en deploy-storm hvor ingen board-reminders
- * var due) er NEUTRAL — den hverken forlænger eller nulstiller streak'en,
- * så guarden aldrig fyrer på tomme kørsler (samme støj-fælde som #2440).
+ * (ALL_SKIPPED_STREAK_THRESHOLD) OG kørslen har et meningsfuldt sample
+ * (MIN_SAMPLE_SIZE, #3072). En kørsel med for få forsøgte DM'er — herunder 0
+ * (fx en deploy-storm hvor ingen board-reminders var due) — er NEUTRAL: den
+ * hverken forlænger eller nulstiller streak'en, så guarden aldrig fyrer på
+ * tomme eller statistisk intetsigende kørsler (samme støj-fælde som #2440).
  *
  * Scope (issue #2571): kun de rent cron-drevne DM-strømme (board, auktion)
  * er wired ind i cron.js's flushDmRunGuard-kald. recordDmAttempt no-op'er
@@ -31,6 +32,20 @@
 import { captureException as sentryCaptureDefault } from "./sentry.js";
 
 const ALL_SKIPPED_STREAK_THRESHOLD = 3;
+
+// #3072 — minimums-sample før en 100%-skip-kørsel må tælle mod streak'en.
+// Kun 7-17 % af brugerne har koblet discord_id (målt i prod 27/7), så en kørsel
+// med attempted=1 der skipper "alle 1" er det statistisk FORVENTEDE udfald, ikke
+// et nedbrud: 3 sådanne kørsler i træk har ~57 % sandsynlighed. Guarden fyrede
+// derfor falsk på auktions-DM'er (CYCLINGZONE-40) og åd Sentry-kvote
+// (#2892/#2900). Under denne grænse kan raten ikke skelne signal fra baseline,
+// og kørslen behandles som NEUTRAL på præcis samme måde som attempted===0
+// (#2440-fælden) — den hverken forlænger eller nulstiller streak'en.
+//
+// En kørsel med mindst én LEVERET DM nulstiller stadig streak'en uanset sample-
+// størrelse: det er positiv evidens for at leveringen virker, og den evidens er
+// gyldig ved n=1. Kun det negative udsagn ("alle blev skippet") kræver sample.
+const MIN_SAMPLE_SIZE = 5;
 
 // type -> { attempted, skipped } — akkumuleret siden sidste flush for den type.
 const runBuckets = new Map();
@@ -85,6 +100,9 @@ export function flushDmRunGuard(types, { captureExceptionFn = sentryCaptureDefau
       alreadyCaptured.delete(type);
       continue;
     }
+
+    // #3072: for lille sample til at "alle blev skippet" betyder noget — neutral.
+    if (bucket.attempted < MIN_SAMPLE_SIZE) continue;
 
     const streak = (streaks.get(type) || 0) + 1;
     streaks.set(type, streak);

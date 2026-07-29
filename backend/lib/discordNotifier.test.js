@@ -188,12 +188,16 @@ test("notifyAuctionWon — cronRun default false rører aldrig rate-guarden (#25
   assert.equal(captureExceptionFn.calls.length, 0);
 });
 
+// #3072: hver kørsel skal ramme minimums-samplet (5 forsøg) før "alle blev
+// skippet" er andet end lav-volumen-støj — derfor 5 auktioner pr. tick, ikke 1.
 test("notifyAuctionWon — cronRun:true fodrer rate-guarden og capturer efter 3 all-skipped kørsler (#2571)", async () => {
   __resetDmRunGuardForTests();
   const captureExceptionFn = makeCaptureSpy();
 
   for (let i = 0; i < 3; i++) {
-    await notifyAuctionWon({ riderName: "Rider", finalPrice: 1000, teamId: null, cronRun: true });
+    for (let j = 0; j < 5; j++) {
+      await notifyAuctionWon({ riderName: `Rider ${j}`, finalPrice: 1000, teamId: null, cronRun: true });
+    }
     flushDmRunGuard(["auction_won"], { captureExceptionFn });
   }
 
@@ -212,11 +216,13 @@ test("notifyAuctionWon — cronRun:true fodrer rate-guarden og capturer efter 3 
 // via en injiceret fake Supabase-client, og blander tre kategorier pr.
 // "cron-kørsel":
 //   - 2 muted brugere (per-type-toggle off) — må IKKE tælle med i det hele taget.
-//   - 1 reel no-recipient (mangler discord_id) — skal tælle som skip (uændret).
-//   - 1 reel modtager hvor selve sendDM fejler (intet bot-token i env) — skal
+//   - 3 reelle no-recipients (mangler discord_id) — skal tælle som skip (uændret).
+//   - 3 reelle modtagere hvor selve sendDM fejler (intet bot-token i env) — skal
 //     tælle som skip, IKKE som leveret (#2571(b)-fixet).
-// Skip-raten blandt de REELLE forsøg (2 af 4 pr. kørsel) skal stadig ramme
-// 100% og udløse sentryCapture efter 3 kørsler i træk.
+// Skip-raten blandt de REELLE forsøg (6 af 8 pr. kørsel) skal stadig ramme
+// 100% og udløse sentryCapture efter 3 kørsler i træk. De 6 reelle forsøg er
+// samtidig over #3072's minimums-sample, så alarmen er signal og ikke støj —
+// havde de muted brugere talt med i nævneren, ville raten være 6/8 = 75%.
 test("notifyDiscordDM — muted tælles ikke med, sendDM-fejl tælles som skip, blandet population rammer stadig 100%-tærsklen (#2571)", async () => {
   __resetDmRunGuardForTests();
   const captureExceptionFn = makeCaptureSpy();
@@ -233,11 +239,19 @@ test("notifyDiscordDM — muted tælles ikke med, sendDM-fejl tælles som skip, 
       "muted-1": { discord_id: "d-muted-1", discord_dm_enabled: true, discord_dm_prefs: { board_update: false } },
       "muted-2": { discord_id: "d-muted-2", discord_dm_enabled: true, discord_dm_prefs: { board_update: false } },
       "real-1": { discord_id: "d-real-1", discord_dm_enabled: true, discord_dm_prefs: {} },
+      "real-2": { discord_id: "d-real-2", discord_dm_enabled: true, discord_dm_prefs: {} },
+      "real-3": { discord_id: "d-real-3", discord_dm_enabled: true, discord_dm_prefs: {} },
       "no-recipient-1": { discord_id: null, discord_dm_enabled: true, discord_dm_prefs: {} },
+      "no-recipient-2": { discord_id: null, discord_dm_enabled: true, discord_dm_prefs: {} },
+      "no-recipient-3": { discord_id: null, discord_dm_enabled: true, discord_dm_prefs: {} },
     });
 
     async function runOneCronTick() {
-      for (const userId of ["muted-1", "muted-2", "real-1", "no-recipient-1"]) {
+      for (const userId of [
+        "muted-1", "muted-2",
+        "real-1", "real-2", "real-3",
+        "no-recipient-1", "no-recipient-2", "no-recipient-3",
+      ]) {
         await notifyDiscordDM({
           userId,
           type: "board_update",
@@ -257,11 +271,11 @@ test("notifyDiscordDM — muted tælles ikke med, sendDM-fejl tælles som skip, 
     assert.equal(captureExceptionFn.calls.length, 1);
     const { context } = captureExceptionFn.calls[0];
     assert.deepEqual(context.fingerprint, ["discord-dm-all-skipped", "board_update"]);
-    // Kun de 2 reelle forsøg (real-1 + no-recipient-1) pr. kørsel tæller —
+    // Kun de 6 reelle forsøg (real-1..3 + no-recipient-1..3) pr. kørsel tæller —
     // muted-1/muted-2 er slet ikke i nævneren. Ville de tælle som "leveret"
-    // (den gamle bug), ville raten være 2/4 = 50% og aldrig udløse capture.
-    assert.equal(context.extra.attempted, 2);
-    assert.equal(context.extra.skipped, 2);
+    // (den gamle bug), ville raten være 6/8 = 75% og aldrig udløse capture.
+    assert.equal(context.extra.attempted, 6);
+    assert.equal(context.extra.skipped, 6);
   } finally {
     if (savedBotToken === undefined) delete process.env.DISCORD_BOT_TOKEN; else process.env.DISCORD_BOT_TOKEN = savedBotToken;
     if (savedToken === undefined) delete process.env.DISCORD_TOKEN; else process.env.DISCORD_TOKEN = savedToken;
