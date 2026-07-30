@@ -21,7 +21,9 @@
 
 > **✅ 28/7 — Sæson-audit (S2) holder** (kalender sund, dag 0 rent, 0 hold under minimum). **[#2723](https://github.com/NicolaiDolmer/CyclingZone/issues/2723) kandidat til prio-løft:** omdømme usynligt — 42/67 hold har `signature_rider`-mål de ikke kan handle på (nu også #3152 fra ugesweepen).
 
-> **📌 Åbne opfølgninger:** [#3038](https://github.com/NicolaiDolmer/CyclingZone/issues/3038) (#2805-spærre vs **145** dormant-løb — FØR S2-slut 23/8) · [#3039](https://github.com/NicolaiDolmer/CyclingZone/issues/3039) (test-konti får upkeep) · #3036 (countback) · #2164 (D3→D4) · [#3052](https://github.com/NicolaiDolmer/CyclingZone/issues/3052) (Cloudflare-HTML som Sentry-titler — WIP reddet til `fix/3052-sentry-html-message-normalize`, 1 test rød) · #3049/#3050/#3051 (nye feature-ønsker fra Discord).
+> **✅ 30/7 — #3154-housekeeping session 1: 529 → 474 åbne** (55 closes: 24 done-sweep + 3 glemt-done + 26 dubletter + #88/#2742 luk-betingelser opfyldt; 2 → claude:done; done-pukkel 31→6, kun ægte ejer-gates). Evidens: [#627-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/627#issuecomment-5129692176) + `.claude/audits/audit-2026-07-30.md`. Rest mod ~200: ~274 — næste løftestang er needs-decision-eksekvering (38 stk.) + fuld-backlog-klassifikation mod MASTERPLAN.
+
+> **📌 Åbne opfølgninger:** [#3038](https://github.com/NicolaiDolmer/CyclingZone/issues/3038) (#2805-spærre vs **145** dormant-løb — FØR S2-slut 23/8) · #3036 (countback) · #2164 (D3→D4) · [#3052](https://github.com/NicolaiDolmer/CyclingZone/issues/3052) (Cloudflare-HTML som Sentry-titler — WIP reddet til `fix/3052-sentry-html-message-normalize`, 1 test rød) · #3049/#3050/#3051 (nye feature-ønsker fra Discord). (#3039 konsolideret ind i #2990.)
 
 > **📈 Prod:** 161 brugere · ~62 % af nye vender aldrig tilbage · 41 WAU / 8 DAU · 1 abonnement. Anskaffelsen virker, fastholdelsen gør ikke.
 
