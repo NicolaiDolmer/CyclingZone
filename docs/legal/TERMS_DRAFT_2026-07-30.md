@@ -1,9 +1,11 @@
-# UDKAST — Handelsbetingelser for CZ Pro (v0.1, 2026-07-30)
+# UDKAST — Handelsbetingelser for CZ Pro (v0.2, 2026-07-30)
 
-> **Status: UDKAST til ejer-godkendelse (#2813). IKKE live.** Når teksten er godkendt,
-> flyttes den til `/handelsbetingelser` (DA) + `/terms` (EN) som sider i frontend, linkes
-> fra footer/login/checkout, og accept-flowet bygges (checkbox + version + tidspunkt gemt
-> på `subscriptions`-rækken). Åbne huller er markeret **[EJER]**.
+> **Status: Ejer-svar 30/7 indarbejdet** (sælger = Dolmer Digital CVR 46524861; fortrydelses-
+> model A = straks-leverings-waiver). **IKKE live.** Næste skridt: byg `/handelsbetingelser`
+> (DA) + `/terms` (EN) som sider, link fra footer/login/checkout, accept-flow (checkbox +
+> version + tidspunkt gemt på `subscriptions`-rækken), opsigelsessti. **Go-live-krav der
+> stadig mangler:** dedikeret support-e-mail (Hjælp-siden henviser i dag til en e-mail der
+> ikke findes i appen) + moms/merchant-of-record-verifikation mod Alunta.
 
 ---
 
@@ -14,10 +16,10 @@
 **Senest opdateret:** [dato ved go-live] · **Version:** 1.0
 
 **1. Hvem sælger**
-Cycling Zone drives af Nicolai Dolmer Mikkelsen, [adresse — **EJER**: vil du oplyse
-privatadresse, eller har du/ønsker du et CVR-nummer? E-handelsloven kræver navn, adresse
-og e-mail; CVR hvis momsregistreret virksomhed], e-mail: [kontakt-e-mail — **EJER**:
-hvilken adresse skal være den officielle support-/juridiske indgang?].
+Cycling Zone drives af **Dolmer Digital** (CVR 46524861), enkeltmandsvirksomhed
+v/ Nicolai Dolmer Mikkelsen — samme juridiske enhed som i privatlivspolitikken.
+Kontakt: [support-e-mail — oprettes som go-live-krav; indtil da Discord-serveren,
+samme kanal som privatlivspolitikken henviser til].
 
 **2. Hvad du køber**
 CZ Pro er et frivilligt støtte-abonnement til browserspillet Cycling Zone. Pro giver
@@ -48,11 +50,8 @@ men Pro-funktionerne virker perioden ud.
 Du har som forbruger 14 dages fortrydelsesret ved køb på nettet. **Bemærk:** CZ Pro er
 digitalt indhold/en digital tjeneste der leveres straks. Ved købet samtykker du udtrykkeligt
 til, at leveringen påbegyndes med det samme, og du anerkender, at fortrydelsesretten dermed
-bortfalder for den påbegyndte periode. [**EJER — valg A/B:**
-**A (anbefalet, enklest):** fuld waiver som ovenfor — standard for digitale tjenester med
-øjeblikkelig levering.
-**B (kulant):** behold 14 dages fuld fortrydelsesret med tilbagebetaling — venligere, men
-kræver en manuel refusionsproces hos Alunta som vi så skal dokumentere.]
+bortfalder for den påbegyndte periode. *(Ejer-valg 30/7: model A, straks-leverings-waiver —
+samtykket skal gives eksplicit i accept-checkboxen ved checkout.)*
 
 **7. Founder-status**
 De første 50 betalende abonnenter får permanent Founder-status (badge). Founder-badget
