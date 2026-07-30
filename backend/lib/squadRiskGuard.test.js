@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 import {
   ageForSeason,
+  buildAtRiskErrorParams,
   countAtRiskRiders,
   fetchAtRiskCount,
+  fetchAtRiskRiders,
   isContractExpiringAtTransition,
   isGuaranteedRetirementAtTransition,
   isRetirementRiskAtTransition,
@@ -244,4 +246,62 @@ test("#2748 Hovedtest: aggregeret worst-case over de tætteste VERIFICEREDE hold
 test("retirement-vinduets konstanter er stadig 36/40 (regressions-guard — hvis ejeren ændrer dem, skal denne fil + PR-tabellen genverificeres)", () => {
   assert.equal(PROGRESSION_CONFIG.retirement.windowStartAge, 36);
   assert.equal(PROGRESSION_CONFIG.retirement.guaranteedAge, 40);
+});
+
+// ─── #3097: fetchAtRiskRiders — SAMME fetch+filter som fetchAtRiskCount, men ──
+// returnerer de faktiske rytter-rækker (til navngivning i fejlbeskeden), ikke
+// kun et tal. Verificerer at count(fetchAtRiskRiders) === fetchAtRiskCount for
+// samme input, så de to aldrig kan divergere.
+
+test("fetchAtRiskRiders: returnerer de FAKTISKE rytter-rækker (id+navn), samme filter som fetchAtRiskCount", async () => {
+  const rows = [
+    { id: "r1", firstname: "Jonas", lastname: "Vingegaard", contract_end_season: 1, birthdate: "2000-01-01", is_retired: false },
+    { id: "r2", firstname: "Wout", lastname: "van Aert", contract_end_season: null, birthdate: `${2027 - 40}-01-01`, is_retired: false },
+    { id: "r3", firstname: "Safe", lastname: "Rider", contract_end_season: 3, birthdate: "1998-01-01", is_retired: false },
+  ];
+  const supabase = makeMockSupabase(rows);
+
+  const atRisk = await fetchAtRiskRiders(supabase, "team-1", 1);
+  assert.equal(atRisk.length, 2, "kun r1 (kontraktudløb) og r2 (garanteret pension) er i risiko — r3 er sikker");
+  assert.deepEqual(atRisk.map((r) => r.id).sort(), ["r1", "r2"]);
+
+  const count = await fetchAtRiskCount(supabase, "team-1", 1);
+  assert.equal(atRisk.length, count, "fetchAtRiskRiders' antal skal matche fetchAtRiskCount for identisk input");
+});
+
+test("fetchAtRiskRiders: respekterer excludeRiderIds (samme kontrakt som fetchAtRiskCount)", async () => {
+  const rows = [
+    { id: "r1", firstname: "Jonas", lastname: "Vingegaard", contract_end_season: 1, birthdate: "2000-01-01", is_retired: false },
+  ];
+  const supabase = makeMockSupabase(rows);
+
+  const withoutExclude = await fetchAtRiskRiders(supabase, "team-1", 1);
+  assert.equal(withoutExclude.length, 1);
+
+  const withExclude = await fetchAtRiskRiders(supabase, "team-1", 1, { excludeRiderIds: ["r1"] });
+  assert.equal(withExclude.length, 0, "rytteren DENNE handel allerede flytter må ikke tælles som EKSTRA risiko");
+});
+
+// ─── #3097: buildAtRiskErrorParams — ren formatering, ingen DB ────────────────
+
+test("buildAtRiskErrorParams: udleder minRiders/atRiskCount/atRiskNames fra violation + rytterliste", () => {
+  const violation = { minRiders: 8, projected: 6, atRisk: 2, outgoingCount: 1 };
+  const atRiskRiders = [
+    { id: "r1", firstname: "Jonas", lastname: "Vingegaard" },
+    { id: "r2", firstname: "Wout", lastname: "van Aert" },
+  ];
+  const params = buildAtRiskErrorParams(violation, atRiskRiders);
+  assert.equal(params.minRiders, 8);
+  assert.equal(params.atRiskCount, 2);
+  assert.equal(params.atRiskNames, "Jonas Vingegaard, Wout van Aert");
+});
+
+test("buildAtRiskErrorParams: tolerant over for manglende/tomt input", () => {
+  const violation = { minRiders: 8 };
+  assert.deepEqual(buildAtRiskErrorParams(violation, []), { minRiders: 8, atRiskCount: 0, atRiskNames: "" });
+  assert.deepEqual(buildAtRiskErrorParams(violation, null), { minRiders: 8, atRiskCount: 0, atRiskNames: "" });
+  // Rytter uden navnefelter bidrager ikke en tom streng til listen.
+  const withBlank = buildAtRiskErrorParams(violation, [{ id: "r1" }, { id: "r2", firstname: "Wout", lastname: "van Aert" }]);
+  assert.equal(withBlank.atRiskCount, 1, "en rytter uden nogen navnedele tæller ikke som et navngivet navn");
+  assert.equal(withBlank.atRiskNames, "Wout van Aert");
 });

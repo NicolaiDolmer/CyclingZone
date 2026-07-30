@@ -644,6 +644,10 @@
         "title": "Contracts follow the rider",
         "text": "When a rider is traded, their contract transfers unchanged to the new team. The buyer inherits the existing salary and the remaining contract length. The contract is never reset or renegotiated on trade."
       },
+      "extendContract": {
+        "title": "Extending a contract",
+        "text": "Extending a rider's contract from their profile page adds one season to the contract length and moves the expiry season one season further out, at a renegotiated salary based on the rider's current production. You can extend as often as you like, but the expiry season can never be pushed beyond 3 seasons past the current one: once a rider's contract already reaches that far out, further extensions are blocked until the current season advances."
+      },
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
@@ -1130,7 +1134,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "What happens to expiring contracts and older riders at the season change?",
-      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8 riders needed to race, counting expiring contracts and retirement risk together."
+      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8 riders needed to race, counting expiring contracts and retirement risk together. Your squad page shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts toward that risk, and a blocked sale names the specific riders so you can see exactly why."
     },
     "staffReleaseFaq": {
       "q": "How do I release staff, and what does it cost?",

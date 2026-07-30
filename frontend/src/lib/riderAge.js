@@ -31,6 +31,18 @@ export function seasonReferenceYear(seasonNumber) {
   return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1);
 }
 
+// #3097: inverse of seasonReferenceYear — season NUMBER from a season YEAR
+// already resolved via useActiveSeasonYear. Exact by construction (the two
+// formulas are inverses of each other), so pages that only fetched the
+// reference year (for age display) can still recover the season NUMBER they
+// need for contract-expiry comparisons (contract_end_season is a season
+// number, not a year) without a second network round-trip. Returns null for
+// a missing/invalid year (same null-over-guess contract as the rest of this file).
+export function seasonNumberFromReferenceYear(seasonYear) {
+  if (!Number.isFinite(seasonYear)) return null;
+  return seasonYear - LAUNCH_REFERENCE_YEAR + 1;
+}
+
 // Sæson-alder = referenceåret − fødselsår (cykelsport-konvention: alderen en
 // rytter FYLDER i sæsonens kalenderår, uafhængigt af fødselsdag). Referenceåret
 // er sæsonens år (`seasonReferenceYear(seasonNumber)`) — IKKE dags dato. Det gør
@@ -112,4 +124,23 @@ export function isRetirementRisk(birthdate, seasonYear) {
 // gensidigt udelukkende felt). Returnerer null ved manglende fødselsdato/sæson-år.
 export function retirementRiskBadgeKey(rider, seasonYear) {
   return isRetirementRisk(rider?.birthdate, seasonYear) ? "retireRisk" : null;
+}
+
+// #3097: kontrakt-udløb-ved-næste-transition — SAMME regel som backend's
+// squadRiskGuard.isContractExpiringAtTransition (contract_end_season <= den
+// AKTIVE sæson, "<=" ikke "=", selv-helende for en oversprunget sæson). Dette
+// er den ene af de to mekanikker squad-risk-spærren (#2748) tæller som
+// "i risiko" — den anden er isRetirementRisk ovenfor. activeSeasonNumber er
+// sæson-NUMMERET (ikke referenceåret ageForSeason bruger); se
+// seasonNumberFromReferenceYear for at udlede det af useActiveSeasonYear's værdi.
+export function isContractExpiringAtTransition(contractEndSeason, activeSeasonNumber) {
+  if (contractEndSeason == null || !Number.isFinite(activeSeasonNumber)) return false;
+  return Number(contractEndSeason) <= activeSeasonNumber;
+}
+
+// Badge-nøgle til RiderBadges, samme mønster som retirementRiskBadgeKey.
+// Returnerer null ved manglende kontrakt (fri agent/akademi) eller manglende
+// sæson-nummer.
+export function contractExpiringBadgeKey(rider, activeSeasonNumber) {
+  return isContractExpiringAtTransition(rider?.contract_end_season, activeSeasonNumber) ? "contractExpiring" : null;
 }

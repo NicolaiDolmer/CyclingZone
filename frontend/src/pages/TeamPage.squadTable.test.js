@@ -149,6 +149,30 @@ test("mobil-folden er nation + alder — samme felter som /riders allerede folde
   );
 });
 
+// #3097: squad-risiko-spærren (#2748) blokerer salg hvis kontraktudløb + pensions-
+// risiko ved næste sæsonskifte tæller holdet under 8 sikre ryttere, men truppen
+// viste ingen badge for hverken mekanisme — kun auktionskort/rytterprofil gjorde.
+// Genbruger de EKSISTERENDE badge-helpers (retirementRiskBadgeKey allerede brugt
+// der) + den nye contractExpiringBadgeKey, i stedet for at opfinde nyt badge-design.
+test("badge-kolonnen viser retireRisk + contractExpiring — de to mekanismer squad-risk-spærren tæller (#3097)", () => {
+  assert.match(src, /retirementRiskBadgeKey\(r, seasonYear\)/, "retireRisk-badget skal genbruges her, ikke kun på auktionskort/rytterprofil");
+  assert.match(src, /contractExpiringBadgeKey\(r, activeSeasonNumber\)/, "kontrakt-udløb-badget skal vises, så manageren kan se HVEM der tæller mod de sikre 8");
+  assert.match(src, /!r\.is_academy && retirementRiskBadgeKey/, "akademiryttere tæller ikke i guarden (is_academy=false-filter) — badget må ikke vises for dem");
+  assert.match(src, /!r\.is_academy && contractExpiringBadgeKey/, "samme is_academy-udelukkelse for kontrakt-udløb-badget");
+});
+
+test("activeSeasonNumber udledes af seasonYear uden en ekstra fetch (#3097)", () => {
+  assert.match(src, /seasonNumberFromReferenceYear\(seasonYear\)/, "sæson-nummeret til kontrakt-sammenligning skal udledes af det allerede-hentede referenceår");
+});
+
+test("rider.json har de nye badge-nøgler i BÅDE en og da (#3097)", () => {
+  for (const lng of ["en", "da"]) {
+    const riderJson = JSON.parse(readFileSync(join(localesDir, lng, "rider.json"), "utf8"));
+    assert.equal(typeof riderJson?.badges?.contractExpiring, "string", `${lng}: badges.contractExpiring mangler`);
+    assert.equal(typeof riderJson?.badges?.label?.contractExpiring, "string", `${lng}: badges.label.contractExpiring mangler`);
+  }
+});
+
 test("team.json har de nye nøgler i BÅDE en og da", () => {
   for (const lng of ["en", "da"]) {
     const teamJson = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"));

@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.75",
+    "date": "2026-07-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Repeated contract extensions can no longer push a rider's contract years into the future",
+          "body": "Extending a rider's contract from their profile added a season and renegotiated the salary — but nothing stopped you from doing it again and again in the same sitting, locking in a low salary many seasons ahead. Extensions are now capped: a contract's expiry season can never be pushed more than 3 seasons past the current one. Trying to extend past that cap is now blocked with a clear message instead of silently succeeding."
+        },
+        "da": {
+          "title": "Gentagne kontraktforlængelser kan ikke længere skubbe en rytters kontrakt årevis frem",
+          "body": "At forlænge en rytters kontrakt fra profilsiden lagde en sæson til og genforhandlede lønnen — men intet stoppede dig i at gøre det igen og igen i samme session, så en lav løn blev låst mange sæsoner frem. Forlængelser har nu et loft: en kontrakts udløbssæson kan aldrig rykkes mere end 3 sæsoner forbi den nuværende. Forsøger du at forlænge forbi loftet, blokeres det nu med en tydelig besked i stedet for stille at lykkes."
+        },
+        "refs": [3143]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Your squad page now shows which riders count against the 8-rider sell-block",
+          "body": "Selling, releasing or auctioning your own rider is blocked if it would leave your team below the 8 riders needed to race once expiring contracts and retirement risk at the next season change are counted — but the squad page gave no clue which riders counted, so a blocked sale looked arbitrary. Your squad list now shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts, and a blocked sale names the specific riders in the error message instead of just a number. The rule itself is unchanged — this only makes it visible before you try to sell."
+        },
+        "da": {
+          "title": "Din holdside viser nu hvilke ryttere der tæller mod 8-rytter-salgsspærren",
+          "body": "Salg, frigivelse eller auktion af din egen rytter blokeres hvis det ville efterlade dit hold under de 8 ryttere der kræves for at stille til start, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med — men holdsiden gav intet fingerpeg om hvilke ryttere der talte, så et blokeret salg virkede vilkårligt. Din rytterliste viser nu en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller, og et blokeret salg navngiver de konkrete ryttere i fejlbeskeden i stedet for bare et tal. Selve reglen er uændret — dette gør den blot synlig, før du forsøger at sælge."
+        },
+        "refs": [3097]
+      }
+    ]
+  },
+  {
     "version": "7.74",
     "date": "2026-07-29",
     "label": "Beta",

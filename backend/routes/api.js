@@ -126,6 +126,7 @@ import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
   computeContractExtension,
+  maxAllowedContractEndSeason,
 } from "../lib/contractSeed.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
@@ -289,7 +290,7 @@ import {
   getSquadRiskViolation,
   getTeamMarketState,
 } from "../lib/marketUtils.js";
-import { fetchAtRiskCount } from "../lib/squadRiskGuard.js";
+import { buildAtRiskErrorParams, fetchAtRiskRiders } from "../lib/squadRiskGuard.js";
 import {
   applyRaceResults,
   buildRacePointsLookup,
@@ -1182,6 +1183,28 @@ async function getActiveSeasonNumber() {
   return season?.number ?? 1;
 }
 
+// #3143: hårdt loft på gentagne kontraktforlængelser. Uden dette kunne en
+// manager spamme extend-contract og låse lav løn helt til sæson 11+ (rapporteret
+// i Discord for både akademi- og senior-kontrakter). Loftet er
+// currentSeason + MAX_EXTENSION_SEASONS_AHEAD — IKKE rytterens eksisterende
+// contract_end_season — så gentagne kald aldrig flytter horisonten med sig.
+// Delt mellem GET /extend-quote (preview) og POST /extend-contract
+// (håndhævelse) så de aldrig kan komme ud af sync. Afviser eksplicit med en
+// dedikeret fejlkode i stedet for at clampe stille — mest gennemsigtigt for
+// spilleren. Re-pricing ved forlængelse er bevidst UDENFOR scope her (#3143).
+function contractExtensionCapError(next, currentSeason) {
+  const maxSeason = maxAllowedContractEndSeason(currentSeason);
+  if (next.contract_end_season <= maxSeason) return null;
+  return {
+    status: 409,
+    body: {
+      error: "This rider's contract can't be extended any further right now",
+      errorCode: "contract_extension_cap_reached",
+      errorParams: { maxSeason },
+    },
+  };
+}
+
 // GET /api/riders/:id/release-quote — preview af buyout-gebyret før bekræftelse (#1719).
 router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -1206,6 +1229,8 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   const { rider } = result;
   const currentSeason = await getActiveSeasonNumber();
   const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+  const capError = contractExtensionCapError(next, currentSeason);
+  if (capError) return res.status(capError.status).json(capError.body);
   res.json({
     currentSalary: rider.salary ?? 0,
     newSalary: next.salary,
@@ -1246,15 +1271,19 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   // tælles med. Rytteren der frigives her ekskluderes fra risiko-tællingen (han er
   // allerede talt som "outgoing").
   const releaseTeamState = await getTeamMarketState(supabase, req.team.id);
-  releaseTeamState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, currentSeason, {
+  // #3097: hent de FAKTISKE at-risk-rytter-rækker (ikke kun et tal), så en
+  // eventuel blokerings-fejl kan navngive dem — samme fetch driver både
+  // tælling og fejlbesked, så de aldrig kan divergere.
+  const releaseAtRiskRiders = await fetchAtRiskRiders(supabase, req.team.id, currentSeason, {
     excludeRiderIds: [rider.id],
   });
+  releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
   const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
       errorCode: "cannot_release_squad_risk",
-      errorParams: { minRiders: releaseRiskViolation.minRiders },
+      errorParams: buildAtRiskErrorParams(releaseRiskViolation, releaseAtRiskRiders),
     });
   }
 
@@ -1324,6 +1353,11 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
 
   const currentSeason = await getActiveSeasonNumber();
   const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
+
+  // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se
+  // contractExtensionCapError ovenfor for begrundelsen).
+  const capError = contractExtensionCapError(next, currentSeason);
+  if (capError) return res.status(capError.status).json(capError.body);
 
   // #2237 · Lag 2 (salary cap) håndhæves nu også her — den eneste manager-initierede
   // løn-forøgelses-vej udenom transfer/auktion (som allerede er dækket af assertSigningAllowed).
@@ -4627,15 +4661,19 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   if (isOwnRider) {
     const auctionSeasonNumber = await getActiveSeasonNumber();
     const auctionSellerState = await getTeamMarketState(supabase, req.team.id);
-    auctionSellerState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, auctionSeasonNumber, {
+    // #3097: hent de FAKTISKE at-risk-rytter-rækker (ikke kun et tal), så en
+    // eventuel blokerings-fejl kan navngive dem — samme fetch driver både
+    // tælling og fejlbesked, så de aldrig kan divergere.
+    const auctionAtRiskRiders = await fetchAtRiskRiders(supabase, req.team.id, auctionSeasonNumber, {
       excludeRiderIds: [rider.id],
     });
+    auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
     const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
     if (auctionRiskViolation) {
       return res.status(409).json({
         error: `You can't drop below ${auctionRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
         errorCode: "cannot_auction_squad_risk",
-        errorParams: { minRiders: auctionRiskViolation.minRiders },
+        errorParams: buildAtRiskErrorParams(auctionRiskViolation, auctionAtRiskRiders),
       });
     }
   }
