@@ -2,6 +2,8 @@
 
 > Hver sag: situation i klar tekst + valgmuligheder + min anbefaling (fed). Svar pr. nummer, fx `2884: C · 3120: A · 2699: vent`. Grundlag: klassifikationen af alle 474 + dagens verifikation. Refs #3154.
 
+> **✅ De 15 "haster nu" er BESVARET af ejeren 30/7 aften:** #419=A · #1903=B (lukket — første ægte Founder!) · #2042=analytics-svar leveret (96 % var egne spillere; ~70 kolde sessioner/dag er reelle) · #2076=A (ejer-klik udestår) · #2622=egen session · #2650=flad nat-restitution afvist, design-samtale · #2675=egen session · #2699=udskudt · #2799=ejer bad om problemforklaring · #2813=best practice hurtigst muligt (plan på issuet) · #2853=samtale inden for få dage · #2889=3/8 · #2884=C · #2892=A (ejer-klik udestår — API utilgængeligt) · #3120=C (dry-run-tal → endeligt ja → modregning). Alle dokumenteret på issues. **De 60 resterende (denne måned + kan vente) er stadig ubesvarede.**
+
 ## 🔴 HASTER NU — blokerer aktivt arbejde eller spillere (15)
 
 ### [#419](https://github.com/NicolaiDolmer/CyclingZone/issues/419) — Discord: skal du invitere Carl-bot selv, eller er indbygget auto-mod nok?
