@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.75",
+    "date": "2026-07-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Repeated contract extensions can no longer push a rider's contract years into the future",
+          "body": "Extending a rider's contract from their profile added a season and renegotiated the salary — but nothing stopped you from doing it again and again in the same sitting, locking in a low salary many seasons ahead. Extensions are now capped: a contract's expiry season can never be pushed more than 3 seasons past the current one. Trying to extend past that cap is now blocked with a clear message instead of silently succeeding."
+        },
+        "da": {
+          "title": "Gentagne kontraktforlængelser kan ikke længere skubbe en rytters kontrakt årevis frem",
+          "body": "At forlænge en rytters kontrakt fra profilsiden lagde en sæson til og genforhandlede lønnen — men intet stoppede dig i at gøre det igen og igen i samme session, så en lav løn blev låst mange sæsoner frem. Forlængelser har nu et loft: en kontrakts udløbssæson kan aldrig rykkes mere end 3 sæsoner forbi den nuværende. Forsøger du at forlænge forbi loftet, blokeres det nu med en tydelig besked i stedet for stille at lykkes."
+        },
+        "refs": [3143]
+      }
+    ]
+  },
+  {
     "version": "7.74",
     "date": "2026-07-29",
     "label": "Beta",

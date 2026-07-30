@@ -59,6 +59,7 @@
     "cannot_afford_release": "You can't afford the buyout fee ({fee} CZ$). Your balance is {balance} CZ$",
     "cannot_release_squad_risk": "You can't drop below {minRiders} riders once contract expiry and retirement risk at the next season change are counted",
     "checkout_paused": "Purchases are temporarily paused while we finish the terms of sale",
+    "contract_extension_cap_reached": "This contract can't be extended any further: the end season can't go beyond season {maxSeason}",
     "not_owned": "You don't own this rider",
     "not_academy": "This rider isn't in your academy",
     "already_academy": "This rider is already in your academy",

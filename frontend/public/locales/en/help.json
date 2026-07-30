@@ -644,6 +644,10 @@
         "title": "Contracts follow the rider",
         "text": "When a rider is traded, their contract transfers unchanged to the new team. The buyer inherits the existing salary and the remaining contract length. The contract is never reset or renegotiated on trade."
       },
+      "extendContract": {
+        "title": "Extending a contract",
+        "text": "Extending a rider's contract from their profile page adds one season to the contract length and moves the expiry season one season further out, at a renegotiated salary based on the rider's current production. You can extend as often as you like, but the expiry season can never be pushed beyond 3 seasons past the current one: once a rider's contract already reaches that far out, further extensions are blocked until the current season advances."
+      },
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."

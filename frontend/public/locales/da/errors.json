@@ -57,6 +57,7 @@
     "rider_retired": "Rytteren er pensioneret",
     "rider_state_changed": "Rytteren er ikke længere på dit hold",
     "cannot_afford_release": "Du har ikke råd til buyout-gebyret ({fee} CZ$). Din saldo er {balance} CZ$",
+    "contract_extension_cap_reached": "Denne kontrakt kan ikke forlænges yderligere: udløbssæsonen kan ikke gå forbi sæson {maxSeason}",
     "cannot_release_squad_risk": "Du må ikke komme under {minRiders} ryttere, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med",
     "checkout_paused": "Køb er midlertidigt sat på pause, mens vi færdiggør handelsbetingelserne",
     "not_owned": "Du ejer ikke denne rytter",
