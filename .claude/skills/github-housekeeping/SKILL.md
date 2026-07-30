@@ -22,7 +22,7 @@ Grundig audit af GitHub-issues. **PRIMÆRT MÅL: LUK verificerede issues.** Seku
 ## Trin 1 — Data (parallelt, ét batch)
 
 ```bash
-gh issue list --state open --limit 500 --json number,title,labels,updatedAt > "$TEMP/audit-open-all.json"
+gh issue list --state open --limit 1000 --json number,title,labels,updatedAt > "$TEMP/audit-open-all.json"
 gh issue list --state open --label "claude:done" --limit 100 --json number,title,labels,comments,updatedAt > "$TEMP/audit-done.json"
 gh issue list --state open --label "claude:blocked" --limit 50 --json number,title,labels,comments > "$TEMP/audit-blocked-issues.json"
 gh issue list --state open --label "needs-user-action" --limit 50 --json number,title,updatedAt > "$TEMP/audit-nua.json"
@@ -33,7 +33,7 @@ gh pr list --state open --limit 30 --json number,title,isDraft,body > "$TEMP/aud
 
 Filnavne matcher script-forventninger direkte (lektion 2026-05-26: 3 `cp`-kald per audit eliminerede). Scripts i `.claude/skills/github-housekeeping/scripts/*.py` læser fra `$TEMP/audit-open-all.json`, `audit-done.json`, `audit-pr-merged.json`, `audit-blocked-issues.json`.
 
-Limits: **500 åbne** (lektion 2026-06-03: repo ramte 300-loftet med 313 åbne under TdF-launch-sprint → open-all cross-ref missede issues; 500 giver margin). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
+Limits: **1000 åbne** (lektion 2026-07-30: repo ramte 500-loftet med 529 åbne → dublet-TSV missede 29 issues indtil re-fetch; samme fejlklasse som 2026-06-03 hvor 300-loftet blev ramt med 313. Loftet skal ligge KLART over aktuel backlog — tjek `gh api repos/.../ --jq .open_issues_count` mod limit ved Trin 1 hvis i tvivl). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
 
 ## Trin 2 — Cross-reference (systematisk)
 
@@ -146,6 +146,8 @@ _(Tidligere G "State-brud" fjernet 2026-05-20-pass2 — per workflow 2026-05-18 
 **Per `epic:*`-label:** tæl åbne sub-issues. Hvis 0 → "EPIC-READY-TO-CLOSE". Hvis epic-body checklist er ude af sync → foreslå opdatering.
 
 **Duplikat-detection:** grep titler for substrings ≥4 ord; tjek "lignende #N" / "forskellig fra #N"-referencer for begge-åbne tilfælde.
+
+**Primary-regel + main-loop-dedup ved parallel dublet-detektion (lektion 2026-07-30):** Når flere interval-agenter søger dubletter parallelt, kan to agenter finde samme par fra hver sin retning og foreslå MODSATTE primaries (30/7: én agent "behold #2274, luk #3114", en anden "behold #3114, luk #2274+#2170"; samme par #3104↔#2443 rapporteret 3x af 3 agenter). Derfor: (a) dublet-prompten SKAL fastsætte primary-reglen eksplicit — **primary = issuet med den nyeste aktive sporing/evidens** (typisk det nyeste, ejer-godkendte eller det NOW.md/epics refererer); (b) main-loopet SKAL samle alle klynger, deduplikere par på tværs af agenter og afgøre konflikter FØR eksekvering — eksekvér aldrig rå agent-klynger direkte.
 
 **Supersede-close kræver kode-verify (lektion 2026-06-11):** Når et dublet-/supersede-forslag begrunder close med "arbejdet er allerede gjort andetsteds/i #N", skal påstanden kode-verificeres (grep/Read) FØR close — samme disciplin som K-kandidater. 2026-06-11 påstod en dublet-agent at #917's DA-leak allerede var nøglificeret via #1084-pakken; grep i boardEvaluation.js:389-499 viste at de hardcodede DA-headlines består. Uden manuel verify var et ægte åbent issue blevet lukket. Rene "samme arbejde beskrevet to gange"-dubletter (begge u-leverede) kræver kun body-læsning.
 
@@ -267,6 +269,7 @@ Mellem-tier mellem daglig routine (rører ikke puklen — alt scorer T3) og fuld
 
 1. Trin 1-datafetch → `score_done.py`/`crossref.py`/`labelcheck.py` (print-mode).
 2. **Spot-PR-verify i stedet for agent-fanout:** batch `gh pr view N --json state,mergedAt` på alle usikre citerede PR'er (typisk 5-10 stk., ét Bash-kald). Merged PR + prod-evidens i kommentar = close-eligible; "epic forbliver åben"/multi-slice = partial-guard.
+2b. **Luk-intent-grep (fast trin — leverede closes i 2 kørsler i træk: 26/7-eve 1 kandidat, 30/7 2 closes #88+#2742):** `gh search issues --repo ... --state open --match comments "<frase>"` for hver af de 4 fraser: `kan lukkes når` · `lukkes når` · `lukkes efter` · `luk issuet ved`. For hvert hit: læs betingelsen i kommentaren og tjek om X i mellemtiden er sket (cutover gennemført, setting sat, data genereret) → opfyldt betingelse = udfør + luk med evidens. FP-filter: kommentarer med 👍/👎-poll-format (Claudes egne A/B-spørgsmål) matcher fraserne uden at være luk-betingelser — skip dem. Kør fraserne som separate gh-kald (for-loop over gh search trigger permission-classifier).
 3. Gruppér: (A) backend/maskin-verificeret → luk, (B) user-feature prod-live m. patch note → luk (ejer accepterede bulk-close af B 19/7 når merged+deployet+patch note), (C) done→todo ved regression/nyt scope (tjek nyeste Discord-evidens i score-output!), (D) behold done (ægte ejer-verify/beslutning).
 4. Fuld liste m. evidens → kommentar på ledger #627 → ejer-godkendelse via AskUserQuestion (lister SKAL være synlige) → batch-close med link til #627-kommentaren (én generisk kommentar er nok — evidensen ligger i listen).
 5. `--mark-legit` på verificerede K-kandidater + audit-artifact.
@@ -332,6 +335,8 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Routine auto-lukker IKKE dette repos done-pukkel (lektion 2026-06-18):** En fokuseret audit (fx 2026-06-13 launch-blocker) udskyder de ikke-scope done-issues til "daglig routine #627 dækker" — men routinen auto-lukker kun Tier 1+2, og dette repos AI-author/WEAK-comment-mønster sender stort set ALT til Tier 3. Resultat: ikke-scope done-issues hober sig op (21→29 done på 5 dage fra 13/6→18/6), routinen rører dem ikke, og **kun en manuel fuld done-sweep lukker dem reelt**. Antag derfor ALDRIG at routinen dækker akkumuleret done — kør en periodisk fuld done-sweep (alle `claude:done`, ikke kun dagens slice) uanset. `score_done.py`s nye `keep_done_gated`/`GATED-KEEP`-flag adskiller de bevidst beholdte launch-gatede fra de close-eligible, så en fuld sweep er hurtig at triagere.
 
 ## Changelog
+
+- **2026-07-30 — #3154-sprint session 1 (ejer-godkendt retro).** 19. kørsel: 529→474 åbne (55 closes: 24 done-sweep + 3 K + 26 dubletter + 2 luk-betingelser opfyldt; done-pukkel 31→6, kun ægte ejer-gates tilbage), 2 move-to-done, #2905-labelkonflikt ryddet, K-cache +16. 20-agent workflow (done/K/dublet) + main-loop-dimensioner. Ejer bad undervejs om fuld klar-tekst-gennemgang af alle 55 closes FØR videre valg — bekræfter Trin 6-lektionen: lister skal være synlige og i klart sprog ("Forklar issues i klar tekst"-memoryen gælder også audit-resultater, ikke kun spørgsmål). 3 accepterede edits: (1) Trin 1 open-limit 500→1000 (loftet ramt igen, 529 åbne — 29 issues usynlige for dublet-TSV indtil re-fetch); (2) luk-intent-grep formaliseret som fast trin 2b i "Billig ugentlig sweep" (closes i 2 kørsler i træk: #88+#2742); (3) dublet-primary-regel + main-loop-dedup (to agenter foreslog modsatte primaries for #2274↔#3114; #3104↔#2443 rapporteret 3x). Næste: fuld-backlog-klassifikation (ejer-valgt over beslutnings-ark) → derefter needs-decision-ark.
 
 - **2026-07-26 — Cutover-dags fuld-backlog-audit.** 18. kørsel (39-agent workflow, sonnet): **51 closes** (#627-evidens) + 9 todo→done + 4 done→todo + 25 K-cache-markeret; done-pukkel 56→21, åbne 517→466; fuld sæson-bucket-klassifikation af alle 517 → `docs/audits/backlog-priorities-2026-07-26.md`. Kun 4 dublet-par tilbage (tidligere sweeps har tømt puljen). 1 accepteret edit: **done-verify ved 0 kommentarer skal søge PR-titler før DONE-TO-TODO** (punkt 1b i fuld-backlog-varianten) — 3 af 11 flips var falske. Ejer-mandat noteret: backlog-nedbringelse skal ske bæredygtigt (done-pipeline + allerede-løst-verifikation + udførelse), IKKE via kill-lister — "Hvis det er vigtigt, så er det jo vigtigt." Bonus-fund: #2700-varslets --live afslørede DB-afvist notifikationstype (3. gentagelse af kode-uden-migration; paritetsguard nu CI-gated via PR #3027; postmortem i learnings 2026-07-26).
 
