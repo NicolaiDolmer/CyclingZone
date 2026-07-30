@@ -31,7 +31,7 @@
 
 > **✅ 29/7 — PR-kø ryddet:** #2992 · #3075 · #3029 · #3064 alle merged + live. Postmortem: [`2026-07-29-pipe-exit-code...`](../.claude/learnings/2026-07-29-pipe-exit-code-gav-falsk-groent-guard-resultat.md).
 
-> **🤖 Working agent:** Ingen aktiv session (30/7-maratonen lukket: ugesweep + 74 closes + klassifikation + beslutnings-ark + 15 ejer-svar eksekveret; kun docs/issues, ingen kodeændringer). **Ejer forventer næste session 3/8** — start med bølge 1 (exploits) + #2889-svaret. Reddede branches: `feat/2910-fatigue-reset-claim-guard` (issue lukket 30/7 — verificér supersedet af PR #2985, ellers slet) + `fix/2861-postgrest-in-cap-sweep` (overlapper #3031/#3040, rebase-tjek).
+> **🤖 Working agent:** Claude Code (Fable) — session 30/7 aften: Bølge 1 (exploits #2840/#3097/#2257/#3143 + #2813) (30/7-maratonen lukket: ugesweep + 74 closes + klassifikation + beslutnings-ark + 15 ejer-svar eksekveret; kun docs/issues, ingen kodeændringer). **Ejer forventer næste session 3/8** — start med bølge 1 (exploits) + #2889-svaret. Reddede branches: `feat/2910-fatigue-reset-claim-guard` (issue lukket 30/7 — verificér supersedet af PR #2985, ellers slet) + `fix/2861-postgrest-in-cap-sweep` (overlapper #3031/#3040, rebase-tjek).
 
 ## Standing context (forever-relaunch)
 
