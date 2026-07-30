@@ -290,7 +290,7 @@ import {
   getSquadRiskViolation,
   getTeamMarketState,
 } from "../lib/marketUtils.js";
-import { fetchAtRiskCount } from "../lib/squadRiskGuard.js";
+import { buildAtRiskErrorParams, fetchAtRiskRiders } from "../lib/squadRiskGuard.js";
 import {
   applyRaceResults,
   buildRacePointsLookup,
@@ -1271,15 +1271,19 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   // tælles med. Rytteren der frigives her ekskluderes fra risiko-tællingen (han er
   // allerede talt som "outgoing").
   const releaseTeamState = await getTeamMarketState(supabase, req.team.id);
-  releaseTeamState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, currentSeason, {
+  // #3097: hent de FAKTISKE at-risk-rytter-rækker (ikke kun et tal), så en
+  // eventuel blokerings-fejl kan navngive dem — samme fetch driver både
+  // tælling og fejlbesked, så de aldrig kan divergere.
+  const releaseAtRiskRiders = await fetchAtRiskRiders(supabase, req.team.id, currentSeason, {
     excludeRiderIds: [rider.id],
   });
+  releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
   const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
       errorCode: "cannot_release_squad_risk",
-      errorParams: { minRiders: releaseRiskViolation.minRiders },
+      errorParams: buildAtRiskErrorParams(releaseRiskViolation, releaseAtRiskRiders),
     });
   }
 
@@ -4657,15 +4661,19 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   if (isOwnRider) {
     const auctionSeasonNumber = await getActiveSeasonNumber();
     const auctionSellerState = await getTeamMarketState(supabase, req.team.id);
-    auctionSellerState.at_risk_count = await fetchAtRiskCount(supabase, req.team.id, auctionSeasonNumber, {
+    // #3097: hent de FAKTISKE at-risk-rytter-rækker (ikke kun et tal), så en
+    // eventuel blokerings-fejl kan navngive dem — samme fetch driver både
+    // tælling og fejlbesked, så de aldrig kan divergere.
+    const auctionAtRiskRiders = await fetchAtRiskRiders(supabase, req.team.id, auctionSeasonNumber, {
       excludeRiderIds: [rider.id],
     });
+    auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
     const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
     if (auctionRiskViolation) {
       return res.status(409).json({
         error: `You can't drop below ${auctionRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
         errorCode: "cannot_auction_squad_risk",
-        errorParams: { minRiders: auctionRiskViolation.minRiders },
+        errorParams: buildAtRiskErrorParams(auctionRiskViolation, auctionAtRiskRiders),
       });
     }
   }

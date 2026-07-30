@@ -12,6 +12,7 @@
     "injured": "Injured",
     "academy": "Academy rider (off the senior squad cap)",
     "retireRisk": "High retirement risk: riders typically retire between ages 36 and 40",
+    "contractExpiring": "Contract expires at the next season change — this rider becomes a free agent unless the contract is extended first",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -24,7 +25,8 @@
       "sold": "SOLD",
       "injured": "INJ",
       "academy": "ACAD",
-      "retireRisk": "35+"
+      "retireRisk": "35+",
+      "contractExpiring": "EXP"
     }
   },
   "page": {

@@ -45,6 +45,8 @@ const RAW_KEYS = new Set([
   "age",
   // #3143 · kontraktforlængelses-loftets sæson-tal er et sæson-nummer, ikke et beløb.
   "maxSeason",
+  // #3097 · squad-risk-fejlens at-risk-tæller — antal ryttere, ikke et beløb.
+  "atRiskCount",
 ]);
 
 /**

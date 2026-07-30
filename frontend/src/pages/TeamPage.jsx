@@ -10,7 +10,7 @@ import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge, isU23, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
 import { getCountryCode3 } from "../lib/countryUtils";
@@ -401,7 +401,7 @@ function OwnAuctionBadge({ auction }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, activeSeasonNumber }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -587,13 +587,26 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear }) 
     },
     // #1482: Status — alder + ind-/udgående som skanbare badges.
     // #1531: skade-badge når rytteren er skadet (injured_until i fremtiden).
+    // #3097: retireRisk + contractExpiring — SAMME to mekanikker squad-risk-
+    // spærren (#2748) tæller som "i risiko" ved et salg (backend/lib/
+    // squadRiskGuard.js's isRiderAtRisk), nu synlige HER hvor salg besluttes,
+    // ikke kun på auktionskort/rytterprofil. is_academy udelades — guarden
+    // tæller kun senior-ryttere (fetchTeamRiskRows filtrerer is_academy=false).
     {
       key: "badges",
       header: t("squad.headers.badges"),
       compact: true,
       render: (r) => (
         <div className="flex flex-wrap items-center gap-1">
-          <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r, seasonYear), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+          <RiderBadges badges={[
+            isRiderInjured(r.injured_until) && "injured",
+            r.is_academy && "academy",
+            ageBadgeKey(r, seasonYear),
+            !r.is_academy && retirementRiskBadgeKey(r, seasonYear),
+            !r.is_academy && contractExpiringBadgeKey(r, activeSeasonNumber),
+            r._isIncoming && "incoming",
+            r._isOutgoing && "outgoing",
+          ]} />
           {/* #2183: egen aktiv auktion — badge + højeste bud + tid tilbage, link til auktionen. */}
           {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
         </div>
@@ -767,6 +780,11 @@ export function TeamPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
+  // #3097: kontrakt-udløb sammenlignes mod sæson-NUMMERET (contract_end_season
+  // er et sæson-nummer, ikke et år) — udledt af seasonYear i stedet for en
+  // ekstra fetch (seasonNumberFromReferenceYear er seasonReferenceYear's exakte
+  // inverse, se riderAge.js).
+  const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [activeTab, setActiveTab] = useState("squad");
@@ -1010,7 +1028,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} seasonYear={seasonYear} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />

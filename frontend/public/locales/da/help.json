@@ -1134,7 +1134,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "Hvad sker der med udløbende kontrakter og ældre ryttere ved sæsonskiftet?",
-      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, med både kontraktudløb og pensionsrisiko regnet med."
+      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, med både kontraktudløb og pensionsrisiko regnet med. Din holdside viser en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller med i den risiko, og et blokeret salg navngiver de konkrete ryttere, så du kan se præcis hvorfor."
     },
     "staffReleaseFaq": {
       "q": "Hvordan opsiger jeg staff, og hvad koster det?",

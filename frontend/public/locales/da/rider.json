@@ -12,6 +12,7 @@
     "injured": "Skadet",
     "academy": "Akademirytter (uden for senior-cap'en)",
     "retireRisk": "Høj pensionsrisiko: ryttere stopper typisk mellem 36 og 40 år",
+    "contractExpiring": "Kontrakten udløber ved næste sæsonskifte — rytteren bliver fri agent, medmindre kontrakten forlænges først",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -24,7 +25,8 @@
       "sold": "SOLGT",
       "injured": "SKD",
       "academy": "AKAD",
-      "retireRisk": "35+"
+      "retireRisk": "35+",
+      "contractExpiring": "UDLØB"
     }
   },
   "page": {
