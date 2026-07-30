@@ -37,13 +37,26 @@ function makeMock({ auctions = [], riders = [], intake = [], auctionsError = nul
         return b;
       }
       if (table === "riders") {
+        // #2257: invariant D's stranded-query bruger eq/is-filtre (ingen .in),
+        // mens A/B's ownership-opslag bruger .in("id", ...) — mocken understøtter
+        // begge, samme filter-semantik som auctions-mocken ovenfor.
         let inIds = null;
+        const filters = [];
         const b = {
           select() { return b; },
           in(_col, ids) { inIds = ids; return b; },
+          eq(col, val) { filters.push(["eq", col, val]); return b; },
+          is(col, val) { filters.push(["is", col, val]); return b; },
           order() { return b; },
           range(from, to) {
             let out = riders.filter((r) => (inIds ? inIds.includes(r.id) : true));
+            out = out.filter((r) =>
+              filters.every(([op, c, v]) => {
+                if (op === "eq") return (r[c] ?? false) === v;
+                if (op === "is") return (r[c] ?? null) === v;
+                return true;
+              })
+            );
             out = out.slice(from, to + 1);
             return Promise.resolve({ data: out, error: null });
           },
@@ -88,7 +101,7 @@ test("#2647 clean fixture — ingen brud, ingen capture, alerted=false", async (
   });
   assert.equal(calls.length, 0);
   assert.equal(result.alerted, false);
-  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0 });
+  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0 });
   assert.equal(result.checked, 2);
 });
 
@@ -254,4 +267,45 @@ test("#2647 kræver supabase-klient", async () => {
     () => runOwnershipInvariantWatch({ supabase: null, captureExceptionFn: () => {} }),
     /Supabase client required/
   );
+});
+
+// ─── #2257 · invariant D: strandet akademi-fri-agent ─────────────────────────
+
+test("#2257 strandet akademi-fri-agent (is_academy, alt tilhørsforhold NULL) → capture med fast fingerprint", async () => {
+  const riders = [
+    // Strandet: is_academy uden team/ai-team/pending — skal fanges.
+    { id: "r-stranded", firstname: "Blake", lastname: "Reid", is_academy: true, is_retired: false, team_id: null, ai_team_id: null, pending_team_id: null },
+    // Frit AI-akademi-prospekt (ai_team_id sat) — LEGITIM tilstand, må ikke flagges.
+    { id: "r-ai-prospect", is_academy: true, is_retired: false, team_id: null, ai_team_id: "ai-1", pending_team_id: null },
+    // Almindelig akademirytter på menneskehold — legitim.
+    { id: "r-academy-owned", is_academy: true, is_retired: false, team_id: "team-A", ai_team_id: null, pending_team_id: null },
+    // Pensioneret strandet — ignoreres (ude af spillet).
+    { id: "r-retired", is_academy: true, is_retired: true, team_id: null, ai_team_id: null, pending_team_id: null },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+  assert.equal(result.findings.strandedAcademy, 1, "kun den reelt strandede rytter tælles");
+  assert.equal(result.alerted, true);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].ctx.fingerprint, ["stranded-academy-free-agent"]);
+  assert.equal(calls[0].ctx.extra.count, 1);
+  assert.equal(calls[0].ctx.extra.sample[0].id, "r-stranded");
+});
+
+test("#2257 ren base (ingen strandede) → strandedAcademy=0, ingen capture", async () => {
+  const riders = [
+    { id: "r-ai-prospect", is_academy: true, is_retired: false, team_id: null, ai_team_id: "ai-1", pending_team_id: null },
+    { id: "r-free-senior", is_academy: false, is_retired: false, team_id: null, ai_team_id: null, pending_team_id: null },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+  assert.equal(result.findings.strandedAcademy, 0);
+  assert.equal(calls.length, 0);
+  assert.equal(result.alerted, false);
 });
