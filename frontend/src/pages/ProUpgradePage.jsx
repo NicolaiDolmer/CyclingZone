@@ -25,6 +25,11 @@ const PLANS = [
   { key: "semiannual", priceKey: "semiannualPrice", noteKey: "semiannualNote" },
 ];
 
+// #2813: køb er pauset indtil handelsbetingelser + accept-flow er live.
+// Backend afviser også (503 checkout_paused i billingCheckout.js) — dette flag
+// styrer kun visningen og skal holdes i sync med CHECKOUT_PAUSED dér.
+const CHECKOUT_PAUSED = true;
+
 export default function ProUpgradePage() {
   const { t } = useTranslation("pro");
   const [teamId, setTeamId] = useState(null);
@@ -148,6 +153,10 @@ export default function ProUpgradePage() {
             <Section>
               <SectionHeader title={t("choosePlan")} />
 
+              {CHECKOUT_PAUSED ? (
+                <p className="text-sm leading-relaxed text-cz-2">{t("checkoutPaused")}</p>
+              ) : (
+                <>
               {err && <p className="mb-4 text-sm text-cz-danger">{err}</p>}
 
               <div role="radiogroup" aria-label={t("choosePlan")} className="grid gap-3 sm:grid-cols-2">
@@ -184,6 +193,8 @@ export default function ProUpgradePage() {
               >
                 {t("cta")}
               </Button>
+                </>
+              )}
             </Section>
           )}
         </SectionStack>

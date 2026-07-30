@@ -8,6 +8,7 @@
   "semiannualPrice": "265 kr",
   "semiannualNote": "≈44 kr/mo · save ~10%",
   "cta": "Continue to payment",
+  "checkoutPaused": "Purchases are temporarily paused while we finish the terms of sale and self-service cancellation. Existing accounts and the free game are unaffected.",
   "error": "Could not start checkout. Please try again.",
   "alreadyPro": "You're Pro. Thank you for backing Cycling Zone.",
   "alreadyFounder": "You're a Founder. Thank you for backing Cycling Zone from the start.",

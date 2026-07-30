@@ -58,6 +58,7 @@
     "rider_state_changed": "Rytteren er ikke længere på dit hold",
     "cannot_afford_release": "Du har ikke råd til buyout-gebyret ({fee} CZ$). Din saldo er {balance} CZ$",
     "cannot_release_squad_risk": "Du må ikke komme under {minRiders} ryttere, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med",
+    "checkout_paused": "Køb er midlertidigt sat på pause, mens vi færdiggør handelsbetingelserne",
     "not_owned": "Du ejer ikke denne rytter",
     "not_academy": "Rytteren er ikke i dit akademi",
     "already_academy": "Rytteren er allerede i dit akademi",
