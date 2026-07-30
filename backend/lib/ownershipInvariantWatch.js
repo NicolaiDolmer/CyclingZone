@@ -6,7 +6,7 @@
 // detekterer hvis invarianten nogensinde brydes igen, uanset årsag — den
 // reparerer INTET, den alarmerer.
 //
-// TRE invarianter der aldrig må være sande:
+// FIRE invarianter der aldrig må være sande:
 //   A. En aktiv/extended UNGDOMSauktion hvor rytteren er hold-ejet
 //      (team_id NOT NULL eller pending_team_id NOT NULL).
 //   B. En aktiv/extended auktion UDEN sælger (seller_team_id IS NULL) der
@@ -17,6 +17,16 @@
 //   C. En stale 'offered' academy_intake-række for en allerede-ejet rytter
 //      (samme detektion som academyIntakeReconcile.js #1756 — genbrugt, ikke
 //      duplikeret).
+//   D. (#2257) En STRANDET akademi-fri-agent: is_academy=true men INTET
+//      tilhørsforhold (team_id, ai_team_id og pending_team_id alle NULL, ikke
+//      pensioneret). Klassen opstod ved fair-play-remediationen (#2221, 6/7:
+//      annulleret auktion + "managed in your academy"-afvisning på frie ryttere)
+//      og igen 20/7 (3 ryttere, datarepareret 30/7). Rytteren afvises af
+//      auktions-gaten (#1824, rider_is_academy) men er ikke i noget akademi —
+//      kan hverken hentes, auktioneres eller handles. Gaten må IKKE lempes
+//      (frie AI-akademi-prospekter med ai_team_id skal fortsat blokeres), så
+//      vagten fanger klassen i stedet, uanset hvilken frigivelses-sti der
+//      skabte den.
 //
 // READ-ONLY: ingen DB-writes, ingen ny tabel, ingen migration. Én Sentry-
 // capture pr. invariant pr. tick med FAST fingerprint (mirror ai-trim-
@@ -57,6 +67,21 @@ async function fetchRidersOwnership(supabase, riderIds) {
   return byId;
 }
 
+// Invariant D (#2257): strandede akademi-fri-agenter. Server-side filtreret —
+// populationen forventes tom, så queryen er billig hver dag.
+async function fetchStrandedAcademyFreeAgents(supabase) {
+  return fetchAllRows(() =>
+    supabase
+      .from("riders")
+      .select("id, firstname, lastname, contract_end_season, acquired_at")
+      .eq("is_academy", true)
+      .eq("is_retired", false)
+      .is("team_id", null)
+      .is("ai_team_id", null)
+      .is("pending_team_id", null)
+      .order("id"));
+}
+
 function isOwned(ridersById, riderId) {
   const rider = ridersById.get(riderId);
   if (!rider) return false;
@@ -84,7 +109,7 @@ function auctionFindingSample(auctions, ridersById) {
  * @param {Date}     [args.now]  DI-hook (uændret behov lige nu — alle tre tjek
  *                                er nutids-øjebliksbilleder, ikke tidsvinduer),
  *                                accepteret for konsistens med de øvrige guards.
- * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number}, alerted:boolean}>}
+ * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number}, alerted:boolean}>}
  */
 export async function runOwnershipInvariantWatch({
   supabase,
@@ -108,6 +133,7 @@ export async function runOwnershipInvariantWatch({
   const youthOwned = youthAuctions.filter((a) => isOwned(ridersById, a.rider_id));
   const sellerlessOwned = sellerlessAuctions.filter((a) => isOwned(ridersById, a.rider_id));
   const staleIntake = await findStaleOfferedIntake(supabase);
+  const strandedAcademy = await fetchStrandedAcademyFreeAgents(supabase);
 
   let alerted = false;
 
@@ -153,12 +179,27 @@ export async function runOwnershipInvariantWatch({
     );
   }
 
+  if (strandedAcademy.length > 0) {
+    alerted = true;
+    captureExceptionFn?.(
+      new Error(
+        `Ownership-invariant-brud: ${strandedAcademy.length} strandet akademi-fri-agent (is_academy uden tilhørsforhold) (#2257)`
+      ),
+      {
+        tags: { cron: "ownership-invariant-watch" },
+        fingerprint: ["stranded-academy-free-agent"],
+        extra: { count: strandedAcademy.length, sample: strandedAcademy.slice(0, SAMPLE_LIMIT) },
+      }
+    );
+  }
+
   return {
     checked: activeAuctions.length,
     findings: {
       youthOwned: youthOwned.length,
       sellerlessOwned: sellerlessOwned.length,
       staleIntake: staleIntake.length,
+      strandedAcademy: strandedAcademy.length,
     },
     alerted,
   };
