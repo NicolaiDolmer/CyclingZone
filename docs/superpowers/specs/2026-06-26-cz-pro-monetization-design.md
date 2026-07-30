@@ -111,7 +111,13 @@ Stack: React/Vite (Vercel) · Node/Express (Railway) · Supabase (Postgres, Auth
 **Alunta API (verificeret 2026-06-26, OpenAPI v1)**
 - Base `https://app.alunta.com/api/v1` · Auth `Authorization: Bearer <token>` (token i **Infisical**).
 - Plan "CZ Pro" m. renewal-intervaller (månedlig + 6-mdr) oprettes i Alunta.
-- Alunta håndterer moms/kvitteringer/bogføring automatisk.
+- ~~Alunta håndterer moms/kvitteringer/bogføring automatisk.~~ **Verificeret 30/7 (#2813, OpenAPI):**
+  Alunta er fakturerings-/abonnementsplatform oven på teamets egne betalingsudbydere —
+  **merchant of record er Dolmer Digital, ikke Alunta**. Alunta udsteder fakturaer/kvitteringer
+  automatisk, men plan-priser angives i øre **ekskl. moms** og `charge_vat` er default `true`
+  (moms lægges oveni efter kundens land). Ejer-tjek før checkout genåbnes: er Dolmer Digital
+  momsregistreret, og står CZ Pro-planerne med `charge_vat=false` + pris 4900/26500 øre, så
+  kunden faktisk betaler de markedsførte 49/265 kr.?
 
 **Korrekt flow (opgradering, IKKE signup)**
 1. Signup → intet betalings-relateret; brugeren er gratis.

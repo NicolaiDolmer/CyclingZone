@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCheckoutHandler, CHECKOUT_PAUSED } from "./billingCheckout.js";
+import { createCheckoutHandler, CHECKOUT_PAUSED, CURRENT_TERMS_VERSION } from "./billingCheckout.js";
 
 function fakeClient() {
   const calls = [];
@@ -11,26 +11,48 @@ function fakeClient() {
   };
 }
 
+// #2813: fake supabase der fanger accept-log-upserts på subscriptions.
+function fakeSupabase() {
+  const upserts = [];
+  return {
+    upserts,
+    from(table) {
+      return {
+        upsert(row, opts) {
+          upserts.push({ table, row, opts });
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  };
+}
+
+// Gyldig body inkl. #2813-accept — udgangspunkt for de fleste tests.
+function acceptedBody(extra = {}) {
+  return { interval: "monthly", terms_accepted: true, terms_version: CURRENT_TERMS_VERSION, ...extra };
+}
+
 function res() {
   return { code: 0, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
 }
 
-// #2813: default-tilstanden er pauset indtil handelsbetingelser + accept-flow er live.
+// #2813: default-tilstanden er pauset indtil go-live-kravene (support-e-mail +
+// moms-verifikation) er på plads — ejer flipper flaget.
 test("checkout: pauset som default → 503 checkout_paused, ingen Alunta-kald", async () => {
   assert.equal(CHECKOUT_PAUSED, true);
   const client = fakeClient();
   const handler = createCheckoutHandler({ client, planIds: { monthly: "plan-m" }, appBaseUrl: "https://cz" });
   const r = res();
-  await handler({ team: { id: "t" }, user: {}, body: { interval: "monthly" } }, r);
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
   assert.equal(r.code, 503);
   assert.equal(r.body.errorCode, "checkout_paused");
   assert.equal(client.calls.length, 0);
 });
 
-test("checkout: kendt interval → ensureCustomer + checkout_url", async () => {
+test("checkout: kendt interval + accept → ensureCustomer + checkout_url", async () => {
   const client = fakeClient();
   const handler = createCheckoutHandler({ client, paused: false, planIds: { monthly: "plan-m", semiannual: "plan-s" }, appBaseUrl: "https://cz" });
-  const req = { team: { id: "team-1", name: "L" }, user: { email: "a@b.dk" }, body: { interval: "monthly" } };
+  const req = { team: { id: "team-1", name: "L" }, user: { email: "a@b.dk" }, body: acceptedBody() };
   const r = res();
   await handler(req, r);
   assert.equal(r.code, 200);
@@ -43,7 +65,7 @@ test("checkout: semiannual interval → plan-s", async () => {
   const client = fakeClient();
   const handler = createCheckoutHandler({ client, paused: false, planIds: { monthly: "plan-m", semiannual: "plan-s" }, appBaseUrl: "https://cz" });
   const r = res();
-  await handler({ team: { id: "t" }, user: {}, body: { interval: "semiannual" } }, r);
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody({ interval: "semiannual" }) }, r);
   assert.equal(r.code, 200);
   assert.equal(client.calls[1][1].planId, "plan-s");
 });
@@ -51,21 +73,74 @@ test("checkout: semiannual interval → plan-s", async () => {
 test("checkout: ukendt interval → 400", async () => {
   const handler = createCheckoutHandler({ client: fakeClient(), paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
   const r = res();
-  await handler({ team: { id: "t" }, user: {}, body: { interval: "weekly" } }, r);
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody({ interval: "weekly" }) }, r);
   assert.equal(r.code, 400);
 });
 
 test("checkout: intet team → 400", async () => {
   const handler = createCheckoutHandler({ client: fakeClient(), paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
   const r = res();
-  await handler({ team: null, user: {}, body: { interval: "monthly" } }, r);
+  await handler({ team: null, user: {}, body: acceptedBody() }, r);
   assert.equal(r.code, 400);
+});
+
+// #2813: manglende accept afvises FØR noget Alunta-kald.
+test("checkout: terms_accepted mangler → 400 terms_not_accepted, ingen Alunta-kald", async () => {
+  const client = fakeClient();
+  const handler = createCheckoutHandler({ client, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: { interval: "monthly", terms_version: CURRENT_TERMS_VERSION } }, r);
+  assert.equal(r.code, 400);
+  assert.equal(r.body.errorCode, "terms_not_accepted");
+  assert.equal(client.calls.length, 0);
+});
+
+// #2813: forældet vilkårs-version afvises — klienten skal reloade og re-accepte.
+test("checkout: terms_version mismatch → 400 terms_version_mismatch", async () => {
+  const client = fakeClient();
+  const handler = createCheckoutHandler({ client, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody({ terms_version: "2020-01-01" }) }, r);
+  assert.equal(r.code, 400);
+  assert.equal(r.body.errorCode, "terms_version_mismatch");
+  assert.equal(client.calls.length, 0);
+});
+
+// #2813: accepten logges på subscriptions-rækken FØR checkout-sessionen oprettes.
+test("checkout: accept-log upsertes på subscriptions med version + tidspunkt", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase();
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "team-9", name: "T" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(supabase.upserts.length, 1);
+  const u = supabase.upserts[0];
+  assert.equal(u.table, "subscriptions");
+  assert.equal(u.row.team_id, "team-9");
+  assert.equal(u.row.terms_version, CURRENT_TERMS_VERSION);
+  assert.ok(u.row.terms_accepted_at);
+  assert.deepEqual(u.opts, { onConflict: "team_id" });
+});
+
+// #2813: kan accept-loggen ikke skrives, gennemføres checkout IKKE (beviset må
+// aldrig mangle for en gennemført betaling).
+test("checkout: fejlende accept-log → 502, ingen checkout-session", async () => {
+  const client = fakeClient();
+  const supabase = {
+    from: () => ({ upsert: () => Promise.resolve({ error: { message: "db nede" } }) }),
+  };
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 502);
+  assert.equal(client.calls.length, 0);
 });
 
 test("checkout: Alunta-fejl → 502", async () => {
   const client = { ensureCustomer: async () => { throw new Error("boom"); }, createCheckoutSession: async () => "x" };
   const handler = createCheckoutHandler({ client, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
   const r = res();
-  await handler({ team: { id: "t" }, user: {}, body: { interval: "monthly" } }, r);
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
   assert.equal(r.code, 502);
 });

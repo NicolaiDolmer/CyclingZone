@@ -250,6 +250,10 @@ export default function ResetPasswordPage({ session }) {
           <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
+          <span className="mx-2" aria-hidden="true">·</span>
+          <Link to={language === "en" ? "/terms" : "/handelsbetingelser"} className="underline hover:text-cz-1">
+            {t("auth:footer.terms")}
+          </Link>
         </p>
       </div>
     </div>

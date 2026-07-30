@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useSubscription } from "../lib/useSubscription";
+import { TERMS_VERSION } from "../lib/termsVersion.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
   PageHeader,
@@ -31,7 +33,7 @@ const PLANS = [
 const CHECKOUT_PAUSED = true;
 
 export default function ProUpgradePage() {
-  const { t } = useTranslation("pro");
+  const { t, i18n } = useTranslation("pro");
   const [teamId, setTeamId] = useState(null);
   // Full-page load-gate (#2849 bølge 4): siden havde INGEN loading-state før —
   // team-opslaget kunne fejle stille og efterlade en "ikke-Pro"-flig af siden
@@ -46,6 +48,10 @@ export default function ProUpgradePage() {
   const [err, setErr] = useState(null);
   const [seats, setSeats] = useState(null);
   const [interval, setInterval_] = useState("semiannual"); // forudvalgt: samme plan der tidligere havde accent-fremhævning
+  // #2813: eksplicit accept af handelsbetingelser + straks-leverings-waiver er
+  // et lovkrav — CTA'en er død indtil boksen er tjekket, og backenden afviser
+  // uden accepten (400 terms_not_accepted).
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useDocumentHead({ title: t("metaTitle") });
 
@@ -94,7 +100,11 @@ export default function ProUpgradePage() {
       const res = await fetch(`${API}/api/billing/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ interval: selectedInterval }),
+        body: JSON.stringify({
+          interval: selectedInterval,
+          terms_accepted: termsAccepted === true,
+          terms_version: TERMS_VERSION,
+        }),
       });
       if (!res.ok) throw new Error("checkout failed");
       const { checkout_url } = await res.json();
@@ -182,14 +192,43 @@ export default function ProUpgradePage() {
                 })}
               </div>
 
+              {/* #2813: accept-checkbox med link til vilkår + eksplicit
+                  straks-leverings-waiver (fortrydelsesretten bortfalder). */}
+              <label className="mt-5 flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  disabled={busy}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-[3px] accent-cz-accent"
+                />
+                <span className="text-sm leading-relaxed text-cz-2">
+                  <Trans
+                    i18nKey="termsAccept"
+                    ns="pro"
+                    components={{
+                      termsLink: (
+                        <Link
+                          to={i18n.language?.startsWith("da") ? "/handelsbetingelser" : "/terms"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cz-accent-t underline"
+                        />
+                      ),
+                    }}
+                  />
+                </span>
+              </label>
+              <p className="mt-2 text-2xs leading-relaxed text-cz-3">{t("renewalNote")}</p>
+
               <Button
                 variant="primary"
                 size="md"
                 fullWidth
                 loading={busy}
-                disabled={busy}
+                disabled={busy || !termsAccepted}
                 onClick={() => startCheckout(interval)}
-                className="mt-5"
+                className="mt-4"
               >
                 {t("cta")}
               </Button>

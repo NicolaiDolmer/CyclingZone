@@ -18,6 +18,8 @@
   "founderSeatsFull": "Alle Founder-pladser er taget. Nye abonnenter får stadig fuld Pro.",
   "founderExplainer": "De første 50 betalende abonnenter bliver Founders. Founders bevarer et permanent Founder-badge, selv hvis abonnementet senere udløber.",
   "fairnessNote": "Aldrig pay-to-win: penge køber dybde, komfort og kosmetik, aldrig en konkurrencefordel.",
+  "termsAccept": "Jeg accepterer <termsLink>handelsbetingelserne</termsLink> og samtykker udtrykkeligt til, at leveringen af CZ Pro starter med det samme, og at min fortrydelsesret dermed bortfalder for den påbegyndte periode.",
+  "renewalNote": "Abonnementet fornyes automatisk indtil du opsiger. Ingen binding ud over den betalte periode; opsig når som helst fra dine kontoindstillinger.",
   "choosePlan": "Vælg din plan",
   "loadError": {
     "message": "Vi kunne ikke hente dine abonnementsoplysninger. Intet er gået tabt, og din konto er upåvirket.",

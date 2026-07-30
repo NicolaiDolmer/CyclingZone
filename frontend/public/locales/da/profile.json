@@ -43,6 +43,15 @@
     "changeChoices": "Skift mine valg",
     "readPolicy": "Læs privatlivspolitik"
   },
+  "subscription": {
+    "title": "Abonnement",
+    "statusPro": "CZ Pro er aktivt på din konto.",
+    "statusFounder": "CZ Pro er aktivt på din konto, med permanent Founder-status.",
+    "manage": "Administrér abonnement",
+    "manageHint": "Åbner selvbetjeningsportalen hos vores betalingsudbyder, hvor du kan opsige, se kvitteringer og opdatere betalingskort.",
+    "portalError": "Kunne ikke åbne abonnements-portalen. Prøv igen, eller kontakt os via Discord, så hjælper vi manuelt.",
+    "readTerms": "Læs handelsbetingelser"
+  },
   "team": {
     "title": "Hold",
     "notInitialized": "Dit hold mangler stadig at blive initialiseret. Gem holdinfo for at oprette det nu.",

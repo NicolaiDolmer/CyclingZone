@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { mapSupabaseAuthError } from "../lib/authErrors";
+import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import {
@@ -26,7 +27,7 @@ const API = import.meta.env.VITE_API_URL;
 const THEME_OPTIONS = ["system", "light", "dark"];
 
 export default function ProfilePage() {
-  const { t } = useTranslation(["profile", "errors"]);
+  const { t, i18n } = useTranslation(["profile", "errors"]);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
@@ -46,6 +47,9 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState({ text: "", type: "" });
   const { theme, setTheme } = useTheme();
   const { consent, openBanner } = useConsent();
+  // #2813: abonnements-kort (opsigelsessti). Kun synligt for Pro-konti.
+  const { isPro, isFounder } = useSubscription(team?.id);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   // Mount: load profile once. loadProfile is a hoisted function declaration, so
   // calling it here is runtime-safe; disable the compiler's declaration-order
@@ -96,6 +100,25 @@ export default function ProfilePage() {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     };
+  }
+
+  // #2813: hent signeret auto-login-link til Aluntas kundeportal (opsigelse,
+  // kvitteringer, kortskift). Linket udløber efter 15 min og åbnes i ny fane.
+  async function openSubscriptionPortal() {
+    setOpeningPortal(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error("no session");
+      const res = await fetch(`${API}/api/billing/portal`, { method: "POST", headers });
+      if (!res.ok) throw new Error(`portal ${res.status}`);
+      const { portal_url } = await res.json();
+      if (!portal_url || !/^https:\/\//.test(portal_url)) throw new Error("missing portal_url");
+      window.open(portal_url, "_blank", "noopener,noreferrer");
+    } catch {
+      showMsg(t("subscription.portalError"), "error");
+    } finally {
+      setOpeningPortal(false);
+    }
   }
 
   async function saveDiscordId() {
@@ -459,6 +482,28 @@ export default function ProfilePage() {
           </Link>
         </div>
       </Card>
+
+      {/* Abonnement (#2813) — kun Pro-konti; opsigelse sker i Alunta-portalen */}
+      {isPro && (
+        <Card className="p-5 mb-4">
+          <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("subscription.title")}</h2>
+          <p className="text-cz-2 text-sm mb-1">
+            {isFounder ? t("subscription.statusFounder") : t("subscription.statusPro")}
+          </p>
+          <p className="text-cz-3 text-xs mb-4">{t("subscription.manageHint")}</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="button" onClick={openSubscriptionPortal} disabled={openingPortal} className="flex-1">
+              {t("subscription.manage")}
+            </Button>
+            <Link
+              to={i18n.language?.startsWith("da") ? "/handelsbetingelser" : "/terms"}
+              className={`${buttonClass({ variant: "secondary" })} flex-1 text-center no-underline`}
+            >
+              {t("subscription.readTerms")}
+            </Link>
+          </div>
+        </Card>
+      )}
 
       {/* Team info */}
       {canEditTeam && (

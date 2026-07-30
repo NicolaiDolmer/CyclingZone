@@ -108,11 +108,15 @@ Behandling af persondata er beskrevet i [privatlivspolitikken](/privatlivspoliti
 
 ## Åbne verifikationer (før go-live, del af #2813)
 
-1. **Moms/merchant of record:** Spec-antagelsen "Alunta håndterer moms/kvitteringer
-   automatisk" (monetization-spec linje 114) er IKKE verificeret. Skal bekræftes mod
-   Aluntas dokumentation: hvem er merchant of record, er 49 kr. inkl. moms, udstedes
-   kvittering automatisk. Resultatet skrives ind i specen og i pkt. 3 ovenfor.
-2. **Opsigelsessti:** Alunta Portal-session-endpoint (spec linje 126/141) skal bekræftes i
-   test_mode og bygges, ELLER pkt. 5's manuelle proces gøres permanent + dokumenteres.
+1. **Moms/merchant of record — DELVIST verificeret 30/7 (OpenAPI):** Merchant of record er
+   **Dolmer Digital, ikke Alunta** (Alunta fakturerer på jeres vegne via jeres egne
+   betalingsudbydere og udsteder kvitteringer automatisk). Plan-priser i Alunta er i øre
+   **ekskl. moms** med `charge_vat` default `true`. **Ejer-tjek udestår:** (a) er Dolmer
+   Digital momsregistreret? (b) står CZ Pro-planerne i Alunta-dashboardet med
+   `charge_vat=false` + 4900/26500 øre, så kunden faktisk betaler 49/265 kr.?
+   Pkt. 3's moms-formulering låses når (a)+(b) er svaret — FØR checkout genåbnes.
+2. **Opsigelsessti — VERIFICERET 30/7:** `POST /portal-link/{uuid}` bekræftet i OpenAPI
+   (signeret auto-login-URL, default 15 min udløb; self-service opsigelse findes —
+   `customer_cancellation` er dokumenteret cancel-årsag). Bygges i #2813-PR'en.
 3. **Accept-log:** checkbox-accept ved checkout skal gemme tidspunkt + vilkårs-version på
-   `subscriptions`-rækken.
+   `subscriptions`-rækken. Bygges i #2813-PR'en.

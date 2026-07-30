@@ -36,6 +36,8 @@ const EXEMPT = new Map([
   ["AdminRetentionPage.jsx",     "Admin-only retention-scorecard (#2360) — ikke player-facing."],
   ["PrivacyPolicyPage.jsx",      "DA-udgaven i dual-page-mønster (separat PrivacyPolicyPageEn.jsx til EN)."],
   ["PrivacyPolicyPageEn.jsx",    "EN-udgaven i dual-page-mønster — engelsk indhold, ingen t() nødvendig."],
+  ["TermsPage.jsx",              "DA-udgaven i dual-page-mønster (#2813, separat TermsPageEn.jsx til EN)."],
+  ["TermsPageEn.jsx",            "EN-udgaven i dual-page-mønster (#2813) — engelsk indhold, ingen t() nødvendig."],
 ]);
 
 // Kendte, endnu-ikke-konverterede player-facing leaks (#678 follow-up). Listet
