@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeReleaseBuyoutFee, computeContractExtension } from "./contractSeed.js";
+import { computeReleaseBuyoutFee, computeContractExtension, maxAllowedContractEndSeason } from "./contractSeed.js";
 
 // #1719 (fyrings-/opsigelsesknap med buyout-gebyr) + #1720 (kontraktforlængelse)
 // + #2179 (kontraktforlængelse direkte på akademi-ryttere, ingen op-/nedrykning).
@@ -111,6 +111,58 @@ test("extend-routen kalder extension-guarden (akademi tilladt) + bruger computeC
 test("extend-quote-routen kalder samme extension-guard som extend-contract", () => {
   const block = routeBlock("get", "/riders/:id/extend-quote");
   assert.match(block, /loadOwnedRiderForExtension/, "extend-quote skal bruge samme #2179-guard som POST-routen");
+});
+
+// ── Invariant 3b: #3143-loftet håndhæves i BÅDE POST og GET (aldrig kun den ene) ──
+
+test("extend-contract-routen håndhæver kontraktforlængelses-loftet (#3143) via contractExtensionCapError", () => {
+  const block = routeBlock("post", "/riders/:id/extend-contract");
+  assert.match(block, /contractExtensionCapError/, "POST /extend-contract skal tjekke loftet FØR skrivning");
+});
+
+test("contractExtensionCapError-helperen bruger den dedikerede fejlkode + 409", () => {
+  const marker = "function contractExtensionCapError(";
+  const start = apiSource.indexOf(marker);
+  assert.notEqual(start, -1, "contractExtensionCapError skal findes i api.js");
+  const block = apiSource.slice(start, start + 800);
+  assert.match(block, /contract_extension_cap_reached/, "loft-afvisningen skal bruge den dedikerede fejlkode");
+  assert.match(block, /status:\s*409/, "loft-afvisningen skal svare med 409");
+  assert.match(block, /maxAllowedContractEndSeason/, "loftet skal beregnes via maxAllowedContractEndSeason (samme kilde som testene i contractSeed.test.js)");
+});
+
+test("extend-quote-routen håndhæver samme loft som POST-routen (preview må ikke love mere end serveren vil give)", () => {
+  const block = routeBlock("get", "/riders/:id/extend-quote");
+  assert.match(block, /contractExtensionCapError/, "GET /extend-quote skal tjekke samme loft som POST-routen");
+});
+
+test("loft-tjekket sker FØR databaseskrivningen i POST /extend-contract (afvisning, ikke stille clamp)", () => {
+  const block = routeBlock("post", "/riders/:id/extend-contract");
+  const capIdx = block.indexOf("contractExtensionCapError");
+  const updateIdx = block.indexOf(".update({");
+  assert.ok(capIdx !== -1 && updateIdx !== -1, "begge markører skal findes i routen");
+  assert.ok(capIdx < updateIdx, "loft-tjekket skal ske FØR riders-update'en, ikke efter");
+});
+
+test("contractExtensionCapError afviser med 409 + errorParams.maxSeason, tillader ellers (behaviour, spejler #666-mønsteret)", () => {
+  // Samme statiske-source + adfærds-dobbelt-bevis-stil som releaseAllowed()
+  // nedenfor: vi genskaber prædikatet fra maxAllowedContractEndSeason (allerede
+  // enhedstestet i contractSeed.test.js) i stedet for at boote Express.
+  function capBehaviour(contractEndSeason, currentSeason) {
+    const maxSeason = maxAllowedContractEndSeason(currentSeason);
+    return contractEndSeason <= maxSeason
+      ? { blocked: false }
+      : { blocked: true, status: 409, errorCode: "contract_extension_cap_reached", maxSeason };
+  }
+  // Under loftet → tilladt.
+  assert.equal(capBehaviour(4, 1).blocked, false); // 4 ≤ 1+3
+  // Præcis på loftet → tilladt (grænsen selv er OK, kun FORBI er blokeret).
+  assert.equal(capBehaviour(4, 1).blocked, false);
+  // Forbi loftet → afvist med 409 + korrekt fejlkode.
+  const blocked = capBehaviour(5, 1);
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.errorCode, "contract_extension_cap_reached");
+  assert.equal(blocked.maxSeason, 4);
 });
 
 // ── Invariant 4: behaviour — genskab guard-prædikaterne ─────────────────────

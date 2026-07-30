@@ -43,6 +43,8 @@ const RAW_KEYS = new Set([
   "expiringCount", "retirementRiskCount",
   // #2748 · pensionsbeskedens alder er et lille heltal, ikke et beløb.
   "age",
+  // #3143 · kontraktforlængelses-loftets sæson-tal er et sæson-nummer, ikke et beløb.
+  "maxSeason",
 ]);
 
 /**

@@ -9,6 +9,7 @@ import {
   contractOnAcquirePatch,
   computeReleaseBuyoutFee,
   computeContractExtension,
+  maxAllowedContractEndSeason,
   runContractSeed,
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -201,6 +202,67 @@ test("computeContractExtension: allerede på MAX_LENGTH(3) → clampes, crasher 
   });
   assert.equal(next.contract_length, 3); // clamped, ikke 4
   assert.equal(next.contract_end_season, 5); // end-sæson rykker stadig frem
+});
+
+// ── maxAllowedContractEndSeason + gentagne forlængelser (#3143) ─────────────
+// Hidtil intet loft på antal forlængelser pr. rytter: kun contract_length blev
+// clampet (1-3), men contract_end_season kunne flyttes ubegrænset langt frem
+// via gentagne kald. Loftet er currentSeason + MAX_EXTENSION_SEASONS_AHEAD.
+
+test("maxAllowedContractEndSeason = currentSeason + MAX_EXTENSION_SEASONS_AHEAD", () => {
+  assert.equal(CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, 3);
+  assert.equal(maxAllowedContractEndSeason(1), 4);
+  assert.equal(maxAllowedContractEndSeason(7), 10);
+  // NULL/manglende currentSeason → gulv på sæson 1 (samme mønster som ellers i filen)
+  assert.equal(maxAllowedContractEndSeason(null), 4);
+  assert.equal(maxAllowedContractEndSeason(undefined), 4);
+});
+
+test("computeContractExtension: en enkelt forlængelse inden for loftet er tilladt", () => {
+  const currentSeason = 5;
+  const next = computeContractExtension({
+    current_production_value: 200_000,
+    contract_end_season: 6, // 1 sæson foran current
+    contract_length: 1,
+    currentSeason,
+  });
+  assert.equal(next.contract_end_season, 7); // 6 + 1 = 7 ≤ currentSeason(5) + 3 = 8
+  assert.ok(next.contract_end_season <= maxAllowedContractEndSeason(currentSeason));
+});
+
+test("computeContractExtension: en forlængelse der ville overskride loftet beregnes stadig (afvisning sker i routen, ikke helperen)", () => {
+  const currentSeason = 5;
+  // Rytteren står allerede på loftet (end = current + 3 = 8) — endnu et kald
+  // ville flytte den forbi loftet, hvilket routen skal afvise.
+  const next = computeContractExtension({
+    current_production_value: 200_000,
+    contract_end_season: 8,
+    contract_length: 3,
+    currentSeason,
+  });
+  assert.equal(next.contract_end_season, 9); // > maxAllowedContractEndSeason(5) = 8
+  assert.ok(next.contract_end_season > maxAllowedContractEndSeason(currentSeason));
+});
+
+test("gentagne forlængelser kan aldrig flytte contract_end_season forbi currentSeason + 3, hvis loftet håndhæves pr. kald", () => {
+  // Simulerer routens loop: forsøg en forlængelse; hvis den ville overskride
+  // loftet, afvises den (rider forbliver uændret) i stedet for at anvendes.
+  // Dette beviser invarianten uafhængigt af HTTP-laget.
+  const currentSeason = 3;
+  const maxEnd = maxAllowedContractEndSeason(currentSeason); // 6
+  let rider = { current_production_value: 100_000, contract_end_season: null, contract_length: null };
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const next = computeContractExtension({ ...rider, currentSeason });
+    if (next.contract_end_season > maxEnd) {
+      // Routen afviser — rytterens kontrakt forbliver uændret.
+      continue;
+    }
+    rider = { ...rider, contract_end_season: next.contract_end_season, contract_length: next.contract_length };
+  }
+
+  assert.ok(rider.contract_end_season <= maxEnd, `contract_end_season (${rider.contract_end_season}) overskred loftet (${maxEnd})`);
+  assert.equal(rider.contract_end_season, maxEnd); // konvergerer til loftet, ikke forbi det
 });
 
 // ── runContractSeed wrapper-tests ──────────────────────────────────────────────

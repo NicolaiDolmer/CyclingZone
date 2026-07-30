@@ -101,6 +101,7 @@ const SECTION_DEFS = [
       { id: "whatContract", kind: "text" },
       { id: "frozenSalary", kind: "text" },
       { id: "contractOnTrade", kind: "text" },
+      { id: "extendContract", kind: "text" },
       { id: "freeAgents", kind: "text" },
     ],
   },

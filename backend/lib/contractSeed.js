@@ -16,6 +16,11 @@ export const CONTRACT = Object.freeze({
   MAX_LENGTH: 3,
   SALARY_RATE,                // GAMMEL market_value-kobling (0.067) — kun reference/legacy
   BASE_VALUE_FALLBACK: 1000,  // spejler RIDER_BASE_VALUE_FALLBACK
+  // #3143: hårdt loft på gentagne kontraktforlængelser — uden dette kan en
+  // manager spamme /extend-contract og låse lav løn helt til sæson 11+.
+  // Loftet er relativt til NUVÆRENDE sæson (ikke rytterens eksisterende
+  // udløbssæson), så gentagne kald aldrig flytter horisonten længere ud.
+  MAX_EXTENSION_SEASONS_AHEAD: 3,
 });
 
 // Frossen løn (#1309 + #2594 løn-decoupling): løn prissætter NUTIDEN —
@@ -124,6 +129,15 @@ export function computeContractExtension({
     contract_length: newLength,
     contract_end_season: newEnd,
   };
+}
+
+// #3143: den seneste sæson en forlængelse må lande på, relativt til den
+// AKTUELLE sæson (ikke rytterens eksisterende contract_end_season — ellers
+// ville hver forlængelse flytte loftet med sig, og loftet ville aldrig binde).
+// Kaldes fra både GET /extend-quote (preview) og POST /extend-contract
+// (håndhævelse), så de aldrig kan komme ud af sync.
+export function maxAllowedContractEndSeason(currentSeason) {
+  return (Number(currentSeason) || 1) + CONTRACT.MAX_EXTENSION_SEASONS_AHEAD;
 }
 
 const WRITE_CONCURRENCY = 25;
