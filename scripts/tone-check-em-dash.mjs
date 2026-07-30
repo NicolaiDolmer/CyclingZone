@@ -37,6 +37,8 @@ const PROSE_FILES = [
   "frontend/src/pages/PatchNotesPage.jsx",
   "frontend/src/pages/PrivacyPolicyPage.jsx",
   "frontend/src/pages/PrivacyPolicyPageEn.jsx",
+  "frontend/src/pages/TermsPage.jsx",
+  "frontend/src/pages/TermsPageEn.jsx",
 ];
 const HTML_FILES = ["frontend/index.html"];
 

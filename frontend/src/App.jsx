@@ -60,6 +60,8 @@ const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
@@ -213,6 +215,8 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
+          <Route path="/handelsbetingelser" element={<TermsPage />} />
+          <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<FounderSupporterPage />} />
           <Route path="/ui" element={<KitchenSinkPage />} />
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,

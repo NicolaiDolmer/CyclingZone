@@ -59,6 +59,41 @@ test("ensureCustomer: andre 422-fejl (validation) kaster stadig", async () => {
   await assert.rejects(() => client.ensureCustomer({ externalCustomerId: "t", name: "n" }), /422.*email/);
 });
 
+// #2813: portal-link (self-service opsigelse).
+test("createPortalLink POSTer til /portal-link/{uuid} og returnerer url fra data-envelope", async () => {
+  const captured = {};
+  const client = createAluntaClient({
+    token: "t",
+    baseUrl: "https://app.alunta.com/api/v1",
+    fetchImpl: async (url, opts) => {
+      captured.url = url;
+      captured.opts = opts;
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: { url: "https://app.alunta.com/portal/cz/verify/1", expires_at: "2026-07-30T12:15:00Z" } }) };
+    },
+  });
+  const url = await client.createPortalLink({ customerUuid: "cus-9" });
+  assert.equal(url, "https://app.alunta.com/portal/cz/verify/1");
+  assert.equal(captured.url, "https://app.alunta.com/api/v1/portal-link/cus-9");
+  assert.equal(captured.opts.method, "POST");
+});
+
+test("createPortalLink uden customerUuid rammer /portal-link (login-side-fallback)", async () => {
+  const captured = {};
+  const client = createAluntaClient({
+    token: "t",
+    baseUrl: "https://x/api/v1",
+    fetchImpl: async (url) => { captured.url = url; return { ok: true, status: 200, text: async () => JSON.stringify({ data: { url: "https://x/portal/login" } }) }; },
+  });
+  const url = await client.createPortalLink();
+  assert.equal(url, "https://x/portal/login");
+  assert.equal(captured.url, "https://x/api/v1/portal-link");
+});
+
+test("createPortalLink kaster hoejt hvis svaret mangler url", async () => {
+  const client = createAluntaClient({ token: "t", baseUrl: "https://x/api/v1", fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ data: {} }) }) });
+  await assert.rejects(() => client.createPortalLink({ customerUuid: "c" }), /uden url/);
+});
+
 test("createCheckoutSession kaster hoejt hvis svaret mangler checkout_url", async () => {
   const client = createAluntaClient({ token: "t", baseUrl: "https://x/api/v1", fetchImpl: async () => ({ ok: true, status: 201, text: async () => JSON.stringify({ data: { id: "cs_2" } }) }) });
   await assert.rejects(

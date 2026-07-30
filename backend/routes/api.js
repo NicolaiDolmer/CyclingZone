@@ -27,6 +27,7 @@ import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
+import { createPortalHandler } from "../lib/billingPortal.js";
 import { getFounderSeats } from "../lib/founderSeats.js";
 import {
   ACTIVE_AUCTION_STATUSES,
@@ -627,9 +628,12 @@ async function requireAdmin(req, res, next) {
 // ── Billing (CZ Pro / Alunta) ─────────────────────────────────────────────────
 // Webhook er EKSTERN (Alunta) → INGEN requireAuth; verificeres via delt secret.
 // Rå body wired i server.js (express.raw på pathen før express.json).
-const billingCheckout = createCheckoutHandler();
+const billingCheckout = createCheckoutHandler({ supabase });
+const billingPortal = createPortalHandler({ supabase });
 router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
 router.post("/billing/checkout", requireAuth, (req, res) => billingCheckout(req, res));
+// #2813: self-service opsigelse — signeret auto-login-link til Alunta-portalen.
+router.post("/billing/portal", requireAuth, (req, res) => billingPortal(req, res));
 // Offentligt (ikke-sensitivt) — live seat-counter til /pro-siden (#1903).
 router.get("/billing/founder-seats", async (req, res) => {
   try {

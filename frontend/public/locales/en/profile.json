@@ -43,6 +43,15 @@
     "changeChoices": "Change my choices",
     "readPolicy": "Read privacy policy"
   },
+  "subscription": {
+    "title": "Subscription",
+    "statusPro": "CZ Pro is active on your account.",
+    "statusFounder": "CZ Pro is active on your account, with permanent Founder status.",
+    "manage": "Manage subscription",
+    "manageHint": "Opens the self-service portal at our payment provider, where you can cancel, view receipts and update your card.",
+    "portalError": "Could not open the subscription portal. Try again, or contact us via Discord and we will help manually.",
+    "readTerms": "Read terms of sale"
+  },
   "team": {
     "title": "Team",
     "notInitialized": "Your team still needs to be initialised. Save team info to create it now.",

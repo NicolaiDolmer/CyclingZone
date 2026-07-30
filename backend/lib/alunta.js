@@ -55,6 +55,19 @@ export function createAluntaClient({
       if (!url) throw new Error(`Alunta checkout-session uden checkout_url: ${JSON.stringify(session)?.slice(0, 200)}`);
       return url;
     },
+    // #2813: signeret auto-login-link til Aluntas self-service-portal (opsigelse
+    // m.m.). Verificeret mod OpenAPI 30/7: POST /portal-link/{uuid} — med gyldig
+    // customer-UUID returneres en auto-login-URL (default 15 min udløb, behandles
+    // som credential); uden/ukendt UUID returneres portalens login-side (magic
+    // link). Samme data-envelope som checkout-sessions.
+    async createPortalLink({ customerUuid, expiresInMinutes } = {}) {
+      const path = customerUuid ? `/portal-link/${customerUuid}` : "/portal-link";
+      const body = expiresInMinutes ? { expires_in_minutes: expiresInMinutes } : {};
+      const link = await call(path, { method: "POST", body });
+      const url = link?.data?.url ?? link?.url;
+      if (!url) throw new Error(`Alunta portal-link uden url: ${JSON.stringify(link)?.slice(0, 200)}`);
+      return url;
+    },
   };
 }
 

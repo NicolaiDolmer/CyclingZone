@@ -399,6 +399,9 @@ export default function FounderSupporterPage() {
             <Link to={lang === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 transition-colors">
               {t("footerPrivacy")}
             </Link>
+            <Link to={lang === "en" ? "/terms" : "/handelsbetingelser"} className="hover:text-cz-1 transition-colors">
+              {t("footerTerms")}
+            </Link>
             <Link to="/" className="hover:text-cz-1 transition-colors">
               {t("footerBack")}
             </Link>

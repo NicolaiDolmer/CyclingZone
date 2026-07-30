@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.76",
+    "date": "2026-07-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "CZ Pro",
+        "en": {
+          "title": "Terms of sale, purchase consent and self-service cancellation for CZ Pro",
+          "body": "CZ Pro could be bought without any terms of sale, stated withdrawal rights or a way to cancel from inside the game. That is fixed before purchases reopen: the full terms now live at /terms (English) and /handelsbetingelser (Danish), linked from the login page and footers; checkout requires an explicit checkbox accepting the terms and consenting to immediate delivery, and your acceptance (version + time) is stored; and Pro accounts get a 'Manage subscription' button in account settings that opens the payment provider's self-service portal where you can cancel, see receipts and update your card. Purchases stay paused until the last go-live checks are done."
+        },
+        "da": {
+          "title": "Handelsbetingelser, købs-samtykke og selvbetjent opsigelse for CZ Pro",
+          "body": "CZ Pro kunne købes uden handelsbetingelser, uden oplyst fortrydelsesret og uden en måde at opsige inde i spillet. Det er rettet før køb genåbnes: de fulde vilkår ligger nu på /handelsbetingelser (dansk) og /terms (engelsk), linket fra login-siden og footere; checkout kræver en eksplicit checkbox der accepterer vilkårene og samtykker til straks-levering, og din accept (version + tidspunkt) gemmes; og Pro-konti får en 'Administrér abonnement'-knap i kontoindstillinger der åbner betalingsudbyderens selvbetjeningsportal, hvor du kan opsige, se kvitteringer og opdatere kort. Køb er fortsat pauset indtil de sidste go-live-tjek er på plads."
+        },
+        "refs": [2813]
+      }
+    ]
+  },
+  {
     "version": "7.75",
     "date": "2026-07-30",
     "label": "Beta",

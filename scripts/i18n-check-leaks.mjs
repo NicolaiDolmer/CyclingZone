@@ -94,6 +94,8 @@ export const EXEMPT_FILES = new Map([
   ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes-side: bilingual chrome via da?-ternary (samme mønster som FounderSupporterPage); indholdet ligger i data/patchNotes.js."],
   ["frontend/src/data/patchNotes.js", "Patch notes er bilingual i-fil data (EN+DA pr. entry) — DA-strenge er by design."],
   ["frontend/src/pages/PrivacyPolicyPage.jsx", "DA-udgaven i dual-page-mønster (PrivacyPolicyPageEn.jsx er EN)."],
+  ["frontend/src/pages/TermsPage.jsx", "DA-udgaven i dual-page-mønster (#2813, TermsPageEn.jsx er EN)."],
+  ["frontend/src/pages/TermsPageEn.jsx", "EN-side, men citerer danske klageorganers egennavne (Nævnenes Hus / Center for Klageløsning) i juridisk tekst (#2813)."],
   ["backend/lib/seasonTransitionReadiness.js", "Admin-only readiness-gate (#1346): detail-/fejl-strenge vises kun i admin-UI (DA-konvention) og admin_log."],
 ]);
 
