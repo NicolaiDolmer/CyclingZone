@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   getRiderAge, ageBadgeKey, isU23, isU25, ageForSeason, seasonReferenceYear,
   isRetirementRisk, retirementRiskBadgeKey, RETIREMENT_WARNING_AGE, LAUNCH_REFERENCE_YEAR,
+  seasonNumberFromReferenceYear, isContractExpiringAtTransition, contractExpiringBadgeKey,
 } from "./riderAge.js";
 
 // #3071: sæson 1 (launch-året) = LAUNCH_REFERENCE_YEAR selv, så de fleste ældre
@@ -211,4 +212,44 @@ test("retirementRiskBadgeKey og ageBadgeKey er aldrig samtidig sat", () => {
   const youngRider = { birthdate: "2010-01-01" }; // 16
   assert.equal(ageBadgeKey(youngRider, S1), "u23");
   assert.equal(retirementRiskBadgeKey(youngRider, S1), null);
+});
+
+// ── #3097: seasonNumberFromReferenceYear (inverse af seasonReferenceYear) ────
+
+test("seasonNumberFromReferenceYear — nøjagtig inverse af seasonReferenceYear", () => {
+  assert.equal(seasonNumberFromReferenceYear(seasonReferenceYear(1)), 1);
+  assert.equal(seasonNumberFromReferenceYear(seasonReferenceYear(2)), 2);
+  assert.equal(seasonNumberFromReferenceYear(seasonReferenceYear(6)), 6);
+  assert.equal(seasonNumberFromReferenceYear(S1), 1);
+  assert.equal(seasonNumberFromReferenceYear(S2), 2);
+});
+
+test("seasonNumberFromReferenceYear — null ved manglende/ugyldigt år", () => {
+  assert.equal(seasonNumberFromReferenceYear(null), null);
+  assert.equal(seasonNumberFromReferenceYear(undefined), null);
+  assert.equal(seasonNumberFromReferenceYear(NaN), null);
+});
+
+// ── #3097: isContractExpiringAtTransition / contractExpiringBadgeKey ────────
+// Frontend-spejl af backend/lib/squadRiskGuard.js's isContractExpiringAtTransition
+// — samme "<=" (ikke "="), samme null-for-fri-agent-kontrakt.
+
+test("isContractExpiringAtTransition — contract_end_season <= aktiv sæson → true (matcher backend's <=)", () => {
+  assert.equal(isContractExpiringAtTransition(1, 1), true);
+  assert.equal(isContractExpiringAtTransition(1, 2), true, "selv-helende <= fanger en overset tidligere sæson");
+  assert.equal(isContractExpiringAtTransition(2, 1), false, "udløber FØRST næste sæson — ikke endnu");
+  assert.equal(isContractExpiringAtTransition(null, 1), false, "ingen kontrakt (fri agent/akademi) → ikke 'udløbende'");
+});
+
+test("isContractExpiringAtTransition — robust ved ugyldigt/manglende sæson-nummer", () => {
+  assert.equal(isContractExpiringAtTransition(1, null), false);
+  assert.equal(isContractExpiringAtTransition(1, undefined), false);
+  assert.equal(isContractExpiringAtTransition(1, NaN), false);
+});
+
+test("contractExpiringBadgeKey — 'contractExpiring' når kontrakten udløber ved næste transition, ellers null", () => {
+  assert.equal(contractExpiringBadgeKey({ contract_end_season: 1 }, 1), "contractExpiring");
+  assert.equal(contractExpiringBadgeKey({ contract_end_season: 3 }, 1), null);
+  assert.equal(contractExpiringBadgeKey({ contract_end_season: null }, 1), null);
+  assert.equal(contractExpiringBadgeKey(null, 1), null);
 });

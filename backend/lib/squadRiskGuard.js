@@ -98,10 +98,13 @@ export function countAtRiskRiders(riders, activeSeasonNumber, cfg = PROGRESSION_
 //     fra. Havde vi talt dem med her OGSÅ, ville de blive fratrukket to gange for
 //     samme afgang — en unødigt streng spærre. En rytter der allerede er på vej ud
 //     via en anden handel er ikke en NY, uforudset risiko.
+// #3097: firstname/lastname er med i selectet (selvom countAtRiskRiders aldrig
+// bruger dem) så fetchAtRiskRiders nedenfor kan levere navnene til
+// squad-risk-fejlbeskederne uden en ekstra DB-runde-tur.
 export async function fetchTeamRiskRows(supabase, teamId) {
   const { data, error } = await supabase
     .from("riders")
-    .select("id, birthdate, contract_end_season, is_retired, pending_team_id")
+    .select("id, firstname, lastname, birthdate, contract_end_season, is_retired, pending_team_id")
     .eq("team_id", teamId)
     .eq("is_academy", false);
   if (error) throw new Error(`fetchTeamRiskRows(${teamId}): ${error.message}`);
@@ -118,4 +121,35 @@ export async function fetchAtRiskCount(supabase, teamId, activeSeasonNumber, { e
   const excluded = new Set(excludeRiderIds || []);
   const filtered = excluded.size ? rows.filter((r) => !excluded.has(r.id)) : rows;
   return countAtRiskRiders(filtered, activeSeasonNumber);
+}
+
+// #3097 · samme fetch+filter som fetchAtRiskCount ovenfor, men returnerer de
+// FAKTISKE rytter-rækker (id + navn) i stedet for kun et tal. Bruges udelukkende
+// til at gøre squad-risk-fejlbeskederne (cannot_auction_squad_risk,
+// cannot_release_squad_risk) handlingsanvisende — manageren skal kunne se HVEM
+// der tæller, ikke kun hvor mange. Ren delegering til fetchTeamRiskRows +
+// isRiderAtRisk (samme klassifikation som fetchAtRiskCount — ingen ny logik,
+// blot et andet return-shape), så guardens tærskel/definition ikke kan divergere
+// mellem "tæl dem" og "vis dem".
+export async function fetchAtRiskRiders(supabase, teamId, activeSeasonNumber, { excludeRiderIds = [] } = {}) {
+  const rows = await fetchTeamRiskRows(supabase, teamId);
+  const excluded = new Set(excludeRiderIds || []);
+  const filtered = excluded.size ? rows.filter((r) => !excluded.has(r.id)) : rows;
+  return filtered.filter((r) => isRiderAtRisk(r, activeSeasonNumber));
+}
+
+// #3097 · ren formatering (ingen DB): udleder de manager-synlige errorParams
+// (antal + navne) fra en allerede-hentet at-risk-rytterliste + den violation
+// getSquadRiskViolation returnerede. atRiskRiders SKAL være den samme liste
+// violation.atRisk blev talt fra (typisk fetchAtRiskRiders' resultat), ellers
+// kan tallet og navnene divergere.
+export function buildAtRiskErrorParams(violation, atRiskRiders) {
+  const names = (atRiskRiders || [])
+    .map((r) => `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim())
+    .filter(Boolean);
+  return {
+    minRiders: violation.minRiders,
+    atRiskCount: names.length,
+    atRiskNames: names.join(", "),
+  };
 }

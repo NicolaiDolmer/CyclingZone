@@ -1134,7 +1134,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "What happens to expiring contracts and older riders at the season change?",
-      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8 riders needed to race, counting expiring contracts and retirement risk together."
+      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8 riders needed to race, counting expiring contracts and retirement risk together. Your squad page shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts toward that risk, and a blocked sale names the specific riders so you can see exactly why."
     },
     "staffReleaseFaq": {
       "q": "How do I release staff, and what does it cost?",

@@ -46,6 +46,12 @@ const BADGE_DEFS = {
   // (retirementRiskBadgeKey, riderAge.js). Advarsel til KØBEREN før bud, ikke
   // en blokering (jf. #2918/#2947, som guarder selve finaliseringen).
   retireRisk: { tone: "warning" },
+  // #3097: kontrakt udløber ved næste sæsonskifte (contractExpiringBadgeKey,
+  // riderAge.js) — den ANDEN af de to mekanikker squad-risk-spærren (#2748)
+  // tæller som "i risiko" (retireRisk er den første). Samme warning-tone:
+  // begge er advarsler om at rytteren tæller mod det sikre 8-antal, ikke en
+  // blokering i sig selv.
+  contractExpiring: { tone: "warning" },
 };
 
 export default function RiderBadges({ badges = [], className = "" }) {
