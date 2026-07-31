@@ -1088,7 +1088,7 @@ export function TeamPage() {
         onConfirm={confirmDemote}
       />
       {demoteError && (
-        <p className="fixed bottom-4 left-1/2 -translate-x-1/2 z-toast bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz px-4 py-2 text-sm shadow-lg">
+        <p className="fixed bottom-4 left-1/2 -translate-x-1/2 z-toast bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz px-4 py-2 text-sm shadow-overlay">
           {demoteError}
         </p>
       )}
