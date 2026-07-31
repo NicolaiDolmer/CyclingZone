@@ -169,7 +169,7 @@ export default function MyLatestResultCard({ data }) {
       {!race ? (
         <div className="text-center py-4">
           <p className="text-cz-3 text-sm">{t("dashboard:cards.myResult.empty")}</p>
-          <Link to="/calendar" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">
+          <Link to="/planning?tab=calendar" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">
             {t("dashboard:cards.myResult.emptyCta")}
           </Link>
         </div>

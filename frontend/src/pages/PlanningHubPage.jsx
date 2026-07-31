@@ -6,16 +6,20 @@ import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
+import CalendarPage from "./CalendarPage.jsx";
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
 // dage på /races), Formplan (planneren) og Strategi samlet under ét nav-punkt
 // med faner, samme ?tab=-mønster som Resultat-hubben (#3102 etape 2) og
-// Ranglister-hubben (#3104 etape C). De tre flader ejer stadig deres egen
+// Ranglister-hubben (#3104 etape C). Fladerne ejer stadig deres egen
 // data-hentning og alle indre tilstande — hubben ejer kun sidehovedet og
 // fanerne. Boardets interaktion er urørt (muskelhukommelses-guard fra
-// kontrakten); de gamle ruter (/races?tab=calendar, /planner, /races/strategy)
-// redirecter hertil.
-const VALID_TABS = ["selection", "form", "strategy"];
+// kontrakten); de gamle ruter (/races?tab=calendar, /planner, /races/strategy,
+// /calendar) redirecter hertil.
+// PR 3: kalenderen absorberet som fjerde fane (én kalender-sandhed — sidste
+// selvstændige kalender-indgang nedlagt). Sidst i rækken så de tre oprindelige
+// faners rækkefølge (og muskelhukommelse) står urørt.
+const VALID_TABS = ["selection", "form", "strategy", "calendar"];
 
 // #2819 — guidet tour for onboarding-trin 3 (first_squad_selected). Flyttet med
 // fra RacesPage: ankrene bor i Race Hub-brættet (Holdudtagelse-fanen), og
@@ -75,12 +79,14 @@ export default function PlanningHubPage() {
           <Tab value="selection">{t("hub.tabSelection")}</Tab>
           <Tab value="form">{t("hub.tabForm")}</Tab>
           <Tab value="strategy">{t("hub.tabStrategy")}</Tab>
+          <Tab value="calendar">{t("hub.tabCalendar")}</Tab>
         </TabList>
       </Tabs>
 
       {tab === "selection" && <RaceHubBoard />}
       {tab === "form" && <SeasonPlannerPage />}
       {tab === "strategy" && <StrategyPage />}
+      {tab === "calendar" && <CalendarPage />}
     </div>
   );
 }

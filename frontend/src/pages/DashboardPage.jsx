@@ -819,9 +819,10 @@ export default function DashboardPage() {
 
       {/* Season Status Banner — links to the race calendar (#1421: was a dead Card).
           #2328: rettet fra /races (RaceHub) til /calendar — knappens tekst
-          ("Se kalender") lovede kalendersiden, men Linket pegede på RaceHub. */}
+          ("Se kalender") lovede kalendersiden, men Linket pegede på RaceHub.
+          #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
       {seasonInfo && (
-        <Link to="/calendar" className="group block">
+        <Link to="/planning?tab=calendar" className="group block">
         <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>

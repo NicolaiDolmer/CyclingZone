@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { PageLoader, PageHeader, EmptyState, ErrorState, Button, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import {
   buildMonthGrid,
@@ -122,9 +122,8 @@ export default function CalendarPage() {
 
   if (!data?.season) {
     return (
-      <div className="mx-auto max-w-[1600px]">
-        <PageHeader title={t("title")} />
-        <CalendarFilters
+      <div>
+        <CalendarControls
           t={t} division={division} onDivision={setDivision} data={data}
           availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
         />
@@ -157,12 +156,12 @@ export default function CalendarPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} subtitle={eyebrow} />
+    <div>
       {/* Header-divisionsvælgeren skifter til Divisioner-tabben, så valget altid har en effekt
           (ellers var den virkningsløs på Mit hold / Alle hold — CodeRabbit #14). */}
-      <CalendarFilters
+      <CalendarControls
         t={t}
+        eyebrow={eyebrow}
         division={division}
         onDivision={(v) => { setDivision(v); setTab("divisions"); }}
         data={data}
@@ -290,46 +289,51 @@ export default function CalendarPage() {
   );
 }
 
-// ── filters ──────────────────────────────────────────────────────────────────
+// ── controls ─────────────────────────────────────────────────────────────────
 // #2849 bølge 3 — season/division-vælgerne levede tidligere INDE i den håndrullede
-// editorial header (h1 text-[2.75rem] + eyebrow). Header-teksten selv flyttede til
-// PageHeader (kanonisk recipe); dette er kun de to filter-selects, T2's
-// "op til 3 selects"-filterbar-slot (docs/design/PAGE_TEMPLATES.md).
-function CalendarFilters({ t, division, onDivision, data, availableSeasons = [], seasonNumber = null, onSeasonChange }) {
+// editorial header; #3102 etape 3 (PR 3): siden er en fane i Planlægnings-hubben
+// nu, hubben ejer h1'en (samme mønster som Formplan-fanen). Eyebrow'en
+// ("Sæson N · X løbsdage") flyttede fra den nedlagte PageHeader-subtitle herind
+// som venstre side af kontrolrækken; selects er T2's filterbar-slot
+// (docs/design/PAGE_TEMPLATES.md).
+function CalendarControls({ t, eyebrow = null, division, onDivision, data, availableSeasons = [], seasonNumber = null, onSeasonChange }) {
   const divisionTree = data?.divisions || [];
-  if (availableSeasons.length <= 1 && divisionTree.length === 0) return null;
+  if (!eyebrow && availableSeasons.length <= 1 && divisionTree.length === 0) return null;
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-      {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
-          (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
-      {availableSeasons.length > 1 && (
-        <Select
-          size="sm"
-          value={seasonNumber ?? ""}
-          onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
-          className="w-24"
-          aria-label={t("seasonMenu.label")}
-        >
-          {availableSeasons.map((s) => (
-            <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
-          ))}
-        </Select>
-      )}
-      {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
-      {divisionTree.length > 0 && (
-        <Select
-          size="sm"
-          value={division ?? ""}
-          onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
-          className="w-40"
-          aria-label={t("divisionMenu.label")}
-        >
-          <option value="">{t("divisionMenu.all")}</option>
-          {divisionTree.map((d) => (
-            <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
-          ))}
-        </Select>
-      )}
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-[13px] text-cz-2">{eyebrow}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
+            (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
+        {availableSeasons.length > 1 && (
+          <Select
+            size="sm"
+            value={seasonNumber ?? ""}
+            onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
+            className="w-24"
+            aria-label={t("seasonMenu.label")}
+          >
+            {availableSeasons.map((s) => (
+              <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
+            ))}
+          </Select>
+        )}
+        {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
+        {divisionTree.length > 0 && (
+          <Select
+            size="sm"
+            value={division ?? ""}
+            onChange={(e) => onDivision(e.target.value === "" ? null : Number(e.target.value))}
+            className="w-40"
+            aria-label={t("divisionMenu.label")}
+          >
+            <option value="">{t("divisionMenu.all")}</option>
+            {divisionTree.map((d) => (
+              <option key={d.division} value={d.division}>{t("division", { n: d.division })}</option>
+            ))}
+          </Select>
+        )}
+      </div>
     </div>
   );
 }

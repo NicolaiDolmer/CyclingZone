@@ -43,7 +43,7 @@ const API = import.meta.env.VITE_API_URL;
 // #3102 etape 3: "/races" og "/planner" udgik (ruterne redirecter);
 // "/planning" arver deres T2-behov — holdudtagelses-boardet skal ud til kanten
 // på store skærme (#2568-ejer-kravet gælder uændret i hubben).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/planning", "/standings", "/resultater"]);
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -119,14 +119,14 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       ],
     },
     {
-      // #3102 etape 3: de tre planlægnings-flader (Holdudtagelse · Formplan ·
-      // Strategi) er faner i Planlægnings-hubben nu — gruppen er 4 → 2 punkter.
+      // #3102 etape 3: alle fire planlægnings-flader (Holdudtagelse · Formplan ·
+      // Strategi · Kalender) er faner i Planlægnings-hubben nu — gruppen er endt
+      // på ét punkt (kontrakten: én kalender-sandhed, /calendar redirecter).
       // Formplanens kill-switch (peak_planner_enabled) gater ikke længere et
       // nav-punkt; fanen selv viser plannerens tom-state når flaget er off.
       key: "planlaegning", label: t("nav.group.planlaegning"),
       items: [
         { to: "/planning", label: t("nav.item.planning") },
-        { to: "/calendar", label: t("nav.item.calendar") },
       ],
     },
     {

@@ -3,7 +3,8 @@
     "title": "Planning",
     "tabSelection": "Team selection",
     "tabForm": "Form plan",
-    "tabStrategy": "Strategy"
+    "tabStrategy": "Strategy",
+    "tabCalendar": "Calendar"
   },
   "racehub": {
     "scope": {

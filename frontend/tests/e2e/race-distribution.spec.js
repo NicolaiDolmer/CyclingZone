@@ -438,6 +438,10 @@ test("legacy-ruterne redirecter til de rigtige hub-faner (#3102 etape 3)", async
   await page.goto("/races/strategy");
   await expect(page).toHaveURL(/\/planning\?tab=strategy$/);
 
+  // Kalenderen → Kalender-fanen (PR 3: sidste selvstændige kalender-indgang).
+  await page.goto("/calendar");
+  await expect(page).toHaveURL(/\/planning\?tab=calendar$/);
+
   // Rå /races (kalender + resultater før) → Resultat-hubben; verdens-kataloget
   // → Arkiv-fanen.
   await page.goto("/races");

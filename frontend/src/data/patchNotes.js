@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.82",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "The race calendar now lives inside the Planning hub",
+          "body": "The calendar is the fourth tab in the Planning hub, next to Team selection, Form plan and Strategy — so everything you use to plan your season sits on one page. The Planning menu group is down to a single entry. Nothing about the calendar itself has changed: same month grid, same season and division pickers, same clickable race chips. The old /calendar link and every button that pointed there redirect to the new tab automatically."
+        },
+        "da": {
+          "title": "Løbskalenderen bor nu inde i Planlægnings-hubben",
+          "body": "Kalenderen er den fjerde fane i Planlægnings-hubben, ved siden af Holdudtagelse, Formplan og Strategi — så alt du bruger til at planlægge din sæson står på én side. Menugruppen Planlægning er nede på ét enkelt punkt. Intet i selve kalenderen er ændret: samme måneds-grid, samme sæson- og divisionsvælgere, samme klikbare løbs-chips. Det gamle /calendar-link og alle knapper der pegede derhen sendes automatisk videre til den nye fane."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
     "version": "7.81",
     "date": "2026-07-31",
     "label": "Beta",

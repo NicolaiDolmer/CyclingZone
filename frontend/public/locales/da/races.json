@@ -3,7 +3,8 @@
     "title": "Planlægning",
     "tabSelection": "Holdudtagelse",
     "tabForm": "Formplan",
-    "tabStrategy": "Strategi"
+    "tabStrategy": "Strategi",
+    "tabCalendar": "Kalender"
   },
   "racehub": {
     "scope": {

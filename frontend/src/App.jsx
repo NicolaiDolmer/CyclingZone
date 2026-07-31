@@ -64,7 +64,6 @@ const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
-const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
@@ -285,7 +284,8 @@ export default function App() {
             <Route path="patch-notes" element={<PatchNotesPage />} />
             <Route path="roadmap" element={<RoadmapPage />} />
             {/* #3102 etape 3: Planlægnings-hubben (Holdudtagelse · Formplan ·
-                Strategi). De tre gamle ruter redirecter med fane-mapping. */}
+                Strategi · Kalender). De fire gamle ruter redirecter med
+                fane-mapping. */}
             <Route path="planning" element={<PlanningHubPage />} />
             <Route path="races" element={<RacesLegacyRedirect />} />
             <Route path="races/strategy" element={<Navigate to="/planning?tab=strategy" replace />} />
@@ -294,7 +294,10 @@ export default function App() {
             <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
             <Route path="resultater" element={<ResultaterPage />} />
-            <Route path="calendar" element={<CalendarPage />} />
+            {/* #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben
+                — én kalender-sandhed. Siden havde ingen URL-båret indre tilstand
+                (faner/sæson/måned er komponent-state), så redirect'en er statisk. */}
+            <Route path="calendar" element={<Navigate to="/planning?tab=calendar" replace />} />
             {/* #3104 etape C: begge bor som faner i Ranglister-hubben (/standings). */}
             <Route path="rider-rankings" element={<Navigate to="/standings?tab=riders" replace />} />
             <Route path="global-rank" element={<Navigate to="/standings?tab=global" replace />} />
