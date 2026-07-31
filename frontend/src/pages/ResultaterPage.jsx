@@ -5,6 +5,8 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import RaceArchiveTable from "../components/race/RaceArchiveTable.jsx";
+import CompletedRacesExplorer from "../components/race/CompletedRacesExplorer.jsx";
+import WorldCatalog from "../components/race/WorldCatalog.jsx";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { racesForPool } from "../lib/racesByPool";
@@ -357,6 +359,12 @@ export default function ResultaterPage() {
                 )}
               </div>
 
+              {/* #3102 etape 3: den fulde liste af afsluttede løb + klik-til-
+                  top-10-panelet, flyttet med fra /races' kalender-fane da ruten
+                  blev opløst. Kortene ovenover viser podiet for de 9 nyeste;
+                  denne flade er hele sæsonens liste med alle klassementer. */}
+              <CompletedRacesExplorer />
+
               {/* Ud af hubben. Arkiv og Point & præmier er faner nu, så det der
                   er tilbage er de tre flader der bor på egne ruter. */}
               <Section>
@@ -381,8 +389,14 @@ export default function ResultaterPage() {
 
       {/* #3102 etape 2: arkivet og point-tabellerne flyttede hertil fra /races.
           Begge er rene KIGGE-flader og hørte aldrig hjemme sammen med
-          holdudtagelses-boardet. */}
-      {tab === "archive" && <RaceArchiveTable />}
+          holdudtagelses-boardet. Etape 3: verdens-kataloget fulgte med ind
+          under Arkiv da /races blev opløst — samme kigge-flade-argument. */}
+      {tab === "archive" && (
+        <div className="space-y-[14px]">
+          <RaceArchiveTable />
+          <WorldCatalog />
+        </div>
+      )}
       {tab === "points" && <div className="-mt-2"><RacePointsPage /></div>}
     </div>
   );

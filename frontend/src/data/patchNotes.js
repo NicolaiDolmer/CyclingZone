@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.80",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "One Planning hub: Team selection, Form plan and Strategy under a single menu entry",
+          "body": "The three planning surfaces now live together on one page with tabs: Team selection (the race board, unchanged), Form plan (the season planner) and Strategy. The Planning menu group shrinks from four entries to two (Planning and Calendar). The old Races page has been dissolved: the world race catalogue and the completed-races results panel moved to the Results hub (under Archive and Latest respectively). Every old link and bookmark — /races, /planner, the strategy page — redirects to the right tab automatically, and nothing about how the race board works has changed."
+        },
+        "da": {
+          "title": "Én Planlægnings-hub: Holdudtagelse, Formplan og Strategi under ét menupunkt",
+          "body": "De tre planlægnings-flader bor nu sammen på én side med faner: Holdudtagelse (løbs-boardet, uændret), Formplan (sæsonplanlæggeren) og Strategi. Menugruppen Planlægning skrumper fra fire punkter til to (Planlægning og Kalender). Den gamle Løb-side er opløst: verdens-løbskataloget og resultat-panelet med afsluttede løb er flyttet til Resultat-hubben (under henholdsvis Arkiv og Seneste). Alle gamle links og bogmærker — /races, /planner, strategisiden — sendes automatisk videre til den rigtige fane, og intet i måden boardet virker på er ændret."
+        },
+        "refs": [3102]
+      }
+    ]
+  },
+  {
     "version": "7.79",
     "date": "2026-07-31",
     "label": "Beta",

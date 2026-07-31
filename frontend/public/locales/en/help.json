@@ -1090,7 +1090,7 @@
     },
     "raceSignupFaq": {
       "q": "Where do I sign up for a race?",
-      "a": "Go to Planning, Team selection (or open /races directly). It opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
+      "a": "Go to the Planning hub, the Team selection tab (or open /planning directly). It opens on your current race day by default, which can look empty or already in progress if there's nothing left to enter today. Use the day navigation (the Previous/Next day arrows) to step forward to an upcoming race day, then add riders to any race shown there. If you don't pick manually, your assistant auto-fills a lineup for you before the race starts."
     },
     "raceClassificationsFaq": {
       "q": "What's the difference between GC, Classic/Monument and stage wins?",

@@ -198,11 +198,12 @@ export const ROUTE_READINESS = {
     await expect(page.getByText(/^(Loading updates…|Indlæser opdateringer…)$/)).toHaveCount(0);
     await expect(page.getByRole("button", { expanded: true }).first()).toBeVisible();
   },
-  // S5 Season Planner: vent på at board'et er loadet (enabled → header + filter
-  // rendret) så snapshot ikke lander på PageLoader-state. Filter-toggle'en er unik +
-  // synlig på både desktop og mobil (rytter-navnet findes i BÅDE det skjulte desktop-
+  // S5 Season Planner (Formplan-fanen i Planlægnings-hubben, #3102 etape 3):
+  // vent på at board'et er loadet (enabled → kontrolrække + filter rendret) så
+  // snapshot ikke lander på PageLoader-state. Filter-toggle'en er unik + synlig
+  // på både desktop og mobil (rytter-navnet findes i BÅDE det skjulte desktop-
   // SVG og det mobile spor, så .first() dér ville ramme et display:none-element).
-  "/planner": async (page) => {
+  "/planning": async (page) => {
     await expect(page.getByRole("button", { name: /^(My races|Mine løb)$/ })).toBeVisible();
   },
 };

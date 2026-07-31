@@ -368,7 +368,27 @@ export function apiResponse(pathname, search = "") {
   }
   // Fake sequential placeholder ID (not a secret; Discord client IDs are public) so the preview shows the connected DM-settings state.
   if (pathname.endsWith("/api/me/discord-status")) return { discord_id: "123456789012345678", dm_enabled: true, dm_prefs: { board_update: false }, bot_configured: true }; // gitleaks:allow
-  if (pathname.endsWith("/api/race-pool")) return [];
+  // #3102 etape 3: verdens-kataloget bor i Resultat-hubbens Arkiv-fane nu.
+  // Returnerede før en tom liste med forkert shape ({pool, summary} forventes)
+  // → fladen så død ud på preview. Lille men ægte pulje, så ejer-gennemklik
+  // viser klasse-summering + filter + tabellen.
+  if (pathname.endsWith("/api/race-pool")) {
+    return {
+      pool: [
+        { id: "wp-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race", stages: 3 },
+        { id: "wp-2", name: "Giro di Preview", race_class: "GiroVuelta", race_type: "stage_race", stages: 3 },
+        { id: "wp-3", name: "Omloop Preview", race_class: "ProSeries", race_type: "single", stages: 1 },
+        { id: "wp-4", name: "Critérium Preview", race_class: "ProSeries", race_type: "single", stages: 1 },
+        { id: "wp-5", name: "Klassiker Preview", race_class: "Class1", race_type: "single", stages: 1 },
+      ],
+      summary: {
+        TourFrance: { count: 1, raceDays: 3 },
+        GiroVuelta: { count: 1, raceDays: 3 },
+        ProSeries: { count: 2, raceDays: 2 },
+        Class1: { count: 1, raceDays: 1 },
+      },
+    };
+  }
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   // S6 (#1835): read-only "andre divisioner"-browse. Tjekkes FØR distribution (mere
   // specifik path) — selvom endsWith ikke ville krydse, holder rækkefølgen den tydelig.

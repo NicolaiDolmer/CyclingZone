@@ -45,7 +45,8 @@ const TRAINING_ME = {
 const STEP_ROUTE_AND_FIRST_ANCHOR = {
   first_bid_placed: { route: "/auctions", anchor: "auctions-bid-input" },
   first_training_run: { route: "/training", anchor: "training-focus" },
-  first_squad_selected: { route: "/races", anchor: "races-column" },
+  // #3102 etape 3: boardet bor på Planlægnings-hubbens Holdudtagelse-fane nu.
+  first_squad_selected: { route: "/planning", anchor: "races-column" },
   board_plan_set: { route: "/board", anchor: "board-plans" },
 };
 

@@ -1,4 +1,10 @@
 {
+  "hub": {
+    "title": "Planlægning",
+    "tabSelection": "Holdudtagelse",
+    "tabForm": "Formplan",
+    "tabStrategy": "Strategi"
+  },
   "racehub": {
     "scope": {
       "mine": "Mine løb",
@@ -160,14 +166,7 @@
     "empty": "Ingen løb at planlægge denne dag.",
     "regenerateWarn": "Dette erstatter alle valg på dagens løb med assistentens forslag. Fortsæt?"
   },
-  "title": "Løb",
-  "subtitle": {
-    "withSeason": "Sæson {number} · {count} løb",
-    "noSeason": "Ingen aktiv sæson",
-    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb"
-  },
   "tabs": {
-    "calendar": "Kalender",
     "library": "Bibliotek",
     "world": "Verdens-kalender"
   },
@@ -210,8 +209,6 @@
     "points": "{count} pt"
   },
   "empty": {
-    "noRacesSeason": "Ingen løb i denne sæson endnu",
-    "addRaceAdmin": "Tilføj løb i Admin-panelet",
     "noRacesMatch": "Ingen løb matcher filtrene",
     "raceNotFound": "Løbet blev ikke fundet",
     "noResultsImportedRace": "Ingen resultater importeret for dette løb endnu",
@@ -447,7 +444,6 @@
   "strategy": {
     "title": "Holdstrategi",
     "subtitle": "Stående præferencer din assistent bruger til at bygge hver opstilling.",
-    "back": "Tilbage til trup-board",
     "open": "Holdstrategi",
     "save": "Gem strategi",
     "saved": "Strategi gemt",

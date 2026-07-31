@@ -28,7 +28,8 @@ const CORE_PAGES = [
   // S5 Season Planner — data-drevet SVG-bræt (deterministisk mock: fast "i dag" +
   // seed-peaks). Højere threshold dækker cross-engine AA på de tynde form-kurver +
   // brackets uden at miste blank-screen-detektion. Readiness-gate i ROUTE_READINESS.
-  { path: "/planner", heading: /^(Season planner|Sæsonplanlægger)$/, snapshot: "planner.png", route: "/planner", maxDiffPixelRatio: 0.03 },
+  // #3102 etape 3: bor på Planlægnings-hubbens Formplan-fane (hubben ejer h1'en).
+  { path: "/planning?tab=form", heading: /^(Planning|Planlægning)$/, snapshot: "planner.png", route: "/planning", maxDiffPixelRatio: 0.03 },
   { path: "/seasons", heading: /^(Sæson|Season)/, snapshot: "seasons.png" },
   // Inbox har meget dynamisk indhold (notifikations-list med timestamps, count-
   // badges, ulæst-prikker) der falder uden for `main`-text-masken og naturligt
@@ -126,10 +127,12 @@ const TRANSLATED_PAGE_SMOKE = [
     rawKeys: ["notifications:page.title", "page.title", "empty.noneUnread"],
   },
   {
-    path: "/planner",
-    en: [/Season planner/i, /My races/i],
-    da: [/Sæsonplanlægger/i, /Mine løb/i],
-    rawKeys: ["planner:page.title", "page.title", "filter.mine"],
+    // #3102 etape 3: planneren er Formplan-fanen i Planlægnings-hubben.
+    // Hub-h1'en kommer fra races:hub.title; filteret er stadig plannerens.
+    path: "/planning?tab=form",
+    en: [/Planning/i, /My races/i],
+    da: [/Planlægning/i, /Mine løb/i],
+    rawKeys: ["races:hub.title", "hub.tabForm", "filter.mine"],
   },
   {
     // OnlineBadge-leak-guard: badgen (delt af TeamProfilePage + ManagerProfilePage)

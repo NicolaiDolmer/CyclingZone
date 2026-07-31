@@ -1090,7 +1090,7 @@
     },
     "raceSignupFaq": {
       "q": "Hvor tilmelder jeg mig et løb?",
-      "a": "Gå til Planlægning, Holdudtagelse (eller åbn /races direkte). Den åbner som standard på din nuværende løbsdag, hvilket kan se tomt eller allerede i gang ud, hvis der ikke er noget tilbage at tilmelde sig i dag. Brug dag-navigationen (pilene Forrige/Næste dag) til at hoppe frem til en kommende løbsdag, og tilføj derefter ryttere til et af de løb der vises der. Vælger du ikke selv, udfylder din assistent automatisk en opstilling for dig, inden løbet starter."
+      "a": "Gå til Planlægnings-hubben, fanen Holdudtagelse (eller åbn /planning direkte). Den åbner som standard på din nuværende løbsdag, hvilket kan se tomt eller allerede i gang ud, hvis der ikke er noget tilbage at tilmelde sig i dag. Brug dag-navigationen (pilene Forrige/Næste dag) til at hoppe frem til en kommende løbsdag, og tilføj derefter ryttere til et af de løb der vises der. Vælger du ikke selv, udfylder din assistent automatisk en opstilling for dig, inden løbet starter."
     },
     "raceClassificationsFaq": {
       "q": "Hvad er forskellen på GC, Klassiker/Monument og etapesejre?",

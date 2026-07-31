@@ -1,15 +1,17 @@
 // Hvornår er et sidebar-menupunkt det aktive? Ren funktion, unit-testbar —
-// samme mønster som plannerNavVisibility.js. Lå før inline i Layout.jsx, hvor
+// samme mønster som scoutingNavVisibility.js. Lå før inline i Layout.jsx, hvor
 // den ikke kunne dækkes af node --test (.jsx).
 //
 // #987: `to` kan indeholde en query (fx "/transfers?tab=market"). Aktiv kræver
 // at path matcher OG alle query-params i `to` findes i URL'en. `excludeQuery`
 // afaktiverer et item når en bestemt param-værdi ER sat (så søskende-genveje
 // til samme path ikke begge lyser op).
-// #3102: `excludePaths` gør det samme for søskende-ruter under samme prefix —
-// /races/strategy har sit eget menupunkt i Planlægning, så "Løb" må ikke også
-// lyse op dér via prefix-matchet. Item-objektet sendes som helhed, så et nyt
-// felt ikke kan blive glemt på ét af kaldstederne.
+// #3102: `excludePaths` gør det samme for søskende-ruter under samme prefix.
+// Feltet blev indført da /races/strategy havde eget menupunkt under /races-
+// prefixet; efter etape 3 (hubben) har ingen nav-items brug for det, men
+// mekanismen bliver — Transfers-parret viser at søskende-genveje opstår igen.
+// Item-objektet sendes som helhed, så et nyt felt ikke kan blive glemt på ét
+// af kaldstederne.
 export function pathMatchesNavItem(location, item) {
   const { to, exact = false, excludeQuery = null, excludePaths = null } = item;
   const [toPath, toQuery] = to.split("?");

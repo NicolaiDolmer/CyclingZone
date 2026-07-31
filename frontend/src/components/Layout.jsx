@@ -17,9 +17,7 @@ import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
 import { scoutingNavItem } from "../lib/scoutingNavVisibility";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
-import { plannerNavItem } from "../lib/plannerNavVisibility";
 import { pathMatchesNavItem } from "../lib/navMatching.js";
-import { usePlanner } from "../lib/usePlanner";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
@@ -35,8 +33,6 @@ const API = import.meta.env.VITE_API_URL;
 // side-whitespace i den smalle max-w-4xl; cards/header cappes per-side i selve siden.
 // "/training" tilføjet per #2446 — roster-tabellen (9 kolonner) blev klippet i
 // højre side i max-w-6xl samtidig med spildt whitespace; samme klasse som /team.
-// "/planner" tilføjet per #2568 — ejer-krav: planner-boardet skal ud til kanten
-// på store skærme (flip-blocker for peak_planner beta→on).
 // "/resultater" tilføjet per #3102 etape 2 — hubben er T2 nu: arkiv-fanen er
 // biblioteks-tabellen (5 kolonner) og point-fanen er point-tabellerne pr.
 // løbsklasse. Uden ruten her ville begge være klemt i max-w-6xl.
@@ -44,20 +40,24 @@ const API = import.meta.env.VITE_API_URL;
 // ruter redirecter nu (rangliste-fanerne bor under /standings, som allerede er
 // wide; personale-fanen bor i /klub, der bevidst forbliver T1 max-w-4xl —
 // staff-tabellens kolonner er kompakte nok, og SCROLLER fanger overløb).
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/planner", "/standings", "/races", "/resultater"]);
+// #3102 etape 3: "/races" og "/planner" udgik (ruterne redirecter);
+// "/planning" arver deres T2-behov — holdudtagelses-boardet skal ud til kanten
+// på store skærme (#2568-ejer-kravet gælder uændret i hubben).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/planning", "/standings", "/resultater"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
 // for disse ruter (før: RaceDetail kompenserede med negative margins og bleedte
-// kun til content-boksens kant). "/races/strategy" er IKKE T3 og undtages.
+// kun til content-boksens kant).
 // Bølge 5: de fire profil-sider (/riders/:id, /teams/:id, /managers/:teamId,
 // /staff/:id) migreret til T3 — /teams/ flyttet hertil fra det tidligere
 // WIDE_CONTENT_PREFIXES (#1675), som dermed udgik. Prefixerne matcher kun
 // detalje-ruterne: list-siderne (/riders, /staff, …) er exact-paths uden slash.
+// #3102 etape 3: FULL_BLEED_EXCLUDE ("/races/strategy") udgik — ruten
+// redirecter til Planlægnings-hubben, så prefixet matcher kun /races/:raceId nu.
 const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/"];
-const FULL_BLEED_EXCLUDE = new Set(["/races/strategy"]);
 function isFullBleedRoute(pathname) {
-  return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p)) && !FULL_BLEED_EXCLUDE.has(pathname);
+  return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p));
 }
 
 // #3104 etape A: Min Managerprofil flyttet hertil fra Klubhus. Den lå midt i
@@ -95,7 +95,7 @@ function buildAdminGroup(t) {
 // brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
 // flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
 // forskellige menuer for samme bruger.
-function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, peakPlannerEnabled = false) {
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false) {
   return [
     {
       // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
@@ -119,20 +119,14 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       ],
     },
     {
-      // #3102 etape 1: planlægnings-fladerne (holdudtagelse, formplan, strategi)
-      // lå spredt over Klubhus (planneren) og resultat-gruppen (holdudtagelse),
-      // og strategisiden havde slet ingen nav-indgang — eneste vej var et text-xs
-      // link i Race Hub-brættet. Rækkefølgen her spejler den kommende hub's faner
-      // (Holdudtagelse · Formplan · Strategi) fra kontraktens etape 3.
+      // #3102 etape 3: de tre planlægnings-flader (Holdudtagelse · Formplan ·
+      // Strategi) er faner i Planlægnings-hubben nu — gruppen er 4 → 2 punkter.
+      // Formplanens kill-switch (peak_planner_enabled) gater ikke længere et
+      // nav-punkt; fanen selv viser plannerens tom-state når flaget er off.
       key: "planlaegning", label: t("nav.group.planlaegning"),
       items: [
-        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
-        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
-        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
-        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
-        ...plannerNavItem(peakPlannerEnabled, t),
-        { to: "/races/strategy", label: t("nav.item.strategy") },
-        { to: "/calendar",       label: t("nav.item.calendar") },
+        { to: "/planning", label: t("nav.item.planning") },
+        { to: "/calendar", label: t("nav.item.calendar") },
       ],
     },
     {
@@ -157,16 +151,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       key: "resultater", label: t("nav.group.resultater"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
-        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
-        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
-        // #3102: excludePaths så den heller ikke lyser op sammen med det nye
-        // Holdstrategi-punkt (prefix-matchet ville ellers ramme /races/strategy).
-        // #3102 etape 2 — eksplicit beslutning: punktet BLIVER på /races selv om
-        // bibliotek + point er flyttet til hubben ovenfor. /races har fortsat
-        // kalenderen og verdens-kataloget, og etape 3 er den der opløser ruten;
-        // at flytte punktets mål to gange på to uger ville koste mere
-        // muskelhukommelse (11k sessions) end det ville rydde op.
-        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] },
+        // #3102 etape 3: "Løb"-punktet udgik — /races er opløst (kalenderen bor
+        // i Planlægnings-hubben, verdens-kataloget + de afsluttede løb i
+        // Resultat-hubben) og ruten redirecter. Etape 2 holdt bevidst punktet i
+        // live én etape ekstra; det her er etapen der opløser det.
         // #3104 etape C: Liga & rangliste (2.233 sessions) + Rytterrangliste
         // (478) + Global Rank (<245) er ét punkt med faner nu (Ranglister-hubben
         // på /standings; de to gamle ruter redirecter) — Resultater 6 → 4 punkter.
@@ -370,9 +358,8 @@ export default function Layout() {
   // #2244 Fase 3: Scouting-central-nav gater på scout_system_enabled (kill-switch,
   // ikke beta-gate) — samme flag /api/scouting/me rapporterer til siden selv.
   const { enabled: scoutSystemEnabled } = useScoutingCentral();
-  // S5: Season Planner-nav gater på peak_planner_enabled (launch-switch) — samme
-  // flag /api/peak-plans/board rapporterer til selve /planner-siden.
-  const { enabled: peakPlannerEnabled } = usePlanner();
+  // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
+  // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const heartbeatRef = useRef(null);
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
@@ -387,7 +374,7 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
     if (isAdmin) groups.push(buildAdminGroup(t));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
     // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
@@ -395,7 +382,7 @@ export default function Layout() {
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled]);
+  }, [location, isAdmin, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -538,7 +525,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, peakPlannerEnabled);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
 

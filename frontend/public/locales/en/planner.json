@@ -1,7 +1,6 @@
 {
   "page": {
-    "title": "Season planner",
-    "subtitle": "Plan your whole squad's peaks in one place. Form is earned in the lead-up, not handed out."
+    "title": "Season planner"
   },
   "empty": {
     "title": "Season planner isn't live yet",
@@ -24,8 +23,7 @@
   },
   "tabs": {
     "squad": "Squad",
-    "season": "Season",
-    "races": "Races"
+    "season": "Season"
   },
   "board": {
     "title": "Season board"

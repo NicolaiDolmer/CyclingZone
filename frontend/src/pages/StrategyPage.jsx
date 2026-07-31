@@ -1,12 +1,14 @@
 // Race Hub S3 — Holdstrategi (Lag 0). Stående præferencer der fodrer den proaktive
 // generator: rangordnet A-kæde, faste rolle-regler, kaptajn 1/2/3 pr. terræn, mål-løb.
 // Gem skriver IKKE entries — den tilbyder live preview-diff + eksplicit "Regenerér".
-// Auth/fetch-mønster spejler RaceHubBoard.jsx.
+// Auth/fetch-mønster spejler RaceHubBoard.jsx. #3102 etape 3: Strategi-fanen i
+// Planlægnings-hubben (før egen rute /races/strategy, som redirecter til
+// /planning?tab=strategy) — hubben ejer sidehovedet, så eget PageHeader +
+// tilbage-link udgik.
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../lib/supabase";
-import { PageHeader, PageLoader, SectionStack, EmptyState, ErrorState, Button } from "../components/ui";
+import { PageLoader, SectionStack, EmptyState, ErrorState, Button } from "../components/ui";
 import AChainEditor from "../components/racehub/strategy/AChainEditor.jsx";
 import RoleRulesEditor from "../components/racehub/strategy/RoleRulesEditor.jsx";
 import CaptainBoard from "../components/racehub/strategy/CaptainBoard.jsx";
@@ -59,8 +61,6 @@ export default function StrategyPage() {
   if (!data?.enabled) return null;
   if (!data.roster?.length) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/races" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">{t("strategy.back")}</Link>
-      <PageHeader title={t("strategy.title")} subtitle={t("strategy.subtitle")} />
       <EmptyState title={t("strategy.aChain.empty")} />
     </div>
   );
@@ -122,9 +122,8 @@ export default function StrategyPage() {
 
   return (
     <div className="max-w-4xl mx-auto" data-testid="strategy-page">
-      <Link to="/races" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">{t("strategy.back")}</Link>
-
-      <PageHeader title={t("strategy.title")} subtitle={t("strategy.subtitle")} />
+      {/* Fladens formåls-linje (før PageHeader-subtitle) — hubben ejer titlen. */}
+      <p className="mb-4 text-xs text-cz-2">{t("strategy.subtitle")}</p>
 
       {error && (
         <div role="alert" className="mb-4">

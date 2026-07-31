@@ -1,4 +1,5 @@
-// Race Hub S3 — Holdstrategi-fladen på /races/strategy.
+// Race Hub S3 — Holdstrategi-fladen; bor på Planlægnings-hubbens Strategi-fane
+// (/planning?tab=strategy) efter #3102 etape 3 (før: /races/strategy).
 //
 // Mocker GET /api/races/strategy (aggregat-endpointet) så fladen renderer A-kæde,
 // faste roller, kaptajn 1/2/3-board (med bucket-suitability) og mål-løb. Mønster
@@ -45,7 +46,7 @@ test("Holdstrategi-fladen renderer A-kæde, kaptajn-board og mål-løb", async (
   await mockStrategy(page);
 
   await login(page);
-  await page.goto("/races/strategy");
+  await page.goto("/planning?tab=strategy");
 
   const root = page.getByTestId("strategy-page");
   await expect(root).toBeVisible();
@@ -72,7 +73,7 @@ test("Holdstrategi: auto-foreslå udfylder en terræn-bucket", async ({ page }) 
   await mockStrategy(page, { ...STRATEGY, captain_priorities: {} }); // tom → auto-foreslå fylder
 
   await login(page);
-  await page.goto("/races/strategy");
+  await page.goto("/planning?tab=strategy");
   const root = page.getByTestId("strategy-page");
   await expect(root).toBeVisible();
 

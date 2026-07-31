@@ -1,7 +1,6 @@
 {
   "page": {
-    "title": "Sæsonplanlægger",
-    "subtitle": "Planlæg hele holdets peaks ét sted. Form tjenes i optakten, den bliver ikke foræret."
+    "title": "Sæsonplanlægger"
   },
   "empty": {
     "title": "Sæsonplanlæggeren er ikke live endnu",
@@ -24,8 +23,7 @@
   },
   "tabs": {
     "squad": "Trup",
-    "season": "Sæson",
-    "races": "Løb"
+    "season": "Sæson"
   },
   "board": {
     "title": "Sæsonbræt"

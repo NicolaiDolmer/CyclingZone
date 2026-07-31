@@ -1,4 +1,5 @@
-// Race Hub Fase 1 — trup-fordeling-board'et på /races.
+// Race Hub Fase 1 — trup-fordeling-board'et; bor på Planlægnings-hubbens
+// Holdudtagelse-fane (/planning) efter #3102 etape 3 (før: /races).
 //
 // Mocker GET /api/races/distribution (aggregat-endpointet) så board'et renderer to
 // overlappende løb som kolonner + en 12-trup-pulje hvor en udtaget rytter er låst.
@@ -70,7 +71,7 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   await mockDistribution(page);
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
 
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
@@ -131,7 +132,7 @@ test("board surfacer fejlbesked når et gem afvises (#1823)", async ({ page }) =
   });
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -161,7 +162,7 @@ test("board: redigering gemmer ikke før Gem (underbemandet vises lokalt)", asyn
   });
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
   await expect(board.getByText(/6 \/ 6/).first()).toBeVisible();
@@ -183,7 +184,7 @@ test("board: klik udtagen rytter åbner rolle-vælger (#1823)", async ({ page })
   await installNetworkMocks(page);
   await mockDistribution(page);
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -202,7 +203,7 @@ test("board: free_role-rollekort vises KUN når race_v3_enabled er true (#2376)"
   await installNetworkMocks(page);
   await mockDistribution(page, { ...DISTRIBUTION, race_v3_enabled: false });
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -220,7 +221,7 @@ test("board: free_role-rollekort vises når race_v3_enabled er true (#2376)", as
   // adfærd), så testen bruger en hjælper for at observere det faktiske rolle-skift.
   await mockDistribution(page, { ...FULL_RACE_A, race_v3_enabled: true });
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -281,7 +282,7 @@ test("browse: 'Andre divisioner' viser read-only startlister (bruttotrupper) + l
   await mockBrowse(page);       // /distribution/browse — registreret sidst → vinder (LIFO)
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   await expect(page.getByTestId("race-hub-board")).toBeVisible();
 
   // Skift til "Andre divisioner" → read-only browse-flade. Scope-pillerne er
@@ -315,7 +316,7 @@ test("board: igangværende løb vises som trup-låst (#1825)", async ({ page }) 
   };
   await mockDistribution(page, locked);
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -364,7 +365,7 @@ test("board: 'Ryd alt' viser konsekvens-dialog med de ramte løb + ægte nedtæl
   await mockClearAllPreview(page, { races: previewRaces, onClear: () => { clearCalled = true; } });
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
@@ -406,11 +407,41 @@ test("board: 'Ryd alt' rydder direkte UDEN dialog når ingen kommende løb ramme
   await mockClearAllPreview(page, { races: [], onClear: () => { clearCalled = true; } });
 
   await login(page);
-  await page.goto("/races");
+  await page.goto("/planning");
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
   await board.getByRole("button", { name: "Ryd alt" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect.poll(() => clearCalled).toBe(true);
+});
+
+// #3102 etape 3 — muskelhukommelses-guard: 11k sessions/30 dage kendte de gamle
+// ruter. Hver legacy-URL skal lande på den rigtige hub-fane, ikke 404/dashboard.
+test("legacy-ruterne redirecter til de rigtige hub-faner (#3102 etape 3)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page);
+
+  await login(page);
+
+  // Holdudtagelses-genvejen → hubben (default-fanen er boardet).
+  await page.goto("/races?tab=calendar");
+  await expect(page).toHaveURL(/\/planning$/);
+  await expect(page.getByTestId("race-hub-board")).toBeVisible();
+
+  // Planneren → Formplan-fanen.
+  await page.goto("/planner");
+  await expect(page).toHaveURL(/\/planning\?tab=form$/);
+
+  // Holdstrategien → Strategi-fanen.
+  await page.goto("/races/strategy");
+  await expect(page).toHaveURL(/\/planning\?tab=strategy$/);
+
+  // Rå /races (kalender + resultater før) → Resultat-hubben; verdens-kataloget
+  // → Arkiv-fanen.
+  await page.goto("/races");
+  await expect(page).toHaveURL(/\/resultater$/);
+  await page.goto("/races?tab=world");
+  await expect(page).toHaveURL(/\/resultater\?tab=archive$/);
 });

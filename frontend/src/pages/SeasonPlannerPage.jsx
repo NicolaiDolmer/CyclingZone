@@ -1,7 +1,9 @@
-// Season Planner (spec §3/§5) — dediker­et cockpit-side (/planner). Master-canvas
-// (rytter-lanes m. form-kurver + trækbare peaks) + kontekst-skuffe (race/rytter) +
-// mobilt stakket spor. Launch-gated: mens peak_planner_enabled er 'off' viser siden
-// en tom-state (samme kill-switch-mønster som Scouting/Facilities).
+// Season Planner (spec §3/§5) — Formplan-fanen i Planlægnings-hubben (#3102
+// etape 3; boede før på egen rute /planner, som redirecter til
+// /planning?tab=form). Master-canvas (rytter-lanes m. form-kurver + trækbare
+// peaks) + kontekst-skuffe (race/rytter) + mobilt stakket spor. Launch-gated:
+// mens peak_planner_enabled er 'off' viser fanen en tom-state (samme
+// kill-switch-mønster som Scouting/Facilities).
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -12,13 +14,15 @@ import { plannerStatusSummary, pendingSuggestionPairs, ridersWithSuggestions } f
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
 import PlannerDrawer from "../components/planner/PlannerDrawer";
-import PlannerRaceList from "../components/planner/PlannerRaceList";
 import PlannerSquad from "../components/planner/PlannerSquad";
 import PlannerStatusLine from "../components/planner/PlannerStatusLine";
 import PlannerAssistantCard from "../components/planner/PlannerAssistantCard";
 
 // #3086: Squad er default — listen er indgangen, brættet er overblikket.
-const PLANNER_TABS = ["squad", "season", "races"];
+// #3102 etape 3: races-fanen er nedlagt (kontrakten) — den scannbare løbsliste
+// var en tredje kopi af kalenderen, og hubbens Holdudtagelse-fane viser
+// allerede sæsonens løb som board.
+const PLANNER_TABS = ["squad", "season"];
 
 function LegendItem({ children }) {
   return <span className="flex items-center gap-1.5">{children}</span>;
@@ -87,22 +91,6 @@ function DivisionPendingNotice({ t, seasonNumber }) {
   );
 }
 
-// #2849 bølge 6 — DEN ene editoriale sidehoved-recipe for denne side (ejer-
-// godkendt undtagelse fra app-standard PageHeader, se PAGE_TEMPLATES.md-note).
-// Renderes identisk i disabled/error/happy-path, så der kun findes ÉN
-// font-display-fortolkning på siden (audit-fund: var 38/22/20px tre steder).
-function PlannerPageHead({ t, right }) {
-  return (
-    <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4 gap-3">
-      <div className="min-w-0">
-        <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
-        <p className="mt-[2px] text-xs text-cz-2">{t("page.subtitle")}</p>
-      </div>
-      {right && <div className="flex items-center gap-2 shrink-0">{right}</div>}
-    </div>
-  );
-}
-
 // #2849 bølge 6, ejer-feedback 25/7: containeren var flyttet til T2's 1600px-cap,
 // fordi /planner står i Layouts WIDE_CONTENT_ROUTES. Men brættet er et SVG med fast
 // viewBox (940 enheder), så det SKALERER med containeren i stedet for at vise mere:
@@ -117,15 +105,16 @@ export default function SeasonPlannerPage() {
   const planner = usePlanner(seasonNumber);
   const { enabled, loading, error, season, availableSeasons, divisionPending, riders, races, maxPerRider, today, leadupDays, paybackDays, busy } = planner;
 
-  // #3086: fanerne synkroniseres til ?tab= (samme mønster som Finance/#986), så
-  // et dybt link til fx Races lander rigtigt og en refresh ikke smider manageren
-  // tilbage til Squad midt i en gennemgang.
+  // #3086: fanerne synkroniseres til URL'en (samme mønster som Finance/#986), så
+  // et dybt link til fx Sæson lander rigtigt og en refresh ikke smider manageren
+  // tilbage til Squad midt i en gennemgang. #3102 etape 3: param'en hedder
+  // ?view= — ?tab= ejes af Planlægnings-hubben udenom (tab=form er denne flade).
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = PLANNER_TABS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "squad";
+  const activeTab = PLANNER_TABS.includes(searchParams.get("view")) ? searchParams.get("view") : "squad";
   const setTab = (tab) =>
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      p.set("tab", tab);
+      p.set("view", tab);
       return p;
     }, { replace: true });
 
@@ -213,7 +202,6 @@ export default function SeasonPlannerPage() {
   if (error) {
     return (
       <div className="mx-auto max-w-6xl">
-        <PlannerPageHead t={t} />
         <ErrorState
           title={t("error.title")}
           description={t("error.description")}
@@ -226,7 +214,6 @@ export default function SeasonPlannerPage() {
   if (!enabled) {
     return (
       <div className="mx-auto max-w-6xl">
-        <PlannerPageHead t={t} />
         <EmptyState title={t("empty.title")} description={t("empty.description")} />
       </div>
     );
@@ -248,47 +235,46 @@ export default function SeasonPlannerPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PlannerPageHead
-        t={t}
-        right={
-          <>
-            {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
-                sæson, så managere kan planlægge mod S2's program FØR den starter.
-                #2883: eksplicit "Sæson"-label tilføjet — bare "1"/"2"-knapper ved
-                siden af et VISUELT IDENTISK mine/alle-filter blev læst som ét
-                filter-cluster, ikke som en sæson-switcher (tre testere rapporterede
-                planneren som "låst" 25/7, selvom denne switcher allerede virkede). */}
-            {(availableSeasons || []).length > 1 && (
-              <div className="flex items-center gap-1.5">
-                <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("seasonMenu.label")}</span>
-                <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
-                  {availableSeasons.map((s) => (
-                    <button
-                      key={s.id}
-                      className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                      onClick={() => setSeasonNumber(s.number)}
-                    >{t("seasonMenu.option", { number: s.number })}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* #3018: mine/alle-filteret skjules når divisionen ikke er afgjort —
-                "Mine løb" ville matche nul løb, og at tilbyde et valg der ikke
-                findes er netop den slags flade testerne kaldte ubrugelig. */}
-            {!divisionPending && (
-              <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
-                {["mine", "all"].map((f) => (
-                  <button
-                    key={f}
-                    className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                    onClick={() => setFilter(f)}
-                  >{t(`filter.${f}`)}</button>
-                ))}
-              </div>
-            )}
-          </>
-        }
-      />
+      {/* #3102 etape 3: kontrollerne boede i sidens eget editoriale sidehoved
+          (PlannerPageHead); hubben ejer sidehovedet nu, så de står som en
+          højrestillet kontrolrække — samme flytning som division-selecten i
+          StandingsPage fik i #3104 etape C. */}
+      <div className="mb-[14px] flex flex-wrap items-center justify-end gap-2">
+        {/* #2518: sæson-vælger — kun vist når der findes mere end én oprettet
+            sæson, så managere kan planlægge mod S2's program FØR den starter.
+            #2883: eksplicit "Sæson"-label tilføjet — bare "1"/"2"-knapper ved
+            siden af et VISUELT IDENTISK mine/alle-filter blev læst som ét
+            filter-cluster, ikke som en sæson-switcher (tre testere rapporterede
+            planneren som "låst" 25/7, selvom denne switcher allerede virkede). */}
+        {(availableSeasons || []).length > 1 && (
+          <div className="flex items-center gap-1.5">
+            <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("seasonMenu.label")}</span>
+            <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+              {availableSeasons.map((s) => (
+                <button
+                  key={s.id}
+                  className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                  onClick={() => setSeasonNumber(s.number)}
+                >{t("seasonMenu.option", { number: s.number })}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* #3018: mine/alle-filteret skjules når divisionen ikke er afgjort —
+            "Mine løb" ville matche nul løb, og at tilbyde et valg der ikke
+            findes er netop den slags flade testerne kaldte ubrugelig. */}
+        {!divisionPending && (
+          <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+            {["mine", "all"].map((f) => (
+              <button
+                key={f}
+                className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                onClick={() => setFilter(f)}
+              >{t(`filter.${f}`)}</button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {toast && (
         <div className={`mb-3 text-xs px-3 py-2 rounded-cz border ${toast.kind === "error" ? "border-cz-accent-t text-cz-accent-t" : "border-cz-border text-cz-1 bg-cz-subtle"}`} role="status">
@@ -343,7 +329,6 @@ export default function SeasonPlannerPage() {
             <TabList label={t("page.title")} className="mb-[14px]">
               <Tab value="squad">{t("tabs.squad")}</Tab>
               <Tab value="season">{t("tabs.season")}</Tab>
-              <Tab value="races">{t("tabs.races")}</Tab>
             </TabList>
 
             {/* Squad — den nye arbejdsflade: listen ER input. */}
@@ -401,14 +386,6 @@ export default function SeasonPlannerPage() {
               </div>
             </TabPanel>
 
-            {/* #2568: scannbar sæson-løbs-liste — uændret, nu med sin egen fane. */}
-            <TabPanel value="races">
-              <PlannerRaceList
-                riders={riders} races={races} filter={viewFilter} today={today}
-                selectedRaceId={selected?.mode === "race" ? selected.id : null}
-                onSelectRace={(id) => setSelected({ mode: "race", id })}
-              />
-            </TabPanel>
           </Tabs>
 
           {/* Kontekst-skuffe: ligger UNDER fanerne, så et valg truffet i Squad,
