@@ -3244,9 +3244,16 @@ async function fetchAllScheduleRows(supabase, raceIds) {
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
     for (let from = 0; ; from += PAGE) {
+      // #3126: .order() på PK (race_id, stage_number) — uden en deterministisk
+      // totalordning garanterer Postgres ikke stabil rækkefølge mellem .range()-
+      // sider, så rækker kan hoppe mellem sider og forsvinde/duplikeres (samme
+      // fejlklasse som #3113-dobbeltbookingen).
       const { data, error } = await supabase
         .from("race_stage_schedule").select("race_id, scheduled_at")
-        .in("race_id", chunk).range(from, from + PAGE - 1);
+        .in("race_id", chunk)
+        .order("race_id", { ascending: true })
+        .order("stage_number", { ascending: true })
+        .range(from, from + PAGE - 1);
       if (error) break;
       rows.push(...(data || []));
       if (!data || data.length < PAGE) break;
@@ -3265,9 +3272,14 @@ async function fetchAllStageProfiles(supabase, raceIds, columns) {
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
     for (let from = 0; ; from += PAGE) {
+      // #3126: .order() på UNIQUE (race_id, stage_number) — se fetchAllScheduleRows
+      // ovenfor for hvorfor et uordnet .range() genindfører #3113-fejlklassen.
       const { data, error } = await supabase
         .from("race_stage_profiles").select(columns)
-        .in("race_id", chunk).range(from, from + PAGE - 1);
+        .in("race_id", chunk)
+        .order("race_id", { ascending: true })
+        .order("stage_number", { ascending: true })
+        .range(from, from + PAGE - 1);
       if (error) break;
       rows.push(...(data || []));
       if (!data || data.length < PAGE) break;
@@ -3287,9 +3299,14 @@ async function fetchAllScheduleRowsWithGameDay(supabase, raceIds) {
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
     for (let from = 0; ; from += PAGE) {
+      // #3126: .order() på PK (race_id, stage_number) — se fetchAllScheduleRows
+      // ovenfor for hvorfor et uordnet .range() genindfører #3113-fejlklassen.
       const { data, error } = await supabase
         .from("race_stage_schedule").select("race_id, stage_number, scheduled_at, game_day")
-        .in("race_id", chunk).range(from, from + PAGE - 1);
+        .in("race_id", chunk)
+        .order("race_id", { ascending: true })
+        .order("stage_number", { ascending: true })
+        .range(from, from + PAGE - 1);
       if (error) throw new Error(`race_stage_schedule (calendar): ${error.message}`);
       rows.push(...(data || []));
       if (!data || data.length < PAGE) break;
