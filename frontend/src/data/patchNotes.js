@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.77",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The extend-contract button now tells you upfront when a rider is at the cap",
+          "body": "Riders at the contract-extension cap (season number + 3, see the previous fix) still showed a normal 'Extend contract' button — clicking it only failed after you tried, with no warning beforehand. The button is now disabled with an explanation ('Contract at maximum length') whenever a rider can't be extended further, on both the rider profile and the squad page's manage panel, so you never click into a request that was always going to be rejected."
+        },
+        "da": {
+          "title": "Forlæng kontrakt-knappen fortæller nu på forhånd når en rytter er på loftet",
+          "body": "Ryttere på kontrakt-forlængelses-loftet (sæsonnummer + 3, se forrige rettelse) viste stadig en helt normal 'Forlæng kontrakt'-knap — klikket fejlede først EFTER forsøget, uden varsel på forhånd. Knappen er nu deaktiveret med en forklaring ('Kontrakt på maksimal længde') når en rytter ikke kan forlænges yderligere, både på rytterprofilen og holdsidens administrationspanel — så du aldrig klikker dig ind i et forsøg der altid var dømt til at blive afvist."
+        },
+        "refs": [3164]
+      }
+    ]
+  },
+  {
     "version": "7.76",
     "date": "2026-07-30",
     "label": "Beta",

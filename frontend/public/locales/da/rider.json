@@ -744,7 +744,8 @@
       "loadingTerms": "Henter vilkår…",
       "working": "Forlænger…",
       "success": "Kontrakt forlænget.",
-      "errorPrefix": "Kunne ikke forlænge:"
+      "errorPrefix": "Kunne ikke forlænge:",
+      "capped": "Kontrakt på maksimal længde (til og med sæson {season})."
     },
     "release": {
       "button": "Fyr rytter",
