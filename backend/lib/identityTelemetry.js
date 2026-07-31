@@ -97,7 +97,9 @@ export async function recordIdentityEvent(supabase, params) {
     }
     return { skipped: false };
   } catch (err) {
-    console.error("[identity-telemetry] uventet fejl:", err.message);
-    return { skipped: true, error: err.message };
+    // best-effort: telemetri må ALDRIG blokere den handling den observerer
+    // (fail-open er et #3132-krav) — fejlen logges og handlingen fortsætter.
+    console.error("[identity-telemetry] uventet fejl:", err?.message ?? err);
+    return { skipped: true, error: err?.message ?? String(err) };
   }
 }
