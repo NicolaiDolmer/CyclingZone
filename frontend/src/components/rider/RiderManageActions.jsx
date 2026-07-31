@@ -18,7 +18,7 @@
 // (ingen glow/gradient/emoji), forlæng/fyr som inline udvidelses-paneler (samme
 // mønster som TransferListButton), akademi op/ned via den konsekvens-bevidste
 // AcademyTransferConfirmModal. Player-facing copy: EN først, DA under.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
@@ -170,6 +170,19 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   // (opacity-50) og tav — han trykkede 15 gange. Nu er ventetiden synlig.
   const [extendLoading, setExtendLoading] = useState(false);
 
+  // #3164: rytteren kan stå på kontrakt-loftet (#3143, current season + 3) FØR
+  // spilleren overhovedet klikker — backend afviser korrekt, men kun EFTER
+  // klik, hvilket 178 ryttere på 14 hold ramte samme dag loftet gik live.
+  // Loft-reglen lever kun backend-side (maxAllowedContractEndSeason,
+  // backend/lib/contractSeed.js) — frontend gentager IKKE "current+3"-
+  // regnestykket. I stedet genbruges den EKSISTERENDE extend-quote-route,
+  // men hentet stille ved mount i stedet for ved klik, så knappen kan vises
+  // deaktiveret allerede før spilleren rører den. Samme kald som openExtend()
+  // ville lave alligevel — quoten caches til panelet, loft-fejlen caches til
+  // knappens disabled-state.
+  const [extendCapped, setExtendCapped] = useState(false);
+  const [extendCapSeason, setExtendCapSeason] = useState(null);
+
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
   const [releaseErr, setReleaseErr] = useState(null);
@@ -185,6 +198,28 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     setResult({ ok, msg });
     setTimeout(() => setResult(null), 6000);
   }
+
+  // #3164: stille loft-tjek ved mount (se begrundelse ved extendCapped ovenfor).
+  // Rammer IKKE-kappede ryttere cacher vi tilbuddet med det samme, så
+  // openExtend() ikke behøver hente det igen når panelet åbnes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { ok, data } = await fetchRiderQuote(rider.id, "extend-quote");
+        if (cancelled) return;
+        if (ok) {
+          setExtendQuote(data);
+        } else if (data?.errorCode === "contract_extension_cap_reached") {
+          setExtendCapped(true);
+          setExtendCapSeason(data?.errorParams?.maxSeason ?? null);
+        }
+        // Andre fejl (fx netværk) ignoreres stille her — openExtend() forsøger
+        // igen og viser den rigtige fejlbesked hvis spilleren rent faktisk klikker.
+      } catch { /* stille, se ovenfor */ }
+    })();
+    return () => { cancelled = true; };
+  }, [rider.id]);
 
   // ── Forlæng kontrakt (#1720) ────────────────────────────────────────────────
   async function openExtend() {
@@ -294,12 +329,21 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   const extendPanel = (
     <div className="contents">
       {/* #2718: triggeren viser selv at den henter vilkårene — ellers ser det
-          ud som om klikket ikke gjorde noget mens requesten er undervejs. */}
-      <button type="button" onClick={openExtend} aria-busy={extendLoading || undefined}
+          ud som om klikket ikke gjorde noget mens requesten er undervejs.
+          #3164: deaktiveret + forklarende tekst når rytteren står på
+          kontrakt-loftet — spilleren skal ALDRIG klikke sig ind i en
+          request der er dømt til at fejle. */}
+      <button type="button" onClick={openExtend} disabled={extendCapped}
+        aria-busy={extendLoading || undefined}
         className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
         {extendLoading && <BusyDot />}
         {t("manage.extend.button")}
       </button>
+      {extendCapped && (
+        <p className={`${ACTION_PANEL} text-cz-3 text-xs`}>
+          {t("manage.extend.capped", { season: extendCapSeason })}
+        </p>
+      )}
       {extendOpen && (
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <p className="text-cz-3 text-xs">{t("manage.extend.description")}</p>

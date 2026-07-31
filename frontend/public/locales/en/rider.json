@@ -744,7 +744,8 @@
       "loadingTerms": "Loading terms…",
       "working": "Extending…",
       "success": "Contract extended.",
-      "errorPrefix": "Couldn't extend:"
+      "errorPrefix": "Couldn't extend:",
+      "capped": "Contract at maximum length (through season {season})."
     },
     "release": {
       "button": "Release rider",
