@@ -5856,7 +5856,10 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       teamId: offer.buyer_team_id,
     }).catch((e) => console.error("[notifyTransferResponse:accepted] failed", { offerId: offer.id, error: e.message }));
 
-    // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
+    // #3132: identitets-telemetri ved sælgers indledende accept (lægger tilbuddet
+    // i afventende bekræftelse). Den faktiske værdioverførsel sker først ved
+    // "confirm" (se result.action === "accepted" nedenfor) — den er også
+    // instrumenteret, så begge trin i to-trins-flowet har et bevisspor.
     // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
     recordIdentityEvent(supabase, {
       userId: req.user.id,
@@ -5965,6 +5968,18 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     // do not yet move the rider, so cache stays.
     if (result.action === "accepted") {
       invalidateNamespace("riders");
+
+      // #3132: identitets-telemetri på det tidspunkt værdien FAKTISK flytter
+      // (begge parter bekræftet + transfer-vindue åbent) — ikke kun ved den
+      // indledende "accept" (der blot lægger tilbuddet i afventende tilstand).
+      // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
+      recordIdentityEvent(supabase, {
+        userId: req.user.id,
+        teamId: req.team.id,
+        eventType: "transfer_accepted",
+        entityId: offer.id,
+        req,
+      });
     }
 
     return res.json({
@@ -6228,8 +6243,11 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
       cash: swap.cash_adjustment,
     }), swap.id);
 
-    // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
-    // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
+    // #3132: identitets-telemetri ved den modtagende parts indledende accept
+    // (lægger byttehandlen i afventende bekræftelse). Den faktiske
+    // værdioverførsel sker først ved "confirm" (se result.action === "accepted"
+    // nedenfor) — den er også instrumenteret, så begge trin i to-trins-flowet
+    // har et bevisspor. Fire-and-forget, fail-open — må aldrig blokere svaret.
     recordIdentityEvent(supabase, {
       userId: req.user.id,
       teamId: req.team.id,
@@ -6328,6 +6346,18 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     // Executed swap moves two riders between teams; drop /api/riders cache.
     if (result.action === "accepted") {
       invalidateNamespace("riders");
+
+      // #3132: identitets-telemetri på det tidspunkt værdien FAKTISK flytter
+      // (begge parter bekræftet) — ikke kun ved den indledende "accept" (der
+      // blot lægger byttehandlen i afventende tilstand). Fire-and-forget,
+      // fail-open — må aldrig blokere svaret til klienten.
+      recordIdentityEvent(supabase, {
+        userId: req.user.id,
+        teamId: req.team.id,
+        eventType: "swap_accepted",
+        entityId: swap.id,
+        req,
+      });
     }
 
     return res.json({ success: true, action: result.action });
