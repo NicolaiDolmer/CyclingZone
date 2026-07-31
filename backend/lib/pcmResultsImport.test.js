@@ -133,18 +133,23 @@ test("PCM_RIDER_ALIASES er en ren PCM→DB-streng-map (ingen tomme værdier)", (
   }
 });
 
-// Mock-supabase: buildRiderMatcher kalder .from(t).select(...).range(from,to).
+// Mock-supabase: buildRiderMatcher kalder .from(t).select(...).order("id").range(from,to).
 // Håndhæver PostgREST's 1000-row-loft pr. kald, så en test fanger det hvis
-// matcheren holder op med at paginere.
+// matcheren holder op med at paginere. order() er en no-op chain-fortsættelse
+// (#3126: skal kunne kaldes før .range() uden at knække mocken).
 function fakeSupabase(riders, { maxRows = 1000 } = {}) {
   return {
     from: () => ({
-      select: () => ({
-        range: async (from, to) => {
-          const end = Math.min(to, from + maxRows - 1);
-          return { data: riders.slice(from, end + 1), error: null };
-        },
-      }),
+      select: () => {
+        const chain = {
+          order: () => chain,
+          range: async (from, to) => {
+            const end = Math.min(to, from + maxRows - 1);
+            return { data: riders.slice(from, end + 1), error: null };
+          },
+        };
+        return chain;
+      },
     }),
   };
 }
@@ -391,6 +396,7 @@ function spySupabase({ season, dbRaces, deletes }) {
           if (table === "race_results" && ctx.op === "delete") deletes.push({ ...ctx.filters });
           return b;
         },
+        order() { return b; }, // #3126: buildRiderMatcher/buildTeamMatcher kæder .order() før .range()
         range(from, to) { return Promise.resolve({ data: page([], from, to), error: null }); },
         single() { return Promise.resolve({ data: table === "seasons" ? season : null, error: null }); },
         then(res, rej) {
