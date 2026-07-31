@@ -3,7 +3,8 @@
     "title": "Inbox",
     "subtitleMine": "{count, plural, =0 {All read} one {1 unread} other {# unread}}",
     "subtitleHandle": "{count, plural, =0 {Nothing to handle right now} one {1 waiting for you} other {# waiting for you}}",
-    "subtitleLeague": "What's happening in the league"
+    "subtitleLeague": "What's happening in the league",
+    "subtitleActivity": "Your market actions in one place"
   },
   "actions": {
     "markAllRead": "Mark all read",
@@ -16,7 +17,8 @@
   "tabs": {
     "mine": "Mine",
     "handle": "To handle",
-    "league": "League"
+    "league": "League",
+    "activity": "My Activity"
   },
   "filter": {
     "all": "All ({count})",

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.79",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "A tidier menu: one Rankings hub, Staff inside Club, My Activity inside your Inbox",
+          "body": "Three rarely-visited menu items have moved in with the pages players actually use, so the menu is shorter without losing anything. League & standings, Rider Rankings and Global Rank are now one 'Rankings' entry with three tabs. The Staff directory lives as a tab on the Club page. My Activity (your auctions, offers and market history) is now a tab in your Inbox, next to 'To handle'. All old links and bookmarks redirect to the new places automatically."
+        },
+        "da": {
+          "title": "En mere overskuelig menu: én Ranglister-hub, Personale ind i Klub, Min Aktivitet ind i Indbakken",
+          "body": "Tre sjældent besøgte menupunkter er flyttet ind hos de sider spillerne faktisk bruger, så menuen er kortere uden at miste noget. Liga & rangliste, Rytterrangliste og Global Rank er nu ét punkt, 'Ranglister', med tre faner. Personale-oversigten bor som fane på Klub-siden. Min Aktivitet (dine auktioner, tilbud og markedshistorik) er nu en fane i din Indbakke, ved siden af 'Skal handles'. Alle gamle links og bogmærker sendes automatisk videre til de nye steder."
+        },
+        "refs": [3104]
+      }
+    ]
+  },
+  {
     "version": "7.78",
     "date": "2026-07-31",
     "label": "Beta",

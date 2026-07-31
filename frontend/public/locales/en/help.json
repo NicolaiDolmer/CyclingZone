@@ -335,7 +335,7 @@
       "label": "My Activity",
       "whatActivity": {
         "title": "What is My Activity?",
-        "text": "My Activity is your personal market workspace under Market. It gathers all your market actions (auctions, transfers and watchlist) in one place, separate from the global inbox."
+        "text": "My Activity is your personal market workspace, found as a tab in your Inbox. It gathers all your market actions (auctions, transfers and watchlist) in one place, separate from the global inbox."
       },
       "tabs": {
         "title": "The tabs",
@@ -472,7 +472,7 @@
       "label": "Global Rank",
       "whatIsIt": {
         "title": "What is Global Rank?",
-        "text": "Global Rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Season > Global Rank."
+        "text": "Global Rank is one ranking of all managers, across every division, so your standing survives promotion and relegation and doesn't reset when the season ends. Find it under Results > Rankings, on the Global Rank tab."
       },
       "howScored": {
         "title": "How are points earned?",
@@ -736,7 +736,7 @@
       },
       "staffOverview": {
         "title": "Seeing every team's staff",
-        "text": "The Staff page lists every hired chief across the league, filterable by role, team and tier. Click your own chief to see their full ability breakdown. Click another manager's chief and you only see what you would see comparing hiring candidates: overall rating, tier and top specialization, never their full breakdown."
+        "text": "The Staff tab on the Club page lists every hired chief across the league, filterable by role, team and tier. Click your own chief to see their full ability breakdown. Click another manager's chief and you only see what you would see comparing hiring candidates: overall rating, tier and top specialization, never their full breakdown."
       },
       "teamPublicProfile": {
         "title": "Seeing a rival's staff and facilities",

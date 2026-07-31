@@ -44,10 +44,11 @@ const LATEST_LIMIT = 9;
 // Label + desc resolves via t() ved render — se results-namespacet (hub.*).
 // #3102 etape 2: Race library + Points & prizes er ikke længere tiles — de er
 // faner på denne side. De tre der er tilbage peger ud af hubben.
+// #3104 etape C: rytterranglisten bor som fane i Ranglister-hubben nu.
 const HUB_LINKS = [
-  { to: "/standings",      key: "standings",      Icon: TrophyIcon },
-  { to: "/rider-rankings", key: "riderRankings",  Icon: BikeIcon },
-  { to: "/seasons",        key: "seasonSnapshot", Icon: CalendarIcon },
+  { to: "/standings",             key: "standings",      Icon: TrophyIcon },
+  { to: "/standings?tab=riders",  key: "riderRankings",  Icon: BikeIcon },
+  { to: "/seasons",               key: "seasonSnapshot", Icon: CalendarIcon },
 ];
 
 // Podiet for ét løb: etapeløb afgøres på det samlede klassement (gc), endagsløb
@@ -342,7 +343,7 @@ export default function ResultaterPage() {
                       ))}
                     </div>
                     <div className="px-4 py-2 border-t border-cz-border">
-                      <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}</Link>
+                      <Link to="/standings?tab=riders" className="text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}</Link>
                     </div>
                   </Card>
                 )}

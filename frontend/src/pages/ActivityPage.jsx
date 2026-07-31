@@ -15,7 +15,6 @@ import {
   UndoIcon,
   ChevronRightIcon,
   Button,
-  PageHeader,
   Section,
   SectionStack,
   SectionHeader,
@@ -248,35 +247,32 @@ export default function ActivityPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* #2849 bølge 2: kanonisk PageHeader. actions-slotten bærer sidst-
-          opdateret-tidsstemplet + refresh-knappen uændret (secondary sm Button;
-          ingen gold primary-knap på denne side) — bevidst afvigelse fra
-          action-cluster-kontraktens "max 1 select + 1 primary" for at bevare
-          eksisterende refresh-feature, samme præcedens som Dashboard/Auctions
-          (bølge 1). */}
-      <PageHeader
-        title={t("header.title")}
-        subtitle={t("header.subtitle")}
-        actions={
-          <>
-            {lastLoaded && (
-              <span className="hidden sm:inline text-[13px] text-cz-3">
-                {t("lastUpdated", { time: formatDate(lastLoaded, null, { hour: "2-digit", minute: "2-digit" }) })}
-              </span>
-            )}
-            <Button
-              variant="secondary" size="sm"
-              onClick={() => loadAll({ silent: true })}
-              disabled={refreshing}
-              iconLeft={<UndoIcon size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />}
-              title={t("refreshTitle")}
-            >
-              {refreshing ? t("refreshing") : t("refresh")}
-            </Button>
-          </>
-        }
-      />
+    <div>
+      {/* #3104 etape C: siden er fane-indhold i Indbakken nu (/activity
+          redirecter til /notifications?tab=activity) — NotificationsPage ejer
+          PageHeader + primær-fanerne, så egen PageHeader og yder-container
+          udgik. Det tidligere subtitle + refresh-cluster bliver som fane-intro
+          (RacePointsPage-mønsteret fra #3102 etape 2). */}
+      {/* Subtitlen bæres af Indbakkens PageHeader (page.subtitleActivity) — kun
+          refresh-clusteret lever videre her, højrestillet over under-fanerne. */}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+        <span className="flex items-center gap-3">
+          {lastLoaded && (
+            <span className="hidden sm:inline text-[13px] text-cz-3">
+              {t("lastUpdated", { time: formatDate(lastLoaded, null, { hour: "2-digit", minute: "2-digit" }) })}
+            </span>
+          )}
+          <Button
+            variant="secondary" size="sm"
+            onClick={() => loadAll({ silent: true })}
+            disabled={refreshing}
+            iconLeft={<UndoIcon size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />}
+            title={t("refreshTitle")}
+          >
+            {refreshing ? t("refreshing") : t("refresh")}
+          </Button>
+        </span>
+      </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 overflow-x-auto pb-px">

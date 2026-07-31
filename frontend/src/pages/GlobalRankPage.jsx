@@ -6,7 +6,7 @@ import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
 import { useGlobalRank } from "../hooks/useGlobalRank";
 import {
-  Card, EmptyState, ErrorState, PageHeader, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon,
+  Card, EmptyState, ErrorState, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -93,25 +93,22 @@ export default function GlobalRankPage() {
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const divCounts = ALL_DIVISIONS.map(d => ({ div: d, count: teams.filter(row => row.division === d).length }));
 
+  // #3104 etape C: siden er fane-indhold i Ranglister-hubben nu (RankingsHubPage
+  // ejer PageHeader + faner), så egen PageHeader og yder-container udgik — samme
+  // regel som RacePointsPage under #3102 etape 2. States renderer kun kropszonen.
   if (loading) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <div className={`${WRAP} p-5`}>
-        <SkeletonLines lines={6} />
-      </div>
+    <div className={`${WRAP} p-5`}>
+      <SkeletonLines lines={6} />
     </div>
   );
 
   // #2849 bølge 3: hand-rolled fejl-banner (rounded-lg + ad-hoc knap) erstattet
   // af den kanoniske ErrorState — samme genindlæsning (setPage(0) + reload()).
   if (error) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <ErrorState
-        title={t("loadError")}
-        action={<Button size="sm" variant="secondary" onClick={() => { setPage(0); reload(); }}>{t("retry")}</Button>}
-      />
-    </div>
+    <ErrorState
+      title={t("loadError")}
+      action={<Button size="sm" variant="secondary" onClick={() => { setPage(0); reload(); }}>{t("retry")}</Button>}
+    />
   );
 
   // #2849 bølge 3 — DataTable-kolonner (T2 wide-data-recipe). Rang + bevægelse +
@@ -179,8 +176,10 @@ export default function GlobalRankPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+    <div>
+      {/* #3104 etape C: formel-forklaringen fra det tidligere PageHeader-subtitle
+          som fane-intro (RacePointsPage-mønsteret) — hubben ejer sidehovedet. */}
+      <p className="mb-3 text-[13px] text-cz-2">{t("subtitle")}</p>
 
       {/* Egen placering — fastgjort bånd øverst, altid synlig uanset filter/side (godkendt mockup). */}
       {myRow && (

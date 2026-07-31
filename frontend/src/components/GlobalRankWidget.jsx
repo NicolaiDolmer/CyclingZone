@@ -44,10 +44,10 @@ export default function GlobalRankWidget() {
 
   return (
     <Card className="p-5">
-      <Link to="/global-rank" className="mb-3 block group">
+      <Link to="/standings?tab=global" className="mb-3 block group">
         <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("title")}</h2>
       </Link>
-      <Link to="/global-rank" className="flex items-center gap-3">
+      <Link to="/standings?tab=global" className="flex items-center gap-3">
         <span className="font-mono font-bold text-2xl text-cz-accent-t">#{row.global_rank}</span>
         {row.movement != null && row.movement !== 0 && (
           <span className={`font-mono text-sm font-bold inline-flex items-center gap-0.5 ${up ? "text-cz-success" : "text-cz-danger"}`}>

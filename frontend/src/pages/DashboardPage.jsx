@@ -1193,7 +1193,7 @@ export default function DashboardPage() {
         <Section>
           <SectionHeader
             title={t("dashboard:cards.riderRanking.title")}
-            action={<SectionAction as={Link} to="/rider-rankings">{t("dashboard:cards.riderRanking.linkAll")}</SectionAction>}
+            action={<SectionAction as={Link} to="/standings?tab=riders">{t("dashboard:cards.riderRanking.linkAll")}</SectionAction>}
           />
           {riderRanking.length === 0 ? (
             <div className="text-center py-4">

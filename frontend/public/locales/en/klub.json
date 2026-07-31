@@ -125,5 +125,9 @@
       "network": "No connection to the server. Nothing was deducted.",
       "auth": "Your session expired. Sign in again and retry."
     }
+  },
+  "tabs": {
+    "club": "Facilities",
+    "staff": "Staff"
   }
 }

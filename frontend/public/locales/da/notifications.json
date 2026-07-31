@@ -3,7 +3,8 @@
     "title": "Indbakke",
     "subtitleMine": "{count, plural, =0 {Alle er læst} one {1 ulæst} other {# ulæste}}",
     "subtitleHandle": "{count, plural, =0 {Intet at handle på lige nu} one {1 venter på dig} other {# venter på dig}}",
-    "subtitleLeague": "Hvad sker der i ligaen"
+    "subtitleLeague": "Hvad sker der i ligaen",
+    "subtitleActivity": "Dine markedshandlinger samlet ét sted"
   },
   "actions": {
     "markAllRead": "Marker alle læst",
@@ -16,7 +17,8 @@
   "tabs": {
     "mine": "Mine",
     "handle": "Skal handles",
-    "league": "Ligaen"
+    "league": "Ligaen",
+    "activity": "Min Aktivitet"
   },
   "filter": {
     "all": "Alle ({count})",

@@ -18,7 +18,7 @@ import { formatNumber } from "../lib/intl";
 import { statStyle } from "../lib/statColor.js";
 import {
   Card, Select, Input, EmptyState, ErrorState, Checkbox, Button,
-  PageHeader, DataTable, SkeletonLines, BriefcaseIcon,
+  DataTable, SkeletonLines, BriefcaseIcon,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { labelClass } from "../components/ui/fieldStyles.js";
@@ -90,35 +90,29 @@ export default function StaffOverviewPage() {
     }).sort((a, b) => b.overall - a.overall);
   }, [staff, search, roleFilter, minTier]);
 
+  // #3104 etape C: siden er fane-indhold i Klub nu (/staff redirecter til
+  // /klub?tab=staff) — KlubPage ejer sidehoved + faner, så egen PageHeader og
+  // yder-container udgik. States renderer kun kropszonen.
   if (loading) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("page.title")} />
-      <div className={`${WRAP} p-5`}>
-        <SkeletonLines lines={6} />
-      </div>
+    <div className={`${WRAP} p-5`}>
+      <SkeletonLines lines={6} />
     </div>
   );
 
   if (!enabled) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("page.title")} />
-      <EmptyState title={t("disabled.title")} description={t("disabled.description")} />
-    </div>
+    <EmptyState title={t("disabled.title")} description={t("disabled.description")} />
   );
 
   if (error) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("page.title")} />
-      <ErrorState
-        title={t("error.title")}
-        description={t("error.description")}
-        action={
-          <Button size="sm" variant="secondary" onClick={refresh}>
-            {t("error.retry", { defaultValue: "Try again" })}
-          </Button>
-        }
-      />
-    </div>
+    <ErrorState
+      title={t("error.title")}
+      description={t("error.description")}
+      action={
+        <Button size="sm" variant="secondary" onClick={refresh}>
+          {t("error.retry", { defaultValue: "Try again" })}
+        </Button>
+      }
+    />
   );
 
   const columns = [
@@ -199,8 +193,10 @@ export default function StaffOverviewPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("page.title")} subtitle={t("page.subtitle", { count: formatNumber(filtered.length) })} />
+    <div>
+      {/* #3104 etape C: antal-konteksten fra det tidligere PageHeader-subtitle
+          som fane-intro — hubbens sidehoved er fælles og kan ikke bære den. */}
+      <p className="mb-3 text-[13px] text-cz-2">{t("page.subtitle", { count: formatNumber(filtered.length) })}</p>
 
       {/* Filter-bar (T2-recept): search Input + op til 3 Selects + Checkbox */}
       <Card className="mb-4 grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">

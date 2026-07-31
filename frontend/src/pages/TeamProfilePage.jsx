@@ -287,7 +287,7 @@ export default function TeamProfilePage() {
             </div>
             {globalRank && (
               <div className="flex gap-2 flex-none">
-                <Button size="sm" variant="secondary" onClick={() => navigate("/global-rank")}>
+                <Button size="sm" variant="secondary" onClick={() => navigate("/standings?tab=global")}>
                   {tGR("title")} #{globalRank.global_rank}
                 </Button>
               </div>

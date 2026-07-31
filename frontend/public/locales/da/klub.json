@@ -125,5 +125,9 @@
       "network": "Ingen forbindelse til serveren. Der blev ikke trukket noget.",
       "auth": "Din session er udløbet. Log ind igen og prøv igen."
     }
+  },
+  "tabs": {
+    "club": "Faciliteter",
+    "staff": "Personale"
   }
 }

@@ -37,14 +37,14 @@ const API = import.meta.env.VITE_API_URL;
 // højre side i max-w-6xl samtidig med spildt whitespace; samme klasse som /team.
 // "/planner" tilføjet per #2568 — ejer-krav: planner-boardet skal ud til kanten
 // på store skærme (flip-blocker for peak_planner beta→on).
-// "/staff" tilføjet per #2450 — personale-oversigten på tværs af hold har samme
-// tabel-form (navn/rolle/hold/division/tier/specialisering/rating/løn) som riders.
-// "/global-rank" tilføjet per #2849 bølge 3 — T2 wide data-side (rank-tabellen
-// cappes per-side på max-w-[1600px] ligesom /races).
 // "/resultater" tilføjet per #3102 etape 2 — hubben er T2 nu: arkiv-fanen er
 // biblioteks-tabellen (5 kolonner) og point-fanen er point-tabellerne pr.
 // løbsklasse. Uden ruten her ville begge være klemt i max-w-6xl.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/staff", "/planner", "/standings", "/races", "/resultater", "/global-rank"]);
+// #3104 etape C: "/rider-rankings", "/global-rank" og "/staff" udgik — de tre
+// ruter redirecter nu (rangliste-fanerne bor under /standings, som allerede er
+// wide; personale-fanen bor i /klub, der bevidst forbliver T1 max-w-4xl —
+// staff-tabellens kolonner er kompakte nok, og SCROLLER fanger overløb).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/calendar", "/training", "/planner", "/standings", "/races", "/resultater"]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -114,10 +114,8 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/board",          label: t("nav.item.board") },         // 959
         ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
-        // #2450: personale-oversigten forudsætter faciliteter (staff ansættes der),
-        // så den deler samme flag-gate/kilde som Klub-nav-item'et lige ovenfor.
-        // #3104: ~400 sessions — bliver en fane i Klub i etape C.
-        ...(facilitiesEnabled ? [{ to: "/staff", label: t("nav.item.staffOverview") }] : []),
+        // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
+        // (/klub?tab=staff) — eget nav-punkt udgik, Klubhus 10 → 9 punkter.
       ],
     },
     {
@@ -147,7 +145,8 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market" },
         { to: "/transfers?tab=market", label: t("nav.item.transferList") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
-        { to: "/activity",     label: t("nav.item.activity") },
+        // #3104 etape C: Min Aktivitet (<245 sessions) er en fane i Indbakken nu
+        // (/notifications?tab=activity) — eget nav-punkt udgik.
       ],
     },
     {
@@ -168,9 +167,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         // at flytte punktets mål to gange på to uger ville koste mere
         // muskelhukommelse (11k sessions) end det ville rydde op.
         { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] },
-        { to: "/standings",      label: t("nav.item.standings") },
-        { to: "/rider-rankings", label: t("nav.item.riderRankings") },
-        { to: "/global-rank",    label: t("nav.item.globalRank") },
+        // #3104 etape C: Liga & rangliste (2.233 sessions) + Rytterrangliste
+        // (478) + Global Rank (<245) er ét punkt med faner nu (Ranglister-hubben
+        // på /standings; de to gamle ruter redirecter) — Resultater 6 → 4 punkter.
+        { to: "/standings",      label: t("nav.item.rankings") },
         { to: "/seasons",        label: t("nav.item.seasons") },
       ],
     },
