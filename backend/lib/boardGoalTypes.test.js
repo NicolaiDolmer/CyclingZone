@@ -110,26 +110,35 @@ test("jersey_wins evaluateGoal cumulative=false reads seasonJerseyWins", () => {
 });
 
 // =====================================================================
-// 3. signature_rider — popularity >= 75
+// 3. signature_rider — star-score (popularity + UCI), #3141
 // =====================================================================
+// #3141 · Før fixen brugte dette mål rå popularity>=75 alene, mens board-
+// kortets "bestyrelsen anerkender N stjerne-ryttere" (boardIdentity.js'
+// star_profile) bruger et blandet score (popularity*0.70 + uciScore*0.30 >= 68,
+// STAR_RIDER_SCORE_THRESHOLD). De to flader kunne derfor tælle forskelligt for
+// SAMME trup. Testene nedenfor bruger star-score-formlen, ikke rå popularity.
 
-test("signature_rider evaluateGoal counts riders with popularity >= 75", () => {
+test("#3141 · signature_rider evaluateGoal tæller via star-score, matcher board-kortets stjerne-optælling", () => {
   const team = {
     riders: [
-      { id: "a", popularity: 80 },
-      { id: "b", popularity: 50 },
-      { id: "c", popularity: 75 }, // præcis på threshold
+      // Moderat omdømme (60) men høje UCI-point → score 72 (>=68) — en
+      // rytter bestyrelsen anerkender som stjerne, men som den GAMLE
+      // popularity>=75-regel aldrig ville have talt med.
+      { id: "a", popularity: 60, uci_points: 500 },
+      // Højt omdømme (80) men ingen UCI-point → score 56 (<68) — talte under
+      // den GAMLE regel, men er IKKE en bestyrelses-stjerne under den nye.
+      { id: "b", popularity: 80, uci_points: 0 },
     ],
   };
-  const goal = { type: "signature_rider", target: 2 };
-  assert.equal(evaluateGoal(goal, null, team, {}), true);
+  const goal = { type: "signature_rider", target: 1 };
+  assert.equal(evaluateGoal(goal, null, team, {}), true, "rider a (star-score 72) skal tælle mod målet");
 });
 
-test("signature_rider evaluateGoal returns false when below threshold", () => {
+test("#3141 · signature_rider evaluateGoal returns false when no rider clears the star-score threshold", () => {
   const team = {
     riders: [
-      { id: "a", popularity: 70 },
-      { id: "b", popularity: 60 },
+      { id: "a", popularity: 80, uci_points: 0 }, // score 56 — under den gamle regel ville dette have talt
+      { id: "b", popularity: 50, uci_points: 0 }, // score 35
     ],
   };
   const goal = { type: "signature_rider", target: 1 };

@@ -25,6 +25,8 @@
 //
 // AI/bank/frozen får ALDRIG DNA — caller (api.js + economyEngine) skal filtrere.
 
+import { tierSupportsRaceScope } from "./boardConstants.js";
+
 export const DNA_KEYS = [
   "skandinavisk_udvikling",
   "italiensk_klassiker",
@@ -434,11 +436,23 @@ export function getDnaGoalWeightMultiplier(dnaKey, goalType) {
 // Brugt af buildBoardProposal til at tilføje DNA's "klub-tradition"-mål til 5yr-forslag.
 // Bonus + penalty allerede sat. Vi annoterer source: "club_dna" så frontend kan vise
 // DNA-badge og engines kan finde tradition-mål i evaluering.
-export function buildDnaTraditionGoal(dnaKey) {
+//
+// #3095 · tier (team.division, 1-4) er OPTIONAL men skal sendes med når kendt:
+// hvis tradition-målet er et monument_podium-mål og tier'ens race-klasse-
+// whitelist (tierRaceSelection.TIER_CLASS_WHITELIST) ikke overlapper de
+// kvalificerende klasser, er målet matematisk umuligt at opfylde i den tier
+// (fx italiensk_klassiker i tier 3/4 — #2276-kaskaden kører aldrig Monuments/
+// klassikere dér) → dropper målet i stedet for at tilbyde et der straffer
+// holdet hver evaluering uden nogensinde at kunne opfyldes.
+export function buildDnaTraditionGoal(dnaKey, tier = null) {
   const dna = getDnaByKey(dnaKey);
   if (!dna?.tradition_goal) return null;
+  const goal = dna.tradition_goal;
+  if (goal.type === "monument_podium" && !tierSupportsRaceScope(tier, goal.race_scope)) {
+    return null;
+  }
   return {
-    ...dna.tradition_goal,
+    ...goal,
     source: "club_dna",
     importance: "bonus",
     dna_key: dna.key,

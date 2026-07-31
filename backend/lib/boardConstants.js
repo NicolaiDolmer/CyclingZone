@@ -1,3 +1,5 @@
+import { TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
+
 export const PLAN_DURATIONS = {
   "1yr": 1,
   "3yr": 3,
@@ -91,6 +93,25 @@ export function isClassicRace(race = {}) {
   if (!CLASSIC_RACE_CLASSES.includes(race?.race_class)) return false;
   if (isMonumentRace(race)) return true;
   return race?.race_type === "single";
+}
+
+// #3095 · Kan en tier overhovedet PRODUCERE et løb i den ønskede
+// race-klasse-kategori? Bruges til at gate mål/bonus-tilbud der kræver en
+// bestemt race_scope (fx det italienske klassiker-DNA's monument_podium-
+// tradition-mål, eller boardConsequences' Monuments-only bonus-tilbud) mod
+// tiers hvor kategorien er strukturelt umulig — #2276-kaskaden (tierRaceSelection.
+// TIER_CLASS_WHITELIST) betyder tier 3/4 ALDRIG kører Monuments/klassikere,
+// så et sådant mål ville straffe holdet hver evaluering uden nogensinde at
+// kunne opfyldes (root cause for #3095).
+//
+// raceScope: "classics" → CLASSIC_RACE_CLASSES (Monuments ⊂ klassikere,
+// #1238-mapping); alt andet (default) → MONUMENT_RACE_CLASSES (kun Monuments).
+export function tierSupportsRaceScope(tier, raceScope = "monuments") {
+  const whitelist = TIER_CLASS_WHITELIST[tier];
+  if (whitelist === undefined) return true; // ukendt/manglende tier → fail-open, ingen gate uden data
+  if (whitelist === null) return true; // tier 1: ingen klasse-restriktion (TIER_CLASS_WHITELIST[1] = null)
+  const qualifyingClasses = raceScope === "classics" ? CLASSIC_RACE_CLASSES : MONUMENT_RACE_CLASSES;
+  return qualifyingClasses.some((cls) => whitelist.includes(cls));
 }
 
 export const GOAL_METADATA_BY_TYPE = {

@@ -14,6 +14,7 @@
  */
 
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+import { tierSupportsRaceScope } from "./boardConstants.js";
 
 const SATISFACTION_THRESHOLDS = {
   SALARY_CAP: 40,
@@ -348,9 +349,15 @@ export function isBonusOfferEligible({ satisfaction, goalsMet, goalsTotal }) {
  * "vind 1 monument ELLER sign 1 stjerne pop ≥75". Vi vælger deterministisk:
  * star_signing → signature_rider, ellers monument_podium.
  */
-export function selectBonusExtraGoal(board) {
+// #3095 · monument_podium her har INTET race_scope (= kun Monuments-klassen,
+// MONUMENT_RACE_CLASSES) — tierRaceSelection.TIER_CLASS_WHITELIST viser at
+// KUN tier 1 nogensinde kører et Monuments-løb (#2276-kaskaden). `tier`
+// (team.division, 1-4) sendes med for at falde tilbage til signature_rider
+// i tier 2-4, hvor et Monuments-podie-mål er strukturelt uopnåeligt.
+export function selectBonusExtraGoal(board, tier = null) {
   const focus = board?.focus || "balanced";
-  if (focus === "star_signing") {
+  const monumentGoalAchievable = tierSupportsRaceScope(tier, "monuments");
+  if (focus === "star_signing" || !monumentGoalAchievable) {
     return {
       type: "signature_rider",
       // #2308 · boardGoals.js' signature_rider-evaluator tolker target som
@@ -628,7 +635,7 @@ export async function evaluateAndApplyConsequences({
       if ((thisSeasonOffers || []).length > 0) {
         skipped.push({ layer: 6, reason: "already_offered_this_season" });
       } else {
-        const extraGoal = selectBonusExtraGoal(board);
+        const extraGoal = selectBonusExtraGoal(board, team.division);
         await supabase.from("board_consequences").insert({
           ...baseRow,
           layer: CONSEQUENCE_LAYERS.BONUS_OFFER,

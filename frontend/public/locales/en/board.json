@@ -140,7 +140,7 @@
   },
   "goalHelp": {
     "heading": "How is this measured?",
-    "signature_rider": "Counts riders whose renown is 75 or higher. Renown reflects a rider's fame. An earned reputation system (results, wins, rankings, national honours) is on the way; for now it is a fixed rating.",
+    "signature_rider": "Counts riders the board recognizes as star riders — the same bar as the board's star-rider count: renown weighted with UCI points, combined into one score. Renown counts more than points, so a well-known rider can qualify without a big point haul.",
     "top_n_finish": "Evaluated on your final standing in the last season of the plan, not an average across the plan's seasons.",
     "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season."
   },

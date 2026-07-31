@@ -11,6 +11,8 @@ import {
   normalizeBoardRider,
   getStarProfileGoalPressure,
   getStarProfileSponsorPressure,
+  calculateRiderStarScore,
+  STAR_RIDER_SCORE_THRESHOLD,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
@@ -236,10 +238,12 @@ export function generateBoardGoals({
         satisfaction_bonus: 15,
         satisfaction_penalty: 10,
       },
-      // S-02d · Q-batch 1B Q13: 1 rytter med højt omdømme (popularity >= 75).
+      // S-02d · Q-batch 1B Q13: 1 rytter med højt omdømme.
       // #815: player-facing = "omdømme/renown" (IKKE "stjerne" — det kolliderede med
-      // potentiale-stjernerne og var hele forvirringen). Tærsklen popularity>=75
-      // forklares i goalHelp (frontend), ikke i selve labelen.
+      // potentiale-stjernerne og var hele forvirringen).
+      // #3141 · Tærsklen er board-kortets star-score (popularity+UCI >= 68,
+      // boardIdentity.STAR_RIDER_SCORE_THRESHOLD) — SAMME kriterium som
+      // "bestyrelsen anerkender N stjerne-ryttere" — forklares i goalHelp (frontend).
       {
         type: "signature_rider",
         target: 1,
@@ -471,7 +475,9 @@ export function buildBoardProposal({
   // Bevarer focus-baserede mål uændret — DNA-mål er bonus, ikke erstatning.
   // Skip duplikat hvis DNA-mål-typen allerede er i base-pakken (fx britisk_allrounder
   // har relative_rank som tradition, men 'balanced'-focus har det allerede).
-  const traditionGoal = planType === "5yr" && dnaKey ? buildDnaTraditionGoal(dnaKey) : null;
+  // #3095 · team?.division (tier) sendes med så buildDnaTraditionGoal kan droppe
+  // et monument_podium-tradition-mål der er strukturelt umuligt i holdets tier.
+  const traditionGoal = planType === "5yr" && dnaKey ? buildDnaTraditionGoal(dnaKey, team?.division) : null;
   const goalsWithTradition = traditionGoal && !baseGoals.some((g) =>
     g.type === traditionGoal.type
     && (g.nationality_code || null) === (traditionGoal.nationality_code || null)
@@ -807,7 +813,12 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       return seasonJerseyWins >= enrichedGoal.target;
     case "signature_rider":
       // Q-C: tjekkes ved evaluerings-tidspunkt (rider-snapshot)
-      return (team?.riders || []).filter((rider) => Number(rider?.popularity || 0) >= 75).length
+      // #3141 · SAMME kriterium som board-kortets "bestyrelsen anerkender
+      // N stjerne-ryttere" (star_profile.star_rider_count, boardIdentity.js
+      // #1889) — score = popularity*0.70 + uciScore*0.30 >= 68. Før #3141
+      // brugte dette mål rå popularity>=75 alene, så en rytter kunne tælle
+      // som "stjerne" på kortet uden at tælle mod 5-års-planens mål.
+      return (team?.riders || []).filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length
         >= enrichedGoal.target;
     case "profitable_transfers":
       // Q-D: cumulative netto-balance over plan-perioden
@@ -1061,7 +1072,8 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       break;
     }
     case "signature_rider":
-      actual = riders.filter((rider) => Number(rider?.popularity || 0) >= 75).length;
+      // #3141 · Samme star-score-SSOT som evaluateGoal ovenfor + board-kortet.
+      actual = riders.filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
