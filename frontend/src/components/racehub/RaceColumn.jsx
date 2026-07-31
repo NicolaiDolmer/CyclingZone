@@ -10,7 +10,7 @@ import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
-import { LockIcon } from "../ui";
+import { LockIcon, StarIcon, AlertTriangleIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 
 const STATUS_CLASS = {
@@ -36,12 +36,18 @@ function RoleBadge({ t, role }) {
 // #2819: dataTour sættes kun på brættets FØRSTE kolonne, så onboarding-touren
 // på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
 // AuctionsPage's data-tour="auctions-bid-input").
-export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, dataTour }) {
+export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour }) {
   const { t } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
   const selectedIds = column.selection?.rider_ids || [];
   const ridersById = new Map(column.riders.map((r) => [r.id, r]));
+  // #3102 PR 2: formplanens konsekvenser vist DÉR hvor udtagelsen sker — hvem
+  // topper netop her, og hvem betaler payback her. Navne slås op i rosteret;
+  // en plan for en rytter der ikke længere er i truppen vises ikke.
+  const nameOf = (id) => ridersById.get(id)?.name ?? null;
+  const peakNames = (column.peakRiderIds || []).map(nameOf).filter(Boolean);
+  const paybackNames = (column.paybackRiders || []).map((p) => nameOf(p.riderId)).filter(Boolean);
   const locked = !!column.lineup_locked;
   // S5: profil-bevidste rolle-hints. primaryProfileType = løbets dominerende terræn
   // (backend); mangler det (gamle løb) → terrainBucket defaulter til "flat".
@@ -97,6 +103,23 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
         <span className={`inline-block mt-2 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>
           {statusLabel}
         </span>
+        {/* #3102 PR 2: peaks/payback fra formplanen, synligt hvor udtagelsen sker. */}
+        {peakNames.length > 0 && (
+          <p className="mt-1.5 flex items-start gap-1 text-3xs text-cz-accent-t">
+            <StarIcon size={12} aria-hidden="true" className="mt-px shrink-0" />
+            <span>{t("racehub.column.peaksHere", { names: peakNames.join(", ") })}</span>
+          </p>
+        )}
+        {paybackNames.length > 0 && (
+          <p className="mt-1 flex items-start gap-1 text-3xs text-cz-warning">
+            <AlertTriangleIcon size={12} aria-hidden="true" className="mt-px shrink-0" />
+            <span>
+              {paybackFormPoints != null
+                ? t("racehub.column.paybackHere", { names: paybackNames.join(", "), points: paybackFormPoints })
+                : t("racehub.column.paybackHereNoPoints", { names: paybackNames.join(", ") })}
+            </span>
+          </p>
+        )}
       </div>
 
       {locked ? (

@@ -13,7 +13,7 @@ import { LockIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 
-export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
+export default function AvailableRidersPool({ roster, columns, bindingMap, seasonLoadByRider = {}, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
@@ -54,6 +54,9 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
       >
         {roster.map((r) => {
           const locked = isLocked(r.id);
+          // #2772: sæson-belastning (løbsdage) pr. rytter — samme tal som formplanen
+          // viser, så overtopning kan opdages dér hvor udtagelsen faktisk sker.
+          const load = seasonLoadByRider[r.id] ?? null;
           // #1984: låst chip kan stadig klikkes → popoveren forklarer HVORFOR (overlappende løb).
           // Lås-grunden vises også inline (ikke kun som hover-titel), så det er synligt med det samme.
           // #2256: er lås-grunden et løb UDEN FOR brættet (ekstern binding), står navnet på
@@ -77,6 +80,12 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
               >
                 {locked && <LockIcon size={11} aria-hidden="true" />}
                 {r.name} <span className="font-mono text-cz-3">{r.form ?? "—"}</span>
+                {load != null && load.raceDays > 0 && (
+                  <span
+                    className="font-mono text-3xs text-cz-3"
+                    title={t("racehub.pool.loadTitle", { races: load.races, days: load.raceDays })}
+                  >{t("racehub.pool.loadShort", { days: load.raceDays })}</span>
+                )}
               </button>
               {boundRace && (
                 <span className="pl-1.5 text-3xs text-cz-3 flex items-center gap-1 max-w-[160px] truncate">

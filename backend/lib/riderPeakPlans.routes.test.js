@@ -153,13 +153,33 @@ test("GET /peak-plans/board respekterer nulstil-til-blank (dismissedSet) + ekskl
   assert.match(block, /realTargetIds/, "forslag må ikke duplikere et allerede-ægte mål-løb");
 });
 
-test("loadManualRegisteredRaceIds chunker race_id-listen — én samlet .in() med hele sæsonen sprængte GET-URL'en (#2516)", () => {
-  const idx = apiSource.indexOf("async function loadManualRegisteredRaceIds");
-  assert.ok(idx !== -1, "loadManualRegisteredRaceIds skal findes");
-  const block = apiSource.slice(idx, idx + 1600);
+test("loadRegisteredRaceIds chunker race_id-listen — én samlet .in() med hele sæsonen sprængte GET-URL'en (#2516)", () => {
+  const idx = apiSource.indexOf("async function loadRegisteredRaceIds");
+  assert.ok(idx !== -1, "loadRegisteredRaceIds skal findes");
+  const block = apiSource.slice(idx, idx + 2200);
   assert.match(block, /ID_CHUNK/, "race_id-listen skal chunkes (423 sæson-løb i én URL gav undici 'fetch failed', CYCLINGZONE-33)");
   assert.match(block, /raceIds\.slice\(i,\s*i \+ ID_CHUNK\)/, "chunk-loopet skal følge fetchAllStageProfiles-mønstret");
   assert.match(block, /throw new Error\(`race_entries \(peak suggestions\)/, "fejl skal KASTE, ikke trunkere tavst");
+});
+
+// ── #3102 PR 2: payback ser ALLE entries (hul 1 fra #3093), forslag kun manuelle ──
+test("loadRegisteredRaceIds skiller manual (forslag) fra all (payback/belastning)", () => {
+  const idx = apiSource.indexOf("async function loadRegisteredRaceIds");
+  const block = apiSource.slice(idx, idx + 2200);
+  assert.match(block, /is_auto_filled === false/, "manual-sættet skal fortsat filtrere på is_auto_filled=false (#1835-diskriminatoren for forslag)");
+  assert.doesNotMatch(block, /\.eq\("is_auto_filled"/, "queryen må IKKE filtrere auto-fyldte fra server-side — payback skal se dem (hul 1, #3093)");
+});
+
+test("GET /peak-plans/board: payback-passet bruger ALLE entries, forslagene kun manuelle (hul 1)", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /raceIdsToCheck = new Set\(allEntriesByRider\.get/, "payback-kollisioner skal regnes over alle entries (auto + manuelle)");
+  assert.match(block, /registeredRaceIds:\s*registeredByRider\.get\(rd\.id\)/, "forslags-generatoren skal fortsat bruge det manuelle sæt");
+});
+
+test("GET /peak-plans/board eksponerer peakWindow pr. løb + registeredRaceIds pr. rytter (hul 2 + #2772)", () => {
+  const block = handlerBlock('router.get("/peak-plans/board"');
+  assert.match(block, /peakWindow:\s*snapPeakWindow\(/, "racesOut skal sende det færdig-snappede vindue (samme snapPeakWindow som skrive-stien — aldrig to formler)");
+  assert.match(block, /rd\.registeredRaceIds = \[\.\.\.\(allEntriesByRider\.get/, "ridersOut skal sende rytterens fulde løbsprogram til dropdown-risiko + belastning");
 });
 
 test("race_entries head-counts selecter en reel kolonne — tabellen har ingen id-kolonne (#2516)", () => {

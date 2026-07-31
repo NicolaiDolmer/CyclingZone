@@ -12,6 +12,7 @@ import {
   raceProfileSummary,
   countRivalPeaks,
   teamDivisionKnownForSeason,
+  raceCardPeakOverlay,
   PEAK_STATUS_ONTRACK_TQ,
 } from "./plannerBoard.js";
 
@@ -214,4 +215,65 @@ test("findPaybackCollisions: flere peaks rapporteres hver for sig, kronologisk",
   assert.deepEqual(hits.map((h) => h.daysAfterPeak), [2, 3], "sorteret på afstand til peaken");
   assert.equal(hits.find((h) => h.raceId === "after-a").peakTargetRaceId, "peak-a");
   assert.equal(hits.find((h) => h.raceId === "after-b").peakTargetRaceId, "peak-b");
+});
+
+// ── #3102 PR 2: peaks/payback-overlay pr. løbskort (Holdudtagelse) ───────────
+
+test("raceCardPeakOverlay: ryttere der topper her + ryttere i payback her", () => {
+  const plans = [
+    { riderId: "r1", targetRaceId: "race-x", windowEndOrd: 100 },       // topper her
+    { riderId: "r2", targetRaceId: "race-y", windowEndOrd: 97 },        // payback: 100-97=3 dage efter
+    { riderId: "r3", targetRaceId: "race-z", windowEndOrd: 80 },        // for længe siden — ingen payback
+  ];
+  const out = raceCardPeakOverlay({ raceId: "race-x", raceOrdinal: 100, plans });
+  assert.deepEqual(out.peakRiderIds, ["r1"]);
+  assert.deepEqual(out.paybackRiders, [{ riderId: "r2", daysAfterPeak: 3 }]);
+});
+
+test("raceCardPeakOverlay: payback-intervallet er end+1 .. end+PEAK_PAYBACK_DAYS (samme grænse som findPaybackCollisions)", () => {
+  const days = RACE_V3_TUNING.PEAK_PAYBACK_DAYS;
+  const plan = (ord) => raceCardPeakOverlay({
+    raceId: "race-x", raceOrdinal: ord,
+    plans: [{ riderId: "r1", targetRaceId: "race-y", windowEndOrd: 100 }],
+  }).paybackRiders.length;
+  assert.equal(plan(100), 0, "løbsdag inde i vinduet er ikke payback");
+  assert.equal(plan(101), 1, "dagen efter vindue-slut er payback");
+  assert.equal(plan(100 + days), 1, "sidste payback-dag tæller med");
+  assert.equal(plan(100 + days + 1), 0, "dagen efter payback-vinduet er fri");
+});
+
+test("raceCardPeakOverlay: en rytter der topper her vises ikke også som payback her", () => {
+  const out = raceCardPeakOverlay({
+    raceId: "race-x", raceOrdinal: 100,
+    plans: [
+      { riderId: "r1", targetRaceId: "race-x", windowEndOrd: 102 },
+      { riderId: "r1", targetRaceId: "race-y", windowEndOrd: 97 },
+    ],
+  });
+  assert.deepEqual(out.peakRiderIds, ["r1"]);
+  assert.deepEqual(out.paybackRiders, [], "peak-bumpet definerer løbsdagen — ikke den anden peaks formhul");
+});
+
+test("raceCardPeakOverlay: to peaks i payback over samme dag → nærmeste (dybeste) afstand vises", () => {
+  const out = raceCardPeakOverlay({
+    raceId: "race-x", raceOrdinal: 100,
+    plans: [
+      { riderId: "r1", targetRaceId: "race-y", windowEndOrd: 98 },
+      { riderId: "r1", targetRaceId: "race-z", windowEndOrd: 94 },
+    ],
+  });
+  assert.deepEqual(out.paybackRiders, [{ riderId: "r1", daysAfterPeak: 2 }]);
+});
+
+test("raceCardPeakOverlay: defensiv mod manglende ordinaler/tuning", () => {
+  assert.deepEqual(
+    raceCardPeakOverlay({ raceId: "race-x", raceOrdinal: null, plans: [{ riderId: "r1", targetRaceId: "race-y", windowEndOrd: 97 }] }).paybackRiders,
+    [], "uden løbs-ordinal ingen payback-gæt"
+  );
+  assert.deepEqual(
+    raceCardPeakOverlay({ raceId: "race-x", raceOrdinal: 100, plans: [{ riderId: "r1", targetRaceId: "race-y", windowEndOrd: null }] }).paybackRiders,
+    []
+  );
+  const out = raceCardPeakOverlay({ raceId: "race-x", raceOrdinal: 100, plans: [{ riderId: "r1", targetRaceId: "race-y", windowEndOrd: 97 }], tuning: { PEAK_PAYBACK_DAYS: 0 } });
+  assert.deepEqual(out.paybackRiders, [], "payback-vindue på 0 dage kan ikke kollidere");
 });

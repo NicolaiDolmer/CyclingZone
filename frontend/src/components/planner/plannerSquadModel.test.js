@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   squadSlots, targetableRacesFor, peakNeedsAction, plannerStatusSummary,
-  pendingSuggestionPairs, ridersWithSuggestions,
+  pendingSuggestionPairs, ridersWithSuggestions, paybackRiskRaceIds, riderSeasonLoad,
 } from "./plannerSquadModel.js";
 
 const race = (id, date, isMine = true) => ({ id, name: `Race ${id}`, date, isMine });
@@ -118,4 +118,101 @@ test("pendingSuggestionPairs + ridersWithSuggestions: kun uaccepterede forslag",
 test("pendingSuggestionPairs: forslag uden mål-løb sendes aldrig videre", () => {
   const riders = [{ id: "a", peaks: [peak({ targetRaceId: null, isSuggestion: true })] }];
   assert.deepEqual(pendingSuggestionPairs(riders), []);
+});
+
+// ── #3102 PR 2 (hul 2): payback-risiko pr. løb i dropdownen, FØR valget ───────
+
+const riskRace = (id, date, { peakWindow, stages, isMine = true } = {}) => ({
+  id, name: `Race ${id}`, date, isMine,
+  stages: stages ?? 1,
+  // Vinduet kommer FÆRDIGT fra boardet (snapPeakWindow server-side) — testene
+  // sætter det direkte, som payloaden ville.
+  peakWindow: peakWindow ?? null,
+});
+
+test("paybackRiskRaceIds retning A: kandidatens formhul dækker et registreret løb", () => {
+  const candidate = riskRace("cand", "2026-08-10", { peakWindow: { window_start: "2026-08-08", window_end: "2026-08-12" } });
+  const hit = riskRace("hit", "2026-08-15");     // 3 dage efter vindue-slut → i payback (7 dage)
+  const free = riskRace("free", "2026-08-25");   // 13 dage efter → fri
+  const rider = { id: "rd1", registeredRaceIds: ["hit", "free"], peaks: [] };
+  const risky = paybackRiskRaceIds({ rider, races: [candidate, hit, free], paybackDays: 7 });
+  assert.deepEqual([...risky], ["cand"]);
+});
+
+test("paybackRiskRaceIds retning A: grænserne er end+1 og end+paybackDays (inklusiv)", () => {
+  const cand = (id) => riskRace(id, "2026-08-10", { peakWindow: { window_start: "2026-08-08", window_end: "2026-08-12" } });
+  const check = (programDate) => {
+    const program = riskRace("prog", programDate);
+    const rider = { id: "rd1", registeredRaceIds: ["prog"], peaks: [] };
+    return paybackRiskRaceIds({ rider, races: [cand("cand"), program], paybackDays: 7 }).has("cand");
+  };
+  assert.equal(check("2026-08-12"), false, "løb på vinduets sidste dag er ikke i formhullet");
+  assert.equal(check("2026-08-13"), true, "dagen efter vindue-slut er payback");
+  assert.equal(check("2026-08-19"), true, "sidste payback-dag (end+7) tæller med");
+  assert.equal(check("2026-08-20"), false, "dagen efter payback-vinduet er fri");
+});
+
+test("paybackRiskRaceIds retning B: kandidaten ligger i en ANDEN peaks formhul", () => {
+  const other = peak({ targetRaceId: "other", windowEnd: "2026-08-12" });
+  const inDip = riskRace("inDip", "2026-08-15", { peakWindow: { window_start: "2026-09-01", window_end: "2026-09-05" } });
+  const clear = riskRace("clear", "2026-09-10", { peakWindow: { window_start: "2026-09-08", window_end: "2026-09-12" } });
+  const rider = { id: "rd1", registeredRaceIds: [], peaks: [other] };
+  const risky = paybackRiskRaceIds({ rider, races: [inDip, clear], paybackDays: 7 });
+  assert.deepEqual([...risky], ["inDip"], "man ville toppe mod et løb man kører med reduceret form");
+});
+
+test("paybackRiskRaceIds: pladsens NUVÆRENDE mål ekskluderes som peak (retarget erstatter den), entries står urørt", () => {
+  // Rytteren topper i dag mod 'current' — overvejer at flytte til 'cand'.
+  const current = peak({ targetRaceId: "current", windowEnd: "2026-08-12" });
+  const cand = riskRace("cand", "2026-08-15", { peakWindow: { window_start: "2026-08-13", window_end: "2026-08-17" } });
+  const currentRace = riskRace("current", "2026-08-10");
+  // Uden currentTargetId ville 'cand' flagges (ligger i currents formhul, retning B).
+  const withoutExclusion = paybackRiskRaceIds({ rider: { id: "rd1", registeredRaceIds: [], peaks: [current] }, races: [cand, currentRace], paybackDays: 7 });
+  assert.equal(withoutExclusion.has("cand"), true);
+  // MED currentTargetId (samme plads) forsvinder den gamle peaks formhul.
+  const withExclusion = paybackRiskRaceIds({ rider: { id: "rd1", registeredRaceIds: [], peaks: [current] }, races: [cand, currentRace], paybackDays: 7, currentTargetId: "current" });
+  assert.equal(withExclusion.has("cand"), false);
+  // Men en REGISTRERET entry til det gamle mål-løb bliver i programmet: kandidatens
+  // formhul (end 2026-08-17) rammer intet her — flyt entry-datoen ind i hullet:
+  const entryInDip = riskRace("current", "2026-08-19");
+  const stillRegistered = paybackRiskRaceIds({ rider: { id: "rd1", registeredRaceIds: ["current"], peaks: [current] }, races: [cand, entryInDip], paybackDays: 7, currentTargetId: "current" });
+  assert.equal(stillRegistered.has("cand"), true, "entry'en forsvinder ikke fordi peaken flytter");
+});
+
+test("paybackRiskRaceIds: øvrige peak-MÅL tæller som program (dem kører man per definition)", () => {
+  const other = peak({ targetRaceId: "otherTarget", windowEnd: "2026-09-05" });
+  const otherTarget = riskRace("otherTarget", "2026-08-15");
+  const cand = riskRace("cand", "2026-08-10", { peakWindow: { window_start: "2026-08-08", window_end: "2026-08-12" } });
+  const rider = { id: "rd1", registeredRaceIds: [], peaks: [other] };
+  const risky = paybackRiskRaceIds({ rider, races: [cand, otherTarget], paybackDays: 7 });
+  assert.equal(risky.has("cand"), true, "kandidatens formhul dækker det andet peak-mål");
+});
+
+test("paybackRiskRaceIds: defensiv — manglende peakWindow/datoer/paybackDays giver aldrig falske flag", () => {
+  const noWindow = riskRace("noWin", "2026-08-10");
+  const rider = { id: "rd1", registeredRaceIds: ["prog"], peaks: [] };
+  const program = riskRace("prog", "2026-08-15");
+  assert.equal(paybackRiskRaceIds({ rider, races: [noWindow, program], paybackDays: 7 }).size, 0);
+  const cand = riskRace("cand", "2026-08-10", { peakWindow: { window_start: "2026-08-08", window_end: "2026-08-12" } });
+  assert.equal(paybackRiskRaceIds({ rider, races: [cand, program], paybackDays: 0 }).size, 0, "payback-vindue på 0 dage kan ikke kollidere");
+  assert.equal(paybackRiskRaceIds({ rider: null, races: [cand, program], paybackDays: 7 }).size, 0);
+});
+
+// ── #2772: sæson-belastning pr. rytter ────────────────────────────────────────
+
+test("riderSeasonLoad: løb + løbsdage (etaper) summeres over registrerede entries", () => {
+  const races = [
+    riskRace("oneday", "2026-08-10", { stages: 1 }),
+    riskRace("tour", "2026-08-20", { stages: 5 }),
+    riskRace("unentered", "2026-08-25", { stages: 3 }),
+  ];
+  const rider = { id: "rd1", registeredRaceIds: ["oneday", "tour"] };
+  assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 2, raceDays: 6 });
+});
+
+test("riderSeasonLoad: ukendte løb (uden for payloadens kalender) tælles ikke; manglende stages → 1", () => {
+  const races = [{ id: "known", name: "Known", date: "2026-08-10", isMine: true }]; // ingen stages-felt
+  const rider = { id: "rd1", registeredRaceIds: ["known", "gone-race"] };
+  assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 1, raceDays: 1 });
+  assert.deepEqual(riderSeasonLoad({ rider: { id: "x" }, races }), { races: 0, raceDays: 0 });
 });

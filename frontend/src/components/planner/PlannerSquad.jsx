@@ -23,7 +23,7 @@ import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
 import { Section, SectionHeader, StarIcon, FlagIcon, AlertTriangleIcon, LockIcon, XIcon, ChevronRightIcon } from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal, statusMeta } from "./plannerShared";
-import { squadSlots, targetableRacesFor } from "./plannerSquadModel";
+import { squadSlots, targetableRacesFor, paybackRiskRaceIds, riderSeasonLoad } from "./plannerSquadModel";
 
 // Tabellen bliver til en kort-liste under md. Cellerne beholder deres semantik
 // (<td>), så en skærmlæser stadig læser rækken som en række.
@@ -93,13 +93,17 @@ function PeakValue({ peak, paybackDays, months }) {
 // et assistent-forslag → createPeak (forslaget HAR ingen plan-id, så at vælge et
 // andet løb ER at acceptere en anden peak). Samme kontrol, samme sted, uanset
 // hvilken af de tre tilstande pladsen står i.
-function PeakSlot({ rider, slot, races, todayOrd, months, busy, disabled, onCreatePeak, onRetarget, onRemovePeak }) {
+function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, disabled, onCreatePeak, onRetarget, onRemovePeak }) {
   const { t } = useTranslation("planner");
   const peak = slot.peak;
   const currentTargetId = peak?.targetRaceId ?? null;
 
   const options = useMemo(() => {
     const targetable = targetableRacesFor({ rider, races, todayOrd, currentTargetId });
+    // Hul 2 fra #3093: payback-risikoen skal kunne ses FØR man vælger, pr. løb.
+    // Vinduet kommer færdig-snappet fra boardet (race.peakWindow) — her laves kun
+    // interval-tjekket mod rytterens program (alle entries + øvrige peak-mål).
+    const risky = paybackRiskRaceIds({ rider, races, paybackDays, currentTargetId });
     return targetable.map((r) => ({
       id: r.id,
       // Audit-punkt 1 fra #2905: konsekvensen skal kunne ses FØR man vælger.
@@ -108,13 +112,13 @@ function PeakSlot({ rider, slot, races, todayOrd, months, busy, disabled, onCrea
       // allerede klient-side i riderSuitability, samme tal som race-skuffen
       // rangerer med. Kronologisk rækkefølge (ejer-valg 27/7): en sæsonkalender
       // læst ud af dato-orden er svær at finde et bestemt løb i.
-      label: t("squad.raceOption", {
+      label: t(risky.has(r.id) ? "squad.raceOptionPayback" : "squad.raceOption", {
         date: formatRaceDateLabel(r, months),
         race: r.name,
         fit: riderSuitability(rider.abilities, r.demandVector).score,
       }),
     }));
-  }, [rider, races, todayOrd, currentTargetId, months, t]);
+  }, [rider, races, todayOrd, currentTargetId, months, paybackDays, t]);
 
   const locked = Boolean(peak?.locked);
   const isSuggestion = Boolean(peak?.isSuggestion);
@@ -173,11 +177,16 @@ export default function PlannerSquad({
   const todayOrd = dateToOrdinal(today);
 
   // Bedste ryttere først: det er dem en manager bruger sine peaks på, og det er
-  // den rækkefølge truppen ellers vises i på tværs af appen.
+  // den rækkefølge truppen ellers vises i på tværs af appen. #2772: belastningen
+  // (løbsdage) regnes samme sted, så rækken har den ved hånden.
   const rows = useMemo(() => (riders || [])
-    .map((rd) => ({ rider: rd, ovr: riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType }) }))
+    .map((rd) => ({
+      rider: rd,
+      ovr: riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType }),
+      load: riderSeasonLoad({ rider: rd, races }),
+    }))
     .sort((a, b) => b.ovr - a.ovr || String(a.rider.lastname).localeCompare(String(b.rider.lastname))),
-  [riders]);
+  [riders, races]);
 
   return (
     <Section>
@@ -196,7 +205,7 @@ export default function PlannerSquad({
           </tr>
         </thead>
         <tbody className="block md:table-row-group">
-          {rows.map(({ rider, ovr }) => {
+          {rows.map(({ rider, ovr, load }) => {
             const slots = squadSlots(rider, maxPerRider);
             const selected = rider.id === selectedRiderId;
             return (
@@ -222,6 +231,15 @@ export default function PlannerSquad({
                         {rider.age != null && (
                           <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t("squad.age", { age: rider.age })}</span>
                         )}
+                        {/* #2772: sæson-belastning — en peak er kun troværdig hvis
+                            rytteren ikke også er kørt træt i optakten. Tallet gør
+                            opportunity cost synlig, uden en opfundet farve-tærskel. */}
+                        {load.raceDays > 0 && (
+                          <span
+                            className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3"
+                            title={t("squad.loadTitle", { races: load.races, days: load.raceDays })}
+                          >{t("squad.load", { days: load.raceDays })}</span>
+                        )}
                       </div>
                     </div>
                     {/* Formen står hos navnet på mobil; på desktop har den sin egen kolonne. */}
@@ -239,7 +257,7 @@ export default function PlannerSquad({
                       <PeakSlot
                         key={slot.key}
                         rider={rider} slot={slot} races={races} todayOrd={todayOrd} months={months}
-                        busy={busy} disabled={divisionPending}
+                        paybackDays={paybackDays} busy={busy} disabled={divisionPending}
                         onCreatePeak={onCreatePeak} onRetarget={onRetarget} onRemovePeak={onRemovePeak}
                       />
                     ))}

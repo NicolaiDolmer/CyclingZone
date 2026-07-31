@@ -794,7 +794,7 @@
     },
     "peakPayback": {
       "q": "Does a peak cost me anything afterwards?",
-      "a": "Yes. After a peak's window closes the rider carries about -14 form for the next seven days. That is the price of the top, and it is why a peak is a choice rather than a free upgrade. If one of the rider's other races falls inside that dip, the Squad tab names the race and how many days after the peak it lands, so you can move the peak or accept the cost with your eyes open."
+      "a": "Yes. After a peak's window closes the rider carries about -14 form for the next seven days. That is the price of the top, and it is why a peak is a choice rather than a free upgrade. The Form plan warns about this before you choose: races in the target dropdown are marked with 'payback risk' if peaking there would drop the dip onto another race on the rider's program, auto-filled entries included. If a collision already exists, the row names the race and how many days after the peak it lands. The Team selection board shows the same story per race: each race card lists who peaks there and who is paying back a recent peak."
     },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",

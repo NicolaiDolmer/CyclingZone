@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.81",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Peaks, payback and season load now show up where you make the decision",
+          "body": "The Planning hub's surfaces now talk to each other. In the Form plan, the race dropdown warns about payback risk per race before you pick a target: if peaking for a race would drop the form dip onto another race on the rider's program, or the race itself sits in the dip after one of his other peaks, the option says so. Payback warnings also count auto-filled entries now, not only races you selected by hand. On the Team selection board, each race card lists which of your riders peak in that race and which ones are paying for an earlier peak there, and every rider shows a season load count (race days entered), so it is visible when a peak lands on an overworked rider."
+        },
+        "da": {
+          "title": "Peaks, payback og sæson-belastning vises nu dér hvor du træffer beslutningen",
+          "body": "Planlægnings-hubbens flader taler nu sammen. I Formplanen advarer løbs-dropdownen om payback-risiko pr. løb allerede før du vælger et mål: hvis en peak mod et løb ville lægge formhullet oven på et andet løb på rytterens program, eller løbet selv ligger i hullet efter en af hans andre peaks, står det i valgmuligheden. Payback-advarsler tæller nu også auto-udfyldte tilmeldinger med, ikke kun løb du selv har udtaget til. På Holdudtagelses-boardet viser hvert løbskort hvilke af dine ryttere der topper i netop det løb, og hvem der betaler for en tidligere peak dér, og hver rytter viser sin sæson-belastning (tilmeldte løbsdage), så det er synligt når en peak rammer en overbelastet rytter."
+        },
+        "refs": [3102, 2772]
+      }
+    ]
+  },
+  {
     "version": "7.80",
     "date": "2026-07-31",
     "label": "Beta",

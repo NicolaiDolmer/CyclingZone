@@ -794,7 +794,7 @@
     },
     "peakPayback": {
       "q": "Koster en peak mig noget bagefter?",
-      "a": "Ja. Når en peaks vindue lukker, bærer rytteren omkring -14 form de næste syv dage. Det er prisen for toppen, og det er derfor en peak er et valg og ikke en gratis opgradering. Falder et af rytterens andre løb inde i det dyk, siger fanen Trup hvilket løb det er, og hvor mange dage efter peaken det ligger, så du kan flytte peaken eller tage omkostningen med åbne øjne."
+      "a": "Ja. Når en peaks vindue lukker, bærer rytteren omkring -14 form de næste syv dage. Det er prisen for toppen, og det er derfor en peak er et valg og ikke en gratis opgradering. Formplanen advarer om det før du vælger: løb i mål-dropdownen markeres med 'payback-risiko' hvis en peak dér ville lægge dykket oven på et andet løb på rytterens program, auto-udfyldte tilmeldinger inklusive. Findes der allerede en kollision, nævner rækken løbet og hvor mange dage efter peaken det ligger. Holdudtagelses-boardet viser samme historie pr. løb: hvert løbskort viser hvem der topper dér, og hvem der betaler for en nylig peak."
     },
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",
