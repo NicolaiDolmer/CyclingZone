@@ -4,53 +4,43 @@ import { pathMatchesNavItem } from "./navMatching.js";
 
 const loc = (pathname, search = "") => ({ pathname, search });
 
-// De tre menupunkter der deler /races-prefixet (#3102 etape 1). Ét og kun ét
-// må være aktivt ad gangen — ellers lyser to grupper op samtidig i sidebaren.
-const RACES = { to: "/races", excludeQuery: "tab=calendar", excludePaths: ["/races/strategy"] };
-const TEAM_SELECTION = { to: "/races?tab=calendar" };
-const STRATEGY = { to: "/races/strategy" };
+// Nav-topologien efter #3102 etape 3: Planlægnings-hubben (/planning) og
+// Resultat-hubben (/resultater) er hver ét nav-punkt der dækker alle deres
+// faner; /races er opløst og har intet punkt længere.
+const PLANNING = { to: "/planning" };
+const RESULTS = { to: "/resultater" };
+const CALENDAR = { to: "/calendar" };
 
 function activeOf(location) {
   return [
-    ["races", RACES],
-    ["teamSelection", TEAM_SELECTION],
-    ["strategy", STRATEGY],
+    ["planning", PLANNING],
+    ["results", RESULTS],
+    ["calendar", CALENDAR],
   ].filter(([, item]) => pathMatchesNavItem(location, item)).map(([name]) => name);
 }
 
-test("/races → kun Løb er aktiv", () => {
-  assert.deepEqual(activeOf(loc("/races")), ["races"]);
-});
-
-// #3102 etape 2: ?tab=library findes ikke længere på /races (fanen flyttede til
-// Resultat-hubben og ruten redirecter), men et gammelt bogmærke rammer stadig
-// URL'en før redirecten kører. Løb skal være det aktive punkt i det øjeblik.
-test("/races?tab=library → kun Løb er aktiv", () => {
-  assert.deepEqual(activeOf(loc("/races", "?tab=library")), ["races"]);
-});
-
-// #3102 etape 2: hubbens tre faner deler ÉT nav-punkt (/resultater uden query).
-// Punktet må lyse op på alle tre — og de gamle /races-punkter må ikke gøre det.
-// Testen fanger den dag nogen giver Arkiv eller Point sit eget menupunkt: så
-// skal excludeQuery på plads, præcis som på Transfers-parret nedenfor.
-test("#3102 etape 2 /resultater?tab=* → hub-punktet er aktivt på alle faner", () => {
-  const results = { to: "/resultater" };
-  for (const search of ["", "?tab=archive", "?tab=points"]) {
-    assert.equal(pathMatchesNavItem(loc("/resultater", search), results), true, `fane ${search || "(default)"}`);
-    assert.deepEqual(activeOf(loc("/resultater", search)), []);
+// #3102 etape 3: hubbens tre faner deler ÉT nav-punkt (/planning uden query).
+// Punktet skal lyse op på alle tre — testen fanger den dag nogen giver Formplan
+// eller Strategi sit eget menupunkt: så skal excludeQuery på plads, præcis som
+// på Transfers-parret nedenfor.
+test("#3102 etape 3 /planning?tab=* → hub-punktet er aktivt på alle faner", () => {
+  for (const search of ["", "?tab=form", "?tab=strategy", "?tab=form&view=season"]) {
+    assert.deepEqual(activeOf(loc("/planning", search)), ["planning"], `fane ${search || "(default)"}`);
   }
 });
 
-test("#1681 /races?tab=calendar → kun Holdudtagelse er aktiv", () => {
-  assert.deepEqual(activeOf(loc("/races", "?tab=calendar")), ["teamSelection"]);
+// #3102 etape 2-låsen, videreført: Resultat-hubbens faner (nu inkl. verdens-
+// kataloget under Arkiv) deler ét punkt.
+test("#3102 /resultater?tab=* → hub-punktet er aktivt på alle faner", () => {
+  for (const search of ["", "?tab=archive", "?tab=points"]) {
+    assert.deepEqual(activeOf(loc("/resultater", search)), ["results"], `fane ${search || "(default)"}`);
+  }
 });
 
-test("#3102 /races/strategy → kun Holdstrategi er aktiv (Løb må ikke prefix-matche)", () => {
-  assert.deepEqual(activeOf(loc("/races/strategy")), ["strategy"]);
-});
-
-test("#3102 /races/:raceId beholder Løb som aktiv (drill-down mister ikke gruppen)", () => {
-  assert.deepEqual(activeOf(loc("/races/abc-123")), ["races"]);
+// #3102 etape 3: /races har intet nav-punkt længere — et løbs detalje-side
+// (/races/:raceId) må ikke tænde hub-punkterne via prefix-match.
+test("/races/:raceId → intet nav-punkt aktivt (ruten er opløst)", () => {
+  assert.deepEqual(activeOf(loc("/races/abc-123")), []);
 });
 
 test("exact: true matcher ikke underruter", () => {
@@ -65,4 +55,14 @@ test("#987 transfers-parret: kun ét item ad gangen", () => {
   assert.equal(pathMatchesNavItem(loc("/transfers"), list), false);
   assert.equal(pathMatchesNavItem(loc("/transfers", "?tab=market"), transfers), false);
   assert.equal(pathMatchesNavItem(loc("/transfers", "?tab=market"), list), true);
+});
+
+// excludePaths-mekanismen har ingen forbrugere efter etape 3, men bliver i
+// koden (søskende-genveje opstår igen — Transfers-parret er mønsteret). Denne
+// test holder kontrakten i live.
+test("#3102 excludePaths deaktiverer et item på en navngiven underrute", () => {
+  const item = { to: "/foo", excludePaths: ["/foo/bar"] };
+  assert.equal(pathMatchesNavItem(loc("/foo"), item), true);
+  assert.equal(pathMatchesNavItem(loc("/foo/baz"), item), true);
+  assert.equal(pathMatchesNavItem(loc("/foo/bar"), item), false);
 });

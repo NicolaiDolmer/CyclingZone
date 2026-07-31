@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, racesForList, myPeakCountByRace, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, statusMeta, riderShortName, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -42,32 +42,6 @@ test("riderShortName: initial + efternavn", () => {
   assert.equal(riderShortName({ lastname: "Novak" }), "Novak");
 });
 
-const RACES = [
-  { id: "b", name: "Hill GP", date: "2026-05-10", isMine: true },
-  { id: "a", name: "Coastal", date: "2026-04-20", isMine: true },
-  { id: "c", name: "Nationals", date: "2026-06-25", isMine: false },
-  { id: "d", name: "No date", date: null, isMine: true },
-];
-
-test("racesForList: filter 'mine' → kun egne løb, dato-sorteret, med isPast", () => {
-  const now = dateToOrdinal("2026-05-01");
-  const out = racesForList(RACES, "mine", now);
-  assert.deepEqual(out.map((r) => r.id), ["a", "b"], "kun mine, sorteret på dato; nationals (ikke min) + no-date udeladt");
-  assert.equal(out[0].isPast, true, "Coastal (20 apr) er før nu (1 maj)");
-  assert.equal(out[1].isPast, false, "Hill GP (10 maj) er efter nu");
-});
-
-test("racesForList: filter 'all' → inkluderer rivalers løb; nowOrd=null → intet er past", () => {
-  const out = racesForList(RACES, "all", null);
-  assert.deepEqual(out.map((r) => r.id), ["a", "b", "c"], "alle med gyldig dato, sorteret");
-  assert.equal(out.every((r) => r.isPast === false), true, "uden 'nu' er intet markeret kørt");
-});
-
-test("racesForList: tom/ugyldig input → tom liste", () => {
-  assert.deepEqual(racesForList(null, "mine", 0), []);
-  assert.deepEqual(racesForList([], "all", 0), []);
-});
-
 // #2883: sæson-nudge — planneren viste ingen proaktiv besked om at S2 kunne
 // planlægges, selvom sæson-vælgeren (#2518) allerede understøttede det.
 test("nextPlannableSeason: finder nærmeste senere sæson end den viste", () => {
@@ -101,20 +75,6 @@ test("nextPlannableSeason: null/tom liste eller ukendt viewingNumber → ingen n
   assert.equal(nextPlannableSeason([{ id: "s2", number: 2 }], null), null);
 });
 
-test("myPeakCountByRace: tæller egne rytteres peaks pr. løb (ægte + forslag)", () => {
-  const riders = [
-    { peaks: [{ targetRaceId: "a" }, { targetRaceId: "b" }] },
-    { peaks: [{ targetRaceId: "a", isSuggestion: true }] },
-    { peaks: [{ targetRaceId: null }] },
-    { peaks: [] },
-  ];
-  const m = myPeakCountByRace(riders);
-  assert.equal(m.get("a"), 2, "to ryttere topper mod a");
-  assert.equal(m.get("b"), 1);
-  assert.equal(m.has(null), false, "peaks uden mål-løb tælles ikke");
-  assert.deepEqual(myPeakCountByRace(null), new Map());
-});
-
 // ── #3018 · ingen "mine løb" før divisionen er afgjort ────────────────────────
 // thelamba 26/7: planlæggeren viste D3's kalender for S2 til et hold på vej op i
 // D2. Boardet markerer nu intet som isMine i den situation, så default-filteret
@@ -129,16 +89,4 @@ test("effectivePlannerFilter: divisionPending tvinger 'all' uanset valgt filter"
 test("effectivePlannerFilter: uden divisionPending er managerens valg urørt", () => {
   assert.equal(effectivePlannerFilter("mine", false), "mine");
   assert.equal(effectivePlannerFilter("all", false), "all");
-});
-
-test("effectivePlannerFilter + racesForList: pending viser ALLE divisioners løb", () => {
-  // Boardet sætter isMine:false på alt når divisionen ikke er afgjort. Med det
-  // rå "mine"-filter ville listen være tom; med det effektive filter er den hel.
-  const races = [
-    { id: "r1", date: "2026-08-01", isMine: false },
-    { id: "r2", date: "2026-08-08", isMine: false },
-    { id: "r3", date: "2026-08-15", isMine: false },
-  ];
-  assert.equal(racesForList(races, "mine", null).length, 0, "rå mine-filter ville give det tomme bræt testerne klagede over");
-  assert.equal(racesForList(races, effectivePlannerFilter("mine", true), null).length, 3);
 });

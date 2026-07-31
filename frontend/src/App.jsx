@@ -64,9 +64,7 @@ const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
-const RacesPage = lazy(() => import("./pages/RacesPage"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
-const StrategyPage = lazy(() => import("./pages/StrategyPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
@@ -79,8 +77,30 @@ const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
-const SeasonPlannerPage = lazy(() => import("./pages/SeasonPlannerPage"));
+const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
+
+// #3102 etape 3: /races er opløst — kalender-fanen (holdudtagelses-boardet) bor
+// i Planlægnings-hubben, verdens-kataloget i Resultat-hubbens Arkiv, og de
+// afsluttede løb + resultat-panelet i Resultat-hubbens Seneste. Query-afhængig
+// redirect kræver en komponent (Navigate kan ikke selv læse ?tab=) — samme
+// mønster som den gamle RacesPageRoute-wrapper.
+function RacesLegacyRedirect() {
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab");
+  if (tab === "calendar") return <Navigate to="/planning" replace />;
+  if (tab === "world" || tab === "library") return <Navigate to="/resultater?tab=archive" replace />;
+  if (tab === "points") return <Navigate to="/resultater?tab=points" replace />;
+  return <Navigate to="/resultater" replace />;
+}
+
+// /planner → Formplan-fanen. Plannerens gamle indre ?tab= (squad/season/races)
+// oversættes til hubbens ?view= — races-fanen er nedlagt og falder til default.
+function PlannerLegacyRedirect() {
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get("tab") === "season" ? "&view=season" : "";
+  return <Navigate to={`/planning?tab=form${view}`} replace />;
+}
 
 function LoadingScreen() {
   return (
@@ -264,8 +284,11 @@ export default function App() {
             <Route path="head-to-head" element={<Navigate to="/standings?compare=1" replace />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
             <Route path="roadmap" element={<RoadmapPage />} />
-            <Route path="races" element={<RacesPage />} />
-            <Route path="races/strategy" element={<StrategyPage />} />
+            {/* #3102 etape 3: Planlægnings-hubben (Holdudtagelse · Formplan ·
+                Strategi). De tre gamle ruter redirecter med fane-mapping. */}
+            <Route path="planning" element={<PlanningHubPage />} />
+            <Route path="races" element={<RacesLegacyRedirect />} />
+            <Route path="races/strategy" element={<Navigate to="/planning?tab=strategy" replace />} />
             <Route path="races/:raceId" element={<RaceDetailPage />} />
             <Route path="seasons" element={<SeasonEndPage />} />
             <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
@@ -306,7 +329,7 @@ export default function App() {
             <Route path="admin/attribution" element={<AdminAttributionPage />} />
             <Route path="admin/retention" element={<AdminRetentionPage />} />
             <Route path="training" element={<TrainingPage />} />
-            <Route path="planner" element={<SeasonPlannerPage />} />
+            <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="klub" element={<KlubPage />} />
             <Route path="scouting" element={<ScoutingCentralPage />} />

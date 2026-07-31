@@ -1,4 +1,10 @@
 {
+  "hub": {
+    "title": "Planning",
+    "tabSelection": "Team selection",
+    "tabForm": "Form plan",
+    "tabStrategy": "Strategy"
+  },
   "racehub": {
     "scope": {
       "mine": "My races",
@@ -160,14 +166,7 @@
     "empty": "No races to plan for this day.",
     "regenerateWarn": "This replaces every pick on today's races with the assistant's suggestion. Continue?"
   },
-  "title": "Races",
-  "subtitle": {
-    "withSeason": "Season {number} · {count} races",
-    "noSeason": "No active season",
-    "noSeasonWithCount": "No active season · {count} races"
-  },
   "tabs": {
-    "calendar": "Calendar",
     "library": "Library",
     "world": "World calendar"
   },
@@ -210,8 +209,6 @@
     "points": "{count} pt"
   },
   "empty": {
-    "noRacesSeason": "No races this season yet",
-    "addRaceAdmin": "Add races in the Admin panel",
     "noRacesMatch": "No races match the filters",
     "raceNotFound": "Race not found",
     "noResultsImportedRace": "No results imported for this race yet",
@@ -447,7 +444,6 @@
   "strategy": {
     "title": "Team strategy",
     "subtitle": "Standing preferences your assistant uses to build every lineup.",
-    "back": "Back to squad board",
     "open": "Team strategy",
     "save": "Save strategy",
     "saved": "Strategy saved",

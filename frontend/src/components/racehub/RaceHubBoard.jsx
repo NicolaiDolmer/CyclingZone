@@ -477,8 +477,9 @@ export default function RaceHubBoard() {
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
         <span className="flex items-baseline gap-3">
-          {/* #2819: tour-anker — sidste trin i /races-rundvisningen peger på taktik-linket. */}
-          <Link to="/races/strategy" data-tour="races-strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
+          {/* #2819: tour-anker — sidste trin i holdudtagelses-rundvisningen peger på
+              taktik-linket. #3102 etape 3: strategien er en fane i samme hub nu. */}
+          <Link to="/planning?tab=strategy" data-tour="races-strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
           <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
         </span>
       </div>

@@ -79,34 +79,9 @@ export function formatRaceDateLabel(race, monthsLabels) {
   return `${p1.day} ${m1} - ${p2.day} ${m2}`.trim();
 }
 
-// Sæson-løb til den scannbare løbs-liste (#2568): filtrér mine/alle + gyldig dato,
-// berig med ordinal + fortids-flag, sortér kronologisk. Ren funktion (samme
-// filter-diskriminator som MasterCanvas.visRaces, så listen og tidslinjen altid
-// viser præcis samme løbsmængde). nowOrd må være null (så er intet "kørt").
-export function racesForList(races, filter, nowOrd) {
-  return (races || [])
-    .filter((r) => r.date && (filter === "all" || r.isMine))
-    .map((r) => {
-      const ord = dateToOrdinal(r.date);
-      return { ...r, ord, isPast: nowOrd != null && ord != null && ord < nowOrd };
-    })
-    .filter((r) => r.ord != null)
-    .sort((a, b) => a.ord - b.ord);
-}
-
-// Antal af MINE ryttere der (ægte eller foreslået) topper mod hvert løb → race_id
-// → count. Bruges af løbs-listen til "N peaks her"-chippen; spejler board'ets
-// targetRaceId-optælling, men kun over egne ryttere (rival-tal er et separat felt).
-export function myPeakCountByRace(riders) {
-  const out = new Map();
-  for (const rd of riders || []) {
-    for (const p of rd.peaks || []) {
-      if (!p.targetRaceId) continue;
-      out.set(p.targetRaceId, (out.get(p.targetRaceId) || 0) + 1);
-    }
-  }
-  return out;
-}
+// #3102 etape 3: racesForList + myPeakCountByRace udgik sammen med den
+// scannbare løbs-liste (PlannerRaceList, #2568) da plannerens races-fane blev
+// nedlagt — se git-historikken hvis PR 2's payback-kobling får brug for dem.
 
 // #2883: find den nærmeste sæson AT NUDGE mod, når manageren står i en tidligere
 // sæson (typisk den aktive) og en senere sæson allerede er oprettet. Bruges til

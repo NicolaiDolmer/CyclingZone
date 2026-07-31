@@ -987,12 +987,12 @@ export default function DashboardPage() {
         <Section>
           <SectionHeader
             title={t("dashboard:cards.races.title")}
-            action={<SectionAction as={Link} to="/races">{t("dashboard:cards.races.linkAll")}</SectionAction>}
+            action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
           {displayedRaces.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.races.empty")}</p>
-              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
+              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.races.emptyCta")}</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -1154,7 +1154,7 @@ export default function DashboardPage() {
           {recentResults.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.recentResults.empty")}</p>
-              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
+              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.recentResults.emptyCta")}</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -1198,7 +1198,7 @@ export default function DashboardPage() {
           {riderRanking.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-cz-3 text-sm">{t("dashboard:cards.riderRanking.empty")}</p>
-              <Link to="/races" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
+              <Link to="/planning" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">{t("dashboard:cards.riderRanking.emptyCta")}</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
