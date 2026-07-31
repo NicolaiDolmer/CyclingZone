@@ -185,17 +185,30 @@ export async function assessSeasonEndBlockers({ supabase, seasonId } = {}) {
   // Sidste planlagte etape blandt de blokerende (ikke-dormant) uafviklede løb —
   // til en fejlbesked admin kan handle på ("vent til efter X"). Løb uden
   // schedule-rækker giver null.
+  //
+  // #3014-fejlklassen: én .in("race_id", blockingRaceIds) med hundredvis af
+  // id'er (fx et for tidligt "Afslut sæson"-klik med de fleste af sæsonens
+  // løb uafviklede) kan ramme PostgRESTs URL-længde-cap — sket 2x før i dette
+  // repo. Chunk id-listen og tag MAX scheduled_at på tværs af biddene i stedet
+  // for at stole på at én query ser hele mængden.
   const blockingRaceIds = blockingRaces.map((r) => r.id);
-  const { data: lastStage, error: stageError } = await supabase
-    .from("race_stage_schedule")
-    .select("scheduled_at")
-    .in("race_id", blockingRaceIds)
-    .order("scheduled_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (stageError) throw new Error(`Kunne ikke finde sidste uafviklede etape: ${stageError.message}`);
-
-  const lastAt = lastStage?.scheduled_at ?? null;
+  const LAST_STAGE_CHUNK_SIZE = 100;
+  let lastAt = null;
+  for (let i = 0; i < blockingRaceIds.length; i += LAST_STAGE_CHUNK_SIZE) {
+    const chunk = blockingRaceIds.slice(i, i + LAST_STAGE_CHUNK_SIZE);
+    const { data: lastStage, error: stageError } = await supabase
+      .from("race_stage_schedule")
+      .select("scheduled_at")
+      .in("race_id", chunk)
+      .order("scheduled_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (stageError) throw new Error(`Kunne ikke finde sidste uafviklede etape: ${stageError.message}`);
+    const chunkAt = lastStage?.scheduled_at ?? null;
+    if (chunkAt && (lastAt === null || new Date(chunkAt).getTime() > new Date(lastAt).getTime())) {
+      lastAt = chunkAt;
+    }
+  }
   return {
     blocked: true,
     unfinished_races: unfinishedRaces,
