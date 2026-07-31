@@ -66,8 +66,11 @@ async function fetchAllRows(label, buildRangeQuery) {
 //   status: "exact" | "folded" | "nordic" | "ambiguous" | "missing"
 //   ("exact"/"folded"/"nordic" kan også være ramt via et verificeret alias)
 export async function buildRiderMatcher(supabase) {
+  // #3126: .order("id") — .range() uden en deterministisk totalordning kan hoppe
+  // rækker mellem sider (samme fejlklasse som #3113); riders har ~8,7k rækker,
+  // så pagineringen rammes reelt (ikke kun teoretisk) på hver import-kørsel.
   const riders = await fetchAllRows("riders", (from, to) =>
-    supabase.from("riders").select("id, firstname, lastname, team_id").range(from, to),
+    supabase.from("riders").select("id, firstname, lastname, team_id").order("id").range(from, to),
   );
 
   // Indeks: exact (med accenter), folded (accent-fold) og nordic (ø/æ/å-fold).
@@ -137,8 +140,9 @@ export async function buildRiderMatcher(supabase) {
 // resulterende game-navn slås op her (eksakt, case-insensitivt).
 export async function buildTeamMatcher(supabase) {
   // teams er pt. langt under 1000, men paginér for samme robusthed som riders.
+  // #3126: .order("id") — se buildRiderMatcher ovenfor.
   const teams = await fetchAllRows("teams", (from, to) =>
-    supabase.from("teams").select("id, name, is_ai, is_bank").range(from, to),
+    supabase.from("teams").select("id, name, is_ai, is_bank").order("id").range(from, to),
   );
 
   const byName = new Map(); // lower(name) -> team

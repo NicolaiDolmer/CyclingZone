@@ -577,8 +577,11 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   // rytter væk fra det aktuelle løbs felt under runtime auto-fill (excludeBoundRiders).
   const { data: entries, error: e1 } = await loadEligibleEntries({
     supabase, paged: true,
+    // #3126: .order() på PK (race_id, rider_id) — .range() uden en deterministisk
+    // totalordning kan hoppe rækker mellem sider (samme fejlklasse som #3113).
     baseQuery: () =>
-      supabase.from("race_entries").select("race_id, team_id, rider_id").in("team_id", teamIds).neq("race_id", race.id),
+      supabase.from("race_entries").select("race_id, team_id, rider_id").in("team_id", teamIds).neq("race_id", race.id)
+        .order("race_id", { ascending: true }).order("rider_id", { ascending: true }),
   });
   if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
   if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
@@ -618,8 +621,11 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   const scheds = [];
   for (let i = 0; i < otherRaceIds.length; i += 200) {
     const chunk = otherRaceIds.slice(i, i + 200);
+    // #3126: .order() på PK (race_id, stage_number) — se fetchAllScheduleRows i
+    // api.js for hvorfor et uordnet .range() genindfører #3113-fejlklassen.
     const { data, error } = await fetchAllPaged(() =>
       supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", chunk)
+        .order("race_id", { ascending: true }).order("stage_number", { ascending: true })
     );
     if (error) throw new Error(`race_stage_schedule (binding others): ${error.message}`);
     scheds.push(...data);
