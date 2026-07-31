@@ -335,7 +335,7 @@
       "label": "Min Aktivitet",
       "whatActivity": {
         "title": "Hvad er Min Aktivitet?",
-        "text": "Min Aktivitet er din personlige markedsarbejdsflade under Marked. Den samler alle dine markedshandlinger (auktioner, transfers og ønskeliste) ét sted, adskilt fra den globale Indbakke."
+        "text": "Min Aktivitet er din personlige markedsarbejdsflade, som du finder som fane i din Indbakke. Den samler alle dine markedshandlinger (auktioner, transfers og ønskeliste) ét sted, adskilt fra den globale Indbakke."
       },
       "tabs": {
         "title": "Fanerne",
@@ -472,7 +472,7 @@
       "label": "Global Rank",
       "whatIsIt": {
         "title": "Hvad er Global Rank?",
-        "text": "Global Rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Sæson > Global Rank."
+        "text": "Global Rank er én rangliste for alle managere, på tværs af alle divisioner, så din placering overlever op- og nedrykning og nulstilles ikke når sæsonen slutter. Find den under Resultater > Ranglister, på Global Rank-fanen."
       },
       "howScored": {
         "title": "Hvordan optjener jeg point?",
@@ -736,7 +736,7 @@
       },
       "staffOverview": {
         "title": "Se alle holds personale",
-        "text": "Personale-siden lister alle ansatte chefer på tværs af ligaen, som du kan filtrere på rolle, hold og tier. Klik på din egen chef for at se den fulde evne-oversigt. Klik på en anden managers chef, og du ser kun det samme som når du sammenligner ansættelses-kandidater: samlet rating, tier og top-specialisering, aldrig den fulde oversigt."
+        "text": "Personale-fanen på Klub-siden lister alle ansatte chefer på tværs af ligaen, som du kan filtrere på rolle, hold og tier. Klik på din egen chef for at se den fulde evne-oversigt. Klik på en anden managers chef, og du ser kun det samme som når du sammenligner ansættelses-kandidater: samlet rating, tier og top-specialisering, aldrig den fulde oversigt."
       },
       "teamPublicProfile": {
         "title": "Se en konkurrents staff og faciliteter",

@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader } from "../components/ui";
+import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader, Tabs, TabList, Tab } from "../components/ui";
+import StaffOverviewPage from "./StaffOverviewPage.jsx";
 import { formatNumber } from "../lib/intl";
 import { useFacilities } from "../lib/useFacilities";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
@@ -19,6 +21,10 @@ import ConfirmModal from "../components/klub/ConfirmModal";
 // 38px + border-b-bånd) er ejer-godkendt og bevaret uændret; facilitets-listen
 // er nu en kanonisk Section+SectionHeader, og en manglende load-fejltilstand
 // (facs.error) er lukket med ErrorState + retry.
+// #3104 etape C: gyldige faner — Klub (faciliteter, default) · Personale
+// (StaffOverviewPage, før egen rute /staff der nu redirecter hertil).
+const VALID_TABS = ["club", "staff"];
+
 export default function KlubPage() {
   const { t } = useTranslation("klub");
   const facs = useFacilities();
@@ -26,6 +32,21 @@ export default function KlubPage() {
   const [busyTrack, setBusyTrack] = useState(null);
   const [pendingUpgrade, setPendingUpgrade] = useState(null);
   const [upgradeError, setUpgradeError] = useState(null);
+
+  // URL'en ER fane-tilstanden (#3102 etape 2-læringen) — deep-linkbar
+  // /klub?tab=staff, og tilbage/frem flytter fanen med.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = VALID_TABS.includes(tabParam) ? tabParam : "club";
+
+  function changeTab(next) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (next === "club") params.delete("tab");
+      else params.set("tab", next);
+      return params;
+    }, { replace: true });
+  }
 
   if (facs.loading) return <PageLoader />;
 
@@ -99,6 +120,19 @@ export default function KlubPage() {
         </div>
       </div>
 
+      {/* #3104 etape C: Personale (~400 sessions/30 dage) ind som fane frem for
+          eget nav-punkt — Klubhus-gruppen gik fra 10 til 9 punkter. */}
+      <Tabs value={tab} onChange={changeTab} className="mb-4">
+        <TabList label={t("page.title")}>
+          <Tab value="club">{t("tabs.club")}</Tab>
+          <Tab value="staff">{t("tabs.staff")}</Tab>
+        </TabList>
+      </Tabs>
+
+      {tab === "staff" ? (
+        <StaffOverviewPage />
+      ) : (
+        <>
       <p className="text-[13px] text-cz-2 leading-relaxed mb-4 max-w-[56ch]">{t("page.intro")}</p>
 
       <Section>
@@ -124,6 +158,8 @@ export default function KlubPage() {
             total: formatNumber(facs.seasonCost.totalUpkeep + facs.seasonCost.totalPayroll),
           })}
         </div>
+      )}
+        </>
       )}
 
       <StaffPanel

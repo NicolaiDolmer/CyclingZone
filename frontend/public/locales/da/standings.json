@@ -67,5 +67,11 @@
     "strengthHeading": "Holdstyrker, baseret på samlet holdværdi",
     "divisionRank": "Division {division} · #{rank} styrke",
     "topStar": "Topstjerne:"
+  },
+  "hub": {
+    "title": "Ranglister",
+    "tabLeague": "Liga & rangliste",
+    "tabRiders": "Rytterrangliste",
+    "tabGlobal": "Global Rank"
   }
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import ActivityPage from "./ActivityPage.jsx";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
@@ -184,7 +185,23 @@ export default function NotificationsPage() {
   const { t, i18n } = useTranslation("notifications");
   const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = buildTimeAgo(t, i18n);
-  const [tab, setTab] = useState("mine");
+
+  // #3104 etape C: fane-tilstanden bor i URL'en (?tab=…) nu — deep-linkbar
+  // (/activity redirecter til /notifications?tab=activity) og tilbage/frem
+  // flytter fanen med (#3102 etape 2-læringen; før var det en useState-kopi).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ["mine", "skal_handles", "ligaen", "activity"];
+  const tabParam = searchParams.get("tab");
+  const tab = VALID_TABS.includes(tabParam) ? tabParam : "mine";
+
+  function setTab(next) {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (next === "mine") params.delete("tab");
+      else params.set("tab", next);
+      return params;
+    }, { replace: true });
+  }
 
   // Mine tab
   const [notifications, setNotifications] = useState([]);
@@ -387,7 +404,9 @@ export default function NotificationsPage() {
             ? t("page.subtitleMine", { count: unreadCount })
             : tab === "skal_handles"
               ? t("page.subtitleHandle", { count: pending.counts.total })
-              : t("page.subtitleLeague")
+              : tab === "activity"
+                ? t("page.subtitleActivity")
+                : t("page.subtitleLeague")
         }
         actions={tab === "mine" ? (
           <>
@@ -413,6 +432,10 @@ export default function NotificationsPage() {
             { key: "mine",         label: t("tabs.mine"),    badge: unreadCount },
             { key: "skal_handles", label: t("tabs.handle"),  badge: pending.counts.total },
             { key: "ligaen",       label: t("tabs.league") },
+            // #3104 etape C: Min Aktivitet (<245 sessions/30 dage) ind som fane
+            // her frem for eget Marked-nav-punkt — handlingscentret bor hvor
+            // spillerne allerede kigger (Indbakken, 6.152 sessions).
+            { key: "activity",     label: t("tabs.activity") },
           ].map(tt => (
             <Tab key={tt.key} value={tt.key} className="flex items-center gap-2">
               {tt.label}
@@ -656,6 +679,11 @@ export default function NotificationsPage() {
             </Section>
           )}
         </>
+      ) : tab === "activity" ? (
+        // #3104 etape C: hele markeds-handlingscentret (egne under-faner +
+        // refresh) som fane-indhold — samme mønster som RacePointsPage i
+        // Resultat-hubben (#3102 etape 2).
+        <ActivityPage />
       ) : (
         <>
           {/* Ligaen — feed-filter, samme idiom (ui/Select) som Mine-fanen ovenfor. */}

@@ -10,7 +10,6 @@ import { formatNumber } from "../lib/intl";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
 import {
-  PageHeader,
   Input,
   Select,
   Button,
@@ -166,25 +165,22 @@ export default function RiderRankingsPage() {
 
   const hasActiveFilters = ownerFilter !== "all" || teamFilter !== "all" || !!search;
 
+  // #3104 etape C: siden er fane-indhold i Ranglister-hubben nu (RankingsHubPage
+  // ejer PageHeader + faner), så egen PageHeader og yder-container udgik — samme
+  // regel som RacePointsPage under #3102 etape 2. States renderer kun kropszonen.
   if (loading) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("rankings.title")} />
-      <div className={`${WRAP} p-5`}>
-        <SkeletonLines lines={6} />
-      </div>
+    <div className={`${WRAP} p-5`}>
+      <SkeletonLines lines={6} />
     </div>
   );
 
   // #2175: eksplicit fejl-tilstand — en fejlet query viser en handlingsanvisende
   // fejl med retry, ikke en uendelig spinner ("loading and going nowhere").
   if (error) return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("rankings.title")} />
-      <ErrorState
-        title={t("rankings.loadError")}
-        action={<Button size="sm" variant="secondary" onClick={reload}>{t("rankings.retry")}</Button>}
-      />
-    </div>
+    <ErrorState
+      title={t("rankings.loadError")}
+      action={<Button size="sm" variant="secondary" onClick={reload}>{t("rankings.retry")}</Button>}
+    />
   );
 
   // #2849 bølge 1 — kolonne-recept for DataTable (T2). Sticky navnekolonne
@@ -291,15 +287,14 @@ export default function RiderRankingsPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px]">
-      <PageHeader
-        title={t("rankings.title")}
-        subtitle={
-          season
-            ? `${t("rankings.season", { n: season.number })}${filtered.length > 0 ? ` · ${t("rankings.ridersCount", { count: filtered.length })}` : ""}`
-            : t("rankings.noActiveSeason")
-        }
-      />
+    <div>
+      {/* #3104 etape C: sæson + antal fra det tidligere PageHeader-subtitle som
+          fane-intro (RacePointsPage-mønsteret) — hubben ejer sidehovedet. */}
+      <p className="mb-3 text-[13px] text-cz-2">
+        {season
+          ? `${t("rankings.season", { n: season.number })}${filtered.length > 0 ? ` · ${t("rankings.ridersCount", { count: filtered.length })}` : ""}`
+          : t("rankings.noActiveSeason")}
+      </p>
 
       {/* Filter-bar (T2-recept): search Input + op til 3 Selects, kolonne-toggle
           højrestillet (samme mønster som StandingsPage's Compare-knap, #2849 bølge 1). */}

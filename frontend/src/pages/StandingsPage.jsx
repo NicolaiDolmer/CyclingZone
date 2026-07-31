@@ -13,7 +13,7 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
-  EmptyState, ErrorState, Input, Select, Button, PageHeader, DataTable, ZonePill, SkeletonLines, PodiumIcon,
+  EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -591,9 +591,11 @@ export default function StandingsPage() {
     },
   ];
 
+  // #3104 etape C: siden er fane-indhold i Ranglister-hubben nu (RankingsHubPage
+  // ejer PageHeader + faner), så egen PageHeader og yder-container udgik — samme
+  // regel som RacePointsPage under #3102 etape 2. States renderer kun kropszonen.
   if (loading) return (
-    <div translate="no" className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} />
+    <div translate="no">
       <div className={`${WRAP} p-5`}>
         <SkeletonLines lines={6} />
       </div>
@@ -602,8 +604,7 @@ export default function StandingsPage() {
 
   // #2175: eksplicit fejl-tilstand med retry frem for uendelig spinner ved fejl.
   if (error) return (
-    <div translate="no" className="mx-auto max-w-[1600px]">
-      <PageHeader title={t("title")} />
+    <div translate="no">
       <ErrorState
         title={t("loadError")}
         action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("retry")}</Button>}
@@ -617,27 +618,29 @@ export default function StandingsPage() {
     // #2253: translate="no" — standings-tabellerne re-renderer hyppigt;
     // browser-oversættere muterede tekst-noderne og udløste NotFoundError-crashes
     // (Sentry-events med url=/standings). Se PR #2272.
-    <div translate="no" className="mx-auto max-w-[1600px]">
-      <PageHeader
-        title={t("title")}
-        subtitle={season ? t("season", { n: season.number }) : t("noActiveSeason")}
-        actions={
-          <Select
-            size="sm"
-            aria-label={t("divisionSelectLabel")}
-            value={divTab}
-            onChange={(e) => { setDivTab(Number(e.target.value)); setPoolTab(POOL_ALL); }}
-          >
-            {divCounts.map(({ div, count }) => (
-              <option key={div} value={div}>{t("division", { n: div })} ({count})</option>
-            ))}
-          </Select>
-        }
-      />
+    <div translate="no">
+      {/* #3104 etape C: sæson-konteksten fra det tidligere PageHeader-subtitle
+          som fane-intro (RacePointsPage-mønsteret) — hubbens sidehoved er fælles
+          for tre faner og kan ikke bære den. */}
+      <p className="mb-3 text-[13px] text-cz-2">
+        {season ? t("season", { n: season.number }) : t("noActiveSeason")}
+      </p>
 
       {/* Filter-bar (T2-recept): op til 3 Selects + search Input, compare-handling
-          højrestillet. Pulje-select er kun med når tieren har flere puljer. */}
+          højrestillet. Division-select boede før i PageHeader-actions; den flyttede
+          hertil som første kontrol da sidehovedet blev hubbens (#3104 etape C).
+          Pulje-select er kun med når tieren har flere puljer. */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Select
+          size="sm"
+          aria-label={t("divisionSelectLabel")}
+          value={divTab}
+          onChange={(e) => { setDivTab(Number(e.target.value)); setPoolTab(POOL_ALL); }}
+        >
+          {divCounts.map(({ div, count }) => (
+            <option key={div} value={div}>{t("division", { n: div })} ({count})</option>
+          ))}
+        </Select>
         {hasPoolSubtabs && (
           <Select
             size="sm"

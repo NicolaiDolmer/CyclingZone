@@ -67,5 +67,11 @@
     "strengthHeading": "Team strengths, based on total squad value",
     "divisionRank": "Division {division} · #{rank} strength",
     "topStar": "Top star:"
+  },
+  "hub": {
+    "title": "Rankings",
+    "tabLeague": "League & standings",
+    "tabRiders": "Rider Rankings",
+    "tabGlobal": "Global Rank"
   }
 }

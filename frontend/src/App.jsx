@@ -46,13 +46,12 @@ const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
 const AdminSprintMetricsPage = lazy(() => import("./pages/AdminSprintMetricsPage"));
 const AdminAttributionPage = lazy(() => import("./pages/AdminAttributionPage"));
 const AdminRetentionPage = lazy(() => import("./pages/AdminRetentionPage"));
-const StandingsPage = lazy(() => import("./pages/StandingsPage"));
+const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const RiderComparePage = lazy(() => import("./pages/RiderComparePage"));
-const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
@@ -70,8 +69,6 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const StrategyPage = lazy(() => import("./pages/StrategyPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
-const RiderRankingsPage = lazy(() => import("./pages/RiderRankingsPage"));
-const GlobalRankPage = lazy(() => import("./pages/GlobalRankPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
 const RaceDetailPage = lazy(() => import("./pages/RaceDetailPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
@@ -84,7 +81,6 @@ const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const SeasonPlannerPage = lazy(() => import("./pages/SeasonPlannerPage"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
-const StaffOverviewPage = lazy(() => import("./pages/StaffOverviewPage"));
 
 function LoadingScreen() {
   return (
@@ -231,7 +227,9 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="riders" element={<RidersPage />} />
             <Route path="riders/:id" element={<RiderStatsPage />} />
-            <Route path="staff" element={<StaffOverviewPage />} />
+            {/* #3104 etape C: personale-oversigten er en fane i Klub nu (~400
+                sessions/30 dage mod Klubs 612 — samme flag-gate i forvejen). */}
+            <Route path="staff" element={<Navigate to="/klub?tab=staff" replace />} />
             <Route path="staff/:id" element={<StaffProfilePage />} />
             <Route path="auctions" element={<AuctionsPage />} />
             <Route path="auctions/history" element={<AuctionHistoryPage />} />
@@ -241,14 +239,20 @@ export default function App() {
                 Bevarer dybe links via redirect (eget hold som Compare-A på H2H). */}
             <Route path="teams" element={<Navigate to="/standings" replace />} />
             <Route path="teams/:id" element={<TeamProfilePage />} />
-            <Route path="standings" element={<StandingsPage />} />
+            {/* #3104 etape C: /standings er Ranglister-hubben (Liga & rangliste ·
+                Rytterrangliste · Global Rank som faner). ?view=/?compare=-dybe
+                links lander uændret på liga-fanen (default). */}
+            <Route path="standings" element={<RankingsHubPage />} />
             <Route path="board" element={<BoardPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="compare" element={<RiderComparePage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="pro" element={<ProUpgradePage />} />
             <Route path="pro/success" element={<ProUpgradePage />} />
-            <Route path="activity" element={<ActivityPage />} />
+            {/* #3104 etape C: Min Aktivitet (<245 sessions/30 dage) er en fane i
+                Indbakken (6.152) nu — markeds-handlingscentret bor hvor spillerne
+                allerede kigger efter "hvad kræver min opmærksomhed". */}
+            <Route path="activity" element={<Navigate to="/notifications?tab=activity" replace />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
             <Route path="help" element={<HelpPage />} />
@@ -268,8 +272,9 @@ export default function App() {
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
             <Route path="resultater" element={<ResultaterPage />} />
             <Route path="calendar" element={<CalendarPage />} />
-            <Route path="rider-rankings" element={<RiderRankingsPage />} />
-            <Route path="global-rank" element={<GlobalRankPage />} />
+            {/* #3104 etape C: begge bor som faner i Ranglister-hubben (/standings). */}
+            <Route path="rider-rankings" element={<Navigate to="/standings?tab=riders" replace />} />
+            <Route path="global-rank" element={<Navigate to="/standings?tab=global" replace />} />
             {/* #3102 etape 2: arkivet flyttede fra /races til Resultat-hubben. */}
             <Route path="race-archive" element={<Navigate to="/resultater?tab=archive" replace />} />
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
