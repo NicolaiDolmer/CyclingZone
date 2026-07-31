@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.78",
+    "date": "2026-07-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Three board fixes: impossible classics goal removed, consistent star-rider counting, reactions only to your own races",
+          "body": "Six teams in Division 3/4 had accepted a five-year-plan goal about podiuming in a classic (a club-DNA tradition goal) that was mathematically impossible: those race classes never run in their division. The goal has been removed from the affected plans and can no longer be offered where it cannot be achieved. The board's five-year plan also counted 'star riders' with a different bar than the board's own star-rider card, so a rider the board itself called a star could be ignored by the plan; both now use the same combined renown/UCI-points score. Finally, the boardroom timeline no longer shows the board 'reacting' to races from divisions your team is not in."
+        },
+        "da": {
+          "title": "Tre bestyrelses-rettelser: umuligt klassiker-mål fjernet, ens stjernerytter-optælling, reaktioner kun på egne løb",
+          "body": "Seks hold i Division 3/4 havde accepteret et 5-års-plan-mål om podie i en klassiker (et klub-DNA-traditionsmål), som var matematisk umuligt: de løbsklasser køres aldrig i deres division. Målet er fjernet fra de ramte planer og kan ikke længere tilbydes hvor det ikke kan opnås. Bestyrelsens 5-års-plan talte desuden 'stjerneryttere' med en anden tærskel end bestyrelsens eget stjernerytter-kort, så en rytter bestyrelsen selv kaldte en stjerne kunne blive ignoreret af planen; begge bruger nu samme kombinerede omdømme/UCI-point-score. Endelig viser bestyrelses-tidslinjen ikke længere bestyrelsen 'reagere' på løb fra divisioner dit hold ikke er i."
+        },
+        "refs": [3095, 3141, 3144]
+      }
+    ]
+  },
+  {
     "version": "7.77",
     "date": "2026-07-31",
     "label": "Beta",
