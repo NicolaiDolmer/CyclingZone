@@ -117,7 +117,9 @@ async function loadTeams() {
   const columns = ["id", "is_ai", "is_test_account", "is_frozen", "league_division_id", "division"];
   if (hasIsBank) columns.push("is_bank");
 
-  const { data, error } = await fetchAllPaged(() => supabase.from("teams").select(columns.join(", ")));
+  // #3126: .order("id") — .range() uden en deterministisk totalordning kan hoppe
+  // rækker mellem sider (samme fejlklasse som #3113-dobbeltbookingen).
+  const { data, error } = await fetchAllPaged(() => supabase.from("teams").select(columns.join(", ")).order("id"));
   if (error) throw new Error(`teams-select fejlede: ${error.message}`);
 
   const included = (data || []).filter((t) => {
@@ -138,8 +140,9 @@ async function resolveTeamTiers(teams) {
 
   let divisionTierById = new Map();
   if (tierColumn) {
+    // #3126: .order("id") — se loadTeams ovenfor.
     const { data, error } = await fetchAllPaged(() =>
-      supabase.from("league_divisions").select(`id, ${tierColumn}`)
+      supabase.from("league_divisions").select(`id, ${tierColumn}`).order("id")
     );
     if (error) {
       schemaSurprises.push(`league_divisions-select fejlede (${error.message}) — falder tilbage til teams.division for alle hold`);
@@ -173,6 +176,7 @@ async function resolveTeamTiers(teams) {
 // ---------------------------------------------------------------------------
 
 async function loadCandidateRiders(includedTeamIds) {
+  // #3126: .order("id") — se loadTeams ovenfor.
   const { data, error } = await fetchAllPaged(() =>
     supabase
       .from("riders")
@@ -180,6 +184,7 @@ async function loadCandidateRiders(includedTeamIds) {
       .eq("is_academy", false)
       .eq("is_retired", false)
       .not("team_id", "is", null)
+      .order("id")
   );
   if (error) throw new Error(`riders-select fejlede: ${error.message}`);
   return (data || []).filter((r) => includedTeamIds.has(r.team_id));
