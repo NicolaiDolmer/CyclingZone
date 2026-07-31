@@ -308,6 +308,7 @@ import { checkAchievements, getAchievementProgressMap } from "../lib/achievement
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
+import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches } from "../lib/balanceDriftMetrics.js";
@@ -5005,6 +5006,16 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
   }
 
+  // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
+  // Fire-and-forget, fail-open — må aldrig blokere resten af bud-flowet.
+  recordIdentityEvent(supabase, {
+    userId: req.user.id,
+    teamId: req.team.id,
+    eventType: "auction_bid",
+    entityId: auction.id,
+    req,
+  });
+
   // Update auction (price + leader only — no extension yet).
   await supabase.from("auctions").update({
     current_price: amount,
@@ -5862,6 +5873,19 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       teamId: offer.buyer_team_id,
     }).catch((e) => console.error("[notifyTransferResponse:accepted] failed", { offerId: offer.id, error: e.message }));
 
+    // #3132: identitets-telemetri ved sælgers indledende accept (lægger tilbuddet
+    // i afventende bekræftelse). Den faktiske værdioverførsel sker først ved
+    // "confirm" (se result.action === "accepted" nedenfor) — den er også
+    // instrumenteret, så begge trin i to-trins-flowet har et bevisspor.
+    // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
+    recordIdentityEvent(supabase, {
+      userId: req.user.id,
+      teamId: req.team.id,
+      eventType: "transfer_accepted",
+      entityId: offer.id,
+      req,
+    });
+
     return res.json({ success: true, action: "awaiting_confirmation", price });
   }
 
@@ -5961,6 +5985,18 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     // do not yet move the rider, so cache stays.
     if (result.action === "accepted") {
       invalidateNamespace("riders");
+
+      // #3132: identitets-telemetri på det tidspunkt værdien FAKTISK flytter
+      // (begge parter bekræftet + transfer-vindue åbent) — ikke kun ved den
+      // indledende "accept" (der blot lægger tilbuddet i afventende tilstand).
+      // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
+      recordIdentityEvent(supabase, {
+        userId: req.user.id,
+        teamId: req.team.id,
+        eventType: "transfer_accepted",
+        entityId: offer.id,
+        req,
+      });
     }
 
     return res.json({
@@ -6224,6 +6260,19 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
       cash: swap.cash_adjustment,
     }), swap.id);
 
+    // #3132: identitets-telemetri ved den modtagende parts indledende accept
+    // (lægger byttehandlen i afventende bekræftelse). Den faktiske
+    // værdioverførsel sker først ved "confirm" (se result.action === "accepted"
+    // nedenfor) — den er også instrumenteret, så begge trin i to-trins-flowet
+    // har et bevisspor. Fire-and-forget, fail-open — må aldrig blokere svaret.
+    recordIdentityEvent(supabase, {
+      userId: req.user.id,
+      teamId: req.team.id,
+      eventType: "swap_accepted",
+      entityId: swap.id,
+      req,
+    });
+
     return res.json({ success: true, action: "awaiting_confirmation" });
   }
 
@@ -6314,6 +6363,18 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     // Executed swap moves two riders between teams; drop /api/riders cache.
     if (result.action === "accepted") {
       invalidateNamespace("riders");
+
+      // #3132: identitets-telemetri på det tidspunkt værdien FAKTISK flytter
+      // (begge parter bekræftet) — ikke kun ved den indledende "accept" (der
+      // blot lægger byttehandlen i afventende tilstand). Fire-and-forget,
+      // fail-open — må aldrig blokere svaret til klienten.
+      recordIdentityEvent(supabase, {
+        userId: req.user.id,
+        teamId: req.team.id,
+        eventType: "swap_accepted",
+        entityId: swap.id,
+        req,
+      });
     }
 
     return res.json({ success: true, action: result.action });
@@ -6594,6 +6655,18 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
             if (error) console.error("[attribution] persist fejlede:", error.message);
           });
       }
+
+      // #3132: bevisgrundlag for fremtidige fair-play-sager (#2776 kunne ikke
+      // efterforskes fordi ingen IP-historik fandtes). Fire-and-forget, fail-open —
+      // må ALDRIG blokere eller forsinke signup.
+      recordIdentityEvent(supabase, {
+        userId: req.user.id,
+        teamId: result.team?.id || null,
+        eventType: "signup",
+        req,
+        firstSeenAt: attributionRow?.first_seen_at || req.body?.attribution?.first_seen_at,
+        timezoneOffsetMinutes: req.body?.attribution?.timezone_offset_minutes,
+      });
     }
 
     res.status(result.created ? 201 : 200).json(result);
@@ -9441,6 +9514,17 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
       actorType: FINANCE_ACTOR_TYPE.API,
       actorId: req.user.id,
     });
+
+    // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
+    // Fire-and-forget, fail-open — må aldrig blokere svaret til klienten.
+    recordIdentityEvent(supabase, {
+      userId: req.user.id,
+      teamId: req.team.id,
+      eventType: "loan_taken",
+      entityId: loan?.id,
+      req,
+    });
+
     res.json({ success: true, loan });
   } catch (e) {
     // #1012: propagér loanEngine's strukturerede kode (fx error.debtCapReached)

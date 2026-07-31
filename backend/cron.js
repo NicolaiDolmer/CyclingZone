@@ -887,6 +887,21 @@ async function runTrafficRetentionCron() {
   }
 }
 
+// ─── Identity-events retention: hold identitets-telemetri ≤180 dage (#3132) ──
+// identity_events indeholder IP/UA — personoplysninger (GDPR, grundlag:
+// legitim interesse, bekæmpelse af snyd). Ejer-mandat 30/7 (epic #3131):
+// retention er 180 dage, derefter automatisk sletning. Idempotent delete;
+// service_role bypasser RLS (tabellen er ellers 100% klient-utilgængelig).
+async function runIdentityEventsRetentionCron() {
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase.from("identity_events").delete().lt("created_at", cutoff);
+  if (error) {
+    // GDPR-relevant rå-data ryddes aldrig op hvis dette fejler vedvarende — alarm.
+    console.error("  ❌ identity_events retention fejlede:", error.message);
+    sentryCapture(error, { tags: { cron: "identity events retention" } });
+  }
+}
+
 // ─── Balance-drift-vagt (#2414) ───────────────────────────────────────────────
 // Natlig: beregn gårsdagens dominans/varians-metrikker mod ÆGTE prod-resultater,
 // persistér i race_balance_drift_daily, alarmér Discord ved 3+ dages bånd-brud.
@@ -1036,6 +1051,7 @@ const ALL_CRON_MONITORS = [
   ["ranking-matview-refresh", CRON_MONITOR_10MIN],
   ["stall-watchdog", CRON_MONITOR_30MIN],
   ["traffic-retention", CRON_MONITOR_24H],
+  ["identity-events-retention", CRON_MONITOR_24H],
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
   ["email-welcome", CRON_MONITOR_5MIN],
@@ -1237,6 +1253,15 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: identity_events retention (#3132 — slet identitets-telemetri >180 dage).
+  setInterval(
+    trackedTick(
+      "identity events retention",
+      monitorCron("identity-events-retention", runIdentityEventsRetentionCron, CRON_MONITOR_24H)
+    ),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: balance-drift-vagt (#2414) — natlig kredibilitets-scorecard
   // for race v3's kalibrerede bånd mod ÆGTE prod-resultater (i går, UTC).
   setInterval(
@@ -1317,6 +1342,9 @@ export function startCron() {
   trackedTick("debt", checkDebtWarnings)();
   trackedTick("discord division-role sync", runDiscordRoleSyncCron)();
   trackedTick("traffic retention", runTrafficRetentionCron)();
+  // #3132: idempotent delete (cutoff-baseret), boot-run er sikkert og gør
+  // 24h-monitoren ærlig uden risiko for dubletter.
+  trackedTick("identity events retention", runIdentityEventsRetentionCron)();
   // #2414: samme idempotens-begrundelse — upsert på metric_date, boot-run gør
   // vagten ærlig uden at risikere dubletter/dobbelt-alarmer.
   trackedTick("balance-drift-watch", runBalanceDriftWatchCron)();
