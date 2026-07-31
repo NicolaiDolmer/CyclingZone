@@ -1403,7 +1403,10 @@ export async function simulateRace({
             : seasonBefore.race_days_completed,
         },
         previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
-        race: { id: race.id, name: race.name },
+        // #3144 · league_division_id med, så weekend-financen kun skriver et
+        // race-mærket board_satisfaction_events-row for hold i løbets EGEN
+        // pulje (ellers "reagerer" andre divisioners boards på dette løb).
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
       });
     } catch (error) {
       // #2389 A2: fanger fejl FØR processBoardWeekends interne captures (fx
@@ -2015,7 +2018,10 @@ export async function simulateStageByIndex({
             : seasonBefore.race_days_completed,
         },
         previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
-        race: { id: race.id, name: race.name },
+        // #3144 · league_division_id med, så weekend-financen kun skriver et
+        // race-mærket board_satisfaction_events-row for hold i løbets EGEN
+        // pulje (ellers "reagerer" andre divisioners boards på dette løb).
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
       });
     } catch (error) {
       // #2389 A2: mirror fuld-sim-grenen — capture.

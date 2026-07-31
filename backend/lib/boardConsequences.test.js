@@ -150,6 +150,26 @@ test("selectBonusExtraGoal defaults to monument_podium for non-star focuses", ()
   assert.equal(selectBonusExtraGoal({}).type, "monument_podium");
 });
 
+// #3095 · monument_podium her har intet race_scope (kun MONUMENT_RACE_CLASSES,
+// "Monuments") — TIER_CLASS_WHITELIST viser at KUN tier 1 nogensinde kører et
+// Monuments-løb (#2276-kaskaden). tier 2-4 skal derfor falde tilbage til
+// signature_rider i stedet for at tilbyde et strukturelt uopnåeligt bonus-mål.
+test("#3095 · selectBonusExtraGoal falder tilbage til signature_rider i tier 2-4 (Monuments umuligt)", () => {
+  for (const tier of [2, 3, 4]) {
+    const goal = selectBonusExtraGoal({ focus: "balanced" }, tier);
+    assert.equal(goal.type, "signature_rider", `tier ${tier}: monument_podium er uopnåeligt`);
+  }
+});
+
+test("#3095 · selectBonusExtraGoal giver stadig monument_podium i tier 1 (unrestricted)", () => {
+  assert.equal(selectBonusExtraGoal({ focus: "balanced" }, 1).type, "monument_podium");
+});
+
+test("#3095 · selectBonusExtraGoal uden tier (ukendt) fail-opener til monument_podium (bagudkompatibel)", () => {
+  assert.equal(selectBonusExtraGoal({ focus: "balanced" }).type, "monument_podium");
+  assert.equal(selectBonusExtraGoal({ focus: "balanced" }, null).type, "monument_podium");
+});
+
 // =====================================================================
 // evaluateAndApplyConsequences — per-lag triggers + idempotency
 // =====================================================================

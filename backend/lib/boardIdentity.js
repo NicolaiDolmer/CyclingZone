@@ -331,7 +331,12 @@ function calculateNationalCore(riders = []) {
 // #1889 · Frosset star-rider-tærskel (score >= STAR_RIDER_SCORE_THRESHOLD).
 // Vægtning + tærskel er låst per boardConstants.js / #1205 — Board-kortet
 // navngiver nu de kvalificerende ryttere men ÆNDRER IKKE udvælgelsen.
-const STAR_RIDER_SCORE_THRESHOLD = 68;
+// #3141 · Eksporteret (sammen med calculateRiderStarScore) så boardGoals.js'
+// signature_rider-mål (5-års-planen) kan tælle mod SAMME SSOT som board-kortets
+// "bestyrelsen anerkender N stjerne-ryttere" — før #3141 brugte de to flader
+// hver sit kriterium (score>=68 her vs. rå popularity>=75 i boardGoals.js),
+// så en rytter kunne tælle som "stjerne" på kortet uden at tælle mod planen.
+export const STAR_RIDER_SCORE_THRESHOLD = 68;
 
 function calculateStarProfile(riders = []) {
   if (!riders.length) {
@@ -391,7 +396,7 @@ function calculateStarProfile(riders = []) {
   };
 }
 
-function calculateRiderStarScore(rider = {}) {
+export function calculateRiderStarScore(rider = {}) {
   const popularityScore = clamp(Number(rider.popularity || 0), 0, 100);
   const uciScore = clamp(Math.round(Number(rider.uci_points || 0) / 4.5), 0, 100);
   return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));

@@ -73,6 +73,21 @@ function toFiniteOr(value, fallback) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+// #3144 · Denne finalization kører for ALLE rigtige hold på tværs af ALLE
+// divisioner/puljer hver gang ÉT løb finaliserer (satisfaction-target-
+// tracking er tilsigtet globalt — se header). Men det race-mærkede
+// board_satisfaction_events-row (vist i BoardSatisfactionTimeline som
+// "bestyrelsen reagerede på <race_name>") må KUN skrives for hold der
+// faktisk er i det løbs pulje — ellers ser en Division 2-manager bestyrelsen
+// "reagere begejstret" på et Division 3-løb holdet aldrig kørte.
+// Ukendt pulje på enten løb eller standing (legacy/test-data) → ingen
+// filtrering (bagudkompatibelt, matcher adfærden før #3144).
+function raceMatchesTeamPool(race, standing) {
+  if (race?.league_division_id == null) return true;
+  if (standing?.league_division_id == null) return true;
+  return standing.league_division_id === race.league_division_id;
+}
+
 /**
  * Afgør om DENNE finalization krydsede mid-season-checkpointet.
  * Mid-point = floor(race_days_total / 2) — samme formel som boardMidSeason.js.
@@ -325,7 +340,8 @@ export async function processBoardWeekendFinalization({
 
           // #1451-mønster genbrugt til baseline: goals_met/goals_total er NOT
           // NULL i skemaet → 0/0 (baseline har ingen mål), reason_category null.
-          if (race?.id) {
+          // #3144 · kun skriv event når løbet faktisk er i holdets pulje.
+          if (race?.id && raceMatchesTeamPool(race, standing)) {
             const { error: baselineEventError } = await supabase
               .from("board_satisfaction_events")
               .upsert({
@@ -417,7 +433,10 @@ export async function processBoardWeekendFinalization({
         // (board_id, race_id) via onConflict-upsert → re-import overskriver
         // i stedet for at duplikere. Fejl her må ALDRIG vælte satisfaction-
         // opdateringen (mekanikken er allerede persisteret ovenfor).
-        if (race?.id) {
+        // #3144 · kun skriv event når løbet faktisk er i holdets pulje —
+        // ellers ser en manager bestyrelsen "reagere" på et løb fra en
+        // anden division/pulje holdet aldrig deltog i.
+        if (race?.id && raceMatchesTeamPool(race, standing)) {
           const { error: eventError } = await supabase
             .from("board_satisfaction_events")
             .upsert({

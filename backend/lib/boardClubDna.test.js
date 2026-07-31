@@ -236,12 +236,38 @@ test("buildDnaTraditionGoal returnerer null for ukendt DNA", () => {
   assert.equal(buildDnaTraditionGoal("ukendt"), null);
 });
 
+test("#3095 · buildDnaTraditionGoal(italiensk_klassiker, tier) gates monument_podium mod tier-whitelisten", () => {
+  // tier 1: unrestricted (TIER_CLASS_WHITELIST[1] === null) → altid opnåeligt.
+  assert.ok(buildDnaTraditionGoal("italiensk_klassiker", 1));
+  // tier 2: OtherWorldTourB/OtherWorldTourC overlapper CLASSIC_RACE_CLASSES → opnåeligt.
+  assert.ok(buildDnaTraditionGoal("italiensk_klassiker", 2));
+  // tier 3/4: whitelist (ProSeries/Class1/Class2) har intet overlap → umuligt, drop målet.
+  assert.equal(buildDnaTraditionGoal("italiensk_klassiker", 3), null);
+  assert.equal(buildDnaTraditionGoal("italiensk_klassiker", 4), null);
+  // ukendt/manglende tier → fail-open (ingen data til at gate på).
+  assert.ok(buildDnaTraditionGoal("italiensk_klassiker", null));
+  assert.ok(buildDnaTraditionGoal("italiensk_klassiker"));
+});
+
+test("#3095 · buildDnaTraditionGoal gater IKKE ikke-monument_podium tradition-mål på tier", () => {
+  // fransk_klatrer's tradition-mål (min_national_riders) er ikke race-klasse-bundet
+  // — skal injiceres uanset tier.
+  for (const tier of [1, 2, 3, 4, null]) {
+    const goal = buildDnaTraditionGoal("fransk_klatrer", tier);
+    assert.ok(goal, `fransk_klatrer skal aldrig gates på tier ${tier}`);
+    assert.equal(goal.type, "min_national_riders");
+  }
+});
+
 // =============================================================
 // 5. buildBoardProposal — DNA-injection i 5yr
 // =============================================================
 
-test("buildBoardProposal injicerer DNA-tradition-mål i 5yr-forslag", () => {
-  const team = { division: 3, riders: [], sponsor_income: 100, balance: 800000 };
+test("buildBoardProposal injicerer DNA-tradition-mål i 5yr-forslag (tier hvor målet er opnåeligt)", () => {
+  // #3095 · division: 1 (unrestricted whitelist) — italiensk_klassiker's
+  // monument_podium/classics-tradition-mål ER opnåeligt her, i modsætning
+  // til tier 3/4 (se testen nedenfor).
+  const team = { division: 1, riders: [], sponsor_income: 100, balance: 800000 };
   const proposal = buildBoardProposal({
     focus: "balanced",
     planType: "5yr",
@@ -266,6 +292,56 @@ test("buildBoardProposal injicerer DNA-tradition-mål i 5yr-forslag", () => {
   // #1238 · klassiker-orienteret DNA honorerer hele klassiker-kategorien
   // (Monuments ⊂ klassikere) — målet evaluerer mod cumulativeClassicPodiums.
   assert.equal(traditionGoal.race_scope, "classics");
+});
+
+test("#3095 · buildBoardProposal injicerer IKKE monument_podium-tradition-mål i tier 3/4 (strukturelt umuligt)", () => {
+  // tierRaceSelection.TIER_CLASS_WHITELIST[3]/[4] indeholder ingen af
+  // CLASSIC_RACE_CLASSES (#2276-kaskaden) — italiensk_klassiker-DNA'ens
+  // monument_podium-mål kan derfor ALDRIG opfyldes i tier 3/4. Root cause
+  // for #3095 (5 rigtige tier-3-hold straffet hver evaluering).
+  for (const division of [3, 4]) {
+    const team = { division, riders: [], sponsor_income: 100, balance: 800000 };
+    const proposal = buildBoardProposal({
+      focus: "balanced",
+      planType: "5yr",
+      team,
+      riders: [],
+      standing: { rank_in_division: 4 },
+      identityBasis: {
+        rider_count: 8,
+        primary_specialization: "classics",
+        youth_level: "medium",
+        national_core: { code: "IT", count: 6, share_pct: 75, strength: "high", established: true },
+        star_profile: { level: "medium" },
+      },
+      dnaKey: "italiensk_klassiker",
+    });
+
+    const traditionGoal = proposal.goals.find((g) => g.type === "monument_podium" && g.source === "club_dna");
+    assert.equal(traditionGoal, undefined, `tier ${division}: monument_podium-tradition-mål må IKKE injiceres`);
+  }
+});
+
+test("#3095 · buildBoardProposal injicerer monument_podium-tradition-mål i tier 2 (OtherWorldTourB/C overlapper klassikere)", () => {
+  const team = { division: 2, riders: [], sponsor_income: 100, balance: 800000 };
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "5yr",
+    team,
+    riders: [],
+    standing: { rank_in_division: 4 },
+    identityBasis: {
+      rider_count: 8,
+      primary_specialization: "classics",
+      youth_level: "medium",
+      national_core: { code: "IT", count: 6, share_pct: 75, strength: "high", established: true },
+      star_profile: { level: "medium" },
+    },
+    dnaKey: "italiensk_klassiker",
+  });
+
+  const traditionGoal = proposal.goals.find((g) => g.type === "monument_podium" && g.source === "club_dna");
+  assert.ok(traditionGoal, "tier 2's whitelist overlapper CLASSIC_RACE_CLASSES (OtherWorldTourB/C) — målet er opnåeligt");
 });
 
 test("buildBoardProposal duplikerer IKKE tradition-mål når base-pakken allerede har samme type", () => {

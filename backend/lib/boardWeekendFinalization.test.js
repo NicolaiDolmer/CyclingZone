@@ -565,6 +565,92 @@ test("event-skrive-fejl tæller i errors uden at vælte mekanikken", async () =>
   assert.equal(state.board_satisfaction_events.length, 0, "intet event-row blev skrevet på fejl");
 });
 
+// ─── #3144 · board reagerer IKKE på løb fra en pulje holdet ikke er i ────────
+
+test("#3144 · skriver IKKE event når løbets pulje afviger fra holdets pulje", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha (Division 2)", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    // Holdet sidder i pulje 10 (Division 2) — løbet der finaliserer er pulje 20 (Division 3).
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 2, league_division_id: 10, stage_wins: 0, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const summary = await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r-div3", name: "Division 3-løb holdet ikke kørte", league_division_id: 20 },
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3,
+        evaluation: { feedback: { strongest_category: "results" } },
+      }),
+    },
+  });
+
+  // Satisfaction-mekanikken (målt på holdets EGEN standing) kører stadig —
+  // kun det race-mærkede event, der driver den viste "reaktion", udelades.
+  assert.equal(summary.boards_updated, 1);
+  assert.equal(state.board_profiles[0].satisfaction, 53);
+  assert.equal(state.board_satisfaction_events.length, 0, "intet event for et løb udenfor holdets pulje");
+});
+
+test("#3144 · skriver event når løbets pulje MATCHER holdets pulje", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha (Division 2)", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 2, league_division_id: 10, stage_wins: 1, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r-div2", name: "Eget Division 2-løb", league_division_id: 10 },
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3,
+        evaluation: { feedback: { strongest_category: "results" } },
+      }),
+    },
+  });
+
+  assert.equal(state.board_satisfaction_events.length, 1);
+  assert.equal(state.board_satisfaction_events[0].race_id, "r-div2");
+});
+
+test("#3144 · løb UDEN pulje-id filtrerer ikke (bagudkompatibel default)", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 2, league_division_id: 10, stage_wins: 1, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r-legacy", name: "Legacy-løb uden pulje-felt" },
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3,
+        evaluation: { feedback: { strongest_category: "results" } },
+      }),
+    },
+  });
+
+  assert.equal(state.board_satisfaction_events.length, 1, "ukendt pulje på løbet → ingen filtrering (matcher adfærd før #3144)");
+});
+
 // ─── #2308 · Kontekst-paritet: leagueDivisionId skal med i weekend-stien ──────
 
 test("#2308 · weekend-stien sender leagueDivisionId (pulje-id) videre til loadGoalContext", async () => {
