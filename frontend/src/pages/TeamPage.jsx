@@ -60,6 +60,30 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // akademiryttere (403 fra extend-quote), men er nu tilladt direkte (#2179).
   const [quoteError, setQuoteError] = useState({ release: null, extend: null });
 
+  // #3164: samme stille loft-tjek (#3143, current season + 3) som rytter-
+  // profilens RiderManageActions — hentet ved modal-mount i stedet for ved
+  // fane-skift, så "Forlæng"-fanen kan vises deaktiveret FØR spilleren klikker
+  // sig ind i en request der er dømt til at fejle. Reglen selv lever kun
+  // backend-side (maxAllowedContractEndSeason); frontend læser blot
+  // errorParams.maxSeason fra den EKSISTERENDE extend-quote-route.
+  const [extendCapped, setExtendCapped] = useState(false);
+  const [extendCapSeason, setExtendCapSeason] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { ok, data } = await fetchRiderQuote(rider.id, "extend-quote");
+        if (cancelled) return;
+        if (ok) setExtendQuote(data);
+        else if (data?.errorCode === "contract_extension_cap_reached") {
+          setExtendCapped(true);
+          setExtendCapSeason(data?.errorParams?.maxSeason ?? null);
+        }
+      } catch { /* stille — fane-skiftet forsøger igen og viser den rigtige fejl */ }
+    })();
+    return () => { cancelled = true; };
+  }, [rider.id]);
+
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
 
@@ -197,13 +221,21 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         </div>
         <div className="p-5">
           <div className="flex gap-2 mb-4 flex-wrap">
-            {tabKeys.map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-                  ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
-                {tabLabels[tab]}
-              </button>
-            ))}
+            {tabKeys.map(tab => {
+              // #3164: "Forlæng"-fanen deaktiveres FØR klik når rytteren står
+              // på kontrakt-loftet (#3143) — samme stille loft-tjek som
+              // rytter-profilen, se extendCapped ovenfor.
+              const disabled = tab === "extend" && extendCapped;
+              return (
+                <button key={tab} type="button" onClick={() => !disabled && setActiveTab(tab)}
+                  disabled={disabled}
+                  title={disabled ? t("actionModal.extend.capped", { season: extendCapSeason }) : undefined}
+                  className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border disabled:opacity-40 disabled:pointer-events-none
+                    ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
+                  {tabLabels[tab]}
+                </button>
+              );
+            })}
           </div>
           {activeTab === "auction" && (
             <div>

@@ -103,7 +103,8 @@
       "confirmButton": "Forlæng kontrakt",
       "loadingTermsButton": "Henter vilkår…",
       "workingButton": "Forlænger…",
-      "successMsg": "Kontrakt forlænget."
+      "successMsg": "Kontrakt forlænget.",
+      "capped": "Kontrakt på maksimal længde (til og med sæson {season})."
     },
     "demote": {
       "description": "Flyt denne U23-rytter ned i dit akademi. Kun muligt for ryttere på 22 år eller derunder.",
