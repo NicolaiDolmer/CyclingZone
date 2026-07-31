@@ -157,7 +157,7 @@ import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "..
 import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
-import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions } from "../lib/plannerBoard.js";
+import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -2349,34 +2349,42 @@ async function resolvePlannerSeason(seasonNumberRaw) {
   return activePeakSeason();
 }
 
-// ── Assistent-forslag (#2455) ────────────────────────────────────────────────
+// ── Assistent-forslag (#2455) + payback/belastning (#3102 PR 2) ──────────────
 // Manuelt tilmeldte løb (race_entries.is_auto_filled=false) = rytterens ægte
 // løbsprogram — auto-fyldte entries opstår kun tæt på løbsdag og er IKKE et
-// manager-program-valg (#1835). Scopet til holdets EGNE ryttere + division,
-// så queryen forbliver lille (ét holds squad × én sæsons løb, ikke en global scan).
-async function loadManualRegisteredRaceIds(riderIds, raceIds) {
-  if (!riderIds.length || !raceIds.length) return new Map();
+// manager-program-valg (#1835). Den diskriminator gælder stadig for FORSLAGENE,
+// men payback-varslet skal se ALLE entries: en rytter i payback-vinduet stiller
+// til start uanset om hans entry er auto-fyldt (hul 1 fra #3093-auditten — en
+// manager der lader auto-fill styre programmet fik ingen advarsel). Derfor
+// hentes begge sæt i ét opslag: `manual` (forslags-diskriminatoren) og `all`
+// (payback + sæson-belastning, #2772).
+async function loadRegisteredRaceIds(riderIds, raceIds) {
+  const empty = () => ({ manual: new Map(), all: new Map() });
+  if (!riderIds.length || !raceIds.length) return empty();
   // #2516: én samlet .in("race_id", allRaceIds) med hele sæsonens 423 løb gav en
   // ~16 KB GET-URL → undici "TypeError: fetch failed" (Sentry CYCLINGZONE-33), og
   // usePlanner sluger 500 som enabled:false — Planneren så "isn't live yet" ud for
   // ALLE. Samme ID_CHUNK-mønster som fetchAllStageProfiles, men fejl KASTER stadig
   // (tavs trunkering ville give forkerte forslag i stedet for en synlig fejl).
-  // Rækker pr. chunk = ét holds MANUELLE entries i chunkens løb — langt under
-  // PostgRESTs 1000-række-side, så range-pagination er ikke nødvendig her.
+  // Rækker pr. chunk = ét holds entries i chunkens løb — langt under PostgRESTs
+  // 1000-række-side, så range-pagination er ikke nødvendig her.
   const ID_CHUNK = 200;
-  const out = new Map();
+  const out = empty();
+  const add = (map, riderId, raceId) => {
+    if (!map.has(riderId)) map.set(riderId, new Set());
+    map.get(riderId).add(raceId);
+  };
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
     const { data, error } = await supabase
       .from("race_entries")
-      .select("race_id, rider_id")
-      .eq("is_auto_filled", false)
+      .select("race_id, rider_id, is_auto_filled")
       .in("rider_id", riderIds)
       .in("race_id", chunk);
     if (error) throw new Error(`race_entries (peak suggestions): ${error.message}`);
     for (const row of data || []) {
-      if (!out.has(row.rider_id)) out.set(row.rider_id, new Set());
-      out.get(row.rider_id).add(row.race_id);
+      add(out.all, row.rider_id, row.race_id);
+      if (row.is_auto_filled === false) add(out.manual, row.rider_id, row.race_id);
     }
   }
   return out;
@@ -2946,6 +2954,17 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       };
     });
 
+    // race_id → etape-datoer ("YYYY-MM-DD" CET) fra den allerede hentede sæson-
+    // schedule — bruges af racesOut's peakWindow (hul 2) OG assistent-forslagene
+    // nedenfor. Intet ekstra DB-kald.
+    const stageDatesByRaceId = new Map();
+    for (const row of scheduleRows) {
+      const ms = Date.parse(row.scheduled_at);
+      if (!Number.isFinite(ms)) continue;
+      if (!stageDatesByRaceId.has(row.race_id)) stageDatesByRaceId.set(row.race_id, []);
+      stageDatesByRaceId.get(row.race_id).push(toCopenhagenISODate(ms));
+    }
+
     const racesOut = model.entries
       .filter((e) => e.date)
       .map((e) => {
@@ -2957,6 +2976,11 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           division: e.division,
           isMine: e.isMine,
           date: e.date,
+          // #3102 PR 2 (hul 2): det vindue en peak mod DETTE løb ville få, færdig-
+          // snappet med præcis samme snapPeakWindow som skrive-stien — så dropdownen
+          // kan vise payback-risiko pr. løb FØR valget uden at klienten har sin egen
+          // vindue-formel (to formler for samme tal er #3071-fejlklassen).
+          peakWindow: snapPeakWindow(stageDatesByRaceId.get(e.id) || []),
           gameDayStart: e.gameDayStart,
           gameDayEnd: e.gameDayEnd,
           stages: e.stages,
@@ -2982,8 +3006,18 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #3086: rytterens ægte løbsprogram hentes nu for HELE truppen, ikke kun de
     // ryttere der får forslag — payback-kollisionen (nedenfor) skal kunne beregnes
     // for en rytter der allerede har begge sine peaks sat. Samme ét-hold-scopede
-    // query som før, bare med hele rider-listen.
-    const registeredByRider = await loadManualRegisteredRaceIds(riderIds, allRaceIds);
+    // query som før, bare med hele rider-listen. #3102 PR 2: `manual` driver
+    // forslagene (uændret diskriminator), `all` driver payback + belastning.
+    const { manual: registeredByRider, all: allEntriesByRider } = await loadRegisteredRaceIds(riderIds, allRaceIds);
+
+    // #3102 PR 2 (hul 2 + #2772): rytterens fulde løbsprogram (alle entries, auto
+    // som manuelle) eksponeres pr. rytter, så klienten kan (a) vise payback-
+    // risiko PR. LØB i formplanens dropdown FØR valget (kombineret med løbets
+    // færdig-snappede `peakWindow` + `paybackDays` i responsen) og (b) vise
+    // sæson-belastning (løbsdage) pr. rytter uden ekstra kald.
+    for (const rd of ridersOut) {
+      rd.registeredRaceIds = [...(allEntriesByRider.get(rd.id) || [])];
+    }
 
     const suggestRiderIdSet = new Set(
       divisionSettled ? ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id) : [],
@@ -2991,16 +3025,6 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     if (suggestRiderIdSet.size) {
       const suggestRiderIds = [...suggestRiderIdSet];
       const dismissedSet = await loadPeakSuggestionDismissals(suggestRiderIds, season.id);
-
-      // race_id → etape-datoer ("YYYY-MM-DD" CET), genbrugt fra den allerede
-      // hentede sæson-schedule (scheduleRows) — intet ekstra DB-kald pr. rytter.
-      const stageDatesByRaceId = new Map();
-      for (const row of scheduleRows) {
-        const ms = Date.parse(row.scheduled_at);
-        if (!Number.isFinite(ms)) continue;
-        if (!stageDatesByRaceId.has(row.race_id)) stageDatesByRaceId.set(row.race_id, []);
-        stageDatesByRaceId.get(row.race_id).push(toCopenhagenISODate(ms));
-      }
       const riderById = new Map((riders || []).map((r) => [r.id, r]));
 
       for (const rd of ridersOut) {
@@ -3062,11 +3086,12 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // er lagt på, så et endnu-uaccepteret forslag advarer på præcis samme måde
     // som en ægte peak — ellers ville "Accept all" kunne gemme kollisionen.
     //
-    // "Løb rytteren er udtaget til" = de MANUELT tilmeldte entries (samme
-    // diskriminator som assistenten bruger: auto-fill sker først tæt på løbsdag
-    // og er ikke et manager-valg, #1835) PLUS rytterens øvrige peak-mål, som man
-    // per definition har tænkt sig at køre. Et vindues eget mål-løb ligger inde i
-    // vinduet og filtreres fra igen nedenfor.
+    // "Løb rytteren er udtaget til" = ALLE entries (manuelle OG auto-fyldte —
+    // hul 1 fra #3093: en auto-fyldt rytter stiller også til start i payback-
+    // hullet, så varslet skal ikke afhænge af HVEM der satte ham på startlisten)
+    // PLUS rytterens øvrige peak-mål, som man per definition har tænkt sig at
+    // køre. Et vindues eget mål-løb ligger inde i vinduet og filtreres fra igen
+    // nedenfor. Forslags-diskriminatoren (kun manuelle, #1835) er uændret ovenfor.
     const raceOrdById = new Map();
     for (const r of racesOut) {
       const ord = dateStringToOrdinal(r.date);
@@ -3079,7 +3104,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         .filter((w) => w.endOrdinal != null);
       if (!windows.length) continue;
 
-      const raceIdsToCheck = new Set(registeredByRider.get(rd.id) || []);
+      const raceIdsToCheck = new Set(allEntriesByRider.get(rd.id) || []);
       for (const p of rd.peaks) if (p.targetRaceId) raceIdsToCheck.add(p.targetRaceId);
       const otherRaces = [...raceIdsToCheck]
         .map((raceId) => ({ raceId, ord: raceOrdById.get(raceId) }))
@@ -3540,6 +3565,28 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       if (!finaleByRace.has(p.race_id)) finaleByRace.set(p.race_id, p.finale_type ?? null);
     }
 
+    // #3102 PR 2: holdets peak-planer for sæsonen → peaks/payback-overlay pr.
+    // løbskort (hvem topper her, hvem betaler payback her). Samme deterministiske
+    // dag-enhed som planneren (CET-dag-ordinal), så de to flader aldrig divergerer.
+    const { data: teamRiderRows, error: teamRiderErr } = await supabase
+      .from("riders").select("id").eq("team_id", req.team.id).eq("is_retired", false);
+    if (teamRiderErr) throw new Error(`riders (peak overlay): ${teamRiderErr.message}`);
+    const teamRiderIds = (teamRiderRows || []).map((r) => r.id);
+    let teamPeakPlans = [];
+    if (teamRiderIds.length) {
+      const { data: planRows, error: planErr } = await supabase
+        .from("rider_peak_plans")
+        .select("rider_id, target_race_id, window_end")
+        .eq("season_id", season.id)
+        .in("rider_id", teamRiderIds);
+      if (planErr) throw new Error(`rider_peak_plans (peak overlay): ${planErr.message}`);
+      teamPeakPlans = (planRows || []).map((p) => ({
+        riderId: p.rider_id,
+        targetRaceId: p.target_race_id ?? null,
+        windowEndOrd: dateStringToOrdinal(p.window_end),
+      }));
+    }
+
     const columns = [];
     for (const race of cols) {
       const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
@@ -3553,6 +3600,11 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // som manuelt, for der er intet at frigive fra (truppen er reel).
       const startedHere = (race.stages_completed ?? 0) > 0;
       const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere });
+      // #3102 PR 2: hvem topper/betaler payback netop her (CET-ordinal for startdagen).
+      const raceOrdinal = race.window?.start != null
+        ? dateStringToOrdinal(toCopenhagenISODate(race.window.start))
+        : null;
+      const overlay = raceCardPeakOverlay({ raceId: race.id, raceOrdinal, plans: teamPeakPlans });
       columns.push({
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
         stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
@@ -3568,6 +3620,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         lineup_locked: startedHere,
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
         bindingRiderIds,
+        // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op
+        // klient-side i kolonnens riders — kun id'er + dage over wiren).
+        peakRiderIds: overlay.peakRiderIds,
+        paybackRiders: overlay.paybackRiders,
       });
     }
 
@@ -3600,6 +3656,20 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       nameByRace: new Map((races || []).map((r) => [r.id, r.name])),
     });
 
+    // #2772: sæson-belastning pr. rytter — antal løb + løbsdage (etaper) rytteren
+    // er tilmeldt henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller
+    // til start uanset hvem der satte ham på listen). Afledt af de allerede
+    // hentede eligible entries (ghosts/udlånte tæller ikke, #1906) — intet ekstra
+    // DB-kald. Løbsdage = løbets etape-antal (1 rytter = 1 løb/dag er ejer-design).
+    const stagesByRaceId = new Map((races || []).map((r) => [r.id, r.stages ?? 1]));
+    const seasonLoadByRider = {};
+    for (const e of teamEntries || []) {
+      const cur = seasonLoadByRider[e.rider_id] || { races: 0, raceDays: 0 };
+      cur.races += 1;
+      cur.raceDays += stagesByRaceId.get(e.race_id) ?? 1;
+      seasonLoadByRider[e.rider_id] = cur;
+    }
+
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
       teamDivisionId: req.team.league_division_id, currentDay, totalDays, firstOrdinal,
@@ -3608,7 +3678,14 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #3041: bindingRiderIds er kun et internt hjælpefelt til at bygge bindingMap ovenfor —
     // ikke en del af wire-kontrakten, så det strippes fra hver kolonne før respons.
     const wireColumns = columns.map(({ bindingRiderIds: _bindingRiderIds, ...c }) => c);
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns: wireColumns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled });
+    res.json({
+      enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay,
+      columns: wireColumns, bindingMap, externalBindings, timeline, race_v3_enabled: raceV3Enabled,
+      // #3102 PR 2 / #2772: payback-dybden i formpoint (afledt af motorens
+      // konstanter, aldrig hardkodet i copy) + sæson-belastning pr. rytter.
+      paybackFormPoints: peakValueFormPoints({}).payback,
+      seasonLoadByRider,
+    });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

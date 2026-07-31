@@ -121,6 +121,52 @@ export function findPaybackCollisions({ windows = [], otherRaces = [], tuning = 
 }
 
 /**
+ * Peak-overlay for ÉT løbskort på Holdudtagelses-boardet (#3102 PR 2): hvilke af
+ * MINE ryttere topper netop her, og hvilke betaler payback her (deres formhul fra
+ * en ANDEN peak dækker løbets startdag). Spejlbilledet af findPaybackCollisions —
+ * samme interval (end+1 .. end+paybackDays), bare set fra løbet i stedet for
+ * rytteren, så udtagelsen og formplanen fortæller den samme historie.
+ *
+ * En rytter der topper her vises IKKE også som payback her (hans anden peaks
+ * formhul kan teoretisk overlappe, men på løbsdagen er det bumpet der definerer
+ * hans tilstand — to modsatrettede chips på samme kort ville kun forvirre).
+ *
+ * @param {object} args
+ * @param {string} args.raceId
+ * @param {number|null} args.raceOrdinal  løbets start-dag (CET-ordinal)
+ * @param {Array<{riderId:string, targetRaceId:string|null, windowEndOrd:number|null}>} [args.plans]
+ * @param {object} [args.tuning]
+ * @returns {{peakRiderIds:string[], paybackRiders:Array<{riderId:string, daysAfterPeak:number}>}}
+ */
+export function raceCardPeakOverlay({ raceId, raceOrdinal, plans = [], tuning = RACE_V3_TUNING } = {}) {
+  const paybackDays = Number(tuning?.PEAK_PAYBACK_DAYS);
+  const peakRiderIds = [];
+  const paybackByRider = new Map();
+  for (const p of plans) {
+    if (!p?.riderId) continue;
+    if (p.targetRaceId === raceId) {
+      peakRiderIds.push(p.riderId);
+      continue;
+    }
+    const end = Number(p.windowEndOrd);
+    const ord = Number(raceOrdinal);
+    if (!Number.isFinite(paybackDays) || paybackDays <= 0) continue;
+    if (!Number.isFinite(end) || !Number.isFinite(ord)) continue;
+    const days = ord - end;
+    if (days < 1 || days > paybackDays) continue;
+    // To peaks kan begge kaste payback ind over dagen — vis den nærmeste (dybest).
+    const prev = paybackByRider.get(p.riderId);
+    if (prev == null || days < prev) paybackByRider.set(p.riderId, days);
+  }
+  const peaked = new Set(peakRiderIds);
+  const paybackRiders = [...paybackByRider.entries()]
+    .filter(([riderId]) => !peaked.has(riderId))
+    .map(([riderId, daysAfterPeak]) => ({ riderId, daysAfterPeak }))
+    .sort((a, b) => a.daysAfterPeak - b.daysAfterPeak || String(a.riderId).localeCompare(String(b.riderId)));
+  return { peakRiderIds: [...new Set(peakRiderIds)].sort(), paybackRiders };
+}
+
+/**
  * Er holdets division KENDT for den sæson planlæggeren kigger på? (#3018)
  *
  * `teams.league_division_id` beskriver holdets placering i den AKTIVE sæson. Den

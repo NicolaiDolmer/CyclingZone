@@ -45,7 +45,9 @@
       "fillMissing": "Udfyld manglende",
       "clearDay": "Ryd dag",
       "clearAllSeason": "Ryd alt",
-      "bound": "Kører allerede et overlappende løb"
+      "bound": "Kører allerede et overlappende løb",
+      "loadShort": "{days}d",
+      "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson"
     },
     "clearDayWarn": "Fjern alle ryttere fra dagens løb? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
     "clearAllWarn": "Fjern alle ryttere fra ALLE dine resterende løb resten af sæsonen? Kan ikke fortrydes, og assistenten fylder dem ikke ud igen, før du selv beder om det.",
@@ -61,7 +63,10 @@
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
-      "remove": "Fjern rytter"
+      "remove": "Fjern rytter",
+      "peaksHere": "Topper her: {names}",
+      "paybackHere": "Payback-hul her: {names} ({points} form)",
+      "paybackHereNoPoints": "Payback-hul her: {names}"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",

@@ -67,6 +67,96 @@ export function targetableRacesFor({ rider, races, todayOrd, currentTargetId = n
 }
 
 /**
+ * Payback-risiko PR. LØB i dropdownen, FØR valget (hul 2 fra #3093-auditten).
+ * Returnerer sættet af kandidat-løb-id'er hvor et peak-valg ville kollidere med
+ * rytterens program — i en af to retninger:
+ *
+ *  A) Formhullet EFTER en peak mod kandidaten (paybackDays dage efter vinduets
+ *     slut) dækker et løb rytteren allerede kører (registrerede entries, auto
+ *     som manuelle — hul 1 — plus øvrige peak-mål).
+ *  B) Kandidaten ligger selv i formhullet efter en af rytterens ANDRE peaks —
+ *     man ville toppe mod et løb man kører med reduceret form.
+ *
+ * Vinduet kommer FÆRDIGT fra boardet (`race.peakWindow`, snappet server-side med
+ * præcis samme snapPeakWindow som skrive-stien) — her laves KUN interval-tjekket.
+ * En egen vindue-formel her ville være #3071-fejlklassen (to formler, ét tal).
+ *
+ * `currentTargetId` (pladsens nuværende mål) ekskluderes som peak — en retarget
+ * ERSTATTER den — men rytterens registrerede entries står urørt: entry'en til det
+ * gamle mål-løb forsvinder ikke fordi peaken flytter.
+ *
+ * @param {object} args
+ * @param {object} args.rider              board-rytter (registeredRaceIds + peaks)
+ * @param {Array<object>} args.races       board'ets racesOut (peakWindow + date)
+ * @param {number} args.paybackDays
+ * @param {string|null} [args.currentTargetId]
+ * @returns {Set<string>}  kandidat-løb-id'er med payback-kollision
+ */
+export function paybackRiskRaceIds({ rider, races, paybackDays, currentTargetId = null }) {
+  const risky = new Set();
+  const days = Number(paybackDays);
+  if (!Number.isFinite(days) || days <= 0) return risky;
+
+  const raceById = new Map((races || []).map((r) => [r.id, r]));
+  const otherPeaks = (rider?.peaks || []).filter(
+    (p) => p.targetRaceId && p.targetRaceId !== currentTargetId,
+  );
+
+  // Rytterens program: registrerede løb + øvrige peak-mål (dem kører man per definition).
+  const programIds = new Set(rider?.registeredRaceIds || []);
+  for (const p of otherPeaks) programIds.add(p.targetRaceId);
+  const programOrds = [];
+  for (const id of programIds) {
+    const ord = dateToOrdinal(raceById.get(id)?.date);
+    if (ord != null) programOrds.push({ id, ord });
+  }
+
+  const otherPaybackEnds = otherPeaks
+    .map((p) => dateToOrdinal(p.windowEnd))
+    .filter((o) => o != null);
+  const inPayback = (ord, endOrd) => ord - endOrd >= 1 && ord - endOrd <= days;
+
+  for (const race of races || []) {
+    const endOrd = dateToOrdinal(race.peakWindow?.window_end);
+    if (endOrd != null && programOrds.some(({ id, ord }) => id !== race.id && inPayback(ord, endOrd))) {
+      risky.add(race.id);
+      continue;
+    }
+    const raceOrd = dateToOrdinal(race.date);
+    if (raceOrd != null && otherPaybackEnds.some((e) => inPayback(raceOrd, e))) {
+      risky.add(race.id);
+    }
+  }
+  return risky;
+}
+
+/**
+ * Sæson-belastning pr. rytter (#2772): hvor mange løb og løbsdage (etaper) er
+ * rytteren tilmeldt henover sæsonen — auto-fyldte entries inklusive, for rytteren
+ * stiller til start uanset hvem der satte ham på listen. Løbsdage = etape-antal
+ * (1 rytter = 1 løb/dag er ejer-design). Registrerede løb uden for boardets
+ * kalender (fx en anden divisions løb efter op-/nedrykning) tælles ikke — vi
+ * viser kun hvad payloaden kan stå inde for.
+ *
+ * @param {object} args
+ * @param {object} args.rider              board-rytter (registeredRaceIds)
+ * @param {Array<object>} args.races       board'ets racesOut (stages)
+ * @returns {{races:number, raceDays:number}}
+ */
+export function riderSeasonLoad({ rider, races }) {
+  const raceById = new Map((races || []).map((r) => [r.id, r]));
+  let raceCount = 0;
+  let raceDays = 0;
+  for (const id of rider?.registeredRaceIds || []) {
+    const race = raceById.get(id);
+    if (!race) continue;
+    raceCount += 1;
+    raceDays += Number.isFinite(race.stages) && race.stages > 0 ? race.stages : 1;
+  }
+  return { races: raceCount, raceDays };
+}
+
+/**
  * Kræver denne peak en handling? To ting kan gå galt efter man har sat den:
  * optakten bliver ikke redet (`at_risk`), eller payback-hullet rammer et løb
  * rytteren også skal køre. Begge er ting manageren kan nå at gøre noget ved,

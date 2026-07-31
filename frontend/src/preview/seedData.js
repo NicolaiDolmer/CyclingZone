@@ -576,7 +576,10 @@ export const SEED_MANAGER_TRANSFERS = [
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
 const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((r, i) => ({
-  id: r.id, firstname: r.firstname, lastname: r.lastname,
+  // `name` er wire-formatet fra buildRiderRows (fornavn+efternavn joinet server-side)
+  // — kolonne-rækker, pulje-chips og #3102-overlayet læser alle det felt.
+  id: r.id, name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+  firstname: r.firstname, lastname: r.lastname,
   primary_type: r.primary_type, secondary_type: r.secondary_type, nationality_code: r.nationality_code,
   // S5: suitability + aggression + kondition så RoleCards/FitBar/jæger-chip har data i preview.
   suitability: 78 - i * 9, aggression: 72 - i * 6, form: 60 - i * 3, fatigue: 12 + i * 7,
@@ -598,6 +601,9 @@ export const SEED_DISTRIBUTION = {
       selection: { rider_ids: [RIDERS[0].id], captain_id: RIDERS[0].id, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
       withdrawn: false, lineup_locked: false,
       counts: { selected: 1, target: 8 },
+      // #3102 PR 2: formplan-overlay — Ada topper netop her (stjerne-linjen på kortet).
+      peakRiderIds: [RIDERS[0].id],
+      paybackRiders: [],
     },
     {
       // In-game-dag-overlap med race-up-1 (gd 12 ⊂ 12-14) → én-rytter/ét-løb-binding.
@@ -610,6 +616,8 @@ export const SEED_DISTRIBUTION = {
       selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
       withdrawn: false, lineup_locked: false,
       counts: { selected: 0, target: 7 },
+      peakRiderIds: [],
+      paybackRiders: [],
     },
     {
       // Kronologi-rebuild: samme IRL-dag, men in-game-dag 15 (efter race-up-1's span) → binder
@@ -622,10 +630,22 @@ export const SEED_DISTRIBUTION = {
       selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
       withdrawn: false, lineup_locked: false,
       counts: { selected: 0, target: 7 },
+      // #3102 PR 2: Ada betaler payback her (varsel-linjen på kortet) — hendes
+      // peak-vindue om Tour de Preview (gd 12-14) sluttede dagen før dette løb.
+      // Rytteren SKAL være i SEED_BOARD_ROSTER: kortet slår navnet op i kolonnens
+      // riders og skjuler ukendte id'er, præcis som prod gør ved en solgt rytter.
+      peakRiderIds: [],
+      paybackRiders: [{ riderId: RIDERS[0].id, daysAfterPeak: 1 }],
     },
   ],
   // bindingMap (server): rider_id → kolonne-løb rytteren er i som overlapper et andet (game-dag).
   bindingMap: { [RIDERS[0].id]: ["race-up-1"] },
+  // #3102 PR 2 / #2772: payback-dybde i formpoint (mock-spejling af motorens tal,
+  // jf. plannerMock.js) + sæson-belastning pr. rytter til pulje-chips'ene.
+  paybackFormPoints: -14,
+  seasonLoadByRider: Object.fromEntries(
+    SEED_BOARD_ROSTER.map((r, i) => [r.id, { races: 2 + (i % 3), raceDays: 3 + i * 2 }]),
+  ),
   timeline: {
     totalDays: 28,
     currentDay: 12,

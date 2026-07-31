@@ -529,7 +529,7 @@ export default function RaceHubBoard() {
                   {g.columns.map((c, ci) => (
                     <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                       onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                      raceV3Enabled={!!data.race_v3_enabled}
+                      raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
                       dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} />
                   ))}
                 </div>
@@ -540,12 +540,13 @@ export default function RaceHubBoard() {
               {effectiveColumns.map((c, ci) => (
                 <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
                   onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                  raceV3Enabled={!!data.race_v3_enabled}
+                  raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
                   dataTour={ci === 0 ? "races-column" : undefined} />
               ))}
             </div>
           )}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
+            seasonLoadByRider={data.seasonLoadByRider || {}}
             onAddRiderToRace={addRider} onRegenerate={regenerate} onClearSquad={clearSquad} busy={busy}
             onDropRider={(raw) => handleDrop("pool", null, raw)} />
         </>

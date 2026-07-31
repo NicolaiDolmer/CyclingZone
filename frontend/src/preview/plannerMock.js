@@ -58,6 +58,11 @@ function makeRace(id, name, terrain, date, isMine, stages, summits, division, ri
   return {
     id, name, raceClass: stages > 1 ? "WorldTour" : "ProSeries", division, isMine,
     date, gameDayStart: ord(date), gameDayEnd: ord(date) + (stages - 1), stages, terrain,
+    // #3102 PR 2 (hul 2): det vindue en peak mod løbet ville få. I prod snappes det
+    // server-side om median-etapedagen (snapPeakWindow); mocken centrerer om start-
+    // datoen — SAMME center som makePeak nedenfor, så dropdown-risikoen og
+    // post-valg-kollisionen altid fortæller den samme historie i preview.
+    peakWindow: { window_start: addDays(date, -RADIUS), window_end: addDays(date, RADIUS) },
     stageProfiles: strip, profileSummary: raceProfileSummary(strip),
     demandVector: DEMANDS[terrain] || DEMANDS.sprint, rivalPeakCount,
   };
@@ -192,11 +197,21 @@ const REGISTERED = new Map([
   ["rd-verm", ["r-midsummer", "r-alpine"]],
   ["rd-krist", ["r-coastal"]],
 ]);
+// #3102 PR 2 (hul 1): auto-fyldte entries taeller OGSAA i payback nu. Kristiansen
+// er auto-fyldt til Midsummer Criterium, som ligger i formhullet efter hans
+// Alpine-peak — foer hul 1-lukningen fik han ingen advarsel om det paa preview.
+const AUTO_FILLED = new Map([
+  ["rd-krist", ["r-midsummer"]],
+]);
+function allRegisteredFor(riderId) {
+  return [...new Set([...(REGISTERED.get(riderId) || []), ...(AUTO_FILLED.get(riderId) || [])])];
+}
 
 // Mock-spejling af backend/lib/plannerBoard.js findPaybackCollisions: hvilke af
-// rytterens OEVRIGE loeb falder i formhullet efter en peak.
+// rytterens OEVRIGE loeb falder i formhullet efter en peak. Hul 1 (#3093): ALLE
+// entries taeller, auto-fyldte inklusive — samme diskriminator som serveren nu.
 function withPaybackCollisions(riderId, peakList) {
-  const raceIds = new Set(REGISTERED.get(riderId) || []);
+  const raceIds = new Set(allRegisteredFor(riderId));
   for (const p of peakList) if (p.targetRaceId) raceIds.add(p.targetRaceId);
   return peakList.map((p) => {
     const end = ord(p.windowEnd);
@@ -222,7 +237,12 @@ function buildBoard(peakList) {
     paybackDays: PAYBACK_DAYS,
     riders: RIDERS.map((r) => {
       const real = peakList.filter((p) => p.riderId === r.id).map(serialize);
-      return { ...r, peaks: withPaybackCollisions(r.id, [...real, ...suggestionsFor(r.id, real)]) };
+      return {
+        ...r,
+        // #3102 PR 2: rytterens fulde loebsprogram (hul 2-dropdown + #2772-belastning).
+        registeredRaceIds: allRegisteredFor(r.id),
+        peaks: withPaybackCollisions(r.id, [...real, ...suggestionsFor(r.id, real)]),
+      };
     }),
     races: RACES,
   };
@@ -242,7 +262,7 @@ function buildPendingBoard() {
     today: TODAY,
     leadupDays: LEADUP,
     paybackDays: PAYBACK_DAYS,
-    riders: RIDERS.map((r) => ({ ...r, peaks: [] })),
+    riders: RIDERS.map((r) => ({ ...r, registeredRaceIds: [], peaks: [] })),
     races: RACES_S2,
   };
 }
