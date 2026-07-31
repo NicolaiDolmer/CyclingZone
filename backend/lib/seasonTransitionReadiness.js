@@ -136,36 +136,79 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
  * BEVIDST ingen force-bypass: transition-endpointets force må heller ikke
  * kunne slå denne klasse af kontrol fra (issue-krav). Et permanent brudt løb
  * skal repareres/annulleres i admin, ikke forbi-klikkes.
+ *
+ * #3038 — empty-pool-undtagelse (samme diskriminator som stage-scheduleren,
+ * P0 2/7-filteret i stageScheduler.js "inEmptyPool"). #2851-reconcilen tømte
+ * D4 C-H-puljerne for legacy-AI (enginens design: tier 3/4-puljer uden ægte
+ * managere → 0 AI), men S2-kalenderen var materialiseret FØR den tømning med
+ * ~143 løb i de puljer. De løb kører aldrig (stage-scheduleren skipper dem
+ * korrekt) og må derfor IKKE tælle som spærre — ellers blokerer de "Afslut
+ * sæson" for evigt. Løbene BEVARES i kalenderen (en pulje kan aktiveres af
+ * nye signups) — kun tællingen her undtager dem.
  */
 export async function assessSeasonEndBlockers({ supabase, seasonId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
 
-  const { count, error: racesError } = await supabase
+  const { data: unfinished, error: racesError } = await supabase
     .from("races")
-    .select("id", { count: "exact", head: true })
+    .select("id, league_division_id")
     .eq("season_id", seasonId)
     .neq("status", "completed");
   if (racesError) throw new Error(`Kunne ikke tælle uafviklede løb: ${racesError.message}`);
 
-  const unfinishedRaces = count || 0;
+  // #3038: samme "puljer uden hold"-diskriminator som stageScheduler.js
+  // (inEmptyPool). Fail-open ligesom scheduleren: en tom teams-tabel (mock/test-DB)
+  // deaktiverer filteret i stedet for at undtage alle løb.
+  const { data: teamPools, error: tpErr } = await supabase
+    .from("teams")
+    .select("league_division_id");
+  if (tpErr) throw new Error(`Kunne ikke læse puljer: ${tpErr.message}`);
+  const teamsPerPool = new Map();
+  for (const t of teamPools || []) {
+    if (t.league_division_id == null) continue;
+    teamsPerPool.set(t.league_division_id, (teamsPerPool.get(t.league_division_id) || 0) + 1);
+  }
+  const poolFilterActive = (teamPools || []).length > 0;
+  const inEmptyPool = (race) => (
+    poolFilterActive
+    && race.league_division_id != null
+    && !(teamsPerPool.get(race.league_division_id) > 0)
+  );
+
+  const blockingRaces = (unfinished || []).filter((r) => !inEmptyPool(r));
+  const unfinishedRaces = blockingRaces.length;
   if (unfinishedRaces === 0) {
     return { blocked: false, unfinished_races: 0, last_unfinished_stage_at: null, detail: null };
   }
 
-  // Sidste planlagte etape blandt de uafviklede løb — til en fejlbesked admin
-  // kan handle på ("vent til efter X"). Løb uden schedule-rækker giver null.
-  const { data: lastStage, error: stageError } = await supabase
-    .from("race_stage_schedule")
-    .select("scheduled_at, races!inner(season_id, status)")
-    .eq("races.season_id", seasonId)
-    .neq("races.status", "completed")
-    .order("scheduled_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (stageError) throw new Error(`Kunne ikke finde sidste uafviklede etape: ${stageError.message}`);
-
-  const lastAt = lastStage?.scheduled_at ?? null;
+  // Sidste planlagte etape blandt de blokerende (ikke-dormant) uafviklede løb —
+  // til en fejlbesked admin kan handle på ("vent til efter X"). Løb uden
+  // schedule-rækker giver null.
+  //
+  // #3014-fejlklassen: én .in("race_id", blockingRaceIds) med hundredvis af
+  // id'er (fx et for tidligt "Afslut sæson"-klik med de fleste af sæsonens
+  // løb uafviklede) kan ramme PostgRESTs URL-længde-cap — sket 2x før i dette
+  // repo. Chunk id-listen og tag MAX scheduled_at på tværs af biddene i stedet
+  // for at stole på at én query ser hele mængden.
+  const blockingRaceIds = blockingRaces.map((r) => r.id);
+  const LAST_STAGE_CHUNK_SIZE = 100;
+  let lastAt = null;
+  for (let i = 0; i < blockingRaceIds.length; i += LAST_STAGE_CHUNK_SIZE) {
+    const chunk = blockingRaceIds.slice(i, i + LAST_STAGE_CHUNK_SIZE);
+    const { data: lastStage, error: stageError } = await supabase
+      .from("race_stage_schedule")
+      .select("scheduled_at")
+      .in("race_id", chunk)
+      .order("scheduled_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (stageError) throw new Error(`Kunne ikke finde sidste uafviklede etape: ${stageError.message}`);
+    const chunkAt = lastStage?.scheduled_at ?? null;
+    if (chunkAt && (lastAt === null || new Date(chunkAt).getTime() > new Date(lastAt).getTime())) {
+      lastAt = chunkAt;
+    }
+  }
   return {
     blocked: true,
     unfinished_races: unfinishedRaces,

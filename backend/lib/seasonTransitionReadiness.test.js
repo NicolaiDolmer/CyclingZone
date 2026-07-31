@@ -268,26 +268,57 @@ test("assessTransitionReadiness — query-fejl på auktions-count kaster (fail-c
 // række der og passerede tavst før denne spærre.
 // ============================================================
 
-function createSeasonEndMock({ unfinishedRaceCount = 0, lastStageAt = null, racesError = null, stageError = null } = {}) {
+// unfinishedRaces: array af {id, league_division_id} — league_division_id=null
+// (default via genUnfinishedRaces) svarer til "ikke pulje-relateret" og blokerer
+// altid, uanset teamPools (matcher den gamle count-only-adfærd).
+// teamPools: array af {league_division_id} — én række pr. hold. Default = ét
+// hold i "d1" (pool-filter aktivt, men rammer ingen af default-løbene).
+function genUnfinishedRaces(n, leagueDivisionId = null) {
+  return Array.from({ length: n }, (_, i) => ({ id: `race-${i}`, league_division_id: leagueDivisionId }));
+}
+
+// lastStageAt: bruges når spærren kun kalder race_stage_schedule ÉN gang
+// (≤100 blocking races → ét chunk). lastStageAtSequence: array af scheduled_at
+// (eller null) — ÉT element pr. forventet .in()-kald, i rækkefølge. Bruges til
+// at simulere #3014-chunkingen (>100 blocking races → 2+ kald) og teste at
+// implementeringen tager MAX på tværs af kaldene, ikke bare sidste/første.
+function createSeasonEndMock({
+  unfinishedRaces = [],
+  teamPools = [{ league_division_id: "d1" }],
+  lastStageAt = null,
+  lastStageAtSequence = null,
+  racesError = null,
+  teamsError = null,
+  stageError = null,
+} = {}) {
+  let stageCallIndex = 0;
+  const stageInCalls = [];
   return {
+    _stageInCalls: stageInCalls,
     from(table) {
       if (table === "races") {
         const chain = {
           eq: () => chain,
-          neq: () => ({ then: (resolve) => resolve({ data: null, count: unfinishedRaceCount, error: racesError }) }),
+          neq: () => ({ then: (resolve) => resolve({ data: racesError ? null : unfinishedRaces, error: racesError }) }),
         };
         return { select: () => chain };
       }
+      if (table === "teams") {
+        return {
+          select: () => ({ then: (resolve) => resolve({ data: teamsError ? null : teamPools, error: teamsError }) }),
+        };
+      }
       if (table === "race_stage_schedule") {
         const chain = {
-          eq: () => chain,
-          neq: () => chain,
+          in: (_col, ids) => { stageInCalls.push(ids); return chain; },
           order: () => chain,
           limit: () => chain,
-          maybeSingle: () => Promise.resolve({
-            data: stageError ? null : (lastStageAt ? { scheduled_at: lastStageAt } : null),
-            error: stageError,
-          }),
+          maybeSingle: () => {
+            if (stageError) return Promise.resolve({ data: null, error: stageError });
+            const at = lastStageAtSequence ? (lastStageAtSequence[stageCallIndex] ?? null) : lastStageAt;
+            stageCallIndex++;
+            return Promise.resolve({ data: at ? { scheduled_at: at } : null, error: null });
+          },
         };
         return { select: () => chain };
       }
@@ -297,7 +328,7 @@ function createSeasonEndMock({ unfinishedRaceCount = 0, lastStageAt = null, race
 }
 
 test("assessSeasonEndBlockers — 0 uafviklede løb = ikke blokeret (sæson 0 / færdigkørt sæson)", async () => {
-  const supabase = createSeasonEndMock({ unfinishedRaceCount: 0 });
+  const supabase = createSeasonEndMock({ unfinishedRaces: [] });
   const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
   assert.equal(result.blocked, false);
   assert.equal(result.unfinished_races, 0);
@@ -305,7 +336,10 @@ test("assessSeasonEndBlockers — 0 uafviklede løb = ikke blokeret (sæson 0 / 
 });
 
 test("assessSeasonEndBlockers — uafviklede løb blokerer med antal + sidste etape-dato", async () => {
-  const supabase = createSeasonEndMock({ unfinishedRaceCount: 76, lastStageAt: "2026-07-26T17:00:00+00:00" });
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: genUnfinishedRaces(76),
+    lastStageAt: "2026-07-26T17:00:00+00:00",
+  });
   const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
   assert.equal(result.blocked, true);
   assert.equal(result.unfinished_races, 76);
@@ -315,7 +349,7 @@ test("assessSeasonEndBlockers — uafviklede løb blokerer med antal + sidste et
 });
 
 test("assessSeasonEndBlockers — uafviklet løb UDEN schedule-rækker blokerer stadig (dato udelades)", async () => {
-  const supabase = createSeasonEndMock({ unfinishedRaceCount: 3, lastStageAt: null });
+  const supabase = createSeasonEndMock({ unfinishedRaces: genUnfinishedRaces(3), lastStageAt: null });
   const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
   assert.equal(result.blocked, true);
   assert.equal(result.last_unfinished_stage_at, null);
@@ -331,8 +365,16 @@ test("assessSeasonEndBlockers — query-fejl på races-count kaster (fail-closed
   );
 });
 
+test("assessSeasonEndBlockers — query-fejl på puljer (teams) kaster (fail-closed)", async () => {
+  const supabase = createSeasonEndMock({ unfinishedRaces: genUnfinishedRaces(2), teamsError: { message: "boom" } });
+  await assert.rejects(
+    () => assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID }),
+    /Kunne ikke læse puljer/,
+  );
+});
+
 test("assessSeasonEndBlockers — query-fejl på etape-lookup kaster (fail-closed)", async () => {
-  const supabase = createSeasonEndMock({ unfinishedRaceCount: 5, stageError: { message: "boom" } });
+  const supabase = createSeasonEndMock({ unfinishedRaces: genUnfinishedRaces(5), stageError: { message: "boom" } });
   await assert.rejects(
     () => assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID }),
     /Kunne ikke finde sidste uafviklede etape/,
@@ -342,4 +384,88 @@ test("assessSeasonEndBlockers — query-fejl på etape-lookup kaster (fail-close
 test("assessSeasonEndBlockers — kræver supabase + seasonId", async () => {
   await assert.rejects(() => assessSeasonEndBlockers({ seasonId: FROM_SEASON_ID }), /Supabase client required/);
   await assert.rejects(() => assessSeasonEndBlockers({ supabase: createSeasonEndMock() }), /seasonId required/);
+});
+
+// ============================================================
+// #3038 — empty-pool-undtagelse: dormant-pulje-løb (#2851-reconcilen tømte
+// D4 C-H for legacy-AI) må IKKE tælle som season-end-blocker, men løb i
+// puljer der stadig har hold skal fortsat blokere. Samme diskriminator som
+// stageScheduler.js's "inEmptyPool" (P0 2/7-filteret).
+// ============================================================
+
+test("assessSeasonEndBlockers — uafviklet løb i TOM pulje (D4 C-H, 0 hold) tælles IKKE som blocker", async () => {
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: genUnfinishedRaces(143, "d4-pool-c"),
+    teamPools: [{ league_division_id: "d4-pool-a" }, { league_division_id: "d1" }], // ingen hold i d4-pool-c
+  });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, false, "dormant-pulje-løb må ikke blokere 'Afslut sæson'");
+  assert.equal(result.unfinished_races, 0);
+});
+
+test("assessSeasonEndBlockers — uafviklet løb i AKTIV pulje (hold findes) blokerer stadig", async () => {
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: genUnfinishedRaces(2, "d4-pool-a"),
+    teamPools: [{ league_division_id: "d4-pool-a" }, { league_division_id: "d4-pool-a" }],
+    lastStageAt: "2026-08-10T12:00:00+00:00",
+  });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true, "løb i en pulje med hold skal stadig blokere");
+  assert.equal(result.unfinished_races, 2);
+  assert.match(result.detail, /2 løb er ikke afviklet/);
+});
+
+test("assessSeasonEndBlockers — blandet: dormant-pulje-løb undtages, aktive løb tælles", async () => {
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: [
+      ...genUnfinishedRaces(143, "d4-pool-c"), // dormant, ingen hold
+      ...genUnfinishedRaces(1, "d1"), // aktiv pulje, har hold
+    ],
+    teamPools: [{ league_division_id: "d1" }],
+  });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true);
+  assert.equal(result.unfinished_races, 1, "kun løbet i den aktive pulje skal tælles");
+});
+
+test("assessSeasonEndBlockers — fail-open: tom teams-tabel (0 hold overhovedet) deaktiverer pool-filteret", async () => {
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: genUnfinishedRaces(4, "d4-pool-c"),
+    teamPools: [],
+  });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true, "tom teams-tabel (mock/test-DB) skal fail-open, ikke undtage alle løb");
+  assert.equal(result.unfinished_races, 4);
+});
+
+// ============================================================
+// #3014-fejlklassen: en enkelt .in("race_id", ids) med hundredvis af id'er
+// kan ramme PostgRESTs URL-længde-cap (sket 2x før i repoet). >100 blocking
+// races skal derfor chunkes over flere .in()-kald, og resultatet skal være
+// MAX scheduled_at på tværs af biddene — ikke bare det seneste kalds svar.
+// ============================================================
+
+test("assessSeasonEndBlockers — >100 blocking races chunkes i flere .in()-kald, MAX scheduled_at vindes uanset chunk", async () => {
+  // 150 uafviklede løb i en aktiv pulje (150 hold i samme pulje ⇒ pool ikke tom)
+  // ⇒ 150 blocking-race-id'er ⇒ 2 chunks (100 + 50) ved LAST_STAGE_CHUNK_SIZE=100.
+  // Bevidst: chunk 1 (de FØRSTE 100 id'er) får den SENESTE dato — hvis
+  // implementeringen fejlagtigt bare beholdt "sidste kalds resultat" i stedet
+  // for MAX på tværs af kald, ville testen fange det.
+  const teamPools = Array.from({ length: 150 }, () => ({ league_division_id: "d4-pool-a" }));
+  const supabase = createSeasonEndMock({
+    unfinishedRaces: genUnfinishedRaces(150, "d4-pool-a"),
+    teamPools,
+    lastStageAtSequence: ["2026-08-20T10:00:00+00:00", "2026-08-05T10:00:00+00:00"],
+  });
+  const result = await assessSeasonEndBlockers({ supabase, seasonId: FROM_SEASON_ID });
+  assert.equal(result.blocked, true);
+  assert.equal(result.unfinished_races, 150);
+  assert.equal(supabase._stageInCalls.length, 2, "150 blocking-id'er skal splittes i præcis 2 .in()-kald");
+  assert.equal(supabase._stageInCalls[0].length, 100, "første chunk skal være 100 id'er");
+  assert.equal(supabase._stageInCalls[1].length, 50, "andet chunk skal være de resterende 50 id'er");
+  assert.equal(
+    result.last_unfinished_stage_at,
+    "2026-08-20T10:00:00+00:00",
+    "MAX scheduled_at på tværs af begge chunks skal vindes, selvom det kom fra det FØRSTE kald",
+  );
 });
