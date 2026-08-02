@@ -44,6 +44,18 @@ const TRANSIENT_DB_TIMEOUT_RE = /canceling statement due to (statement|lock) tim
 // 57014 = query_canceled, 55P03 = lock_not_available (Postgres-klasse 57/55).
 const TRANSIENT_DB_TIMEOUT_CODES = new Set(["57014", "55P03"]);
 
+// Supabase-gatewayens bare JSON-5xx (Sentry 2/8, CYCLINGZONE-47, #3180). Når
+// gatewayen foran PostgREST fejler UDEN at Cloudflare når at rendere en HTML-side,
+// er hele svar-body'en `{"message":"Internal server error."}` — ingen Postgres-kode,
+// ingen HTML, intet netværks-token. Ingen af de tre eksisterende klasser fangede den,
+// så withSupabaseRetry kastede med 0 retries og afbrød hele auto-prize-sweepet.
+//
+// Matchet er ANKRET på hele beskeden: PostgREST's egne fejl er altid mere specifikke
+// ('permission denied for table "riders"', 'column ... does not exist'), så en fuld-
+// streng-match kan ikke maskere en ægte DB-fejl som et transient hikke.
+const TRANSIENT_GATEWAY_MESSAGE_RE =
+  /^(internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out)\.?$/i;
+
 function extractMessage(error) {
   if (error == null) return "";
   if (typeof error === "string") return error;
@@ -88,6 +100,7 @@ export function isTransientSupabaseError(error) {
   const message = extractMessage(error);
   if (!message) return false;
   if (TRANSIENT_DB_TIMEOUT_RE.test(message)) return true;
+  if (TRANSIENT_GATEWAY_MESSAGE_RE.test(message.trim())) return true;
   if (looksLikeHtmlErrorPage(message)) {
     // Cloudflare 5xx (502/504/520-525) = gateway/origin nede → transient.
     const code = (message.match(CF_TITLE_RE) || message.match(CF_CODE_LABEL_RE) || [])[1];
