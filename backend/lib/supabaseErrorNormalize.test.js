@@ -123,6 +123,41 @@ test("lock timeout er transient (55P03 + besked)", () => {
   );
 });
 
+// CYCLINGZONE-47 (2/8, #3180): Supabase-gatewayen svarede `{"message":"Internal
+// server error."}` midt i et pagineret read — ingen kode, ingen HTML, intet
+// netværks-token. Ingen af de tre eksisterende klasser fangede den, så hele
+// auto-prize-sweepet blev afbrudt uden ét eneste retry.
+test("bar gateway-500 er transient (CYCLINGZONE-47)", () => {
+  assert.equal(isTransientSupabaseError({ message: "Internal server error." }), true);
+  assert.equal(isTransientSupabaseError(new Error("Internal Server Error")), true);
+});
+
+test("øvrige bare gateway-5xx-beskeder er transiente", () => {
+  for (const msg of [
+    "Bad Gateway",
+    "Service Unavailable",
+    "Service Temporarily Unavailable",
+    "Gateway Timeout",
+    "Gateway Time-out",
+    "  internal server error.  ", // whitespace fra rå body
+  ]) {
+    assert.equal(isTransientSupabaseError({ message: msg }), true, msg);
+  }
+});
+
+// Afgrænsningen der gør fuld-streng-matchet sikkert: en ægte PostgREST-fejl må
+// ALDRIG maskeres som et transient hikke, heller ikke når den nævner de samme ord.
+test("gateway-klassificeringen maskerer ikke ægte PostgREST-fejl", () => {
+  for (const msg of [
+    'permission denied for table "riders"',
+    "Internal server error while validating rider payload",
+    'column "internal server error" does not exist',
+    "duplicate key value violates unique constraint",
+  ]) {
+    assert.equal(isTransientSupabaseError({ message: msg }), false, msg);
+  }
+});
+
 test("statement-timeout-klassificeringen rammer ikke andre Postgres-fejl", () => {
   // Afgrænsning: 57014 må ikke smitte af på nabo-koder eller på 'timeout' i fritekst.
   assert.equal(isTransientSupabaseError({ code: "57P01", message: "admin shutdown" }), false);
@@ -207,6 +242,21 @@ test("retry'er statement timeout og lykkes på 2. forsøg (CYCLINGZONE-3D/3E)", 
   );
   assert.deepEqual(result, { rows_updated: 367 });
   assert.equal(attempts, 2, "presset er kortvarigt — ét retry er typisk nok");
+});
+
+test("retry'er bar gateway-500 og lykkes på 2. forsøg (CYCLINGZONE-47)", async () => {
+  let attempts = 0;
+  const result = await withSupabaseRetry(
+    async () => {
+      attempts++;
+      // Supabase-gatewayen returnerer plain { message } uden code.
+      if (attempts === 1) throw { message: "Internal server error." };
+      return { rows: 42 };
+    },
+    { retries: 2, sleepFn: async () => {} }
+  );
+  assert.deepEqual(result, { rows: 42 });
+  assert.equal(attempts, 2);
 });
 
 test("giver op efter retries og kaster normaliseret besked", async () => {
