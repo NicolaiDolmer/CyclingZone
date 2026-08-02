@@ -27,7 +27,7 @@
 
 > **📈 Prod:** 161 brugere · ~62 % af nye vender aldrig tilbage · 41 WAU / 8 DAU · 1 abonnement. Anskaffelsen virker, fastholdelsen gør ikke.
 
-> **✅ 31/7 — Sentry/Railway-triage ren** (1 fund → #3164, lukket samme dag). **Ejer-beslutning venter: [#3130](https://github.com/NicolaiDolmer/CyclingZone/issues/3130)** — Discord-forladte beholder "tilsluttet" men får aldrig DM'er (A auto-afkobl / B markér / C kun alarm; **anbefaling A**).
+> **✅ 2/8 — Sentry/Railway-triage:** 1 fund fixet live ([#3180](https://github.com/NicolaiDolmer/CyclingZone/issues/3180)/PR #3181: gateway-5xx nu transient → auto-prize-sweepet døde før med 0 retries; 0 uudbetalte løb, ingen data-skade). CYCLINGZONE-46 lukket — **#3132-telemetrien kører organisk** (562 events, seneste i dag). Rest: CYCLINGZONE-44 (→#3119: 7 par, **0 actionable** = ren historik) · CYCLINGZONE-3X (→#3052). **Ejer venter: [#3130](https://github.com/NicolaiDolmer/CyclingZone/issues/3130)** (Discord-forladte får aldrig DM'er; **anbefaling A** auto-afkobl) · **#2892** (25 Sentry-monitorer, 2 min).
 
 > **✅ 30/7 aften — Bølge 1 eksekveret** (#2813 slice 1 checkout-pause · #3143 · #3097 · #2257 — alle merged + live, postmortems i `.claude/learnings/`). Åbne rester: **#2840** model A besluttet, afventer dedikeret session m. dry-run-harness · #3097-design-spørgsmål (worst-case-tælling) står i issuet.
 
