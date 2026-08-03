@@ -11,15 +11,21 @@ Hold-dominansen er **ikke** et motor-problem, og den lukkes **hverken** af #2731
 
 Den er en **liga-strukturel skævhed**: pulje-tildelingen er styrke-blind, så tre af de fire Division 3-puljer hver har fået ét hold der er dobbelt så stærkt som puljens median. Alt bånd-bruddet kommer derfra. Fjerner man tier 3 fra tallene, er hele spillet inden for båndet.
 
-| måling (27/7-3/8, ren post-cutover-data) | værdi | bånd |
+| måling (27/7-3/8, **ens basis**: kun rigtige hold) | værdi | bånd |
 |---|---|---|
-| share4PlusSameTeamTop10, **alle** puljer | 0,109 (29/265 etaper) | ≤0,05 ❌ |
-| share4PlusSameTeamTop10, **uden tier 3** | **0,038** (8/209 etaper) | ≤0,05 ✅ |
+| share4PlusSameTeamTop10, **alle** puljer | 0,106 (28/265 etaper) | ≤0,05 ❌ |
+| share4PlusSameTeamTop10, **uden tier 3** | **0,034** (7/209 etaper) | ≤0,05 ✅ |
 | share4PlusSameTeamTop10, **kun tier 3** | **0,375** (21/56 etaper) | ≤0,05 ❌❌ |
 
-Tier 3 er 21 % af etaperne og leverer 72 % af alle bånd-brud.
+Tier 3 er 21 % af etaperne og leverer 75 % af alle bånd-brud. Resten af spillet er i bånd.
 
-**Verdikt: JA, der kræves et separat fix** — og det hører hjemme i liga-/pulje-tildelingen (`economyEngine.processDivisionEnd`), ikke i `RACE_V3_TUNING`.
+**Verdikt: JA, der kræves et separat fix — men ikke i motoren.** Tre målinger placerer årsagen:
+
+1. **Motoren er renset.** Hold-komponenten i løbsscoren stiger ikke med truppens størrelse i feltet (topper ved 0,00168 med 4 ryttere, falder til 0,00103 med 8) og er 1,4 % af terræn-signalet. Der er **ingen** mekanik der belønner stakning ud over summen af rytterstyrke.
+2. **Resultaterne er fortjente.** De fire dominerende hold har top-5-styrke 45-58 i puljer med median 24-26. Motoren afspejler bare den forskel.
+3. **Årsagen er pulje-sammensætning + transfers**, og den akutte udløser er dokumenteret på rytter-niveau: nyindkøbte ryttere fik første start 30/7, samme døgn som tre puljer sprang fra 0,000 til 0,500+.
+
+Dertil to måletekniske forbehold der begge dæmper alarmens skarphed uden at fjerne den: alle tal fra før 27/7 er mekanisk deflaterede af phantom auto-fill (afsnit 5, punkt 1), og fordi alle løb i vinduet er etapeløb med samme felt flere dage i træk, er den klynge-korrigerede afstand til båndet **2,2 SE**, ikke de ~7 SE en naiv pr.-etape-beregning giver (afsnit 5b).
 
 ---
 
@@ -224,10 +230,63 @@ Bidragende faktor: holdene forstærker skævheden i sæsonen via transfers. Nick
 
 ## 5. Målemetodiske fund (vigtige for al fremtidig backtest)
 
-1. **Drift-tal fra før 27/7 er ubrugelige.** `race_results` fra før sæson-cutoveren har 45-59 % NULL `team_id` (ryttere/hold nulstillet ved rollover, FK'erne ryddet bagefter). `observeRace` tæller null-hold som "solo-hold", så alle `share4Plus`/`avgDistinctTeamsTop10`-tal før 27/7 er systematisk **for lave**. Sammenlign aldrig hen over cutoveren.
+1. **Drift-tal fra før 27/7 er ubrugelige — og de var for LAVE, ikke for høje.** `race_results` før 27/7 har 46-59 % rækker med **både `rider_id` og `team_id` = NULL**: phantom auto-fill-ryttere, afskaffet ved auto-fill-cutoveret 27/7 (#3076, commit `83700f3c`). Andelen falder fra 2.319 rækker (26/7) til 24 (27/7) og 0 fra 1/8. `observeRace` tæller hver null-rytter som sit eget "solo-hold", så hver phantom-rytter i top 10 optog en plads der ikke kunne bidrage til en holdstak — metrikken var **mekanisk deflateret**.
+
+   Konsekvensen er vigtig og kontraintuitiv: målt på ens basis (kun rigtige hold) var koncentrationen **værre før** cutoveret end efter. "Eksplosionen 30/7" i den rå drift-kurve er i høj grad et artefakt af at metrikken først fra 27/7 måler ærligt. **Alle tal i dette dokument er ens-basis** (`rider_id IS NOT NULL AND team_id IS NOT NULL`) og hentet fra vinduet 27/7-3/8, så ingen konklusion her hviler på en sammenligning hen over regimeskiftet. Trin-analysen i afsnit 3b ligger også helt inden for det ærlige vindue (27/7 mod 30/7) og er derfor upåvirket.
 2. **Issue-bodyens tal er stale.** "favoriteWinRate monotont stigende → 51 %" er målt 13-16/7, før variant C. Live er favoriteWinRate nu oftest **under** bånd-min, ikke over.
-3. **Den seneste "forbedring" er en sammensætnings-effekt, ikke en bedring.** Aggregatet faldt 0,171 → 0,098 → 0,073 fordi andelen af tier 3-etaper pr. dag svinger (8/4/8 af 24-37 etaper), ikke fordi tier 3 blev bedre. Tier 3 alene: 0,000 (27/7) → 0,250 → 0,000 → 0,500 → 0,750 → 0,750 → 0,250 → **0,500** (3/8). Der er **ingen** selvkorrigerende nedadgående trend.
+3. **Den seneste "forbedring" i aggregatet er en sammensætnings-effekt.** Aggregatet faldt 0,171 → 0,098 → 0,073 fordi andelen af tier 3-etaper pr. dag svinger (8/4/8 af 24-37 etaper), ikke fordi tier 3 blev bedre. Tier 3 alene: 0,000 (27/7) → 0,250 → 0,000 → 0,500 → 0,750 → 0,750 → 0,250 → **0,500** (3/8). Der er ingen selvkorrigerende nedadgående trend i tier 3 inden for det ærlige vindue.
+
+4. **Metrikken tæller korrelerede observationer som uafhængige.** Alle 265 etape-instanser i vinduet tilhører `race_type = 'stage_race'` — 57 løb à gennemsnitligt 4,6 etaper, hvor det SAMME felt mødes igen dagen efter. `share4PlusSameTeamTop10` vægter hver etape lige, så ét stærkt matchup i et 5-etape-løb producerer 5 brud. Se afsnit 5b.
 4. **`favoritePodiumRate`s røde vip 2/8 (0,51 mod min 0,55) har samme forklaring**: tier 2 (0,484) og tier 4 (0,414) ligger permanent under båndet, tier 3 på 0,750 trækker aggregatet op. Når dagens løbsmix har få tier 3-etaper, falder aggregatet under min. Det er endnu et symptom på bimodaliteten, ikke et selvstændigt problem.
+
+---
+
+## 5b. Er de fire holds dominans legitim, strukturel eller motor-drevet?
+
+Tre kandidater, afgjort med tal.
+
+### (c) En motor-mekanik der belønner truppe-stakning ud over summen af rytterstyrke — **AFVIST**
+
+`raceSimulator` har en eksplicit hold-komponent i slutscoren (`finalScore = terrain + noise + form − fatigue + team + …`), så hypotesen er rimelig: hvis hjælperstøtten skalerer superlineært med antal holdkammerater i feltet, ville stakning give mere end summen af rytterne. Målt direkte på `race_simulation_rider_scores.components.team` over 36.268 rytter-etaper:
+
+| holdkammerater i feltet | rytter-etaper | middel `team`-komponent | middel `terrain` |
+|---|---|---|---|
+| 1 | 40 | 0,00004 | 0,1234 |
+| 3 | 129 | 0,00164 | 0,0883 |
+| 4 | 320 | **0,00168** | 0,1162 |
+| 6 | 26.766 | 0,00141 | 0,1235 |
+| 8 | 912 | **0,00103** | 0,1194 |
+
+Kurven er hverken monoton eller superlineær — den topper ved 4 ryttere og **falder** ved 8. Og størrelsesordenen er ubetydelig: den maksimale middelværdi 0,00168 er **1,4 %** af terræn-signalet (~0,12). Motoren belønner altså ikke stakning. Dominansen er summen af rytterstyrke, ikke en holdmekanik.
+
+### (b) Struktur: etapeløb multiplicerer ét matchup i MÅLINGEN — **BEKRÆFTET, delvist**
+
+Bruddene er ekstremt klyngede. Af 57 løb har kun **14** overhovedet et brud; 43 løb er helt rene. To løb bærer hovedparten:
+
+| løb | pulje | etaper kørt | share4Plus | brud |
+|---|---|---|---|---|
+| Tour des Alpes Juliennes | Div 3 — D | 5 | 1,000 | 5 |
+| Tour des Alpes Juliennes | Div 3 — B | 5 | 0,800 | 4 |
+| Tour des Alpes Juliennes | Div 3 — C | 5 | 0,800 | 4 |
+| Vuelta Burgalesa | Div 3 — B | 4 | 0,750 | 3 |
+| Vuelta Burgalesa | Div 3 — D | 4 | 0,500 | 2 |
+
+Fordi et etapeløb kører det **samme felt** dag efter dag, er de 5 brud i Tour des Alpes Juliennes Div 3-D ikke fem uafhængige hændelser — det er ét matchup målt fem gange. Klynge-korrigeret (hvert LØB tæller som én observation i stedet for hver etape):
+
+| estimat | værdi |
+|---|---|
+| naiv pr. etape | 0,1057 (28/265) |
+| **klynge-korrigeret pr. løb** | **0,1203** (n = 57 løb, sd 0,2459) |
+| standardfejl, klynge-korrigeret | 0,0326 |
+| afstand til bånd-max 0,05 | **2,2 SE** |
+
+Punktestimatet flytter sig ikke meget, men **usikkerheden gør**: en naiv pr.-etape-beregning ville rapportere ~7 SE og få bruddet til at se langt mere afgjort ud end det er. Bruddet er reelt (2,2 SE, ~4 % ensidet), men det er ét klart brud drevet af få matchups, ikke et bredt systemisk sammenbrud.
+
+### (a) Legitimt stærke trupper — **JA, det er den underliggende realitet**
+
+De fire hold er faktisk stærkere end deres puljer (top-5-styrke 45,2-57,8 mod pulje-medianer 24,2-26,0), og motoren afspejler det trofast: ingen holdmekanik-bonus (c), ingen tynde felter (afsnit 3c), identiske feltstørrelser og holdantal i høj- og lav-koncentrations-løb. **Resultaterne er "fortjente" i den forstand at rytterne er bedre.**
+
+Problemet er ikke at motoren regner forkert. Det er at **puljerne er sammensat sådan at et fortjent resultat er kedeligt** — og at metrikken tæller hver etape i et etapeløb som en ny hændelse.
 
 ---
 
@@ -237,7 +296,8 @@ Bidragende faktor: holdene forstærker skævheden i sæsonen via transfers. Nick
 
 - #3015 (AI-træthed) rører ikke tier 3, hvor der ikke er AI-ryttere. Fix'et er stadig rigtigt af andre grunde.
 - #2731 (global varians-kalibrering) kan ikke ramme begge ender af en bimodal population. Yderligere global tuning vil gøre 11 af 15 puljer værre for at afhjælpe 4.
-- Det akutte håndtag er **cross-tier-transfers** (afsnit 3b); det strukturelle er **styrke-balanceret pulje-tildeling** (afsnit 4).
+- Motoren har ingen stakke-bonus at skrue på (afsnit 5b(c)). Der er intet motor-fix at lave.
+- Det akutte håndtag er **cross-tier-transfers** (afsnit 3b); det strukturelle er **styrke-balanceret pulje-tildeling** (afsnit 4); og **metrikken selv** bør klynge-korrigeres (afsnit 5b(b)).
 
 ### Forlig med #2731's slutrapport
 
@@ -263,7 +323,11 @@ Fordel: rammer den målte mekanisme direkte. Omkostning: begrænser legitim opby
 **B — Styrke-balanceret re-seed pr. tier ved sæsonovergangen** (snake på styrke over tierens puljer, efter op/nedrykning; tærskel-variant så kun skæve tiers røres).
 Fordel: fjerner den strukturelle skævhed permanent og selvkorrigerer hvert år. Omkostning: managere kan skifte pulje mellem sæsoner, så pulje-rivaliseringer nulstilles. **Ville ikke have forhindret denne hændelse** — købene skete lige EFTER overgangen.
 
-**Anbefaling: A først (karantæne-varianten (iii) som mindst indgribende), B som opfølgning.** En startkarantæne på nyindkøbte ryttere er den eneste af de tre A-varianter der hverken rører prismodellen eller forbyder et køb — den udjævner bare stødet, så en pulje ikke skifter karakter fra én dag til den næste. B bør stadig laves, ellers reproduceres baseline-skævheden ved næste overgang.
+**C — Ret målingen (bør ske uanset A/B).**
+To fejl i `share4PlusSameTeamTop10` som denne sag afdækkede: (1) den vægter hver etape i et etapeløb lige, så ét matchup tælles 5 gange — den bør klynge-korrigeres pr. løb, eller båndet bør sættes efter en klynge-korrigeret fordeling; (2) den aggregerer over en bimodal population, så to modsatrettede fejl kan udligne hinanden til en tilsyneladende sund middelværdi. Per-tier-nedbrydningen i denne PR retter (2); (1) er en bånd-/definitionsændring der kræver din beslutning.
+Fordel: billigt, ingen spil-påvirkning, og forhindrer at næste kalibrering igen jager et gennemsnit. Omkostning: båndet 0,05 skal formentlig genkalibreres på klynge-korrigeret basis.
+
+**Anbefaling: C nu, A først af spil-ændringerne (karantæne-varianten (iii) som mindst indgribende), B som opfølgning.** En startkarantæne på nyindkøbte ryttere er den eneste af de tre A-varianter der hverken rører prismodellen eller forbyder et køb — den udjævner bare stødet, så en pulje ikke skifter karakter fra én dag til den næste. B bør stadig laves, ellers reproduceres baseline-skævheden ved næste overgang.
 
 **Ingen af delene bør shippe uden en harness-kørsel først** (simulér-før-ship). Tærsklen `DEFAULT_RESEED_THRESHOLD = 10` i `backend/lib/poolBalance.js` er sat mellem de målte regimer (margin ≤7 ⇒ share4Plus 0,000; ≥11 ⇒ 0,357-0,571) og er **ikke** verificeret endnu.
 
