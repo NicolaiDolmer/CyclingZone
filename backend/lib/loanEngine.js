@@ -159,7 +159,8 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
   // helt uden DB-opslag på team/race-dage.
   const gateConfig = await readNewAccountGateConfig(client);
   if (gateConfig.loanMinRaceDays > 0 || gateConfig.loanMinAccountAgeDays > 0) {
-    const { data: team } = await client.from("teams").select("created_at").eq("id", teamId).single();
+    const { data: team, error: teamError } = await client.from("teams").select("created_at").eq("id", teamId).single();
+    if (teamError) throw teamError;
     const raceDaysRun = await getTeamRaceDaysRun(client, teamId);
     const gate = evaluateLoanGate({
       minRaceDays: gateConfig.loanMinRaceDays,

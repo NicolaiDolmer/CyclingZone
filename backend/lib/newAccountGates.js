@@ -61,7 +61,13 @@ export async function readNewAccountGateConfig(supabase) {
   try {
     const keys = Object.values(NEW_ACCOUNT_GATE_CONFIG_KEYS);
     const { data, error } = await supabase.from("app_config").select("key, value").in("key", keys);
-    if (error) return { ...DISABLED_CONFIG };
+    if (error) {
+      // Fail-open by design (see module header) — but SEEN, not silent: a
+      // sustained app_config read failure should show up in logs/Sentry
+      // triage, not just quietly disable all three gates forever.
+      console.error("[new-account-gates] app_config read failed, gates disabled:", error.message);
+      return { ...DISABLED_CONFIG };
+    }
     const byKey = new Map((data || []).map((row) => [row.key, row.value]));
     return {
       loanMinRaceDays: toNonNegativeInt(byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.LOAN_MIN_RACE_DAYS), 0),
@@ -70,7 +76,11 @@ export async function readNewAccountGateConfig(supabase) {
       transferCooldownAmountCzk: toNonNegativeInt(byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.TRANSFER_COOLDOWN_AMOUNT_CZK), 0),
       auctionEntryGateEnabled: byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.AUCTION_ENTRY_GATE_ENABLED) === true,
     };
-  } catch {
+  } catch (err) {
+    // best-effort: same fail-open contract as the `error` branch above, for
+    // the rarer case of a thrown exception (network error, malformed client)
+    // rather than a returned { error }. Logged, not swallowed — see #2395.
+    console.error("[new-account-gates] app_config read threw, gates disabled:", err?.message ?? err);
     return { ...DISABLED_CONFIG };
   }
 }
