@@ -148,6 +148,10 @@
         "title": "Editing many prices at once",
         "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
       },
+      "valueDeviation": {
+        "title": "The valuation next to the asking price",
+        "text": "The transfer list shows each rider's estimated market value next to the asking price, and the percentage tells you how far the asking price sits below or above it (the same estimate as on Auctions). You can filter the market by this percentage under 'Value deviation % (min-max)' in the filter panel, for example to find riders priced well below their estimated value."
+      },
       "sendOffer": {
         "title": "Send an offer",
         "steps": [

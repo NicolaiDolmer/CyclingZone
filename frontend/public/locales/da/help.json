@@ -148,6 +148,10 @@
         "title": "Redigér mange priser på én gang",
         "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
+      "valueDeviation": {
+        "title": "Vurderingen ved siden af udbudsprisen",
+        "text": "Transferlisten viser rytterens estimerede markedsværdi ved siden af udbudsprisen, og procenten fortæller hvor langt udbudsprisen ligger under eller over den (samme estimat som på Auktioner). Du kan filtrere markedet på denne procent under 'Værdi-afvigelse % (min-max)' i filterpanelet, fx for at finde ryttere prissat godt under deres estimerede værdi."
+      },
       "sendOffer": {
         "title": "Send et tilbud",
         "steps": [

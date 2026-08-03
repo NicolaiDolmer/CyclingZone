@@ -13,6 +13,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
@@ -79,14 +80,6 @@ const STAT_LABEL_BY_KEY = ABILITY_SHORT;
 // besøg, så alle eksisterende managere har det gamle tomme default liggende i
 // localStorage — uden key-bump ville ingen af dem se den nye default.
 const AUCTION_DEFAULT_VISIBLE_STATS = ["climbing", "punch", "sprint", "flat", "time_trial"];
-
-// Delta-linjens farve: under vurdering = grøn (muligt godt køb), over = orange
-// (overpris), omkring = neutral. Formuleringen i i18n er et ESTIMAT (#2464).
-const VALUE_DELTA_CLASS = {
-  under: "text-cz-success",
-  over: "text-cz-warning",
-  at: "text-cz-3",
-};
 
 // #1777: aktiv fane lever i URL'en (?tab=) så browser-back fra en rytter-profil
 // lander tilbage på den fane manageren stod på — ikke altid "Min situation".
@@ -327,16 +320,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
             {formatNumber(auction.current_price ?? 0)}
             <span className="text-cz-3 text-xs ms-1">CZ$</span>
           </span>
-          {/* #2464: bud vs. estimeret markedsværdi — godt køb/overpris på ét blik.
-              Tooltip bærer selve vurderingen + estimat-forbeholdet. */}
-          {valueDelta && (
-            <span
-              className={`text-3xs font-mono whitespace-nowrap ${VALUE_DELTA_CLASS[valueDelta.direction]}`}
-              title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
-            >
-              {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
-            </span>
-          )}
+          {/* #2464/#3191: bud vs. estimeret markedsværdi — godt køb/overpris på ét
+              blik. Delt komponent (ValueDeltaBadge) — samme indikator genbruges
+              på Transferlisten mod asking_price. Tooltip bærer selve vurderingen
+              + estimat-forbeholdet. */}
+          <ValueDeltaBadge valueDelta={valueDelta} ns="auctions" className="text-3xs whitespace-nowrap" />
         </span>
       </td>
 
@@ -606,8 +594,10 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             <p className="text-cz-3 text-3xs truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
-        {/* #2464: estimeret markedsværdi + delta ved siden af prisen — godt køb/
-            overpris skal kunne aflæses på ét blik, formuleret som estimat. */}
+        {/* #2464/#3191: estimeret markedsværdi + delta ved siden af prisen — godt
+            køb/overpris skal kunne aflæses på ét blik, formuleret som estimat.
+            Delta-linjen er den delte ValueDeltaBadge (samme indikator som
+            Transferlisten mod asking_price). */}
         {valueDelta && (
           <div className="bg-cz-subtle rounded-lg px-3 py-2">
             <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.estValue")}</p>
@@ -617,9 +607,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             >
               {formatNumber(valueDelta.value)} CZ$
             </p>
-            <p className={`text-3xs mt-0.5 ${VALUE_DELTA_CLASS[valueDelta.direction]}`}>
-              {t(`auctions:valueDelta.${valueDelta.direction}`, { pct: valueDelta.pct })}
-            </p>
+            <ValueDeltaBadge valueDelta={valueDelta} ns="auctions" as="p" className="text-3xs mt-0.5" />
           </div>
         )}
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
