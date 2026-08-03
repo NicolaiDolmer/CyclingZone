@@ -49,6 +49,7 @@ import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
+import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
@@ -74,11 +75,15 @@ import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
 import { runEmailRaceDigestSweep } from "./lib/emailRaceDigestSweep.js"; // #2725
+import { createAluntaClient } from "./lib/alunta.js"; // #2736
+import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
+import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
 import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const aluntaClient = createAluntaClient(); // #2736 — lazy: kaster først ved faktisk kald hvis ALUNTA_API_TOKEN mangler
 
 // #2077 — Sentry cron-monitor-configs. Udebliver et tick (proces død/deploy-hang)
 // fyrer Sentry en MISSED-alarm ud fra schedulen; hænger et tick over maxRuntime
@@ -598,6 +603,25 @@ async function runScoutSweepCron() {
   }
 }
 
+// ─── Dagsbaseret løntræk (#2840) — sweep-mønster mirror af trænings-sweepen ───
+// (kl. 22 dansk tid + dags-marker-mutex). Config-gated: no-op indtil ejeren
+// flipper app_config-nøglen wage_deduction_mode til "daily" (default
+// "season_upfront" = uændret nuværende adfærd, se wageDeductionConfig.js).
+
+async function runWageDeductionSweepCron() {
+  const result = await runWageDeductionSweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`💰 Løn-sweep: ${result.swept} hold trukket for dagens løn`);
+  }
+  if (result.failed) {
+    console.error(`❌ Løn-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    sentryCapture(new Error(`wage deduction sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "wage deduction sweep" },
+      extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
 // ─── Akademi-graduering: auto-resolver udløbne pending graduates (#932) ───────
 
 async function runGraduationSweepCron() {
@@ -1016,6 +1040,26 @@ async function runEmailRaceDigestSweepCron() {
   if (r.sent) console.log(`✉️  Email-race-digest: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
 }
 
+// ─── Alunta subscription-reconcile (#2736) ────────────────────────────────────
+// aluntaWebhook.js's ACTIVATING-set lytter på 'invoice.paid', men det event
+// FINDES IKKE hos Alunta — current_period_end opdateres derfor muligvis
+// ALDRIG ved fornyelse (verificeret live 2026-08-03: den eneste betalende
+// kundes current_period_end er allerede NULL). Denne cron henter Aluntas
+// fulde abonnements-liste dagligt og synker status+current_period_end ind i
+// public.subscriptions. Gated bag alunta_reconcile_enabled (fail-safe OFF) —
+// ejeren SKAL køre `node scripts/reconcileAluntaSubscriptions.js` (dry-run)
+// og bekræfte feltudtrækket mod Aluntas ægte svar FØR flaget flippes til on
+// (se aluntaSubscriptionReconcile.js "UVERIFICERET KONTRAKT").
+async function runAluntaSubscriptionReconcileCron() {
+  if (!(await isAluntaReconcileEnabled(supabase))) return;
+  const r = await runAluntaSubscriptionReconcile({ supabase, client: aluntaClient, captureExceptionFn: sentryCapture });
+  if (r.applied > 0 || r.missingRemote > 0) {
+    console.log(
+      `💳 Alunta-reconcile: ${r.applied} opdateret, ${r.unchanged} uændret, ${r.missingRemote} mangler i Alunta-svar (#2736)`
+    );
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -1081,6 +1125,7 @@ const ALL_CRON_MONITORS = [
   ["training-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],
+  ["wage-deduction-sweep", CRON_MONITOR_5MIN],
   ["starter-squad-heal", CRON_MONITOR_5MIN],
   ["academy-heal", CRON_MONITOR_5MIN],
   ["rider-derive-heal", CRON_MONITOR_5MIN],
@@ -1097,6 +1142,7 @@ const ALL_CRON_MONITORS = [
   ["email-welcome", CRON_MONITOR_5MIN],
   ["email-day1", CRON_MONITOR_60MIN],
   ["email-race-digest", CRON_MONITOR_60MIN],
+  ["alunta-subscription-reconcile", CRON_MONITOR_24H],
 ];
 
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
@@ -1214,6 +1260,13 @@ export function startCron() {
   // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
   setInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Dagsbaseret løntræk (#2840) efter kl. 22 dansk tid — config-gated, no-op
+  // indtil wage_deduction_mode=daily er sat i app_config.
+  setInterval(
+    trackedTick("wage deduction sweep", monitorCron("wage-deduction-sweep", runWageDeductionSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
@@ -1377,6 +1430,17 @@ export function startCron() {
   setInterval(
     trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
+  );
+
+  // #2736 — Alunta subscription-reconcile. Gated bag alunta_reconcile_enabled
+  // (fail-safe OFF) indtil ejeren har verificeret feltudtræk mod Aluntas ægte
+  // GET /subscriptions-svar via node scripts/reconcileAluntaSubscriptions.js.
+  setInterval(
+    trackedTick(
+      "alunta subscription-reconcile",
+      monitorCron("alunta-subscription-reconcile", runAluntaSubscriptionReconcileCron, CRON_MONITOR_24H)
+    ),
+    24 * 60 * 60 * 1000
   );
 
   // Run immediately on start

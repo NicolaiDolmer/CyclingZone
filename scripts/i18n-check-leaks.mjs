@@ -98,6 +98,7 @@ export const EXEMPT_FILES = new Map([
   ["frontend/src/pages/TermsPage.jsx", "DA-udgaven i dual-page-mønster (#2813, TermsPageEn.jsx er EN)."],
   ["frontend/src/pages/TermsPageEn.jsx", "EN-side, men citerer danske klageorganers egennavne (Nævnenes Hus / Center for Klageløsning) i juridisk tekst (#2813)."],
   ["backend/lib/seasonTransitionReadiness.js", "Admin-only readiness-gate (#1346): detail-/fejl-strenge vises kun i admin-UI (DA-konvention) og admin_log."],
+  ["backend/lib/aluntaSubscriptionReconcile.js", "Ren cron-/ops-kode (#2736): ingen route, intet res.json() nogensinde — throw'ne fejl fanges kun af cron.js' interne trackedTick (console.error + Sentry) eller det manuelle CLI-scripts konsol-output. Rammer aldrig en spiller-synlig API-response."],
 ]);
 
 // ---------------------------------------------------------------------------

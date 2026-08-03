@@ -266,6 +266,8 @@
       "admin_balance_adjustment": "Admin-justering",
       "admin_force_prize": "Admin-præmie-tildeling",
       "admin_beta_reset": "Beta-reset",
+      "facility_purchase": "Facilitetskøb",
+      "scout_travel": "Scout-rejser",
       "unknown": "Andet"
     }
   }
