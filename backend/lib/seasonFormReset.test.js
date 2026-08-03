@@ -163,7 +163,7 @@ test("readSeasonFormResetConfig: kastende supabase-klient → fail-safe 'off' (s
 });
 
 function SEASON_FORM_RESET_DEFAULTS_WITHOUT_CHUNK() {
-  const { upsertChunk, ...rest } = SEASON_FORM_RESET_DEFAULTS;
+  const { upsertChunk: _upsertChunk, ...rest } = SEASON_FORM_RESET_DEFAULTS;
   return rest;
 }
 

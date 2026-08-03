@@ -126,7 +126,9 @@ async function main() {
     .map((c) => ({
       riderId: c.rider_id,
       isAi: riderIsAi.get(c.rider_id),
-      before: Math.max(0, Math.min(100, Math.round(Number(c.form) ?? 50))),
+      // mode "off" er identitet (clampet + afrundet, korrupt/manglende → 50)
+      // — genbruger den ægte kerne i stedet for at re-implementere clampingen.
+      before: seasonResetForm({ form: c.form, mode: "off" }),
     }));
 
   const modes = [
