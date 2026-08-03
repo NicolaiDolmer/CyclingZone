@@ -12,8 +12,11 @@
 //       vælte feltet (M_fac(s)/M(0) ≥ 0,5 alle sæsoner). All-in (share=1,0) printes
 //       som REFERENCE-linje uden gate (stress-scenarie, ikke forventet adfærd).
 //   (C) LIVE (--live, reference only) — aggregeret finance_transactions pr. type.
-// Report-pattern (ingen exit(1)).
-//   node scripts/inflationScorecard.js [--seasons=5] [--live] [--markdown]
+// #3009: HEADLINE FAIL fælder exit-koden — samme mønster som PR #3006's søster-
+// scorecards. --advisory rapporterer uden at fælde exit-koden, til brug FØR
+// ejeren har taget #3009's a/b-beslutning (tærskler forkerte vs. økonomien
+// forkert) — gaten er i skrivende stund RØD (se #3009).
+//   node scripts/inflationScorecard.js [--seasons=5] [--live] [--markdown] [--advisory]
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +28,7 @@ import {
   DEFAULT_MODEL_CONSTANTS, STRATEGIES, PRIZE_ESTIMATE_BY_DIVISION,
   simulateStrategy, computeBonus,
 } from "./lib/facilityInvestmentModel.js";
+import { gateExitCode } from "./lib/scorecardExitCode.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
@@ -69,6 +73,7 @@ async function main() {
   const seasons = parseInt(arg("seasons", "5"), 10);
   const live = !!arg("live", false);
   const markdown = !!arg("markdown", false);
+  const advisory = !!arg("advisory", false);
 
   const overrides = resolveOverrides();
   const fresh = computeFreshSalaryBurden();
@@ -179,6 +184,10 @@ async function main() {
   console.log("NOTE: 100% syntetisk. Live-linsen (--live) er reference only.\n");
 
   if (live) await printLiveSection();
+
+  // #3009: HEADLINE FAIL skal give en non-zero exit-kode, ellers kan intet CI/
+  // automatiseret job se at gaten er rød.
+  process.exitCode = gateExitCode(allPass, { advisory });
 }
 
 // ── (C) LIVE-reference (aggregeret finance_transactions pr. type) ─────────────────
