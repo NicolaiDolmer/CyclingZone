@@ -134,11 +134,6 @@ export default function GlobalRankPage() {
                 {t("youBadge")}
               </span>
             )}
-            {row.is_ai && (
-              <span className="shrink-0 rounded border border-cz-border px-1 py-0.5 text-3xs font-medium uppercase text-cz-3">
-                {t("aiBadge")}
-              </span>
-            )}
             {row.is_rookie && (
               <span className="shrink-0 rounded border border-cz-accent/30 px-1 py-0.5 text-3xs font-medium uppercase text-cz-accent-t">
                 {t("rookieBadge")}
