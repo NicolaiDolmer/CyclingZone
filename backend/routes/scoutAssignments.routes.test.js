@@ -65,3 +65,24 @@ test("GET /api/scouting/me rapporterer scoutSystemEnabled + jobModel-state når 
   assert.match(block, /jobModel/, "skal rapportere job-model-state når flaget er tændt");
   assert.match(block, /getScoutState\(/, "job-model-state skal komme fra getScoutState");
 });
+
+// #3203: historik pr. spejder — hvilke ryttere DENNE spejder tidligere har scoutet.
+
+test("GET /api/club/staff/:id/scouting-history er registreret + kræver auth + bruger loadScoutHistory", () => {
+  const idx = apiSource.indexOf('router.get("/club/staff/:id/scouting-history"');
+  assert.ok(idx !== -1, "GET /club/staff/:id/scouting-history skal findes");
+  const block = apiSource.slice(idx, idx + 700);
+  assert.match(block, /requireAuth/, "skal kræve auth");
+  assert.match(block, /resolveFacilitiesEnabled\(req\)/, "skal respektere facilities_enabled-gaten");
+  assert.match(block, /loadScoutHistory\(/, "skal bruge scoutAssignmentService.loadScoutHistory");
+});
+
+test("GET /api/club/staff/:id/scouting-history er registreret FØR /club/staff/:id/release (parameter-kollision-guard)", () => {
+  // Samme mønster som assignments-vs-:riderId-guarden ovenfor: registreringsrækkefølge
+  // betyder intet her (forskellige HTTP-metoder/statiske suffikser), men testen låser
+  // stien alligevel så en fremtidig omrokering ikke stille ændrer routing-adfærd.
+  const historyIdx = apiSource.indexOf('router.get("/club/staff/:id/scouting-history"');
+  const profileIdx = apiSource.indexOf('router.get("/club/staff/:id"');
+  assert.ok(historyIdx !== -1 && profileIdx !== -1);
+  assert.ok(profileIdx < historyIdx, "profil-routen skal stå før scouting-history-routen (læsevenlighed)");
+});

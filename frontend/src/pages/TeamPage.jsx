@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
@@ -749,8 +750,17 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
             akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun
             synligt når holdet har akademiryttere (ellers er der intet at filtrere). */}
         {academyGroupCount > 0 && (
-          <>
-            <span className="text-xs text-cz-3">{t("squad.filter.label")}</span>
+          // #3188: "Vis" + de to filter-pilles lå som løse søskende direkte i den
+          // ydre rækkes `gap-2`-flex — samme gap-afstand som til de HELT andre
+          // kontrolgrupper (nuværende/kommende, Oversigt/Evner) ved siden af.
+          // Et klik der ramte imellem "Vis" og "Seniorer (N)" boblede op til den
+          // ydre række (ingen handler dér) i stedet for en af knapperne — Clarity
+          // rapporterede den samlede tekst "VisSeniorer (N)Akademi (N)" som dead
+          // click (1.306, 27/7-3/8). Egen wrapper med SAMME gap (ingen visuel
+          // ændring) fanger nu klik i mellemrummet lokalt i stedet for at lade dem
+          // forsvinde op til den ydre rækkes tomme baggrund.
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
             <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
               className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
               {t("squad.filter.seniors", { count: seniorGroupCount })}
@@ -759,7 +769,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, seasonYear, ac
               className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
               {t("squad.filter.academy", { count: academyGroupCount })}
             </button>
-          </>
+          </div>
         )}
 
         {/* #1095: segmenteret nuværende/kommende-visning */}
@@ -1070,7 +1080,16 @@ export function TeamPage() {
     // stadig brug for bredden, nu inden for den kanoniske 1600px-cap.
     <div className="max-w-[1600px] mx-auto">
       <PageHeader
-        title={team?.name || t("page.fallbackTitle")}
+        // #3188: holdnavnet var ren tekst (h1, ingen hover/cursor-affordance) og
+        // alligevel appens højeste dead-click-mål (Clarity: "Team Hansen Pro
+        // CyclingMa..." 2052 dead clicks 27/7-3/8). Der er allerede en offentlig
+        // holdprofil på /teams/:id med tre faner (Resultater/Palmarès/Klub) der
+        // IKKE findes her på /team — så et rigtigt link er billigt og nyttigt,
+        // ikke bare en affordance at fjerne. Samme <TeamLink>-mønster som
+        // RiderProfileHero (#3068/#2227).
+        title={team?.id
+          ? <TeamLink id={team.id} className="hover:text-cz-accent-t transition-colors">{team.name || t("page.fallbackTitle")}</TeamLink>
+          : (team?.name || t("page.fallbackTitle"))}
         subtitle={team?.manager_name ? t("page.managerLabel", { name: team.manager_name }) : undefined}
       />
       {/* Stats-linje (balance/division/cap/løn/værdi) er ikke del af PageHeader-
@@ -1099,13 +1118,24 @@ export function TeamPage() {
       )}
 
       <div className="flex gap-2 mb-5">
-        {tabs.map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-              ${activeTab === tab.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const active = activeTab === tab.key;
+          // #3188: den aktive fane var en <button> med samme klik-handler og
+          // pointer-cursor som de andre — så et gentaget klik på "Trup (N)"
+          // (default-fanen) SÅ klikbart ud men var garanteret en no-op (samme
+          // state, ingen re-render). Det var appens højeste dead-click-kilde
+          // (Clarity 27/7-3/8: 1.530 dead clicks). Aktiv fane mister nu
+          // klik-handler + pointer-cursor; øvrige faner uændret.
+          return (
+            <button key={tab.key} type="button"
+              onClick={active ? undefined : () => setActiveTab(tab.key)}
+              aria-pressed={active}
+              className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
+                ${active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 cursor-default" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "squad" && (
