@@ -37,10 +37,7 @@
       "roadmap": "Roadmap",
       "logout": "Log out",
       "admin": "Admin",
-      "waitlist": "Waitlist",
-      "sprintMetrics": "Sprint metrics",
-      "attribution": "Attribution",
-      "retention": "Retention"
+      "growth": "Growth"
     }
   },
   "sidebar": {
