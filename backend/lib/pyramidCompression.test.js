@@ -9,6 +9,8 @@ import {
   snakeAssign,
   distributeCompression,
   summarizeMovements,
+  buildCountbackByTeam,
+  NO_COUNTBACK_RANK,
 } from "./pyramidCompression.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -88,6 +90,139 @@ test("rankTeamsGlobally markerer hold uden standings-række og lægger dem neder
   assert.equal(ranked[1].teamId, "without");
   assert.equal(ranked[1].missingStanding, true);
   assert.equal(ranked[1].totalPoints, 0);
+});
+
+// ─── buildCountbackByTeam ───────────────────────────────────────────────────
+
+test("buildCountbackByTeam aggregerer klassements-sejre, etape-podier og bedste placeringer pr. hold", () => {
+  const raceResults = [
+    // "Guds hånd": 4 øvrige-klassements-sejre (young×1 + team_day×1 + 2 flere),
+    // 2 etape-podier (bedste 2.), bedste GC 7. — #3036 cutline-144-fixturen.
+    { team_id: "guds-hand", result_type: "young", rank: 1 },
+    { team_id: "guds-hand", result_type: "team_day", rank: 1 },
+    { team_id: "guds-hand", result_type: "points_day", rank: 1 },
+    { team_id: "guds-hand", result_type: "mountain_day", rank: 1 },
+    { team_id: "guds-hand", result_type: "stage", rank: 2 },
+    { team_id: "guds-hand", result_type: "stage", rank: 3 },
+    { team_id: "guds-hand", result_type: "stage", rank: 11 },
+    { team_id: "guds-hand", result_type: "gc", rank: 7 },
+    { team_id: "guds-hand", result_type: "gc", rank: 9 },
+    // stage/gc rank=1 skal IKKE tælle med i classificationWins — det er
+    // allerede dækket af de eksisterende stage_wins/gc_wins-led.
+    { team_id: "guds-hand", result_type: "stage", rank: 1 },
+    { team_id: "guds-hand", result_type: "gc", rank: 1 },
+    // HWT Rockets: ingen sejre, ingen podier.
+    { team_id: "hwt-rockets", result_type: "stage", rank: 15 },
+    { team_id: "hwt-rockets", result_type: "gc", rank: 11 },
+    // Rækker uden team_id (rider forladt/slettet) eller ugyldig rank ignoreres.
+    { team_id: null, result_type: "stage", rank: 1 },
+    { team_id: "hwt-rockets", result_type: "stage", rank: null },
+  ];
+  const cb = buildCountbackByTeam(raceResults);
+  const guds = cb.get("guds-hand");
+  assert.equal(guds.classificationWins, 4);
+  assert.equal(guds.stagePodiums, 3); // rank 1, 2, 3 (rank=1 stage tæller stadig som podie)
+  assert.equal(guds.bestStageRank, 1);
+  assert.equal(guds.bestGcRank, 1);
+  const hwt = cb.get("hwt-rockets");
+  assert.equal(hwt.classificationWins, 0);
+  assert.equal(hwt.stagePodiums, 0);
+  assert.equal(hwt.bestStageRank, 15);
+  assert.equal(hwt.bestGcRank, 11);
+});
+
+test("buildCountbackByTeam: hold uden nogen rækker findes ikke i map (caller falder tilbage til NO_COUNTBACK_RANK)", () => {
+  const cb = buildCountbackByTeam([{ team_id: "a", result_type: "gc", rank: 1 }]);
+  assert.equal(cb.has("never-raced"), false);
+});
+
+// ─── rankTeamsGlobally + countback (#3036) ──────────────────────────────────
+
+test("#3036: 61-61-cutline 26/7 — Guds hånd vinder på countback, ikke navne-alfabetet", () => {
+  // Ægte fixture fra S1→S2-cutline 144 (#2851-kommentar 26/7): begge 61 point,
+  // 0 løbssejre, 0 etapesejre. Alfabetet ('Guds hånd' < 'HWT Rockets') gav
+  // tilfældigvis samme udfald som countback — men countback-leddet skal være
+  // GRUNDEN, ikke navnet. Verificeret mod ægte prod-tal via Supabase MCP.
+  const teams = [
+    { id: "hwt-rockets", name: "HWT Rockets", division: 4, league_division_id: "d4-h" },
+    { id: "guds-hand", name: "Guds hånd", division: 4, league_division_id: "d4-h" },
+  ];
+  const standings = [
+    { team_id: "hwt-rockets", total_points: 61, gc_wins: 0, stage_wins: 0 },
+    { team_id: "guds-hand", total_points: 61, gc_wins: 0, stage_wins: 0 },
+  ];
+  const countback = new Map([
+    ["guds-hand", { classificationWins: 4, stagePodiums: 2, bestStageRank: 2, bestGcRank: 7 }],
+    ["hwt-rockets", { classificationWins: 0, stagePodiums: 0, bestStageRank: 15, bestGcRank: 11 }],
+  ]);
+  const ranked = rankTeamsGlobally({ teams, standings, countback });
+  assert.deepEqual(ranked.map((r) => r.teamId), ["guds-hand", "hwt-rockets"]);
+  assert.equal(ranked[0].rank, 1);
+  // Uden countback ville alfabetet ('Guds hånd' < 'HWT Rockets') give samme
+  // rækkefølge — så beviset for at countback-leddet FAKTISK afgør sagen er at
+  // omvendte navne (som ville tabe alfabetisk) stadig ender rigtigt.
+  const teamsRenamed = [
+    { id: "hwt-rockets", name: "AAA Rockets", division: 4, league_division_id: "d4-h" },
+    { id: "guds-hand", name: "ZZZ hånd", division: 4, league_division_id: "d4-h" },
+  ];
+  const rankedRenamed = rankTeamsGlobally({ teams: teamsRenamed, standings, countback });
+  assert.deepEqual(rankedRenamed.map((r) => r.teamId), ["guds-hand", "hwt-rockets"]);
+});
+
+test("rankTeamsGlobally: alle countback-led lige → falder tilbage til navn → id", () => {
+  const teams = [
+    { id: "t2", name: "Zebra", division: 3, league_division_id: null },
+    { id: "t1", name: "Aksel", division: 3, league_division_id: null },
+  ];
+  const standings = [
+    { team_id: "t1", total_points: 100, gc_wins: 0, stage_wins: 0 },
+    { team_id: "t2", total_points: 100, gc_wins: 0, stage_wins: 0 },
+  ];
+  const countback = new Map([
+    ["t1", { classificationWins: 2, stagePodiums: 1, bestStageRank: 5, bestGcRank: 5 }],
+    ["t2", { classificationWins: 2, stagePodiums: 1, bestStageRank: 5, bestGcRank: 5 }],
+  ]);
+  const ranked = rankTeamsGlobally({ teams, standings, countback });
+  assert.deepEqual(ranked.map((r) => r.teamId), ["t1", "t2"]); // "Aksel" < "Zebra"
+});
+
+test("rankTeamsGlobally: hold uden countback-data får NO_COUNTBACK_RANK (sentinel, aldrig falsk 0.)", () => {
+  const teams = [
+    { id: "raced", name: "Raced", division: 3, league_division_id: null },
+    { id: "never-raced", name: "NeverRaced", division: 3, league_division_id: null },
+  ];
+  const standings = [
+    { team_id: "raced", total_points: 50, gc_wins: 0, stage_wins: 0 },
+    { team_id: "never-raced", total_points: 50, gc_wins: 0, stage_wins: 0 },
+  ];
+  const countback = new Map([
+    ["raced", { classificationWins: 0, stagePodiums: 0, bestStageRank: 20, bestGcRank: 15 }],
+    // "never-raced" har ingen entry i map — skal falde tilbage til sentinel, ikke 0.
+  ]);
+  const ranked = rankTeamsGlobally({ teams, standings, countback });
+  assert.equal(ranked[0].teamId, "raced"); // reel placering slår sentinel
+  assert.equal(ranked[1].teamId, "never-raced");
+  assert.equal(ranked[1].bestStageRank, NO_COUNTBACK_RANK);
+  assert.equal(ranked[1].bestGcRank, NO_COUNTBACK_RANK);
+});
+
+test("rankTeamsGlobally: uden countback-param ALT reproducerer den gamle kæde (bagudkompatibelt)", () => {
+  // Identisk fixture til den eksisterende gc→stage→navn→id-determinisme-test —
+  // kun uden at sende countback overhovedet. Alle nye led skal annullere sig
+  // selv (0/sentinel for alle hold) og falde tilbage til den PRÆCIS samme
+  // rækkefølge som før #3036.
+  const teams = [
+    { id: "t2", name: "Zebra", division: 3, league_division_id: null },
+    { id: "t1", name: "Aksel", division: 3, league_division_id: null },
+    { id: "t3", name: "Aksel", division: 3, league_division_id: null },
+  ];
+  const standings = [
+    { team_id: "t1", total_points: 500, gc_wins: 0, stage_wins: 2 },
+    { team_id: "t2", total_points: 500, gc_wins: 1, stage_wins: 0 },
+    { team_id: "t3", total_points: 500, gc_wins: 0, stage_wins: 2 },
+  ];
+  const ranked = rankTeamsGlobally({ teams, standings });
+  assert.deepEqual(ranked.map((r) => r.teamId), ["t2", "t1", "t3"]);
 });
 
 // ─── snakeAssign ─────────────────────────────────────────────────────────────
