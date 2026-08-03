@@ -4,27 +4,25 @@ import { pathMatchesNavItem } from "./navMatching.js";
 
 const loc = (pathname, search = "") => ({ pathname, search });
 
-// Nav-topologien efter #3102 etape 3: Planlægnings-hubben (/planning) og
+// Nav-topologien efter #3102 etape 3 (PR 3): Planlægnings-hubben (/planning) og
 // Resultat-hubben (/resultater) er hver ét nav-punkt der dækker alle deres
-// faner; /races er opløst og har intet punkt længere.
+// faner; /races er opløst og /calendar redirecter — ingen af dem har et punkt.
 const PLANNING = { to: "/planning" };
 const RESULTS = { to: "/resultater" };
-const CALENDAR = { to: "/calendar" };
 
 function activeOf(location) {
   return [
     ["planning", PLANNING],
     ["results", RESULTS],
-    ["calendar", CALENDAR],
   ].filter(([, item]) => pathMatchesNavItem(location, item)).map(([name]) => name);
 }
 
-// #3102 etape 3: hubbens tre faner deler ÉT nav-punkt (/planning uden query).
-// Punktet skal lyse op på alle tre — testen fanger den dag nogen giver Formplan
-// eller Strategi sit eget menupunkt: så skal excludeQuery på plads, præcis som
-// på Transfers-parret nedenfor.
+// #3102 etape 3: hubbens fire faner deler ÉT nav-punkt (/planning uden query).
+// Punktet skal lyse op på alle fire — testen fanger den dag nogen giver en fane
+// sit eget menupunkt: så skal excludeQuery på plads, præcis som på
+// Transfers-parret nedenfor.
 test("#3102 etape 3 /planning?tab=* → hub-punktet er aktivt på alle faner", () => {
-  for (const search of ["", "?tab=form", "?tab=strategy", "?tab=form&view=season"]) {
+  for (const search of ["", "?tab=form", "?tab=strategy", "?tab=calendar", "?tab=form&view=season"]) {
     assert.deepEqual(activeOf(loc("/planning", search)), ["planning"], `fane ${search || "(default)"}`);
   }
 });

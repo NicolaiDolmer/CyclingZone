@@ -1,6 +1,8 @@
-// Race Calendar (#in-game-race-calendar) — verificerer at den nye spiller-vendte
+// Race Calendar (#in-game-race-calendar) — verificerer at den spiller-vendte
 // kalender renderer fra GET /api/races/calendar via preview-seedet (SEED_CALENDAR),
 // uafhængigt af race-engine-flaget. Stabiliseret med DA-locale (login-fixturen).
+// #3102 etape 3 (PR 3): kalenderen er Kalender-fanen i Planlægnings-hubben
+// (/planning?tab=calendar); /calendar redirecter (dækket i race-distribution).
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
@@ -9,18 +11,18 @@ async function gotoCalendar(page) {
   await installNetworkMocks(page);
   await login(page);
   await expect(async () => {
-    await page.goto("/calendar");
-    expect(page.url()).toMatch(/\/calendar$/);
+    await page.goto("/planning?tab=calendar");
+    expect(page.url()).toMatch(/\/planning\?tab=calendar$/);
   }).toPass({ timeout: 15000 });
 }
 
-test("kalenderen renderer header, faner, måneds-grid og legend", async ({ page }) => {
+test("kalenderen renderer som hub-fane med eyebrow, faner, måneds-grid og legend", async ({ page }) => {
   await gotoCalendar(page);
 
-  // Header: kanonisk PageHeader (#2849 bølge 3). DA-titlen var før et engelsk
-  // leftover ("Race Calendar") — match begge sprog så testen ikke er koblet til
-  // LanguageDetector-valget (samme mønster som core-smoke).
-  await expect(page.getByRole("heading", { name: /^(Race calendar|Løbskalender)$/i })).toBeVisible();
+  // Hubben ejer h1'en (PR 3); kalender-fanen er valgt, og eyebrow'en
+  // ("Sæson N · X løbsdage") flyttede fra PageHeader-subtitlen til kontrolrækken.
+  await expect(page.getByRole("heading", { name: /^(Planning|Planlægning)$/i })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^(Calendar|Kalender)$/i })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText(/Sæson 1 · 60 løbsdage/)).toBeVisible();
 
   // Faner (Mit hold default, Alle hold, Divisioner).
