@@ -10013,7 +10013,10 @@ router.get("/club/staff/:id/scouting-history", requireAuth, async (req, res) => 
     if (!facilitiesEnabled) return res.status(403).json({ error: "facilities_disabled" });
     const history = await loadScoutHistory({ teamId: req.team.id, staffId: req.params.id }, supabase);
     res.json({ history, maxLevel: SCOUTING_CONFIG.maxLevel });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
