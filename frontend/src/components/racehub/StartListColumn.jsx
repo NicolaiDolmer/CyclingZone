@@ -35,9 +35,18 @@ export default function StartListColumn({ column }) {
 
   return (
     <div className="border border-cz-border rounded-cz bg-cz-card flex flex-col">
-      <div className="p-3 border-b border-cz-border">
+      {/* #3187: samme dødeklik-mønster som RaceColumn — kun titlen var et link,
+          type/klasse/holdtal-linjen var ren tekst. Headeren er nu ét hit-target;
+          hold-listen nedenfor (med sine egne TeamLink) er urørt. */}
+      <RaceLink
+        id={column.id}
+        state={{ from: "browse" }}
+        data-testid="race-column-open"
+        aria-label={t("racehub.column.openRace", { name: column.name })}
+        className="group block p-3 border-b border-cz-border cursor-pointer transition-colors hover:bg-cz-subtle/60"
+      >
         <div className="flex items-start justify-between gap-2">
-          <RaceLink id={column.id} state={{ from: "browse" }} className="text-sm font-semibold text-cz-1 hover:text-cz-accent-t transition-colors">{column.name}</RaceLink>
+          <span className="text-sm font-semibold text-cz-1 transition-colors group-hover:text-cz-accent-t">{column.name}</span>
           {column.daysUntilStart != null && column.daysUntilStart > 0 && (
             <span className="text-3xs uppercase tracking-wide text-cz-accent-t bg-cz-accent/10 border border-cz-accent/30 px-2 py-0.5 rounded-full flex-shrink-0">
               {t("browse.inDays", { count: column.daysUntilStart })}
@@ -45,7 +54,7 @@ export default function StartListColumn({ column }) {
           )}
         </div>
         <p className="text-2xs text-cz-3 mt-0.5">{typeLabel} · {classLabel} · {t("browse.teamCount", { count: column.teamCount })}</p>
-      </div>
+      </RaceLink>
 
       <div className="py-1 flex-1">
         {column.teams.length === 0 ? (

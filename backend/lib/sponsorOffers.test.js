@@ -76,7 +76,7 @@ test("navne kommer fra den ARKETYPE-SPECIFIKKE pulje, ikke bare den samlede pulj
 
 test("guaranteedBase = round(renownTarget × guaranteedFraction) for hver arketype", () => {
   const expectedFraction = {
-    safe: 0.92, loyal: 0.78, racing: 0.5, results: 0.55, ambition: 0.7,
+    safe: 0.92, loyal: 0.78, racing: 0.5, results: 0.6, ambition: 0.7,
   };
   for (const o of generateOffers(ctx)) {
     assert.equal(o.guaranteedFraction, expectedFraction[o.variant]);
@@ -103,11 +103,11 @@ test("klausul-amounts er frosset til round(renownTarget × share) — intet 'sha
     loyal: [{ type: "signing", share: 0.08 }],
     racing: [],
     results: [
-      { type: "stage_win", share: 0.018 },
-      { type: "podium", share: 0.007 },
-      { type: "results_cap", share: 0.5 },
+      { type: "stage_win", share: 0.035 },
+      { type: "podium", share: 0.014 },
+      { type: "results_cap", share: 0.53 },
     ],
-    ambition: [{ type: "season_objective", objective: "top_half", share: 0.18 }],
+    ambition: [{ type: "season_objective", objective: "top_40pct", share: 0.38 }],
   };
   for (const o of generateOffers(ctx)) {
     const expected = expectedShares[o.variant];
@@ -131,7 +131,7 @@ test("safe/racing har ingen klausuler; loyal har kun signing; results har stage_
   assert.deepEqual(byVariant.loyal.clauses.map((c) => c.type), ["signing"]);
   assert.deepEqual(byVariant.results.clauses.map((c) => c.type), ["stage_win", "podium", "results_cap"]);
   assert.deepEqual(byVariant.ambition.clauses.map((c) => c.type), ["season_objective"]);
-  assert.equal(byVariant.ambition.clauses[0].objective, "top_half");
+  assert.equal(byVariant.ambition.clauses[0].objective, "top_40pct");
 });
 
 test("lengthSeasons matcher arketype-definitionen (safe/racing=1, results/ambition=2, loyal=3)", () => {
