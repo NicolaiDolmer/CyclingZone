@@ -5,7 +5,10 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
-import { windowsOverlap, raceBindingWindow } from "./raceBinding.js";
+import {
+  windowsOverlap, raceBindingWindow,
+  isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow,
+} from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
@@ -140,8 +143,14 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
 
   // 2. Tidsvinduer pr. løb (fra race_stage_schedule). Løb uden vindue kan ikke binde.
+  // #3119: game_day SKAL med i selecten, så raceBindingWindow binder i in-game-dag-
+  // rummet — SAMME nøgle-rum som save-guarden i PUT /selection, regenerate-endpointet
+  // og raceRunner-autofyldet. Uden game_day faldt sweep'en altid tilbage til CET-
+  // kalenderdage; i en komprimeret sæson deler flere in-game-dage samme danske dato,
+  // så sweep'en så 156 falske konflikter (målt i prod 28/7) og efterlod trupper
+  // underfyldte eller tomme.
   const { data: schedRows, error: schedErr } = await selectInChunks({
-    supabase, table: "race_stage_schedule", columns: "race_id, scheduled_at",
+    supabase, table: "race_stage_schedule", columns: "race_id, scheduled_at, game_day",
     inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "stage_number"], // PK → stabil paginering (#2375)
   });
   if (schedErr) throw new Error(`race_stage_schedule: ${schedErr.message}`);
@@ -150,10 +159,29 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     if (!schedByRace.has(row.race_id)) schedByRace.set(row.race_id, []);
     schedByRace.get(row.race_id).push(row);
   }
-  // Binding-vindue (dag-granulært): én rytter pr. CET-dag. Instant-vinduer (raceTimeWindow)
-  // fik to samme-dag-løb til ikke at overlappe → dobbeltbooking (#1823).
+  // Binding-vindue (dag-granulært): én rytter pr. in-game løbsdag. Instant-vinduer
+  // (raceTimeWindow) fik to samme-dag-løb til ikke at overlappe → dobbeltbooking (#1823).
+  // Monument-undtagelsen (#3114): Monuments har game_day i 100000-båndet og ville i
+  // game_day-rummet aldrig konflikte med noget — afled deres vindue fra puljens normale
+  // løb på samme CET-dato i stedet. Indekset er PULJE-LOKALT (divisionernes kalendere er
+  // forskudt i real-tid, så samme game_day falder på forskellige datoer på tværs af puljer).
+  const cetSpanByPool = new Map();
+  for (const r of races) {
+    const rows = schedByRace.get(r.id);
+    if (!rows || isMonumentBandSchedule(rows)) continue;
+    const key = r.league_division_id ?? null;
+    if (!cetSpanByPool.has(key)) cetSpanByPool.set(key, []);
+    cetSpanByPool.get(key).push(...rows);
+  }
+  for (const [key, rows] of cetSpanByPool) cetSpanByPool.set(key, buildCetToGameDaySpan(rows));
   const windowByRace = new Map();
-  for (const id of raceIds) windowByRace.set(id, raceBindingWindow(schedByRace.get(id)));
+  for (const r of races) {
+    const rows = schedByRace.get(r.id);
+    const window = isMonumentBandSchedule(rows)
+      ? deriveMonumentBindingWindow(rows, cetSpanByPool.get(r.league_division_id ?? null))
+      : raceBindingWindow(rows);
+    windowByRace.set(r.id, window);
+  }
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
@@ -374,10 +402,16 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
           // et overlappende søsterløb i næste kørsel. Præcis prod-bruddet 27/7 (Team Brutaliste:
           // Hauts Plateaux var startet med 1 manuel + 4 auto → de 4 kørte OGSÅ Tour de Malaisie
           // på game_day 0-1). Lås derfor UNIONEN.
-          const lockedRiderIds = new Set();
-          if (hasManual) for (const rid of manualRiders) lockedRiderIds.add(rid);
-          if (isStarted) for (const rid of startedRidersByRaceTeam.get(key) || []) lockedRiderIds.add(rid);
-          if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
+          // #3122 (Rod A, #1823): et AFMELDT løb låser ALDRIG — holdet stiller ikke op, så dets
+          // udtagne ryttere er frie til det overlappende løb. Entries bevares kun så en gen-
+          // tilmelding giver samme trup. Samme semantik som loadTeamBindingContext og
+          // /races/distribution/regenerate; sweep'en var den ene kaldevej der stadig låste.
+          if (!isWithdrawn) {
+            const lockedRiderIds = new Set();
+            if (hasManual) for (const rid of manualRiders) lockedRiderIds.add(rid);
+            if (isStarted) for (const rid of startedRidersByRaceTeam.get(key) || []) lockedRiderIds.add(rid);
+            if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
+          }
           continue;
         }
         // Delvis manuel trup (ejer 28/6): TOP-FYLD gabet — lås de manuelle rytteres tid (så de

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, isMonumentBandSchedule, buildCetToGameDaySpan, deriveMonumentBindingWindow } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -454,4 +454,52 @@ test("classifyBindingConflicts: blandet — nogle løsbare, nogle blocking, klas
   });
   assert.deepEqual(resolvable.map((r) => r.rider_id), ["r1"]);
   assert.deepEqual(blocking.map((r) => r.rider_id), ["r2"]);
+});
+
+// ── Monument-bånd (#3114/#3119) ───────────────────────────────────────────────
+// Lane-packeren giver Monuments game_day i 100000-båndet; i game_day-rummet kan de
+// derfor aldrig overlappe et normalt løb. Sweep'en afleder i stedet et vindue fra
+// puljens normale løb på samme danske kalenderdag.
+
+test("isMonumentBandSchedule: monument-række (game_day 100000+) genkendes", () => {
+  assert.equal(isMonumentBandSchedule([{ game_day: 100000, scheduled_at: "2026-07-29T15:00:00Z" }]), true);
+  assert.equal(isMonumentBandSchedule([{ game_day: 100004, scheduled_at: "2026-08-21T09:00:00Z" }]), true);
+});
+
+test("isMonumentBandSchedule: normale/blandede/tomme schedules er IKKE monument-bånd", () => {
+  assert.equal(isMonumentBandSchedule([{ game_day: 3 }]), false);
+  assert.equal(isMonumentBandSchedule([{ game_day: 100000 }, { game_day: 3 }]), false, "blandet → normal håndtering");
+  assert.equal(isMonumentBandSchedule([{ scheduled_at: "2026-07-29T15:00:00Z" }]), false, "uden game_day → normal håndtering");
+  assert.equal(isMonumentBandSchedule([]), false);
+  assert.equal(isMonumentBandSchedule(null), false);
+});
+
+test("buildCetToGameDaySpan: CET-dato → {min,max} game_day; monument-rækker og legacy-rækker udelades", () => {
+  const idx = buildCetToGameDaySpan([
+    { game_day: 3, scheduled_at: "2026-07-29T08:00:00Z" },
+    { game_day: 4, scheduled_at: "2026-07-29T15:00:00Z" }, // samme danske dato → span 3-4
+    { game_day: 5, scheduled_at: "2026-07-30T15:00:00Z" },
+    { game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }, // monument → aldrig i indekset
+    { scheduled_at: "2026-07-29T18:00:00Z" }, // legacy uden game_day → udeladt
+  ]);
+  const ord29 = Date.parse("2026-07-29T00:00:00Z") / 86_400_000;
+  const ord30 = Date.parse("2026-07-30T00:00:00Z") / 86_400_000;
+  assert.deepEqual(idx.get(ord29), { start: 3, end: 4 });
+  assert.deepEqual(idx.get(ord30), { start: 5, end: 5 });
+});
+
+test("deriveMonumentBindingWindow: monument arver puljens game_day-span for sin danske dato", () => {
+  const idx = buildCetToGameDaySpan([
+    { game_day: 3, scheduled_at: "2026-07-29T08:00:00Z" },
+    { game_day: 4, scheduled_at: "2026-07-29T15:00:00Z" },
+  ]);
+  const w = deriveMonumentBindingWindow([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }], idx);
+  assert.deepEqual(w, { start: 3, end: 4 });
+});
+
+test("deriveMonumentBindingWindow: ingen normale løb på datoen → null (kan ikke binde — som guarden i dag)", () => {
+  const idx = buildCetToGameDaySpan([{ game_day: 3, scheduled_at: "2026-07-28T08:00:00Z" }]);
+  assert.equal(deriveMonumentBindingWindow([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }], idx), null);
+  assert.equal(deriveMonumentBindingWindow([], idx), null);
+  assert.equal(deriveMonumentBindingWindow([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }], null), null);
 });

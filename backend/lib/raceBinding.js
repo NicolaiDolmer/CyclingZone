@@ -5,6 +5,7 @@
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { selectInChunks } from "./dbChunk.js";
+import { MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 
 const DAY_MS = 86_400_000;
 
@@ -72,6 +73,63 @@ export function raceGameDaySpan(scheduleRows) {
   const days = scheduleRows.map((r) => r?.game_day).filter((d) => Number.isFinite(d));
   if (days.length !== scheduleRows.length) return null; // en delvist-backfillet række → skjul mærket
   return { start: Math.min(...days), end: Math.max(...days) };
+}
+
+// ── Monument-bånd (#3114/#3119) ────────────────────────────────────────────────
+// Lane-packeren giver Monuments game_day i 100000-båndet — en bevidst "uden for
+// dags-gitteret"-markør (raceCalendarLanePacker.js). I game_day-rummet kan et
+// monument derfor ALDRIG overlappe et normalt løb: vindue {100000+} mod {0..88}.
+// Sweep'en (raceEntryGenerator) lukker hullet ved at aflede monumentets binding-
+// vindue fra de NORMALE løb i SAMME pulje der deler dets danske kalenderdag(e):
+// CET-ordinal → {min,max} game_day. Pulje-lokalt er obligatorisk — divisionernes
+// kalendere er forskudt i real-tid, så samme game_day falder på forskellige datoer
+// i forskellige puljer (målt i prod 3/8: D2 kørte gd 0-7 27-30/7, D4 kørte gd 4
+// først 31/7). Save-guarden (loadTeamBindingContext) har ikke pulje-kontekst og
+// beholder indtil videre hullet for manuelle D1-udtagelser — sporet i #3114.
+
+// Er HELE løbets schedule i monument-båndet? (Monuments er endagsløb — én række —
+// men vi kræver alle rækker, så et blandet/korrupt løb falder tilbage til
+// raceBindingWindow's normale valg i stedet for en forkert afledning.)
+export function isMonumentBandSchedule(scheduleRows) {
+  if (!scheduleRows?.length) return false;
+  return scheduleRows.every((r) => Number.isFinite(r?.game_day) && r.game_day >= MONUMENT_GAMEDAY_BASE);
+}
+
+// Byg CET-ordinal → {start,end} game_day-span fra NORMALE (ikke-monument) schedule-
+// rows i én pulje. Rækker uden finite game_day (legacy, ikke backfillet) springes
+// over — de kan ikke bidrage til et game_day-rum-indeks.
+export function buildCetToGameDaySpan(scheduleRows) {
+  const byOrd = new Map();
+  for (const row of scheduleRows || []) {
+    if (!Number.isFinite(row?.game_day) || row.game_day >= MONUMENT_GAMEDAY_BASE) continue;
+    const ord = cetDayOrdinal(row?.scheduled_at);
+    if (!Number.isFinite(ord)) continue;
+    const cur = byOrd.get(ord);
+    if (!cur) byOrd.set(ord, { start: row.game_day, end: row.game_day });
+    else {
+      cur.start = Math.min(cur.start, row.game_day);
+      cur.end = Math.max(cur.end, row.game_day);
+    }
+  }
+  return byOrd;
+}
+
+// Afled et monument-løbs binding-vindue i game_day-rummet: unionen af puljens
+// game_day-spans på monumentets danske kalenderdag(e). Kører intet normalt løb de
+// dage → null (monumentet kan ikke binde — samme adfærd som guarden i dag; bevidst
+// konservativt indtil #3114 løses ved roden).
+export function deriveMonumentBindingWindow(scheduleRows, cetToGameDaySpan) {
+  if (!scheduleRows?.length || !cetToGameDaySpan) return null;
+  let start = Infinity;
+  let end = -Infinity;
+  for (const row of scheduleRows) {
+    const ord = cetDayOrdinal(row?.scheduled_at);
+    const span = Number.isFinite(ord) ? cetToGameDaySpan.get(ord) : null;
+    if (!span) continue;
+    start = Math.min(start, span.start);
+    end = Math.max(end, span.end);
+  }
+  return Number.isFinite(start) && Number.isFinite(end) ? { start, end } : null;
 }
 
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
