@@ -91,6 +91,22 @@ export function computeBidValueDelta(currentPrice, rider) {
   return { pct, direction: price < value ? "under" : "over", value };
 }
 
+// #3191: SIGNERET pct-afvigelse (pris vs. vurdering) til FILTRERING — i modsætning
+// til computeBidValueDelta ovenfor, som returnerer en UNSIGNED pct + direction til
+// VISNING (badge-teksten). Transferlistens %-filter skal kunne skelne "mindst 20%
+// under vurdering" fra "højst 20% over vurdering" med ét min/max-range uden en
+// direction-gren, så her er positiv = over vurdering (dyrere), negativ = under
+// (billigere). Bruges på listing.asking_price, ikke auktionens current_price.
+export function computeValueDeviationPct(price, rider) {
+  if (!rider) return null;
+  if (price == null) return null;
+  const p = Number(price);
+  if (!Number.isFinite(p)) return null;
+  const value = getRiderMarketValue(rider);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return ((p - value) / value) * 100;
+}
+
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
 // Spejl af backend/lib/auctionRules.js — droppet 10%/1000-afrunding 2026-05-07 (#178).

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
@@ -51,6 +51,16 @@ import RiderPalmaresTab from "../components/rider/profile/RiderPalmaresTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
+
+// #3203: dyb-link til en specifik fane via ?tab= (RiderLink's nye `tab`-prop
+// — spejder-historikkens "link til rapporten" hopper direkte til Scouting-
+// fanen i stedet for Overblik). Whitelisted mod RiderProfileTabs' faktiske
+// nøgler nedenfor, så et ukendt/forkert tab-param falder tilbage til "overview"
+// i stedet for at rendere en tom fane.
+const VALID_RIDER_TABS = [
+  "overview", "physiology", "training", "development",
+  "scouting", "history", "results", "palmares", "interest",
+];
 
 // Hent ALLE en rytters race_results til Resultater-fanen (PCS-tabel + totaler).
 // Pagineret fordi PostgREST capper ved 1000 rækker/side — uden det ville en
@@ -716,6 +726,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
 
@@ -738,7 +749,13 @@ export default function RiderStatsPage() {
   // #2000 Interesse: null = loader (fanen viser spinner, ikke "ingen interesse").
   const [interest, setInterest]             = useState(null);
   const [loading, setLoading]               = useState(true);
-  const [tab, setTab]                       = useState("overview");
+  // #3203: initial fane fra ?tab= hvis gyldig (deep-link fra spejder-historik/
+  // andre flader), ellers uændret default "overview". Kun læst ved mount —
+  // efterfølgende navigation via fanebjælken styrer som hidtil via setTab.
+  const [tab, setTab] = useState(() => {
+    const requested = searchParams.get("tab");
+    return VALID_RIDER_TABS.includes(requested) ? requested : "overview";
+  });
   // Roster for switcher-baren (#2000): det VISTE holds trup, til prev/next + index.
   const [roster, setRoster]                 = useState([]);
   const [myTeamId, setMyTeamId]             = useState(null);

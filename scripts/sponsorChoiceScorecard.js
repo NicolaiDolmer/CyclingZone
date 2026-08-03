@@ -196,10 +196,12 @@ function buildRenownTargets(teams, s1Standings) {
   return out;
 }
 
-// Top-halvdel af S1-PULJEN (league_division_id), ikke tieren — matcher
+// Pulje-størrelser af S1-PULJEN (league_division_id), ikke tieren — matcher
 // sponsorContractsService.evaluateSeasonObjectives's poolSizes-logik. Falder
 // tilbage til tier ("division") hvis INGEN standings har en pulje-reference
-// (S1 kørt før pulje-kolonnen fandtes).
+// (S1 kørt før pulje-kolonnen fandtes). Bruges til BÅDE top-halvdel (#2948,
+// legacy-kontrakter) og top-40% (#3192, nye ambition-tilbud) — se
+// docs/audits/2026-08-03-sponsor-archetype-ev-3192.md.
 function buildTopHalfLookup(s1Standings) {
   const anyPool = s1Standings.some((s) => s.league_division_id != null);
   const groupKey = anyPool ? "league_division_id" : "division";
@@ -212,13 +214,14 @@ function buildTopHalfLookup(s1Standings) {
   return { poolSizes, groupKey, usedPoolFallback: !anyPool };
 }
 
-function computedTopHalf(standing, topHalfLookup) {
+// fraction: 0.5 = top-halvdel (legacy), 0.4 = top-40% (#3192-arketypen).
+function computedTopFraction(standing, topHalfLookup, fraction) {
   if (!standing) return false;
   const key = standing[topHalfLookup.groupKey];
   const poolSize = key != null ? topHalfLookup.poolSizes[key] : null;
   const rank = Number(standing.rank_in_division);
   if (!Number.isFinite(rank) || !(Number(poolSize) > 0)) return false;
-  return rank <= Math.ceil(poolSize / 2);
+  return rank <= Math.ceil(poolSize * fraction);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -251,8 +254,12 @@ function computeArchetypeAmounts(target, s1Stats) {
   const results = target * ARCH.results.guaranteedFraction + resultsVariable;
 
   const ambitionVariable = target * ARCH.ambition.raceDayShare;
+  const objectiveClause = ARCH.ambition.clauses.find((c) => c.type === "season_objective");
   const objectiveShare = clauseShare(ARCH.ambition, "season_objective");
-  const objectiveBonus = s1Stats?.topHalf ? objectiveShare * target : 0;
+  // #3192: ambitionens objective er nu "top_40pct" (var "top_half" før rebalancen);
+  // s1Stats bærer begge flag så scorecardet virker uanset hvilken der er aktiv.
+  const objectiveAchieved = objectiveClause?.objective === "top_40pct" ? s1Stats?.top40 : s1Stats?.topHalf;
+  const objectiveBonus = objectiveAchieved ? objectiveShare * target : 0;
   const ambition = target * ARCH.ambition.guaranteedFraction + ambitionVariable + objectiveBonus;
 
   return {
@@ -374,8 +381,9 @@ async function main() {
   const perTeam = teams.map((t) => {
     const { target, standing } = renownByTeam.get(t.id);
     const stageStats = stageBonusMap.get(t.id) || { wins: 0, podiums: 0 };
-    const topHalf = computedTopHalf(standing, topHalfLookup);
-    const amounts = computeArchetypeAmounts(target, { ...stageStats, topHalf });
+    const topHalf = computedTopFraction(standing, topHalfLookup, 0.5);
+    const top40 = computedTopFraction(standing, topHalfLookup, 0.4);
+    const amounts = computeArchetypeAmounts(target, { ...stageStats, topHalf, top40 });
     return { team: t, target, amounts };
   });
 
