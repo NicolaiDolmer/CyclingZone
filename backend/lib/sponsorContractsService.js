@@ -443,7 +443,14 @@ async function creditSigningBonus({ supabase, contract }) {
   );
 }
 
-// Sæsonmåls-klausul (#2948): "slut i øverste halvdel af din division" → engangs-
+// Sæsonmåls-klausul-typer (#2948 "top_half", #3192 "top_40pct" — se
+// docs/audits/2026-08-03-sponsor-archetype-ev-3192.md). NYE ambition-tilbud
+// genereres kun med "top_40pct" (sponsorOffers.ARCHETYPES), men allerede-tegnede
+// kontrakter med "top_half" skal blive ved med at evaluere korrekt for deres
+// fulde løbetid — frosne klausuler må ALDRIG ændres retroaktivt.
+const OBJECTIVE_THRESHOLD_FRACTION = { top_half: 0.5, top_40pct: 0.4 };
+
+// Sæsonmåls-klausul (#2948): "slut i top-X af din division" → engangs-
 // beløb ved sæsonafslutning. Evalueres for ALLE aktive kontrakter med klausulen
 // (flersæsons-aftaler tjener den hver sæson), FØR expireAndRenewContracts flipper
 // status. Idempotent pr. (kontrakt, sæson). Additiv-isoleret: kaldes i try/catch
@@ -490,11 +497,12 @@ export async function evaluateSeasonObjectives({ supabase, finishedSeasonNumber 
     const standing = standingByTeam.get(contract.team_id);
     const poolSize = standing ? poolSizes[standing.league_division_id] : null;
     const rank = Number(standing?.rank_in_division);
+    const thresholdFraction = OBJECTIVE_THRESHOLD_FRACTION[clause.objective];
     const achieved =
-      clause.objective === "top_half" &&
+      thresholdFraction != null &&
       Number.isFinite(rank) &&
       Number(poolSize) > 0 &&
-      rank <= Math.ceil(poolSize / 2);
+      rank <= Math.ceil(poolSize * thresholdFraction);
     if (!achieved) continue;
 
     const { skipped } = await incrementBalanceWithAudit(

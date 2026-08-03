@@ -280,12 +280,34 @@ export const SEED_STAGE_PROFILES = [
 ];
 
 // race_stage_schedule — scheduled_at pr. etape (driver next-start-countdown).
+// #3197: race-done-1/race-done-2 (de KØRTE løb) fik tilføjet rækker her, så
+// Resultat-hubbens "seneste"-kort kan vise den rigtige afviklingsdato (erstatter
+// pool_race.date_text) på preview/e2e — de havde ingen schedule-rækker før,
+// fordi kun countdown-brugen (kommende/igangværende løb) havde brug for dem.
 export const SEED_STAGE_SCHEDULE = [
   { race_id: "race-up-1", stage_number: 1, scheduled_at: "2026-07-12T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 2, scheduled_at: "2026-07-13T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 3, scheduled_at: "2026-07-14T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 4, scheduled_at: "2026-07-15T13:00:00.000Z" },
   { race_id: "race-live-1", stage_number: 3, scheduled_at: "2026-06-25T13:00:00.000Z" },
+  { race_id: "race-done-1", stage_number: 1, scheduled_at: "2026-03-01T13:00:00.000Z" },
+  { race_id: "race-done-2", stage_number: 1, scheduled_at: "2026-05-09T13:00:00.000Z" },
+  { race_id: "race-done-2", stage_number: 2, scheduled_at: "2026-05-10T13:00:00.000Z" },
+];
+
+// league_divisions — tier/pulje-referencedata til Resultat-hubbens (#3197),
+// StandingsPage's og CalendarPage's sæson/division/pulje-vælgere. Samme
+// id/tier/pool_index-nøgler som SEED_CALENDAR's divisions-træ herunder, så
+// begge flader viser identiske puljer på preview. TEST_TEAM.league_division_id
+// (2) = "Division 2 — A", MED en søsterpulje "Division 2 — B" i samme tier —
+// bevidst, så pulje-vælgeren (kun vist når en tier har >1 pulje) kan
+// klik-testes for holdets egen division.
+export const SEED_LEAGUE_DIVISIONS = [
+  { id: 1, tier: 1, pool_index: 0, label: "Division 1" },
+  { id: 2, tier: 2, pool_index: 0, label: "Division 2 — A" },
+  { id: 3, tier: 2, pool_index: 1, label: "Division 2 — B" },
+  { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+  { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
 ];
 
 // race_results — stage- + gc-rækker for de KØRTE løb. RaceDetailPage filtrerer
@@ -433,10 +455,13 @@ export const SEED_TEAM_HALL_OF_FAME = [
 
 // season_standings scopet på sæsonen (hubbens tophold-boks). AI-holdet er med
 // med vilje: hubben filtrerer is_ai fra, og filteret skal kunne ses virke.
+// #3197: league_division_id (2 = "Division 2 — A", TEST_TEAM's egen pulje) med
+// på team-joinet, så Resultat-hubbens Tophold-boks kan pulje-filtreres på
+// preview/e2e ligesom den ægte season_standings-query.
 export const SEED_SEASON_STANDINGS = [
-  { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2 } },
-  { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2 } },
-  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2 } },
+  { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
+  { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
+  { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2, league_division_id: 2 } },
 ];
 
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
@@ -1123,9 +1148,13 @@ export const SEED_TRAINING = {
     "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
   },
   capped: {},
+  // #3195: værdierne skal matche backend-vokabularet ("strength"/"limited"/
+  // "blocked" — se training.js' focusTrainability), IKKE et "high"-synonym, ellers
+  // renderer chippen/dropdown-markøren aldrig i preview (currentTrainability-tjekket
+  // matcher kun "limited"/"blocked", og t(`trainability_${level}`) findes ikke for "high").
   trainability: {
-    "rider-1": { sprint: "high", acceleration: "high", vo2max: "limited", threshold: "limited" },
-    "rider-2": { vo2max: "high", sprint: "blocked", aero: "limited" },
+    "rider-1": { sprint: "strength", acceleration: "strength", vo2max: "limited", threshold: "limited" },
+    "rider-2": { vo2max: "strength", sprint: "blocked", aero: "limited" },
   },
   smartDefaultFocus: { "rider-2": "vo2max" },
   weekPlan: null,

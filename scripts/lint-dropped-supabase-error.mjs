@@ -192,7 +192,7 @@ export function findDroppedSupabaseErrors(rawSrc) {
 // CI med det samme. Ratchet'en virker begge veje — når en anden PR rydder et
 // site, strammes tallet her i samme ombæring.
 const BASELINE = {
-  "backend/routes/api.js": 110,
+  "backend/routes/api.js": 109,
   "backend/lib/discordNotifier.js": 6,
   "backend/lib/loanEngine.js": 6,
   "backend/lib/proxyBidding.js": 6,

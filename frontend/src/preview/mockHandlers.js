@@ -15,6 +15,7 @@ import {
   SEED_RACES,
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
+  SEED_LEAGUE_DIVISIONS,
   SEED_STAGE_PASSAGES,
   SEED_RACE_RESULTS,
   SEED_RACE_INCIDENTS,
@@ -87,8 +88,20 @@ export function restRows(table, requestUrl = "") {
   switch (table) {
     case "users":
       return [{ id: TEST_USER.id, role: "manager", username: "Playwright Manager", login_streak: 3 }];
-    case "teams":
+    case "teams": {
+      // #3197: en .eq("user_id", ...).maybeSingle()/.single()-forespørgsel (fx
+      // "min egen pulje") skal få NETOP ét hold tilbage. Uden dette filter
+      // returnerede mocken altid BEGGE testhold, og postgrest-js's klient-side
+      // "forventede 1 række"-tjek kastede en PGRST116-fejl (2 rækker) — .data
+      // endte tavst null, og ethvert "egen kontekst"-default (division/pulje)
+      // faldt tilbage til "ingen tilknytning" på preview/e2e.
+      const idMatch = url.search.match(/user_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return [TEST_TEAM, RIVAL_TEAM].filter(t => t.user_id === id);
+      }
       return [TEST_TEAM, RIVAL_TEAM];
+    }
     case "riders":
       if (url.search.includes("pending_team_id=eq.")) return [];
       if (url.search.includes("team_id=eq.team-e2e")) {
@@ -141,8 +154,18 @@ export function restRows(table, requestUrl = "") {
         const id = decodeURIComponent(idMatch[1]);
         return SEED_STAGE_SCHEDULE.filter(s => s.race_id === id);
       }
+      // #3197: Resultat-hubbens "seneste"-kort henter afviklingsdatoen for FLERE
+      // løb i ét kald (race_id=in.(a,b,c)), samme mønster som race_results ovenfor.
+      const inMatch = decodeURIComponent(url.search).match(/race_id=in\.\(([^)]*)\)/);
+      if (inMatch) {
+        const ids = new Set(inMatch[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+        return SEED_STAGE_SCHEDULE.filter(s => ids.has(s.race_id));
+      }
       return SEED_STAGE_SCHEDULE;
     }
+    // #3197: Resultat-/Standings-/Kalender-fladens sæson/division/pulje-vælgere.
+    case "league_divisions":
+      return SEED_LEAGUE_DIVISIONS;
     // Sub-4 (#2448): KOM/mellemsprint/mål-passager. Samme race_id=eq-scoping som
     // race_stage_profiles ovenfor — RaceDetailPage henter med .eq("race_id", raceId)
     // (RaceDetailPage.jsx:254-264) og filtrerer selv videre på stage_number/
