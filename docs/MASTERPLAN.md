@@ -10,7 +10,7 @@
 ## 1 · NU-BØLGE (denne uge)
 1. 🔴 **S2-dataintegritet:** [#3119](https://github.com/NicolaiDolmer/CyclingZone/issues/3119) CET-dato-fejlen (rodårsag for #3185-væksten; tag #3122 sammen) → derefter #3120-modregningen (C valgt; dry-run-tal → ejer-ja). Stopper den eneste escalating Sentry-sag.
 2. 🔵→🟠 **Penge-kæden (ejer-gates → kode):** #2813 go-live-gates (support-mail · moms-tjek i Alunta · `CHECKOUT_PAUSED`-flip) → **#3104 etape D** /pro-indgang → **#2736 fornyelses-webhook FØR ~24/8** (eneste kunde mister ellers Pro) → #2853 e-mail-loop (3 tekster + 2 nøgler) → #2816/#2817/#2820.
-3. 🔴 **Sæsonslut 23/8 (20 dage):** #3038 season-end-spærren · #3036 countback · **#1688 pulje-bevidst op/nedrykning (kodens eget HARD-GATE for S3)** · #2916 opsætning bæres ikke over · #2752/#2361 skiftet som oplevelse.
+3. 🔴 **Sæsonslut 23/8 (20 dage):** #3038 season-end-spærren · #3036 countback · **#1688 pulje-bevidst op/nedrykning (kodens eget HARD-GATE for S3)** · **#1150 kontraktudløb skal VIRKE ved skiftet (ejer-direktiv 3/8: "kontrakter skal virke efter intentionen" — 807 ryttere udløber efter S2; design-valg frigivelse vs. tvangs-genforhandling først)** · #2916 opsætning bæres ikke over · #2752/#2361 skiftet som oplevelse.
 4. 🟠 **Fair play:** fundament #3132 verificeret live 3/8 (581 events; kun privatlivstekst-gate tilbage) → #3133+#3134 ∥ #3135+#3136+#3137 → #3138 → #3139 (+#3184 som del I). #3153 manuel review.
 5. 🔴 **Frisk mobil-regression:** [#3194](https://github.com/NicolaiDolmer/CyclingZone/issues/3194) trænings-siden ubrugelig i portræt (sandsynligt PR #3075-regression; mobil = 54,9 %).
 
@@ -24,7 +24,7 @@ Fra #feedback-from-dolmer: **#3196** samlet vækst-dashboard (DAU/WAU/MAU-grafer
 19. ⚪ #62/#91/#2180 daglig rytme · 20. ⚪ #2443/#1602/#2445 menu + mobil · #2009/#2448 · #2810 · 21. ⚪ #2698/#2262/#1974 progression · #2887 (nu m. genansættelses-bug) · #2699 akademi-nerf (ejer-udskudt) · #2084/#1299/#1301 · 22. ⚪ #2042 login-væg (A-delen billig; hører til #2824).
 
 ## 4 · EFTER AUGUST
-Vægtning (ejer): simulerings-dybde > polish > indholds-bredde. 23. Træning/ungdom #2492 m.fl. · 24. Kontrakt-liv #1150/#1310 (**807 ryttere udløber efter S2** → klar før S2→S3) · 25. Motor-dybde #2476/#2410/#2416/#2412 · 26. Værdi-kæden #2667/#2669/#1281/#2452/#2670 · 27. #2477 · 28. Skalering #323/#1375 (~300 brugere) · 29. #1441 · 30. Socialt lag #2209/#935 (**løftet af ejer-direktiv 3/8 → #3199/#3200 er v1**) · 31. Brand #481/#671 + SEO · 32. #955 · 33. #2462.
+Vægtning (ejer): simulerings-dybde > polish > indholds-bredde. 23. Træning/ungdom #2492 m.fl. · 24. Kontrakt-liv #1150/#1310 (**udløbs-håndhævelsen FLYTTET FREM til NU-bølge pkt. 3, ejer 3/8**; resten — krav/klausuler/lån — forbliver her) · 25. Motor-dybde #2476/#2410/#2416/#2412 · 26. Værdi-kæden #2667/#2669/#1281/#2452/#2670 · 27. #2477 · 28. Skalering #323/#1375 (~300 brugere) · 29. #1441 · 30. Socialt lag #2209/#935 (**løftet af ejer-direktiv 3/8 → #3199/#3200 er v1**) · 31. Brand #481/#671 + SEO · 32. #955 · 33. #2462.
 
 ## Ops/community-sidestrøm (subagent, aldrig hovedspor)
 #2758 (nu ejer-krævet automatisk) · #2460 · #2440 · #2409/#2423 · #2511 · #2572 · AI-audit #2689 · Railway MCP re-auth (fundet 3/8) · Supabase-hærdning: #3124 matviews · is_admin anon · #929 leaked-password (genbekræftet 3/8) · #2830/#2901/#2858.
