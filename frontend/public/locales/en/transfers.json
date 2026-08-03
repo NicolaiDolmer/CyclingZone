@@ -280,5 +280,11 @@
     "toastPartial": "Updated {updated}, {failed} could not be updated",
     "toastNoChange": "No price change to apply",
     "toastFailed": "Could not update prices"
+  },
+  "valueDelta": {
+    "under": "{pct}% below est. value",
+    "over": "{pct}% above est. value",
+    "at": "Near est. value",
+    "title": "Estimated market value: {amount} CZ$. A model estimate, not a guaranteed price."
   }
 }

@@ -65,7 +65,10 @@ function clauseLines(clauses, t) {
         };
       }
       if (c.type === "season_objective") {
-        return { type: c.type, text: t("clause.seasonObjective", { amount }) };
+        // #3192: nye tilbud bruger "top_40pct"; allerede-tegnede kontrakter kan
+        // stadig bære det gamle "top_half" (frosset ved pick, aldrig ændret retroaktivt).
+        const key = c.objective === "top_40pct" ? "clause.seasonObjectiveTop40" : "clause.seasonObjective";
+        return { type: c.type, text: t(key, { amount }) };
       }
       return null;
     })

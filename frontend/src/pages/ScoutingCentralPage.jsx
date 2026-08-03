@@ -21,7 +21,7 @@
 // sub-brand") er normaliseret til kanonisk SectionHeader. Sidens EGET
 // editoriale sidehoved (Bebas + border-b-bånd) er BEVARET uændret — det er
 // samme ejer-godkendte opskrift som Klub/SeasonPlanner, ikke en ny fortolkning.
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import {
@@ -29,49 +29,13 @@ import {
   Section, SectionStack, SectionHeader, ChevronRightIcon,
 } from "../components/ui";
 import RiderLink from "../components/RiderLink";
-import { getSession } from "../lib/supabase";
 import { useScoutingCentral } from "../lib/useScoutingCentral";
+import { useRiderNames } from "../lib/useRiderNames";
 import { daysUntil, missionCriteriaLabel } from "../lib/scoutingCentralDisplay";
 import { getCountryName } from "../lib/countryUtils";
 import { ISO2_TO_IOC } from "../lib/countryCodes";
 
-const API = import.meta.env.VITE_API_URL;
 const COUNTRY_CODES = Object.keys(ISO2_TO_IOC);
-
-// Lazy rytternavn-opslag: ét batch-kald (POST /api/riders/names) for nye ids,
-// cached for sidens levetid.
-function useRiderNames(ids) {
-  const [names, setNames] = useState({});
-  const requestedRef = useRef(new Set());
-
-  useEffect(() => {
-    const toFetch = (ids ?? []).filter((id) => id && !requestedRef.current.has(id));
-    if (toFetch.length === 0) return;
-    toFetch.forEach((id) => requestedRef.current.add(id));
-    (async () => {
-      const { data } = await getSession();
-      const token = data?.session?.access_token;
-      if (!token) return;
-      const fetched = Object.fromEntries(toFetch.map((id) => [id, null]));
-      try {
-        const res = await fetch(`${API}/api/riders/names`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: toFetch }),
-        });
-        if (res.ok) {
-          const { riders } = await res.json();
-          for (const r of riders ?? []) fetched[r.id] = r.name ?? null;
-        }
-      } catch {
-        // navne forbliver null → UI viser fallback-label
-      }
-      setNames((prev) => ({ ...prev, ...fetched }));
-    })();
-  }, [ids]);
-
-  return names;
-}
 
 function ScoutCard({ scout, capacity, t }) {
   const isDefault = scout?.isDefault !== false;
