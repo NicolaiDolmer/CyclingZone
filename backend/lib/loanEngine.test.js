@@ -230,6 +230,14 @@ function createCeilingSupabase({
     seasons: 5,
     debt_ceiling: 600000,
   },
+  // #3134 · ung-konto-lånespærre: alle tre er no-ops med default-værdierne
+  // (gateConfigRows=null → tom app_config → begge tærskler 0 → gate skippes
+  // helt, createLoan rører aldrig teams.created_at/race_entries/races) — så
+  // alle eksisterende tests i denne fil er upåvirkede. Sæt gateConfigRows for
+  // at slå gaten til i et specifikt testcase.
+  gateConfigRows = null,
+  accountCreatedAt = null,
+  raceDaysRun = 0,
 } = {}) {
   const state = { balance, loans: [], financeRows: [], notifications: [] };
   return {
@@ -262,6 +270,7 @@ function createCeilingSupabase({
                     single() {
                       if (columns === "division") return Promise.resolve({ data: { division }, error: null });
                       if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                      if (columns === "created_at") return Promise.resolve({ data: { created_at: accountCreatedAt }, error: null });
                       throw new Error(`Unexpected teams.select columns: ${columns}`);
                     },
                   };
@@ -329,6 +338,44 @@ function createCeilingSupabase({
             },
           };
         }
+        // #3134 · ung-konto-lånespærre — readNewAccountGateConfig batch-læser
+        // 5 nøgler via .in(); default gateConfigRows=null → tom app_config →
+        // gate disabled.
+        if (table === "app_config") {
+          return { select() { return { in() { return Promise.resolve({ data: gateConfigRows || [], error: null }); } }; } };
+        }
+        // #3134 · getTeamRaceDaysRun: syntetiserer `raceDaysRun` distinkte
+        // completed dage uden at kræve en fuld races/race_entries-fixture.
+        if (table === "race_entries") {
+          return {
+            select() {
+              return {
+                eq() {
+                  const ids = Array.from({ length: raceDaysRun }, (_, i) => `race-${i}`);
+                  return Promise.resolve({ data: ids.map((id) => ({ race_id: id })), error: null });
+                },
+              };
+            },
+          };
+        }
+        if (table === "races") {
+          return {
+            select() {
+              return {
+                in(_col, ids) {
+                  return {
+                    eq() {
+                      return Promise.resolve({
+                        data: ids.map((id, i) => ({ id, game_day_start: i, status: "completed" })),
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
         throw new Error(`Unexpected table: ${table}`);
       },
     },
@@ -360,6 +407,91 @@ test("createLoan accepts when principal+fee fits exactly within remaining headro
   const loan = await createLoan("team-1", "long", 1500, supabase.client);
   assert.equal(loan.amount_remaining, 1575);
   assert.equal(supabase.state.loans.length, 1);
+});
+
+// ── #3134: ung-konto-lånespærre ────────────────────────────────────────────────
+
+test("createLoan: 0/0-tærskler (default) → gaten er en no-op, selv for en helt ny konto", async () => {
+  const supabase = createCeilingSupabase({
+    gateConfigRows: [], // ingen rows → begge tærskler 0 → disabled
+    accountCreatedAt: new Date().toISOString(), // brand new — ville fejle enhver rigtig gate
+    raceDaysRun: 0,
+  });
+  const loan = await createLoan("team-1", "long", 1000, supabase.client);
+  assert.equal(loan.amount_remaining > 0, true);
+});
+
+test("createLoan: afviser et lån fra en konto der hverken har kørt nok løbsdage eller er gammel nok", async () => {
+  const supabase = createCeilingSupabase({
+    gateConfigRows: [
+      { key: "loan_gate_min_race_days", value: 3 },
+      { key: "loan_gate_min_account_age_days", value: 3 },
+    ],
+    accountCreatedAt: new Date().toISOString(), // oprettet lige nu
+    raceDaysRun: 0,
+  });
+
+  await assert.rejects(
+    () => createLoan("team-1", "long", 1000, supabase.client),
+    (err) => {
+      assert.equal(err.code, "error.loanGateEither");
+      assert.equal(err.params.minRaceDays, 3);
+      assert.equal(err.params.minAccountAgeDays, 3);
+      assert.equal(err.params.raceDaysRun, 0);
+      return true;
+    },
+  );
+  assert.equal(supabase.state.loans.length, 0, "intet lån oprettet når gaten blokerer");
+});
+
+test("createLoan: tillader lånet så snart race-dage-betingelsen er opfyldt, selvom kontoen stadig er ny", async () => {
+  const supabase = createCeilingSupabase({
+    gateConfigRows: [
+      { key: "loan_gate_min_race_days", value: 3 },
+      { key: "loan_gate_min_account_age_days", value: 3 },
+    ],
+    accountCreatedAt: new Date().toISOString(), // stadig helt ny — ville fejle age-betingelsen
+    raceDaysRun: 3, // men har kørt nok løbsdage → OR-semantik lukker gaten op
+  });
+
+  const loan = await createLoan("team-1", "long", 1000, supabase.client);
+  assert.equal(loan.amount_remaining > 0, true);
+});
+
+test("createLoan: tillader lånet så snart alders-betingelsen er opfyldt, selvom kontoen aldrig har kørt et løb", async () => {
+  const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString();
+  const supabase = createCeilingSupabase({
+    gateConfigRows: [
+      { key: "loan_gate_min_race_days", value: 3 },
+      { key: "loan_gate_min_account_age_days", value: 3 },
+    ],
+    accountCreatedAt: fourDaysAgo,
+    raceDaysRun: 0,
+  });
+
+  const loan = await createLoan("team-1", "long", 1000, supabase.client);
+  assert.equal(loan.amount_remaining > 0, true);
+});
+
+test("createLoan: kun race-days-tærsklen sat (0 på alder) — en gammel konto med 0 løbsdage blokeres stadig", async () => {
+  const veryOld = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+  const supabase = createCeilingSupabase({
+    gateConfigRows: [
+      { key: "loan_gate_min_race_days", value: 2 },
+      // loan_gate_min_account_age_days udeladt → 0 → age-betingelsen tæller ikke med
+    ],
+    accountCreatedAt: veryOld,
+    raceDaysRun: 0,
+  });
+
+  await assert.rejects(
+    () => createLoan("team-1", "long", 1000, supabase.client),
+    (err) => {
+      assert.equal(err.code, "error.loanGateRaceDaysOnly");
+      assert.equal(err.params.minAccountAgeDays, null);
+      return true;
+    },
+  );
 });
 
 // ── #1012: max-lånbart (gebyr-inkl.) — delt formel med createLoan ─────────────

@@ -14,6 +14,7 @@
     "ageRange": "Alder (min-max)",
     "bidRange": "Højeste bud CZ$ (min-max)",
     "askingPriceRange": "Salgspris CZ$ (min-max)",
+    "valueDeviationRange": "Værdi-afvigelse % (min-max)",
     "team": "Hold",
     "teamAll": "Alle hold",
     "min": "Min",
@@ -51,6 +52,10 @@
     "askingPrice": {
       "min": "Pris ≥ {amount} CZ$",
       "max": "Pris ≤ {amount} CZ$"
+    },
+    "valueDeviation": {
+      "min": "Afvigelse ≥ {value}%",
+      "max": "Afvigelse ≤ {value}%"
     },
     "teamSelected": "Hold valgt",
     "statRange": "{label} {min}-{max}",

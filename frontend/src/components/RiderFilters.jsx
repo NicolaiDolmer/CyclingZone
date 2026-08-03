@@ -64,6 +64,13 @@ export const DEFAULT_FILTERS = {
   // min/max_auction_price (auktionens NUVÆRENDE bud), som er en anden pris-akse.
   min_asking_price: "",
   max_asking_price: "",
+  // #3191: transfer-markedets %-afvigelse mellem asking_price og estimeret
+  // markedsværdi (samme akse som ValueDeltaBadge/computeValueDeviationPct) —
+  // signeret: negativ = under vurdering, positiv = over. Egen filter-akse,
+  // adskilt fra min/max_asking_price ovenfor (kroner) og min/max_value (selve
+  // vurderingen) — dette er FORHOLDET mellem de to.
+  min_value_deviation_pct: "",
+  max_value_deviation_pct: "",
   u25: false,
   u23: false,
   free_agent: false,
@@ -80,6 +87,7 @@ const BASIC_FILTER_KEYS = [
   "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
   "min_age", "max_age",
   "min_auction_price", "max_auction_price", "min_asking_price", "max_asking_price",
+  "min_value_deviation_pct", "max_value_deviation_pct",
   "u25", "u23", "free_agent", "show_ai", "team_id",
 ];
 
@@ -197,6 +205,7 @@ export default function RiderFilters({
   filters, onChange, onReset,
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
   showAuctionPriceFilter = false, showAskingPriceFilter = false, showAiToggle = false,
+  showValueDeviationFilter = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -360,6 +369,21 @@ export default function RiderFilters({
             </div>
           )}
 
+          {/* Værdi-afvigelse % (transfer-marked-only, #3191) — signeret forhold
+              mellem asking_price og vurdering (samme akse som ValueDeltaBadge).
+              Negativ = under vurdering, positiv = over. */}
+          {showValueDeviationFilter && (
+            <div>
+              <label className={labelClass()}>{t("fields.valueDeviationRange")}</label>
+              <div className="flex gap-1">
+                <Input type="number" data-testid="filter-value-deviation-min" value={filters.min_value_deviation_pct} onChange={e => onChange("min_value_deviation_pct", e.target.value)}
+                  placeholder={t("fields.min")} />
+                <Input type="number" data-testid="filter-value-deviation-max" value={filters.max_value_deviation_pct} onChange={e => onChange("max_value_deviation_pct", e.target.value)}
+                  placeholder={t("fields.max")} />
+              </div>
+            </div>
+          )}
+
           {/* Potentiale-filter fjernet (#1162): potentialet er skjult information —
               man kan ikke filtrere på en værdi man ikke har scoutet, og et
               server-filter på den rå kolonne var en oracle-lækage. */}
@@ -450,6 +474,8 @@ export default function RiderFilters({
           {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parseInt(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
           {showAskingPriceFilter && filters.min_asking_price && <Chip t={t} label={t("chips.askingPrice.min", { amount: formatNumber(parseInt(filters.min_asking_price)) })} onRemove={() => onChange("min_asking_price", "")} />}
           {showAskingPriceFilter && filters.max_asking_price && <Chip t={t} label={t("chips.askingPrice.max", { amount: formatNumber(parseInt(filters.max_asking_price)) })} onRemove={() => onChange("max_asking_price", "")} />}
+          {showValueDeviationFilter && filters.min_value_deviation_pct && <Chip t={t} label={t("chips.valueDeviation.min", { value: filters.min_value_deviation_pct })} onRemove={() => onChange("min_value_deviation_pct", "")} />}
+          {showValueDeviationFilter && filters.max_value_deviation_pct && <Chip t={t} label={t("chips.valueDeviation.max", { value: filters.max_value_deviation_pct })} onRemove={() => onChange("max_value_deviation_pct", "")} />}
           {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}
           {filters.u23 && <Chip t={t} label={t("toggles.u23")} onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip t={t} label={t("toggles.freeAgent")} onRemove={() => onChange("free_agent", false)} />}
