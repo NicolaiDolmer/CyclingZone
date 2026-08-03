@@ -7081,6 +7081,7 @@ router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
 
     res.json({ days, snapshots: data || [] });
   } catch (error) {
+    captureException(error);
     res.status(500).json({ error: error.message || "Kunne ikke hente vækst-snapshots" });
   }
 });
@@ -7100,10 +7101,11 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
     const teamIds = (subs || []).map(s => s.team_id);
     let teamsById = {};
     if (teamIds.length) {
-      const { data: teams } = await supabase
+      const { data: teams, error: teamsErr } = await supabase
         .from("teams")
         .select("id, name, manager_name")
         .in("id", teamIds);
+      if (teamsErr) throw teamsErr;
       teamsById = Object.fromEntries((teams || []).map(t => [t.id, t]));
     }
 
@@ -7134,6 +7136,7 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
+    captureException(error);
     res.status(500).json({ error: error.message || "Kunne ikke hente kunde-data" });
   }
 });
@@ -7156,10 +7159,11 @@ router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
     const userIds = (rows || []).map(r => r.user_id);
     let teamByUser = {};
     if (userIds.length) {
-      const { data: teams } = await supabase
+      const { data: teams, error: teamsErr } = await supabase
         .from("teams")
         .select("user_id, name")
         .in("user_id", userIds);
+      if (teamsErr) throw teamsErr;
       teamByUser = Object.fromEntries((teams || []).map(t => [t.user_id, t]));
     }
 
@@ -7170,6 +7174,7 @@ router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
 
     res.json({ summary: summarizeNps(rows || []), responses });
   } catch (error) {
+    captureException(error);
     res.status(500).json({ error: error.message || "Kunne ikke hente NPS-data" });
   }
 });

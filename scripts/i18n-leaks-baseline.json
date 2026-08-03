@@ -20,6 +20,6 @@
     "backend/lib/seasonRaceDays.js": 3,
     "backend/lib/teamProfileEngine.js": 3,
     "backend/lib/urlSafety.js": 6,
-    "backend/routes/api.js": 56
+    "backend/routes/api.js": 57
   }
 }
