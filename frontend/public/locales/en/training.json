@@ -15,7 +15,7 @@
   "focusGuideTitle": "What each focus trains",
   "focusGuideIntro": "Each focus develops these abilities faster. Your other abilities keep improving a little more slowly, so riders develop across the board, just fastest in the chosen direction.",
   "focusGuideIntensity": "Intensity sets the pace: Easy is safe, Normal is the balanced default (small setback risk), Hard is fastest (clear risk of a setback or injury when fatigue is high).",
-  "focusGuideGating": "Every rider has a primary and a secondary type, plus a hidden potential per ability, set when the rider is created. A focus only speeds abilities toward their ceiling if the rider's type supports them — and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45%, and a type actively opposed to the ability reaches only around 12%. Check both type badges before picking a focus — the dropdown below marks each option to show the fit.",
+  "focusGuideGating": "Every rider has a primary and a secondary type, plus a hidden potential per ability, set when the rider is created. A focus only speeds abilities toward their ceiling if the rider's type supports them, and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45%, and a type actively opposed to the ability reaches only around 12%. Check both type badges before picking a focus: the dropdown below marks each option to show the fit.",
   "trainability_strength": "▲ suits this type",
   "trainability_limited": "◦ limited for this type",
   "trainability_blocked": "✕ very limited",
