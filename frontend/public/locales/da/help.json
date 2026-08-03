@@ -1161,8 +1161,8 @@
       "a": "Det er ægte, og det følger med videre: Spar kræfter sænker etapens trætheds-tilvækst til 70% af Normal (Arbejd lægger i stedet 20% oveni), og fordi træthed er en vedvarende værdi der kun nulstilles ved sæsonskifte, efterlader en etape kørt på Spar kræfter målbart mindre træthed til rytterens næste etape, og hans næste løb. Arbejder han for holdet (hjælper eller udbrudsjæger), halverer Spar kræfter også den pladsstraf han betaler for det arbejde, uden at det svækker den støtte kaptajnen får fra ham. Så ja, det giver mening at sætte Spar kræfter på en etape hvor der reelt ikke er noget tilbage at vinde for den rytter, fx en sidste etape uden trøje eller point i spil: det kan kun forbedre hans eget resultat og gør ham friskere bagefter."
     },
     "seasonFormCarryoverFaq": {
-      "q": "Beholdt rytterne deres sæson 1-form, da sæson 2 startede?",
-      "a": "Ja. Ved sæsonskiftet nulstilles alle rytteres Træthed til 0, men Form røres slet ikke af sæsonskiftet, så den form en rytter havde ved forrige sæsons afslutning følger uændret med ind i den nye. Form bevæger sig derefter dag for dag som den plejer: den stiger når en rytter træner eller kører løb i 25-60-trætheds-\"sweet spot\"'en, og falder hvis han presses ud i overbelastning, så en overført værdi vil drifte i dagene efter i stedet for at stå fast."
+      "q": "Beholder rytterne deres forrige sæsons form, når en ny sæson starter?",
+      "a": "Delvist. Form nulstilles nu ved sæsonskiftet, men ikke helt: den nye form beregnes som 50 + (gammel form - 50) x 0,25, så en rytter der sluttede forrige sæson med meget høj eller lav form starter markant tættere på neutral, men beholder et svagt aftryk af hvor han sluttede. Form bevæger sig derefter dag for dag som den plejer: den stiger når en rytter træner eller kører løb i 25-60-trætheds-\"sweet spot\"'en, og falder hvis han presses ud i overbelastning."
     },
     "sprintCaptainRoleFaq": {
       "q": "Jeg har to sprintere: én er kaptajn, én er sprint-kaptajn. Hvem arbejder holdet reelt for?",

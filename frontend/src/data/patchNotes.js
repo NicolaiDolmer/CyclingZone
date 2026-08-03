@@ -4,6 +4,125 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.89",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "AI teams",
+        "en": {
+          "title": "AI teams now recover fatigue like human teams",
+          "body": "AI opponents were stuck permanently at maximum fatigue and never recovered day to day the way human managed teams do. Since fatigue is subtracted from race performance, this was a real, unintended disadvantage for AI teams. They now go through the same daily fatigue recovery as everyone else."
+        },
+        "da": {
+          "title": "AI-hold restituerer nu træthed ligesom menneske-hold",
+          "body": "AI-modstandere sad fast på maksimal træthed permanent og restituerede aldrig dag for dag, sådan som menneskestyrede hold gør. Da træthed trækkes fra løbspræstationen, var det en reel, utilsigtet ulempe for AI-holdene. De gennemgår nu samme daglige trætheds-restitution som alle andre."
+        },
+        "refs": [3015]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Finance forecast now matches what actually happens at season start",
+          "body": "The next season forecast only counted sponsor and prize income minus loan interest, leaving out upkeep, facility upkeep, staff salaries and academy costs entirely. All four are now included, so the projected number lines up with what actually happens when the season starts. We also corrected the forecast help text, which mentioned a loan fee that does not exist."
+        },
+        "da": {
+          "title": "Finansprognosen matcher nu det der faktisk sker ved sæsonstart",
+          "body": "Prognosen for næste sæson talte kun sponsor- og præmieindtægt minus lånerente, og udelod helt upkeep, facilitetsupkeep, stablønninger og akademiomkostninger. Alle fire indgår nu, så det forventede tal matcher det der faktisk sker når sæsonen starter. Vi rettede samtidig hjælpeteksten til prognosen, som nævnte et lånegebyr der ikke findes."
+        },
+        "refs": [3236]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Rider Form now partially resets at the season change",
+          "body": "Until now, Form carried over completely unchanged from one season to the next, only Fatigue was reset. Form now also moves part of the way back toward a neutral 50: new Form equals 50 plus (old Form minus 50) times 0.25, so a rider who ended the previous season with very high or very low Form starts the new one much closer to neutral, while keeping a faint trace of where they left off. This takes effect at the Season 2 to Season 3 transition."
+        },
+        "da": {
+          "title": "Rytterform nulstilles nu delvist ved sæsonskiftet",
+          "body": "Indtil nu bar Form uændret med fra én sæson til den næste, kun Træthed blev nulstillet. Nu bevæger Form sig også en del af vejen tilbage mod neutral 50: ny form er 50 plus (gammel form minus 50) gange 0,25, så en rytter der sluttede forrige sæson med meget høj eller lav form starter markant tættere på neutral, men beholder et svagt aftryk af hvor han sluttede. Det træder i kraft ved overgangen fra sæson 2 til sæson 3."
+        },
+        "refs": [3232]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your dashboard now counts down to your first race",
+          "body": "New teams had no way of knowing when their first race would happen. The dashboard now shows a countdown to it, and race result notifications link straight to the actual result instead of a generic results page."
+        },
+        "da": {
+          "title": "Dit dashboard tæller nu ned til dit første løb",
+          "body": "Nye hold havde ingen måde at vide hvornår deres første løb ville køre. Dashboardet viser nu en nedtælling til det, og løbsnotifikationer linker direkte til det faktiske resultat i stedet for en generisk resultatside."
+        },
+        "refs": [3243]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Tables",
+        "en": {
+          "title": "Sortable table columns now show you they are sortable",
+          "body": "Columns you could sort by used to give no hint before your first click, beyond a cursor change and a faint hover color. Every sortable column header now shows a subtle two way arrow up front, across every table in the app."
+        },
+        "da": {
+          "title": "Sorterbare kolonner viser nu at de kan sorteres",
+          "body": "Kolonner du kunne sortere efter gav før intet hint før dit første klik, ud over en markørændring og en svag hover-farve. Enhver sorterbar kolonneoverskrift viser nu en diskret tovejs-pil på forhånd, i alle tabeller i app'en."
+        },
+        "refs": [3188]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard standings now show your own group, not the whole division",
+          "body": "The standings card on your dashboard only filtered by division, not by group, so with up to 8 groups per division it showed every group's teams instead of just yours. It now shows your own group, with a group label so you know what you are looking at."
+        },
+        "da": {
+          "title": "Dashboardets stilling viser nu din egen gruppe, ikke hele divisionen",
+          "body": "Stillingskortet på dit dashboard filtrerede kun på division, ikke på gruppe, så med op til 8 grupper pr. division viste det alle gruppers hold i stedet for kun dine. Det viser nu din egen gruppe, med en gruppe-etiket så du ved hvad du kigger på."
+        },
+        "refs": [2182]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Sponsor bonus lines are now translated, and two expense types are no longer lumped into Other",
+          "body": "Sponsor signing, season goal and result bonuses showed raw English text in the finance history regardless of your language setting. They are now properly translated. Facility purchases and scout travel were also falling into an undifferentiated Other category in both the finance history filter and the season report chart. They are now correctly categorized and labeled as their own expense types."
+        },
+        "da": {
+          "title": "Sponsor-bonuslinjer er nu oversat, og to udgiftstyper havner ikke længere i Andet",
+          "body": "Sponsor-tegnings-, sæsonmåls- og resultatbonusser viste rå engelsk tekst i finanshistorikken uanset dit sprogvalg. De er nu korrekt oversat. Facilitetskøb og spejderrejser havnede desuden i en udifferentieret Andet-kategori, både i finanshistorikkens filter og i sæsonrapportens graf. De kategoriseres og mærkes nu korrekt som deres egne udgiftstyper."
+        },
+        "refs": [2840]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Account",
+        "en": {
+          "title": "Pro subscription status now stays in sync after payment",
+          "body": "Your Pro subscription status could fail to update right after a successful payment, leaving your account looking like it had not upgraded. It is now reconciled with our payment provider daily, so it corrects itself even if the initial update is missed."
+        },
+        "da": {
+          "title": "Pro-abonnementsstatus holdes nu synkroniseret efter betaling",
+          "body": "Din Pro-abonnementsstatus kunne fejle i at opdatere lige efter en gennemført betaling, så din konto så ud som om den ikke var opgraderet. Den bliver nu afstemt med vores betalingsudbyder dagligt, så den retter sig selv, selv hvis den første opdatering springes over."
+        },
+        "refs": [2736]
+      }
+    ]
+  },
+  {
     "version": "7.88",
     "date": "2026-08-03",
     "label": "Beta",
