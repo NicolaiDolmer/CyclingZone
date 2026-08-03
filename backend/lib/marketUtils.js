@@ -172,7 +172,10 @@ export async function getTeamMarketState(supabase, teamId) {
   const team = await expectSingle(
     supabase
       .from("teams")
-      .select("id, name, balance, division, user_id")
+      // #3134: created_at med så transferExecution kan håndhæve ung-konto-
+      // cooldownen på store udgående overførsler/byttehandler uden et ekstra
+      // opslag pr. team.
+      .select("id, name, balance, division, user_id, created_at")
       .eq("id", teamId)
   );
 

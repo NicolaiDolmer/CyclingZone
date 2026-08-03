@@ -395,7 +395,10 @@
     "boardSigningRestriction": "Bestyrelsen blokerer køb over {threshold} CZ$ (tilfredshed under {satisfaction}%).",
     "boardSalaryCap": "Lønloft pålagt af bestyrelsen ({cap} CZ$). Du kan ikke øge holdets samlede løn. Sælg en rytter først.",
     "squadFineDeducted": "Bøde: {fineAmount} CZ$ · Fradrag: {penaltyPoints} point",
-    "debtCapReached": "Gældsloft på {ceiling} CZ$ nået for denne division"
+    "debtCapReached": "Gældsloft på {ceiling} CZ$ nået for denne division",
+    "loanGateRaceDaysOnly": "Nye hold skal have kørt {minRaceDays} løbsdag(e) før de kan optage lån. I har kørt {raceDaysRun} indtil videre.",
+    "loanGateAccountAgeOnly": "Nye hold skal være {minAccountAgeDays} dag(e) gamle før de kan optage lån. Jeres hold er lige nu {accountAgeDays} dag(e) gammelt.",
+    "loanGateEither": "Nye hold skal have kørt {minRaceDays} løbsdag(e) eller være {minAccountAgeDays} dag(e) gamle før de kan optage lån. I har kørt {raceDaysRun} indtil videre, og jeres hold er {accountAgeDays} dag(e) gammelt."
   },
   "consequence": {
     "layer": {
