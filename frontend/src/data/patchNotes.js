@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.89",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "The auction guide now actually points at the bid field",
+          "body": "On desktop, the first-time \"Show me how\" guide for auctions was pointing at an empty spot in the top-left corner of the screen instead of the bid field it was describing. The page renders both a mobile and a desktop version of the bid row, and the guide always grabbed the mobile one, which is invisible on desktop. It now picks whichever version is actually on screen."
+        },
+        "da": {
+          "title": "Auktions-guiden peger nu faktisk på bud-feltet",
+          "body": "På desktop pegede den førstegangs-guide (\"Vis mig hvordan\") for auktioner på et tomt sted øverst til venstre på skærmen i stedet for det bud-felt den forklarede. Siden rendrer både en mobil- og en desktop-udgave af bud-rækken, og guiden fangede altid mobil-udgaven, som er usynlig på desktop. Den vælger nu den udgave der rent faktisk vises."
+        },
+        "refs": [3007]
+      }
+    ]
+  },
+  {
     "version": "7.88",
     "date": "2026-08-03",
     "label": "Beta",
