@@ -51,45 +51,8 @@ CREATE POLICY "fairplay_whitelisted_pairs_no_client_access" ON public.fairplay_w
   USING (false)
   WITH CHECK (false);
 
--- Seed: ejerens egne testkonti (@cyclingzone.dev) er kendt lovlige mod hinanden
--- OG mod ejerens hovedkonto (Dolmer/"Bad At Names") — alle logger ind fra samme
--- udviklingsmaskine (bekræftet: delt eksakt IP 109.59.94.167 i identity_events,
--- 2026-08-03-analysen til #3135). Idempotent (ON CONFLICT DO NOTHING via unique
--- index + WHERE NOT EXISTS-stil er unødvendig her, ON CONFLICT er simplere).
---
--- Team-id'er er miljøspecifikke (prod). Hvis id'erne herunder ikke matcher det
--- miljø migrationen appliceres i (fx en frisk lokal/staging-DB uden disse test-
--- konti), fejler INSERT'et på FK-constraint og springes over uden at fejle hele
--- filen (DO-block, samme defensive mønster som 2026-07-31-3132-identity-events.sql).
-DO $$
-DECLARE
-  v_bad_at_names uuid := '814b9df1-e2b9-4a3c-9ac1-ac33d7439bc4';
-  v_test_a       uuid := '7d968e90-ab56-4eb3-832d-2d9d0515a954';
-  v_test_b       uuid := 'e3231bb4-6520-4c8d-9d4c-55d252d03f85';
-  v_test_seller  uuid := '981b7a82-1747-44c8-a3a9-e0c6a1e68f55';
-  v_pair uuid[];
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.teams WHERE id IN (v_bad_at_names, v_test_a, v_test_b, v_test_seller)) THEN
-    FOREACH v_pair SLICE 1 IN ARRAY ARRAY[
-      ARRAY[v_bad_at_names, v_test_a],
-      ARRAY[v_bad_at_names, v_test_b],
-      ARRAY[v_bad_at_names, v_test_seller],
-      ARRAY[v_test_a, v_test_b],
-      ARRAY[v_test_a, v_test_seller],
-      ARRAY[v_test_b, v_test_seller]
-    ]
-    LOOP
-      IF v_pair[1] IS NOT NULL AND v_pair[2] IS NOT NULL THEN
-        INSERT INTO public.fairplay_whitelisted_pairs (team_id_lo, team_id_hi, reason, whitelisted_by)
-        VALUES (
-          LEAST(v_pair[1], v_pair[2]), GREATEST(v_pair[1], v_pair[2]),
-          'Ejerens egne testkonti (@cyclingzone.dev) + hovedkonto — delt udviklingsmaskine, ikke spillere.',
-          'owner'
-        )
-        ON CONFLICT (team_id_lo, team_id_hi) DO NOTHING;
-      END IF;
-    END LOOP;
-  ELSE
-    RAISE NOTICE 'fairplay_whitelisted_pairs seed sprunget over: test-konti findes ikke i dette miljø';
-  END IF;
-END $$;
+-- INTET SEED. Ejer-beslutning 3/8 (nat-batch): "det er mig der bestemmer hvad
+-- der skal whitelistes" — tabellen shippes TOM, og hvert par indsættes manuelt
+-- først når ejeren har godkendt netop det par (gælder også ejerens egne
+-- testkonti). Kandidat-par med evidens: se docs/audits/2026-08-03-identity-
+-- correlation-3135.md. Indsæt-skabelon står i header-kommentaren øverst.
