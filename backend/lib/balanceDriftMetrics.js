@@ -463,6 +463,161 @@ export function classifyTierBreakdown(byTier = {}, bands = BALANCE_DRIFT_BANDS) 
 }
 
 /**
+ * #2557 (afsnit 5b) — PER-LØB snapshot af share4Plus for ÉN dag: klynge-enheden
+ * cluster-korrektionen nedenfor grupperer på. Et løb bidrager i praksis kun ÉN
+ * etape pr. kalenderdag (season-invariant "1 rytter = 1 løb/dag"), så denne
+ * dags snapshot er triviel i sig selv (klynge = etape); værdien kommer først
+ * når flere dages snapshots puljes i poolClusterCorrectedShare4Plus — en
+ * flerdags-etapeløb (samme raceId over N dage) er DÉR den korrelerede klynge.
+ *
+ * REPORT-ONLY: persisteres i metrics-jsonb'en (som byTier), læses aldrig af
+ * classifyDay/classifyMetric — ændrer intet ved den nuværende vagt.
+ *
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeRace> & {raceId?:string|null}>} observations
+ * @returns {Record<string, {hits:number, stages:number}>}  nøgle = raceId (string); ukendt raceId udelades (kan ikke klynges — samme princip som foldRiderWindowRows' NULL-rider_id-værn)
+ */
+export function computeShare4PlusRaceSnapshot(observations = []) {
+  const out = {};
+  for (const obs of observations) {
+    if (obs?.raceId == null) continue;
+    const key = String(obs.raceId);
+    if (!out[key]) out[key] = { hits: 0, stages: 0 };
+    out[key].stages++;
+    if (obs.maxSameTeamTop10 >= 4) out[key].hits++;
+  }
+  return out;
+}
+
+/**
+ * #2557 (afsnit 5b) — klynge-korrigeret estimat + standardfejl for en binær
+ * pr.-etape-hændelse, fra allerede grupperede (hits, stages)-par (én pr.
+ * løb/klynge). Ren matematik uden share4Plus-specifik viden, så den kan
+ * genbruges til andre pr.-etape-metrikker med samme klynge-struktur.
+ *
+ * HVORFOR: en naiv pr.-etape-SE (`naiveSe`, sqrt(p(1-p)/n) — den klassiske
+ * Bernoulli-antagelse) behandler korrelerede etaper i SAMME løb som
+ * uafhængige observationer og overvurderer signifikansen. Auditen
+ * (docs/audits/2026-08-03-team-dominance-2557.md, afsnit 5b) målte 27/7-3/8:
+ * samme punktestimat (~0,11-0,12), men naivt ~7 SE fra bånd-max mod ~2,2 SE
+ * klynge-korrigeret — 57 løb, ikke 265 uafhængige etaper.
+ *
+ * Metode: klynge-estimatet (`clusterEstimate`) er det UVÆGTEDE gennemsnit af
+ * hver klynges EGEN rate (hits/stages i den klynge) — IKKE et etape-vægtet
+ * gennemsnit, som ville genindføre samme bias. `clusterSe` = sample-sd
+ * (n−1-nævner) af klynge-raterne / sqrt(antal klynger), samme konvention som
+ * en simpel cluster-robust ("CR1"-lignende) SE for en klynget middelværdi.
+ * Kræver ≥2 klynger for en SE (sd er udefineret ved n=1) — `clusterSd`/
+ * `clusterSe` er `null` ved 0-1 klynger, aldrig NaN.
+ *
+ * @param {Record<string, {hits:number, stages:number}>} byCluster
+ * @returns {{
+ *   clusters:number, stages:number, hits:number,
+ *   naiveEstimate:number|null, naiveSe:number|null,
+ *   clusterEstimate:number|null, clusterSd:number|null, clusterSe:number|null,
+ * }}
+ */
+export function clusterCorrectedRate(byCluster = {}) {
+  const buckets = Object.values(byCluster || {}).filter(
+    (b) => b && Number.isFinite(b.stages) && b.stages > 0 && Number.isFinite(b.hits)
+  );
+  const clusters = buckets.length;
+  const stages = buckets.reduce((sum, b) => sum + b.stages, 0);
+  const hits = buckets.reduce((sum, b) => sum + b.hits, 0);
+
+  if (clusters === 0) {
+    return {
+      clusters: 0, stages: 0, hits: 0,
+      naiveEstimate: null, naiveSe: null,
+      clusterEstimate: null, clusterSd: null, clusterSe: null,
+    };
+  }
+
+  const naiveEstimate = stages > 0 ? hits / stages : null;
+  const naiveSe = naiveEstimate != null && stages > 0
+    ? Math.sqrt((naiveEstimate * (1 - naiveEstimate)) / stages)
+    : null;
+
+  const clusterRates = buckets.map((b) => b.hits / b.stages);
+  const clusterEstimate = clusterRates.reduce((sum, r) => sum + r, 0) / clusters;
+
+  let clusterSd = null;
+  let clusterSe = null;
+  if (clusters >= 2) {
+    const variance = clusterRates.reduce((sum, r) => sum + (r - clusterEstimate) ** 2, 0) / (clusters - 1);
+    clusterSd = Math.sqrt(variance);
+    clusterSe = clusterSd / Math.sqrt(clusters);
+  }
+
+  return { clusters, stages, hits, naiveEstimate, naiveSe, clusterEstimate, clusterSd, clusterSe };
+}
+
+/**
+ * Afstand fra et punktestimat til båndets relevante grænse, målt i
+ * standardfejl (SE). Positiv = uden for båndet med den afstand; 0 = inden for
+ * båndet. `null` hvis estimat/SE mangler, ikke-endelig, eller SE ≤ 0 (kan
+ * ikke måles — aldrig NaN/Infinity).
+ *
+ * @param {number|null} estimate
+ * @param {number|null} se
+ * @param {{min?:number, max?:number}} band
+ * @returns {number|null}
+ */
+export function distanceInStandardErrors(estimate, se, band = {}) {
+  if (estimate == null || !Number.isFinite(estimate)) return null;
+  if (se == null || !Number.isFinite(se) || se <= 0) return null;
+  const { min, max } = band;
+  if (max != null && estimate > max) return (estimate - max) / se;
+  if (min != null && estimate < min) return (min - estimate) / se;
+  return 0;
+}
+
+/**
+ * #2557 (afsnit 5b) — pool share4Plus-klynge-snapshots
+ * (computeShare4PlusRaceSnapshot()-output, persisteret som
+ * metrics.share4PlusByRace) over de seneste `windowDays` PERSISTEREDE rækker
+ * og klynge-korrigér resultatet. Samme rækkefølge-/hul-tolerance som
+ * poolDailyRate (nyeste `windowDays` rækker, ingen gætning ved manglende
+ * data) — men merger PR.-LØB i stedet for at genskabe én pulje-tæller, så
+ * samme løb over flere dage korrekt tælles som ÉN klynge, ikke N.
+ *
+ * REPORT-ONLY: bruges ikke af classifyDay/classifyMetric i denne PR (#2557
+ * afsnit 6, "Nu (denne PR, inert): mål problemet permanent" — hvorvidt
+ * klassifikationen skal skifte til denne estimator, og om båndet 0,05 skal
+ * rekalibreres på klynge-korrigeret basis, er en ejer-beslutning, jf.
+ * auditens åbne spørgsmål 3).
+ *
+ * @param {Array<{date:string, metrics?:{share4PlusByRace?:Record<string,{hits:number,stages:number}>}}>} rows
+ * @param {number} [windowDays]
+ * @returns {ReturnType<typeof clusterCorrectedRate> & {days:number}}
+ */
+export function poolClusterCorrectedShare4Plus(rows = [], windowDays = BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS) {
+  const sorted = [...rows]
+    .filter((r) => r && r.date)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, Math.max(1, Math.floor(windowDays)));
+
+  const merged = {};
+  let days = 0;
+  for (const row of sorted) {
+    const snapshot = row.metrics?.share4PlusByRace;
+    if (!snapshot || typeof snapshot !== "object") continue;
+    let sawRace = false;
+    for (const [raceId, bucket] of Object.entries(snapshot)) {
+      const hits = Number(bucket?.hits);
+      const stages = Number(bucket?.stages);
+      if (!Number.isFinite(hits) || !Number.isFinite(stages) || stages <= 0) continue;
+      sawRace = true;
+      if (!merged[raceId]) merged[raceId] = { hits: 0, stages: 0 };
+      merged[raceId].hits += hits;
+      merged[raceId].stages += stages;
+    }
+    if (sawRace) days++;
+  }
+
+  return { ...clusterCorrectedRate(merged), days };
+}
+
+/**
  * Klassificér ÉN metrik-værdi mod dens bånd.
  * "yellow" = uden for bånd, men inden for en margin på 15% af båndets bredde
  * (nærved-brud — endnu ikke et rødt brud). Bredden for et ensidet bånd (kun
