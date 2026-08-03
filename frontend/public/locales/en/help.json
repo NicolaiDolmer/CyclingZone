@@ -1151,6 +1151,18 @@
     "staffReleaseFaq": {
       "q": "How do I release staff, and what does it cost?",
       "a": "Open the staff member's profile (or their row on the staff overview list) and use Release staff. The contract ends immediately and the role opens for a new hire right away, but it costs a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit, so there are no surprises. You can only release staff on your own team."
+    },
+    "saveLegsCarryoverFaq": {
+      "q": "Does Save legs actually make my rider fresher later, or does it just move effort around within the same race?",
+      "a": "It's real, and it carries forward: Save legs cuts that stage's fatigue build-up to 70% of Normal (Work instead adds 20% on top), and because fatigue is a persistent stat that's only reset between seasons, a stage ridden on Save legs leaves measurably less fatigue for your rider's next stage, and his next race too. If he's working for the team (Helper or Breakaway hunter), Save legs also halves the placing penalty he pays for that work, without reducing the support your captain gets from him. So yes, it makes sense to set Save legs on a stage where there's genuinely nothing left to win for that rider, like a final stage with no jersey or points on the line: it can only help his own result and leaves him fresher afterwards."
+    },
+    "seasonFormCarryoverFaq": {
+      "q": "Did riders keep their Season 1 form when Season 2 started?",
+      "a": "Yes. At the season change every rider's Fatigue is reset to 0, but Form is not touched by the season transition at all, so whatever Form a rider had at the end of the previous season carries straight over into the new one unchanged. Form then keeps moving day to day exactly as it always does: it rises when a rider trains or races in the 25-60 fatigue \"sweet spot,\" and drops if he's pushed into overload, so a carried-over value will drift over the following days rather than staying fixed."
+    },
+    "sprintCaptainRoleFaq": {
+      "q": "I have two sprinters: one is Captain, one is Sprint captain. Which one does my team actually work for?",
+      "a": "It's decided per stage by the terrain, not by preference: on flat stages your helpers' support goes to the Sprint captain (falling back to the Captain if you haven't set a Sprint captain for that race), and on every other stage type (rolling, hilly, mountain, high mountain, time trial, cobbles, classic), it goes to the Captain only, with no support at all for the Sprint captain. In short: Captain is your protected rider everywhere except flat stages; Sprint captain is protected specifically on flat, bunch-sprint stages. Set both if you want a genuine two-pronged sprint-and-GC team: they never compete for the same helpers on the same stage."
     }
   }
 }
