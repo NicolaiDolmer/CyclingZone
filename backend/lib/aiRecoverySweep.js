@@ -180,13 +180,19 @@ export async function runAiRecoverySweep({
       swept += 1;
       ridersRecovered += n;
     } catch (err) {
-      failed += 1;
-      console.error(`  ❌ AI-recovery sweep fejlede for hold ${team.id}:`, err.message);
+      // best-effort: per-hold isolation (mirror af trainingSweep.js) — én fejl må
+      // ikke stoppe resten af sweep'en. `failed` aggregeres og Sentry-captures af
+      // cron.js's runAiRecoverySweepCron-wrapper (samme mønster som
+      // runTrainingSweepCron), så fejlen forsvinder IKKE stille fra Sentry — den
+      // rapporteres bare ét niveau højere end her.
+      //
       // Bevidst FORENKLET vs. dailyTrainingEngine.js's Phase-1/2-split: fejler
       // riders-load/upsert EFTER reservationen er taget, slettes reservationen
       // IKKE. Konsekvensen er lav (holdet prøver igen i morgen — én ekstra dag på
       // høj træthed, ikke et permanent handicap som selve bug'en #3015), så den
       // ekstra kompleksitet ved en retry-samme-dag er ikke vurderet nødvendig her.
+      failed += 1;
+      console.error(`  ❌ AI-recovery sweep fejlede for hold ${team.id}:`, err.message);
     }
   }
 
