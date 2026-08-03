@@ -4526,6 +4526,83 @@ test("#2301 · processTeamSeasonPayroll kørt to gange giver præcis ét nødlå
   assert.equal(salaryDebits.length, 1, "præcis én løn-post — 2. kørsel skal skippe (idempotent)");
 });
 
+// ─── #2840: wage_deduction_mode-gate i processTeamSeasonPayroll ──────────────
+// Config-gated dagsbaseret løntræk. Mode="season_upfront" (default) skal
+// give BYTE-FOR-BYTE samme adfærd som før #2840 (verificeret af de 103
+// øvrige tests i denne fil, som alle kører UDEN at mocke app_config og derfor
+// rammer readWageDeductionMode's fail-safe → "season_upfront"). Disse to
+// tests låser den eksplicitte kontrakt: mode styrer branchen, og "daily"
+// springer det gamle engangstræk helt over.
+
+function buildPayrollGateMock({ balance = 999_999 } = {}) {
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select() {
+            return { eq() { return { single() { return Promise.resolve({ data: { balance }, error: null }); } }; } };
+          },
+          update() { return { eq() { return Promise.resolve({ error: null }); } }; },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq() { return { eq() { return Promise.resolve({ count: 0, error: null }); } }; } };
+            }
+            return { in() { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
+      throw new Error(`Unexpected table in #2840 gate test: ${table}`);
+    },
+  };
+  return { supabase, financeRows };
+}
+
+test("#2840 · mode=season_upfront (eksplicit) trækker fuld sæsonløn ved sæson-start, som i dag", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-gate-upfront", name: "Gate Upfront FC", division: 3, riders: [{ id: "r1", salary: 5000 }, { id: "r2", salary: 3000 }] };
+
+  const result = await processTeamSeasonPayroll(team, "season-gate-1", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "season_upfront",
+  });
+
+  const salaryRows = financeRows.filter(r => r.type === "salary");
+  assert.equal(salaryRows.length, 1, "season_upfront skal stadig trække ét samlet løn-beløb");
+  assert.equal(salaryRows[0].amount, -8000, "beløbet skal være -sum(rider.salary), uændret formel");
+  assert.equal(result.total_salary, 8000, "payroll-summary skal rapportere den fulde sæsonløn");
+});
+
+test("#2840 · mode=daily springer sæson-start-løntrækket helt over (dagssweepen overtager)", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-gate-daily", name: "Gate Daily FC", division: 3, riders: [{ id: "r1", salary: 5000 }, { id: "r2", salary: 3000 }] };
+
+  const result = await processTeamSeasonPayroll(team, "season-gate-2", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => { throw new Error("emergency-lån må IKKE oprettes i daily-mode ved sæson-start"); },
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "daily",
+  });
+
+  const salaryRows = financeRows.filter(r => r.type === "salary");
+  assert.equal(salaryRows.length, 0, "daily-mode må IKKE skrive nogen løn-transaktion ved sæson-start");
+  assert.equal(result.total_salary, 0, "payroll-summary skal vise 0 — hele beløbet håndteres af den daglige sweep");
+  assert.equal(result.emergency_loan, 0, "intet nødlån skal udløses af det (fraværende) sæson-start-løntræk");
+});
+
 // ─── #1608 form-frys: tier 4 (DIVISION_BONUSES[4] + [1,2,3]→MIN..MAX-loop) ────────
 
 test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] findes)", async () => {

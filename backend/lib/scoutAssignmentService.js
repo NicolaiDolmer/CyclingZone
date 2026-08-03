@@ -7,6 +7,7 @@
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
+import { FINANCE_REASON } from "./economyConstants.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
 import { lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
 
@@ -189,6 +190,8 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
     metadata: { code: "tx.scoutTravel", params: { kind: "target", riderId, targetLevel: toLevel } },
     audit: {
       sourcePath: "scoutAssignmentService.startTargetAssignment",
+      // #3198-fund-8: se facilityService.purchaseFacilityUpgrade for baggrund.
+      reasonCode: FINANCE_REASON.SCOUT_TRAVEL,
       idempotencyKey: `scout_travel:${teamId}:${inserted.id}`,
     },
   });
@@ -253,6 +256,8 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
     metadata: { code: "tx.scoutTravel", params: { kind: "mission", criteria: normalizedCriteria } },
     audit: {
       sourcePath: "scoutAssignmentService.startMission",
+      // #3198-fund-8: se facilityService.purchaseFacilityUpgrade for baggrund.
+      reasonCode: FINANCE_REASON.SCOUT_TRAVEL,
       idempotencyKey: `scout_travel:${teamId}:${inserted.id}`,
     },
   });

@@ -87,6 +87,10 @@ export async function purchaseFacilityUpgrade(
     metadata: { code: "tx.facilityPurchase", params: { track, tier: nextTier } },
     audit: {
       sourcePath: "facilityService.purchaseFacilityUpgrade",
+      // #3198-fund-8: reason_code manglede — donuten kunne ikke skelne facility_purchase
+      // fra andre reason_code=null-rækker (fx scout_travel), begge faldt til ét
+      // udifferentieret "Other"-segment.
+      reasonCode: FINANCE_REASON.FACILITY_PURCHASE,
       idempotencyKey: `facility_purchase:${teamId}:${track}:${nextTier}`,
     },
   });
