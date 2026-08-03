@@ -47,6 +47,10 @@ const RAW_KEYS = new Set([
   "maxSeason",
   // #3097 · squad-risk-fejlens at-risk-tæller — antal ryttere, ikke et beløb.
   "atRiskCount",
+  // #3134 · ung-konto-spærrer — race-dage/alder/timer-tal, ikke beløb.
+  // cooldownAmount er UNDTAGET (det ER et CZ$-beløb og skal tusind-formateres).
+  "minRaceDays", "minAccountAgeDays", "raceDaysRun", "accountAgeDays",
+  "cooldownHours", "unlocksInHours",
 ]);
 
 /**
