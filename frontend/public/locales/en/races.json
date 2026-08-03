@@ -65,6 +65,7 @@
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
       "remove": "Remove rider",
+      "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",
       "paybackHere": "Payback dip here: {names} ({points} form)",
       "paybackHereNoPoints": "Payback dip here: {names}"
