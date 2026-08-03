@@ -1123,9 +1123,13 @@ export const SEED_TRAINING = {
     "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
   },
   capped: {},
+  // #3195: værdierne skal matche backend-vokabularet ("strength"/"limited"/
+  // "blocked" — se training.js' focusTrainability), IKKE et "high"-synonym, ellers
+  // renderer chippen/dropdown-markøren aldrig i preview (currentTrainability-tjekket
+  // matcher kun "limited"/"blocked", og t(`trainability_${level}`) findes ikke for "high").
   trainability: {
-    "rider-1": { sprint: "high", acceleration: "high", vo2max: "limited", threshold: "limited" },
-    "rider-2": { vo2max: "high", sprint: "blocked", aero: "limited" },
+    "rider-1": { sprint: "strength", acceleration: "strength", vo2max: "limited", threshold: "limited" },
+    "rider-2": { vo2max: "strength", sprint: "blocked", aero: "limited" },
   },
   smartDefaultFocus: { "rider-2": "vo2max" },
   weekPlan: null,

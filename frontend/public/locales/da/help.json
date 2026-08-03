@@ -565,7 +565,7 @@
       },
       "typeGating": {
         "title": "Hvorfor rykker et fokus ikke for nogle ryttere?",
-        "text": "Enhver rytter har en type (spurter, klatrer, TT, GC og så videre) og et skjult potentiale pr. evne, begge sat da rytteren blev oprettet. Et træningsfokus fremskynder kun evner der passer til rytterens type: en klatrers Spurt og Acceleration rykker næsten intet under et spurt-fokus, uanset intensitet, fordi den type har ringe naturligt råderum der. Tjek rytterens type-mærkat før du vælger fokus, og brug fokus-dropdownen, som mærker hver mulighed så du kan se med det samme om den passer til rytteren, er begrænset, eller slet ikke udvikles."
+        "text": "Enhver rytter har en primær OG en sekundær type (spurter, klatrer, TT, GC og så videre) og et skjult potentiale pr. evne, begge sat da rytteren blev oprettet. Et træningsfokus fremskynder kun evner mod deres loft når rytterens type understøtter dem — og begge typer tæller: et stærkt match (primær eller sekundær) når tæt på det fulde loft, et neutralt match når omkring 45% af det, og en type der direkte modarbejder evnen når kun omkring 12% (stadig ikke nul, men langsomt — og for en ældre eller allerede veludviklet rytter kan den godt allerede stå der). Tjek begge af rytterens type-mærkater før du vælger fokus, og brug fokus-dropdownen, som mærker hver mulighed så du kan se med det samme om den er et stærkt match, begrænset, eller meget begrænset for netop den rytter."
       },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",

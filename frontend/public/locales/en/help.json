@@ -565,7 +565,7 @@
       },
       "typeGating": {
         "title": "Why doesn't a focus grow for some riders?",
-        "text": "Every rider has a type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds up abilities that suit the rider's type: a Climber's Sprint and Acceleration barely move under a Sprint focus, no matter the intensity, because that type has little natural room to grow there. Check a rider's type badge before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it suits the rider, is limited, or won't develop at all."
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds abilities toward their ceiling when the rider's type supports them — and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45% of it, and a type actively opposed to the ability reaches only around 12% (still not zero, but slow — and for an older or already well-developed rider it may already be there). Check both of a rider's type badges before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it's a strong fit, limited, or very limited for that rider."
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
