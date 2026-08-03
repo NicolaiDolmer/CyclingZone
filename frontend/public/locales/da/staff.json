@@ -18,7 +18,18 @@
     "negotiation": "forhandling", "marketing": "marketing"
   },
   "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Træningscentret er aktivt i spillet i dag; de øvrige kommer snart og viser hvad de vil gøre, når de går live." },
-  "history": { "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander." },
+  "history": {
+    "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander.",
+    "scouting": {
+      "loading": "Indlæser spejder-historik…",
+      "loadFailed": "Kunne ikke indlæse spejder-historikken. Prøv igen.",
+      "empty": "Ingen scoutede ryttere endnu.",
+      "loadingRider": "Indlæser rytter…",
+      "riderUnavailable": "Rytter ikke længere tilgængelig",
+      "levelValue": "Niveau {level}/{max}",
+      "table": { "date": "Dato", "rider": "Rytter", "level": "Niveau" }
+    }
+  },
   "switcher": { "count": "{index} / {total}" },
   "public": {
     "team": "Ansat hos {team}",
