@@ -395,7 +395,10 @@
     "boardSigningRestriction": "The board blocks purchases above {threshold} CZ$ (satisfaction below {satisfaction}%).",
     "boardSalaryCap": "Salary cap set by the board ({cap} CZ$). You cannot increase the team's total salary. Sell a rider first.",
     "squadFineDeducted": "Fine: {fineAmount} CZ$ · Deduction: {penaltyPoints} points",
-    "debtCapReached": "Debt cap of {ceiling} CZ$ reached for this division"
+    "debtCapReached": "Debt cap of {ceiling} CZ$ reached for this division",
+    "loanGateRaceDaysOnly": "New teams must run {minRaceDays} race day(s) before taking a loan. You've run {raceDaysRun} so far.",
+    "loanGateAccountAgeOnly": "New teams must be {minAccountAgeDays} day(s) old before taking a loan. Your team is currently {accountAgeDays} day(s) old.",
+    "loanGateEither": "New teams must run {minRaceDays} race day(s) or be {minAccountAgeDays} day(s) old before taking a loan. You've run {raceDaysRun} so far, and your team is {accountAgeDays} day(s) old."
   },
   "consequence": {
     "layer": {

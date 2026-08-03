@@ -244,6 +244,13 @@ function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
       if (table === "user_preferences") {
         return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) };
       }
+      // #3134 · ung-konto-lånespærre: createLoan batch-læser app_config via
+      // readNewAccountGateConfig() FØR resten af lån-flowet. Tom liste →
+      // begge tærskler 0 → gate disabled (denne fixture har ingen
+      // teams.created_at — testene her handler ikke om gaten).
+      if (table === "app_config") {
+        return { select: () => ({ in: () => Promise.resolve({ data: [], error: null }) }) };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };

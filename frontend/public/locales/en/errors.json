@@ -183,6 +183,8 @@
     "feedback_not_found": "Feedback not found",
     "feedback_reply_required": "Reply is required",
     "feedback_reply_too_long": "Reply is too long",
-    "feedback_already_replied": "This message has already been answered"
+    "feedback_already_replied": "This message has already been answered",
+    "transfer_cooldown_active": "New teams can't send {cooldownAmount}+ CZ$ out in a single transfer or swap during their first {cooldownHours} hour(s). This unlocks in about {unlocksInHours} hour(s).",
+    "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away."
   }
 }
