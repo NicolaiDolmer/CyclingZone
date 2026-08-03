@@ -1836,22 +1836,26 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const enabled = evaluateFlagStage(stage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
+    // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
+    // retninger (se focusTrainability-kommentaren i training.js), ellers
+    // mislabeles ryttere hvis sekundære type reelt løfter loftet på et fokus.
     const { data: riders } = await supabase
       .from("riders")
-      .select("id, primary_type")
+      .select("id, primary_type, secondary_type")
       .eq("team_id", teamId)
       .eq("is_retired", false);
     const riderIds = (riders ?? []).map((r) => r.id);
 
-    // #1974: coarse trainability-signal pr. rytter+fokus, udledt AF TYPEN alene
-    // (ingen caps/potentiale eksponeres — server-hidden per #1162).
+    // #1974/#3195: coarse trainability-signal pr. rytter+fokus, udledt af BEGGE
+    // typer (primær+sekundær) via focusTrainability (ingen caps/potentiale-TAL
+    // eksponeres — server-hidden per #1162).
     // #1894: smart_default_focus leveres SAMME sted — frontend genberegner ALDRIG
     // type→fokus-reglen selv, den er backend-only (smartDefaultFocus i training.js).
     const trainability = {};
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
     for (const rider of riders ?? []) {
-      trainability[rider.id] = focusTrainability(rider.primary_type ?? null);
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null);
       smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
