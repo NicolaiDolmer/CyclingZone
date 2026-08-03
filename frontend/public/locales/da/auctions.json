@@ -205,7 +205,14 @@
     "transferVerb": "sende et transferbud på",
     "transferAction": "Send bud",
     "questionPrefix": "Er du sikker på at du vil",
-    "onLabel": "på"
+    "onLabel": "på",
+    "typoGuard": {
+      "title": "Tjek din pris",
+      "body": "Du sætter <strong>{riderName}</strong> til salg for <strong>{price} CZ$</strong>.",
+      "question": "Markedsværdien er <strong>{marketValue} CZ$</strong>. Mente du den?",
+      "confirmButton": "Nej, min pris er med vilje",
+      "fixButton": "Ret prisen"
+    }
   },
   "fallback": {
     "rider": "rytter"

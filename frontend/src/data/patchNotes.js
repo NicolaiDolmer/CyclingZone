@@ -4,6 +4,83 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.87",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "My Team has a new Stats tab with season numbers per rider",
+          "body": "Next to Overview and Abilities you now find Stats: race days, wins, points and prize money for every rider on your squad, for the current season. The table is sortable, so you can instantly see who actually delivers. The numbers come from the same source as the rankings and season recap, they were just never gathered in one place before. Thanks to the manager who suggested it."
+        },
+        "da": {
+          "title": "Mit Hold har en ny Stats-fane med sæsontal pr. rytter",
+          "body": "Ved siden af Overblik og Evner finder du nu Stats: løbsdage, sejre, point og præmiepenge for hver rytter i din trup, for indeværende sæson. Tabellen kan sorteres, så du med det samme kan se hvem der faktisk leverer. Tallene kommer fra samme kilde som ranglisterne og sæson-opsummeringen, de var bare aldrig samlet ét sted før. Tak til manageren der foreslog det."
+        },
+        "refs": [3190]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Global Rank now only counts human managers",
+          "body": "AI fill teams no longer appear in Global Rank or take up places in it: your position now means what it should, your rank among real managers. Everyone moves up a few places compared with last week, that shift is the AI teams leaving, not other managers overtaking you. We also fixed a timing issue where Global Rank could briefly show older numbers than the standings page right after a race was decided; both pages now update together."
+        },
+        "da": {
+          "title": "Global Rank tæller nu kun menneskelige managere",
+          "body": "AI-udfyldningshold optræder ikke længere i Global Rank og optager ikke pladser i den: din placering betyder nu det den skal, din rang blandt rigtige managere. Alle rykker et par pladser op i forhold til sidste uge, det hop er AI-holdene der forlader listen, ikke andre managere der overhaler dig. Vi har samtidig rettet en timing-fejl hvor Global Rank kortvarigt kunne vise ældre tal end stillings-siden lige efter et løb var afgjort; begge sider opdateres nu sammen."
+        },
+        "refs": [2792, 3193]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Contract extensions now show how many you have left",
+          "body": "The rider page and team page now always show an 'Extensions used: X/3' counter, so you know where you stand before you act. When the cap is reached, the button is disabled with an explanation instead of letting you click and get rejected. We also closed a gap where the button could still be pressed for a moment on slow connections while the check was running."
+        },
+        "da": {
+          "title": "Kontraktforlængelser viser nu hvor mange du har tilbage",
+          "body": "Rytter-siden og holdsiden viser nu altid en 'Forlængelser brugt: X/3'-tæller, så du kender din status før du handler. Når loftet er nået, er knappen slået fra med en forklaring i stedet for at lade dig klikke og få afslag. Vi har samtidig lukket et hul hvor knappen på langsomme forbindelser kortvarigt stadig kunne trykkes mens tjekket kørte."
+        },
+        "refs": [3186]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A typo guard now catches suspicious auction starting prices",
+          "body": "If your starting price looks like a digit slipped, for example 21,100 for a rider valued at 211,007, the game now asks you to confirm before the auction is created, showing exactly how far below the estimated value you are. Deliberately listing low still works exactly as before, this is one extra click only when the price pattern looks like a typo. Two sellers recently lost real money this way, that will not happen silently again."
+        },
+        "da": {
+          "title": "Et tastefejl-værn fanger nu mistænkelige auktions-startpriser",
+          "body": "Hvis din startpris ligner et tabt ciffer, for eksempel 21.100 for en rytter vurderet til 211.007, beder spillet dig nu bekræfte før auktionen oprettes, og viser præcis hvor langt under den estimerede værdi du ligger. Bevidst lave startpriser virker præcis som før, det er ét ekstra klik kun når pris-mønstret ligner en tastefejl. To sælgere har for nylig mistet rigtige penge på den måde, det sker ikke stille igen."
+        },
+        "refs": [3184]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "New help answers on training fully developed riders and scouting your own squad",
+          "body": "Two questions from the community now have precise answers in Help: whether Rest beats training once a rider is fully developed in his focus (yes, training adds nothing there but still builds fatigue), and what a better chief scout does for how you see your own riders (missions never touch your own squad, but his rating does sharpen the potential ranges you see on them)."
+        },
+        "da": {
+          "title": "Nye hjælpe-svar om træning af færdigudviklede ryttere og scouting af egen trup",
+          "body": "To spørgsmål fra fællesskabet har nu præcise svar i Hjælp: om Hvile slår træning når en rytter er færdigudviklet i sit fokus (ja, træning giver intet dér men bygger stadig træthed), og hvad en bedre chefscout gør for hvordan du ser dine egne ryttere (missioner rører aldrig din egen trup, men hans rating skærper de potentiale-intervaller du ser på dem)."
+        },
+        "refs": [3151, 3148]
+      }
+    ]
+  },
+  {
     "version": "7.86",
     "date": "2026-08-03",
     "label": "Beta",
