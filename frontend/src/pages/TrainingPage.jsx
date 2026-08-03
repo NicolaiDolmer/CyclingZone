@@ -434,7 +434,9 @@ export default function TrainingPage() {
             (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
         <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
-          <div className="flex items-center gap-1.5">
+          {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
+              — uden den kollapser cellen til underlinjens max-w og ombryder navnet. */}
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
             </RiderLink>
@@ -454,8 +456,13 @@ export default function TrainingPage() {
               RidersPage/TeamPage/WatchlistPage), så Fokus + Intensitet-
               kolonnerne (dem man rent faktisk redigerer) ikke skal dele
               skærmen med rent info-only kolonner i portræt. Skjult ≥640px,
-              hvor Type/Form/Træthed vises som deres egne kolonner (uændret). */}
-          <div className="mt-0.5 sm:hidden font-data text-3xs uppercase tracking-[.05em] text-cz-3 whitespace-nowrap">
+              hvor Type/Form/Træthed vises som deres egne kolonner (uændret).
+              #3194: underlinjen må ALDRIG diktere kolonnebredden — denne celle er
+              STICKY, så en nowrap-linje ("SPRINTER/KLATRER · FORM 78 · TRÆTHED 42")
+              gjorde navnekolonnen ~skærmbred i portræt og reducerede fokus/
+              intensitet til en ubrugelig scroll-strimmel (2 spillere, iOS+Android).
+              max-w + ombrydning i stedet for nowrap: infoen står på 2 korte linjer. */}
+          <div className="mt-0.5 sm:hidden max-w-[40vw] font-data text-3xs uppercase tracking-[.05em] text-cz-3">
             {[
               rider.primary_type
                 ? (rider.secondary_type && rider.secondary_type !== rider.primary_type
