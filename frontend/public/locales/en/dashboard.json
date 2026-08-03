@@ -180,7 +180,7 @@
   "forecast": {
     "loading": "Calculating forecast…",
     "title": "Next season · forecast",
-    "subtitle": "Expected cashflow based on roster + loans + sponsor",
+    "subtitle": "Expected cashflow based on roster + loans + sponsor + operating costs",
     "tier": {
       "green": {
         "label": "Green",
@@ -204,7 +204,11 @@
       "sponsor": "Sponsor",
       "prize": "Prize money (estimate)",
       "salary": "Salary",
-      "loanInterest": "Loan interest"
+      "loanInterest": "Loan interest",
+      "upkeep": "Upkeep",
+      "facilityUpkeep": "Facility upkeep",
+      "staffSalary": "Staff salaries",
+      "academyDrift": "Academy upkeep"
     },
     "sponsorDetail": {
       "contract": "Contract with {sponsor}: guaranteed base {base}, race-day income on top",
