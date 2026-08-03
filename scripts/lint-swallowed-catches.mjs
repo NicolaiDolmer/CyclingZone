@@ -121,15 +121,9 @@ export function findSwallowedCatches(rawSrc) {
 // forklarende kommentar der bare mangler markør-token) — det er at forhindre at
 // bunken VOKSER. Whittle den ned over tid ved at markere/capture pr. site.
 const BASELINE = {
-  // #2897 (26/7): backend/routes/** kom i scope. api.js' catches er IKKE
-  // godkendt — de er frosset, så bunken ikke kan vokse mens den ædes ned.
-  // 174→175 (3/8, #3236-preflight): PR #3238 (scouting-history route) landede
-  // FØR denne guard var wiret ind i CI (samme dag, race mellem to merges) og
-  // tilføjede ét catch der er stilistisk identisk med sin nabo-route
-  // (GET /club/staff/:id, allerede i bunken) — ikke en ny risiko-klasse, blot
-  // ét ratchet-tick der ikke nåede at blive talt med. Ikke rettet her (uden
-  // for #3236's scope); IKKE godkendt fremadrettet, se BASELINE-kommentaren.
-  "backend/routes/api.js": 175,
+  // #2897 (26/7): backend/routes/** kom i scope. api.js' 174 svaltede catches er
+  // IKKE godkendt — de er frosset, så bunken ikke kan vokse mens den ædes ned.
+  "backend/routes/api.js": 174,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
