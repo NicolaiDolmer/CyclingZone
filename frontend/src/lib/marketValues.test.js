@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
   computeBidValueDelta,
+  computeValueDeviationPct,
   detectStartPriceTypo,
   formatCz,
   getRiderMarketValue,
@@ -213,6 +214,31 @@ test("detectStartPriceTypo — ugyldig pris/værdi giver ingen mistanke", () => 
   assert.equal(detectStartPriceTypo(-100, { market_value: 100000 }).suspected, false);
   assert.equal(detectStartPriceTypo("abc", { market_value: 100000 }).suspected, false);
   assert.equal(detectStartPriceTypo(1000, {}).suspected, false);
+});
+
+// #3191: signeret pct-afvigelse (asking_price vs. vurdering) til transferlistens
+// %-filter — modsat computeBidValueDelta (unsigned + direction, til VISNING).
+test("computeValueDeviationPct — pris under vurdering giver negativ pct", () => {
+  assert.equal(computeValueDeviationPct(80000, { market_value: 100000 }), -20);
+});
+
+test("computeValueDeviationPct — pris over vurdering giver positiv pct", () => {
+  assert.equal(computeValueDeviationPct(120000, { market_value: 100000 }), 20);
+});
+
+test("computeValueDeviationPct — pris == vurdering giver 0", () => {
+  assert.equal(computeValueDeviationPct(100000, { market_value: 100000 }), 0);
+});
+
+test("computeValueDeviationPct — manglende rytter eller ugyldig pris → null", () => {
+  assert.equal(computeValueDeviationPct(50000, null), null);
+  assert.equal(computeValueDeviationPct(50000, undefined), null);
+  assert.equal(computeValueDeviationPct(null, { market_value: 100000 }), null);
+  assert.equal(computeValueDeviationPct("abc", { market_value: 100000 }), null);
+});
+
+test("computeValueDeviationPct — pris 0 giver stadig -100%", () => {
+  assert.equal(computeValueDeviationPct(0, { market_value: 100000 }), -100);
 });
 
 // En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når

@@ -348,7 +348,7 @@ function createTeamMarketStateSupabase({
       if (table === "teams") {
         return {
           select(columns) {
-            assert.equal(columns, "id, name, balance, division, user_id");
+            assert.equal(columns, "id, name, balance, division, user_id, created_at");
 
             return {
               eq(column, value) {
