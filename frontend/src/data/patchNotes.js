@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.85",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Privacy policy now describes our fair-play logging",
+          "body": "Since late July we record technical signals (IP address, browser information, language and timezone) when an account is created and when value-bearing actions happen, such as accepted transfers, auction bids and loans. This exists for one reason: to detect and document multi-account cheating. The privacy policy now says so explicitly, including what we store, that other players never see it, and that everything is deleted automatically after 180 days, or immediately if you delete your account."
+        },
+        "da": {
+          "title": "Privatlivspolitikken beskriver nu vores fair play-logning",
+          "body": "Siden slutningen af juli registrerer vi tekniske signaler (IP-adresse, browser-oplysninger, sprog og tidszone) ved kontooprettelse og ved værdibærende handlinger som accepterede transfers, auktionsbud og lån. Det findes af én grund: at opdage og dokumentere snyd med flere konti. Privatlivspolitikken siger det nu eksplicit, inklusive hvad vi gemmer, at andre spillere aldrig ser det, og at alt slettes automatisk efter 180 dage, eller med det samme hvis du sletter din konto."
+        },
+        "refs": [3132]
+      }
+    ]
+  },
+  {
     "version": "7.84",
     "date": "2026-08-03",
     "label": "Beta",
