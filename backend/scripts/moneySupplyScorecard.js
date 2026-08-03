@@ -8,9 +8,14 @@
 //   (B) LIVE-snapshot (reference only) — læser live-population read-only. Live-lønninger
 //       er FROSSET på den GAMLE skala (D1 median ~1,7M) → ubrugelige til kalibrering;
 //       beholdt kun som konserverings-/drift-tjek + reference.
-// Report-pattern (ingen exit(1)) — ejer reviewer FØR relaunch.
+// #3009: HEADLINE FAIL fælder exit-koden (A-sektionen/primær gate) — samme
+// mønster som PR #3006's søster-scorecards (facilityInvestment/scoutTravel/
+// relegationParachute). --advisory rapporterer uden at fælde exit-koden, til
+// brug FØR ejeren har taget #3009's a/b-beslutning (tærskler forkerte vs.
+// økonomien forkert) — gaten er i skrivende stund RØD (se #3009).
 //   node scripts/moneySupplyScorecard.js [--markdown]   (live kræver readonly-env)
 //   node scripts/moneySupplyScorecard.js --synthetic-only   (springer live over)
+//   node scripts/moneySupplyScorecard.js --synthetic-only --advisory   (rapport-only)
 //
 // FOREVER-RELAUNCH 4-DIVISIONS-FORSLAG (#1663 forever-frys, Task 8):
 //   node scripts/moneySupplyScorecard.js --tiers4 [--synthetic-only]
@@ -38,6 +43,7 @@ import {
 // input), ikke den målte kurve; det er prizeDistributionScorecard der måler præmie-niveau.
 import { resolveOverrides, renownSponsorFor } from "./lib/economyCalibrationOverrides.js";
 import { computeFreshSalaryBurden } from "./lib/freshPopulationBurden.js";
+import { gateExitCode } from "./lib/scorecardExitCode.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
@@ -428,6 +434,7 @@ async function printLiveSection() {
 async function main() {
   const syntheticOnly = process.argv.includes("--synthetic-only");
   const tiers4 = process.argv.includes("--tiers4");
+  const advisory = process.argv.includes("--advisory");
 
   const overrides = resolveOverrides();
   const fresh = computeFreshSalaryBurden();
@@ -451,6 +458,11 @@ async function main() {
       `HEADLINE (4-div-forslag): div-4-net-gate ${tiers4Result.allPass ? "✅ PASS" : "❌ FAIL"} — FORSLAG, ejer granit-fryser.`
     );
   }
+
+  // #3009: kun A-sektionen (primær) gater exit-koden. 4-div-forslaget er en
+  // FORESLÅET fremtidig kalibrering ejeren granit-fryser separat — ikke en dom
+  // over den nuværende konfiguration — og skal derfor ikke fælde exit-koden.
+  process.exitCode = gateExitCode(syntheticResult.allPass, { advisory });
 }
 
 main().catch((e) => {

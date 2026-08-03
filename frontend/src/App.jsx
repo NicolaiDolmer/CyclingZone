@@ -42,10 +42,10 @@ const AdminUsersTab = lazy(() => import("./pages/admin/AdminUsersTab"));
 const AdminFeedbackTab = lazy(() => import("./pages/admin/AdminFeedbackTab"));
 const AdminDataTab = lazy(() => import("./pages/admin/AdminDataTab"));
 const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
-const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
-const AdminSprintMetricsPage = lazy(() => import("./pages/AdminSprintMetricsPage"));
-const AdminAttributionPage = lazy(() => import("./pages/AdminAttributionPage"));
-const AdminRetentionPage = lazy(() => import("./pages/AdminRetentionPage"));
+// #3196: waitlist/sprint-metrics/attribution/retention er konsolideret som
+// faner i AdminGrowthPage — deres filer eksporterer nu kun *Content()-
+// komponenter (genbrugt derfra), ingen standalone route/lazy-import længere.
+const AdminGrowthPage = lazy(() => import("./pages/AdminGrowthPage"));
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
@@ -327,10 +327,13 @@ export default function App() {
               <Route path="system"  element={<AdminSystemTab />} />
               <Route path="*"       element={<Navigate to="/admin/season" replace />} />
             </Route>
-            <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
-            <Route path="admin/sprint-metrics" element={<AdminSprintMetricsPage />} />
-            <Route path="admin/attribution" element={<AdminAttributionPage />} />
-            <Route path="admin/retention" element={<AdminRetentionPage />} />
+            <Route path="admin/growth" element={<AdminGrowthPage />} />
+            {/* #3196: gamle standalone-ruter redirecter til deres fane i det
+                samlede vækst-dashboard, så eksisterende bogmærker/links ikke knækker. */}
+            <Route path="admin/waitlist" element={<Navigate to="/admin/growth?tab=waitlist" replace />} />
+            <Route path="admin/sprint-metrics" element={<Navigate to="/admin/growth?tab=sprint" replace />} />
+            <Route path="admin/attribution" element={<Navigate to="/admin/growth?tab=attribution" replace />} />
+            <Route path="admin/retention" element={<Navigate to="/admin/growth?tab=retention" replace />} />
             <Route path="training" element={<TrainingPage />} />
             <Route path="planner" element={<PlannerLegacyRedirect />} />
             <Route path="academy" element={<AcademyPage />} />

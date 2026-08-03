@@ -89,9 +89,22 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
       onDragLeave={() => setDragOver(false)}
       onDrop={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); } : undefined}
     >
-      <div className="p-3 border-b border-cz-border">
+      {/* #3187: hele headeren var kun DELVIST klikbar — kun titel-teksten var et
+          <Link>, mens "Løbsdag N", etape/klasse-linjen og status-chippen var almindelig
+          tekst i en ikke-interaktiv <div> (Clarity: 129 dødeklik på 6 min, størst
+          koncentration i appen). Headeren er nu ÉT hit-target (ægte <a> via RaceLink,
+          ikke onClick på en div), så tastatur-fokus + Enter virker som på ethvert
+          andet link. Kroppen nedenfor (rytterrækker, roller, ×, afmeld) forbliver sin
+          egen interaktive flade — den var aldrig død, så den er urørt. */}
+      <RaceLink
+        id={column.id}
+        state={{ from: "board" }}
+        data-testid="race-column-open"
+        aria-label={t("racehub.column.openRace", { name: column.name })}
+        className="group block p-3 border-b border-cz-border cursor-pointer transition-colors hover:bg-cz-subtle/60"
+      >
         <div className="flex items-start justify-between gap-2">
-          <RaceLink id={column.id} state={{ from: "board" }} className="text-sm font-semibold text-cz-1 hover:text-cz-accent-t transition-colors">{column.name}</RaceLink>
+          <span className="text-sm font-semibold text-cz-1 transition-colors group-hover:text-cz-accent-t">{column.name}</span>
           {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
         </div>
         <p className="text-2xs text-cz-3 mt-0.5">
@@ -120,7 +133,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
             </span>
           </p>
         )}
-      </div>
+      </RaceLink>
 
       {locked ? (
         <div className="py-1 flex-1">
