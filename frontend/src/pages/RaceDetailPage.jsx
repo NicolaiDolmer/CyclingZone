@@ -223,9 +223,14 @@ export default function RaceDetailPage() {
     setNotFound(false);
     setLoadError(false);
 
+    // #3197: pool_race:pool_race_id(date_text) blev tidligere hentet med her men
+    // ALDRIG rendert nogen steder på siden — ren over-fetch. date_text er en rå
+    // "dd/mm"-dato importeret fra et real-world løbskalender-regneark (ingen
+    // forbindelse til spillets faktiske kalender, se lib/raceCompletionDate.js);
+    // fjernet som del af dato-oprydningen på resultat-fladen.
     const { data: raceRow, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, season:season_id(id, number), pool_race:pool_race_id(date_text)")
+      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, season:season_id(id, number)")
       .eq("id", raceId)
       .single();
 
