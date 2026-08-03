@@ -47,6 +47,7 @@ import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
+import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
@@ -554,6 +555,27 @@ async function runTrainingSweepCron() {
     sentryCapture(new Error(`training sweep: ${result.failed} hold fejlede`), {
       tags: { cron: "training sweep" },
       extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
+// ─── AI-rytter-restitution: dagligt recovery-tick for AI-holdenes ryttere (#3015) ──
+// Mirror af trænings-sweepen (kl. 22 dansk tid + team-niveau mutex, ai_recovery_runs),
+// men KUN fatigue/form — ingen ability-progression/skaderisiko/træningsplan. Retter at
+// trainingSweep.js's is_ai=false-filter (korrekt for bestyrelses-/gælds-notifikationer)
+// utilsigtet også udelukkede AI-ryttere fra den fysiologiske restitution — 3.372
+// AI-ryttere sad permanent på træthed 100 (målt i prod 26/7, se #3015).
+
+async function runAiRecoverySweepCron() {
+  const result = await runAiRecoverySweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`🔋 AI-recovery-sweep: ${result.swept} AI-hold restitueret (${result.ridersRecovered} ryttere)`);
+  }
+  if (result.failed) {
+    console.error(`❌ AI-recovery-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    sentryCapture(new Error(`ai recovery sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "ai recovery sweep" },
+      extra: { swept: result.swept, failed: result.failed, ridersRecovered: result.ridersRecovered },
     });
   }
 }
@@ -1174,6 +1196,12 @@ export function startCron() {
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
   setInterval(
     trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // AI-rytter-restitution: dagligt recovery-tick, samme kl.22-vindue som trænings-sweepen (#3015)
+  setInterval(
+    trackedTick("ai recovery sweep", monitorCron("ai-recovery-sweep", runAiRecoverySweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
