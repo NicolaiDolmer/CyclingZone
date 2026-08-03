@@ -19,6 +19,23 @@ test("raceGameDaySpan: tom/null → null", () => {
   assert.equal(raceGameDaySpan(null), null);
 });
 
+// #3107 rod-årsag: monument-sentinellen (game_day >= MONUMENT_GAMEDAY_BASE) er en
+// lane-packer-markør, ikke en ægte in-game-dag — lækkede før direkte ud i UI'et som
+// "Race day 100000" (RaceColumn.jsx/RaceHubBoard.jsx). Samme skjul-filosofi som
+// "en række uden game_day" ovenfor.
+test("raceGameDaySpan: monument-bånd (game_day >= 100000) → null (skjul 'Race day 100000', #3107)", () => {
+  assert.equal(raceGameDaySpan([{ game_day: 100000, scheduled_at: "2026-07-29T17:00:00Z" }]), null);
+  assert.equal(raceGameDaySpan([{ game_day: 100004, scheduled_at: "2026-08-21T09:00:00Z" }]), null);
+});
+
+test("raceGameDaySpan: blandet monument + normal række → stadig skjult (strengere end isMonumentBandSchedule, kun til binding)", () => {
+  // isMonumentBandSchedule kræver ALLE rækker i båndet (til binding-formål); til VISNING
+  // skjuler raceGameDaySpan allerede ved blot ÉN sentinel-række, så et blandet/korrupt løb
+  // aldrig kan vise et "Race days 3-100000"-vindue (i praksis ikke reelt muligt — en hel
+  // race er enten monument eller ej — men skal ikke afhænge af det).
+  assert.equal(raceGameDaySpan([{ game_day: 100000 }, { game_day: 3 }]), null);
+});
+
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([
     { scheduled_at: "2026-06-23T10:30:00Z" },
