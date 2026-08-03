@@ -104,7 +104,7 @@ function makeSupabase(state) {
   return { from: (t) => builder(t) };
 }
 
-function seedState({ entries, stagesCompleted = {} }) {
+function seedState({ entries, stagesCompleted = {}, riders = null }) {
   return {
     seasons: [{ id: "s2", number: 2, status: "active" }],
     races: [
@@ -119,6 +119,12 @@ function seedState({ entries, stagesCompleted = {} }) {
     ],
     race_withdrawals: [],
     race_entries: entries,
+    // Ghost-krydset (#3185) slår entries op mod rytterens NUVÆRENDE tilstand —
+    // default: alle entry-ryttere er stadig på deres entry-hold (ingen ghosts).
+    riders: riders ?? [...new Set(entries.map((e) => e.rider_id))].map((id) => {
+      const teamId = entries.find((e) => e.rider_id === id).team_id;
+      return { id, team_id: teamId, is_academy: false, is_retired: false };
+    }),
   };
 }
 
@@ -174,6 +180,40 @@ test("runRiderDoubleBookingWatch: afviklede løb tælles som brud, men ikke som 
   const res = await runRiderDoubleBookingWatch({ supabase: makeSupabase(state), captureExceptionFn: () => {} });
   assert.equal(res.conflicts, 1);
   assert.equal(res.actionable, 0);
+});
+
+// #3185 (forensik 3/8): en SOLGT rytters entry hos det gamle hold er ikke et brud.
+// Divisionernes kalendere er forskudt i real-tid, så en rytter der kørte færdig i D2
+// (game_day 0-7, real 27-30/7) og blev solgt til et D4-hold lovligt kan køre D4's
+// game_day 4 (real 31/7). Guards filtrerer ghost-entries (#1906); vagten skal dele
+// semantik — ellers vokser CYCLINGZONE-44 med falske par (prod: 4→7 på 4 dage).
+test("runRiderDoubleBookingWatch: solgt rytters gamle entry tæller IKKE (ghost-filter, #3185)", async () => {
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" }, // kørt for sælger-holdet t1
+      { race_id: "B", team_id: "t2", rider_id: "r1" }, // nyt hold t2, overlappende game_day-vindue
+    ],
+    riders: [{ id: "r1", team_id: "t2", is_academy: false, is_retired: false }], // r1 er SOLGT til t2
+  });
+  const captured = [];
+  const res = await runRiderDoubleBookingWatch({
+    supabase: makeSupabase(state), captureExceptionFn: (e, ctx) => captured.push([e, ctx]),
+  });
+  assert.equal(res.conflicts, 0, "ghost-entry hos gammelt hold er ikke et brud");
+  assert.equal(res.alerted, false);
+  assert.equal(captured.length, 0);
+});
+
+test("runRiderDoubleBookingWatch: rytter STADIG på holdet i to overlappende løb tæller (ghost-filteret overser ikke ægte brud)", async () => {
+  const state = seedState({
+    entries: [
+      { race_id: "A", team_id: "t1", rider_id: "r1" },
+      { race_id: "B", team_id: "t1", rider_id: "r1" },
+    ],
+    riders: [{ id: "r1", team_id: "t1", is_academy: false, is_retired: false }],
+  });
+  const res = await runRiderDoubleBookingWatch({ supabase: makeSupabase(state), captureExceptionFn: () => {} });
+  assert.equal(res.conflicts, 1, "ægte brud (rytteren er stadig på holdet) fanges stadig");
 });
 
 test("runRiderDoubleBookingWatch: ingen aktiv sæson → skip uden alarm", async () => {

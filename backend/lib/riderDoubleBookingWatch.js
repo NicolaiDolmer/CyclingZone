@@ -19,12 +19,24 @@
 // entries bevares kun så en gen-tilmelding giver samme trup. Uden det filter ville vagten
 // larme falsk på hvert afmeldt hold.
 //
+// GHOST-ENTRIES TÆLLER IKKE (#3185, forensik 3/8): en SOLGT rytters entry hos det gamle
+// hold er ikke et brud. Divisionernes kalendere er forskudt i real-tid (D2 kørte game_day
+// 0-7 27-30/7, D4 kørte game_day 4 først 31/7), så en rytter der kørte færdig hos sælger
+// og derefter blev solgt til en anden pulje kan lovligt køre "samme" game_day igen dér —
+// alle guards (PUT /selection, regenerate, sweep) filtrerer bevidst ghost-entries fra
+// (#1906) og tillader det. Vagten læste rå race_entries og talte netop dét som brud:
+// præcis de 3 "nye" par der fik CYCLINGZONE-44 til at vokse 4→7 (30/7-2/8). Vagten
+// krydser nu mod rytterens NUVÆRENDE tilstand via filterEligibleEntries — samme predikat
+// som guards. Trade-off (delt med guards): et ÆGTE historisk brud forsvinder fra
+// tællingen hvis rytteren efterfølgende sælges/pensioneres.
+//
 // READ-ONLY: ingen writes, ingen ny tabel, ingen migration. Én Sentry-capture pr. tick med
 // FAST fingerprint (mirror ownershipInvariantWatch #2647) — ét issue uanset antal fund.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { fetchAllPaged, IN_CHUNK_SIZE } from "./dbChunk.js";
 import { raceBindingWindow, windowsOverlap } from "./raceBinding.js";
+import { filterEligibleEntries } from "./riderEligibility.js";
 
 const SAMPLE_LIMIT = 25;
 
@@ -144,13 +156,28 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
   if (wErr) throw new Error(`race_withdrawals: ${wErr.message}`);
   const withdrawnKeys = new Set((wRows || []).map((w) => `${w.race_id}|${w.team_id}`));
 
-  const { data: entries, error: entryErr } = await selectInChunksPaged({
+  const { data: rawEntries, error: entryErr } = await selectInChunksPaged({
     supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
     inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "rider_id"],
   });
   if (entryErr) throw new Error(`race_entries: ${entryErr.message}`);
 
-  const conflicts = findDoubleBookedRiders({ entries: entries || [], windowByRace, withdrawnKeys });
+  // Ghost-filter (#3185): kryds mod rytterens NUVÆRENDE hold/tilstand, så en solgt/
+  // pensioneret rytters gamle entries ikke tælles som brud — samme semantik som
+  // guards (#1906). Se modul-kommentaren for prod-forensikken bag.
+  const entryRiderIds = [...new Set((rawEntries || []).map((e) => e.rider_id))];
+  let entries = rawEntries || [];
+  if (entryRiderIds.length) {
+    const { data: riderRows, error: riderErr } = await selectInChunksPaged({
+      supabase, table: "riders", columns: "id, team_id, is_academy, is_retired",
+      inColumn: "id", ids: entryRiderIds, orderBy: ["id"],
+    });
+    if (riderErr) throw new Error(`riders (ghost-kryds): ${riderErr.message}`);
+    const ridersById = new Map((riderRows || []).map((r) => [r.id, r]));
+    entries = filterEligibleEntries({ entries, ridersById });
+  }
+
+  const conflicts = findDoubleBookedRiders({ entries, windowByRace, withdrawnKeys });
   const actionable = conflicts.filter(
     (c) => (raceById.get(c.raceA)?.stages_completed ?? 0) === 0 || (raceById.get(c.raceB)?.stages_completed ?? 0) === 0
   );
@@ -161,7 +188,7 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
     captureExceptionFn?.(
       new Error(
         `Binding-invariant-brud: ${conflicts.length} rytter-par i to overlappende løb i sæson ${season.number} ` +
-        `(${actionable.length} kan stadig nås før afvikling) — 1 rytter = 1 løb pr. løbsdag (#3113)`
+        `(${actionable.length} kan stadig nås før afvikling) — 1 rytter = 1 løb pr. løbsdag (#3119/#3185)`
       ),
       {
         tags: { cron: "rider-double-booking-watch" },
