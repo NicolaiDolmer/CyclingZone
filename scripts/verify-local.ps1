@@ -51,7 +51,10 @@ if ($normalizedResolvedRoot -ne $repoRoot) {
 Write-Host "[1/3] Backend tests"
 Push-Location (Join-Path $repoRoot "backend")
 try {
-  & $nodePath --test
+  # #3172: brug samme scripts/run-tests.js som `npm test`, ikke rå `node --test`
+  # — koerer lib/economyEngine.test.js isoleret foerst for at undgaa
+  # worker-IPC-flaket (node:internal/test_runner, ramte ogsaa her 31/7).
+  & $nodePath scripts/run-tests.js
   if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
   }
