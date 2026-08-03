@@ -205,7 +205,14 @@
     "transferVerb": "send a transfer bid of",
     "transferAction": "Send bid",
     "questionPrefix": "Are you sure you want to",
-    "onLabel": "on"
+    "onLabel": "on",
+    "typoGuard": {
+      "title": "Check your price",
+      "body": "You're listing <strong>{riderName}</strong> for sale at <strong>{price} CZ$</strong>.",
+      "question": "Their market value is <strong>{marketValue} CZ$</strong>. Did you mean that?",
+      "confirmButton": "No, my price is intentional",
+      "fixButton": "Fix price"
+    }
   },
   "fallback": {
     "rider": "rider"
