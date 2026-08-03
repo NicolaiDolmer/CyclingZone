@@ -23,11 +23,11 @@
 
 > **✅ 30/7 — #3154-housekeeping: 529 → 455 åbne.** Klassifikation i [`backlog-priorities-2026-07-30.md`](audits/backlog-priorities-2026-07-30.md). **Ejer-mandat: LØS opgaverne, jag ikke tallet — kill-lister afvist.** Evidens: [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) + `.claude/audits/audit-2026-07-30.md`.
 
-> **📌 Åbne opfølgninger:** #3036 (countback) · #2164 (D3→D4) · [#3052](https://github.com/NicolaiDolmer/CyclingZone/issues/3052) (Cloudflare-HTML som Sentry-titler — WIP reddet til `fix/3052-sentry-html-message-normalize`, 1 test rød) · #3049/#3050/#3051 (nye feature-ønsker fra Discord). (#3039 konsolideret ind i #2990.)
+> **📌 Åbne opfølgninger:** #3036 (countback) · #2164 (D3→D4) · #3049/#3050/#3051 (nye feature-ønsker fra Discord). (#3039 konsolideret ind i #2990; #3052 lukket 3/8.)
 
 > **📈 Prod:** 161 brugere · ~62 % af nye vender aldrig tilbage · 41 WAU / 8 DAU · 1 abonnement. Anskaffelsen virker, fastholdelsen gør ikke.
 
-> **✅ 2/8 — Sentry/Railway-triage:** 1 fund fixet live ([#3180](https://github.com/NicolaiDolmer/CyclingZone/issues/3180)/PR #3181: gateway-5xx nu transient → auto-prize-sweepet døde før med 0 retries; 0 uudbetalte løb, ingen data-skade). CYCLINGZONE-46 lukket — **#3132-telemetrien kører organisk** (562 events, seneste i dag). Rest: CYCLINGZONE-44 (→#3119: 7 par, **0 actionable** = ren historik) · CYCLINGZONE-3X (→#3052). **Ejer venter: [#3130](https://github.com/NicolaiDolmer/CyclingZone/issues/3130)** (Discord-forladte får aldrig DM'er; **anbefaling A** auto-afkobl) · **#2892** (25 Sentry-monitorer, 2 min).
+> **✅ 3/8 — Sentry/Railway-triage:** 0 nye/regresserede fejl, 0 5xx, ingen log-anomalier. [#3052](https://github.com/NicolaiDolmer/CyclingZone/issues/3052) færdiggjort + live ([PR #3182](https://github.com/NicolaiDolmer/CyclingZone/pull/3182), `8817b784`): HTML-genkendelsen var forankret i beskedens start, så en fejlside bag et call-site-præfiks slap uændret ud som Sentry-titel — **CYCLINGZONE-3X lukket**. Eneste åbne Sentry-sag: CYCLINGZONE-44 (→#3119, 7 par, **0 actionable** = ren historik). **Ejer venter: [#3130](https://github.com/NicolaiDolmer/CyclingZone/issues/3130)** (Discord-forladte får aldrig DM'er; **anbefaling A** auto-afkobl — logget igen i nat) · **#2892** (25 Sentry-monitorer, 2 min).
 
 > **✅ 30/7 aften — Bølge 1 eksekveret** (#2813 slice 1 checkout-pause · #3143 · #3097 · #2257 — alle merged + live, postmortems i `.claude/learnings/`). Åbne rester: **#2840** model A besluttet, afventer dedikeret session m. dry-run-harness · #3097-design-spørgsmål (worst-case-tælling) står i issuet.
 
