@@ -27,6 +27,7 @@ import {
   computeTierBreakdown,
   computeShare4PlusRaceSnapshot,
   poolClusterCorrectedShare4Plus,
+  classifyTierBreakdown,
   BALANCE_DRIFT_TUNING,
 } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
@@ -300,6 +301,13 @@ export async function runBalanceDriftWatch({
   // så en ekstra nøgle i metrics ændrer hverken status, alarm eller admin-tabellen
   // (BalanceDriftWatchSection renderer fra sin egen METRIC_LABELS-allowlist).
   metrics.byTier = computeTierBreakdown(observations);
+  // #2557/#3250-opfølgning (spor B1, del B): klassificér nedbrydningen mod de
+  // samme kanoniske bånd. Persisteres under statuses.byTier — SAMME jsonb-
+  // kolonne der allerede skrives nedenfor, ingen skema-ændring, ingen ekstra
+  // prod-læsning. IKKE koblet til 3-dages-Discord-alarmen i denne PR (se
+  // findConsecutiveTierBreaches()'s header i balanceDriftMetrics.js) —
+  // forespørgelsesbar via GET /api/admin/balance-drift (tierBreaches).
+  statuses.byTier = classifyTierBreakdown(metrics.byTier);
 
   // #2557 afsnit 5b: dagens pr.-løb share4Plus-snapshot (klynge-enheden), plus
   // et ALTID beregnet, POOLET klynge-korrigeret estimat over de seneste

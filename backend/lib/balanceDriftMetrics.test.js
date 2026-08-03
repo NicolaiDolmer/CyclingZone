@@ -10,8 +10,11 @@ import {
   findConsecutiveBreaches,
   evaluateBreachAlert,
   computeTierBreakdown,
+  classifyTierBreakdown,
+  findConsecutiveTierBreaches,
   wilsonLowerBound,
   maxRiderWinRateLowerBound,
+  maxRiderWinCountAboveRateFloor,
   poolDailyRate,
   foldRiderWindowRows,
   computeShare4PlusRaceSnapshot,
@@ -623,4 +626,166 @@ test("poolClusterCorrectedShare4Plus: tom rows-liste giver 0 klynger, ikke crash
   const out = poolClusterCorrectedShare4Plus([], 7);
   assert.equal(out.clusters, 0);
   assert.equal(out.days, 0);
+});
+
+// ── #2731-opfølgning B: maxRiderWinCountAboveRateFloor (spor B1, del A) ──────
+
+test("maxRiderWinCountAboveRateFloor: reproducerer Rubio-casen (7/17, prod 2/8)", () => {
+  const starts = new Map([["rubio", 17]]);
+  const wins = new Map([["rubio", 7]]);
+  const out = maxRiderWinCountAboveRateFloor({ winsByRider: wins, startsByRider: starts });
+  assert.equal(out.maxWinsAboveRateFloor, 7);
+  assert.equal(out.leader.riderId, "rubio");
+  assert.equal(Number(out.leader.rate.toFixed(3)), 0.412);
+  assert.equal(out.riders, 1);
+});
+
+test("maxRiderWinCountAboveRateFloor: vaelger HOEJESTE SEJRSANTAL, ikke hoejeste rate (den praecise Wilson-blinde-vinkel)", () => {
+  // Wouters (5/7=0,714) har den hoejeste rate OG hoejere Wilson-LB end Rubio
+  // (0,359 mod 0,216, jf. #3245-auditen) — men Rubios 7 sejre er det stoerre,
+  // mere trovaerdige antal. Count-maalet skal vaelge Rubio, IKKE Wouters.
+  const starts = new Map([["rubio", 17], ["wouters", 7]]);
+  const wins = new Map([["rubio", 7], ["wouters", 5]]);
+  const out = maxRiderWinCountAboveRateFloor({ winsByRider: wins, startsByRider: starts });
+  assert.equal(out.maxWinsAboveRateFloor, 7);
+  assert.equal(out.leader.riderId, "rubio");
+  assert.equal(out.riders, 2, "begge klarer default-rate-gulvet 0,40");
+});
+
+test("maxRiderWinCountAboveRateFloor: rate-gulvet udelukker highvolume/lav-rate-ryttere", () => {
+  // 6 sejre af 37 starter (rate 0,162, observeret i prod-scanningen 5/7-3/8)
+  // er IKKE dominans — bare mange starter. Skal ekskluderes helt, ikke bare
+  // rangere lavere, ellers ville en volumen-rytter kunne overtrumfe en aegte
+  // dominator paa ren sejrs-optaelling.
+  const starts = new Map([["grinder", 37], ["rubio", 17]]);
+  const wins = new Map([["grinder", 6], ["rubio", 7]]);
+  const out = maxRiderWinCountAboveRateFloor({ winsByRider: wins, startsByRider: starts });
+  assert.equal(out.riders, 1, "kun rubio klarer rate-gulvet");
+  assert.equal(out.leader.riderId, "rubio");
+});
+
+test("maxRiderWinCountAboveRateFloor: respekterer minStarts og minRate-parametre", () => {
+  const starts = new Map([["a", 4], ["b", 10]]);
+  const wins = new Map([["a", 4], ["b", 4]]); // a: 1,00 rate men under minStarts=5
+  const out = maxRiderWinCountAboveRateFloor({ winsByRider: wins, startsByRider: starts, minStarts: 5, minRate: 0.30 });
+  assert.equal(out.riders, 1);
+  assert.equal(out.leader.riderId, "b");
+  assert.equal(out.maxWinsAboveRateFloor, 4);
+});
+
+test("maxRiderWinCountAboveRateFloor: tomt input -> null, aldrig NaN", () => {
+  const out = maxRiderWinCountAboveRateFloor({});
+  assert.equal(out.maxWinsAboveRateFloor, null);
+  assert.equal(out.leader, null);
+  assert.equal(out.riders, 0);
+});
+
+test("computeDayMetrics: eksponerer maxRiderDominantWinCount, altid beregnet (samme moenster som maxRiderWinRateLb)", () => {
+  const m = computeDayMetrics({
+    winsByRider: new Map([["rubio", 7]]),
+    startsByRider: new Map([["rubio", 17]]),
+  });
+  assert.equal(m.maxRiderDominantWinCount, 7);
+  assert.equal(m.maxRiderDominantWinCountRiders, 1);
+});
+
+test("maxRiderDominantWinCount-baandet er reportOnly: klassificerer altid 'info', deltager aldrig i alarmen", () => {
+  const band = BALANCE_DRIFT_BANDS.maxRiderDominantWinCount;
+  assert.equal(band.reportOnly, true);
+  assert.equal(classifyMetric(9, band), "info");
+  assert.equal(classifyMetric(0, band), "info");
+  assert.ok(!ALARM_ELIGIBLE_METRICS.includes("maxRiderDominantWinCount"));
+
+  const statuses = classifyDay({ maxRiderDominantWinCount: 9 });
+  assert.equal(statuses.maxRiderDominantWinCount.status, "info");
+  assert.equal(statuses.maxRiderDominantWinCount.value, 9);
+});
+
+// ── #2557/#3250-opfølgning: classifyTierBreakdown + findConsecutiveTierBreaches (spor B1, del B) ──
+
+test("classifyTierBreakdown: klassificerer hver tier mod de kanoniske baand", () => {
+  // Ægte prod-tal 2026-08-02 (eneste dag med persisteret byTier paa
+  // skrivetidspunktet): global favoriteWinRate var 'yellow' mens tier1/3/4
+  // hver isoleret bryder baandet (0,25-0,40).
+  const byTier = {
+    tier1: { stages: 20, favoriteWinRate: 0.2, favoritePodiumRate: null, share4PlusSameTeamTop10: null, avgDistinctTeamsTop10: null },
+    tier2: { stages: 24, favoriteWinRate: 0.25, favoritePodiumRate: null, share4PlusSameTeamTop10: null, avgDistinctTeamsTop10: null },
+    tier3: { stages: 12, favoriteWinRate: 0.5833333333333334, favoritePodiumRate: null, share4PlusSameTeamTop10: null, avgDistinctTeamsTop10: null },
+    tier4: { stages: 16, favoriteWinRate: 0.1875, favoritePodiumRate: null, share4PlusSameTeamTop10: null, avgDistinctTeamsTop10: null },
+  };
+  const out = classifyTierBreakdown(byTier);
+  assert.equal(out.tier1.favoriteWinRate.status, "red");
+  assert.equal(out.tier2.favoriteWinRate.status, "green");
+  assert.equal(out.tier3.favoriteWinRate.status, "red");
+  assert.equal(out.tier4.favoriteWinRate.status, "red");
+});
+
+test("classifyTierBreakdown: null-vaerdier -> n/a, ikke krak", () => {
+  const out = classifyTierBreakdown({ tier3: { stages: 0, favoriteWinRate: null, favoritePodiumRate: null, share4PlusSameTeamTop10: null, avgDistinctTeamsTop10: null } });
+  assert.equal(out.tier3.favoriteWinRate.status, "n/a");
+});
+
+test("classifyTierBreakdown: tomt input -> tomt objekt", () => {
+  assert.deepEqual(classifyTierBreakdown({}), {});
+});
+
+test("findConsecutiveTierBreaches: tier3 trippper ALENE i 3+ dage selvom global er groen hele perioden", () => {
+  const rows = [
+    {
+      date: "2026-07-28",
+      tierStatuses: { tier3: { favoriteWinRate: { status: "red" } }, tier1: { favoriteWinRate: { status: "green" } } },
+    },
+    {
+      date: "2026-07-29",
+      tierStatuses: { tier3: { favoriteWinRate: { status: "red" } }, tier1: { favoriteWinRate: { status: "green" } } },
+    },
+    {
+      date: "2026-07-30",
+      tierStatuses: { tier3: { favoriteWinRate: { status: "red" } }, tier1: { favoriteWinRate: { status: "green" } } },
+    },
+  ];
+  // Det GLOBALE aggregat (findConsecutiveBreaches) er groent hele perioden —
+  // simuleret ved slet ikke at give den nogen roede statuses.
+  const globalRows = rows.map((r) => ({ date: r.date, statuses: { favoriteWinRate: { status: "green" } } }));
+  const globalBreaches = findConsecutiveBreaches(globalRows, { minConsecutiveDays: 3 });
+  assert.deepEqual(globalBreaches, [], "det globale aggregat skal IKKE bryde i dette scenarie");
+
+  const tierBreaches = findConsecutiveTierBreaches(rows, { minConsecutiveDays: 3 });
+  assert.equal(tierBreaches.length, 1);
+  assert.equal(tierBreaches[0].tier, "tier3");
+  assert.equal(tierBreaches[0].metric, "favoriteWinRate");
+  assert.equal(tierBreaches[0].days, 3);
+  assert.equal(tierBreaches[0].since, "2026-07-28");
+});
+
+test("findConsecutiveTierBreaches: hul i datoerne nulstiller streaken (samme regel som findConsecutiveBreaches)", () => {
+  const rows = [
+    { date: "2026-07-28", tierStatuses: { tier3: { favoriteWinRate: { status: "red" } } } },
+    { date: "2026-07-29", tierStatuses: { tier3: { favoriteWinRate: { status: "red" } } } },
+    // Hul: 7/30 mangler helt (manglende cron-tick).
+    { date: "2026-07-31", tierStatuses: { tier3: { favoriteWinRate: { status: "red" } } } },
+  ];
+  assert.deepEqual(findConsecutiveTierBreaches(rows, { minConsecutiveDays: 3 }), []);
+});
+
+test("findConsecutiveTierBreaches: flere (tier, metric)-par kan bryde samtidigt, sorteret", () => {
+  const rows = ["2026-07-28", "2026-07-29", "2026-07-30"].map((date) => ({
+    date,
+    tierStatuses: {
+      tier1: { favoriteWinRate: { status: "red" } },
+      tier3: { favoriteWinRate: { status: "red" }, favoritePodiumRate: { status: "red" } },
+    },
+  }));
+  const out = findConsecutiveTierBreaches(rows, { minConsecutiveDays: 3 });
+  assert.equal(out.length, 3);
+  assert.deepEqual(out.map((b) => `${b.tier}:${b.metric}`), ["tier1:favoriteWinRate", "tier3:favoritePodiumRate", "tier3:favoriteWinRate"]);
+});
+
+test("findConsecutiveTierBreaches: under 3 dage -> ingen brud; tom liste -> tom liste", () => {
+  const rows = [
+    { date: "2026-07-29", tierStatuses: { tier3: { favoriteWinRate: { status: "red" } } } },
+    { date: "2026-07-30", tierStatuses: { tier3: { favoriteWinRate: { status: "red" } } } },
+  ];
+  assert.deepEqual(findConsecutiveTierBreaches(rows, { minConsecutiveDays: 3 }), []);
+  assert.deepEqual(findConsecutiveTierBreaches([], { minConsecutiveDays: 3 }), []);
 });

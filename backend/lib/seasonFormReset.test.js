@@ -287,12 +287,40 @@ test("defaults matcher issue-specen (#3232)", () => {
 // realistisk handling. Testene her BEVISER hvilke modes der tåler det, og
 // dokumenterer eksplicit at "decay" IKKE gør (jf. rest_days-præcedens).
 
-function buildStatefulSupabase(initialConditions) {
+// `season` = den aktive sæson `resolveActiveSeason` finder i "seasons"-tabellen
+// (bruges KUN af decay-modes claim-guard, #3249) — adskilt fra det `season`-
+// argument der sendes eksplicit til applySeasonFormReset som band-modes
+// idempotens-seed. De to har forskellig kilde i den ægte kode og skal IKKE
+// forveksles.
+function buildStatefulSupabase(initialConditions, { activeSeason = { id: "s3", number: 3 } } = {}) {
   const state = new Map(initialConditions.map((c) => [c.rider_id, { ...c }]));
-  const capture = { runs: [] };
+  const capture = { runs: [], seasonReads: 0, claims: [], runUpdates: [] };
+  const claimedSeasons = new Set();
   let current = null;
   const supabase = {
     from(table) {
+      if (table === "seasons") {
+        capture.seasonReads++;
+        return {
+          select() { return this; },
+          eq() { return this; },
+          maybeSingle: () => Promise.resolve({ data: activeSeason, error: null }),
+        };
+      }
+      if (table === "season_form_reset_runs") {
+        return {
+          upsert(row) {
+            const already = activeSeason && claimedSeasons.has(row.season_id);
+            capture.claims.push(row);
+            if (!already) claimedSeasons.add(row.season_id);
+            return { select: () => Promise.resolve({ data: already ? [] : [{ season_id: row.season_id }], error: null }) };
+          },
+          update(patch) {
+            capture.runUpdates.push(patch);
+            return { eq: () => Promise.resolve({ error: null }) };
+          },
+        };
+      }
       if (table !== "rider_condition") throw new Error(`uventet tabel: ${table}`);
       const api = {
         select() { return api; },
@@ -368,16 +396,108 @@ test("gen-kørsel af 'band' MED NY sæson re-ruller bevidst (seedet er pr. sæso
   assert.equal(secondSeason.ran, true);
 });
 
-test("'decay' er TIL SAMMENLIGNING IKKE idempotent ved gen-kørsel (dokumenteret trade-off)", async () => {
+test("'decay' er I SIG SELV ikke idempotent (den rene kerne konvergerer videre), MEN claim-guarden stopper en gen-kørsel", async () => {
   const { run } = buildStatefulSupabase([{ rider_id: "r1", form: 100 }]);
   const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
 
   const first = await run({ config: cfg });
+  assert.equal(first.ran, true);
   assert.equal(first.avgAfter, 63); // 50 + (100-50)*0.25
 
   const second = await run({ config: cfg });
-  assert.ok(second.changed > 0, "decay decayer YDERLIGERE ved gen-kørsel — IKKE et no-op");
-  assert.ok(second.avgAfter < first.avgAfter, "værdien konvergerer videre mod target ved gen-kørsel");
+  assert.deepEqual(second, { ran: false, reason: "already_ran", seasonId: "s3", seasonNumber: 3 },
+    "claim-guarden (#3249) stopper anden kørsel for samme sæson — INGEN yderligere decay");
+});
+
+// ─── #3249 · claim-guard mod dobbelt-decay ─────────────────────────────────────
+// Samme bekymring/mønster som season_fatigue_reset_runs (#2910): operatøren
+// kører sæsonskiftet igen "for en sikkerheds skyld" under tidspres.
+
+test("TO kørsler af 'decay' giver NØJAGTIG samme sluttilstand som én", async () => {
+  const { run, state } = buildStatefulSupabase([
+    { rider_id: "r1", form: 100 },
+    { rider_id: "r2", form: 0 },
+  ]);
+  const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
+
+  await run({ config: cfg });
+  const afterOne = { r1: state.get("r1").form, r2: state.get("r2").form };
+  await run({ config: cfg });
+  const afterTwo = { r1: state.get("r1").form, r2: state.get("r2").form };
+
+  assert.deepEqual(afterTwo, afterOne, "anden kørsel må ikke decaye formen yderligere");
+  assert.equal(afterOne.r1, 63);
+  assert.equal(afterOne.r2, 38);
+});
+
+test("claim-guarden er SCOPET pr. sæson: en NY aktiv sæson må gerne decaye igen", async () => {
+  const { run } = buildStatefulSupabase(
+    [{ rider_id: "r1", form: 100 }],
+    { activeSeason: { id: "s3", number: 3 } }
+  );
+  const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
+  const first = await run({ config: cfg });
+  assert.equal(first.ran, true);
+
+  // Ny sæson → ny mock med et andet season_id (claim-sættet i den ægte kode er
+  // pr. season_id, så en NY sæson er per definition et frisk claim).
+  const nextSeason = buildStatefulSupabase(
+    [{ rider_id: "r1", form: 100 }],
+    { activeSeason: { id: "s4", number: 4 } }
+  );
+  const second = await nextSeason.run({ config: cfg });
+  assert.equal(second.ran, true, "en anden sæsons claim-tabel er tom — decay kører normalt");
+});
+
+test("claim-rækken stemples færdig med stats (completed_at)", async () => {
+  const { run, capture } = buildStatefulSupabase([
+    { rider_id: "r1", form: 100 },
+    { rider_id: "r2", form: 50 },
+  ]);
+  const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
+  await run({ config: cfg, now: new Date("2026-08-23T11:00:00Z") });
+
+  assert.equal(capture.claims.length, 1);
+  assert.equal(capture.claims[0].season_id, "s3");
+  assert.equal(capture.claims[0].mode, "decay");
+  assert.equal(capture.runUpdates.length, 1);
+  assert.equal(capture.runUpdates[0].completed_at, "2026-08-23T11:00:00.000Z");
+  assert.equal(capture.runUpdates[0].riders, 2);
+  assert.equal(capture.runUpdates[0].changed, 1); // r2 var allerede på 50 → uændret
+});
+
+test("dryRun brænder ikke decay-claimet — den rigtige kørsel kan stadig køre bagefter", async () => {
+  const { run, capture } = buildStatefulSupabase([{ rider_id: "r1", form: 100 }]);
+  const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
+
+  const dry = await run({ config: cfg, dryRun: true });
+  assert.equal(dry.dryRun, true);
+  assert.equal(capture.claims.length, 0, "dryRun må ikke røre claim-tabellen");
+
+  const real = await run({ config: cfg });
+  assert.equal(real.ran, true, "en efterfølgende rigtig kørsel skal stadig kunne claime sæsonen");
+});
+
+test("ingen aktiv sæson → no-op uden at claime eller skrive noget", async () => {
+  const { run, capture } = buildStatefulSupabase([{ rider_id: "r1", form: 100 }], { activeSeason: null });
+  const cfg = { ...SEASON_FORM_RESET_DEFAULTS, mode: "decay", decayTarget: 50, decayFactor: 0.25 };
+
+  const res = await run({ config: cfg });
+  assert.deepEqual(res, { ran: false, reason: "no_active_season" });
+  assert.equal(capture.claims.length, 0);
+  assert.equal(capture.runs[0].written.length, 0);
+});
+
+test("'baseline' og 'band' rører HVERKEN seasons-tabellen eller claim-tabellen (kun 'decay' claimer)", async () => {
+  const baseline = buildStatefulSupabase([{ rider_id: "r1", form: 10 }]);
+  await baseline.run({ config: { ...SEASON_FORM_RESET_DEFAULTS, mode: "baseline", baselineValue: 50 } });
+  assert.equal(baseline.capture.seasonReads, 0);
+  assert.equal(baseline.capture.claims.length, 0);
+
+  const band = buildStatefulSupabase([{ rider_id: "r1", form: 10 }]);
+  await band.run({ config: { ...SEASON_FORM_RESET_DEFAULTS, mode: "band", bandMin: 40, bandMax: 60 }, season: 3 });
+  assert.equal(band.capture.seasonReads, 0);
+  assert.equal(band.capture.claims.length, 0);
 });
 
 test("gen-kørsel rører ikke fatigue/injured_until — heller ikke i første kørsel", async () => {

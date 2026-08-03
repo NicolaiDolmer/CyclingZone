@@ -68,6 +68,26 @@ test("academy_season_intake_runs (#2911): flag beta + tom tabel = FUND (beta er 
   assert.ok(finding, "beta betyder featuren kan køre for nogen — tom tabel skal stadig flages");
 });
 
+test("wage_daily_runs (#2840): mode season_upfront (offValues) + tom tabel = INTET fund", () => {
+  // wage_deduction_mode er en MODE-nøgle: "season_upfront" er dens off-tilstand,
+  // ikke literal "off" — offValues-mekanismen skal undertrykke fundet.
+  const flags = new Map([["wage_deduction_mode", "season_upfront"]]);
+  const insertPaths = paths("wage_daily_runs", "backend/lib/wageDeductionSweep.js");
+
+  const finding = evaluateDetectorARow(row("wage_daily_runs", 0), { insertPaths, flags });
+  assert.equal(finding, null, "season_upfront er off-tilstanden — tom tabel er forventet indtil flip");
+});
+
+test("wage_daily_runs (#2840): mode daily + tom tabel = FUND (sweepen burde skrive)", () => {
+  const flags = new Map([["wage_deduction_mode", "daily"]]);
+  const insertPaths = paths("wage_daily_runs", "backend/lib/wageDeductionSweep.js");
+
+  const finding = evaluateDetectorARow(row("wage_daily_runs", 0), { insertPaths, flags });
+  assert.ok(finding, "daily + 0 rows skal flages — sweepen koerer nu og burde skrive");
+  assert.equal(finding.detector, "A");
+  assert.match(finding.reason, /wage_deduction_mode/);
+});
+
 test("email_log (#2725/#2853): flag mangler i app_config (bekræftet prodtilstand) + tom = INTET fund", () => {
   // email_loop_enabled har aldrig haft en række i app_config — emailLoopFlag.js's
   // egen fail-safe tolker det som "off". Denne entry var tidligere en manuel
