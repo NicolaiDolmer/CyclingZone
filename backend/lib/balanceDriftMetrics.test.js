@@ -14,6 +14,10 @@ import {
   maxRiderWinRateLowerBound,
   poolDailyRate,
   foldRiderWindowRows,
+  computeShare4PlusRaceSnapshot,
+  clusterCorrectedRate,
+  distanceInStandardErrors,
+  poolClusterCorrectedShare4Plus,
 } from "./balanceDriftMetrics.js";
 
 // ── classifyMetric ───────────────────────────────────────────────────────────
@@ -464,4 +468,159 @@ test("foldRiderWindowRows: phantom-raekker forurener ikke maxRiderWinRate", () =
   const stats = maxRiderWinRateLowerBound({ winsByRider, startsByRider, minStarts: 5 });
   assert.equal(stats.riders, 1);
   assert.equal(stats.leader.riderId, "real");
+});
+
+// ── #2557 afsnit 5b: klynge-korrigeret share4Plus-SE ─────────────────────────
+
+function dominanceObs({ raceId, maxSameTeamTop10 = 1 }) {
+  return { raceId, maxSameTeamTop10, favoriteWon: false, favoritePodium: false, distinctTeamsTop10: 10 };
+}
+
+test("computeShare4PlusRaceSnapshot: grupperer etaper pr. raceId, hit = maxSameTeamTop10>=4", () => {
+  const observations = [
+    dominanceObs({ raceId: "raceA", maxSameTeamTop10: 5 }), // hit
+    dominanceObs({ raceId: "raceA", maxSameTeamTop10: 3 }), // ikke hit
+    dominanceObs({ raceId: "raceB", maxSameTeamTop10: 4 }), // hit
+  ];
+  const snap = computeShare4PlusRaceSnapshot(observations);
+  assert.deepEqual(snap, {
+    raceA: { hits: 1, stages: 2 },
+    raceB: { hits: 1, stages: 1 },
+  });
+});
+
+test("computeShare4PlusRaceSnapshot: ukendt raceId (null/undefined) udelades — kan ikke klynges", () => {
+  const observations = [
+    dominanceObs({ raceId: null, maxSameTeamTop10: 5 }),
+    dominanceObs({ raceId: undefined, maxSameTeamTop10: 5 }),
+    dominanceObs({ raceId: "raceA", maxSameTeamTop10: 5 }),
+  ];
+  const snap = computeShare4PlusRaceSnapshot(observations);
+  assert.deepEqual(Object.keys(snap), ["raceA"]);
+});
+
+test("computeShare4PlusRaceSnapshot: tom liste giver tomt objekt", () => {
+  assert.deepEqual(computeShare4PlusRaceSnapshot([]), {});
+});
+
+test("clusterCorrectedRate: syntetisk klynge-eksempel — ét stærkt korreleret løb dominerer det naive estimat", () => {
+  // Race A: 5/5 etaper er brud (ét vedvarende matchup, som Tour des Alpes
+  // Juliennes Div3-D i auditen). Race B/C/D: helt rene løb.
+  const byCluster = {
+    raceA: { hits: 5, stages: 5 },
+    raceB: { hits: 0, stages: 4 },
+    raceC: { hits: 0, stages: 3 },
+    raceD: { hits: 0, stages: 1 },
+  };
+  const out = clusterCorrectedRate(byCluster);
+
+  assert.equal(out.clusters, 4);
+  assert.equal(out.stages, 13);
+  assert.equal(out.hits, 5);
+  // Naivt (pr.-etape) estimat: 5/13.
+  assert.equal(Number(out.naiveEstimate.toFixed(4)), 0.3846);
+  // Naiv Bernoulli-SE: sqrt(0.3846*0.6154/13) ≈ 0.1349.
+  assert.equal(Number(out.naiveSe.toFixed(4)), 0.1349);
+  // Klynge-estimat: uvægtet middel af løbs-raterne [1, 0, 0, 0] = 0,25 — IKKE
+  // 0,3846. Sample-sd (n-1=3): sqrt(0,75/3) = 0,5. SE = 0,5/sqrt(4) = 0,25.
+  assert.equal(out.clusterEstimate, 0.25);
+  assert.equal(out.clusterSd, 0.5);
+  assert.equal(out.clusterSe, 0.25);
+
+  // Afstanden til bånd-max (0,05) er DRAMATISK mindre klynge-korrigeret:
+  // naivt (0,3846-0,05)/0,1349 ≈ 2,48 SE; klynge-korrigeret (0,25-0,05)/0,25 = 0,8 SE.
+  // Samme punktestimat-retning, meget forskellig sikkerhed — netop auditens pointe.
+  const naiveDistance = distanceInStandardErrors(out.naiveEstimate, out.naiveSe, BALANCE_DRIFT_BANDS.share4PlusSameTeamTop10);
+  const clusterDistance = distanceInStandardErrors(out.clusterEstimate, out.clusterSe, BALANCE_DRIFT_BANDS.share4PlusSameTeamTop10);
+  assert.equal(Number(naiveDistance.toFixed(2)), 2.48);
+  assert.equal(clusterDistance, 0.8);
+  assert.ok(clusterDistance < naiveDistance, "klynge-korrektion skal ALDRIG se mere signifikant ud end den naive SE her");
+});
+
+test("clusterCorrectedRate: 0 klynger giver alle-null, aldrig NaN/crash", () => {
+  const out = clusterCorrectedRate({});
+  assert.deepEqual(out, {
+    clusters: 0, stages: 0, hits: 0,
+    naiveEstimate: null, naiveSe: null,
+    clusterEstimate: null, clusterSd: null, clusterSe: null,
+  });
+});
+
+test("clusterCorrectedRate: 1 klynge giver et estimat men INGEN SE (sd udefineret ved n=1)", () => {
+  const out = clusterCorrectedRate({ soloRace: { hits: 2, stages: 4 } });
+  assert.equal(out.clusters, 1);
+  assert.equal(out.clusterEstimate, 0.5);
+  assert.equal(out.clusterSd, null);
+  assert.equal(out.clusterSe, null);
+});
+
+test("clusterCorrectedRate: klynger uden brugbare stages (0/negativ/ikke-finit) springes over", () => {
+  const out = clusterCorrectedRate({
+    ok: { hits: 1, stages: 2 },
+    zero: { hits: 0, stages: 0 },
+    bad: { hits: NaN, stages: 3 },
+  });
+  assert.equal(out.clusters, 1);
+  assert.equal(out.stages, 2);
+});
+
+test("distanceInStandardErrors: positiv over max-baand, positiv under min-baand, 0 inde i baandet", () => {
+  const band = { min: 0.25, max: 0.40 };
+  assert.equal(distanceInStandardErrors(0.32, 0.02, band), 0);
+  assert.equal(Number(distanceInStandardErrors(0.50, 0.05, band).toFixed(6)), 2); // (0.50-0.40)/0.05
+  assert.equal(Number(distanceInStandardErrors(0.10, 0.05, band).toFixed(6)), 3); // (0.25-0.10)/0.05
+});
+
+test("distanceInStandardErrors: ensidet baand (kun max) — share4PlusSameTeamTop10-stil", () => {
+  const band = BALANCE_DRIFT_BANDS.share4PlusSameTeamTop10; // { max: 0.05 }
+  assert.equal(distanceInStandardErrors(0.03, 0.01, band), 0);
+  assert.equal(Number(distanceInStandardErrors(0.15, 0.05, band).toFixed(6)), 2);
+});
+
+test("distanceInStandardErrors: null ved manglende/ikke-endeligt/ikke-positivt estimat eller SE", () => {
+  const band = { max: 0.05 };
+  assert.equal(distanceInStandardErrors(null, 0.05, band), null);
+  assert.equal(distanceInStandardErrors(0.10, null, band), null);
+  assert.equal(distanceInStandardErrors(0.10, 0, band), null);
+  assert.equal(distanceInStandardErrors(0.10, NaN, band), null);
+  assert.equal(distanceInStandardErrors(NaN, 0.05, band), null);
+});
+
+test("poolClusterCorrectedShare4Plus: SAMME løb over flere dage tælles som ÉN klynge, ikke N", () => {
+  // Et 3-etapeløb (raceX) der bryder alle 3 dage, plus 2 rene enkeltdags-løb.
+  // Naivt pr.-etape ville dette se ud som 3 uafhængige brud af 5 etaper i alt.
+  const rows = [
+    { date: "2026-08-01", metrics: { share4PlusByRace: { raceX: { hits: 1, stages: 1 }, raceY: { hits: 0, stages: 1 } } } },
+    { date: "2026-08-02", metrics: { share4PlusByRace: { raceX: { hits: 1, stages: 1 }, raceZ: { hits: 0, stages: 1 } } } },
+    { date: "2026-08-03", metrics: { share4PlusByRace: { raceX: { hits: 1, stages: 1 } } } },
+  ];
+  const out = poolClusterCorrectedShare4Plus(rows, 7);
+
+  assert.equal(out.days, 3);
+  assert.equal(out.clusters, 3, "raceX skal merges til ÉN klynge på tværs af 3 dage, ikke 3");
+  assert.equal(out.stages, 5);
+  assert.equal(out.hits, 3);
+  // raceX-klyngen: 3/3 = 1,0 (merged hits/stages). raceY/raceZ: 0/1 hver.
+  // Uvægtet middel: (1,0 + 0 + 0)/3 = 0,3333.
+  assert.equal(Number(out.clusterEstimate.toFixed(4)), 0.3333);
+  // Naivt pr.-etape (fejlagtigt hvis man IKKE klynge-korrigerer): 3/5 = 0,6.
+  assert.equal(Number(out.naiveEstimate.toFixed(4)), 0.6);
+});
+
+test("poolClusterCorrectedShare4Plus: respekterer windowDays og springer raekker uden snapshot over", () => {
+  const rows = [
+    { date: "2026-08-03", metrics: {} }, // intet share4PlusByRace — springes over
+    { date: "2026-08-02", metrics: { share4PlusByRace: { raceA: { hits: 1, stages: 1 } } } },
+    { date: "2026-08-01", metrics: { share4PlusByRace: { raceB: { hits: 0, stages: 1 } } } },
+    { date: "2026-07-31", metrics: { share4PlusByRace: { raceC: { hits: 0, stages: 1 } } } }, // uden for vindue=3
+  ];
+  const out = poolClusterCorrectedShare4Plus(rows, 3);
+  assert.equal(out.days, 2, "kun 08-02 og 08-01 bidrager brugbare snapshots inden for vinduet");
+  assert.equal(out.clusters, 2);
+});
+
+test("poolClusterCorrectedShare4Plus: tom rows-liste giver 0 klynger, ikke crash", () => {
+  const out = poolClusterCorrectedShare4Plus([], 7);
+  assert.equal(out.clusters, 0);
+  assert.equal(out.days, 0);
 });
