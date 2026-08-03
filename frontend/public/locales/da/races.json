@@ -65,6 +65,7 @@
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
       "remove": "Fjern rytter",
+      "openRace": "Åbn {name}",
       "peaksHere": "Topper her: {names}",
       "paybackHere": "Payback-hul her: {names} ({points} form)",
       "paybackHereNoPoints": "Payback-hul her: {names}"
