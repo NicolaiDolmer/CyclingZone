@@ -75,6 +75,30 @@ test("ReDoS-guard (#169): HTML-side med mange mellemrum + manglende '<' normalis
   assert.ok(elapsed < 500, `normalisering tog ${elapsed.toFixed(0)} ms — mulig ReDoS-regression`);
 });
 
+// CYCLINGZONE-3X (26/7): stallWatchdog kaster `new Error(\`stall-watchdog seasons:
+// ${err.message}\`)`, så HTML-siden ligger EFTER et præfiks. Præfikset er den eneste
+// kontekst der peger på call-site'et — det skal overleve normaliseringen.
+test("bevarer call-site-præfiks foran HTML-siden (#3052/CYCLINGZONE-3X)", () => {
+  assert.equal(
+    normalizeSupabaseErrorMessage(`stall-watchdog seasons: ${CF_522}`),
+    "stall-watchdog seasons: Supabase unavailable (522 Connection timed out)"
+  );
+});
+
+test("præfiks-bevarelse virker også uden parsebar kode", () => {
+  assert.equal(
+    normalizeSupabaseErrorMessage(`updateStandings: ${HTML_NO_CODE}`),
+    "updateStandings: Supabase unavailable (HTML error page)"
+  );
+});
+
+test("rent whitespace-præfiks giver ingen ledende mellemrum", () => {
+  assert.equal(
+    normalizeSupabaseErrorMessage(`\n  ${CF_522}`),
+    "Supabase unavailable (522 Connection timed out)"
+  );
+});
+
 test("normaliserer stadig korrekt med usædvanlig whitespace omkring koden", () => {
   // Regressionsvagt for #169-regex-ændringen: ekstra mellemrum før/efter kode + tekst.
   const html = '<!doctype html><title>supabase.co |   504  :   Gateway timeout   </title>';

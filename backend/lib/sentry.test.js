@@ -8,6 +8,7 @@ import {
   normalizeMessageForGrouping,
   getEventGroupKey,
   createVolumeLimiter,
+  normalizeEventMessages,
 } from "./sentry.js";
 
 // I test-env er Sentry disabled (ingen SENTRY_DSN) → monitorCron skal være en ren
@@ -158,4 +159,65 @@ test("createVolumeLimiter — maxTrackedKeys begrænser hukommelsesforbrug (FIFO
   assert.equal(limiter.size(), 2);
   limiter.check("c", 0); // skal evicte "a" (ældste)
   assert.equal(limiter.size(), 2);
+});
+
+// ── normalizeEventMessages (#3052 / CYCLINGZONE-3X) ──────────────────────────
+
+// Cloudflares fejlside som den lander i error.message. Forkortet, men med de
+// markører normaliseringen leder efter (title + Ray ID).
+const CF_522_PAGE = `<!DOCTYPE html>
+<html class="no-js" lang="en-US"><head>
+<title>supabase.co | 522: Connection timed out</title>
+</head><body><div id="cf-error-details">
+Cloudflare Ray ID: a214d8d2cc4034b7
+</div></body></html>`;
+
+test("normalizeEventMessages — koger HTML-fejlside i exception-value ned, bevarer call-site-præfiks", () => {
+  const event = {
+    exception: { values: [{ type: "Error", value: `stall-watchdog seasons: ${CF_522_PAGE}` }] },
+  };
+  normalizeEventMessages(event);
+  assert.equal(
+    event.exception.values[0].value,
+    "stall-watchdog seasons: Supabase unavailable (522 Connection timed out)"
+  );
+});
+
+test("normalizeEventMessages — normaliserer også event.message (captureMessage-stien)", () => {
+  const event = { message: CF_522_PAGE };
+  normalizeEventMessages(event);
+  assert.equal(event.message, "Supabase unavailable (522 Connection timed out)");
+});
+
+test("normalizeEventMessages — almindelige fejl passerer uændret igennem", () => {
+  const event = {
+    message: "noget gik galt",
+    exception: { values: [{ type: "Error", value: 'permission denied for table "riders"' }] },
+  };
+  normalizeEventMessages(event);
+  assert.equal(event.message, "noget gik galt");
+  assert.equal(event.exception.values[0].value, 'permission denied for table "riders"');
+});
+
+test("normalizeEventMessages — tåler events uden message/exception", () => {
+  assert.doesNotThrow(() => normalizeEventMessages({}));
+  assert.doesNotThrow(() => normalizeEventMessages(null));
+  assert.doesNotThrow(() => normalizeEventMessages({ exception: { values: [{}] } }));
+});
+
+// Den egentlige gevinst: to udfald af SAMME outage bærer forskellige Ray ID'er og
+// tidsstempler i den rå HTML, så de ville få hver sin grupperingsnøgle. Efter
+// normalisering (som beforeSend kører FØR getEventGroupKey) grupperer de sammen.
+test("normalizeEventMessages — to udfald af samme outage får samme grupperingsnøgle", () => {
+  const build = (rayId) => ({
+    exception: {
+      values: [{
+        type: "Error",
+        value: `stall-watchdog seasons: ${CF_522_PAGE.replace("a214d8d2cc4034b7", rayId)}`,
+      }],
+    },
+  });
+  const a = normalizeEventMessages(build("aaaaaaaaaaaaaaaa"));
+  const b = normalizeEventMessages(build("bbbbbbbbbbbbbbbb"));
+  assert.equal(getEventGroupKey(a), getEventGroupKey(b));
 });

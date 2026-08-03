@@ -134,6 +134,34 @@ export function createVolumeLimiter({
 
 const defaultVolumeLimiter = createVolumeLimiter();
 
+// #3052 — SDK-level besked-normalisering (defense-in-depth BAG toSentryError).
+//
+// toSentryError normaliserer kun værdier der IKKE allerede er Error-instanser
+// (linje 15: `if (error instanceof Error) return error;`). Men det dominerende
+// mønster i backenden er `throw new Error(\`min-kontekst: ${err.message}\`)` —
+// 112 filer gør det, mod 8 der bruger withSupabaseRetry/toSupabaseError. Når
+// Supabase-gatewayen svarer med en Cloudflare-fejlside, ryger hele HTML-siden
+// derfor med som issue-titel (CYCLINGZONE-3X: "Error: stall-watchdog seasons:
+// <!DOCTYPE html>…"), og fordi siden bærer et unikt Ray ID grupperer to udfald
+// af SAMME outage ikke engang sammen.
+//
+// Her er det ét sted der dækker alle call-sites, uden en 112-filers refaktor.
+// Kører FØR getEventGroupKey, så både Sentrys gruppering og volumen-guarden
+// ser den korte besked. Muterer kun Sentry-eventet — aldrig applikationens
+// egne fejl-objekter.
+export function normalizeEventMessages(event) {
+  if (!event || typeof event !== "object") return event;
+  if (typeof event.message === "string") {
+    event.message = normalizeSupabaseErrorMessage(event.message);
+  }
+  for (const value of event.exception?.values || []) {
+    if (typeof value?.value === "string") {
+      value.value = normalizeSupabaseErrorMessage(value.value);
+    }
+  }
+  return event;
+}
+
 export function initSentry() {
   if (enabled || !process.env.SENTRY_DSN) return;
 
@@ -143,6 +171,9 @@ export function initSentry() {
     release: releaseName(),
     tracesSampleRate: sampleRateFromEnv(),
     beforeSend(event) {
+      // #3052: kog HTML-fejlsider ned FØR gruppering/volumen-guard nedenfor.
+      normalizeEventMessages(event);
+
       const message = event.message || event.exception?.values?.[0]?.value || "";
       if (/rate limit exceeded/i.test(message)) return null;
 

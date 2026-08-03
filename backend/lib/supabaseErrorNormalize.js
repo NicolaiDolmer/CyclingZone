@@ -62,32 +62,57 @@ function extractMessage(error) {
   return typeof error.message === "string" ? error.message : "";
 }
 
+// #3052: de fleste call-sites kaster `new Error(\`min-kontekst: ${err.message}\`)`,
+// så HTML-siden ligger EFTER et præfiks i stedet for at udgøre hele beskeden.
+// Find hvor dokumentet starter, så præfikset kan bevares og kun HTML-delen
+// erstattes. Returnerer -1 hvis der ikke er noget dokument-start-tag.
+//
+// Genkendelsen må derfor IKKE være forankret i beskedens start (som den var før
+// #3052): `updateStandings: <!DOCTYPE html>…` blev ellers ikke set som en fejlside
+// overhovedet, og hele nginx/Cloudflare-siden slap uændret ud som Sentry-titel.
+// Dokument-start-tags er utvetydige — en ægte PostgREST-besked indeholder dem ikke.
+const HTML_DOC_START_RE = /<!doctype html|<html[\s>]/i;
+
 function looksLikeHtmlErrorPage(message) {
   if (typeof message !== "string") return false;
-  const head = message.trimStart().slice(0, 200).toLowerCase();
   return (
-    head.startsWith("<!doctype html") ||
-    head.startsWith("<html") ||
+    HTML_DOC_START_RE.test(message) ||
     message.includes("cf-error-details") ||
     message.includes("Cloudflare Ray ID")
   );
 }
 
-// Returnerer en kort, grupperbar besked hvis `message` er en HTML-fejlside;
-// ellers returneres input uændret (også for ikke-strenge — defensivt).
-export function normalizeSupabaseErrorMessage(message) {
-  if (typeof message !== "string") return message;
-  if (!looksLikeHtmlErrorPage(message)) return message;
-
-  const title = message.match(CF_TITLE_RE);
+// Koger en HTML-fejlside ned til én kort linje. Forudsætter at input ER en side.
+function summarizeHtmlErrorPage(html) {
+  const title = html.match(CF_TITLE_RE);
   if (title) {
     return `Supabase unavailable (${title[1]} ${title[2].trim()})`;
   }
-  const codeOnly = message.match(CF_CODE_LABEL_RE);
+  const codeOnly = html.match(CF_CODE_LABEL_RE);
   if (codeOnly) {
     return `Supabase unavailable (${codeOnly[1]})`;
   }
   return "Supabase unavailable (HTML error page)";
+}
+
+// Returnerer en kort, grupperbar besked hvis `message` indeholder en HTML-fejlside;
+// ellers returneres input uændret (også for ikke-strenge — defensivt).
+//
+// Et eventuelt præfiks før dokumentet bevares (#3052), så call-site-konteksten
+// ikke går tabt: "stall-watchdog seasons: <!DOCTYPE html>…" bliver til
+// "stall-watchdog seasons: Supabase unavailable (522 Connection timed out)".
+export function normalizeSupabaseErrorMessage(message) {
+  if (typeof message !== "string") return message;
+  if (!looksLikeHtmlErrorPage(message)) return message;
+
+  const docStart = message.search(HTML_DOC_START_RE);
+  if (docStart <= 0) return summarizeHtmlErrorPage(message);
+
+  // Kun HTML-delen erstattes. Præfikset trimmes for det mellemrum der stod
+  // umiddelbart før dokumentet, så resultatet ikke får dobbelt-mellemrum.
+  const prefix = message.slice(0, docStart).trimEnd();
+  const summary = summarizeHtmlErrorPage(message.slice(docStart));
+  return prefix ? `${prefix} ${summary}` : summary;
 }
 
 // True hvis fejlen er et transient gateway-/netværks-hikke det er værd at retry'e.
