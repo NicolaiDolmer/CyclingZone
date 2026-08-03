@@ -5,7 +5,7 @@
 ## Aktiv styring
 
 > **🎯 Next action (ejer-svar modtaget i batch 3/8 — udestående):**
-> 1. **Svar 3/8:** klik-pakken = ja til ALLE tre (#2892+#2076+#419 → næste ops-session) · #1150 = genforhandling m. frigivelse (dokumenteret på issuet) · #3199/#3200 = ÉN samlet design-session (dedikeret, starter m. ejeren) · #3120 = lukket uden mutation. **Stadig hos ejeren:** PR #3207 visuelt go (screenshots leveret) · gyldig RESEND_API_KEY (DKIM-DNS live, nøglen i connector+Railway ugyldig → blokerer #2853-flip + #3201-webhook) · godkendelse af #3132/#2853-udkastene.
+> 1. **Svar 3/8:** klik-pakken = ja til ALLE tre (#2892+#2076+#419 → næste ops-session) · #1150 = genforhandling m. frigivelse (dokumenteret på issuet) · #3199/#3200 = ÉN samlet design-session (dedikeret, starter m. ejeren) · #3120 = lukket uden mutation. **Runde 2-svar 3/8:** #3207 = ja → MERGED · #3132-privatlivstekst = godkendt → PR #3208 (auto-merge; luk #3132 når live) · #2853-mailtekster = ejer læser draft-filen først. **Stadig hos ejeren:** gyldig RESEND_API_KEY + EMAIL_UNSUB_SECRET (DKIM-DNS live, nøglen ugyldig → blokerer #2853-flip + #3201-webhook) · #2853-læsning.
 > 2. **Godkendelses-udkast leveret i docs/drafts/ 3/8:** [privatlivstekst #3132](drafts/privatlivstekst-3132-2026-08-03.md) + [3 mailtekster #2853 EN+DA](drafts/mailtekster-2853-2026-08-03.md). Dit ja → Claude implementerer/flipper.
 > 3. **Penge-kæden (#2813):** moms-tjek i Alunta + flip-go udestår. **#2736 fornyelses-webhook før ~24/8.**
 > 4. **Discord-svar:** ejeren poster selv — udkast i docs/drafts/discord-svar-2026-08-03.md. #2758-automation kører (lokal task 07:30).
@@ -18,7 +18,7 @@
 
 > **📌 Åbne opfølgninger:** #3036 · #2164 · #3049-#3051 · #2723 (+#3152) · #3172 (CI-flake) · #3193 global rank-mismatch (koordinér m. #2792) · #3114 rest (save-guard-hul åbner ved D1-oprykning efter 23/8 + "Race day 100000"-display → #3107) · identity_events search_path-hærdning (advisor-WARN) · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** verificér CYCLINGZONE-44-tick=4 + luk #3185 · merge #3207 efter ejer-go · klik-pakken (#2892/#2076/#419, ejer-ja 3/8) · derefter #3038 (23/8-blokeren) · #3193. **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
+> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** verificér CYCLINGZONE-44-tick=4 + luk #3185 · verificér #3208 live → luk #3132 · klik-pakken (#2892/#2076/#419, ejer-ja 3/8) · derefter #3038 (23/8-blokeren) · #3193. **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
 
 ## Standing context (forever-relaunch)
 
