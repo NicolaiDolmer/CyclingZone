@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.85",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Your chief scout's rating now actually sharpens the potential ranges you see",
+          "body": "Hiring a better chief scout was always meant to tighten the potential estimates on the Scouting tab, and the help pages say as much. In practice it didn't: the ranges were always drawn with the default scout's precision, no matter who you had hired. That wiring is now fixed. With a hired scout, the star range and the per-type ceiling bands on your own riders and on fully scouted targets are now as narrow as his rating allows, and they tighten the moment you next open a rider. Teams without a hired chief scout see no change, and partially scouted rivals look the same as before: a scout's precision only kicks in once he knows a rider fully. His other jobs, capacity and mission shortlists, always worked and are untouched."
+        },
+        "da": {
+          "title": "Din chefspejder-rating skærper nu faktisk de potentiale-intervaller du ser",
+          "body": "At hyre en bedre chefspejder skulle altid have strammet potentiale-estimaterne på Scouting-fanen, og det står der også i hjælpen. I praksis skete det ikke: intervallerne blev altid tegnet med standard-spejderens præcision, uanset hvem du havde hyret. Den kobling er nu rettet. Med en hyret spejder er stjerne-intervallet og loft-båndene pr. ryttertype på dine egne ryttere og på fuldt scoutede mål nu så smalle som hans rating tillader, og de strammer til næste gang du åbner en rytter. Hold uden hyret chefspejder ser ingen ændring, og delvist scoutede rivaler ser ud som før: en spejders præcision slår først igennem når han kender en rytter fuldt ud. Hans øvrige arbejde, kapacitet og missions-shortlists, har altid virket og er urørt."
+        },
+        "refs": [3213]
+      }
+    ]
+  },
+  {
     "version": "7.84",
     "date": "2026-08-03",
     "label": "Beta",

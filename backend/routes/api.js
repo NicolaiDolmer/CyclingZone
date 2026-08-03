@@ -136,7 +136,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
-import { getScoutState, startTargetAssignment, startMission, cancelAssignment } from "../lib/scoutAssignmentService.js";
+import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
@@ -1469,14 +1469,18 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
   if (ids.length === 0) return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates: {} });
   if (ids.length > 500) return res.status(400).json({ error: "too_many_riders", max: 500 });
   try {
-    const [{ state }, { data: riders, error }] = await Promise.all([
+    const [{ state }, scout, { data: riders, error }] = await Promise.all([
       loadScoutState(req.team.id),
+      loadScout(req.team.id, supabase),
       supabase.from("riders").select("id, potentiale, birthdate, team_id").in("id", ids),
     ]);
     if (error) throw new Error(error.message);
+    // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
+    // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
+    const currentYear = new Date().getFullYear();
     const estimates = {};
     for (const rider of riders ?? []) {
-      estimates[rider.id] = buildScoutEstimate(rider, state.levels[rider.id] ?? 0, req.team.id);
+      estimates[rider.id] = buildScoutEstimate(rider, state.levels[rider.id] ?? 0, req.team.id, SCOUTING_CONFIG, currentYear, scout);
     }
     res.json({ teamId: req.team.id, maxLevel: state.maxLevel, estimates });
   } catch (err) {
@@ -1577,7 +1581,10 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
         message: "Scouting is now a job-based system — use POST /api/scouting/assignments.",
       });
     }
-    const { activeSeasonId, state } = await loadScoutState(req.team.id);
+    const [{ activeSeasonId, state }, scout] = await Promise.all([
+      loadScoutState(req.team.id),
+      loadScout(req.team.id, supabase),
+    ]);
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
 
     // Rytteren skal findes (og ikke være ens egen — egne ryttere vises eksakt).
@@ -1601,13 +1608,14 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
     // slots, niveau og stjerne-range uden ekstra round-trip.
     const { state: next } = await loadScoutState(req.team.id);
     const nextLevel = next.levels[riderId] ?? 0;
+    const currentYear = new Date().getFullYear();
     res.json({
       ok: true,
       riderId,
       level: nextLevel,
       slots: next.slots,
       maxLevel: next.maxLevel,
-      estimate: buildScoutEstimate(rider, nextLevel, req.team.id),
+      estimate: buildScoutEstimate(rider, nextLevel, req.team.id, SCOUTING_CONFIG, currentYear, scout),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1622,8 +1630,9 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
 router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const [{ state }, { data: rider, error }] = await Promise.all([
+    const [{ state }, scout, { data: rider, error }] = await Promise.all([
       loadScoutState(req.team.id),
+      loadScout(req.team.id, supabase),
       supabase
         .from("riders")
         .select("id, team_id, potentiale, birthdate, primary_type, market_value")
@@ -1643,7 +1652,8 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
 
-    const stars = buildScoutEstimate(rider, level, req.team.id);
+    const currentYear = new Date().getFullYear();
+    const stars = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
     const starsMasked = stars && !stars.hidden ? { lo: stars.lo, hi: stars.hi } : null;
 
     // Data-gap (#2001-backfill dækker aktive ryttere, men vær defensiv): uden
@@ -1653,7 +1663,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     let verdict = null;
     if (caps && ab) {
       types = buildTypeCeilingBands({
-        nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id,
+        nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id, scout,
       });
       const best = types.reduce((a, b) => (b.now > a.now ? b : a), types[0]);
       const bestCeil = types.reduce((a, b) => ((b.ceilLo + b.ceilHi) > (a.ceilLo + a.ceilHi) ? b : a), types[0]);
@@ -1709,8 +1719,9 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
 router.get("/riders/:id/development-projection", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const [{ state }, { data: rider, error }] = await Promise.all([
+    const [{ state }, scout, { data: rider, error }] = await Promise.all([
       loadScoutState(req.team.id),
+      loadScout(req.team.id, supabase),
       supabase
         .from("riders")
         .select("id, team_id, birthdate, primary_type")
@@ -1741,7 +1752,7 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     }
 
     const bands = buildTypeCeilingBands({
-      nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id,
+      nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id, scout,
     });
     // Projektionen tegnes på den fremhævede primærlinje: rytterens primærtype hvis kendt,
     // ellers den højest-ratede type nu (samme valg som frontendens pickChartTypeKeys).
