@@ -745,7 +745,8 @@
       "working": "Extending…",
       "success": "Contract extended.",
       "errorPrefix": "Couldn't extend:",
-      "capped": "Contract at maximum length (through season {season})."
+      "capped": "Contract at maximum length (through season {season}).",
+      "capCounterLabel": "Extensions used"
     },
     "release": {
       "button": "Release rider",
