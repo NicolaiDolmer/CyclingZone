@@ -60,14 +60,21 @@ function hashSeed(str) {
   return h >>> 0;
 }
 
-// De 5 arketyper (#2948, ejer-godkendt mockup 25/7). Andele er af renownTarget:
+// De 5 arketyper (#2948, ejer-godkendt mockup 25/7; results+ambition rebalanceret
+// #3192 — risiko-præmie-princippet var brudt, se docs/audits/2026-08-03-sponsor-
+// archetype-ev-3192.md). Andele er af renownTarget:
 //   guaranteedFraction  → garanteret base (udbetales ved sæsonstart, board-modificeret)
 //   raceDayShare        → variabel pulje, optjenes pr. etape holdet starter i
 //   clauses[].share     → bonusklausul-beløb (frosset i kroner ved pick)
 // Potentiale ved fuld deltagelse: safe 1.00 · loyal 1.04 · racing 1.08 ·
-// results 0.65 + sejre/podier (loft +0.50) · ambition 0.90 + 0.18 ved top-halvdel.
-// Lavere garanti køber højere loft (risikopræmie). Kalibreret i
-// scripts/sponsorChoiceScorecard.js mod ægte population (±10 %-guard på total).
+// results 0.72 + sejre/podier (loft +0.53, EV ≈0.86 pop.-gns / ≈1.11 for top-
+// kvartilen der reelt bør vælge den) · ambition 0.90 + 0.38 ved top-40 % af egen
+// division (EV ≈1.06, empirisk P(top-40%) ≈0.42 — se audit-rapporten).
+// Lavere garanti køber højere loft (risikopræmie): betinget skal i FORVENTNING
+// slå den flade 'safe' (100 %) for den population der rationelt vælger den — det
+// var netop dette der var brudt for 'ambition' (EV ≈99 %, ~coin-flip vs. flad).
+// Kalibreret i scripts/sponsorChoiceScorecard.js mod ægte population (±10 %-guard
+// på total; #3192-rebalancen målt til +1,1 % vs. flad i mix-scenariet, se audit).
 export const ARCHETYPES = Object.freeze([
   {
     variant: "safe",
@@ -92,13 +99,13 @@ export const ARCHETYPES = Object.freeze([
   },
   {
     variant: "results",
-    guaranteedFraction: 0.55,
-    raceDayShare: 0.1,
+    guaranteedFraction: 0.6,
+    raceDayShare: 0.12,
     lengthSeasons: 2,
     clauses: [
-      { type: "stage_win", share: 0.018 },
-      { type: "podium", share: 0.007 },
-      { type: "results_cap", share: 0.5 },
+      { type: "stage_win", share: 0.035 },
+      { type: "podium", share: 0.014 },
+      { type: "results_cap", share: 0.53 },
     ],
   },
   {
@@ -106,7 +113,7 @@ export const ARCHETYPES = Object.freeze([
     guaranteedFraction: 0.7,
     raceDayShare: 0.2,
     lengthSeasons: 2,
-    clauses: [{ type: "season_objective", objective: "top_half", share: 0.18 }],
+    clauses: [{ type: "season_objective", objective: "top_40pct", share: 0.38 }],
   },
 ]);
 

@@ -9,6 +9,7 @@ import StaffSwitcherBar from "../components/staff/profile/StaffSwitcherBar.jsx";
 import StaffProfileHero from "../components/staff/profile/StaffProfileHero.jsx";
 import StaffProfileTabs from "../components/staff/profile/StaffProfileTabs.jsx";
 import StaffAbilityColumns from "../components/staff/profile/StaffAbilityColumns.jsx";
+import StaffScoutHistoryTab from "../components/staff/profile/StaffScoutHistoryTab.jsx";
 import ReleaseStaffModal from "../components/staff/ReleaseStaffModal.jsx";
 import { formatNumber } from "../lib/intl";
 
@@ -128,9 +129,17 @@ export default function StaffProfilePage() {
               </Card>
             )}
             {tab === "history" && (
-              <Card className="p-4 md:p-5">
-                <p className="text-[13px] text-cz-2">{t("history.body")}</p>
-              </Card>
+              profile.role === "scouting" ? (
+                // #3203: spejder-historik (hvilke ryttere denne spejder har
+                // scoutet) afløser den generiske kontrakt-historik-placeholder
+                // for denne ene rolle — de andre roller har endnu ingen
+                // rolle-specifik historik at vise.
+                <StaffScoutHistoryTab staffId={id} />
+              ) : (
+                <Card className="p-4 md:p-5">
+                  <p className="text-[13px] text-cz-2">{t("history.body")}</p>
+                </Card>
+              )
             )}
 
             <ReleaseStaffModal
