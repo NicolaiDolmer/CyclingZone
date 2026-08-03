@@ -24,6 +24,7 @@ import {
   SEED_TEAM_HALL_OF_FAME,
   SEED_SEASON_STANDINGS,
   SEED_RIDER_RANKINGS,
+  SEED_RIDER_RACE_DAYS,
   SEED_RACE_POINTS,
   SEED_DISTRIBUTION,
   SEED_BROWSE,
@@ -73,6 +74,9 @@ export function rpcResponse(name) {
     // #2863 sæsonens kåringer på /seasons.
     case "get_season_honours":
       return SEED_SEASON_HONOURS;
+    // #3190: løbsdage pr. rytter — Mit Holds Stats-fane.
+    case "get_rider_race_days":
+      return SEED_RIDER_RACE_DAYS;
     default:
       return undefined;
   }

@@ -19,7 +19,20 @@
   },
   "tabs": {
     "squad": "Trup ({count})",
+    "stats": "Statistik",
     "transfers": "Transferhistorik"
+  },
+  "stats": {
+    "seasonLabel": "Sæson {n}",
+    "noActiveSeason": "Ingen aktiv sæson lige nu.",
+    "loadError": "Kunne ikke hente sæsonstatistik. Prøv igen.",
+    "retry": "Prøv igen",
+    "headers": {
+      "raceDays": "Løbsdage",
+      "wins": "Sejre",
+      "points": "Point",
+      "prize": "Præmiepenge"
+    }
   },
   "squad": {
     "view": {
