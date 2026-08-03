@@ -28,6 +28,7 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
+import { evaluateTransferCooldown, readNewAccountGateConfig } from "./newAccountGates.js";
 
 // #44: hent worst-case commitment fra teamets aktive auktioner. Bruges af
 // transfer/swap-execution så et accepteret transfer ikke kan pushe køber i
@@ -325,6 +326,35 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
   };
 }
 
+// #3134 · ung-konto-cooldown på store udgående overførsler/byttehandler.
+// Rammer den "fair-pris-tragt" ingen værdiregel kan se (scan 30/7: en
+// engangskonto betalte ~1,0× markedsværdi til et etableret hold 55 sekunder
+// efter oprettelse) — modsat #3133's pris-gulv/-loft, som fanger UNDER/OVER-
+// pris, ikke en fair pris fra en konto der er for ny til at have optjent
+// tilliden til at flytte den slags beløb. Samme error-shape som
+// describeTransferIssue/describeSwapIssue ovenfor (EN error-string, DA via
+// errors:api.transfer_cooldown_active i frontend).
+function describeCooldownIssue(cooldown) {
+  const params = {
+    cooldownAmount: cooldown.cooldownAmount,
+    cooldownHours: cooldown.cooldownHours,
+    unlocksInHours: cooldown.unlocksInHours,
+  };
+  return {
+    // Static EN fallback only — the client always renders errors:api.
+    // transfer_cooldown_active (with errorParams) instead; see #2848's
+    // i18n-check-error-codes.mjs, which expects a literal string here (not
+    // an interpolated one) to track this errorCode as reachable.
+    error: "New teams can't send large amounts out in a single transfer or swap shortly after signup",
+    errorParams: params,
+    notificationTitle: "Deal blocked — new-account cooldown",
+    notificationTitleCode: "notif.transfer.issue.cooldownTitle",
+    notificationMessage: `This deal was cancelled: new teams can't send ${cooldown.cooldownAmount}+ CZ$ out during their first ${cooldown.cooldownHours} hour(s). Try again in about ${cooldown.unlocksInHours} hour(s).`,
+    notificationMessageCode: "notif.transfer.issue.cooldownActive",
+    notificationParams: params,
+  };
+}
+
 function describeSwapIssue(issue, { offered, requested }) {
   const offeredName = `${offered.firstname} ${offered.lastname}`;
   const requestedName = `${requested.firstname} ${requested.lastname}`;
@@ -428,6 +458,28 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     await notifyTeamOwner(offer.buyer_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, offer.id, onAuctionPayload.metadata);
     await notifyTeamOwner(offer.seller_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, offer.id, onAuctionPayload.metadata);
     return failure(409, "This rider is on an active auction — the transfer was cancelled. Bid on the auction instead.", "rider_on_auction_transfer");
+  }
+
+  // #3134 · ung-konto-cooldown: håndhæves her (execution-choke-pointet for ALLE
+  // transfer-betalinger, uanset om handlen kom via direkte tilbud eller
+  // forhandlingsrunde) — så den kan ikke omgås af en anden vej ind.
+  const cooldownConfig = await readNewAccountGateConfig(supabase);
+  const cooldown = evaluateTransferCooldown({
+    cooldownHours: cooldownConfig.transferCooldownHours,
+    cooldownAmount: cooldownConfig.transferCooldownAmountCzk,
+    amount: price,
+    payingTeamCreatedAt: buyerState.created_at,
+  });
+  if (!cooldown.allowed) {
+    await withdrawTransferOffer(supabase, offer.id);
+    const cooldownMessage = describeCooldownIssue(cooldown);
+    const cooldownMeta = issueNotificationMetadata(cooldownMessage, rider.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", cooldownMessage.notificationTitle, cooldownMessage.notificationMessage, offer.id, cooldownMeta);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", cooldownMessage.notificationTitle, cooldownMessage.notificationMessage, offer.id, cooldownMeta);
+    // #2848 i18n-check-error-codes.mjs rule 5 requires a LITERAL message
+    // string at the call site (not a variable) to track this errorCode as
+    // reachable — cooldownMessage.error carries the same fallback text.
+    return failure(403, "New teams can't send large amounts out in a single transfer or swap shortly after signup", "transfer_cooldown_active", { errorParams: cooldownMessage.errorParams });
   }
 
   // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap (buffer 0)
@@ -644,6 +696,31 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     fetchTeamAuctionCommitment(supabase, swap.proposing_team_id),
     fetchTeamAuctionCommitment(supabase, swap.receiving_team_id),
   ]);
+
+  // #3134 · ung-konto-cooldown, samme håndhævelse som executeTransferOffer —
+  // gates den side der reelt BETALER kontant (payerId, ikke nødvendigvis
+  // proposing_team_id, da cash kan gå begge veje via counter_cash).
+  if (cash !== 0) {
+    const swapCooldownConfig = await readNewAccountGateConfig(supabase);
+    const payerState = cash > 0 ? proposingState : receivingState;
+    const cooldown = evaluateTransferCooldown({
+      cooldownHours: swapCooldownConfig.transferCooldownHours,
+      cooldownAmount: swapCooldownConfig.transferCooldownAmountCzk,
+      amount: Math.abs(cash),
+      payingTeamCreatedAt: payerState.created_at,
+    });
+    if (!cooldown.allowed) {
+      await withdrawSwapOffer(supabase, swap.id);
+      const cooldownMessage = describeCooldownIssue(cooldown);
+      const swapCooldownMeta = issueNotificationMetadata(cooldownMessage);
+      await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", cooldownMessage.notificationTitle, cooldownMessage.notificationMessage, swap.id, swapCooldownMeta);
+      await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", cooldownMessage.notificationTitle, cooldownMessage.notificationMessage, swap.id, swapCooldownMeta);
+      // #2848 i18n-check-error-codes.mjs rule 5 requires a LITERAL message
+    // string at the call site (not a variable) to track this errorCode as
+    // reachable — cooldownMessage.error carries the same fallback text.
+    return failure(403, "New teams can't send large amounts out in a single transfer or swap shortly after signup", "transfer_cooldown_active", { errorParams: cooldownMessage.errorParams });
+    }
+  }
 
   const issue = getSwapExecutionIssue({
     swap,

@@ -97,6 +97,39 @@ const JOB_CONFIG_RESPONSE = Object.freeze({
   missionCost: SCOUT_JOB_CONFIG.mission.cost,
 });
 
+// Historik pr. spejder (#3203, Discord-løfte 27/7): hvilke ryttere har DENNE
+// spejder (staffId) selv afsluttet en målrettet undersøgelse på — kun
+// 'target'-opgaver (individuel rytter-efterretning, niveau 1→3). Mission-
+// shortlists (nyopdagede ryttere fra en scene-mission) er en anden feature og
+// vises allerede holds-bredt i Scouting-central (ShortlistFeed, #2644) — de
+// hører ikke til "ryttere DENNE spejder har scoutet" i samme 1:1-forstand.
+//
+// Knyttet til staff_id, IKKE til om spejderen stadig er ansat (#2649: en
+// fyret spejders tidligere rapporter forbliver hans egne, synlige via hans
+// profil hvis den stadig kan tilgås). team_id+staff_id filtreres SAMMEN, så
+// et fremmed holds staff-id blot giver en tom liste — ingen data-læk mulig.
+//
+// Samme synligheds-guard som getScoutState (#2644 beslutning 1/4): en rytter
+// der er blevet skjult/utilgængelig siden rapporten blev lavet, må ikke lække
+// via historikken.
+const SCOUT_HISTORY_LIMIT = 50;
+
+export async function loadScoutHistory({ teamId, staffId }, supabaseClient) {
+  if (!staffId) return [];
+  const { data, error } = await supabaseClient
+    .from("scout_assignments")
+    .select("id, rider_id, target_level, completed_at")
+    .eq("team_id", teamId)
+    .eq("staff_id", staffId)
+    .eq("kind", "target")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(SCOUT_HISTORY_LIMIT);
+  if (error) throw new Error(`scoutAssignmentService: could not load scout history for ${teamId}/${staffId}: ${error.message}`);
+  const rows = (data ?? []).map((r) => ({ ...r, kind: "target" }));
+  return hydrateCompletedVisibility(supabaseClient, rows);
+}
+
 // {scout, active, completed, capacity, jobConfig} — al frontend-tilstand for Scouting-central.
 // #2644 beslutning 2/3: completed-rapporter hydreres med en server-side synligheds-
 // guard (scoutReportVisibility.js) FØR de forlader serveren — en rapport må aldrig

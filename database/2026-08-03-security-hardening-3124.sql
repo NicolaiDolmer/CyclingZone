@@ -1,0 +1,175 @@
+-- =============================================================================
+-- 2026-08-03 — Supabase security-hardening: matview-eksponering + is_admin()
+-- anon-adgang + identity_events søge-sti (#3124, genbruger default-privileges-
+-- guard-mønstret fra #2830)
+-- =============================================================================
+--
+-- KONTEKST: Supabase security-advisor (28/7-kørsel) flaggede fire matviews som
+-- selectable for anon/authenticated over Data API'en (0016_matview_in_api,
+-- WARN), is_admin() som anon-eksekverbar SECURITY DEFINER-funktion (0028, WARN)
+-- og identity_events_set_ip_prefix() med mutable search_path (0011, WARN).
+-- #2830 (28/7) dokumenterede samme rod-årsag-klasse: Supabase' ALTER DEFAULT
+-- PRIVILEGES gen-granter EXECUTE/SELECT til anon+authenticated på nye objekter,
+-- og et almindeligt "REVOKE ... FROM PUBLIC" rammer ikke disse eksplicitte
+-- rolle-grants. Denne migration bruger samme eksplicitte REVOKE/GRANT-mønster.
+--
+-- VERIFICERET (execute_sql, read-only, project_id ghwvkxzhsbbltzfnuhhz, 3/8):
+--   1. Kolonner på alle fire matviews (pg_attribute) — INGEN interne scores,
+--      bruger-id'er eller hold-økonomi. Kun rangliste-/pointdata + team_id/
+--      rider_id/season_id/race_id (UUID'er der allerede er del af app'ens
+--      egne URL'er, fx /teams/:id) + rider/hold-navne + division.
+--   2. pg_class.relacl på alle fire: anon OG authenticated har i dag fuld
+--      arwdDxtm (samme "default privileges"-mønster som #2830). DML-verberne
+--      (a/w/d/D/x/t/m) er no-op'er på en matview uanset grant (Postgres
+--      afviser INSERT/UPDATE/DELETE mod matviews strukturelt), men SELECT
+--      ('r') er reelt eksponeret over PostgREST i dag, jf. advisoren.
+--   3. Frontend-grep (frontend/src): ALLE fire matviews læses direkte via
+--      supabase.from(...) fra sider der ligger BAG App.jsx' pathless
+--      <ProtectedRoute session={session}><Layout /></ProtectedRoute>-wrapper
+--      (dashboard → GlobalRankWidget/useGlobalRank, teams/:id →
+--      TeamProfilePage, standings → StandingsPage, resultater →
+--      ResultaterPage, team → TeamStatsTab, RiderRankingsPage →
+--      useRiderRankings). De eneste ruter UDEN for wrapperen (/, /login,
+--      /reset-password, /privatlivspolitik, /privacy-policy,
+--      /handelsbetingelser, /terms, /founder-supporter, /ui) læser INGEN af de
+--      fire matviews. Ergo: enhver reel frontend-læsning sker som
+--      `authenticated` (bruger-JWT), aldrig som `anon`. entry-server.jsx
+--      prerenderer kun "/" (landing) — heller ikke en mv-læser.
+--   4. dashboard_rider_ranking()-RPC'en (database/2026-07-19-dashboard-rider-
+--      ranking-rpc.sql) kaldes udelukkende backend-side via service_role-
+--      klienten i backend/routes/api.js (createClient(..., SUPABASE_SERVICE_KEY)
+--      i backend/server.js) — upåvirket af anon/authenticated-grants på de
+--      underliggende matviews, da SECURITY DEFINER-funktionen selv ejer
+--      adgangen. Ingen frontend-sti afhænger af mv-grants via denne RPC.
+--
+-- BESLUTNING PR. VIEW (issuets skabelon: "Skal være offentligt" vs. "Skal ikke"):
+--   rider_rankings_mv, global_rank_mv, team_race_points_mv,
+--   team_standings_ext_mv → "Skal ikke være anon-læsbare": indholdet er i sig
+--   selv offentligt spilindhold (ranglistepoint, ikke fortroligt), MEN ingen
+--   side i appen læser dem uautentificeret (se punkt 3), så anon-SELECT er ren
+--   gratis, uautentificeret scan-flade uden produktværdi — samme DoS-klasse
+--   som #2830-fundet. `authenticated` bevarer SELECT (+ de eksisterende
+--   uskadelige DML-grants rører vi ikke) fordi mindst én reel frontend-sti
+--   læser hver af de fire direkte som `authenticated`. REVOKE er derfor
+--   anon-only, aldrig authenticated, for alle fire.
+--
+-- is_admin() — INGEN ÆNDRING AF GRANTS (afviger bevidst fra issuets forslag
+-- om at revoke anon — se "ÅBENT FUND" nedenfor). GRANT-linjen er en defensiv
+-- re-assertion (samme mønster som #2830s is_admin()-linje), ikke en ny grant.
+--
+-- ÅBENT FUND (vigtigt — læs før merge): issuets opgave (b) bad om
+-- `REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon`. Det er IKKE
+-- appliceret her. pg_policies viser at "Public read riders"-policyen på
+-- public.riders har roles={public} (dvs. ALLE roller, inkl. anon) og
+-- qual = `(is_admin() OR (NOT is_offered_intake_rider(id)))`. En rolle skal
+-- have EXECUTE på en funktion for overhovedet at kunne kalde den inde i en
+-- RLS-USING-klausul (SECURITY DEFINER ændrer kun hvad funktions-KROPPEN må,
+-- ikke om den ANDEN rolle må kalde den). Revokes anon-EXECUTE på is_admin(),
+-- fejler ENHVER anon-SELECT på riders med 42501 "permission denied for
+-- function is_admin" — PRÆCIS det incident der blev rettet 19/7 i #2676 (selv
+-- migration: database/2026-07-19-revoke-rpc-grants-2676.sql, linje 33-41) og
+-- eksplicit bagudtjekket i #2830s egen kommentar 28/7: "kun is_admin() har
+-- derudover anon-adgang blandt prosecdef=true-funktioner i public... tilsigtet
+-- RLS-predikat, ingen risiko." At revoke her ville altså IKKE lukke et hul —
+-- det ville GEN-ÅBNE et allerede rettet incident (#2671/#2676) og bryde riders-
+-- policyens invariant om at anon skal kunne evaluere is_admin() uden fejl.
+-- Denne migration lader derfor is_admin()-grants være UÆNDREDE (anon +
+-- authenticated bevarer EXECUTE) og dokumenterer beslutningen i stedet for at
+-- gen-triagere den. Ejer bør bekræfte at dette matcher intentionen — flagget i
+-- PR'en som "ÅBENT SPØRGSMÅL", ikke appliceret som en antagelse.
+--
+-- is_beta_tester() / is_offered_intake_rider(uuid): forbliver authenticated-
+-- kaldbare med vilje (issuets note). Grep bekræfter:
+--   - is_beta_tester(): ingen direkte frontend-RPC-kald fundet (kun backend
+--     routes/api.js:669-679 der læser users.is_beta_tester direkte via
+--     service_role — funktionen selv har ingen kendte kaldesteder i dag,
+--     rører den derfor ikke, ingen regressionsrisiko ved at lade den være).
+--   - is_offered_intake_rider(uuid): kaldes IKKE direkte af frontend som RPC;
+--     bruges udelukkende inde i "Public read riders"-RLS-policyen (samme
+--     rolle={public}-afhængighed som is_admin() ovenfor — SKAL forblive
+--     kaldbar af anon+authenticated for at riders-policyen ikke fejler 42501
+--     for nogen rolle). Ingen ændring.
+--
+-- identity_events_set_ip_prefix() — mutable search_path (0011, WARN):
+-- pg_get_functiondef bekræfter kroppen kun bruger family(inet) og
+-- set_masklen(inet,int), begge i pg_catalog (verificeret: pg_proc.pronamespace
+-- for begge = 'pg_catalog'). SET search_path = pg_catalog, public dækker
+-- funktionens fulde behov. Funktionen er RETURNS trigger + SECURITY INVOKER
+-- (ikke DEFINER) — Postgres afviser direkte kald af trigger-funktioner uden om
+-- trigger-konteksten ("trigger functions can only be called as triggers"), så
+-- de eksisterende anon/authenticated/PUBLIC EXECUTE-grants på selve funktionen
+-- er allerede ufarlige og røres ikke — kun search_path lukkes.
+--
+-- Idempotent: REVOKE på et allerede-manglende privilegium er en no-op; GRANT på
+-- et allerede-eksisterende ditto; ALTER FUNCTION ... SET er CREATE OR REPLACE-
+-- ækvivalent (kan køres 2×). Ingen rækker muteres, kun katalog-grants +
+-- funktions-konfiguration.
+--
+-- ORKESTRATOREN APPLIER EFTER MERGE (rammer i #2642) — denne fil køres IKKE
+-- som en del af at skrive den.
+--
+-- ROLLBACK (ikke anbefalet — genåbner #3124s matview-scan-flade):
+--   GRANT SELECT ON TABLE public.rider_rankings_mv     TO anon;
+--   GRANT SELECT ON TABLE public.global_rank_mv        TO anon;
+--   GRANT SELECT ON TABLE public.team_race_points_mv   TO anon;
+--   GRANT SELECT ON TABLE public.team_standings_ext_mv TO anon;
+--   ALTER FUNCTION public.identity_events_set_ip_prefix() RESET search_path;
+-- =============================================================================
+
+BEGIN;
+
+-- ── (a) Matviews: luk anon-SELECT over Data API, behold authenticated ───────
+-- Alle fire læses direkte som `authenticated` fra mindst én reel frontend-sti
+-- (se VERIFICERET punkt 3 ovenfor) — authenticated-SELECT røres derfor IKKE.
+-- REVOKE ALL (ikke kun SELECT) fjerner samtidig de medfølgende, funktionelt
+-- døde DML-grants (a/w/d/D/x/t/m) som matviews aldrig kan udføre alligevel —
+-- ren oprydning, ingen adfærdsændring.
+REVOKE ALL ON TABLE public.rider_rankings_mv     FROM anon;
+REVOKE ALL ON TABLE public.global_rank_mv        FROM anon;
+REVOKE ALL ON TABLE public.team_race_points_mv   FROM anon;
+REVOKE ALL ON TABLE public.team_standings_ext_mv FROM anon;
+
+-- ── (b) is_admin(): INGEN revoke — defensiv re-assertion af den TILSIGTEDE
+-- grant (se "ÅBENT FUND" ovenfor). Beskytter samtidig mod fremtidig
+-- ALTER-DEFAULT-PRIVILEGES-drift der kunne fjerne den ved et uheld.
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+
+-- ── (c) identity_events_set_ip_prefix(): luk mutable search_path (0011 WARN) ─
+ALTER FUNCTION public.identity_events_set_ip_prefix() SET search_path = pg_catalog, public;
+
+COMMIT;
+
+-- PostgREST henter schema-cache på ny så REVOKE/GRANT-ændringerne slår igennem
+-- med det samme (matcher #2676/#3013-mønstret).
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- POST-VERIFY (kør efter apply — orkestratoren kører denne sektion, ikke mig)
+-- =============================================================================
+-- SELECT
+--   has_table_privilege('anon', 'public.rider_rankings_mv', 'SELECT')          AS anon_rider_rankings_should_be_false,
+--   has_table_privilege('authenticated', 'public.rider_rankings_mv', 'SELECT') AS auth_rider_rankings_should_be_true,
+--   has_table_privilege('anon', 'public.global_rank_mv', 'SELECT')             AS anon_global_rank_should_be_false,
+--   has_table_privilege('authenticated', 'public.global_rank_mv', 'SELECT')    AS auth_global_rank_should_be_true,
+--   has_table_privilege('anon', 'public.team_race_points_mv', 'SELECT')        AS anon_team_race_points_should_be_false,
+--   has_table_privilege('authenticated', 'public.team_race_points_mv', 'SELECT') AS auth_team_race_points_should_be_true,
+--   has_table_privilege('anon', 'public.team_standings_ext_mv', 'SELECT')      AS anon_team_standings_ext_should_be_false,
+--   has_table_privilege('authenticated', 'public.team_standings_ext_mv', 'SELECT') AS auth_team_standings_ext_should_be_true,
+--   has_function_privilege('anon', 'public.is_admin()', 'EXECUTE')             AS anon_is_admin_should_be_true,
+--   has_function_privilege('authenticated', 'public.is_admin()', 'EXECUTE')    AS auth_is_admin_should_be_true;
+--
+-- SELECT p.proname, p.proconfig
+-- FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+-- WHERE n.nspname = 'public' AND p.proname = 'identity_events_set_ip_prefix';
+-- -- Forventet: proconfig = {search_path=pg_catalog, public}
+--
+-- Forventet advisor-effekt (get_advisors, type=security) efter apply:
+--   materialized_view_in_api × 4  → VÆK (anon fjernet; authenticated-SELECT
+--     trigger IKKE denne lint — advisoren flagger kun anon eller kombinationen
+--     hvor INGEN RLS findes bagved; hvis authenticated fortsat flages, er det
+--     en accepteret, dokumenteret rest-eksponering, ikke en fejl i denne fil).
+--   function_search_path_mutable (identity_events_set_ip_prefix) → VÆK.
+--   anon_security_definer_function_executable (is_admin) → FORBLIVER (bevidst,
+--     se "ÅBENT FUND" — is_admin() skal forblive anon-kaldbar for at riders-
+--     RLS-policyen ikke fejler 42501 for anon).
+-- =============================================================================

@@ -11,6 +11,17 @@
 --
 -- Forudsætter pg_stat_statements (altid til stede på Supabase). Intern støj
 -- (Studio-introspection / query-performance-rapporter) ekskluderes via query-regex.
+--
+-- #3205 (2026-08-03): pg_stat_statements-rækker akkumulerer FOR ALTID (indtil
+-- ekstensionen resettes eller Postgres genstarter) — der findes ingen
+-- "sidst kaldt"-kolonne, kun cumulative tællere siden stats_since. En
+-- ét-gangs manuel diagnose-query eller en superseded funktion, der ikke
+-- kaldes igen, bliver derfor en PERMANENT falsk positiv. To specifikke,
+-- verificerede tilfælde er ekskluderet nedenfor (se
+-- database/2026-08-03-db-io-3205-diagnose.md for fuld diagnose) — begge
+-- er navngivne undtagelser, IKKE en generel "ingen nylig aktivitet"-svækkelse
+-- af tjekket (ville have maskeret selve 2026-06-29-hændelsen, som ikke gik
+-- via RPC/pgrst-wrapperen).
 
 -- 1. Queries der spiller meget temp til disk PR. KALD (fan-out/sort uden index).
 --    Dette er det mønster der drænede budgettet. >50 MB/kald = undersøg.
@@ -23,6 +34,14 @@ FROM pg_stat_statements
 WHERE calls > 0
   AND (temp_blks_written * 8192) / calls > 50 * 1024 * 1024
   AND query !~* '(pg_stat_statements|pg_proc|information_schema|pg_catalog|pg_class|pg_attribute|pg_namespace)'
+  -- #3205: én-gangs manuel forensik-query fra rider-double-booking-auditen
+  -- (2026-07-28, #3113/#3185) — 1 kald, 283 MB temp (kartesisk join uden
+  -- filtrering på formål, kørt direkte mod prod til engangs-optælling).
+  -- Erstattet af backend/lib/riderDoubleBookingWatch.js (paginerede,
+  -- lette JS-queries, ingen temp-spill). Kaldes aldrig igen fra kode —
+  -- ekskluderet på en unik streng fra selve queryen, IKKE et bredt mønster,
+  -- så et NYT tungt forensik-kald stadig ville trigge WARN.
+  AND query !~* 'violating_pairs'
 
 UNION ALL
 
@@ -47,6 +66,17 @@ FROM pg_stat_statements
 WHERE calls > 50
   AND mean_exec_time > 1000
   AND query !~* '(pg_stat_statements|pg_proc|information_schema|pg_catalog)'
+  -- #3205: public.refresh_ranking_matviews() — den ORIGINALE 4-i-1-transaktion,
+  -- bevaret som bagudkompatibel rollback-fallback af #3013-migrationen
+  -- (database/2026-07-27-3013-refresh-matviews-concurrently.sql), men IKKE
+  -- kaldt af nogen kodesti siden splitten deployede 2026-07-28 08:38 (verificeret:
+  -- ingen `.rpc("refresh_ranking_matviews")` i backend, kun de fire granulære
+  -- refresh_*_mv()). Rækkens 238 kald/1164ms-snit stammer ALLE fra FØR splitten
+  -- (stats_since 2026-07-26) og vokser aldrig igen — en fastfrosset historisk
+  -- rest der ellers ville støje ugentligt for evigt. De fire nye funktioner,
+  -- der rent faktisk kaldes nu (945 kald hver, senest verificeret 2026-08-03),
+  -- ligger alle under 1000ms-grænsen (21-678ms snit) og rammer IKKE dette tjek.
+  AND query !~* 'refresh_ranking_matviews'
 
 UNION ALL
 

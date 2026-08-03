@@ -201,27 +201,31 @@ test("resolveTrainingModifier: easy rammer aldrig tilbageslag", () => {
   }
 });
 
-// ── #1974: focusTrainability — type-derived trainability-signal ────────────────
-// Udledes UDELUKKENDE af signatureFactor(primaryType, ability) (riderProgression.js).
-// Værdier bekræftet mod de faktiske vægt-tabeller i riderTypes.js (RIDER_TYPES).
+// ── #1974/#3195: focusTrainability — type-derived trainability-signal ──────────
+// Udledes af youthRoleFactor(primaryType, secondaryType, ability) (riderProgression.js)
+// — SAMME model som buildCapsForRider rent faktisk bruger til livstidsloftet
+// (ejer-besluttet 2026-07-15). Værdier bekræftet mod de faktiske vægt-tabeller i
+// riderTypes.js (RIDER_TYPES) OG mod YOUTH_PROGRESSION_CONFIG's tier-konstanter
+// (naturalPrimaryFactor 1.0 / naturalSecondaryFactor 0.82 / neutralFactor 0.45 /
+// oppositeFactor 0.12 — "blocked" er altså laveste tier, IKKE bogstaveligt nul).
 
-test("focusTrainability: climber — signatur-fokus er 'strength', modsat fokus er 'blocked'", () => {
+test("focusTrainability: climber (uden sekundær type) — signatur-fokus er 'strength', modsat fokus er 'blocked'", () => {
   const t = focusTrainability("climber");
   // climber weights: climbing:3, tempo:2, punch:1, endurance:1, sprint:-2, acceleration:-1, flat:-1
-  assert.equal(t.vo2max, "strength");    // climbing+punch+tempo alle positive
-  assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral)
-  assert.equal(t.sprint, "blocked");     // sprint(-2) og acceleration(-1) begge negative → factor 0
+  assert.equal(t.vo2max, "strength");    // climbing+punch+tempo alle positive (factor 1.0)
+  assert.equal(t.threshold, "strength"); // tempo positiv (time_trial neutral 0.45)
+  assert.equal(t.sprint, "blocked");     // sprint(-2) og acceleration(-1) begge negative → factor 0.12 (oppositeFactor), laveste tier
   assert.equal(t.endurance, "strength"); // endurance positiv
-  assert.equal(t.technique, "limited");  // descending/positioning/cobblestone alle neutrale (ingen vægt)
-  assert.equal(t.aero, "limited");       // time_trial neutral, flat(-1) negativ → ikke alle 0, ikke nogen ≥1
+  assert.equal(t.technique, "limited");  // descending/positioning/cobblestone alle neutrale (factor 0.45)
+  assert.equal(t.aero, "limited");       // time_trial neutral (0.45), flat(-1) negativ (0.12) — blanding, ikke alle ≤0.12
 });
 
-test("focusTrainability: sprinter — sprint-fokus 'strength', vo2max/threshold 'limited' (ingen blocked)", () => {
+test("focusTrainability: sprinter (uden sekundær type) — sprint-fokus 'strength', vo2max/threshold 'limited' (ingen blocked)", () => {
   const t = focusTrainability("sprinter");
   // sprinter weights: acceleration:3, sprint:2, flat:1, durability:1, climbing:-2, endurance:-1
   assert.equal(t.sprint, "strength");   // sprint+acceleration begge positive
-  assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0, men durability≥1 gør fokus 'strength')
-  assert.equal(t.vo2max, "limited");    // climbing(-2)→0, punch/tempo neutrale → ikke alle 0
+  assert.equal(t.endurance, "strength"); // durability positiv (endurance selv er -1 → 0.12, men durability≥1 gør fokus 'strength')
+  assert.equal(t.vo2max, "limited");    // climbing(-2)→0.12, punch/tempo neutrale (0.45) → ikke alle ≤0.12
   assert.equal(t.technique, "limited"); // ingen af descending/positioning/cobblestone vægtet
 });
 
@@ -239,6 +243,39 @@ test("focusTrainability: ukendt/manglende primary_type → alt 'limited' (sikker
       assert.equal(t[focusKey], "limited", `${String(primaryType)} → ${focusKey} skulle være 'limited'`);
     }
   }
+});
+
+// ── #3195 rod-årsag: sekundær type skal RESCUE et fokus, ikke ignoreres ────────
+// Bug-reproduktion: ægte prod-rytter "Oliver Doyle" (primary=tt, secondary=sprinter,
+// potentiale 6.0). Før #3195 sagde focusTrainability("tt") "limited" på Sprint-fokus
+// (kun tt-vægtene set: sprint:-1, acceleration uvægtet) — men rider_derived_abilities.
+// ability_caps i prod viste sprint=72/acceleration=72 (loftByPotential[6]=88 ×
+// naturalSecondaryFactor 0.82), fordi hans SEKUNDÆRE sprinter-type reelt løfter
+// loftet næsten til fuldt niveau. Uden secondaryType kan denne rescue aldrig ses.
+test("focusTrainability: #3195 — sekundær type rescuer et fokus primærtypen alene ville vise som begrænset", () => {
+  const withoutSecondary = focusTrainability("tt", null);
+  assert.equal(withoutSecondary.sprint, "limited"); // tt alene: sprint(-1)→0.12, acceleration uvægtet→0.45 — blanding
+
+  const withSecondary = focusTrainability("tt", "sprinter");
+  // tt.sprint=-1 (negativ i primær) MEN sprinter.sprint=+2 (positiv i sekundær) →
+  // naturalSecondaryFactor 0.82 vinder (youthRoleFactor tjekker ws>0 FØR opposite).
+  // tt.acceleration er uvægtet, sprinter.acceleration=+3 → samme rescue.
+  assert.equal(withSecondary.sprint, "strength");
+});
+
+test("focusTrainability: #3195 — ÆGTE modsat i BÅDE primær og sekundær forbliver 'blocked' (ingen falsk rescue)", () => {
+  // climber (sprint:-2) + puncheur (sprint:-1) — begge typer straffer sprint,
+  // ingen sekundær-rescue skal forekomme.
+  const t = focusTrainability("climber", "puncheur");
+  assert.equal(t.sprint, "blocked");
+});
+
+test("focusTrainability: matcher youthRoleFactor-tierne direkte (forward-guard mod ny model-drift)", () => {
+  // vo2max=[climbing,punch,tempo]: climber prim på alle tre (weights climbing:3,
+  // punch:1, tempo:2) → factor 1.0 for alle tre → et utvetydigt 'strength'-tilfælde
+  // uanset threshold-detaljer, så testen holder selv hvis tier-konstanterne justeres.
+  const t = focusTrainability("climber", null);
+  assert.equal(t.vo2max, "strength");
 });
 
 // ── smartDefaultFocus (#1894) ────────────────────────────────────────────────────
