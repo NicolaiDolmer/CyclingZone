@@ -324,11 +324,11 @@ export async function sendDM(discordId, payload) {
       // Slår nulstillingen fejl, akkumulerer tælleren hen over LEVEREDE beskeder
       // og kan afkoble en bruger hvis kobling er sund — altså præcis den
       // invariant featuren hviler på. Må ikke fejle tavst.
-      console.error("[discord-dm:reset-failed] kunne ikke nulstille fejltæller", {
+      console.error("[discord-dm:reset-failed] could not reset DM failure counter", {
         discordId,
         error: cleared.error,
       });
-      sentryCapture(new Error(`Discord DM fejltæller-nulstilling fejlede: ${cleared.error}`), {
+      sentryCapture(new Error(`Discord DM failure-counter reset failed: ${cleared.error}`), {
         tags: { component: "discord-dm" },
       });
     }
@@ -402,7 +402,7 @@ async function recordDeadConnection(discordId) {
     captureExceptionFn: sentryCapture,
   });
   if (outcome.disconnected) {
-    console.warn("[discord-dm:auto-disconnect] død Discord-kobling nulstillet efter fejl i træk (#3130)", {
+    console.warn("[discord-dm:auto-disconnect] released dead Discord link after consecutive failures (#3130)", {
       discordId,
       userId: outcome.userId,
       failures: outcome.count,
