@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.89",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race reports now explain more of why, not just what",
+          "body": "Stage reports call out when a rider attacked without it costing him anything: joining a breakaway is a free gamble in this game, never a penalty on his own finishing position, even if the break gets caught. They also mention when a rider was set to save legs or work at full effort for the day. Finished stages get a proper report instead of a flat list: a headline, a short lede and a handful of beats that walk through how the stage unfolded, with wording that varies from stage to stage instead of repeating the same sentence every time. The breakaway help text now says outright that joining one never costs extra fatigue or your own finish."
+        },
+        "da": {
+          "title": "Løbsrapporter forklarer nu mere af hvorfor, ikke kun hvad",
+          "body": "Etaperapporterne nævner nu når en rytter angreb uden at det kostede ham noget: at komme med i et udbrud er et gratis gamble i dette spil, aldrig en straf på egen placering, selv hvis udbruddet bliver hentet. De nævner også når en rytter var sat til at spare kræfter eller arbejde for fuld kraft den dag. Kørte etaper får en rigtig rapport i stedet for en flad liste: en rubrik, en kort indledning og et par punkter der viser hvordan etapen udfoldede sig, med formuleringer der varierer fra etape til etape i stedet for at gentage samme sætning hver gang. Hjælpeteksten om udbrud siger nu direkte at det aldrig koster ekstra træthed eller egen placering at komme med."
+        },
+        "refs": [3115, 2356]
+      }
+    ]
+  },
+  {
     "version": "7.88",
     "date": "2026-08-03",
     "label": "Beta",

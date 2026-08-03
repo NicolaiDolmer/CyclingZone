@@ -644,6 +644,119 @@
       "tag_crash_ruined": {
         "label": "Crash",
         "tooltip": "A likely top result was wrecked by a crash or mechanical."
+      },
+      "tag_aggression_no_cost": {
+        "label": "No cost",
+        "tooltip": "Attacked and got caught, but it cost him nothing: joining a breakaway never costs extra fatigue or your own placing."
+      },
+      "tag_saved_effort": {
+        "label": "Saved legs",
+        "tooltip": "Set to save legs this stage, as chosen on the tactics page."
+      },
+      "tag_gave_everything": {
+        "label": "Gave everything",
+        "tooltip": "Set to work at full effort this stage, as chosen on the tactics page."
+      }
+    },
+    "report": {
+      "title": "Stage {number} report",
+      "numbers": {
+        "margin": "Winning margin",
+        "field": "Riders at the start",
+        "breakaway": "In the breakaway"
+      },
+      "headline": {
+        "sprint_win": {
+          "v1": "{rider} takes the sprint",
+          "v2": "{rider} is fastest in the bunch sprint",
+          "v3": "The sprint goes to {rider}"
+        },
+        "close_win": {
+          "v1": "{rider} wins by {marginText}",
+          "v2": "{rider} holds on to win"
+        },
+        "solo_win": {
+          "v1": "{rider} rides away from the field",
+          "v2": "Nobody could follow {rider}",
+          "v3": "A solo win by {marginText} for {rider}"
+        },
+        "breakaway_survived": {
+          "v1": "The breakaway makes it: {rider} wins",
+          "v2": "{rider} wins from the breakaway"
+        },
+        "gc_takeover": {
+          "v1": "{rider} takes the race lead",
+          "v2": "New race leader: {rider}"
+        },
+        "final_gc": {
+          "v1": "{rider} wins {race}",
+          "v2": "The overall win in {race} goes to {rider}"
+        }
+      },
+      "lede": {
+        "bunch_sprint": {
+          "v1": "The stage came down to a bunch sprint, and {rider} timed it best for {team}.",
+          "v2": "A full field arrived together. In the sprint, {rider} was the fastest man for {team}."
+        },
+        "reduced_sprint": {
+          "v1": "A hard finale split the field, and {rider} won the sprint from the front group for {team}."
+        },
+        "solo": {
+          "v1": "{rider} left the field behind and crossed the line alone, {marginText} clear.",
+          "v2": "The gap only grew. {rider} took the win for {team} with {marginText} to spare."
+        },
+        "breakaway": {
+          "v1": "The break was never brought back. {rider} finished it off for {team}."
+        },
+        "generic": {
+          "v1": "{rider} won for {team}."
+        }
+      },
+      "beat": {
+        "breakaway_caught": {
+          "v1": "{count, plural, one {The lone escapee was brought back before the finish.} other {The break of # was brought back before the finish.}}",
+          "v2": "{count, plural, one {The field closed down the lone leader in time.} other {The field closed down the # leaders in time.}}"
+        },
+        "breakaway_survived": {
+          "v1": "{count, plural, one {The lone leader was never caught.} other {The # escapees held the field off all the way to the line.}}"
+        },
+        "helper_shift": {
+          "v1": "{team} committed everything to {captain}: {count, plural, one {one teammate} other {# teammates}} worked to bring him to the front.",
+          "v2": "{count, plural, one {A teammate} other {# teammates}} gave up their own chances for {captain} today."
+        },
+        "form_peak": {
+          "v1": "{rider} came in with top form, and it showed.",
+          "v2": "Form made the difference for {rider} today."
+        },
+        "favorite_off_day": {
+          "v1": "On paper the strongest rider in this field, {rider} finished outside the top 15."
+        },
+        "gc_takeover": {
+          "v1": "{rider} takes the overall lead from {previousLeader}.",
+          "v2": "The overall lead changes hands: {rider} is now in front."
+        },
+        "team_day": {
+          "v1": "It was a day for {team}: {count} riders in the top 10."
+        },
+        "aggression_no_cost": {
+          "v1": "{rider} attacked and got caught, but it cost him nothing. A breakaway attempt never costs extra fatigue or your own placing.",
+          "v2": "{rider} tried his luck in the breakaway. Caught before the line, but no worse off for trying."
+        },
+        "saved_effort": {
+          "v1": "{rider} was set to save legs this stage, easing off to keep something in reserve.",
+          "v2": "{rider} rode within himself today, saving effort for what's ahead."
+        },
+        "gave_everything": {
+          "v1": "{rider} was set to work at full effort, giving everything for the team today.",
+          "v2": "No holding back for {rider} today: full effort, all the way."
+        }
+      },
+      "yourTeam": {
+        "title": "Your team",
+        "bestResult": "Best placed: {rider}, stage rank {rank}.",
+        "inBreak": "{rider} spent the day in the breakaway.",
+        "helperWork": "{count, plural, one {A teammate rode} other {# teammates rode}} in service of {captain}.",
+        "none": "No riders from your team started this stage."
       }
     },
     "jersey": {
