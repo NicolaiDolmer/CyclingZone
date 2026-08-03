@@ -1,0 +1,514 @@
+#3139 [claude:todo,priority:med,cat:user-feature,type:task,epic:fair-play] [fair-play/H] Sanktionstrappe, sagsskabelon og spiller-vendte fair play-regler
+#3138 [claude:todo,priority:med,type:feature,cat:infra,epic:fair-play] [fair-play/G] fairplay_flags + scoring + admin review-flade + daglig cron
+#3137 [claude:todo,priority:med,type:feature,security,needs-ai-triage,epic:fair-play] [fair-play/F] Konto-livscyklus-signaler — fanger fair-pris-tragten som ingen værdiregel kan se
+#3136 [claude:todo,priority:high,type:investigation,cat:balance,epic:fair-play] [fair-play/E] Rekalibrér værdi-tærskler empirisk — 0,5x-reglen flagger halvdelen af alle ærlige salg
+#3135 [claude:todo,priority:high,type:feature,security,epic:fair-play] [fair-play/D] Identitets-korrelation som primærsignal (IP + enhed + attribution)
+#3134 [claude:todo,priority:high,type:feature,security,needs-ai-triage,cat:balance,epic:fair-play] [fair-play/C] Ung-konto-spærrer: lån, store udgående overførsler og auktions-indtræden
+#3133 [claude:todo,priority:high,type:feature,security,cat:balance,epic:fair-play] [fair-play/B] Pris-gulv OG -loft på alle spiller-til-spiller-overførsler
+#3132 [claude:todo,priority:high,type:feature,security,needs-ai-triage,cat:infra,epic:fair-play] [fair-play/A] Persistér identitets-telemetri holdbart — uden det er enhver fremtidig sag uprøvbar
+#3131 [claude:todo,priority:high,type:feature,risk:high,security,needs-ai-triage,epic:fair-play] [Epic] Financial Fair Play & Anti-Cheat — bevis, forebyggelse, detektion, håndtering
+#3130 [bug,claude:todo,priority:med,type:bug] [ops] Permanent Discord-403 (no mutual guilds) afkobler ikke brugeren — spilleren tror han er tilmeldt, men får aldrig DM'er igen
+#3128 [claude:todo,priority:low,type:task] ops: sanitize-secrets-hooken falsk-positiver på Vercel-bottens PR-kommentar — gh pr view --json comments er ubrugelig
+#3127 [claude:todo,priority:low,type:investigation] audit: constraint-som-idempotens i de resterende allowDuplicate-callsites (backwards-check efter #3123)
+#3126 [claude:todo,priority:med,type:bug] fix(calendar): de tre cap-sikre paginerings-helpere mangler .order() — samme fejlklasse som #3113-dobbeltbookingen (latent)
+#3124 [claude:todo,priority:low,type:bug,needs-ai-triage] security: 4 materialized views er selectable for anon/authenticated over Data API (matview_in_api)
+#3123 [claude:done,priority:high,type:bug] fix(economy): sponsor race-day sweep genforsøger ALLE betalte krediteringer hvert tick — 27.600 DB-fejl/døgn, sweep overhaler sit interval ved sæsonslut
+#3122 [bug,claude:todo,priority:low,type:bug] [bug] Entry-sweep'en låser stadig ryttere i AFMELDTE løb — kommentar og kode er uenige (latent)
+#3121 [claude:todo,priority:low,type:bug,needs-decision] [opfølgning #3013] Mål matview-lockens effekt i prod og beslut om Vej 2/3 er nødvendig
+#3120 [claude:todo,priority:med,type:bug,needs-decision] [ejer-beslutning] Datareparation efter #3113: 4 Team Brutaliste-ryttere kørte to løb samme in-game-dag
+#3119 [bug,claude:todo,priority:med,type:bug] [bug] Entry-sweep'en binder på CET-dato, ikke game_day — 156 falske konflikter gør trupper underfyldte
+#3118 [claude:todo,priority:low,type:bug,needs-ai-triage] [deps] react-router 8 kræver React 19 — samlet opgradering, ikke en dependency-bump
+#3115 [claude:todo,priority:low,type:feature,cat:user-feature] [docs] Hjælpen forklarer ikke at udbrud er ren bonus uden omkostning — 2 spillere troede det kostede rytteren løbet
+#3114 [bug,claude:todo,priority:med,type:bug,cat:bug] [bug] Monuments har game_day=100000-sentinel — rytter-bindingen kan aldrig se dem som samme-dags-konflikt (latent, åbner ved D1-oprykning)
+#3113 [bug,claude:done,priority:high,type:bug,cat:bug] [P0] Auto-entry-generatoren dobbeltbooker ryttere på tværs af sweep-kørsler — 4 ryttere kørte 2 løb samme in-game-dag i S2
+#3112 [claude:todo,priority:med,type:bug,epic:ai-workflow,needs-ai-triage] [ops] Parallel session slettede ucommitteret arbejde i delt checkout — NOW.md-claim viste falsk 'Ingen aktiv session'
+#3111 [claude:todo,priority:low,type:investigation] [ops] Ingen heal-sweep for AI-holds trupper — hullet blev synligt da #3108 lukkede den forkerte redning
+#3110 [claude:todo,priority:med,type:bug,needs-ai-triage] [bug] Byd-knappen forbliver aktiv når auktionens nedtælling rammer nul — 4 brugere ramt på 19 timer (CYCLINGZONE-3Y)
+#3109 [bug,claude:todo,priority:low,type:bug] 4 AI-hold fik deres trup erstattet af heal-sweep-fejlen (26/7) — hvad gør vi ved dem?
+#3107 [bug,claude:done,priority:high,type:bug,cat:bug] [bug] Løbsdag er en rullende 24t-bøtte forankret i sæsonens første etape — 702 af 1.148 S2-etaper vises på forkert dag
+#3104 [enhancement,claude:todo,priority:med,type:feature] [Menu-audit] Rækkefølge efter faktisk brug + to ruter uden indgang — ejer-godkendt, 4 etaper
+#3102 [enhancement,claude:todo,priority:high,type:feature] [IA-kontrakt] Planlægnings-hub + Resultat-hub — ejer-godkendt struktur, 4 etaper
+#3101 [claude:todo,priority:med,type:investigation] [investigation] 22 af 156 hold mangler season_started-notifikation for S2 + notifikationen nævner ikke sponsorbeløbet
+#3100 [claude:todo,priority:med,type:bug] [ux] Divisionsbonus-copy forveksler division og placering (Finance-historik + /rules)
+#3099 [claude:todo,priority:med,type:bug] [ux] Auktioner desktop: fører-holdnavn kun i hover-tooltip — mobil viser det altid
+#3098 [claude:todo,priority:med,type:bug] [ux] selection_rider_bound fra RPC-fallback mangler rytter/løb-navn — navngiven copy findes men rammes ikke
+#3097 [claude:todo,priority:med,type:bug] [ux] Squad-risiko-spærren ved salg viser ikke hvem der tæller som 'i risiko' — ~60% af hold kan pt. ikke sælge en rask rytter
+#3096 [claude:todo,priority:med,type:feature,cat:balance] [design/balance] Sæsonskiftet nulstiller træthed men bærer form uændret S1→S2 — beslutningen er aldrig truffet (jf. #2910)
+#3095 [bug,claude:todo,priority:high,type:bug] [bug] Board: italiensk_klassiker-DNA'ens monument-mål er strukturelt uopnåeligt i tier 3/4 — 5 hold straffes hver evaluering
+#3094 [bug,claude:todo,priority:high,type:bug,cat:user-feature] [ux/planner/HØJ] Peak låser i samme sekund den sættes — ingen varsel, forklaring eller fortryd (3 rapporter 27/7 + ejer-udmelding)
+#3092 [claude:todo,priority:med,type:investigation,security,needs-ai-triage,needs-user-action,manual:user] Afinstallér ubrugt Manus Connector GitHub App (permission-request 27/7)
+#3089 [claude:todo,priority:med,type:bug] [cleanup] To resterende kopier af alders-formlen: frontend + backend/scripts (opfølgning på #3085)
+#3088 [enhancement,claude:todo,priority:med,type:feature,cat:balance] [planner] Assistenten skal kunne anbefale INGEN peak, med begrundelse (kræver dry-run af egnetheds-tærskel)
+#3087 [enhancement,claude:todo,priority:med,type:feature] [planner etape 3] Mål-løb-modellen: markér de løb du vil vinde, assistenten planlægger baglæns
+#3086 [enhancement,claude:done,priority:high,type:feature] [planner etape 2] Faner + rytterliste som input + konsekvens-visning (#2905)
+#3082 [claude:todo] [db-health] Disk-IO/performance tærskel-brud
+#3081 [bug,claude:done,priority:med,type:bug] [bug] Peak-assistenten regner alder på wall-clock — 121 ryttere får 1 peak i stedet for 2 i S2
+#3076 [bug,claude:done,priority:high,type:bug] [P0] replace_race_selection-RPC binder på tværs af sæsoner — managere kan stadig ikke GEMME trup efter #3070
+#3072 [claude:done,priority:med,type:bug] [ops] discord DM rate-guard fyrer falsk alarm ved attempted=1 — mangler minimums-sample
+#3071 [bug,claude:done,priority:med,type:bug] [bug] Rytter-alder fryser i sæson 1 i hele frontenden — backend ælder, UI gør ikke
+#3070 [bug,claude:done,priority:high,type:bug] [P0] Ryttere bindes af FORRIGE sæsons race_entries — 102 af 156 hold kan ikke udtage til S2 (rodårsag bag #3041)
+#3069 [claude:todo,priority:high,type:bug,quality-drift] [bot] Feature-liveness audit fandt 2 drift-finding(s)
+#3067 [claude:todo,priority:med,type:bug] [ux/auctions] "Sælger"-badge er død affordance (12 rage clicks) + højeste quick-back-tæthed i appen (Clarity 21-27/7)
+#3066 [claude:todo,priority:med,type:bug] [bug/auctions] Fuld trup blokerer ikke buddet i UI'et — 3 spillere ramte server-afvisningen på 12 timer (CYCLINGZONE-3Y)
+#3061 [bug,claude:done,priority:high,type:bug,cat:user-feature] [ux/HØJ] "Ryd alt" melder dig tavst fra løb — konsekvens-dialog mangler (2 ægte D2-hold står uden trup nu)
+#3053 [claude:todo,priority:med,type:bug] [bug] Discord-DM-guarden (#2571) fyrer falsk positivt på 1-forsøgs-kørsler — mangler minimum-forsøg-gulv (CYCLINGZONE-40)
+#3052 [claude:todo,priority:med,type:bug] [bug] Rå Cloudflare-HTML lander som Sentry-issue-titel — normaliseringen dækker kun 8 af 112 call-sites (CYCLINGZONE-3X)
+#3051 [enhancement,claude:todo,priority:low,type:feature,needs-ai-triage,cat:user-feature] [feature] "For sjov"-achievements uden score + rekrutterings-rangliste
+#3050 [enhancement,claude:todo,priority:low,type:feature,needs-decision,cat:user-feature] [feature] Venskabsløb / custom turneringer på tværs af divisioner (spiller-oprettede sim-løb)
+#3049 [enhancement,claude:todo,priority:med,type:feature,needs-decision,cat:user-feature] [feature] Rolle-/taktikvalg pr. rytter i endagsløb (klassikere) — som i etapeløb
+#3048 [bug,claude:done,priority:med,type:bug,slice:race-engine,cat:balance] [bug/design] Bonus-sprints placeres midt på stigninger (Hauts Plateaux etape 3, 5 og 7)
+#3047 [claude:done,priority:low,type:bug,cat:user-feature] [ux] Holdnavnet i rytter-switcherbaren er ikke klikbart (heroen er) — inkonsistent efter redesignet
+#3046 [enhancement,claude:done,priority:med,type:feature,cat:user-feature] [ux] Scoutingrapporter: rytternavne er ikke klikbare — ingen vej fra rapport til rytterprofil
+#3044 [bug,claude:done,priority:med,type:bug,cat:user-feature] [bug/i18n] Achievements er dansk-only i databasen — engelske spillere ser dansk tekst (46 rækker uden i18n)
+#3043 [bug,claude:done,priority:high,type:bug,backend-only,cat:bug] [bug/data] 2 menneskehold har under 8 ryttere ved sæson 2-start — kan ikke stille hold
+#3042 [bug,claude:done,priority:med,type:bug,cat:bug] [bug] Dashboard advarer "truppen er ikke fuld" på et løb hvor truppen ER fuld
+#3041 [bug,claude:done,priority:high,type:investigation,cat:user-feature] [P0/investigation] Ryttere fremstår låst og holdudtagelsen kan ikke ændres lige efter sæsonskiftet (2 brugere, S2-start)
+#3039 [bug,claude:todo,priority:med,type:feature] Season-end board/upkeep-loop kører på test-konti — #2852-filteret dækker ikke processTeamSeasonEnd-stien
+#3038 [bug,claude:todo,priority:high,type:feature,needs-ai-triage] #2805-spærren tæller dormant-pulje-løb — vil blokere S2's 'Afslut sæson' (143 løb uden hold)
+#3037 [bug,claude:todo,priority:med,type:feature] Nye holds starter-kontrakter udløber ved førstkommende sæsonslut — Easy Riders mistede 9/12 ryttere dagen efter signup
+#3036 [claude:todo,priority:med,type:bug] Countback-tiebreak i pyramide-/divisions-rangering: sejre → podier → bedste placering før navne-leddet (61-61-lektionen fra S1-skiftet)
+#3035 [claude:todo,priority:med,type:feature] perf(db): Realtime-audit — 11s list_changes under RAM-incident, trim publikation
+#3034 [claude:todo,priority:med,type:bug] perf(frontend): saml 3 users-opslag (language/role/consent) i ét kald + session-cache
+#3033 [claude:todo,priority:med,type:feature] perf(backend): verificér JWT lokalt i stedet for /auth/v1/user-kald pr. request
+#3032 [bug,claude:done,priority:med,type:bug] Scouting-endpoint smider notifications_type_check-fejl (Sentry 3F, 5 brugere ramt)
+#3024 [claude:todo,priority:med,type:feature,security,needs-ai-triage,cat:ai-ops] [security/docs] Vite-dev-serveren serverer import.meta.env i hvert modul — ny secret-leak-vektor
+#3022 [claude:todo,priority:high,type:refactor,needs-ai-triage,cat:infra] [arkitektur] race_results kan ikke håndhæve sin egen korrekthed — unik nøgle + atomisk skrivning
+#3020 [claude:done,priority:high,type:bug,needs-decision,needs-ai-triage,cat:user-feature,needs-design] Divisionsvælgeren i sponsorvalget svarer ikke på det spørgsmål spillerne stiller (ens loft på tværs af divisioner)
+#3018 [claude:done,priority:high,type:bug,cat:user-feature] [P0] Sæsonplanlæggeren viser den GAMLE divisions kalender for sæson 2 — forkert for 140 af 156 hold
+#3015 [claude:todo,priority:high,type:bug,cat:balance] AI-holdenes ryttere restituerer aldrig — 3.372 ryttere sidder permanent paa traethed 100
+#3014 [claude:todo,priority:med,type:bug,cat:infra] [perf/guard] URL-længde-fælden i .in(race_id, ...) — de ~10 resterende kaldesteder efter #2861
+#3013 [claude:done,priority:med,type:bug,cat:infra] refresh_ranking_matviews() låser rangliste- og standings-siderne ude (REFRESH uden CONCURRENTLY, op til 7,8 s)
+#3012 [claude:todo,priority:med,type:bug,needs-ai-triage] [ux/bug] Døde klik: 13 resterende tavse fejl + disabled-uden-forklaring (sweep fra #3005)
+#3010 [claude:todo,priority:med,type:feature,slice:race-engine] [feature] Prologer mangler eget distance-bånd — WT_DISTANCE_BANDS.itt [15,40] markerer #2771's 6 km prolog som outlier
+#3009 [claude:todo,priority:high,type:bug,cat:balance] [bug] moneySupply- og inflationScorecard printer HEADLINE FAIL og exiter 0 — økonomien dumper sine egne mål usynligt
+#3008 [claude:todo,priority:med,type:bug] [bug/onboarding] OnboardingTour-tooltip lander forkert: skjult dublet-anker på /auctions desktop + fast heightEstimate dækker target på 360px
+#3007 [claude:todo,priority:high,type:feature] [ux/onboarding] 61 hold har aldrig lagt et bud — trin 1 er det største aktiverings-hul, og trin 2 måler ikke en spillerhandling
+#2997 [claude:todo,priority:med,type:refactor,needs-ai-triage] Spis de 170 droppede Supabase-errors ned (baseline fra #2897-guarden)
+#2991 [claude:todo,priority:low,type:investigation,needs-decision] season_grand_tour_rider kan ingen menneskemanager opnå: Grand Tours er Division-1-only og D1 er 100 % AI
+#2990 [claude:todo,priority:med,type:refactor] refactor(teams): migrer de 10 resterende menneske-hold-queries til humanTeamFilter (tal divergerer 156/159/161)
+#2982 [claude:todo,priority:med,type:bug,needs-ai-triage] Tvangssalg: kreditering og rytter-disposition er ikke atomiske — crash midtvejs giver holdet pengene UDEN at miste rytteren
+#2964 [claude:todo,priority:med,type:feature,cat:infra] [infra] Fuldt PR-preview: backend-preview pr. branch + DB-strategi — ejeren skal kunne klik-teste før merge
+#2960 [claude:todo,priority:med,type:feature] React 19 + React Router 8 — lukker den sidste allowlistede advisory (GHSA-qwww-vcr4-c8h2)
+#2946 [claude:todo,priority:low,type:investigation,needs-decision] [beslutning] Skal akademi-ryttere kunne sælges direkte? (i dag: promover først)
+#2944 [claude:todo,priority:med,type:feature,needs-decision,needs-ai-triage] [balance/design] Styrt er binære (crashed = intet resultat) og opleves for hyppige
+#2923 [claude:todo,priority:med,type:feature] Marked-/auktionsfrys som app_config-flag (bruges ved hvert skifte og ved incidents)
+#2922 [claude:todo,priority:med,type:feature] Cutoveren som ET orkestreret script med snapshots og assertions (til S2 til S3)
+#2916 [claude:done,priority:high,type:feature] Managerens opsaetning baeres ikke over ved saesonskifte (5 ting, ingen faelles mekanik)
+#2910 [claude:todo,priority:high,type:feature,needs-contract] Saesonskiftet nulstiller ikke traethed — feltet starter S2 paa 86,7 af 100
+#2906 [enhancement,claude:todo,priority:med,type:bug] [design] Mit Hold-løft: alle 15 evner synlige samtidig, rating-kolonne, lavere rækker
+#2905 [enhancement,claude:todo,claude:done,priority:high,type:feature] [UX] Season planner er ikke intuitiv nok — interaktionsmodellen skal gentænkes (ejer-krav, weekend 26-27/7)
+#2901 [claude:todo,priority:med,type:bug,security,needs-ai-triage] [security] REVOKE anon/authenticated-grants paa 47 RLS-laaste tabeller (EFTER cutover)
+#2900 [claude:done,priority:med,type:bug] [ops] Ingen volumen-alarm i Sentry: ét issue braendte 11.992 events (98 % af 90 dages volumen) paa ét doegn
+#2897 [claude:todo,priority:med,type:refactor] [ops] lint-swallowed-catches scanner ikke backend/routes/api.js — 198 catch-blokke, 44 captures
+#2893 [claude:todo,priority:high,type:feature] [ops] Daglig sundhedsrapport paa projekt-ejet job_heartbeat — positiv puls i stedet for kun fejl-alarmer
+#2892 [claude:todo,priority:high,type:bug,needs-user-action] [ops] 26 af 27 Sentry cron-monitorer er disabled siden 16/7 — tavs job-doed opdages ikke
+#2889 [documentation,claude:todo,priority:med,type:docs,cat:user-feature] [help] Hvornår starter og slutter sæsonen økonomisk? (løn, sponsorpenge) — ubesvaret spørgsmål 2 dage før cutover
+#2887 [claude:todo,priority:med,type:investigation,needs-decision,cat:balance] [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den decline?) + for lille udvalg at vælge fra
+#2885 [enhancement,claude:todo,priority:med,type:feature,needs-decision,cat:user-feature] [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan komme af med nogen
+#2884 [enhancement,claude:todo,priority:med,type:feature,needs-decision,cat:user-feature] [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vinduet gør ryttere usælgelige)
+#2883 [claude:todo,priority:high,type:feature,needs-ai-triage,cat:user-feature,needs-design] [ux/HØJ] Sæsonplanlæggeren er ubrugelig for de mest aktive testere — kan ikke skifte 1→2 toppe, hitboxes rammer ikke, kan ikke planlægge sæson 2
+#2881 [bug,claude:todo,priority:high,type:bug,backend-only,cat:bug] [bug/HØJ] Promovering fra akademiet nulstiller en eksisterende kontrakt (sæson 3 → sæson 2) og overskriver lønnen
+#2877 [bug,claude:todo,priority:high,type:bug,needs-ai-triage] Etape-berigelse tabes permanent når standings-recompute fejler — 19 etaper i 14 løb ramt
+#2871 [claude:todo,priority:med,type:bug,dependencies,agent:claude,slice:frontend] Migrér react-router til v7 (låser Dependabot #2870 op)
+#2863 [claude:todo,priority:med,type:feature] [feature] Sæsonslut: kåring af sæsonens bedste ryttere (flest point/flest sejre) — ejer-bekræftet
+#2859 [bug,claude:todo,priority:low,type:bug] [ui] Små off-system-fixes fra #2849-audit der ikke skal vente på migrationsbølgerne
+#2858 [claude:todo,priority:med,security,needs-ai-triage,type:task] [security/forward-guard] Fang nye anon-EXECUTE-bare SECURITY DEFINER-funktioner (advisor 0028) i CI
+#2857 [claude:todo,priority:low,type:task] [hardening] CYCLINGZONE-37: NOTIFY pgrst i sunday-intake-drip-migration + valgfri PGRST205-retry
+#2856 [bug,claude:todo,priority:med,type:feature,needs-decision,cat:bug] [balance/data] #2694-opfølgning: historisk holdklassement-reparation (<3-finisher-hold) — ejer-gated
+#2853 [claude:todo,priority:med,type:feature] Flip e-mail-retention-loopet live (tekst-godkendelse + 2 Railway-keys + off->dry_run->on)
+#2851 [claude:todo,priority:high,type:feature] Pyramide-komprimering S1→S2: global rank fylder D2 (48) + D3 (96), ingen motor-nedrykning i skiftet
+#2847 [claude:todo,priority:med,type:feature] hardening: season-end dobbelt-POST-garanti + ejendomsfilter i kontraktfrigivelsen
+#2846 [claude:todo,priority:high,type:bug] Post-cutover-verifikation 27/7: sponsor-rater, foerste payroll, varsel, season_ended, frigivelse/pension
+#2842 [claude:done,priority:high,type:feature,needs-ai-triage] Spillerfeedback kan hverken læses eller besvares — indsendelser lander i en blind tabel
+#2840 [claude:todo,priority:high,type:feature] Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte ryttere gratis
+#2838 [claude:todo,priority:low,type:feature] routes: regionOf() giver spanske/generiske stigningsnavne til nederlandske/belgiske loeb
+#2836 [claude:todo,priority:med,type:feature] auctions: intet saelger-gulv-tjek ved finalisering — hold kan ende under 8-minimum ved overdragelse
+#2830 [claude:todo,priority:high,type:feature,needs-ai-triage] security: 131 tabeller har samme brede write-grants som #2802 — systematisk audit + default-privileges-guard
+#2828 [claude:todo,priority:low,type:refactor,cat:ai-ops] [chore] Fjern den doede uge-rapport-automatik (opfoelgning paa #499)
+#2826 [claude:todo,priority:med,type:investigation,needs-decision,cat:user-feature] [growth] 7 af 161 udfyldte hele tilmeldingen og kom aldrig ind — faldt paa e-mail-bekraeftelsen
+#2825 [claude:todo,priority:high,type:task] [plan] Session-koe frem til saesonskiftet 27/7 — 8 sessions med klar-til-brug prompts
+#2824 [claude:todo,priority:high,type:investigation,needs-decision,cat:user-feature] [fable] Synlighed udefra: login-vaeg, sprogstier og SEO er ét problem (efter 27/7)
+#2823 [claude:todo,priority:med,type:docs,cat:ai-ops] [fable] Fleet-playbook: hvordan vi bruger Claude til at bygge verdensklasse
+#2822 [claude:todo,priority:high,type:investigation,cat:founder] [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil
+#2820 [claude:todo,priority:med,type:bug,cat:founder] [monetization] /founder-supporter siger "betaling er ikke live" mens /pro tager imod betaling — og dens venteliste er død
+#2818 [claude:todo,priority:med,type:bug,needs-decision,cat:user-feature] [bug] Endagsløb med rutedata lover point der aldrig uddeles — 266 løb viser "AT STAKE" for evigt
+#2817 [claude:todo,priority:med,type:bug,needs-ai-triage,cat:infra] [monetization] Alunta-abonnements-webhook fejler tavst — hverken ukendte events eller DB-fejl bliver logget
+#2816 [claude:todo,priority:med,type:bug,cat:founder] [monetization] Checkout spærrer ikke for at købe CZ Pro to gange — abonnement nr. 2 overskriver nr. 1 i vores DB
+#2815 [claude:todo,priority:high,type:feature,security,needs-decision,needs-ai-triage,cat:user-feature,epic:fair-play] [balance/ux] Nye hold kan maksimere gældsloftet minutter efter oprettelse — 888k købekraft dag ét uden nogen advarsel
+#2813 [claude:todo,priority:high,risk:high,needs-decision,cat:founder,type:task] [monetization] CZ Pro kan købes uden handelsbetingelser, opsigelsessti eller oplyst fortrydelsesret
+#2812 [claude:todo,priority:med,type:bug,slice:race-engine] POST /api/admin/races skriver etapeprofiler uden rutedata, men stempler dem generator_version=4
+#2811 [claude:todo,priority:high,slice:race-engine,type:task] [verify] Foerste koerte S2-etape: bevis Sub-2's passage-persistens + Sub-4's RESULT-flade (efter cutover 27/7)
+#2810 [claude:todo,priority:med,type:feature,cat:user-feature] [ux] Etapeprofil: kommende etape faar den lille graf, koert etape den store — omvendt af hvor man planlaegger
+#2806 [claude:todo,priority:high,type:bug,cat:founder] [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet
+#2800 [claude:todo,priority:high,type:feature,cat:community] [admin] Player-feedback-indbakke: hvor lander in-game bug/feedback-indlæg, og hvordan svarer ejeren?
+#2799 [claude:todo,priority:high,type:bug,needs-decision,needs-ai-triage,cat:user-feature,cat:balance] [balance/HØJ] Markedsværdier eksploderede i halen efter v4-cutoveren — 350k-rytter nu 22M; median-gaten fangede det ikke
+#2798 [claude:todo,priority:high,type:feature,needs-decision,needs-ai-triage,cat:user-feature,epic:progression,cat:balance] [design/balance] Markedsværdien afslører skjult potentiale — v4-værdien er en invertérbar sidekanal udenom scouting-fog'en (#1138)
+#2797 [bug,claude:todo,priority:med,type:bug,cat:bug] [bug] Byttehandel omgår akademiets 8-plads-cap: akademi-rytter byttes ind på modpartens akademi → 9/8 (+ EN-læk "Drift paid")
+#2795 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [ux] Egne ryttere/hold skal farvemarkeres i resultat- og deltagerlister (--me-ring findes, men er dødt i løbsresultater)
+#2794 [enhancement,claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature,needs-design] [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-taktik / resultater i faner + fold låst holdudtagelse sammen
+#2793 [claude:todo,priority:med,type:bug,cat:bug,epic:progression] [bug] Solgt akademi-rytter tæller hverken i akademi-regnskabet eller i transfer-profit ("unknown" købspris) — academy_graduation har 0 rows i prod
+#2792 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [ux] Global Rank skal kun indeholde menneskelige managere — ekskludér AI-hold fra ranglisten
+#2791 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [ux] Kalender: brosten-glyffen er for svag til at skelne fra flad/sprint — tilfoej bogstavkode (F/C) paa linje med TT-rampen
+#2789 [claude:todo,priority:high,type:bug,slice:race-engine] [balance] Sub-3 gap-model: 6 rute-huller fundet i adversarisk verifikation mod aegte S2-data
+#2785 [bug,claude:todo,priority:med,type:bug,slice:race-engine] [bug] Rute-scorecardet gater ikke GT-realismen — scoreGrandTour printes men indgår ikke i exit-koden (derfor overlevede #2781)
+#2783 [bug,claude:todo,priority:med,type:bug,slice:race-engine] [bug] grand_tour-arketypen kan give 2 eller 10 høj-bjergsetaper → GT'ens HC-total falder udenfor realisme-båndet i 9,7% af tilfældene
+#2779 [claude:todo,priority:med,type:bug] [bug] email_log er tom i prod men emailService har INSERT-paths (feature-liveness detector A)
+#2776 [claude:todo,priority:high,type:investigation,risk:high,needs-ai-triage,epic:fair-play] Fair-play-sag 22/7: multi-konto-funnel (1,97 mio. flyttet for 2 kr.) — sanktion gennemført, forward-guards mangler
+#2772 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Season Planner: vis per-rytter sæson-belastning (løbsdage) så man ikke overtopper
+#2770 [claude:todo,priority:high,type:feature,cat:user-feature,slice:race-engine] [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder
+#2768 [claude:todo,priority:high,type:feature,cat:user-feature,slice:race-engine] [Epic] Verdensklasse løbsmotor — virkelighedstro ruter, dybe konkurrencer & præsentation
+#2765 [bug,claude:todo,priority:med,type:feature] [bug/lav] DM-guard false positive: board_update 100%-skip er legitim opt-out, ikke pipeline-brud (CYCLINGZONE-35)
+#2762 [claude:todo,priority:med,type:feature,cat:user-feature] [ux/help] FAQ: kategori-inddeling + navigation + oprydning af forældet indhold (ejer 19/7)
+#2761 [claude:todo,priority:med,type:feature,cat:user-feature] [onboarding] In-app indbakke-besked med Discord-invite til alle managers (ny + backfill) (ejer 20/7)
+#2760 [claude:todo,priority:high,type:feature,cat:founder] [growth] Reaktiverings-e-mails (win-back) til dormante brugere + GDPR-consent-audit FØRST (ejer 20/7)
+#2759 [claude:todo,priority:high,cat:founder,type:task] [growth] Start Facebook-annoncer + organisk TikTok-markedsføring (ejer 20/7)
+#2758 [claude:todo,priority:high,cat:ai-ops,type:task] [ops/rutine] Faste rutiner: Discord-triage → GitHub-issues (dagligt) + done-audit-sweep (ugentligt) (ejer 20/7)
+#2757 [claude:todo,priority:med,needs-ai-triage,slice:race-engine,type:task,cat:balance] [balance] Pointtrøje: sprintpoint på bakke-/bjergetaper vægter for højt — flad-etape-vinder mister trøjen
+#2756 [claude:todo,priority:med,type:feature,cat:user-feature] [ux] Kalender: '+N more' kan ikke foldes ud — fuld kalender for anden division/gruppe kan ikke ses + 'Breakaway'-ending uforklaret
+#2753 [claude:todo,priority:low,type:bug] Transition sponsor-preview viser gross base, ikke faktisk payout (modifier × pullout × loft)
+#2752 [claude:todo,priority:med,type:feature,needs-contract,cat:user-feature] Sæson-recap / "årbog" + aktiv sæson-lukning (UI-slice, udskilt fra #2361)
+#2751 [claude:todo,priority:low,type:bug] Season-standings: NULL league_division_id (test/frosne konti) ekskluderes tavst fra op/nedrykning
+#2749 [claude:todo,priority:low,type:investigation,needs-ai-triage] [Investigation] S1 prize-overbetaling: 40,7M udbetalt vs 35,98M payable
+#2748 [claude:todo,priority:med,type:feature,cat:user-feature] Pensionering: forvarsel + squad-minimum-check ved masse-retirement
+#2747 [claude:todo,priority:med,type:feature,cat:user-feature] Regen/newgen: erstat pensionerede ryttere så feltet ikke krymper monotont
+#2743 [claude:todo,priority:med,type:bug] Race-motor: graceful håndtering af 2 samtidige active sæsoner (maybeSingle kaster)
+#2742 [claude:todo,priority:high,type:bug] S1→S2 cutover: pre-generér S2 race_entries + hård guard mod strandede løb
+#2739 [claude:todo,priority:med,type:bug] DISCORD_OPS_MENTION sat til rå ID → ops-alarmer pinger ikke ejeren (kun tekst)
+#2738 [claude:todo,priority:med,type:feature] Boot-kørte ops-alarmer mangler persisteret dedup (samme spam-risiko som #2730)
+#2736 [claude:todo,priority:med,type:feature] CZ Pro: daglig subscription-reconcile mod Alunta-API (invoice.paid findes ikke)
+#2731 [claude:todo,priority:med,type:feature] Race-balance: maxRiderWinRate 0,67-0,75 vs mål 0,45 (én rytter dominerer felterne, 4+ dage rødt)
+#2723 [claude:todo,priority:low,type:feature] [ux] Renown ("anseelse") er kun synligt i bestyrelseslokalet — spillere kan ikke se rytterens renown-tal eller om det udvikler sig
+#2722 [claude:todo,priority:med,type:bug,cat:balance] [balance] Rytter-specialer skæv fordeling: for mange TT/bjerg-typer, for få sprintere og brosten-specialister
+#2721 [claude:todo,priority:med,type:feature] [scouting] Ingen liste/historik over scoutede ryttere — svært at genfinde en rytter man har spejdet
+#2720 [bug,claude:todo,priority:med,type:bug,needs-ai-triage] [scouting] Rapport viser modstridende signaler: "Verdensklasse-emne" + "lav tillid" samtidig, og label bliver afskåret
+#2701 [enhancement,claude:done,priority:high,type:feature,cat:user-feature] [feature/design] Auktion: køb tilladt hvis du har plads samlet set (senior ELLER akademi) — auto-placér hvor der er plads, bloker bud kun uden plads nogen steder (ejer 19/7)
+#2700 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [feature] Pensions-varsel: sig til spilleren når en rytter planlægger pension (sæsonstart/midt) + FAQ (ejer 18/7)
+#2699 [bug,claude:todo,priority:high,type:bug,cat:bug] [balance/HØJ] Akademi-overflow-talenter på auktion er overpowered — stat-konvertér ned til ung-talent-profil (ejer 19/7, tidsfølsomt)
+#2698 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [balance] Progressiv evne-udviklingskurve: 1→10 hurtigt, 95→100 meget langsomt (logaritmisk) (ejer 19/7)
+#2697 [enhancement,claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature] [feature] Talentspejder: enkelt-rytter-undersøgelse skal være markant hurtigere (ejer 18/7)
+#2689 [claude:todo,priority:high,type:bug,epic:ai-workflow,needs-decision,cat:ai-ops] AI-opsætnings-audit 19/7: prioriteringsoversigt (10 issues, ~7-11k tok/session at hente)
+#2688 [claude:todo,priority:med,type:investigation,needs-decision,cat:ai-ops] AI-audit 19/7: Fable-optimering — workflow/judge-panels/effort-routing/ultra-review (ejer-valg)
+#2687 [claude:todo,priority:med,cat:ai-ops,type:task] AI-audit 19/7: PostToolUse-hook — eslint på frontend-edits (forebygger #2044-klassen)
+#2686 [claude:todo,priority:low,type:feature,cat:ai-ops] AI-audit 19/7: skills-bølge 2 — /patch-notes, /balance-sim, /night-wave
+#2685 [claude:todo,priority:med,type:feature,cat:ai-ops] AI-audit 19/7: ny skill /close-out — kodificér 6-trins session-afslutning som hårde gates
+#2684 [claude:todo,priority:med,cat:ai-ops,type:task] AI-audit 19/7: drift-vagt-hærdning (prefix-match + snapshot-staleness-WARN) + harness-re-måling
+#2683 [claude:todo,priority:med,cat:ai-ops,type:task] AI-audit 19/7: oprydning — 7 udløbne scheduled tasks + stale referencer
+#2682 [claude:todo,priority:high,needs-ai-triage,cat:ai-ops,type:task] AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL
+#2681 [claude:todo,priority:high,cat:ai-ops,type:task] AI-audit 19/7: memory-hygiejne — MEMORY.md 2 tok fra fail-gate + memory-dir +173% (consolidate overmoden)
+#2680 [claude:todo,priority:high,needs-user-action,cat:ai-ops,type:task] AI-audit 19/7: Cowork-connector-toggles i dev-kanal (Ahrefs/Clarity/Calendar/Drive + uauth-MCP'er) — ejer-klik
+#2679 [claude:todo,priority:high,cat:ai-ops,type:task] AI-audit 19/7: disable-bølge — 5 dødvægt/dublet-plugins (~6-7k tok/session)
+#2677 [claude:todo,priority:med,type:refactor,risk:high] [perf] RLS-tuning: 7 policies re-evaluerer auth.uid() pr. række + 4 tabeller med dobbelte SELECT-policies
+#2675 [claude:todo,priority:med,type:investigation,needs-decision] [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-valg om de 16 backfill-ryttere
+#2671 [claude:todo,priority:med,security,needs-ai-triage,type:task] [security] Forward-guard: RLS-policy-kaldte funktioner skal have EXECUTE for alle roller der rammer tabellen (2x-bidt klasse)
+#2670 [claude:todo,priority:med,type:investigation,needs-decision] [balance] Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om 250%-loftet (opfølgning #2591)
+#2669 [claude:todo,priority:med,type:refactor] [chore/balance] Migrér 7 offline-harnesses fra v3- til v4-værdimodellen (efterslæb fra #2594-cutoveren)
+#2667 [claude:todo,priority:med,type:feature] Værdimodel v4 slice 4: selvkørende re-fit mod ægte driftdata + anchors udfases (#2428)
+#2666 [claude:todo,priority:low,type:refactor,risk:low] Anti-drift-opfølgning: stram baseline (6 skrumpede entries) + migrér resterende brand-guld-hex til cz-tokens
+#2650 [claude:todo,priority:high,type:bug,needs-decision] [balance/HØJ] Fatigue-mætning i hele populationen: AI-median 100, human-median 90 — recovery kan ikke følge løbskalenderen
+#2645 [claude:todo,priority:high,type:bug,cat:user-feature] [bug/balance] Peak/loft-beskeder inkonsistente: 'approaching ceiling' ved 29/90+ — Del B peak-alderskurve = ejer-beslutning
+#2639 [claude:todo,priority:high,type:bug,needs-decision] [beslutning+reparation] Trim 7 overskuds-AI-hold i Division 4 (B+3, C/D/F/G+1) — audit-checket er rødt på alle PR'er
+#2635 [claude:todo,priority:med,type:bug] [hardening] Harness-skema-drift ud over pending_team_id: loan_agreements findes ikke i prod + manglende kolonner på 4+ tabeller
+#2622 [claude:todo,priority:med,type:feature,needs-decision] [needs-decision] Auto-entry-generator fylder hele sæsonen proaktivt (8.841 entries) — indsnævre horisont? (opfølgning #2599)
+#2603 [claude:blocked,claude:done,priority:med,type:bug,cat:user-feature] [bug] Mobil-visning: layout-problem på skærm (ejer-screenshot 17/7)
+#2583 [enhancement,claude:todo,priority:med,type:feature] [ux] Dashboard-widgets: reducér bredde/øg informationstæthed pr. modul (mange fylder 100% unødigt)
+#2582 [enhancement,claude:todo,priority:med,type:feature,needs-decision] [feature] Race-motor: analysér tidsgrænse (broom wagon/cutoff) fra virkeligheden og indfør ensartet i spillet
+#2574 [claude:todo,priority:med,needs-ai-triage,slice:race-engine,type:task] [balance] share4PlusSameTeamTop10 er strukturelt afkoblet fra tau-håndtaget — kræver pool-/holdsammensætnings-undersøgelse
+#2572 [claude:todo,priority:high,type:bug,needs-ai-triage,cat:ai-ops] [ops] NOW.md "Working agent" kan ikke stoles på — sagde "ingen aktiv session" mens en bølge merged 10+ PR'er
+#2557 [claude:todo,priority:high,type:bug,slice:race-engine] [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-win-rate 51% og stigende
+#2527 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [feature] Etape-diversitet: teknik-/brostens-etaper og profiler der belønner bredde frem for 1-2 stats
+#2525 [claude:todo,priority:med,type:task] [balance] Massespurt: bunch-tærsklen er for smal i praksis — feltet splittes i 3-6-mands klumper på sekunder
+#2521 [bug,claude:done,priority:high,type:bug,cat:bug] [bug/design] Bestyrelsestilfredshed låst på 50% i hele sæson 1 (baseline-fase) — ejer: må aldrig være låst
+#2511 [claude:todo,priority:med,cat:infra,type:task] [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet + i18n-namespace-split
+#2495 [claude:todo,priority:med,type:feature] Akademi-filosofi: valgbar skole der farver kuldene (addendum Fase 5)
+#2494 [claude:todo,priority:med,type:feature] Informations-derbyet: scout-vindue før ungdomsauktion (addendum Fase 5)
+#2493 [claude:todo,priority:med,type:feature] Årgangs-cyklussen: navngivne generationer + årgangs-leaderboard (addendum Fase 5)
+#2492 [claude:todo,priority:high,type:feature,needs-contract] [epic] Tre-tier klubstruktur: Senior/U23/Junior med egne kalendere (addendum Fase 4-6)
+#2491 [claude:todo,priority:med,type:feature] Graduation Day: tier-overgangs-ritualet (addendum Fase 4)
+#2490 [claude:todo,priority:med,type:feature] Rytter-krøniken: karrierebiografi + event-fundament (addendum Fase 2-4)
+#2489 [claude:todo,priority:med,type:feature] Sæsonkortet: Lag 2-periodiseringsflade med træningsblokke (addendum Fase 3)
+#2488 [claude:todo,priority:med,type:feature] Projekt-ryttere: flersæsons udviklingsplaner, maks 3 slots (addendum Fase 2)
+#2487 [claude:todo,priority:med,type:feature] Gennembruds-vinduer & stagnations-diagnoser (addendum Fase 2)
+#2480 [claude:todo,priority:low,type:investigation,backend-only,slice:race-engine] Motor-ops: ML-assisteret kalibreringsforslag fra live drift (systemet foreslår, ejer beslutter)
+#2479 [claude:todo,priority:med,type:investigation,backend-only,slice:race-engine] Research-spike: W'/Critical Power-fysiologimodel i dry-run-harnesset (fatigue v4-kandidat — ship intet)
+#2478 [claude:todo,priority:med,type:feature,cat:user-feature,slice:race-engine] Race-motor: adaptive AI-holdtaktik — autopick-hold reagerer forklarligt på løbssituationen pr. etape
+#2477 [claude:todo,priority:med,type:investigation,cat:user-feature,slice:race-engine] Race-motor/verden: verdensrangliste der fodrer motoren — kvalifikation, wildcards og arrangør-invitationer (design)
+#2476 [claude:todo,priority:med,type:feature,cat:user-feature,slice:race-engine] Race-motor: sidevind + vifter (echelons) — feltet splittes forklarligt på udsatte etaper (uddyber #939)
+#2460 [claude:todo,priority:high,cat:ai-ops,type:task] [ops] Fjern setup-forhindringer én gang for alle + løbende proaktiv ops-audit
+#2457 [enhancement,claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature] [balance] AI-holdenes rytter-kvalitet skal matche deres division (div 1-4)
+#2454 [enhancement,claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature] [design] Potentiale: skift skala fra 1-6 til 1-99 så den matcher resten af spillet
+#2452 [enhancement,claude:todo,priority:med,type:feature,needs-decision,needs-ai-triage,cat:user-feature] [feature/design] Auktions-gebyr: gratis ved udbudspris ≤50% af værdi, gebyr over
+#2445 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [ux] Responsivt layout: sider udnytter ikke skærmen (sæsonplanlægger, økonomi, bestyrelse, dashboard)
+#2443 [enhancement,claude:todo,priority:med,type:feature,needs-decision,cat:user-feature] [feature/IA] Menu-rework: side-inventar + kategorisering der matcher de nye undersider
+#2442 [enhancement,claude:todo,priority:med,type:feature,cat:user-feature] [feature] Dashboard: lad spilleren selv vælge rækkefølge og placering af modulerne
+#2441 [claude:todo,priority:med,epic:discord-community,type:task] [discord] Nye medlemmer ser ikke kanalerne — skal selv finde dem manuelt
+#2423 [claude:todo,priority:med,security,needs-ai-triage,cat:infra,type:task] [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed Insights, cache + preview-beskyttelse
+#2417 [claude:todo,priority:med,slice:race-engine,type:task] τ-kompression exit-strategi + maxSeason-genmåling post-S4 (kalibrerings-gæld)
+#2416 [claude:todo,priority:med,type:feature,cat:user-feature,slice:race-engine] Udbrud v2: jagt-interesse-model — udbruddets skæbne afgøres af feltets motivation, ikke en terning
+#2415 [claude:todo,priority:med,cat:infra,slice:race-engine,type:task] Gap-realisme-scorecard: målbånd for tids-gab (etape-margener + slut-GC-spredning vs. IRL)
+#2412 [claude:todo,priority:low,type:feature,cat:user-feature,slice:race-engine] Ægte TTT-mekanik: hold-baseret tid og aggregeret holdscore
+#2410 [claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature,slice:race-engine] Race-motor: etape-tidslinje som førsteklasses artefakt (løbsfilmen) — design-spec
+#2409 [claude:todo,priority:med,type:task] [ops/DX] Permanent headless Railway-MCP-adgang (token i Infisical, ingen interaktiv login)
+#2407 [bug,claude:todo,priority:high,type:bug,needs-decision,slice:race-engine] [bug/HØJ] AI-trim over-markerer → Division 4 B/C kollapser til ~4 hold (bryder 24-holds-invarianten)
+#2406 [bug,claude:todo,priority:med,type:bug] [bug] Rytter-stats nulstillet uden forklaring (27→21 i flere evner)
+#2405 [bug,claude:todo,priority:med,type:bug] [afklaring] Taktik tillader flere ryttere i samme rolle (fx breakaway hunter) — tilsigtet?
+#2403 [bug,claude:todo,priority:med,type:bug] [bug] Rytter-listen: sortering på løn virker ikke
+#2402 [bug,claude:todo,priority:med,type:bug] [bug] Ryttere restituerer ikke fatigue natten over (modsiger help-tekst)
+#2400 [enhancement,claude:todo,priority:med,type:feature] [ux] Transferhistorik fyldt med "ingen salg"-auktioner
+#2399 [enhancement,claude:todo,priority:med,type:feature] [feature] Rytter-søgning: filtrér på ejer-type (kun mennesker) + division
+#2398 [enhancement,claude:todo,priority:med,type:feature] [feature] Vis træner-stats + sign-on/release-gebyr for coaches
+#2388 [claude:todo,priority:low,type:task] race:gate:roles rød siden 16/6: itt-bånd 59 % vs ≥60 (seed 2026) — ejer-beslutning om interim-bånd i roles-mode
+#2377 [claude:todo,priority:high,type:bug] 24-holds-invarianten: reparér 9 overskudshold + natlig invariant-guard (alle grupper = præcis 24)
+#2361 [claude:todo,priority:high,type:feature,cat:user-feature] Sæsonritual: op/nedrykning verificeret+aktiv + sæson-recap + catch-up
+#2356 [claude:todo,priority:med,type:feature,cat:user-feature] Narrativ S2: race-recap v2 — persisterede momenter + etaperapport
+#2354 [claude:todo,priority:med,type:feature,slice:race-engine] Race v3 S5: form-peaks — planlagt topform pr. rytter
+#2337 [claude:todo,priority:med,type:feature,cat:user-feature] Træning: løbs-bevidst periodisering (auto-let før løb, rest efter)
+#2274 [claude:todo,priority:med,type:feature,slice:race-engine] [design] Monumenter: eksklusiv game day i stedet for binding-frit 100000-bånd (ejer-afklaring 10/7)
+#2270 [claude:todo,priority:med,type:feature] [ci] Natlig game-day smoke-sim: fuld pipeline-test (kalender->startlister->etape->standings->praemier) mod Supabase-branch
+#2263 [bug,claude:todo,priority:med,type:bug,needs-ai-triage] [bug] Rytters stats/evner nulstillet? — spiller-rapport med screenshots (til ejer), undersøg data-integritet
+#2262 [enhancement,claude:todo,priority:med,type:bug,needs-ai-triage] [balance] Trænings-rekalibrering: 19-20-årige talenter føles "dødfødte" (~7-8 stigninger/sæson) — overvej afstand-til-loft frem for ren alders-straf
+#2261 [bug,claude:todo,priority:med,type:bug,needs-ai-triage] [bug] "High profile"-markering rammer middelmådige ryttere (3½-4★) — påvirker bestyrelsens Star Signing-ambition
+#2260 [bug,claude:todo,priority:med,type:bug,needs-ai-triage,slice:race-engine] [balance] Race-motor: udbrud "holder hjem" for ofte i lavere divisioner (svage ryttere vinder), især nedkørsels-bjergetaper
+#2259 [claude:todo,priority:med,type:refactor,needs-ai-triage] [chore] Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed foreign keys
+#2257 [bug,claude:todo,priority:med,type:bug,needs-ai-triage] [bug] Auktion vundet men annulleret; ex-akademiryttere fra lukket snyd-hold i mærkelig fri-agent/auktions-tilstand
+#2254 [claude:todo,priority:med,type:investigation,needs-ai-triage] [ux] Clarity: mange "dead clicks" på /races, /training, /team + rage-clicks på forsiden — undersøg klikbarhed
+#2236 [claude:todo,priority:high,type:feature,needs-ai-triage,cat:founder] Organic community outreach — Reddit + Discord posting
+#2233 [claude:todo,priority:med,perf-seo-inbox] [bot] Perf & SEO inbox (rå)
+#2230 [claude:todo,priority:med,type:investigation] [ux/perf] Layout-shift (CLS) på core-sider — mål via Speed Insights + fix reserved-space
+#2227 [claude:todo,priority:med,type:bug] [ux] /board høj dead-click-tæthed (480, 29/6-6/7) — element ser klikbart ud men er dødt (Clarity)
+#2226 [claude:todo,priority:med,type:feature,epic:fair-play] Fair play: automatisk multi-account / ensidig-handel-detektor (forward-guard fra #2221)
+#2223 [claude:todo,priority:med,type:feature] Rework af indbakke-UI: handling vs. information, gruppering pr. type
+#2222 [claude:todo,priority:med,type:feature] Merchandise-funktion: hold sælger merch til fans (indtægt skalet af fans/omdømme)
+#2219 [claude:todo,priority:med,type:feature] Fjern /club-endpoints fra audit-whitelist når A3-UI er merged (#1441)
+#2218 [claude:blocked,priority:med,type:feature] Pension→staff: retired ryttere bliver trænere/spejdere (#1441)
+#2217 [claude:blocked,priority:med,type:feature] Staff-kontrakter + genforhandling (med Slice B) (#1441)
+#2209 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] In-game manager-kommunikation (DM / shout box til rytter-reklame)
+#2188 [claude:todo,priority:low,type:investigation] [perf] DB: rider_uci_history bloat (fixet) + index-advisor-review — forslag lav-værdi ved nuværende skala
+#2182 [claude:todo,priority:med,type:bug,cat:user-feature] [bug/ux] Dashboard-moduler skal vise spillerens EGEN division/gruppe (rangliste + seneste resultater)
+#2181 [claude:todo,priority:low,type:feature,cat:user-feature] [ux] Venstre-nav oprydning: dublet "Løb"/"Holdudtagelse", manglende "Holdstrategi"-link, holdnavn i logo-hjørne
+#2180 [claude:todo,priority:high,type:feature,cat:user-feature] [feature] "Mangler holdudtagelse"-påmindelse for løb der starter inden for 36t → indbakke + Discord + ét-kliks auto-udtag
+#2178 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Upload af holdlogo + rework af holdsiden (ala rytterside-rework)
+#2177 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Rute-rebalance: 0 enkeltstarter i sæsonen efter ruteprofil-opdatering — genindfør ITT/TTT-etaper
+#2176 [claude:todo,priority:med,type:feature,cat:user-feature] [feature/design] Transferliste → auto-auktion (1t) når nogen byder udbudsprisen; afskaf direkte hold-til-hold-handler
+#2170 [claude:todo,priority:med,type:investigation,needs-ai-triage] design(calendar): Monuments er binding-fri (game_day 100000+) — genovervej? rytter kan køre monument midt i en overlappende Grand Tour
+#2165 [claude:done,priority:med,type:bug,cat:bug] [bug] Layout fejl ved flytning af rytter til akademiet
+#2164 [claude:todo,priority:med,type:feature] Aktivér nedrykning Division 3 → Division 4 (ingen nedrykning fra div 4)
+#2161 [claude:todo,priority:high,type:feature] feat(auth): Log ind / opret bruger / connect med Discord (OAuth via Supabase)
+#2153 [claude:todo,priority:med,type:bug,needs-contract] Ny Discord-server: division-routed resultat-kanaler + webhook-migration
+#2152 [claude:todo,priority:low,type:feature] Deadline Day er de-facto død efter transfervindue-afskaffelse: afvikl eller genarkitektér
+#2101 [claude:todo,priority:med,type:feature,security] Opfølgning #2098: ability_progress-scoping + grant-audit forward-guard
+#2096 [claude:todo,priority:med,type:feature,epic:quality-hardening,cat:infra] [ops] Fase 3/4: Sentry performance-monitorering med proaktive thresholds
+#2095 [claude:todo,priority:high,type:feature,epic:quality-hardening,scaling:baseline,cat:infra] [db] Fase 3: Supabase connection pooling (Supavisor) før horisontal skalering
+#2089 [claude:todo,priority:med,type:feature] [admin] NPS-overblik i admin-panelet (score, trend, fritekster)
+#2086 [claude:todo,priority:med,type:bug,cat:bug] [bug/guard] Rytter-sletning/-mutation mens rytteren er i et IGANGVÆRENDE løb skal blokeres/udskydes (53 slettede midt i Burgalesa)
+#2085 [claude:todo,priority:high,needs-user-action,type:task] [ejer/email] Før TdF: verificér Resend-kvote (Pro?) + hæv Supabase Auth email-rate-limit (default 30/time)
+#2084 [claude:todo,priority:med,type:feature,cat:user-feature] [feature/email] Welcome-mail + D2/D7 onboarding-sekvens via Resend (noreply@cyclingzone.org)
+#2080 [claude:todo,priority:high,cat:founder,type:task] [marketing] TdF-kampagne 48-timers beredskab: 3 post-drafts + creator-liste + UTM-konvention + 7-dages kanal-kalender (barn af #1114)
+#2076 [claude:todo,priority:high,needs-user-action,type:task] [ops/ejer] Uptime-monitor på /health + cyclingzone.org + Sentry→Discord-alert (15 min opsætning, før TdF)
+#2075 [claude:todo,priority:high,type:task] [task] Division 4 første-manager-beredskab FØR TdF: pre-fyld AI off-request, håndtér forpasserede løbsdage, concurrency-guard, e2e-test
+#2064 [claude:todo,priority:med,type:feature] Design ongoing new-rider influx mechanic
+#2063 [claude:todo,priority:high,needs-ai-triage,cat:user-feature,type:task] Player-QoL småopgaver — resterende efter Wave-1 triage (30/6)
+#2046 [claude:todo,priority:low,type:feature] Landing: per-sprog prerender uden flash via Vercel edge middleware (opgradering)
+#2045 [claude:todo,priority:high,type:bug] In-app sprog-flicker: tekst skifter flere gange ved sprog-skift/load (dansk-klage)
+#2042 [claude:todo,priority:med,type:feature,cat:user-feature,needs-design] feat(activation): Cold trafik rammer login-væg på dybe app-ruter (/riders, /races) → bounce — offentlig preview / kontekst-bevidst login
+#2041 [claude:todo,priority:med,type:investigation,cat:infra] investigation(analytics): Returning users stadig ~0 efter #1797 identify()-fix — verificér i prod
+#2030 [claude:todo,priority:low,cat:user-feature,type:task] [feature/ux] Race-kalender (trup-planlægning): auto-skift til næste racedag når dagens løb er kørt
+#2022 [claude:todo,priority:high,type:bug,needs-ai-triage] [bug] Nyt holds bestyrelse dannes ufuldstændigt: ukalibrerede mål + ingen DNA-valg (basis sættes kun ved sæson-slut)
+#2014 [claude:todo,priority:med,type:bug,slice:race-engine] Ryttertype: 'utypet / udvikler sig endnu'-tilstand for ryttere uden reelt speciale
+#2009 [claude:todo,priority:med,type:feature] Slice 5: Hover mini-profil (FM-stil, genbrugskomponent)
+#2006 [claude:todo,priority:med,type:feature,slice:race-engine] Slice 2: Overall 1-99 rytter-rating (V1 absolut)
+#2000 [enhancement,claude:todo,priority:med,type:feature,needs-contract] EPIC: Verdensklasse rework af rytter-siden (nye 1-99-evner, P/M/T, rating, hover-kort, handlinger)
+#1997 [enhancement,claude:todo,priority:med,type:feature] Verdensklasse historik/palmares (rytter + hold) — design + build
+#1996 [claude:blocked,priority:med,type:feature,needs-decision] Ryd op i efterladt transfervindue-kode (én sandhed: altid-åbent marked)
+#1981 [claude:todo,priority:med,type:investigation,needs-contract,cat:user-feature] [Investigation] Catch-up for nye/tilbagevendende klubber: billigere udviklingsveje
+#1979 [enhancement,claude:todo,priority:low,type:feature] [ux] Omdøb/fjern forvirrende 'udbrud' (breakaway) etapeprofil-navn
+#1977 [enhancement,claude:todo,priority:low,type:feature] [feature] Tillad en valgfri kommentar/note på en rytter sat til salg (sælger-reklame)
+#1974 [bug,claude:todo,priority:med,type:bug] [bug/balance] Træning: FLAD/SPRINT/ACCELERATION-færdigheder udvikles næsten ikke — ryttere ser fast i VO2Max-klyngen
+#1970 [claude:todo,priority:med,type:investigation,cat:user-feature] [ux] Frisk Clarity 27-29/6: /team (208) + /teams/{id} (90, 12 rage) + /training (141) stadig høje dead clicks EFTER #1794/#1796 — virkede fixene?
+#1928 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Gør det tydeligt HVILKE ryttere der er holdets stjerne-/profilryttere
+#1925 [claude:todo,priority:med,cat:bug,type:task] Follow-ups efter holdudtagelses-overhaul (#1924): help.json, trigger-verify, edge-cases, oprydning
+#1922 [claude:todo,priority:med,type:feature,needs-decision,cat:user-feature] [feature] Træningsfokus-rework: meningsfulde trade-offs (cykelnørd møder casual) i stedet for near-placeholder
+#1919 [claude:todo,priority:med,type:investigation,cat:user-feature] [ux] Race-/strategi-/lineup-flader: 15-17% dead clicks — statisk tekst & overskrifter ser klikbare ud (Clarity 24-26/6)
+#1905 [claude:todo,priority:low,type:feature] [feature] Lad spillere vælge hvornår deres auktion slutter
+#1903 [claude:done,priority:med,type:feature] CZ Pro monetisering — billing rails + Founder-tier (Slice 1)
+#1900 [claude:todo,priority:med,cat:user-feature,type:task] [ux] Cross-division standings-overblik: alle divisioner i én visning + filter til egen (#1835-split)
+#1896 [claude:todo,priority:med,type:feature,cat:user-feature] Træning: synliggør hvad det koster ikke at træne selv (assistent-default + mistet bonus)
+#1888 [claude:todo,priority:low,cat:user-feature,type:task] [feature] Auto-push patch notes til Discord når patch notes opdateres in-game
+#1884 [claude:todo,priority:med,type:feature] Race-hub taktik: fold jæger-dropdown ind i HunterExplainer + RoleCards på detalje-panel (S5-opfølgning)
+#1879 [claude:todo,priority:high,type:feature,needs-ai-triage] Governance ret-størrelse batch 3 — de-multi-AI resterende live-docs + konsolidér AI_OPS-docs
+#1875 [claude:todo,priority:med,type:feature] Sæt Vercel preview-env (VITE_PREVIEW_MOCK + sentinel) — aktivér self-serve mock-previews
+#1857 [claude:todo,priority:med,type:feature,cat:infra,slice:race-engine] [enhancement] Race-sim reproducerbarhed: snapshot rytter-betingelser (form/træthed/abilities) i race_simulation_runs
+#1847 [claude:todo,priority:high,type:bug,cat:bug] [bug] Orphaned race_results (247 rækker, NULL rider_id) efter rytter-sletning
+#1837 [claude:todo,priority:low,cat:user-feature,type:task] [feature] Autobud/proxy-bud fra rytterprofil når man starter en auktion
+#1833 [claude:todo,priority:med,cat:user-feature,type:task] [ux] In-game forklaring af rytter-evner + fysiologiske power-intervaller (tooltips/mouse-over)
+#1819 [claude:todo,priority:high,type:feature,needs-ai-triage] Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup
+#1818 [claude:todo,priority:med,type:feature,epic:economy-overhaul] Økonomi-gates ignorerer 0c hale-ryttere: gen-kør #1441/#1606 med fuld 12-trup
+#1815 [claude:todo,priority:med,type:feature,needs-decision,cat:user-feature,slice:race-engine] Design-session: Discord-webhook per etape i etapeløb (i dag kun final-etape)
+#1799 [claude:todo,priority:med,type:bug,cat:bug] [bug] Akademi-signering lægger rytter på senior-holdet i stedet for akademiet
+#1784 [claude:todo,priority:med,needs-ai-triage,cat:infra,type:task] Vercel Pro: sæt spend management / budget-loft op (forsikring før marketing-bølge)
+#1775 [claude:todo,priority:med,needs-ai-triage,cat:user-feature,type:task] [ux] AI-fyld-holdnavne er generiske ("AI 1/2/3") — gør realistiske + fjern "AI" fra navnet
+#1774 [claude:todo,priority:med,type:bug,cat:bug] [bug] Antal etapedage stemmer ikke: forside vs. division vs. pulje (40 vs. 60 vs. 41)
+#1734 [claude:todo,priority:med,type:feature,slice:season-1] Udvid løb-katalog så hver pulje får fulde 8 etapeløb
+#1712 [claude:todo,priority:low,type:feature,shared-refactor,post-launch,cat:infra,slice:season-1] Fuld 140-etaper/5-per-dag sæson-rekalibrering (post-launch)
+#1688 [claude:todo,priority:med,type:feature,needs-ai-triage,slice:race-engine] [#1608] Forever-pyramide: additive follow-ups efter form-frys (post-forever, ingen reset)
+#1679 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Se andre holds træning på deres ryttere
+#1677 [claude:todo,priority:med,type:feature,epic:economy-overhaul,cat:user-feature] [feature] Fyr/opsig rytterkontrakter (frigør rytter fra holdet)
+#1602 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] Mobil-optimering: luk de resterende huller (ikke en omskrivning)
+#1596 [claude:todo,priority:high,needs-user-action,type:task] [forever] WS1 Fase 3 aktivering + beta-stress-test (forever-gate §6.1)
+#1595 [claude:todo,priority:med,type:refactor,needs-decision,cat:user-feature] [forever] WS2-backend — PCM-sletning: fjern resultat-pipeline, behold stat_* som derive-kilde (Option B)
+#1576 [claude:todo,priority:high,type:feature,cat:user-feature] EPIC: AI-slop cleanup (2026-06-20 fuld frontend-audit)
+#1569 [claude:todo,priority:high,type:bug,needs-ai-triage,cat:user-feature] Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan
+#1528 [claude:todo,priority:med,type:feature,epic:ai-workflow,risk:med,cat:ai-ops] [AI-ops] A1: Autonomt selv-forbedrende burndown-loop (natbølge gjort selvkørende)
+#1473 [claude:todo,priority:low,type:refactor,post-launch,needs-ai-triage,cat:infra] Test-harness-fixtures lander i prod og overlever relaunch som orphan-hold
+#1466 [claude:todo,priority:low,type:refactor,epic:quality-hardening] Repeatable rehearsal-provisioning harness (skema-spejl + seed + nøgler + teardown)
+#1464 [claude:todo,priority:med,type:feature,needs-ai-triage,epic:quality-hardening] Forward-guard: test der fanger nye finance/enum-typer uden constraint-migration
+#1462 [claude:todo,priority:high,type:feature,needs-ai-triage] security(web): CSP report-only → enforcing
+#1461 [claude:todo,priority:high,type:feature,needs-ai-triage] security(email): DMARC enforcement — p=none → quarantine → reject
+#1450 [claude:todo,priority:med,post-launch,needs-user-action,cat:infra,type:task] [ops] Vercel Secret Sync via Infisical App Connections (single source of truth)
+#1441 [claude:todo,priority:high,type:feature,needs-decision,needs-ai-triage] Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer
+#1407 [claude:todo,priority:high,needs-user-action,cat:infra,type:task] SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc
+#1379 [claude:todo,priority:med,type:feature,cat:user-feature,epic:progression] Genbesøg evnesystemet + watt-intervaller (5/10/15-min power-kurve)
+#1378 [claude:todo,priority:med,type:feature,cat:user-feature,epic:progression] Genbesøg ryttertyperne: kalibrér de nye typer bedre vs. det gamle PCM-system
+#1375 [claude:todo,priority:med,post-launch,needs-ai-triage,cat:infra,type:task] [perf] Performance-arkitektur — eksekverings-tracker (spec 2026-06-13)
+#1374 [claude:todo,priority:med,type:refactor,post-launch,cat:user-feature] [perf] Targeted Realtime-invalidering: erstat broad loadAll-refetches (auktion først)
+#1373 [enhancement,claude:todo,priority:med,type:bug,post-launch,cat:user-feature] [perf] Frontend: delt query-cache + risk-baseret optimistic/pending UI (spec 2026-06-13)
+#1369 [claude:todo,priority:med,type:investigation,post-launch,cat:user-feature] [Meta] Langsigtet CRO-loop — activation, retention, bounce og konvertering
+#1341 [claude:todo,priority:med,cat:ai-ops,type:task] [AI-ops] AI Council → Claude-only: Manus udfases + ny kanal/model/redskabs-matrix
+#1310 [claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature] Markeds-pakke fast-follow: system-bølger, AI-bud, uopfordrede bud, forlængelses-UI
+#1304 [priority:high,type:feature,needs-user-action] Ejer-huskeliste 11/6: GA4-deploy blokeret af Vercel-kvote + domæne/analytics-opfølgninger
+#1301 [claude:todo,priority:med,type:bug] SEO-fundament: cyclingzone.org skal kunne findes og rangere (epic)
+#1299 [claude:todo,priority:high,type:feature,needs-contract] Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch
+#1294 [claude:todo,priority:med,type:feature,cat:infra] Race-motor test-værktøjer: seed-variation i preview (flere udfald) + preview på afviklede løb (motor vs. faktisk resultat)
+#1293 [claude:todo,priority:med,type:feature,post-launch] Race-motor: population-berigelse + endelige gate-bånd (cobbles/hilly/itt op til fulde mål)
+#1290 [claude:todo,priority:med,cat:ai-ops,type:task] [AI-ops] Codex udfases — ryd op i roller, labels, docs og lokal cache
+#1283 [claude:todo,priority:med,type:docs,needs-user-action,cat:founder] ToV-session: definér founder-stemmen (ejer-ledet) — struktur fra AI, prosa fra Nicolai
+#1281 [claude:todo,priority:med,type:feature,post-launch] Vaerdisystem v1.1: base_value glider mod faktisk handelspris ved auktion/transfer (udskilt fra #1101)
+#1276 [claude:todo,priority:high,type:investigation,security] Beslutning foer 20/6: PCM-dump-xlsx med rigtige rytternavne ligger synligt i public repo
+#1270 [claude:todo,priority:high,priority:med,type:feature,cat:ai-ops] Session-hardening hooks: pre-push område-tests (D1) + dep-sync-vagt (D7) + kollisionsvarsel (D4)
+#1240 [claude:todo,priority:med,type:feature,cat:user-feature] [ux] Board-forhandling: tilbageknap i wizard + fjern/erstat mål
+#1239 [claude:todo,priority:med,type:investigation,post-launch,cat:user-feature] [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl
+#1237 [claude:todo,priority:high,priority:med,type:feature] [feature] Board-økonomi: vurdér saldo vs gæld, ikke kun antal lån
+#1235 [claude:todo,priority:high,priority:med,type:feature,cat:user-feature] [feature] Board: forhandle mål OP (high risk, high reward)
+#1208 [claude:todo,priority:med,type:refactor,post-launch] Kalibrér boardIdentity star-score væk fra frossen uci_points (sidste funktionelle læser)
+#1199 [claude:todo,priority:med,type:feature,epic:ai-workflow,post-launch,cat:ai-ops] Natlig harness-vagt: kør gates mod prod-data på cron + rapportér drift som GitHub-kommentar
+#1189 [claude:todo,priority:low,type:investigation,needs-ai-triage,cat:user-feature] [investigation] Auktions- & transfer-timing policy — post-launch tuning (Discord-konsensus)
+#1182 [claude:todo,priority:med,type:feature] Verificér + slet ubrugte Railway Postgres + Redis (pleasing-spontaneity)
+#1177 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] Holddynamik-dybde: vejkaptajner + mentor + erfaring
+#1176 [claude:todo,priority:low,type:feature,post-launch,needs-ai-triage,cat:user-feature] Race engine-realisme: løbsform/year-form + startliste + styrt
+#1173 [claude:todo,priority:med,type:feature,cat:user-feature] Vækst/viralitets-loop: referral (del spillet med en ven)
+#1154 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding
+#1151 [claude:todo,priority:med,type:feature,needs-contract,post-launch,cat:user-feature] [Epic] Human-driven transfer market & AI liquidity
+#1150 [claude:todo,priority:med,type:investigation,needs-contract,cat:user-feature] [Design] Contracts, rider demands, relegation clauses and development loans
+#1149 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] Club development & facilities — academy, training, scouting, medical and operations
+#1148 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] World history & Club Museum — records, legends, rivalries and season stories
+#1147 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] Living World feed — results, transfers, breakthroughs, rivalries and club stories
+#1146 [claude:todo,priority:med,type:investigation,needs-contract,post-launch,cat:user-feature] [Design] Shared race calendar — selection, overlap, fatigue, qualification, and assistant planning
+#1141 [claude:todo,priority:med,type:investigation,cat:user-feature] Instrumentér board-brug → datagrundlag for at forenkle bestyrelses-systemet
+#1140 [claude:todo,priority:high,type:feature,cat:user-feature] Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer)
+#1137 [claude:todo,priority:high,type:feature,needs-contract,needs-ai-triage,cat:user-feature,slice:season-1,epic:progression] Progression L0: passiv udviklings-motor — potentiale-loft, aldring/peak, retirement (launch-minimum)
+#1136 [claude:todo,priority:high,type:feature,needs-ai-triage,cat:user-feature,slice:season-1,epic:progression] [Epic] Progression & livscyklus — rytterudvikling, træning, ungdom (samler #930/#931/#932/#934/#958)
+#1113 [claude:todo,priority:low,type:feature,cat:user-feature] Fans som spil-mekanik (popularity → effekt på økonomi/moral)
+#1112 [claude:todo,priority:low,type:feature,cat:user-feature] Manager-omdømme (del af renown-motor)
+#1111 [claude:todo,priority:low,type:feature,cat:user-feature] Bestyrelsesmedlemmer får rigtige navne (immersion)
+#1110 [claude:todo,priority:med,type:feature,cat:user-feature] Bestyrelsen går op i ryttertyper (mål baseret på rolle-sammensætning)
+#1109 [claude:todo,priority:low,type:feature,cat:user-feature] Manager-evner (FM-stil): forhandling, scouting, økonomi m.m.
+#1108 [claude:todo,priority:med,type:feature,cat:user-feature] Managerprofil: nationalitet (manageren vælger selv)
+#1106 [claude:todo,priority:med,type:feature,needs-ai-triage,cat:user-feature] Multi-sæson visning: rangliste/historik/kalender på tværs af sæsoner (10+)
+#1099 [claude:todo,priority:low,type:feature,post-launch] [Epic] Omdømme/Renown-system — optjent popularity (resultater, sejre, ranglister, nationsmester, landshold)
+#1033 [claude:todo,priority:low,type:investigation,cat:user-feature] UI/UX-beslutning: skal world/auktion/standings-headers sortere eller afklikkes? (#864)
+#1027 [claude:todo,priority:high,type:feature,cat:user-feature] Pre-launch UI: whitespace/density + nav-header/IA-restructure (#481 Phase 4)
+#1021 [claude:todo,priority:med,type:feature,post-launch,slice:race-engine] [BUILD] Race engine V1 — simulator + stage-profiler (sæson 3-overgang)
+#1011 [claude:todo,priority:low,type:feature] Attribut-farver: darkmode-læsbarhed + toggle mellem farve-versioner
+#986 [claude:todo,priority:low,type:feature] Økonomiside: rework af struktur (faner, forecast, lån, sæson-historik)
+#976 [claude:todo,priority:med,type:investigation,cat:user-feature] UX/IA: fold Min Aktivitet ind i Indbakke + Transfers (mental model)
+#961 [claude:todo,priority:med,type:feature,cat:user-feature] Kontekstuel hjaelp: omraade-specifikt FAQ-link overalt (banner -> ikon, progressive)
+#959 [claude:todo,priority:med,type:feature,cat:user-feature] [Epic] Etape-resultater: detaljeret visning pr. etape (V1 foer launch + V2 PCS-dybde)
+#957 [claude:todo,priority:med,type:feature,post-launch,cat:user-feature] [Epic] Rytter-popularitet: mest besoegte ryttere (24t/7d + trend)
+#956 [claude:todo,priority:med,type:feature,post-launch,cat:user-feature] [Epic] Deadline-hub: liv aaret rundt (optakt / dag / efter + algoritmiske rygter)
+#955 [claude:todo,priority:med,type:feature,post-launch,cat:user-feature] [Epic] Bestyrelse UI/UX-rework: 5/3/1-aars-plan som faner
+#954 [claude:todo,priority:high,type:feature,cat:user-feature] [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score)
+#941 [claude:todo,priority:med,type:investigation,cat:founder] Regnskabsprogram — vælg + opsæt
+#939 [claude:todo,priority:med,type:feature,cat:user-feature,slice:race-engine] Vejr + vind på etaper som race-faktor (sub-scope af race-engine #675/#676)
+#938 [claude:todo,priority:med,type:feature,cat:user-feature] Global søgefunktion — søg på tværs af ryttere, hold, løb og managers
+#936 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] [Epic] 3D race-visualisering (afspil etaper i 3D)
+#935 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] [Epic] Sociale features (venne-/follow-funktion + billeder på rytterne)
+#934 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] [Epic] Landshold & internationale mesterskaber (VM, EM, U23-VM, junior-VM, nationale mesterskaber)
+#933 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] [Epic] Hold-ejerskab & sponsor-økonomi (start uden hold, køb/sælg hold, holdnavne, sponsorforhandling)
+#932 [claude:todo,priority:high,type:feature,cat:user-feature,slice:season-1,epic:progression] [Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion
+#931 [claude:todo,priority:high,type:feature,cat:user-feature,slice:season-1,epic:progression] [Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere
+#930 [claude:todo,priority:low,type:feature,post-launch,cat:user-feature] [Epic] Staff & manager-rolle som direktør (ansatte, sportsdirektører, læger, fysioterapeuter, kokke)
+#929 [claude:todo,priority:high,type:feature,security] security: enable HaveIBeenPwned leaked password protection i Supabase Auth
+#908 [claude:todo,priority:med,type:feature] R2 v1.1: akse-1 ratio-editor for master-ankre (pointtrøje = X% af etapesejr)
+#904 [claude:todo,priority:low,type:investigation] [chore] Migrér preview/dev til Supabase publishable key (luk legacy band-aid, follow-up #767)
+#844 [claude:todo,priority:med,type:feature,cat:user-feature] Lande-system: countries-tabel + 3-akset nationsstyrke (fødselsrate, talent, omdømme)
+#819 [claude:todo,priority:med,type:feature] Bestyrelsesforhandling mangler konsekvens/cap (kun upside ved at forhandle ned)
+#748 [claude:todo,priority:med,type:feature,security] Discord-token: rotation + lag D env-injection + lag B restart-verifikation (follow-up #745/#634)
+#739 [claude:todo,priority:med,type:feature] Adopt a stable Node version strategy for Windows development
+#738 [claude:todo,priority:med,type:feature] Decide whether to remove McAfee and confirm Defender protection
+#725 [claude:todo,priority:med,type:refactor,security] [security] Afklar én kanonisk secret-sti (runtime-injection vs export-til-.env) + doctor-WARN på secrets-på-disk
+#724 [claude:todo,priority:med,type:feature,epic:dx-hardening] [DX] Ét verify-setup.ps1 med samlet grøn/gul/rød-verdikt (MCP + secret-on-disk + python-sanity)
+#723 [claude:todo,priority:med,type:feature,epic:dx-hardening] [DX] bootstrap-pc.ps1: installer gitleaks via Scoop (robust pre-commit primær-sti)
+#722 [claude:todo,priority:med,type:feature,epic:ai-workflow] [DX] Discord-MCP setup fuldt non-interaktivt på frisk PC (autonom Railway-link)
+#720 [claude:todo,priority:med,type:feature,post-launch,security,manual:user] [security] Verificér disk-kryptering på PC3 (DolmerPC) før produktionsbrug
+#708 [claude:todo,priority:med,type:refactor,risk:med,security,agent:claude,needs-dispatch,cat:infra] Supabase Data API explicit grants for new public tables
+#691 [claude:todo,priority:med,type:investigation,epic:ai-workflow,post-launch,security,needs-user-action,cat:infra] [ops] Full SUPABASE_SERVICE_KEY rotation — generate new key + sync all surfaces
+#680 [claude:todo,priority:med,type:feature,cat:founder] EPIC: TdF 2026 Launch Sprint (hard deadline 2026-06-20)
+#677 [claude:todo,priority:high,type:feature,slice:fictional-riders] Fiktive ryttere V2: stats via ny ability-model (efter #676)
+#672 [claude:done,priority:high,type:feature,cat:user-feature] Landing page polish + founder waitlist (TdF-ready)
+#671 [claude:todo,priority:high,type:feature,cat:founder] Brand minimum: accent + font + wordmark (TdF-deadline subset af #481)
+#658 [claude:todo,priority:high,type:feature,risk:low,cat:ai-ops] chore(ops): Schedule check-agent-token-hygiene.ps1 as local cron (Windows Task Scheduler)
+#621 [claude:todo,priority:med,type:bug,post-launch,epic:quality-hardening,agent:codex,cat:infra] [ops] Sentry hardening backlog — efter #348 baseline
+#605 [claude:todo,priority:med,type:investigation,epic:ai-workflow,post-launch,scaling:ai-standard,cat:ai-ops] P0: AI World-Class v2 — token-friendly agent setup
+#543 [claude:todo,priority:med,type:feature,slice-08] Feature: season_transition_paused admin-håndsving
+#530 [claude:todo,priority:med,type:feature,security,cat:infra] [security] Pre-merge detection af manglende rate-limit + workflow-permissions
+#528 [claude:todo,priority:low,type:docs,security,cat:infra] [security] P3: Phase C — classify 6× rls_enabled_no_policy tables (follow-up #525)
+#520 [claude:todo,priority:med,type:refactor,risk:med,cat:infra] [refactor] Split AdminPage/RacesPage og fastlæg frontend vs backend data ownership
+#519 [claude:todo,priority:med,type:refactor,risk:med,cat:infra] [refactor] Split backend/routes/api.js i domain routers uden adfærdsændring
+#492 [claude:todo,priority:low,type:feature,risk:med,cat:infra] feat(i18n): ProfilePage på EN/DA (Fase 3.5)
+#490 [claude:todo,priority:med,type:feature,risk:med,cat:infra] feat(i18n): ActivityPage på EN/DA (Fase 3.5)
+#483 [claude:todo,type:feature,cat:infra] [Epic] feat(i18n): Fase 3.5 — Authenticated long-tail (10 sider)
+#481 [claude:todo,priority:high,priority:med,type:bug] Brand identity overhaul — logo + design manual (once-and-for-all)
+#479 [claude:todo,priority:med,type:bug,sprint-validation] Mobile Performance optim for /founder-supporter waitlist (follow-up #361)
+#452 [claude:todo,priority:med,type:feature,slice-08] [feature] Tilmeld-knap til kommende sæson når manager ikke kan stille hold (sub-issue til #239)
+#450 [claude:todo,priority:med,type:feature] [feature] Minimumspris på egne ryttere — passive floor mod spam-bud (Vman-style)
+#435 [claude:todo,priority:low,type:docs] Privacy copy: nævn Vercel Analytics + Speed Insights i consent/policy
+#431 [claude:todo,priority:low,type:feature,post-launch,needs-user-action,epic:discord-community] Discord: Planlæg første AMA (community Q&A)
+#430 [claude:todo,priority:low,type:feature,post-launch,needs-user-action,epic:discord-community] Discord: Rekrutter 2 community-moderatorer
+#428 [claude:todo,priority:med,type:docs,needs-user-action,epic:discord-community] Discord: Ugentlig content-kalender (Man/Ons/Søn templates)
+#427 [claude:todo,priority:med,type:feature,risk:low,epic:discord-community] Discord: Annoncér Discord-link i CyclingZone UI + waitlist-mail
+#426 [claude:todo,priority:med,type:feature,post-launch,risk:low,epic:discord-community] Discord: /mit-hold slash-command (embed spillerens hold)
+#425 [claude:todo,priority:med,type:feature,post-launch,risk:low,epic:discord-community] Discord: Auto-tildel Top-50 Manager-rolle (cron + Supabase-query)
+#424 [claude:todo,priority:med,type:feature,needs-contract,risk:med,epic:discord-community] Discord: Byg CyclingZone verify-bot (Discord ↔ Supabase konto-link)
+#419 [claude:todo,priority:high,type:feature,needs-user-action,epic:discord-community] Discord: Inviter Carl-bot + Dyno + konfigurér auto-mod
+#415 [claude:todo,priority:med,type:docs,epic:discord-community] Discord community: world-class opsætning (epic/tracker)
+#414 [claude:todo,priority:med,type:docs,risk:low,docs-only,cat:infra] chore(i18n): Fase 5 — lint-guard + docs + retro
+#413 [claude:todo,priority:med,type:feature,risk:med,cat:infra] feat(i18n): Fase 4 — PatchNotes refactor + Privacy merge + Supabase emails
+#409 [claude:todo,priority:med,type:feature,post-launch,cat:infra] [Epic] i18n: EN-default + DK-version, fundament for 3-7 sprog
+#374 [claude:todo,priority:med,type:docs,risk:high,cat:infra] [ops] Drill 1 pre-req blockers — PITR-status + CLI-tools før attempt 2
+#355 [claude:todo,priority:med,type:feature,post-launch,needs-user-action,cat:ai-ops] AI Ops: Disconnect 7 ubrugte MCP-connectors (~2.5K tok)
+#347 [claude:todo,priority:med,type:bug,epic:quality-hardening,cat:infra] [ops] Gør deploy-verify robust for script/doc-only commits og manglende Railway-status
+#333 [claude:todo,priority:med,type:refactor,needs-contract,post-launch,risk:med,epic:quality-hardening,scaling:baseline,cat:infra] [scaling] Fase 3: Supabase Realtime WebSockets som primær live-kanal
+#332 [claude:todo,priority:med,type:feature,epic:ai-workflow,risk:med,cat:infra] [ops] Fase 4: fuldtidsdrift, incident playbook, backups og cost model
+#331 [claude:todo,priority:med,type:investigation,needs-contract,risk:med,epic:quality-hardening,cat:infra] [scaling] Fase 3: loadtest og DB performance baseline
+#330 [claude:todo,priority:med,type:refactor,shared-refactor,post-launch,risk:high,manual-review,epic:quality-hardening,cat:infra] [platform] Fase 3: cron ud af webserveren og job-locking til multi-instance
+#324 [claude:todo,priority:med,type:feature,epic:ai-workflow,post-launch,risk:low,scaling:baseline,cat:infra] [ops] Fase 0: gør AI/release baseline reel og verificerbar
+#323 [claude:todo,priority:med,type:feature,epic:ai-workflow,post-launch,risk:med,epic:quality-hardening,scaling:ai-standard,cat:ai-ops] [epic] Verdensklasse AI/Ops setup mod 5.000-10.000 brugere
+#306 [claude:todo,priority:low,type:feature,epic:quality-hardening,cat:user-feature] [obs] Instrumenter resterende ~10 events fra #137 scope
+#288 [claude:todo,priority:low,type:feature,epic:quality-hardening,cat:ai-ops] [quality] E2E test foundation — Playwright + 3 kritiske flows
+#266 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Mester-trøjer: verdensmester, europamester, lands-mestre
+#264 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Discord: dedikeret kanal til sæsonstart/slut + transfervindue-events
+#227 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Auktionsside: filter på nuværende bud (≤ X)
+#165 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Bestyrelsens overall tilfredshed som progress bar
+#103 [claude:todo,priority:low,type:investigation,cat:user-feature] [investigate] Multi-year mål — tidlig opfyldelse og genforhandling
+#101 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Vis bestyrelsens konkrete effekter (sponsor m.m.) i UI
+#99 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Tooltip/inline forklaring af rytter-værdi
+#94 [claude:todo,priority:low,type:feature,cat:user-feature] [Feature] Manager cross-season statistik
+#91 [claude:todo,priority:med,type:feature,cat:user-feature] [Feature] Race Day Live-ticker
+#88 [claude:todo,priority:med,type:feature,epic:dx-hardening,cat:ai-ops] [DX Lag 5] Branch protection + auto-merge på main
+#78 [claude:todo,priority:low,type:feature,epic:ai-workflow,cat:ai-ops] [Automation] Scheduled memory-konsolidering (ugentlig)
+#62 [claude:todo,priority:med,type:feature,post-launch,cat:user-feature] [Epic] Today / Manager Inbox — hvad skete, hvad ændrede sig, hvad kræver handling
+#50 [claude:todo,priority:med,type:refactor,cat:user-feature] [task] Mere inddeling i Admin UI — flere menupunkter, mere overskuelig
+#33 [claude:todo,priority:med,type:feature,cat:user-feature] [feature] Tillad salg af rytter under division-minimum i transfer-vinduet
+#27 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Custom gemte scoutingfiltre
+#26 [claude:todo,priority:low,type:feature,cat:user-feature] [feature] Transfer war-room (shortlist + sammenligning + budget-forecast)
+#21 [claude:todo,priority:med,type:bug,cat:bug] [bug] Kommende løb-funktionen viser forkerte løb
+#17 [claude:todo,priority:low,type:feature,cat:user-feature] [design] Lån — skal renter starte med det samme + skal gebyr betales kontant?
