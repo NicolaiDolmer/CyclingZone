@@ -84,6 +84,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatTransfers", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
+      { id: "valueDeviation", kind: "text" },
       { id: "sendOffer", kind: "steps" },
       { id: "proposeSwap", kind: "steps" },
       { id: "receiveAndReply", kind: "text" },
