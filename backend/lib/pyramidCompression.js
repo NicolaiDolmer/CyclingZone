@@ -12,6 +12,58 @@
 // fordelings-funktion unit-testet". Al DB-læsning/skrivning bor i
 // scripts/compressPyramid.js.
 
+// #3036: sentinel for "ingen række i denne klassifikation" i countback-leddene
+// bestStageRank/bestGcRank. En rigtig placering er altid >= 1, så sentinellen
+// taber ALTID mod en reel placering. Bevidst en stor endelig værdi (ikke
+// Infinity) — Infinity - Infinity = NaN, som gør komparator-subtraktionen
+// skrøbelig; MAX_SAFE_INTEGER - MAX_SAFE_INTEGER = 0 er sikkert og eksplicit.
+export const NO_COUNTBACK_RANK = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Aggregerer countback-metrikker pr. hold fra rå race_results-rækker (#3036,
+ * 61-61-lektionen fra S1→S2-komprimeringen, se pyramidCompression.test.js).
+ * Ren funktion — DB-læsningen (paginerede rækker filtreret på sæson via
+ * races.season_id) foregår i scripts/compressPyramid.js; denne funktion tager
+ * allerede-hentede rækker og laver ÉN pass i JS (ingen pr.-hold-queries).
+ *
+ * Tæller bevidst IKKE 'stage'/'gc' rank=1 med i classificationWins — de er
+ * allerede dækket af de eksisterende stage_wins/gc_wins-led i tiebreak-kæden
+ * (samme definition som economyEngine.js' stats-opbygning: resultType==='stage'
+ * && rank===1 hhv. 'gc' && rank===1). classificationWins dækker "øvrige
+ * klassementer" (point/bjerg/ungdom/hold — slut- OG dag-typer).
+ *
+ * @param {Array<{team_id, result_type, rank}>} raceResults
+ * @returns {Map<string, {classificationWins:number, stagePodiums:number,
+ *   bestStageRank:number, bestGcRank:number}>} bestStageRank/bestGcRank er
+ *   NO_COUNTBACK_RANK når holdet ingen rækker har for den type.
+ */
+export function buildCountbackByTeam(raceResults) {
+  const byTeam = new Map();
+  const entryFor = (teamId) => {
+    let e = byTeam.get(teamId);
+    if (!e) {
+      e = { classificationWins: 0, stagePodiums: 0, bestStageRank: NO_COUNTBACK_RANK, bestGcRank: NO_COUNTBACK_RANK };
+      byTeam.set(teamId, e);
+    }
+    return e;
+  };
+  for (const r of raceResults || []) {
+    const teamId = r?.team_id;
+    const rank = Number(r?.rank);
+    if (teamId == null || !Number.isFinite(rank) || rank < 1) continue;
+    const e = entryFor(teamId);
+    if (r.result_type === "stage") {
+      if (rank < e.bestStageRank) e.bestStageRank = rank;
+      if (rank <= 3) e.stagePodiums += 1;
+    } else if (r.result_type === "gc") {
+      if (rank < e.bestGcRank) e.bestGcRank = rank;
+    } else if (rank === 1) {
+      e.classificationWins += 1;
+    }
+  }
+  return byTeam;
+}
+
 /**
  * Global rangering af managerhold på tværs af alle puljer.
  *
@@ -21,29 +73,49 @@
  *        is_test_account=false, is_bank=false).
  * @param {Array<{team_id, total_points, gc_wins, stage_wins}>} standings
  *        season_standings-rækker for den afsluttede sæson.
+ * @param {Map<string, {classificationWins, stagePodiums, bestStageRank, bestGcRank}>} [countback]
+ *        OPTIONAL output fra buildCountbackByTeam, keyed by team_id. Udelades
+ *        countback (caller leverer den ikke), falder funktionen tilbage til
+ *        den GAMLE kæde (total_points → gc_wins → stage_wins → name → id) —
+ *        alle countback-led bliver 0/sentinel for alle hold og annullerer
+ *        derfor hinanden i komparatoren. Bagudkompatibelt og deterministisk.
  * @returns {Array} rangeret liste (rank 1 = bedst) med
  *        { teamId, name, rank, totalPoints, gcWins, stageWins,
+ *          classificationWins, stagePodiums, bestStageRank, bestGcRank,
  *          fromTier, fromPoolId, missingStanding }.
  *
  * Tiebreak (deterministisk — samme input giver ALTID samme liste, så listen
- * ejeren godkender søndag ~19:30 er præcis den der køres):
- *   total_points DESC → gc_wins DESC → stage_wins DESC → name ASC → id ASC.
+ * ejeren godkender ved et sæsonskifte er præcis den der køres). Countback-
+ * leddene blev indsat FØR navne-leddet efter 61-61-cutline-hændelsen 26/7
+ * (#3036): S1→S2-komprimeringen afgjorde sidste D3-plads (Guds hånd vs HWT
+ * Rockets, begge 61 point / 0 løbssejre / 0 etapesejre) reelt via NAVNE-
+ * alfabetet. Manuel countback viste Guds hånd vandt entydigt sportsligt
+ * (4 klassements-/dagssejre, 2 etape-podier, bedste GC 7. mod 0/0/11.).
+ *   total_points DESC → gc_wins DESC → stage_wins DESC
+ *     → classificationWins DESC → stagePodiums DESC
+ *     → bestStageRank ASC → bestGcRank ASC
+ *     → name ASC → id ASC.
  * Hold uden standings-række rangeres som 0 point (markeret missingStanding,
  * så dry-run-output kan flage dem eksplicit).
  */
-export function rankTeamsGlobally({ teams, standings }) {
+export function rankTeamsGlobally({ teams, standings, countback }) {
   const byTeamId = new Map();
   for (const s of standings || []) {
     if (s?.team_id != null) byTeamId.set(s.team_id, s);
   }
   const rows = (teams || []).map((team) => {
     const s = byTeamId.get(team.id) || null;
+    const cb = countback instanceof Map ? countback.get(team.id) : countback?.[team.id];
     return {
       teamId: team.id,
       name: team.name ?? "",
       totalPoints: Math.max(0, Number(s?.total_points) || 0),
       gcWins: Math.max(0, Number(s?.gc_wins) || 0),
       stageWins: Math.max(0, Number(s?.stage_wins) || 0),
+      classificationWins: Math.max(0, Number(cb?.classificationWins) || 0),
+      stagePodiums: Math.max(0, Number(cb?.stagePodiums) || 0),
+      bestStageRank: Number.isFinite(cb?.bestStageRank) ? cb.bestStageRank : NO_COUNTBACK_RANK,
+      bestGcRank: Number.isFinite(cb?.bestGcRank) ? cb.bestGcRank : NO_COUNTBACK_RANK,
       fromTier: team.division ?? null,
       fromPoolId: team.league_division_id ?? null,
       missingStanding: !s,
@@ -53,6 +125,10 @@ export function rankTeamsGlobally({ teams, standings }) {
     (b.totalPoints - a.totalPoints)
     || (b.gcWins - a.gcWins)
     || (b.stageWins - a.stageWins)
+    || (b.classificationWins - a.classificationWins)
+    || (b.stagePodiums - a.stagePodiums)
+    || (a.bestStageRank - b.bestStageRank)
+    || (a.bestGcRank - b.bestGcRank)
     || String(a.name).localeCompare(String(b.name), "en")
     || String(a.teamId).localeCompare(String(b.teamId), "en"),
   );
