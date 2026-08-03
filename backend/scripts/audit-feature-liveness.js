@@ -256,6 +256,13 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // (`/api/peak-plans` + `/${planId}/accept-training`), så den statiske caller-grep
   // ikke matcher path-mønstret. Desuden launch-gated bag peak_planner_enabled.
   "POST /peak-plans/:id/accept-training",
+  // #2180 one-click auto-udtag: backend-endpointet (+ det tilhørende 36t-
+  // varsel-sweep, selectionWarningSweep.js) shippet FØR indbakke-knappen —
+  // eksplicit backend-only scope for denne PR (se PR-body). En senere
+  // frontend-session wirer notifikationens metadata.raceId til dette
+  // endpoint fra NotificationsPage.jsx. Intentional orphaned indtil da,
+  // ikke drift; fjern denne entry når knappen lander.
+  "POST /races/:raceId/selection/auto",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
