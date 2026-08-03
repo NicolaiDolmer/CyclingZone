@@ -18,7 +18,13 @@
 // (samme mønster som stallWatchdog.js's evaluateStallFindings/fetchWatchdogState-split).
 
 import { fetchAllRows } from "./supabasePagination.js";
-import { computeDayMetrics, classifyDay, findConsecutiveBreaches, evaluateBreachAlert } from "./balanceDriftMetrics.js";
+import {
+  computeDayMetrics,
+  classifyDay,
+  findConsecutiveBreaches,
+  evaluateBreachAlert,
+  BALANCE_DRIFT_TUNING,
+} from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
 
 const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er den DB-interne værdi for "race v3" (flippet 12/7 — se seneste engine_version-skift i prod).
@@ -234,7 +240,31 @@ export async function runBalanceDriftWatch({
     breakawayWins: inputs.breakawayWins,
     breakawayEligibleStages: inputs.breakawayEligibleStages,
   });
-  const statuses = classifyDay(metrics);
+  // #2731: pooling af dags-raterne kræver de seneste PERSISTEREDE rækker FØR
+  // klassifikationen (ingen ekstra prod-læsning — dette kald erstatter det
+  // tidligere post-upsert-fetch, som kun hentede `statuses`). Fejler den, falder
+  // klassifikationen tilbage til ren dags-linse og streaken springes over.
+  const { data: priorRows, error: fetchErr } = await supabase
+    .from("race_balance_drift_daily")
+    .select("metric_date, metrics, statuses")
+    .lt("metric_date", targetDate)
+    .order("metric_date", { ascending: false })
+    .limit(ROLLING_WINDOW_DAYS);
+  if (fetchErr) {
+    captureExceptionFn?.(new Error(`race_balance_drift_daily fetch: ${fetchErr.message}`), {
+      tags: { cron: "balance-drift-watch" },
+    });
+  }
+  const priorHistory = (priorRows || []).map((r) => ({
+    date: r.metric_date,
+    metrics: r.metrics || {},
+    statuses: r.statuses || {},
+  }));
+  // Dagens række først — poolDailyRate sorterer selv, men historikken SKAL
+  // indeholde i dag for at vinduet er POOL_WINDOW_DAYS langt og ikke -1.
+  const history = [{ date: targetDate, metrics }, ...priorHistory];
+
+  const statuses = classifyDay(metrics, { recentRows: history });
 
   const { error: upsertError } = await supabase
     .from("race_balance_drift_daily")
@@ -250,19 +280,27 @@ export async function runBalanceDriftWatch({
     return { date: targetDate, metrics, statuses, breaches: [] };
   }
 
-  const { data: recentRows, error: fetchErr } = await supabase
-    .from("race_balance_drift_daily")
-    .select("metric_date, statuses")
-    .order("metric_date", { ascending: false })
-    .limit(ROLLING_WINDOW_DAYS);
+  // Uden historik kan 3-dages-vinduet ikke evalueres pålideligt (et hul ville se
+  // ud som en brudt streak) — stop her frem for at risikere falsk tavshed.
   if (fetchErr) {
-    captureExceptionFn?.(new Error(`race_balance_drift_daily fetch: ${fetchErr.message}`), {
-      tags: { cron: "balance-drift-watch" },
-    });
     return { date: targetDate, metrics, statuses, breaches: [] };
   }
 
-  const rows = (recentRows || []).map((r) => ({ date: r.metric_date, statuses: r.statuses }));
+  // #2731: når robust-mode er ON re-klassificeres de historiske rækker under
+  // SAMME estimator som i dag, så streaken ikke blander to linser lige efter et
+  // flag-flip. Rækker fra før denne kode mangler `maxRiderWinRateLb`; da falder
+  // classifyDay tilbage til dags-værdien — streaken kan altså holde et gammelt
+  // rødt maxRiderWinRate i op til 3 dage efter flippet. Bevidst: den fejler mod
+  // at alarmere, ikke mod at tie.
+  const rows = [
+    { date: targetDate, statuses },
+    ...priorHistory.map((r) => ({
+      date: r.date,
+      statuses: BALANCE_DRIFT_TUNING.ROBUST_ESTIMATORS
+        ? classifyDay(r.metrics, { recentRows: history.filter((h) => h.date <= r.date) })
+        : r.statuses,
+    })),
+  ];
   const breaches = findConsecutiveBreaches(rows, { minConsecutiveDays: 3 });
 
   // #2730: edge-triggered dedup — alarmér KUN når brud-sættet ÆNDRER sig, så en
