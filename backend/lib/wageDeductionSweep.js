@@ -205,6 +205,10 @@ export async function runWageDeductionSweep({
 
       swept += 1;
     } catch (err) {
+      // best-effort: per-hold try/catch (mirror af trainingSweep/scoutSweep) —
+      // én fejlende hold-debitering må ikke stoppe sweepen for resten. `failed`
+      // tælles op og logges her; runWageDeductionSweepCron (cron.js) aggregerer
+      // failed>0 til ÉN sentryCapture pr. tick, så fejlen ikke går tabt.
       failed += 1;
       console.error(`  ❌ Wage-deduction sweep fejlede for hold ${team.id}:`, err.message);
     }

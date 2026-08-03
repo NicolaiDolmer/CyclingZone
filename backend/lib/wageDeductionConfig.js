@@ -49,6 +49,9 @@ export async function readWageDeductionMode(supabase) {
       ? WAGE_DEDUCTION_MODES.DAILY
       : WAGE_DEDUCTION_MODES.SEASON_UPFRONT;
   } catch {
+    // best-effort: config-læsning må aldrig vælte selve payroll/sweep-kaldet
+    // den bruges fra. Fail-safe er "season_upfront" (se fil-header) — samme
+    // tilstand som "ingen konfiguration sat endnu", ikke et sikkerhedshul.
     return WAGE_DEDUCTION_MODES.SEASON_UPFRONT;
   }
 }
