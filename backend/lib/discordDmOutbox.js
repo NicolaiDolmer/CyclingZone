@@ -73,6 +73,11 @@ export async function enqueueDm({
  * @param {object} deps
  * @param {Function} deps.deliverFn  async ({ discordId, payload }) =>
  *   resultat fra attemptDmDelivery ({ ok, status, failure, error }).
+ * @param {Function} [deps.onRecipientBlocked]  async (discordId) — kaldes når en
+ *   række dør på en permanent 'recipient-blocked'-fejl (#3130). Drain-stien
+ *   rammer samme døde kobling som direkte sendDM, så den skal tælle med i
+ *   auto-afkoblingen; ellers kunne en bruger fejle i det uendelige via outbox'en
+ *   uden nogensinde at nå tærsklen.
  * @returns {{ processed: number, sent: number, rescheduled: number, dead: number }}
  */
 export async function processDmOutboxDrain({
@@ -81,6 +86,7 @@ export async function processDmOutboxDrain({
   sendWebhookFn,
   getDefaultWebhookFn,
   captureExceptionFn,
+  onRecipientBlocked = null,
   now = new Date(),
   maxAttempts = MAX_OUTBOX_ATTEMPTS,
 }) {
@@ -133,6 +139,9 @@ export async function processDmOutboxDrain({
         })
         .eq("id", row.id);
       deadRows.push({ id: row.id, status: result.status, reason: result.failure?.reason });
+      if (result.failure?.reason === "recipient-blocked") {
+        await onRecipientBlocked?.(row.discord_id);
+      }
     } else {
       await supabase
         .from("discord_dm_outbox")

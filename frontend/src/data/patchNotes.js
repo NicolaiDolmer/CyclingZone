@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.83",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Settings no longer say \"Discord connected\" when the bot can't actually reach you",
+          "body": "If you left the Cycling Zone Discord server, the bot lost the right to send you direct messages. Your settings still showed the connection as active, the notification toggles stayed on, and no message ever arrived again. Nothing told you, and it never repaired itself. Now the connection is released automatically after three failed deliveries in a row, and Settings says so: \"Discord disconnected\", with the reason and what to do about it. Rejoin the server, add your ID again, and messages resume. A single failed delivery changes nothing. The counter only trips on three in a row, and any delivered message resets it."
+        },
+        "da": {
+          "title": "Indstillingerne siger ikke længere \"Discord tilsluttet\" når botten reelt ikke kan nå dig",
+          "body": "Havde du forladt Cycling Zones Discord-server, mistede botten retten til at sende dig private beskeder. Dine indstillinger viste stadig koblingen som aktiv, notifikations-knapperne stod tændt, og der kom aldrig en besked igen. Intet fortalte dig det, og det rettede ikke sig selv. Nu frigives koblingen automatisk efter tre fejlede leveringer i træk, og indstillingerne skriver det: \"Discord frakoblet\", med årsagen og hvad du gør ved det. Gå ind på serveren igen, tilføj dit ID, så kører beskederne videre. En enkelt fejlet levering ændrer ingenting. Tælleren udløser kun ved tre i træk, og enhver leveret besked nulstiller den."
+        },
+        "refs": [3130]
+      }
+    ]
+  },
+  {
     "version": "7.82",
     "date": "2026-07-31",
     "label": "Beta",
