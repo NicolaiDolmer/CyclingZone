@@ -101,3 +101,28 @@ test("training report shows day summary, progress and breakthrough jump", async 
   await expect(page.getByText("Hviledag")).toBeVisible();
   await expect(page.getByText("Intet fokus valgt")).toHaveCount(0);
 });
+
+// #3194: portræt-regression fra PR #3075 — den nye Type/Form/Træthed-underlinje
+// var whitespace-nowrap i en STICKY navnecelle, så navnekolonnen voksede til
+// ~skærmbredde i portræt og efterlod fokus/intensitet som en ubrugelig
+// scroll-strimmel (2 spillere, iOS Safari + Android Firefox, 31/7). Kontrakten:
+// den sticky region (checkbox + navn) må højst optage ~65 % af viewporten på
+// mobil, så de redigerbare kolonner har reel plads at scrolle i.
+test("#3194: portræt — sticky navnekolonne æder ikke skærmen", async ({ page }) => {
+  await login(page);
+  await page.goto("/training");
+  await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
+
+  const viewport = page.viewportSize();
+  test.skip(viewport.width >= 640, "portræt-kolonnekontrakten gælder kun under sm-breakpointet");
+
+  // Rækkens navnecelle er den 2. sticky-celle ([0] = checkbox-cellen, w-10).
+  const nameCell = page.locator("tbody td.sticky-name-cell").nth(1);
+  await expect(nameCell).toBeVisible();
+  const box = await nameCell.boundingBox();
+  expect(box.x + box.width, "sticky region (checkbox + navn) skal efterlade plads til fokus/intensitet")
+    .toBeLessThanOrEqual(viewport.width * 0.65);
+
+  // Underlinjens fold-info er der stadig (den blev ombrudt, ikke fjernet).
+  await expect(nameCell.getByText(/Form 75/i)).toBeVisible();
+});
