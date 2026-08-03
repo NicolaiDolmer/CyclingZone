@@ -443,8 +443,15 @@ export const SEED_SEASON_STANDINGS = [
 // rider_id peger på seedede ryttere, så display-joinet mod riders faktisk finder
 // dem (ellers filtreres rækken væk som "pensioneret siden matview-refresh").
 export const SEED_RIDER_RANKINGS = [
-  { season_id: ACTIVE_SEASON.id, rider_id: "rider-1", points: 1840, stage_wins: 3, gc_wins: 1 },
-  { season_id: ACTIVE_SEASON.id, rider_id: "rider-2", points: 1610, stage_wins: 2, gc_wins: 1 },
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-1", points: 1840, stage_wins: 3, gc_wins: 1, prize_earned: 245000 },
+  { season_id: ACTIVE_SEASON.id, rider_id: "rider-2", points: 1610, stage_wins: 2, gc_wins: 1, prize_earned: 198000 },
+];
+
+// #3190: løbsdage pr. rytter (get_rider_race_days RPC) — Mit Holds Stats-fane.
+// Kun rider-1 (TEST_TEAM) er relevant på preview/e2e; rider-2 tilføjet for paritet.
+export const SEED_RIDER_RACE_DAYS = [
+  { rider_id: "rider-1", race_days: 18 },
+  { rider_id: "rider-2", race_days: 14 },
 ];
 
 // race_points — pointtabellen bag Point & præmier-fanen. Ikke hele prod-tabellen:
