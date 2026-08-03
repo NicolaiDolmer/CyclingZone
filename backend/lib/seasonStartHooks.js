@@ -1,27 +1,31 @@
-// Sæsonstart-hooks (#2910 + #2911) — ÉT kaldepunkt for de to nye, flag-gatede
-// sæsonskifte-mekanikker, så seasonTransition.js kun får ÉN tilføjet blok.
+// Sæsonstart-hooks (#2910 + #2911 + #3232) — ÉT kaldepunkt for de flag-/config-
+// gatede sæsonskifte-mekanikker, så seasonTransition.js kun får ÉN tilføjet blok.
 //
 // Hvorfor et samle-modul: seasonTransition.js ejes af en parallel branch
-// (fix/2916-2852-transition-carryover). Ved at samle begge hooks bag én
-// funktion bliver diff'en i den delte fil 6 linjer i stedet for 40, og en
+// (fix/2916-2852-transition-carryover). Ved at samle hooks bag én funktion
+// bliver diff'en i den delte fil nogle få linjer i stedet for mange, og en
 // rebase er triviel.
 //
 // Kontrakt:
-//   • Begge hooks er additive og ISOLEREDE — en fejl i den ene må hverken vælte
-//     den anden eller sæson-transitionen (samme disciplin som
+//   • Alle hooks er additive og ISOLEREDE — en fejl i én må hverken vælte de
+//     andre eller sæson-transitionen (samme disciplin som
 //     contract_expiry_release / global_rank_decay).
-//   • Begge er flag-gatede med fail-safe OFF. Uden flag = nuværende adfærd,
+//   • Alle er gatede med fail-safe OFF. Uden flag/config = nuværende adfærd,
 //     bit-for-bit.
-//   • Rækkefølgen er bevidst: træthed FØR akademi. Akademi-optagelsen kan
-//     indsætte nye ryttere med friske rider_condition-rækker (fatigue 0), og de
-//     skal ikke fanges af en efterfølgende reset-sweep.
-//   • BETINGET FASE-LOG: et slukket flag logger INGENTING (samme mønster som
-//     reset_board_test_data og season_calendar i seasonTransition.js). Flag-off
-//     er dermed bit-identisk med adfærden før denne PR — også i fase-loggen og
-//     dermed i admin-UI'ets fase-tælling. Alt ANDET (fejl, no_active_season,
-//     academy_flag_off) logges, fordi det signalerer fejlkonfiguration.
+//   • Rækkefølgen er bevidst: træthed FØR form FØR akademi. Trætheds- og
+//     form-resetten rører begge rider_condition men forskellige kolonner (kan
+//     bytte plads uden effekt); akademi-optagelsen kommer SIDST fordi den kan
+//     indsætte nye ryttere med friske rider_condition-rækker, og de skal ikke
+//     fanges af en efterfølgende reset-sweep.
+//   • BETINGET FASE-LOG: et slukket flag/config logger INGENTING (samme mønster
+//     som reset_board_test_data og season_calendar i seasonTransition.js).
+//     Flag-off er dermed bit-identisk med adfærden før denne PR — også i
+//     fase-loggen og dermed i admin-UI'ets fase-tælling. Alt ANDET (fejl,
+//     no_active_season, academy_flag_off) logges, fordi det signalerer
+//     fejlkonfiguration.
 
 import { applySeasonFatigueReset } from "./seasonFatigueReset.js";
+import { applySeasonFormReset } from "./seasonFormReset.js";
 import { runSeasonAcademyIntake } from "./seasonAcademyIntake.js";
 import { captureException } from "./sentry.js";
 
@@ -50,6 +54,21 @@ export async function runSeasonStartHooks({
     log.push({ phase: "season_fatigue_reset", error: err.message });
     captureException(err, {
       tags: { phase: "season_fatigue_reset" },
+      extra: { toSeasonNumber },
+    });
+  }
+
+  // #3232 · form-nulstilling — sit EGET håndtag (season_form_reset_mode),
+  // adskilt fra trætheden ovenfor. `season` sendes med som idempotens-seed for
+  // "band"-mode (se seasonFormReset.js). Default-mode er "off" → no-op,
+  // bit-identisk med adfærden før denne PR.
+  const formResetFn = deps.applySeasonFormReset ?? applySeasonFormReset;
+  try {
+    push("season_form_reset", await formResetFn({ supabase, now, season: toSeasonNumber }));
+  } catch (err) {
+    log.push({ phase: "season_form_reset", error: err.message });
+    captureException(err, {
+      tags: { phase: "season_form_reset" },
       extra: { toSeasonNumber },
     });
   }

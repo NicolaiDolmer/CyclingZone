@@ -29,9 +29,12 @@ export const REASON_CODE_GROUPS = Object.freeze({
     "sponsor_signing_bonus", "sponsor_result_bonus", "sponsor_objective_bonus",
     "season_start_parachute",
   ],
+  // #3198-fund-8: facility_purchase/scout_travel tilføjet — se LEGACY_TYPE_GROUPS.other
+  // nedenfor for rækker skrevet FØR reason_code blev sat på disse to writes.
   other: [
     "season_start_upkeep", "season_start_academy_drift", "season_start_facility_upkeep",
     "season_end_negative_interest", "starting_budget", "admin_balance_adjustment", "admin_beta_reset",
+    "facility_purchase", "scout_travel",
   ],
 });
 
@@ -43,7 +46,10 @@ export const LEGACY_TYPE_GROUPS = Object.freeze({
   loans: ["loan_received", "loan_repayment", "loan_interest", "emergency_loan"],
   transfers: ["transfer_out", "transfer_in", "academy_signing"],
   sponsor: ["sponsor"],
-  other: ["admin_adjustment", "interest"],
+  // #3198-fund-8: facility_purchase/scout_travel skrev ALDRIG en reason_code
+  // før denne PR (332+734 prod-rækker), så de rammer kun "other" via dette
+  // legacy-type-fallback, ikke via REASON_CODE_GROUPS.other ovenfor.
+  other: ["admin_adjustment", "interest", "facility_purchase", "scout_travel"],
 });
 
 /**

@@ -47,7 +47,9 @@ import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
+import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
+import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
@@ -558,6 +560,27 @@ async function runTrainingSweepCron() {
   }
 }
 
+// ─── AI-rytter-restitution: dagligt recovery-tick for AI-holdenes ryttere (#3015) ──
+// Mirror af trænings-sweepen (kl. 22 dansk tid + team-niveau mutex, ai_recovery_runs),
+// men KUN fatigue/form — ingen ability-progression/skaderisiko/træningsplan. Retter at
+// trainingSweep.js's is_ai=false-filter (korrekt for bestyrelses-/gælds-notifikationer)
+// utilsigtet også udelukkede AI-ryttere fra den fysiologiske restitution — 3.372
+// AI-ryttere sad permanent på træthed 100 (målt i prod 26/7, se #3015).
+
+async function runAiRecoverySweepCron() {
+  const result = await runAiRecoverySweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`🔋 AI-recovery-sweep: ${result.swept} AI-hold restitueret (${result.ridersRecovered} ryttere)`);
+  }
+  if (result.failed) {
+    console.error(`❌ AI-recovery-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    sentryCapture(new Error(`ai recovery sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "ai recovery sweep" },
+      extra: { swept: result.swept, failed: result.failed, ridersRecovered: result.ridersRecovered },
+    });
+  }
+}
+
 // ─── Talentspejder: modner scout_assignments (missioner + målrettede opgaver) (#2244) ──
 // Mirror af trænings-sweepen: kl. 22 dansk tid + team-niveau mutex (scout_sweep_runs).
 
@@ -571,6 +594,25 @@ async function runScoutSweepCron() {
     // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).
     sentryCapture(new Error(`scout sweep: ${result.failed} opgaver fejlede`), {
       tags: { cron: "scout sweep" },
+      extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
+// ─── Dagsbaseret løntræk (#2840) — sweep-mønster mirror af trænings-sweepen ───
+// (kl. 22 dansk tid + dags-marker-mutex). Config-gated: no-op indtil ejeren
+// flipper app_config-nøglen wage_deduction_mode til "daily" (default
+// "season_upfront" = uændret nuværende adfærd, se wageDeductionConfig.js).
+
+async function runWageDeductionSweepCron() {
+  const result = await runWageDeductionSweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`💰 Løn-sweep: ${result.swept} hold trukket for dagens løn`);
+  }
+  if (result.failed) {
+    console.error(`❌ Løn-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    sentryCapture(new Error(`wage deduction sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "wage deduction sweep" },
       extra: { swept: result.swept, failed: result.failed },
     });
   }
@@ -902,6 +944,23 @@ async function runIdentityEventsRetentionCron() {
   }
 }
 
+// ─── Vækst-snapshot (#3196, ejer-direktiv 31/7 — samlet vækst-dashboard) ─────
+// Skriver dagens DAU/WAU/MAU/D1/D7/D30/abonnement/LTV/NPS-snapshot til
+// growth_metric_snapshots (database/2026-08-03-growth-snapshots-3196.sql), så
+// admin-dashboardet kan tegne trends over 7/30/90 dage i stedet for kun "lige
+// nu". UPSERT på snapshot_date i selve SQL-funktionen → idempotent, tryg selvom
+// tick'et løber flere gange samme dag (fx ved en deploy-genstart). Historik
+// FØR denne feature backfilles separat, én gang, via
+// backend/scripts/backfill-growth-snapshots.js (ikke en del af cron'en — et
+// engangs-script skal ikke risikere at genkøre en tung loop ved hvert boot).
+async function runGrowthSnapshotCron() {
+  const { error } = await supabase.rpc("compute_daily_growth_snapshot");
+  if (error) {
+    console.error("  ❌ growth-snapshot fejlede:", error.message);
+    sentryCapture(error, { tags: { cron: "growth snapshot" } });
+  }
+}
+
 // ─── Balance-drift-vagt (#2414) ───────────────────────────────────────────────
 // Natlig: beregn gårsdagens dominans/varians-metrikker mod ÆGTE prod-resultater,
 // persistér i race_balance_drift_daily, alarmér Discord ved 3+ dages bånd-brud.
@@ -1042,6 +1101,7 @@ const ALL_CRON_MONITORS = [
   ["training-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],
+  ["wage-deduction-sweep", CRON_MONITOR_5MIN],
   ["starter-squad-heal", CRON_MONITOR_5MIN],
   ["academy-heal", CRON_MONITOR_5MIN],
   ["rider-derive-heal", CRON_MONITOR_5MIN],
@@ -1052,6 +1112,7 @@ const ALL_CRON_MONITORS = [
   ["stall-watchdog", CRON_MONITOR_30MIN],
   ["traffic-retention", CRON_MONITOR_24H],
   ["identity-events-retention", CRON_MONITOR_24H],
+  ["growth-snapshot", CRON_MONITOR_24H],
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
   ["email-welcome", CRON_MONITOR_5MIN],
@@ -1159,6 +1220,12 @@ export function startCron() {
     5 * 60 * 1000
   );
 
+  // AI-rytter-restitution: dagligt recovery-tick, samme kl.22-vindue som trænings-sweepen (#3015)
+  setInterval(
+    trackedTick("ai recovery sweep", monitorCron("ai-recovery-sweep", runAiRecoverySweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
   setInterval(
     trackedTick("graduation sweep", monitorCron("graduation-sweep", runGraduationSweepCron, CRON_MONITOR_5MIN)),
@@ -1168,6 +1235,13 @@ export function startCron() {
   // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
   setInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Dagsbaseret løntræk (#2840) efter kl. 22 dansk tid — config-gated, no-op
+  // indtil wage_deduction_mode=daily er sat i app_config.
+  setInterval(
+    trackedTick("wage deduction sweep", monitorCron("wage-deduction-sweep", runWageDeductionSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
@@ -1266,6 +1340,15 @@ export function startCron() {
   // for race v3's kalibrerede bånd mod ÆGTE prod-resultater (i går, UTC).
   setInterval(
     trackedTick("balance-drift-watch", monitorCron("balance-drift-watch", runBalanceDriftWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
+  // Every 24 hours: vækst-snapshot (#3196) — DAU/WAU/MAU/D1/D7/D30/abonnement/
+  // LTV/NPS til growth_metric_snapshots, til admin-vækst-dashboardets trends.
+  // Idempotent upsert på snapshot_date → tryg selvom tick'et løber flere gange
+  // samme dag (fx ved en deploy-genstart).
+  setInterval(
+    trackedTick("growth snapshot", monitorCron("growth-snapshot", runGrowthSnapshotCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
 

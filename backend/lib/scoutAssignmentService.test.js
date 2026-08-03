@@ -383,6 +383,8 @@ test("startTargetAssignment: happy path (level 0→1) inserts + debits travel co
   const tx = supabase.state.finance_transactions[0];
   assert.equal(tx.type, "scout_travel");
   assert.equal(tx.idempotency_key, `scout_travel:team-1:${result.assignment.id}`);
+  // #3198-fund-8: reason_code manglede før denne fix.
+  assert.equal(tx.reason_code, "scout_travel");
   assert.equal(supabase.state.assignments[0].staff_id, null); // default-spejder
 });
 
@@ -469,6 +471,11 @@ test("startMission: happy path inserts flat-cost mission + debits, defaults targ
   assert.deepEqual(supabase.state.assignments[0].mission_criteria, { ...criteria, targetPool: "free_agents" });
   assert.deepEqual(result.assignment.criteria, { ...criteria, targetPool: "free_agents" });
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.mission.cost);
+  // #3198-fund-8: reason_code manglede før denne fix (også på mission-varianten
+  // af scout_travel, separat write-site fra startTargetAssignment ovenfor).
+  const tx = supabase.state.finance_transactions[0];
+  assert.equal(tx.type, "scout_travel");
+  assert.equal(tx.reason_code, "scout_travel");
 });
 
 test("startMission: insufficient balance → insufficient_funds", async () => {
