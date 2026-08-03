@@ -897,7 +897,7 @@
       "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "restForDevelopedFaq": {
-      "q": "Min rytter er færdigudviklet — skal jeg bare sætte hvile?",
+      "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
       "a": "Når alle evner i rytterens valgte fokus har nået deres livstidsloft, viser roster-rækken 'Færdigudviklet i dette fokus', og mere træning i det fokus giver intet ekstra: dagens gevinst beregnes ud fra afstanden mellem nuværende evne og loftet, og ved nul afstand forbliver den nul uanset intensitet. Kører du Normal eller Hård på en færdigudviklet rytter, bygger det stadig Træthed op, og Hård har stadig samme skaderisiko som for enhver anden rytter, for ingen evnegevinst til gengæld, så Hvile er det sikre valg: det fjerner Træthed i stedet for at bygge den op. Rytterens fald efter toppen omkring 28 år kører under alle omstændigheder med en fast, alders-bestemt hastighed ved hvert sæsonskifte, uanset hvilken intensitet du trænede med, så hverken træning eller Hvile fremskynder eller bremser det. Har rytteren stadig plads i et andet fokus, er det at skifte fokus det bedre valg frem for hvile."
     },
     "scoutNetworkOwnRidersFaq": {
