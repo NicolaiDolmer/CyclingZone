@@ -84,6 +84,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatTransfers", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
+      { id: "valueDeviation", kind: "text" },
       { id: "sendOffer", kind: "steps" },
       { id: "proposeSwap", kind: "steps" },
       { id: "receiveAndReply", kind: "text" },
@@ -304,6 +305,7 @@ const FAQ_KEYS = [
   "onlineStatusFaq",
   "watchlistCounterFaq",
   "scoutVisibilityFaq",
+  "scoutNetworkOwnRidersFaq",
   "watchlistSaleNotificationFaq",
   "riderSalaryView",
   "riderDevelopment",
@@ -315,6 +317,7 @@ const FAQ_KEYS = [
   "riderRating",
   "developmentProjectionFaq",
   "trainingFocusFaq",
+  "restForDevelopedFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
   "peakTraining",

@@ -148,6 +148,10 @@
         "title": "Editing many prices at once",
         "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
       },
+      "valueDeviation": {
+        "title": "The valuation next to the asking price",
+        "text": "The transfer list shows each rider's estimated market value next to the asking price, and the percentage tells you how far the asking price sits below or above it (the same estimate as on Auctions). You can filter the market by this percentage under 'Value deviation % (min-max)' in the filter panel, for example to find riders priced well below their estimated value."
+      },
       "sendOffer": {
         "title": "Send an offer",
         "steps": [
@@ -895,6 +899,14 @@
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
       "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
+    },
+    "restForDevelopedFaq": {
+      "q": "My rider is fully developed. Should I just set them to Rest?",
+      "a": "Once every ability in a rider's chosen focus has reached its lifetime ceiling, the roster row shows 'Fully developed in this focus', and more training there adds nothing: the daily gain comes from the gap between current ability and ceiling, and at zero gap it stays zero at any intensity. Normal or Hard on a maxed-out rider still builds Fatigue, and Hard still carries the same injury risk as usual, for no ability gain in return, so Rest is the safer pick: it removes Fatigue instead of adding it. A rider's post-peak decline from around age 28 runs at the same fixed, age-based rate every season change regardless of what intensity you trained at, so neither training nor Rest speeds it up or slows it down. If a different focus still has room, switching there beats resting."
+    },
+    "scoutNetworkOwnRidersFaq": {
+      "q": "Does a better scouting network also improve how well I see my own riders?",
+      "a": "Yes, in one specific way. Scouting missions never involve your own riders: a mission's candidate pool only searches other teams' and free-agent riders, and a single-rider investigation costs and takes the same regardless of your scout's rating. But the precision of the potential ranges you see does follow your chief scout: he knows your own squad fully, so his rating decides how narrow the star range and per-type ceiling bands on your own riders are, exactly as for a fully scouted rival. No scout ever reports an exact value: even at the highest rating you see a narrow range, never a precise star value."
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",

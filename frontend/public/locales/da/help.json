@@ -148,6 +148,10 @@
         "title": "Redigér mange priser på én gang",
         "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
+      "valueDeviation": {
+        "title": "Vurderingen ved siden af udbudsprisen",
+        "text": "Transferlisten viser rytterens estimerede markedsværdi ved siden af udbudsprisen, og procenten fortæller hvor langt udbudsprisen ligger under eller over den (samme estimat som på Auktioner). Du kan filtrere markedet på denne procent under 'Værdi-afvigelse % (min-max)' i filterpanelet, fx for at finde ryttere prissat godt under deres estimerede værdi."
+      },
       "sendOffer": {
         "title": "Send et tilbud",
         "steps": [
@@ -895,6 +899,14 @@
     "trainingFocusFaq": {
       "q": "Hvordan træner jeg en rytter?",
       "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+    },
+    "restForDevelopedFaq": {
+      "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
+      "a": "Når alle evner i rytterens valgte fokus har nået deres livstidsloft, viser roster-rækken 'Færdigudviklet i dette fokus', og mere træning i det fokus giver intet ekstra: dagens gevinst beregnes ud fra afstanden mellem nuværende evne og loftet, og ved nul afstand forbliver den nul uanset intensitet. Kører du Normal eller Hård på en færdigudviklet rytter, bygger det stadig Træthed op, og Hård har stadig samme skaderisiko som for enhver anden rytter, for ingen evnegevinst til gengæld, så Hvile er det sikre valg: det fjerner Træthed i stedet for at bygge den op. Rytterens fald efter toppen omkring 28 år kører under alle omstændigheder med en fast, alders-bestemt hastighed ved hvert sæsonskifte, uanset hvilken intensitet du trænede med, så hverken træning eller Hvile fremskynder eller bremser det. Har rytteren stadig plads i et andet fokus, er det at skifte fokus det bedre valg frem for hvile."
+    },
+    "scoutNetworkOwnRidersFaq": {
+      "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
+      "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle stjerne-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig en præcis stjerneværdi."
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",

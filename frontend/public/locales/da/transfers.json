@@ -280,5 +280,11 @@
     "toastPartial": "Opdaterede {updated}, {failed} kunne ikke opdateres",
     "toastNoChange": "Ingen prisændring at anvende",
     "toastFailed": "Kunne ikke opdatere priser"
+  },
+  "valueDelta": {
+    "under": "{pct}% under vurdering",
+    "over": "{pct}% over vurdering",
+    "at": "Tæt på vurdering",
+    "title": "Estimeret markedsværdi: {amount} CZ$. Et modelestimat, ikke en garanteret pris."
   }
 }
