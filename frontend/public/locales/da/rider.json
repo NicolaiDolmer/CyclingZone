@@ -745,7 +745,8 @@
       "working": "Forlænger…",
       "success": "Kontrakt forlænget.",
       "errorPrefix": "Kunne ikke forlænge:",
-      "capped": "Kontrakt på maksimal længde (til og med sæson {season})."
+      "capped": "Kontrakt på maksimal længde (til og med sæson {season}).",
+      "capCounterLabel": "Forlængelser brugt"
     },
     "release": {
       "button": "Fyr rytter",

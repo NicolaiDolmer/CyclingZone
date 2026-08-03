@@ -128,6 +128,7 @@ import {
   computeReleaseBuyoutFee,
   computeContractExtension,
   maxAllowedContractEndSeason,
+  contractExtensionCapInfo,
 } from "../lib/contractSeed.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
@@ -1235,12 +1236,21 @@ router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
   const currentSeason = await getActiveSeasonNumber();
   const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
   const capError = contractExtensionCapError(next, currentSeason);
-  if (capError) return res.status(capError.status).json(capError.body);
+  // #3186: tælleren skal være synlig FØR spilleren handler — udregnet fra
+  // rytterens NUVÆRENDE contract_end_season (ikke `next`, som allerede er én
+  // forlængelse ind i fremtiden), så den matcher "hvor mange forlængelser er
+  // der tilbage lige nu". Sendes med i BEGGE grene (tilladt/afvist), så
+  // frontend kan vise "Extensions used: X/3" uden selv at gentage loft-formlen.
+  const extensionCap = contractExtensionCapInfo(rider.contract_end_season, currentSeason);
+  if (capError) {
+    return res.status(capError.status).json({ ...capError.body, extensionCap });
+  }
   res.json({
     currentSalary: rider.salary ?? 0,
     newSalary: next.salary,
     contract_end_season: next.contract_end_season,
     contract_length: next.contract_length,
+    extensionCap,
   });
 });
 
@@ -1360,9 +1370,17 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
   const next = computeContractExtension({ ...rider, currentSeason, division: req.team.division });
 
   // #3143: hårdt loft — afvis eksplicit i stedet for at clampe stille (se
-  // contractExtensionCapError ovenfor for begrundelsen).
+  // contractExtensionCapError ovenfor for begrundelsen). #3186: extensionCap
+  // sendes med selv her (samme shape som extend-quote), så et evt. race — POST
+  // ramte loftet selvom en tidligere hentet quote sagde "tilladt" — stadig
+  // giver frontend et frisk tal at vise i stedet for kun fejlteksten.
   const capError = contractExtensionCapError(next, currentSeason);
-  if (capError) return res.status(capError.status).json(capError.body);
+  if (capError) {
+    return res.status(capError.status).json({
+      ...capError.body,
+      extensionCap: contractExtensionCapInfo(rider.contract_end_season, currentSeason),
+    });
+  }
 
   // #2237 · Lag 2 (salary cap) håndhæves nu også her — den eneste manager-initierede
   // løn-forøgelses-vej udenom transfer/auktion (som allerede er dækket af assertSigningAllowed).
@@ -1396,6 +1414,9 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
     newSalary: next.salary,
     contract_end_season: next.contract_end_season,
     contract_length: next.contract_length,
+    // #3186: den friske tæller efter selve forlængelsen — matcher extend-quote's
+    // shape, så et evt. fremtidigt umiddelbart UI-opdatering ikke kræver et ekstra kald.
+    extensionCap: contractExtensionCapInfo(next.contract_end_season, currentSeason),
   });
 });
 
