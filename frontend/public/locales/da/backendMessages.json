@@ -6,7 +6,10 @@
       "seasonStartVariable": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier})",
       "seasonStartVariablePullout": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
       "seasonStartFallback": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier})",
-      "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
+      "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "signingBonus": "Sponsor · Signing-bonus ({sponsorName})",
+      "resultBonus": "Sponsor · Resultatbonus ({wins} sejre, {podiums} podier)",
+      "objectiveBonus": "Sponsor · Sæsonmål opnået ({sponsorName})"
     },
     "salary": "Sæsonlønninger · {count} ryttere",
     "upkeep": "Drift og vedligehold · Division {division}",
