@@ -94,6 +94,48 @@ export function computeDayMetrics({
 }
 
 /**
+ * #2557 — PER-TIER-opdeling af dagens dominans-observationer.
+ *
+ * HVORFOR: aggregatet er et gennemsnit af puljer der opfører sig MODSAT. Målt
+ * 27/7-3/8 (docs/audits/2026-08-03-team-dominance-2557.md) vandt favoritten
+ * 49% i tier 3 (for forudsigeligt) men kun 15,6-17,5% i tier 1/2/4 (for
+ * tilfældigt, under bånd-min 0,25). Ét gennemsnit landede tæt på båndet og
+ * skjulte begge fejl i 3 uger — og variant C (PR #2575) blev kalibreret mod
+ * netop det gennemsnit. Opdelingen er derfor ikke pynt: uden den kan en
+ * kalibrering ikke se hvilken retning den skal gå.
+ *
+ * REPORT-ONLY: deltager ALDRIG i rød-klassifikation eller 3-dages-alarmen
+ * (classifyDay itererer kun BALANCE_DRIFT_BANDS). Den lever i den persisterede
+ * metrics-jsonb så admin-trenden og fremtidige kalibreringer kan læse den.
+ *
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeRace> & {tier?:number|null}>} observations
+ * @returns {Record<string, {stages:number, favoriteWinRate:number|null,
+ *   favoritePodiumRate:number|null, share4PlusSameTeamTop10:number|null,
+ *   avgDistinctTeamsTop10:number|null}>} nøgle = `tier${n}` eller "unknown"
+ */
+export function computeTierBreakdown(observations = []) {
+  const byTier = new Map();
+  for (const obs of observations) {
+    const key = obs?.tier == null ? "unknown" : `tier${obs.tier}`;
+    if (!byTier.has(key)) byTier.set(key, []);
+    byTier.get(key).push(obs);
+  }
+
+  const out = {};
+  for (const [key, group] of [...byTier].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const agg = aggregateObservations(group);
+    out[key] = {
+      stages: agg.races,
+      favoriteWinRate: agg.favoriteWinRate,
+      favoritePodiumRate: agg.favoritePodiumRate,
+      share4PlusSameTeamTop10: agg.share4PlusSameTeamTop10,
+      avgDistinctTeamsTop10: agg.avgDistinctTeamsTop10,
+    };
+  }
+  return out;
+}
+
+/**
  * Klassificér ÉN metrik-værdi mod dens bånd.
  * "yellow" = uden for bånd, men inden for en margin på 15% af båndets bredde
  * (nærved-brud — endnu ikke et rødt brud). Bredden for et ensidet bånd (kun

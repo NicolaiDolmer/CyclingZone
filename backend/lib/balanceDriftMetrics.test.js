@@ -9,6 +9,7 @@ import {
   classifyDay,
   findConsecutiveBreaches,
   evaluateBreachAlert,
+  computeTierBreakdown,
 } from "./balanceDriftMetrics.js";
 
 // ── classifyMetric ───────────────────────────────────────────────────────────
@@ -257,4 +258,47 @@ test("evaluateBreachAlert: signatur er rækkefølge-uafhængig (deterministisk s
     { metric: "favoriteWinRate", since: "2026-07-18" },
   ], "").signature;
   assert.equal(a, b);
+});
+
+// ── computeTierBreakdown (#2557) ─────────────────────────────────────────────
+
+function obs({ tier, favoriteWon = false, favoritePodium = false, maxSameTeamTop10 = 1, distinctTeamsTop10 = 10 }) {
+  return { tier, favoriteWon, favoritePodium, maxSameTeamTop10, distinctTeamsTop10 };
+}
+
+test("computeTierBreakdown: grupperer pr. tier og aggregerer hver gruppe for sig", () => {
+  const out = computeTierBreakdown([
+    obs({ tier: 3, favoriteWon: true, favoritePodium: true, maxSameTeamTop10: 5 }),
+    obs({ tier: 3, favoriteWon: true, favoritePodium: true, maxSameTeamTop10: 4 }),
+    obs({ tier: 4 }),
+    obs({ tier: 4 }),
+  ]);
+  assert.deepEqual(Object.keys(out).sort(), ["tier3", "tier4"]);
+  assert.equal(out.tier3.stages, 2);
+  assert.equal(out.tier3.favoriteWinRate, 1);
+  assert.equal(out.tier3.share4PlusSameTeamTop10, 1);
+  assert.equal(out.tier4.stages, 2);
+  assert.equal(out.tier4.favoriteWinRate, 0);
+  assert.equal(out.tier4.share4PlusSameTeamTop10, 0);
+});
+
+test("computeTierBreakdown: nedbrydningen afslører et bimodalt aggregat", () => {
+  // 2 tier3-etaper hvor favoritten altid vinder + 2 tier4 hvor den aldrig gør.
+  // Aggregatet ville sige 0,5 — men ingen af tierne ligger dér.
+  const out = computeTierBreakdown([
+    obs({ tier: 3, favoriteWon: true }), obs({ tier: 3, favoriteWon: true }),
+    obs({ tier: 4 }), obs({ tier: 4 }),
+  ]);
+  assert.equal(out.tier3.favoriteWinRate, 1);
+  assert.equal(out.tier4.favoriteWinRate, 0);
+});
+
+test("computeTierBreakdown: manglende tier grupperes som 'unknown' (aldrig gættet)", () => {
+  const out = computeTierBreakdown([obs({ tier: null }), obs({})]);
+  assert.deepEqual(Object.keys(out), ["unknown"]);
+  assert.equal(out.unknown.stages, 2);
+});
+
+test("computeTierBreakdown: tom input giver tomt objekt", () => {
+  assert.deepEqual(computeTierBreakdown([]), {});
 });
