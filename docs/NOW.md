@@ -18,7 +18,7 @@
 
 > **📌 Åbne opfølgninger:** #3036 · #2164 · #3049-#3051 · #2723 (+#3152) · #3172 (CI-flake) · #3193 global rank-mismatch (koordinér m. #2792) · #3114 rest (save-guard-hul åbner ved D1-oprykning efter 23/8 + "Race day 100000"-display → #3107) · identity_events search_path-hærdning (advisor-WARN) · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Claude Code (Fable-orkestrator, 3/8 aften) — subagent-batch: #1688a · #3036 · #2792+#3193 · #3186 · #3190 · #3184 · help-docs #3151/#3148; ejeren klikker klik-pakken (#2892/#2076/#419) sideløbende. **Næste kode-session:** verificér CYCLINGZONE-44-tick=4 + luk #3185 · verificér #3208 live → luk #3132 · #1150 udløbs-håndhævelse (design-valg 3/8; #3038 lukket via PR #3167). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
+> **🤖 Working agent:** Claude Code (Fable-orkestrator, 3/8 nat-batch, AKTIV) — 15 opgaver: fair-play #3133-#3137 · #3196 · #3197 · #3198 · #3195 · #3192 · #3191 · #3203 · #3172 · #3202 · Supabase-hærdning #3124+is_admin+identity_events · #3205 · verifikationer #3185 + #3189 (→ evt. #3187/#3188). **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8) · verificér #3208 live → luk #3132. **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
 
 ## Standing context (forever-relaunch)
 
