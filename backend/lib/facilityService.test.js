@@ -181,6 +181,9 @@ test("purchase: debits price, upgrades tier 0→1, writes facility_purchase tran
   assert.equal(tx.idempotency_key, "facility_purchase:team-1:training:1");
   assert.equal(tx.source_path, "facilityService.purchaseFacilityUpgrade");
   assert.deepEqual(tx.metadata, { code: "tx.facilityPurchase", params: { track: "training", tier: 1 } });
+  // #3198-fund-8: reason_code manglede før denne fix — donuten kunne ikke
+  // skelne facility_purchase fra andre reason_code=null-rækker.
+  assert.equal(tx.reason_code, "facility_purchase");
 
   assert.equal(supabase.state.upserts.length, 1);
   const upsert = supabase.state.upserts[0];

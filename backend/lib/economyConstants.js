@@ -333,6 +333,11 @@ export const FINANCE_REASON = Object.freeze({
   RIDER_RELEASE_BUYOUT: "rider_release_buyout", // #1719 fyrings-/opsigelsesgebyr
   // Staff-handlinger (manager-initieret)
   STAFF_RELEASE_SEVERANCE: "staff_release_severance", // #2649 opsigelses-gebyr (4×ugentlig løn)
+  // #3198-fund-8: facility_purchase + scout_travel skrev ALDRIG en reason_code,
+  // så sæson-rapportens donut kunne ikke skelne dem fra hinanden (begge falder
+  // til reason_code="unknown" → grupperet sammen som ét udifferentieret "Other").
+  FACILITY_PURCHASE: "facility_purchase", // #1441 manager-initieret facilitets-opgradering
+  SCOUT_TRAVEL: "scout_travel", // #2244 manager-initieret scout-mission/target
   // Lejeaftaler
   LOAN_FEE_PAID: "loan_fee_paid",
   LOAN_FEE_RECEIVED: "loan_fee_received",
