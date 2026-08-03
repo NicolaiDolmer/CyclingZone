@@ -43,7 +43,8 @@
     "stageWin": "{amount} CZ$ pr. etapesejr",
     "podium": "{amount} CZ$ pr. podieplads (2.–3.)",
     "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.). Bonusloft: {cap} CZ$",
-    "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning"
+    "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning",
+    "seasonObjectiveTop40": "Slut i top-40% af din division: {amount} CZ$ ved sæsonafslutning"
   },
   "field": {
     "guaranteedBase": "Garanteret ved sæsonstart",
