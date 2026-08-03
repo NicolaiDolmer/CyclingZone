@@ -136,7 +136,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
-import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout } from "../lib/scoutAssignmentService.js";
+import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
@@ -1836,22 +1836,26 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const enabled = evaluateFlagStage(stage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
+    // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
+    // retninger (se focusTrainability-kommentaren i training.js), ellers
+    // mislabeles ryttere hvis sekundære type reelt løfter loftet på et fokus.
     const { data: riders } = await supabase
       .from("riders")
-      .select("id, primary_type")
+      .select("id, primary_type, secondary_type")
       .eq("team_id", teamId)
       .eq("is_retired", false);
     const riderIds = (riders ?? []).map((r) => r.id);
 
-    // #1974: coarse trainability-signal pr. rytter+fokus, udledt AF TYPEN alene
-    // (ingen caps/potentiale eksponeres — server-hidden per #1162).
+    // #1974/#3195: coarse trainability-signal pr. rytter+fokus, udledt af BEGGE
+    // typer (primær+sekundær) via focusTrainability (ingen caps/potentiale-TAL
+    // eksponeres — server-hidden per #1162).
     // #1894: smart_default_focus leveres SAMME sted — frontend genberegner ALDRIG
     // type→fokus-reglen selv, den er backend-only (smartDefaultFocus i training.js).
     const trainability = {};
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
     for (const rider of riders ?? []) {
-      trainability[rider.id] = focusTrainability(rider.primary_type ?? null);
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null);
       smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
@@ -9994,6 +9998,25 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/:id/scouting-history — #3203: hvilke ryttere har DENNE
+// spejder tidligere afsluttet en målrettet undersøgelse ('target'-kind) på.
+// Mission-shortlists er ikke inkluderet her (se loadScoutHistory-kommentaren).
+// Samme facilities_enabled-gate som søster-routen ovenfor; ejerskabs-scoping
+// sker i selve queryen (team_id+staff_id sammen — et fremmed staff-id giver
+// blot en tom liste, ingen 404 nødvendig for at undgå data-læk).
+router.get("/club/staff/:id/scouting-history", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    if (!facilitiesEnabled) return res.status(403).json({ error: "facilities_disabled" });
+    const history = await loadScoutHistory({ teamId: req.team.id, staffId: req.params.id }, supabase);
+    res.json({ history, maxLevel: SCOUTING_CONFIG.maxLevel });
+  } catch (e) {
+    captureException(e, { tags: { route: "club-staff-scouting-history" } });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
