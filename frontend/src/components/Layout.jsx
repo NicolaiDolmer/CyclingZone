@@ -78,15 +78,15 @@ function buildBottomItems(t, team) {
 // navGroups i render) og var allerede drevet fra hinanden — kun det ene sted
 // havde exact:true på /admin, så "Admin" lyste op sammen med underpunktet på
 // hver /admin/*-side. Én kilde nu, så de ikke kan drifte igen.
+// #3196: waitlist/sprint-metrics/attribution/retention konsolideret til ÉT
+// "Vækst"-punkt (/admin/growth, faner internt) — ejer-direktiv om at samle
+// vækst-data ét sted i stedet for fire spredte sub-nav-punkter.
 function buildAdminGroup(t) {
   return {
     key: "admin", label: t("nav.group.admin"),
     items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
-      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
-      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
-      { to: "/admin/attribution", label: t("nav.item.attribution") },
-      { to: "/admin/retention", label: t("nav.item.retention") },
+      { to: "/admin/growth", label: t("nav.item.growth") },
     ],
   };
 }
