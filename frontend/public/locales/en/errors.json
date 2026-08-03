@@ -108,6 +108,12 @@
     "not_involved_swap": "You're not involved in this swap",
     "cannot_afford_counter": "You can't afford this counter-offer",
     "swap_locked_both_confirmed": "The swap has been accepted by both parties and can't be cancelled by a manager",
+    "transfer_price_below_floor": "This price is too low for a player trade. At least {floorPrice} CZ$ is required (fair-play price floor).",
+    "transfer_price_above_cap": "This price is too high for a player trade. At most {capPrice} CZ$ is allowed (fair-play price cap).",
+    "swap_price_below_floor": "This swap's combined value is too low. It must be worth at least {floorPrice} CZ$ (fair-play price floor).",
+    "swap_price_above_cap": "This swap's combined value is too high. It can't exceed {capPrice} CZ$ (fair-play price cap).",
+    "auction_start_price_below_floor": "The starting price is too low. It must be at least {floorPrice} CZ$ (fair-play price floor).",
+    "auction_start_price_above_cap": "The starting price is too high. It can't exceed {capPrice} CZ$ (fair-play price cap).",
     "loan_max_one_season": "A loan can cover one season at most. Set the start and end to the same season number.",
     "rider_retired_loan": "This rider has retired and can't be loaned",
     "cannot_loan_own_rider": "You can't loan your own rider",
@@ -177,6 +183,8 @@
     "feedback_not_found": "Feedback not found",
     "feedback_reply_required": "Reply is required",
     "feedback_reply_too_long": "Reply is too long",
-    "feedback_already_replied": "This message has already been answered"
+    "feedback_already_replied": "This message has already been answered",
+    "transfer_cooldown_active": "New teams can't send {cooldownAmount}+ CZ$ out in a single transfer or swap during their first {cooldownHours} hour(s). This unlocks in about {unlocksInHours} hour(s).",
+    "auction_created_before_account": "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away."
   }
 }

@@ -224,6 +224,11 @@ import {
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
+  getPriceBandViolation,
+  getSwapPriceBandViolation,
+  readTransferPriceBandConfig,
+} from "../lib/transferPriceBand.js";
+import {
   predictBaseValue,
   riderOverall,
   riderSpecialty,
@@ -310,6 +315,7 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
+import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches } from "../lib/balanceDriftMetrics.js";
@@ -716,6 +722,29 @@ export function assertTeamNotTransferFrozen(req, res) {
     return false;
   }
   return true;
+}
+
+// ── Fair-play prisbånd (#3133) — delt fejlsvar ───────────────────────────────
+// Bruges af transfer_offers-accept, swap_offers-accept og auktions-oprettelse
+// (POST /auctions). `issue` kommer fra getPriceBandViolation/getSwapPriceBandViolation
+// i lib/transferPriceBand.js. `codePrefix` afgør errorCode ("transfer" |
+// "swap" | "auction_start"); `label` bruges kun i den engelske DA-uafhængige
+// fallback-tekst (EN-first jf. #678 — DA leveres af errors:api.<code> på
+// frontend). Default OFF (floor_pct=0/cap_multiple=null) betyder denne
+// funktion aldrig kaldes med et issue i dag — se readTransferPriceBandConfig.
+function buildPriceBandErrorBody(issue, { codePrefix, label }) {
+  if (issue.code === "below_price_floor") {
+    return {
+      error: `This price is too low for a ${label}. At least ${issue.floorPrice.toLocaleString("da-DK")} CZ$ is required (fair-play price floor).`,
+      errorCode: `${codePrefix}_price_below_floor`,
+      errorParams: { floorPrice: issue.floorPrice },
+    };
+  }
+  return {
+    error: `This price is too high for a ${label}. At most ${issue.capPrice.toLocaleString("da-DK")} CZ$ is allowed (fair-play price cap).`,
+    errorCode: `${codePrefix}_price_above_cap`,
+    errorParams: { capPrice: issue.capPrice },
+  };
 }
 
 // ── Notification helper ───────────────────────────────────────────────────────
@@ -1807,22 +1836,26 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const enabled = evaluateFlagStage(stage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
+    // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
+    // retninger (se focusTrainability-kommentaren i training.js), ellers
+    // mislabeles ryttere hvis sekundære type reelt løfter loftet på et fokus.
     const { data: riders } = await supabase
       .from("riders")
-      .select("id, primary_type")
+      .select("id, primary_type, secondary_type")
       .eq("team_id", teamId)
       .eq("is_retired", false);
     const riderIds = (riders ?? []).map((r) => r.id);
 
-    // #1974: coarse trainability-signal pr. rytter+fokus, udledt AF TYPEN alene
-    // (ingen caps/potentiale eksponeres — server-hidden per #1162).
+    // #1974/#3195: coarse trainability-signal pr. rytter+fokus, udledt af BEGGE
+    // typer (primær+sekundær) via focusTrainability (ingen caps/potentiale-TAL
+    // eksponeres — server-hidden per #1162).
     // #1894: smart_default_focus leveres SAMME sted — frontend genberegner ALDRIG
     // type→fokus-reglen selv, den er backend-only (smartDefaultFocus i training.js).
     const trainability = {};
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
     for (const rider of riders ?? []) {
-      trainability[rider.id] = focusTrainability(rider.primary_type ?? null);
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null);
       smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
@@ -4824,6 +4857,22 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   const price = (starting_price === null || starting_price === undefined || starting_price === "")
     ? riderValue
     : Number(starting_price);
+
+  // #3133: fair-play prisbånd på EGEN rytters startpris (spiller-til-spiller —
+  // bank/AI-salg har sit eget gulv ovenfor og er ikke omfattet, jf. issue).
+  // Default OFF (floor_pct=0/cap_multiple=null) → ingen adfærdsændring i dag.
+  if (isOwnRider) {
+    const auctionPriceBandConfig = await readTransferPriceBandConfig(supabase);
+    const auctionPriceBandIssue = getPriceBandViolation({
+      price,
+      marketValue: riderValue,
+      ...auctionPriceBandConfig,
+    });
+    if (auctionPriceBandIssue) {
+      return res.status(400).json(buildPriceBandErrorBody(auctionPriceBandIssue, { codePrefix: "auction_start", label: "auction starting price" }));
+    }
+  }
+
   const auctionCfg = await getAuctionConfig();
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
@@ -4969,6 +5018,27 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   }
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended" });
+  }
+
+  // #3134 · auktions-spærre: en konto oprettet EFTER at auktionen startede kan
+  // ikke byde på netop DEN auktion (det præcise #2776-angreb — funnel-kontoen
+  // blev oprettet 4 min efter auktionen startede og bød på den 4 min senere).
+  // DEFAULT OFF: dry-run mod prod (PR #3134) fandt 422 historiske bud fra 53
+  // ægte hold der ville være blokeret — overvejende helt almindelig "ny
+  // spiller byder på en allerede kørende auktion minutter efter oprettelse"
+  // onboarding-adfærd, ikke #2776-mønsteret. Auction-select ovenfor bruger
+  // "*" og har derfor allerede created_at.
+  const auctionEntryGateConfig = await readNewAccountGateConfig(supabase);
+  const auctionEntryGate = evaluateAuctionEntryGate({
+    enabled: auctionEntryGateConfig.auctionEntryGateEnabled,
+    teamCreatedAt: req.team.created_at,
+    auctionCreatedAt: auction.created_at,
+  });
+  if (!auctionEntryGate.allowed) {
+    return res.status(403).json({
+      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
+      errorCode: "auction_created_before_account",
+    });
   }
 
   // #194 race-confirm: hvis client sendte expected_current_price og det er stale,
@@ -5278,7 +5348,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
 
   const { data: auction } = await supabase
     .from("auctions")
-    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id, extension_count, rider:rider_id(firstname, lastname, team_id)")
+    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id, extension_count, created_at, rider:rider_id(firstname, lastname, team_id)")
     .eq("id", req.params.id)
     .single();
 
@@ -5288,6 +5358,21 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   }
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended" });
+  }
+  // #3134 · auktions-spærre — samme håndhævelse som POST /auctions/:id/bid.
+  // Et autobud er en anden vej ind i samme auktion og skal gates identisk,
+  // ellers kan en ny konto bare omgå bud-endpointet med et proxy-loft i stedet.
+  const proxyEntryGateConfig = await readNewAccountGateConfig(supabase);
+  const proxyEntryGate = evaluateAuctionEntryGate({
+    enabled: proxyEntryGateConfig.auctionEntryGateEnabled,
+    teamCreatedAt: req.team.created_at,
+    auctionCreatedAt: auction.created_at,
+  });
+  if (!proxyEntryGate.allowed) {
+    return res.status(403).json({
+      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
+      errorCode: "auction_created_before_account",
+    });
   }
   // Block setting proxy on own rider auction (mirror bid-endpoint guard)
   if (auction.seller_team_id === req.team.id) {
@@ -5960,6 +6045,19 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   if (action === "accept" && isSeller && offer.status === "pending") {
     const price = offer.counter_amount || offer.offer_amount;
 
+    // #3133: fair-play prisbånd — håndhæves HER (server-side), ikke kun i UI
+    // (jf. #2803). Default OFF (floor_pct=0/cap_multiple=null via app_config)
+    // → getPriceBandViolation returnerer altid null i dag, ingen adfærdsændring.
+    const transferPriceBandConfig = await readTransferPriceBandConfig(supabase);
+    const transferPriceBandIssue = getPriceBandViolation({
+      price,
+      marketValue: offer.rider.market_value,
+      ...transferPriceBandConfig,
+    });
+    if (transferPriceBandIssue) {
+      return res.status(400).json(buildPriceBandErrorBody(transferPriceBandIssue, { codePrefix: "transfer", label: "player trade" }));
+    }
+
     // Soft balance check — final check happens at confirmation
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
     if (!buyer || buyer.balance < price)
@@ -6036,6 +6134,18 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   // ACCEPT COUNTER — buyer accepts seller's counteroffer → awaiting seller confirmation
   if (action === "accept_counter" && isBuyer && offer.status === "countered") {
     const price = offer.counter_amount;
+
+    // #3133: samme prisbånd-håndhævelse som "accept" — en counter-offer låser
+    // prisen lige så bindende som den oprindelige accept.
+    const transferCounterBandConfig = await readTransferPriceBandConfig(supabase);
+    const transferCounterBandIssue = getPriceBandViolation({
+      price,
+      marketValue: offer.rider.market_value,
+      ...transferCounterBandConfig,
+    });
+    if (transferCounterBandIssue) {
+      return res.status(400).json(buildPriceBandErrorBody(transferCounterBandIssue, { codePrefix: "transfer", label: "player trade" }));
+    }
 
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!buyer || buyer.balance < price)
@@ -6343,8 +6453,10 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 
   const { data: swap } = await supabase
     .from("swap_offers")
-    .select(`*, offered:offered_rider_id(id, firstname, lastname, team_id),
-      requested:requested_rider_id(id, firstname, lastname, team_id)`)
+    // #3133: market_value på begge ryttere med, så fair-play-prisbåndet kan
+    // tjekke den SAMLEDE værdi (rytter + cash_adjustment) ved accept.
+    .select(`*, offered:offered_rider_id(id, firstname, lastname, team_id, market_value),
+      requested:requested_rider_id(id, firstname, lastname, team_id, market_value)`)
     .eq("id", req.params.id).single();
 
   if (!swap) return res.status(404).json({ error: "Byttehandel ikke fundet", errorCode: "swap_not_found" });
@@ -6356,6 +6468,19 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 
   // ACCEPT — receiving team accepts → awaiting proposing confirmation
   if (action === "accept" && isReceiving && swap.status === "pending") {
+    // #3133: fair-play prisbånd på SAMLET værdi (begge ryttere + cash_adjustment).
+    // Default OFF (floor_pct=0/cap_multiple=null) → ingen adfærdsændring i dag.
+    const swapAcceptBandConfig = await readTransferPriceBandConfig(supabase);
+    const swapAcceptBandIssue = getSwapPriceBandViolation({
+      offeredMarketValue: swap.offered.market_value,
+      requestedMarketValue: swap.requested.market_value,
+      cashAdjustment: swap.cash_adjustment,
+      ...swapAcceptBandConfig,
+    });
+    if (swapAcceptBandIssue) {
+      return res.status(400).json(buildPriceBandErrorBody(swapAcceptBandIssue, { codePrefix: "swap", label: "swap" }));
+    }
+
     await supabase.from("swap_offers").update({
       status: "awaiting_confirmation",
       receiving_confirmed: true,
@@ -6432,6 +6557,20 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
   // ACCEPT COUNTER — proposing team accepts receiver's counter → awaiting receiving confirmation
   if (action === "accept_counter" && isProposing && swap.status === "countered") {
     const effectiveCash = swap.counter_cash;
+
+    // #3133: samme prisbånd-håndhævelse som "accept" — en modtaget counter_cash
+    // låser den SAMLEDE værdi lige så bindende som den oprindelige cash_adjustment.
+    const swapCounterBandConfig = await readTransferPriceBandConfig(supabase);
+    const swapCounterBandIssue = getSwapPriceBandViolation({
+      offeredMarketValue: swap.offered.market_value,
+      requestedMarketValue: swap.requested.market_value,
+      cashAdjustment: effectiveCash,
+      ...swapCounterBandConfig,
+    });
+    if (swapCounterBandIssue) {
+      return res.status(400).json(buildPriceBandErrorBody(swapCounterBandIssue, { codePrefix: "swap", label: "swap" }));
+    }
+
     if (effectiveCash > 0) {
       const { data: proposingTeam } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
       if (!proposingTeam || proposingTeam.balance < effectiveCash)

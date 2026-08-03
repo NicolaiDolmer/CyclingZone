@@ -18,7 +18,7 @@
 
 > **📌 Åbne opfølgninger:** #2164 · #3049-#3051 · #2723 (+#3152) · #3172 (CI-flake) · #3114 rest (save-guard-hul åbner ved D1-oprykning efter 23/8 + "Race day 100000"-display → #3107) · identity_events search_path-hærdning (advisor-WARN) · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Claude Code (Fable-orkestrator, 3/8 nat-batch, AKTIV) — 15 opgaver: fair-play #3133-#3137 · #3196 · #3197 · #3198 · #3195 · #3192 · #3191 · #3203 · #3172 · #3202 · Supabase-hærdning #3124+is_admin+identity_events · #3205 · verifikationer #3185 + #3189 (→ evt. #3187/#3188). **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8; #3208/#3132 ✅ live+lukket 3/8 aften). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
+> **🤖 Working agent:** Claude Code (Fable-orkestrator, verdensklasse-batch 3/8 aften, AKTIV) — deadline: #2736 · #3232 · (#2916 verificeret lukket 30/7, ingen worker) · balance: #3009 → #2731(opus) + #2557(opus) · #3015 · retention: første-resultat-funnel (#1569-spor) · #3236 · #2041 · kvalitet: DataTable-sort (#3188-fund) · økonomi-pakke #2840+audit-top3 · #2182 · vagt-triage · Fable-spor: produkt-gap-review. **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
 
 ## Standing context (forever-relaunch)
 

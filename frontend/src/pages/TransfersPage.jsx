@@ -10,7 +10,7 @@ import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
-import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
+import { formatCz, getRiderMarketValue, getRiderSalary, computeBidValueDelta, computeValueDeviationPct } from "../lib/marketValues.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortRows } from "../lib/useTableSort.js";
@@ -32,6 +32,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import TeamCell from "../components/rider/TeamCell";
+import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
 
 // #2329: markedstabellens ÉN kanoniske sort-state (useSortState) — headers og
 // de gamle knapper/evne-dropdown deler samme { sort, dir }, så de aldrig kan
@@ -825,6 +826,10 @@ function MarketRow({
   const rider = listing.rider;
   const isOwn = listing.seller?.id === myTeamId;
   const riderName = rider ? `${rider.firstname} ${rider.lastname}` : t("transferCard.ridersForSale");
+  // #3191: samme "X% under/over vurdering"-indikator som Auktioner (#2464), her
+  // mod listing.asking_price i stedet for auktionens current_price — paritet
+  // mellem de to sider af samme marked.
+  const valueDelta = computeBidValueDelta(listing.asking_price, rider);
 
   return (
     <>
@@ -876,6 +881,9 @@ function MarketRow({
           <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap">
             {formatNumber(listing.asking_price)} CZ$
           </span>
+          {/* #3191: udbudspris vs. estimeret markedsværdi — paritet med Auktioners
+              bud-vs-vurdering-indikator (#2464), delt via ValueDeltaBadge. */}
+          <ValueDeltaBadge valueDelta={valueDelta} ns="transfers" as="p" className="text-3xs mt-0.5" />
         </td>
         {statCols.map(({ key }) => (
           <td key={key} className="px-1.5 py-2.5 w-14 text-center">
@@ -1340,10 +1348,26 @@ export default function TransfersPage() {
     if (!isNaN(maxP) && price > maxP) return false;
     return true;
   }
+  // #3191: samme mønster som passesAskingPriceFilter ovenfor — %-afvigelsen er
+  // et forhold mellem listing.asking_price og rytterens vurdering, ikke et rent
+  // rytter-felt, så useClientRiderFilters kan ikke anvende det. Signeret pct
+  // (computeValueDeviationPct): negativ = under vurdering, positiv = over.
+  // Kan ikke beregnes (fx rytter ikke loadet) → ekskludér FØRST når filteret
+  // rent faktisk er sat, i stedet for at inkludere noget vi ikke kan verificere.
+  function passesValueDeviationFilter(listing) {
+    const minP = parseFloat(riderFilters.filters.min_value_deviation_pct);
+    const maxP = parseFloat(riderFilters.filters.max_value_deviation_pct);
+    if (isNaN(minP) && isNaN(maxP)) return true;
+    const pct = computeValueDeviationPct(listing.asking_price, listing.rider);
+    if (pct == null) return false;
+    if (!isNaN(minP) && pct < minP) return false;
+    if (!isNaN(maxP) && pct > maxP) return false;
+    return true;
+  }
   // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres af den
   // kanoniske markedstabel-sort-state (#2329, se MARKET_SORT_ACCESSORS ovenfor).
   const filteredListings = sortRows(
-    listings.filter(l => (!l.rider || filteredIds.has(l.rider.id)) && passesAskingPriceFilter(l)),
+    listings.filter(l => (!l.rider || filteredIds.has(l.rider.id)) && passesAskingPriceFilter(l) && passesValueDeviationFilter(l)),
     MARKET_SORT_ACCESSORS[marketSort] ?? null,
     marketSortDir,
   );
@@ -1597,6 +1621,7 @@ export default function TransfersPage() {
                 onReset={riderFilters.onReset}
                 showTeamFilter={false}
                 showAskingPriceFilter={true}
+                showValueDeviationFilter={true}
                 nationalities={riderFilters.nationalities}
               />
               {/* #1185/#2329: sortér på listing-pris (asking_price)/værdi/alder/nyeste
@@ -1696,7 +1721,7 @@ export default function TransfersPage() {
                             {t("marketRow.salary")}
                           </SortableTh>
                           <SortableTh sortKey="price" sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                            className={`px-3 py-3 text-right w-24 ${MARKET_TH_BASE}`}>
+                            className={`px-3 py-3 text-right w-32 ${MARKET_TH_BASE}`}>
                             {t("marketRow.price")}
                           </SortableTh>
                           {LISTING_STATS.map(({ key, label }) => (
