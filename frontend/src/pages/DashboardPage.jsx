@@ -6,6 +6,12 @@ import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
+// #2182 — rangliste-modulet skal defaulte til spillerens egen division+pulje,
+// ikke hele tieren. Genbruger StandingsPage's rene merge/pulje-match-helpers i
+// stedet for en parallel implementering (samme princip som #3197: "default-
+// konteksten er spillerens egen verden").
+import { mergeStandings } from "../lib/standingsMerge";
+import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
@@ -89,6 +95,9 @@ export default function DashboardPage() {
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
+  // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
+  // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
+  const [pools, setPools] = useState([]);
   const [board, setBoard] = useState(null);
   // #1830 · board-bred tilfredshed (gnsn. på tværs af alle planer) — samme værdi
   // som Bestyrelse-sidens drivers-panel, så de to flader ikke divergerer.
@@ -200,11 +209,15 @@ export default function DashboardPage() {
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
-    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes] = await Promise.all([
+    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes] = await Promise.all([
+      // #2182: league_division_id + is_frozen-udelukkelse med — samme "rigtige
+      // hold"-diskriminator (ikke-AI/test/frosne) og select-udvidelse som
+      // StandingsPage.jsx's teamsPromise, så rangliste-modulet kan pulje-scope.
       supabase.from("teams")
-        .select("id, name, division, is_ai")
+        .select("id, name, division, is_ai, league_division_id")
         .eq("is_ai", false)
         .eq("is_test_account", false)
+        .eq("is_frozen", false)
         .order("division")
         .order("name"),
       // #1308: akademiryttere tæller ikke mod senior-cap
@@ -236,8 +249,10 @@ export default function DashboardPage() {
             .order("name").limit(50)
         : Promise.resolve({ data: [] }),
       activeSeason
+        // #2182: league_division_id med i team-joinet (samme udvidelse som
+        // StandingsPage.jsx's standingsRes), så rangliste-modulet kan pulje-scope.
         ? supabase.from("season_standings")
-            .select("*, team:team_id(id, name, division, is_ai)")
+            .select("*, team:team_id(id, name, division, is_ai, league_division_id)")
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
@@ -246,9 +261,12 @@ export default function DashboardPage() {
         ? fetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
+      // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
+      supabase.from("league_divisions").select("id, tier, pool_index, label"),
     ]);
 
     setSeasonInfo(activeSeason || null);
+    setPools(poolsRes.data || []);
     setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
@@ -295,19 +313,10 @@ export default function DashboardPage() {
     (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
       standingsMap[s.team_id] = s;
     });
-    const mergedStandings = (teamsRes.data || []).map(otherTeam => (
-      standingsMap[otherTeam.id] || {
-        id: otherTeam.id,
-        team_id: otherTeam.id,
-        division: otherTeam.division,
-        team: otherTeam,
-        total_points: 0,
-        stage_wins: 0,
-        gc_wins: 0,
-        races_completed: 0,
-      }
-    ));
-    setStandings(mergedStandings);
+    // #2182: genbruger StandingsPage's rene mergeStandings-helper (lib/standingsMerge.js)
+    // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
+    // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
+    setStandings(mergeStandings(teamsRes.data || [], standingsMap));
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
@@ -639,17 +648,18 @@ export default function DashboardPage() {
   // det tidligere top-3-udvalg blev sorteret på FØR den ægte tid var kendt.
   const displayedRaces = pickUpcomingRaces(nextRaces, nextStageByRace, 3);
 
-  // My division standings
-  const divStandingsAll = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
-    .sort((a, b) => b.total_points - a.total_points);
-  const myStandingIndex = divStandingsAll.findIndex(s => s.team_id === team?.id);
-  // #2328 — egen placering skal altid være synlig, også uden for top-5. Top-5
-  // vises som hidtil; er manageren ikke i top-5, tilføjes hans egen række sidst
-  // (med den ægte placerings-nummer bevaret via myStandingIndex i JSX'en).
-  const divStandingsTop = divStandingsAll.slice(0, 5).map((s, i) => ({ ...s, _rank: i + 1 }));
-  const divStandings = myStandingIndex >= 0 && myStandingIndex >= 5
-    ? [...divStandingsTop, { ...divStandingsAll[myStandingIndex], _rank: myStandingIndex + 1, _isOwnRowBreak: true }]
-    : divStandingsTop;
+  // My division+pool standings (#2182 — default er spillerens egen division OG
+  // pulje, ikke hele tieren; en tier kan have op til 8 puljer, se
+  // database/2026-06-21-league-divisions-pyramid.sql). Filter-logikken er
+  // udtrukket til lib/dashboardDivStandings.js (ren funktion, unit-testet med
+  // `node --test`) i stedet for at leve inline her — genbruger StandingsPage's
+  // matchesPoolTab (lib/standingsPoolFilter.js #2879) internt fremfor en
+  // parallel implementering. hasPoolSubtabs falder tilbage til false (= ingen
+  // pulje-filtrering, hele tieren, som i dag) hvis egen pulje endnu er ukendt
+  // (helt nyt hold uden league_division_id), så modulet aldrig render'er tomt
+  // for den kant-sag (#2182 acceptance).
+  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings } =
+    computeMyDivisionStandings(standings, team, pools);
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -1037,7 +1047,13 @@ export default function DashboardPage() {
         {isVisible("divStandings") && (
         <Section>
           <SectionHeader
-            title={t("dashboard:cards.standings.title", { division: team?.division })}
+            // #2182 — når egen tier har flere puljer, vises puljens rigtige label
+            // ("Division 3 — B", samme label-kilde som StandingsPage's
+            // league_divisions-query) i stedet for det generiske tier-tal, så
+            // titlen matcher hvad modulet faktisk viser (egen pulje, ikke hele tieren).
+            title={hasPoolSubtabs && ownPoolRow
+              ? t("dashboard:cards.standings.titlePool", { label: ownPoolRow.label })
+              : t("dashboard:cards.standings.title", { division: team?.division })}
             action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
           />
           {divStandings.length === 0 ? (

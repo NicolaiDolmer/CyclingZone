@@ -118,6 +118,7 @@
     },
     "standings": {
       "title": "Division {division} · Stilling",
+      "titlePool": "{label} · Stilling",
       "linkAll": "Fuld rangliste →",
       "empty": "Ingen sæsondata endnu",
       "emptyCta": "Se den fulde rangliste →"
