@@ -14,6 +14,14 @@ import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import {
+  QUARANTINE_MIN_AVAILABLE,
+  applyQuarantineToCandidates,
+  isRaceBlockedForRider,
+  isQuarantineEnabled,
+  loadQuarantineState,
+  readTransferQuarantineConfig,
+} from "./transferQuarantine.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -26,8 +34,15 @@ import { copenhagenDateString } from "./copenhagenTime.js";
  * forbruger rytterens tid, så et overlappende auto-løb ikke dobbeltbooker rytteren,
  * men der skrives ingen picks for selve det låste løb. Tom default → uændret adfærd
  * for eksisterende kald.
+ *
+ * `quarantine` (valgfri, additiv — #2557 spor A): `{ blockedRidersByRace, acquiredAtByRider }`.
+ * Ryttere i karantæne fjernes fra kandidat-poolen for præcis de løb hvis FØRSTE
+ * løbsdag ligger i deres karantæne. Sikkerhedsgulvet i applyQuarantineToCandidates
+ * frigiver de ældst erhvervede igen hvis holdet ellers ikke kunne stille sit
+ * minimum — karantænen udskyder en debut, den afmelder aldrig et hold.
+ * null/undefined ⇒ bit-for-bit uændret adfærd.
  */
-export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null }) {
+export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null, quarantine = null }) {
   // Kronologisk, stabil rækkefølge: tidligste vindue først, så race_id.
   const ordered = [...races].sort(
     (a, b) => (a.window?.start ?? 0) - (b.window?.start ?? 0) || String(a.race_id).localeCompare(String(b.race_id))
@@ -45,10 +60,22 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
   const out = {};
 
   for (const race of ordered) {
-    const available = riders.filter((r) => {
+    let available = riders.filter((r) => {
       const windows = busy.get(r.rider_id) || [];
       return !windows.some((w) => windowsOverlap(w, race.window));
     });
+    // #2557 spor A: karantæne (config-gated, default OFF — quarantine=null her).
+    const blockedForThisRace = quarantine?.blockedRidersByRace?.get(race.race_id);
+    if (blockedForThisRace?.size) {
+      available = applyQuarantineToCandidates({
+        candidates: available,
+        quarantinedIds: blockedForThisRace,
+        acquiredAtByRider: quarantine.acquiredAtByRider ?? new Map(),
+        // Gulvet er løbets MINIMUM (ikke max): karantænen må gerne koste holdet
+        // dets 7. og 8. mand, men aldrig gøre truppen for lille til at stille op.
+        minAvailable: Number.isFinite(race.sizeRule?.min) ? race.sizeRule.min : QUARANTINE_MIN_AVAILABLE,
+      }).kept;
+    }
     // S3: udled per-race preference fra team-niveau strategi. null → uændret autopick
     // (idempotens: strategy=null ≡ bit-for-bit gammel adfærd).
     const preference = strategy
@@ -355,6 +382,32 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     }
   }
 
+  // 8c. #2557 spor A: transfer-karantæne. Config-gated og DEFAULT OFF — er den
+  // slået fra, laver loadQuarantineState NUL database-kald og
+  // blockedRidersByRace forbliver tom, så generatorens adfærd er bit-for-bit
+  // uændret. Løbets "første løbsdag" tages fra windowByRace (SAMME binding-rum
+  // som resten af sweep'en, inkl. Monument-afledningen #3114) — ikke fra et
+  // globalt game_day, som ville være pulje-relativt og dermed forkert (#3185).
+  const quarantineConfig = await readTransferQuarantineConfig(supabase);
+  let quarantine = null;
+  if (isQuarantineEnabled(quarantineConfig)) {
+    const state = await loadQuarantineState({ supabase, config: quarantineConfig, seasonId });
+    if (state.enabled && state.byRider.size) {
+      const blockedRidersByRace = new Map();
+      for (const race of usableRaces) {
+        const raceGameDayStart = windowByRace.get(race.id)?.start;
+        const blocked = new Set();
+        for (const [riderId, entry] of state.byRider) {
+          if (isRaceBlockedForRider({ blockedGameDays: entry.blockedGameDays, raceGameDayStart })) blocked.add(riderId);
+        }
+        if (blocked.size) blockedRidersByRace.set(race.id, blocked);
+      }
+      if (blockedRidersByRace.size) {
+        quarantine = { blockedRidersByRace, acquiredAtByRider: state.acquiredAtByRider };
+      }
+    }
+  }
+
   // 8b. S3: load holdstrategier for egnede hold. rosterByTeam = holdets ryttere (til
   // stale-filter). Hold uden strategi-row/regler → null → uændret generator-adfærd.
   const rosterByTeam = new Map();
@@ -427,6 +480,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       const assignment = assignTeamAcrossRaces({
         riders: ridersByTeam.get(team.id) || [], races: teamRaces, lockedWindows,
         strategy: strategyByTeam.get(team.id) ?? null,
+        quarantine,
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
         // #3113: en enhed med NUL picks skal STADIG stages. Tidligere sprang vi den over,
@@ -607,6 +661,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     const assignment = assignTeamAcrossRaces({
       riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
       strategy: strategyByTeam.get(teamId) ?? null,
+      quarantine,
     });
     let picks = assignment[raceId] || [];
     // Top-up (delvis manuel trup): den manuelle trup ejer special-rollerne → auto-picks

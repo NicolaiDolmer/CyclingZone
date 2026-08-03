@@ -10,10 +10,10 @@ import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
-  teamRiderIds, injuredRiderIds, sizeRule,
+  teamRiderIds, injuredRiderIds, sizeRule, quarantinedRiderIds = new Set(),
 }) {
   const errors = [];
-  // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
+  // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → karantæne → kaptajn → roller.
   // (Overlap-binding håndhæves separat i PUT /selection-handleren og returnerer sin egen 409, ikke en errors[]-kode.)
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
@@ -28,6 +28,13 @@ export function validateSelection({
   }
   for (const id of riderIds) {
     if (injuredRiderIds.has(id)) { errors.push("selection_rider_injured"); break; }
+  }
+  // #2557 spor A: nyerhvervet rytter i karantæne til netop dette løb. Sættet er
+  // TOMT når mekanikken er slået fra (default), så denne gren er en no-op indtil
+  // ejeren aktiverer den. Manuel udtagelse må ikke kunne omgå auto-gaten i
+  // raceEntryGenerator — ellers ville karantænen kun ramme de passive spillere.
+  for (const id of riderIds) {
+    if (quarantinedRiderIds.has(id)) { errors.push("selection_rider_quarantined"); break; }
   }
 
   // Kaptajn kræves kun når der ER manuelt udtagne ryttere (en tom trup = ren auto-udtagelse).
@@ -112,7 +119,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // Ren mapping af evner+kondition+profiler → riderRows (testbar uden DB).
 // suitability = løb-snit (0-100); stageSuitability = per-etape (0-100) til S4 rute-match.
 // Ingen evner → begge null (graceful degrade på klienten).
-export function buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr }) {
+export function buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, quarantinedRiderIds = new Set() }) {
   return riders.map((r) => {
     const cond = conditionByRider.get(r.id);
     const ab = abilityByRider.get(r.id);
@@ -131,6 +138,9 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
       injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
+      // #2557 spor A: nyerhvervet og i karantæne til DETTE løb. Altid false når
+      // mekanikken er slået fra (default), så UI'et er uændret indtil aktivering.
+      quarantined: quarantinedRiderIds.has(r.id),
     };
   });
 }
@@ -139,7 +149,7 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // pr. løbets profiler), nuværende udtagelse, størrelses-regel.
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
-export async function getSelectionContext({ supabase, race, teamId }) {
+export async function getSelectionContext({ supabase, race, teamId, quarantinedRiderIds = new Set() }) {
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
@@ -167,7 +177,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
   const todayStr = copenhagenDateString();
 
-  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr });
+  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, quarantinedRiderIds });
 
   // Rod B (#1800/#1742): kryds committede entries mod den gyldige roster. En ghost
   // (rytter udtaget FØR han blev solgt/fyret/akademi/pensioneret) er ikke i `riders`
@@ -196,6 +206,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     size: selectionSizeForRace(race),
     riders: riderRows,
     selection,
-    availableCount: riderRows.filter((r) => !r.injured).length,
+    // Karantæneramte ryttere kan ikke udtages til DETTE løb og tæller derfor
+    // ikke som tilgængelige (samme semantik som skadede).
+    availableCount: riderRows.filter((r) => !r.injured && !r.quarantined).length,
   };
 }

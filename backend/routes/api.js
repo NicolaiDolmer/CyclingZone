@@ -146,6 +146,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { loadRaceQuarantineBlocklist } from "../lib/transferQuarantine.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
@@ -3288,7 +3289,14 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     // så UI kan vise et read-only "ikke dit løb"-panel i stedet for at lade en hel
     // opstilling bygges og fejle ved gem med selection_wrong_pool.
     const eligible = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id });
-    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    // #2557 spor A: karantæneramte nyindkøb markeres op-front, så panelet kan gråne
+    // dem (samme mønster som bundne/skadede ryttere) i stedet for at lade en
+    // opstilling bygges og først fejle ved gem. Tom Set + NUL db-kald når mekanikken
+    // er slået fra (default).
+    const { blocked: quarantinedRiderIds } = await loadRaceQuarantineBlocklist({
+      supabase, race, seasonId: race.season_id,
+    });
+    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id, quarantinedRiderIds });
 
     // #2265: binding-info pr. rytter — hvem er allerede optaget i et ANDET løb hvis
     // in-game-dag-vindue overlapper DETTE løbs? Samme datavej som PUT-guarden
@@ -3951,7 +3959,14 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(400).json({ error: "selection_invalid_body" });
     }
 
-    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    // #2557 spor A: hvilke af holdets nyindkøb er i karantæne til DETTE løb?
+    // Tom Set + NUL db-kald når mekanikken er slået fra (default). Manuel udtagelse
+    // skal ramme SAMME gate som auto-udtagelsen i raceEntryGenerator — ellers ville
+    // karantænen kun ramme spillere der lader assistenten vælge.
+    const { blocked: quarantinedRiderIds } = await loadRaceQuarantineBlocklist({
+      supabase, race, seasonId: race.season_id,
+    });
+    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id, quarantinedRiderIds });
 
     // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen som
     // udgangspunkt IKKE ændres — buildRaceResults re-simulerer fra etape 1 med faste
@@ -3976,6 +3991,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
       sizeRule: ctx.size,
       availableCount: ctx.availableCount,
+      // #2557 spor A: kun de karantæneramte der FAKTISK er på holdet — ctx.riders er
+      // allerede eligibility-filtreret, så et fremmed rytter-id aldrig kan snige sig
+      // ind i fejlbeskeden.
+      quarantinedRiderIds: new Set(ctx.riders.filter((r) => r.quarantined).map((r) => r.id)),
     });
     if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
 

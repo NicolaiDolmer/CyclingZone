@@ -308,10 +308,13 @@ export default function RaceSelectionPanel({
           // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+          // #2557 spor A: en karantæneramt nyerhvervelse følger PRÆCIS samme regel som
+          // en skadet rytter — kan ikke TILFØJES, kan altid FJERNES. `quarantined` er
+          // altid false indtil ejeren aktiverer mekanikken, så UI'et er uændret.
+          const disabled = ((rider.injured || rider.quarantined) && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
-            <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
+            <li key={rider.id} className={rider.injured || rider.quarantined || (bound && !checked) ? "opacity-60" : ""}>
               <label className={`flex items-start gap-3 px-4 py-3 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                   type="checkbox"
@@ -326,6 +329,11 @@ export default function RaceSelectionPanel({
                     {rider.injured && (
                       <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                         {t("selection.injured")}
+                      </span>
+                    )}
+                    {rider.quarantined && !rider.injured && (
+                      <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-3 border border-cz-border">
+                        {t("selection.quarantined")}
                       </span>
                     )}
                     {bound && (
@@ -389,9 +397,9 @@ export default function RaceSelectionPanel({
               const bound = boundByRider.get(rider.id) ?? null;
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
+              const disabled = ((rider.injured || rider.quarantined) && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || saving;
               return (
-                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
+                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || rider.quarantined || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
                     <label className={`flex items-center gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
@@ -405,6 +413,11 @@ export default function RaceSelectionPanel({
                       {rider.injured && (
                         <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                           {t("selection.injured")}
+                        </span>
+                      )}
+                      {rider.quarantined && !rider.injured && (
+                        <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-3 border border-cz-border whitespace-nowrap">
+                          {t("selection.quarantined")}
                         </span>
                       )}
                       {bound && (
