@@ -27,7 +27,7 @@
     "balance:baseline": "node scripts/balanceBaseline.js --write",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
     "board:repair-members-after-dna": "node scripts/repairBoardMembersAfterDna.js",
-    "test": "node --test --import ./test-setup.js",
+    "test": "node scripts/run-tests.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --ignore-unknown .",
