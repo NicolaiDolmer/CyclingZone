@@ -68,6 +68,15 @@ export function createAluntaClient({
       if (!url) throw new Error(`Alunta portal-link uden url: ${JSON.stringify(link)?.slice(0, 200)}`);
       return url;
     },
+    // #2736 — daglig subscription-reconcile (invoice.paid findes ikke hos Alunta,
+    // se aluntaSubscriptionReconcile.js). Lister abonnementer sideviseret, samme
+    // konvention som GET /plans?per_page=100 i alunta-setup-plans.js. Returnerer
+    // det RÅ svar (data-envelope IKKE unwrapped her) — fetchAllAluntaSubscriptions
+    // i aluntaSubscriptionReconcile.js gør det sideløbende, da paginerings-
+    // afslutningen afhænger af envelope-formen.
+    async listSubscriptions({ page = 1, perPage = 100 } = {}) {
+      return call(`/subscriptions?page=${page}&per_page=${perPage}`);
+    },
   };
 }
 

@@ -58,6 +58,10 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.SPONSOR_SIGNING_BONUS]: "Sponsor — underskriftsbonus",
   [FINANCE_REASON.SPONSOR_RESULT_BONUS]: "Sponsor — resultatbonus",
   [FINANCE_REASON.SPONSOR_OBJECTIVE_BONUS]: "Sponsor — sæsonmålsbonus",
+  // #3198-fund-8: manglede reason_code helt før denne PR — grupperet sammen
+  // som ét udifferentieret "unknown"/"Other"-segment i donuten.
+  [FINANCE_REASON.FACILITY_PURCHASE]: "Facility purchases",
+  [FINANCE_REASON.SCOUT_TRAVEL]: "Scout travel",
 });
 
 const FALLBACK_LABEL = "Other";
