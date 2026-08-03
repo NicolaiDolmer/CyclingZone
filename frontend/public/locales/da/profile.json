@@ -87,7 +87,7 @@
     "statusDmOff": "Discord-ID er sat, men DMs er slået fra. Du får stadig @mention i kanalen.",
     "statusBotMissing": "Bot er endnu ikke konfigureret på serveren. Kun kanal-mention virker indtil videre.",
     "statusIdMissing": "Mangler Discord-ID. Tilføj det nedenfor for at modtage DMs.",
-    "statusAutoDisconnected": "Discord frakoblet. Botten kunne ikke få fat i dig — det betyder typisk at du har forladt Cycling Zones Discord-server. Gå ind på serveren igen og tilføj dit ID nedenfor for at modtage DMs igen.",
+    "statusAutoDisconnected": "Discord frakoblet. Botten kunne ikke få fat i dig, hvilket typisk betyder at du har forladt Cycling Zones Discord-server. Gå ind på serveren igen og tilføj dit ID nedenfor for at modtage DMs igen.",
     "statusUsernamePre": "Dit gemte ID (",
     "statusUsernamePost": ") ser ud til at være et brugernavn, ikke et bruger-ID. DMs vil ikke blive leveret. Erstat det med et 17-19-cifret tal. Se vejledningen nedenfor.",
     "toggleLabel": "Modtag DMs ved person-rettede events",
