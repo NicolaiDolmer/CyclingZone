@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, Navigate } from "react-router";
-import { supabase } from "../lib/supabase";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -15,6 +13,11 @@ import { DownloadIcon, RefreshIcon } from "../components/ui/icons";
 // service_role-only (RLS, no policies), so this page can't read Supabase
 // directly like the older admin pages — it goes through GET /api/admin/attribution
 // which joins the team name and returns channel aggregates over all signups.
+//
+// #3196: udtrukket fra en tidligere standalone /admin/attribution-side til en
+// ren indholds-komponent, genbrugt som "Attribution"-fanen i det samlede
+// vækst-dashboard (AdminGrowthPage.jsx). Admin-gating + sideheader ejes nu af
+// forælderen; ingen andre importerer denne komponent.
 const API = import.meta.env.VITE_API_URL;
 
 const LIMIT_OPTIONS = [50, 100, 250, 500];
@@ -99,24 +102,13 @@ function BreakdownCard({ title, items, total, max = 12 }) {
   );
 }
 
-export default function AdminAttributionPage() {
+export function AttributionContent() {
   const { getAuth } = useAdminAuth();
-  const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [limit, setLimit] = useState(100);
   const [metrics, setMetrics] = useState(null); // #2040 engagement-scorecard
-
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setAdminStatus("not_admin"); return; }
-      const { data: userData } = await supabase
-        .from("users").select("role").eq("id", session.user.id).single();
-      setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
-    })();
-  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -138,9 +130,7 @@ export default function AdminAttributionPage() {
     }
   }, [getAuth, limit]);
 
-  useEffect(() => {
-    if (adminStatus === "admin") loadData();
-  }, [adminStatus, loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const rows = data?.rows ?? [];
   const aggregates = data?.aggregates ?? { total: 0, by_source: [], by_medium: [], by_referrer: [] };
@@ -163,21 +153,12 @@ export default function AdminAttributionPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (adminStatus === "checking") {
-    return <PageLoader label="Tjekker adgang" minHeight="40vh" />;
-  }
-  if (adminStatus === "not_admin") return <Navigate to="/dashboard" replace />;
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
-          <h1 className="text-cz-1 text-xl font-bold mt-1">Signup-attribution</h1>
-          <p className="text-cz-3 text-sm">
-            First-touch acquisition pr. ny bruger — hvilken kanal de kom fra. Refs #679.
-          </p>
-        </div>
+        <p className="text-cz-3 text-sm">
+          First-touch acquisition pr. ny bruger — hvilken kanal de kom fra. Refs #679.
+        </p>
         <div className="flex flex-wrap gap-2 items-center">
           <Select size="sm" value={limit} onChange={e => setLimit(Number(e.target.value))}>
             {LIMIT_OPTIONS.map(n => <option key={n} value={n}>Seneste {n}</option>)}

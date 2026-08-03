@@ -43,7 +43,8 @@
     "stageWin": "{amount} CZ$ per stage win",
     "podium": "{amount} CZ$ per podium (2nd–3rd)",
     "podiumCapped": "{amount} CZ$ per podium (2nd–3rd). Bonus cap: {cap} CZ$",
-    "seasonObjective": "Finish top half of your division: {amount} CZ$ at season end"
+    "seasonObjective": "Finish top half of your division: {amount} CZ$ at season end",
+    "seasonObjectiveTop40": "Finish top 40% of your division: {amount} CZ$ at season end"
   },
   "field": {
     "guaranteedBase": "Guaranteed at season start",
