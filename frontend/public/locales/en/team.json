@@ -117,7 +117,8 @@
       "loadingTermsButton": "Loading terms…",
       "workingButton": "Extending…",
       "successMsg": "Contract extended.",
-      "capped": "Contract at maximum length (through season {season})."
+      "capped": "Contract at maximum length (through season {season}).",
+      "capCounterLabel": "Extensions used"
     },
     "demote": {
       "description": "Move this U23 rider down into your academy. Available only for riders aged 22 or under.",
