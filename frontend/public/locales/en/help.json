@@ -876,6 +876,10 @@
       "q": "Can other managers see that I scouted a rider?",
       "a": "The rider's owner can. On their own rider's profile, the Interest tab lists which teams have used scout slots on him, how many, and when. Everyone else only sees anonymous totals (how many rivals scouted him), never which teams."
     },
+    "scoutHistoryFaq": {
+      "q": "Can I see which riders my scout has already scouted?",
+      "a": "Yes. Open your chief scout's profile (View profile on the Scouting page) and use the History tab. It lists every rider your scout has completed a targeted investigation on, most recent first, with a link to each rider's profile and report."
+    },
     "developmentProjectionFaq": {
       "q": "What is the projection on the Development tab?",
       "a": "It is a forecast of where a rider is heading: a dashed line from his current type rating toward a shaded ceiling band, with a rough estimate of how many seasons and at what age he reaches it. It is always a range, never an exact number, because nobody knows a rider's exact ceiling. The band is deliberately fuzzy so it cannot be reverse-engineered into his hidden potential, and it stays hidden for rival riders you have not scouted. Two separate things can both mention age here, and they answer different questions: 'Ceiling age' is when this projection expects his current growth to reach his ceiling band, which can happen well before his career peak (age 27-28) if he still has years of development room left. A rider whose level is still far from his ceiling gets an honest 'Long gap to ceiling' line instead of a false 'Approaching ceiling', reserved for riders who are genuinely close."

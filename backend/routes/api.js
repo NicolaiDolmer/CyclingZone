@@ -136,7 +136,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
-import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout } from "../lib/scoutAssignmentService.js";
+import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
@@ -9858,6 +9858,22 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
       { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/:id/scouting-history — #3203: hvilke ryttere har DENNE
+// spejder tidligere afsluttet en målrettet undersøgelse ('target'-kind) på.
+// Mission-shortlists er ikke inkluderet her (se loadScoutHistory-kommentaren).
+// Samme facilities_enabled-gate som søster-routen ovenfor; ejerskabs-scoping
+// sker i selve queryen (team_id+staff_id sammen — et fremmed staff-id giver
+// blot en tom liste, ingen 404 nødvendig for at undgå data-læk).
+router.get("/club/staff/:id/scouting-history", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    if (!facilitiesEnabled) return res.status(403).json({ error: "facilities_disabled" });
+    const history = await loadScoutHistory({ teamId: req.team.id, staffId: req.params.id }, supabase);
+    res.json({ history, maxLevel: SCOUTING_CONFIG.maxLevel });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
