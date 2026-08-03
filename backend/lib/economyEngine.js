@@ -76,6 +76,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { readWageDeductionMode, WAGE_DEDUCTION_MODES } from "./wageDeductionConfig.js";
 
 let defaultSupabaseClientPromise;
 
@@ -644,10 +645,21 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   );
 
   // 2. Løn — sum(rider.salary). Hvis balance < salary → emergency-lån.
-  const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+  // #2840 · Config-gated (wageDeductionConfig.js): i "daily"-mode trækkes
+  // INTET beløb her ved sæson-start — wageDeductionSweep.js trækker i stedet
+  // en dagsrate hver dag hele sæsonen igennem. Default/nuværende adfærd er
+  // "season_upfront" (denne blok, uændret). Se wageDeductionConfig.js for
+  // midt-sæson-flip-faren (dobbelttræk).
+  const readWageDeductionModeFn = deps.readWageDeductionMode ?? readWageDeductionMode;
+  const wageDeductionMode = await readWageDeductionModeFn(supabaseClient);
+  const isDailyWageMode = wageDeductionMode === WAGE_DEDUCTION_MODES.DAILY;
+
+  const totalSalary = isDailyWageMode
+    ? 0
+    : (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
   let emergencyLoanAmount = 0;
 
-  if (totalSalary > 0) {
+  if (!isDailyWageMode && totalSalary > 0) {
     const { data: freshTeam, error: freshTeamError } = await supabaseClient
       .from("teams").select("balance").eq("id", team.id).single();
     throwIfSupabaseError(freshTeamError, `Could not load balance for ${team.name}`);

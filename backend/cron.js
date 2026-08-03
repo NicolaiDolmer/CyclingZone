@@ -49,6 +49,7 @@ import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
+import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
@@ -602,6 +603,25 @@ async function runScoutSweepCron() {
   }
 }
 
+// ─── Dagsbaseret løntræk (#2840) — sweep-mønster mirror af trænings-sweepen ───
+// (kl. 22 dansk tid + dags-marker-mutex). Config-gated: no-op indtil ejeren
+// flipper app_config-nøglen wage_deduction_mode til "daily" (default
+// "season_upfront" = uændret nuværende adfærd, se wageDeductionConfig.js).
+
+async function runWageDeductionSweepCron() {
+  const result = await runWageDeductionSweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`💰 Løn-sweep: ${result.swept} hold trukket for dagens løn`);
+  }
+  if (result.failed) {
+    console.error(`❌ Løn-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
+    sentryCapture(new Error(`wage deduction sweep: ${result.failed} hold fejlede`), {
+      tags: { cron: "wage deduction sweep" },
+      extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
 // ─── Akademi-graduering: auto-resolver udløbne pending graduates (#932) ───────
 
 async function runGraduationSweepCron() {
@@ -1105,6 +1125,7 @@ const ALL_CRON_MONITORS = [
   ["training-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],
+  ["wage-deduction-sweep", CRON_MONITOR_5MIN],
   ["starter-squad-heal", CRON_MONITOR_5MIN],
   ["academy-heal", CRON_MONITOR_5MIN],
   ["rider-derive-heal", CRON_MONITOR_5MIN],
@@ -1239,6 +1260,13 @@ export function startCron() {
   // Talentspejder: modner scout_assignments (missioner + målrettede opgaver) efter kl. 22 (#2244)
   setInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Dagsbaseret løntræk (#2840) efter kl. 22 dansk tid — config-gated, no-op
+  // indtil wage_deduction_mode=daily er sat i app_config.
+  setInterval(
+    trackedTick("wage deduction sweep", monitorCron("wage-deduction-sweep", runWageDeductionSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
