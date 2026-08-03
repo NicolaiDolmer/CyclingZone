@@ -1,6 +1,6 @@
 # Privatlivstekst: identitets-telemetri (#3132)
 
-**Status: AFVENTER EJER**
+**Status: GODKENDT 3/8 (batch-runde 2) — implementeret ordret i PR #3208 (EN+DA + patch note 7.85). #3132 lukkes når PR'en er live.**
 
 Sidste gate før #3132 kan lukkes: privatlivspolitikken skal nævne IP-/enhedslogningen
 (`identity_events`, live siden 31/7, retention 180 dage, legitim interesse). Teksten

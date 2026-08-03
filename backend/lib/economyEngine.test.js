@@ -2724,6 +2724,24 @@ test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () =>
   assert.deepEqual(relegated.map(u => u.payload.league_division_id).sort(), [8, 8, 9, 9], "Div4-børn = pulje 8+9");
 });
 
+// #1688(a) · regressions-dækning for sæson-gaten: seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON
+// skal stadig sprunges helt over — INGEN pulje-mutationer, uanset hvor mange puljer/tiers
+// pyramiden har. Gaten er i dag sat til 1 (aktiveret fra sæson 1, #1152/2026-06-23), så denne
+// test bruger seasonNumber=0 for at holde skip-branchen levende og verificeret, hvis gaten
+// nogensinde hæves igen (fx en fremtidig owner-beslutning om at udskyde til en senere sæson).
+test("#1688(a) · seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON springer op/nedrykning helt over (ingen mutationer)", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(
+    buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 0 }),
+    3,
+    "s",
+    0, // < FIRST_PROMOTION_RELEGATION_SEASON (=1)
+    { supabase, now: new Date("2026-06-23T23:00:00Z") }
+  );
+  assert.equal(supabase.updates.length, 0, "ingen team-opdateringer når sæson-gaten ikke er nået");
+  assert.equal(supabase.notifications.length, 0, "ingen op-/nedrykningsbeskeder når gaten ikke er nået");
+});
+
 // ─── Akademi-drift (#1308) ────────────────────────────────────────────────────
 
 function _createPayrollWithAcademySupabase({ teamId, balance, academyRiderCount, seasonId: _seasonId }) {
