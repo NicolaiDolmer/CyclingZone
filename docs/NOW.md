@@ -17,7 +17,7 @@
 
 > **📌 Åbne opfølgninger:** #2164 · #3049-#3051 · #2723 (+#3152) · #3172 (fixet — luk ~17/8 efter 2 ugers grøn CI) · #3114 rest (save-guard-hul åbner ved D1-oprykning efter 23/8 + "Race day 100000"-display → #3107) · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Claude Code (Fable-orkestrator, verdensklasse-batch 3/8 aften, AKTIV) — deadline: #2736 · #3232 · (#2916 verificeret lukket 30/7, ingen worker) · balance: #3009 → #2731(opus) + #2557(opus) · #3015 · retention: første-resultat-funnel (#1569-spor) · #3236 · #2041 · kvalitet: DataTable-sort (#3188-fund) · økonomi-pakke #2840+audit-top3 · #2182 · vagt-triage · Fable-spor: produkt-gap-review. **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
+> **🤖 Working agent:** Claude Code (Fable-orkestrator, NATBØLGE 3→4/8, AKTIV fra 23:47) — kører parallelt med verdensklasse-batch 3/8-closeout; rører IKKE dens PRs (#3251/#3252/#3255/#3260/#3262) eller worktrees. Spor: verifikationer (#3185/#2731/#2736/#3263) · balance-opfølgninger report-only (drift-vagt, transfer-hul spor A/B gated OFF) · sæsonskifte 23/8 (#2752/#2361/#3114/#3107 + cutover-drejebog) · retention (#2180/#3115/#2356/#3007/#2042A) · økonomi/platform. Morgenrunde ~07:30 (ét samlet dossier). **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
 
 ## Standing context (forever-relaunch)
 
