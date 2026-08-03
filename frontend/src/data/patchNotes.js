@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.84",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training is usable on your phone again",
+          "body": "Since late July, the rider column on the training page could swallow almost the whole screen in portrait, leaving Focus and Intensity squeezed into a sliver that barely scrolled. The culprit was the little type/form/fatigue line under each rider's name: it refused to wrap, so the pinned name column grew as wide as its longest line. It now wraps onto two short lines instead, the name column stays narrow, and the columns you actually edit have room to breathe. Landscape and desktop were never affected. Thanks to the two managers who reported it from iPhone and Android."
+        },
+        "da": {
+          "title": "Daglig træning kan bruges på telefonen igen",
+          "body": "Siden slutningen af juli kunne rytterkolonnen på træningssiden æde næsten hele skærmen i portræt, så Fokus og Intensitet var klemt ude i en strimmel der dårligt kunne scrolles. Synderen var den lille type/form/træthed-linje under hvert rytternavn: den nægtede at ombryde, så den fastlåste navnekolonne voksede til sin længste linjes bredde. Nu ombrydes den til to korte linjer i stedet, navnekolonnen forbliver smal, og kolonnerne du faktisk redigerer har plads at arbejde på. Landskab og desktop var aldrig ramt. Tak til de to managere der meldte det ind fra iPhone og Android."
+        },
+        "refs": [3194]
+      }
+    ]
+  },
+  {
     "version": "7.83",
     "date": "2026-08-03",
     "label": "Beta",
