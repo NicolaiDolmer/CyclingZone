@@ -69,5 +69,24 @@
   "relegation": "↓ Ned",
   "myProgression": "Dit holds pointudvikling",
   "loadError": "Kunne ikke indlæse sæsonen. Prøv igen.",
-  "retry": "Prøv igen"
+  "retry": "Prøv igen",
+  "recap": {
+    "heading": "Din sæson, opsummeret",
+    "metaFinal": "Sæson {number} · endelig",
+    "eyebrow": "Sæson {number} afsluttet",
+    "stat": {
+      "rank": "Slutplacering",
+      "points": "Point",
+      "stageWins": "Etapesejre",
+      "prize": "Præmie vundet"
+    },
+    "rankLine": "#{rank} af {size} i division {division}",
+    "movement": {
+      "promoted": "↑ Rykket op til division {division}",
+      "relegated": "↓ Rykket ned til division {division}",
+      "maintained": "Holdt division {division}"
+    },
+    "share": "Kopiér link til opsummering",
+    "shareCopied": "Link kopieret"
+  }
 }
