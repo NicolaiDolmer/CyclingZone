@@ -119,6 +119,20 @@ export const PATCHES = [
           "body": "Spar kræfter reducerer reelt den træthed en rytter tager med til næste etape og næste løb, så det giver fuld mening på en sidste etape uden noget at vinde. Form bæres i dag med mellem sæsoner (kun træthed nulstilles), og om den bør gøre det behandler vi som et åbent designspørgsmål. Og med både en kaptajn og en sprinterkaptajn sat arbejder holdet for sprinterkaptajnen på flade etaper og for kaptajnen på alle andre etapetyper. Alle tre svar er verificeret i motorkoden før de blev skrevet."
         },
         "refs": [3202]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy riders you sell now show up as profit, even without going through graduation",
+          "body": "Selling a rider you signed from the academy previously only counted as academy profit if the sale went through the graduation flow, which almost never happened. Now any academy-signed rider you sell through an auction or the transfer market counts correctly on the academy page and in your transfer profit list. New signings also record their cost the moment you sign them, so the purchase price is no longer 'unknown' when you later sell."
+        },
+        "da": {
+          "title": "Akademiryttere du sælger tæller nu som profit, selv uden at gå gennem graduering",
+          "body": "At sælge en rytter du havde signet fra akademiet talte tidligere kun som akademi-profit hvis salget gik gennem graduerings-flowet, hvilket næsten aldrig skete. Nu tæller enhver akademi-signet rytter du sælger via auktion eller transfermarkedet korrekt på akademisiden og i din transfer-profit-liste. Nye signinger registrerer også deres pris i det øjeblik du signer, så købsprisen ikke længere er 'ukendt' når du senere sælger."
+        },
+        "refs": [2793]
       }
     ]
   },

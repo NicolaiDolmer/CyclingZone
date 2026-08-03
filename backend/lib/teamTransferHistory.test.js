@@ -94,10 +94,11 @@ function swapRow({ id, proposing, receiving, cash = 0, date, status = "accepted"
   };
 }
 
-function academyIntakeRow({ id, team, date, status = "signed" }) {
+function academyIntakeRow({ id, team, date, status = "signed", signingFee = null }) {
   return {
     id, status, team_id: team,
     resolved_at: date, created_at: date,
+    signing_fee: signingFee,
     rider: { id: RIDER, firstname: "A", lastname: "Rider" },
   };
 }
@@ -281,10 +282,11 @@ test("teamTransferHistory — private statuses ekskluderes (#105 kontrakt)", asy
   assert.ok(!ids.some((id) => id.includes("rejected") || id.includes("pending")));
 });
 
-test("teamTransferHistory — akademi-hentninger (academy_intake, status='signed') vises som tilgang uden pris (#1776)", async () => {
+test("teamTransferHistory — akademi-hentninger (academy_intake, status='signed') vises som tilgang (#1776)", async () => {
   // De reelle akademi-hentninger ligger i academy_intake (status='signed'),
   // ikke i academy_graduation (0 rows i prod). De skal optræde som type='academy',
-  // direction='in', uden pris og uden modpartshold.
+  // direction='in', uden modpartshold. amount=null her (ingen signing_fee på
+  // fixturen) — legacy-rækker fra FØR #2793 har reelt ingen persisteret kostbasis.
   const supabase = createSupabase({
     academyIntake: [
       academyIntakeRow({ id: "AC1", team: TEAM, date: "2026-06-22T12:00:00Z" }),
@@ -303,9 +305,24 @@ test("teamTransferHistory — akademi-hentninger (academy_intake, status='signed
   const ac = byId["academy:AC1"];
   assert.equal(ac.type, "academy");
   assert.equal(ac.direction, "in");
-  assert.equal(ac.amount, null, "akademi-hentning har ingen pris");
-  assert.equal(ac.cash_flow, null, "akademi-hentning har ingen pengestrøm");
+  assert.equal(ac.amount, null, "ingen persisteret signing-fee på fixturen");
+  assert.equal(ac.cash_flow, null, "ukendt kostbasis giver ingen pengestrøms-retning");
   assert.equal(ac.counterparty, null, "kilde = akademiet, ikke et modpartshold");
+});
+
+// #2793: en akademi-hentning MED en persisteret signing-fee skal vises som en
+// ægte udgift (amount = fee, cash_flow = "out"), så transfer-profit-panelet
+// kan bruge den som kostbasis for et senere salg.
+test("teamTransferHistory — akademi-hentning med persisteret signing-fee vises som udgift (#2793)", async () => {
+  const supabase = createSupabase({
+    academyIntake: [
+      academyIntakeRow({ id: "AC2", team: TEAM, date: "2026-08-01T12:00:00Z", signingFee: 15000 }),
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const ac = events.find((e) => e.id === "academy:AC2");
+  assert.equal(ac.amount, 15000);
+  assert.equal(ac.cash_flow, "out");
 });
 
 test("teamTransferHistory — nul-bred afsluttet sæson på delt grænsedag indfanger ikke launch-dagens events (#1776)", async () => {
