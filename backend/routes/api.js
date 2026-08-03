@@ -7342,6 +7342,10 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       pulloutRes,
       activeSeasonRes,
       configsRes,
+      facilitiesRes,
+      staffRes,
+      facilitiesEnabledStage,
+      academyRiderCount,
     ] = await Promise.all([
       supabase
         .from("teams")
@@ -7373,6 +7377,19 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .eq("status", "active")
         .maybeSingle(),
       supabase.from("loan_config").select("debt_ceiling").eq("division", req.team.division),
+      // #3236: forecastet skal medregne facilitets-upkeep + staff-løn — samme
+      // kilder som economyEngine.chargeFacilityCosts (sæson-start-opkrævningen).
+      supabase
+        .from("team_facilities")
+        .select("track, tier")
+        .eq("team_id", teamId),
+      supabase
+        .from("team_staff")
+        .select("salary")
+        .eq("team_id", teamId)
+        .eq("status", "active"),
+      readFlagStage(supabase, "facilities_enabled"),
+      getTeamAcademyCount(supabase, teamId),
     ]);
 
     if (teamRes.error) throw teamRes.error;
@@ -7381,6 +7398,14 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
 
     const riders = ridersRes.data || [];
     const activeLoans = activeLoansRes.data || [];
+    if (facilitiesRes.error) throw facilitiesRes.error;
+    if (staffRes.error) throw staffRes.error;
+    const facilityTracks = facilitiesRes.data || [];
+    const activeStaffSalaries = staffRes.data || [];
+    // #2357: samme runtime-gate (app_config "facilities_enabled") som
+    // køb/ansæt-routerne + economyEngine's sæson-start-opkrævning
+    // (defaultRunSeasonPayroll). Fail-safe null → false via evaluateFlagStage.
+    const facilitiesEnabled = evaluateFlagStage(facilitiesEnabledStage);
 
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
     // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
@@ -7474,6 +7499,13 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       seasonsAhead,
       activeContract: forecastActiveContract,
       pendingContract: forecastPendingContract,
+      // #3236: forecastet skal medregne upkeep + facilitets-/stab-udgifter +
+      // akademi-drift (audit #3198, fund #1) — samme streams economyEngine
+      // opkræver ved sæson-start.
+      facilityTracks,
+      activeStaffSalaries,
+      academyRiderCount,
+      facilitiesEnabled,
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
