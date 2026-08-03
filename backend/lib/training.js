@@ -11,7 +11,7 @@
 // isoleret og køres deterministisk i season-transition (genbruger seededUnit fra
 // riderProgression for reproducerbar risiko).
 
-import { seededUnit, signatureFactor, PROGRESSION_CONFIG } from "./riderProgression.js";
+import { seededUnit, signatureFactor, PROGRESSION_CONFIG, youthRoleFactor, YOUTH_PROGRESSION_CONFIG } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i scripts/previewTraining.js) ────────
@@ -181,14 +181,64 @@ export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {
 // Returnerer null hvis ingen/ugyldig plan, ellers
 //   { focusAbilities:Set<string>, focusMult:number, offFocusMult:number, setbackHit:boolean }.
 // #1974: coarse, type-derived trainability-signal pr. fokus — UI-hint om HVORFOR
-// et fokus knap ikke rykker en given rytter. Udledes UDELUKKENDE af
-// signatureFactor(primaryType, ability) (riderProgression.js) — INGEN caps eller
-// potentiale eksponeres (server-hidden per #1162). Én af:
-//   "strength" — mindst én fokus-evne er signatur (positiv type-vægt, factor 1.0)
-//   "blocked"  — ALLE fokus-evner er modsatte (negativ type-vægt, factor 0)
-//   "limited"  — resten (neutral/off-type-blanding, factor offTypeHeadroomFactor)
-// Ukendt/manglende type → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
-export function focusTrainability(primaryType, cfg = PROGRESSION_CONFIG) {
+// et fokus knap ikke rykker en given rytter.
+//
+// #3195 (2026-08-03, rod-årsag rettet): udledes nu af
+// youthRoleFactor(primaryType, secondaryType, ability) (riderProgression.js) —
+// SAMME model som buildCapsForRider RENT FAKTISK bruger til at beregne
+// livstidsloftet for ALLE ryttere uanset alder (ejer-besluttet 2026-07-15, se
+// buildCapsForRider-kommentaren: "ÉN semantik for alle aldre"). Den gamle
+// version brugte signatureFactor(primaryType) — en forældet to-formel-rest fra
+// FØR den konsolidering, der (a) helt ignorerede rytterens SEKUNDÆRE type og
+// (b) læste PROGRESSION_CONFIG's egne, andre konstanter (offTypeHeadroomFactor
+// 0,35 / "blocked" = 0) i stedet for YOUTH_PROGRESSION_CONFIG (neutralFactor
+// 0,45 / oppositeFactor 0,12), som er den model motoren faktisk kører på.
+//
+// Verificeret mod ægte prod-rytter (Oliver Doyle, primary=tt/secondary=sprinter,
+// potentiale 6.0, academy): labelen sagde "Begrænset" på Sprint-fokus ("lidt
+// naturligt anlæg... vækst bliver langsom"), mens rider_derived_abilities.
+// ability_caps i DB viste sprint=72 / acceleration=72 — dvs.
+// loftByPotential[6]=88 × naturalSecondaryFactor 0,82 (hans sekundære
+// sprinter-type løfter loftet næsten til fuldt niveau). Den gamle model så kun
+// tt-vægtene (sprint:-1, acceleration: uvægtet) og konkluderede fejlagtigt et
+// lavt loft. INGEN caps eller potentiale-TAL eksponeres her (server-hidden per
+// #1162) — kun den samme kvalitative strength/limited/blocked-tendens som før,
+// nu bare udledt af den model der rent faktisk styrer loftet.
+//
+// Én af:
+//   "strength" — mindst én fokus-evne rammer primær- ELLER sekundær-type-match
+//                (factor ≥ naturalSecondaryFactor — reelt højt loft, ~82-100%
+//                af potentialet)
+//   "blocked"  — ALLE fokus-evner er modsat-type i BÅDE primær og sekundær
+//                (factor === oppositeFactor, ~12% af potentialet — laveste
+//                tier, men IKKE nul; se trainabilityChipBlockedTitle)
+//   "limited"  — resten (neutral blanding, factor === neutralFactor, ~45%)
+// Ukendt/manglende primærtype → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
+export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG) {
+  const out = {};
+  for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
+    if (primaryType == null) {
+      out[focusKey] = "limited";
+      continue;
+    }
+    const factors = abilities.map((ability) => youthRoleFactor(primaryType, secondaryType, ability, cfg));
+    if (factors.some((f) => f >= cfg.naturalSecondaryFactor)) out[focusKey] = "strength";
+    else if (factors.every((f) => f <= cfg.oppositeFactor)) out[focusKey] = "blocked";
+    else out[focusKey] = "limited";
+  }
+  return out;
+}
+
+// Privat, BEVIDST UÆNDRET fra før #3195 — kun brugt af smartDefaultFocus nedenfor.
+// smartDefaultFocus's fokus-VALG er en separat, balance-følsom beslutning: den
+// afgør hvilket fokus assistenten rent faktisk træner en ikke-planlagt rytter
+// med, live for hele populationen. At gøre DEN sekundær-type-bevidst ville
+// ændre hvilket fokus tusindvis af eksisterende ryttere trænes med i prod — det
+// kræver egen dry-run + ejer-godkendelse (balance-følsomme-systemer-reglen),
+// ikke et biprodukt af #3195's UI-label-rettelse (se PR-beskrivelsen). Denne
+// helper er derfor en fastfrossen kopi af #1974's oprindelige
+// primær-type-only-model, så smartDefaultFocus's output er 100% uændret.
+function legacyPrimaryTypeTier(primaryType, cfg = PROGRESSION_CONFIG) {
   const out = {};
   for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
     if (primaryType == null) {
@@ -205,20 +255,21 @@ export function focusTrainability(primaryType, cfg = PROGRESSION_CONFIG) {
 
 // #1894: smart default-fokus for ryttere UDEN aktiv plan (44% af trup ramte
 // hardcoded DEFAULT_PROGRAM.focus="endurance" i dailyTraining.js uanset type —
-// en sprinter trænede endurance i stedet for sprint). Genbruger #1974's
-// focusTrainability(primaryType) — INGEN ny type→fokus-mapping. Deterministisk:
-// første fokus-nøgle (TRAINING_FOCUS_KEYS-rækkefølge) med "strength", ellers
-// første ikke-"blocked", ellers "endurance" (sikker fallback, ukendt/manglende type).
+// en sprinter trænede endurance i stedet for sprint). Bruger legacyPrimaryTypeTier
+// (se kommentar ovenfor — IKKE den korrigerede focusTrainability, bevidst).
+// Deterministisk: første fokus-nøgle (TRAINING_FOCUS_KEYS-rækkefølge) med
+// "strength", ellers første ikke-"blocked", ellers "endurance" (sikker
+// fallback, ukendt/manglende type).
 export function smartDefaultFocus(primaryType, cfg = PROGRESSION_CONFIG) {
-  const trainability = focusTrainability(primaryType, cfg);
+  const trainability = legacyPrimaryTypeTier(primaryType, cfg);
   for (const focusKey of TRAINING_FOCUS_KEYS) {
     if (trainability[focusKey] === "strength") return focusKey;
   }
   // Manglende/ukendt type (eller en type uden nogen "strength"-fokus) giver ALT
-  // "limited" (focusTrainability) — uden denne guard ville loopet nedenfor vælge
-  // "vo2max" (første TRAINING_FOCUS_KEYS-nøgle) blot fordi den kommer først i
-  // rækkefølgen, hvilket ikke er en meningsfuld "smart" default. "endurance"
-  // matcher DEFAULT_PROGRAM's hidtidige adfærd (bagudkompatibelt).
+  // "limited" (legacyPrimaryTypeTier) — uden denne guard ville loopet nedenfor
+  // vælge "vo2max" (første TRAINING_FOCUS_KEYS-nøgle) blot fordi den kommer
+  // først i rækkefølgen, hvilket ikke er en meningsfuld "smart" default.
+  // "endurance" matcher DEFAULT_PROGRAM's hidtidige adfærd (bagudkompatibelt).
   const allLimited = TRAINING_FOCUS_KEYS.every((k) => trainability[k] === "limited");
   if (allLimited) return "endurance";
   for (const focusKey of TRAINING_FOCUS_KEYS) {

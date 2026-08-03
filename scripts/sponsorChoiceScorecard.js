@@ -31,8 +31,14 @@
 //
 // Usage:
 //   node scripts/sponsorChoiceScorecard.js
+//   node scripts/sponsorChoiceScorecard.js --advisory   (rapportér uden at fælde exit-koden)
 //
-// Refs #2948.
+// #3009: HEADLINE GUARD FAIL fælder exit-koden (samme fejlklasse som
+// backend/scripts/moneySupplyScorecard.js + inflationScorecard.js — fundet under
+// #3009's backwards-check: scriptet printede "🔴 GUARD FAIL" uden nogensinde at
+// sætte en non-zero exit-kode).
+//
+// Refs #2948, #3009.
 
 import dotenv from "dotenv";
 import path from "node:path";
@@ -42,6 +48,7 @@ import { createClient } from "@supabase/supabase-js";
 import { renownTarget } from "../backend/lib/renownEngine.js";
 import { ARCHETYPES } from "../backend/lib/sponsorOffers.js";
 import { loadSeasonStageCounts } from "../backend/lib/sponsorContractsService.js";
+import { gateExitCode } from "../backend/scripts/lib/scorecardExitCode.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -196,10 +203,12 @@ function buildRenownTargets(teams, s1Standings) {
   return out;
 }
 
-// Top-halvdel af S1-PULJEN (league_division_id), ikke tieren — matcher
+// Pulje-størrelser af S1-PULJEN (league_division_id), ikke tieren — matcher
 // sponsorContractsService.evaluateSeasonObjectives's poolSizes-logik. Falder
 // tilbage til tier ("division") hvis INGEN standings har en pulje-reference
-// (S1 kørt før pulje-kolonnen fandtes).
+// (S1 kørt før pulje-kolonnen fandtes). Bruges til BÅDE top-halvdel (#2948,
+// legacy-kontrakter) og top-40% (#3192, nye ambition-tilbud) — se
+// docs/audits/2026-08-03-sponsor-archetype-ev-3192.md.
 function buildTopHalfLookup(s1Standings) {
   const anyPool = s1Standings.some((s) => s.league_division_id != null);
   const groupKey = anyPool ? "league_division_id" : "division";
@@ -212,13 +221,14 @@ function buildTopHalfLookup(s1Standings) {
   return { poolSizes, groupKey, usedPoolFallback: !anyPool };
 }
 
-function computedTopHalf(standing, topHalfLookup) {
+// fraction: 0.5 = top-halvdel (legacy), 0.4 = top-40% (#3192-arketypen).
+function computedTopFraction(standing, topHalfLookup, fraction) {
   if (!standing) return false;
   const key = standing[topHalfLookup.groupKey];
   const poolSize = key != null ? topHalfLookup.poolSizes[key] : null;
   const rank = Number(standing.rank_in_division);
   if (!Number.isFinite(rank) || !(Number(poolSize) > 0)) return false;
-  return rank <= Math.ceil(poolSize / 2);
+  return rank <= Math.ceil(poolSize * fraction);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -251,8 +261,12 @@ function computeArchetypeAmounts(target, s1Stats) {
   const results = target * ARCH.results.guaranteedFraction + resultsVariable;
 
   const ambitionVariable = target * ARCH.ambition.raceDayShare;
+  const objectiveClause = ARCH.ambition.clauses.find((c) => c.type === "season_objective");
   const objectiveShare = clauseShare(ARCH.ambition, "season_objective");
-  const objectiveBonus = s1Stats?.topHalf ? objectiveShare * target : 0;
+  // #3192: ambitionens objective er nu "top_40pct" (var "top_half" før rebalancen);
+  // s1Stats bærer begge flag så scorecardet virker uanset hvilken der er aktiv.
+  const objectiveAchieved = objectiveClause?.objective === "top_40pct" ? s1Stats?.top40 : s1Stats?.topHalf;
+  const objectiveBonus = objectiveAchieved ? objectiveShare * target : 0;
   const ambition = target * ARCH.ambition.guaranteedFraction + ambitionVariable + objectiveBonus;
 
   return {
@@ -307,6 +321,7 @@ function printScenarioRow(label, values, oldTotal, { guarded = false } = {}) {
 }
 
 async function main() {
+  const advisory = process.argv.includes("--advisory");
   console.log("=== #2948 Sponsorvalg 2.0 — scorecard (gammel vs ny model, ægte S1/S2-population) ===\n");
   console.log("READ-ONLY: kun SELECT-kald mod Supabase. Ingen writes.\n");
 
@@ -374,8 +389,9 @@ async function main() {
   const perTeam = teams.map((t) => {
     const { target, standing } = renownByTeam.get(t.id);
     const stageStats = stageBonusMap.get(t.id) || { wins: 0, podiums: 0 };
-    const topHalf = computedTopHalf(standing, topHalfLookup);
-    const amounts = computeArchetypeAmounts(target, { ...stageStats, topHalf });
+    const topHalf = computedTopFraction(standing, topHalfLookup, 0.5);
+    const top40 = computedTopFraction(standing, topHalfLookup, 0.4);
+    const amounts = computeArchetypeAmounts(target, { ...stageStats, topHalf, top40 });
     return { team: t, target, amounts };
   });
 
@@ -440,6 +456,10 @@ async function main() {
   console.log(
     `  (d)@70% deltagelse : Δ${fmtPct(delta70VsOld)} vs gammel (informationel — ingen ±10%-guard krævet på dette punkt)\n`
   );
+
+  // #3009: HEADLINE GUARD FAIL skal fælde exit-koden — ellers kan intet CI/
+  // automatiseret job se at guarden er rød. --advisory rapporterer uden at fælde.
+  process.exitCode = gateExitCode(!dRow.guardFail && !eRow.guardFail, { advisory });
 }
 
 main().catch((e) => {
