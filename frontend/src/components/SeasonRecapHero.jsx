@@ -97,7 +97,9 @@ export default function SeasonRecapHero({
       </p>
 
       <div className="mb-4 mt-2 flex flex-wrap items-center gap-2">
-        <ZonePill tone={movementTone(movement)}>{t(movementLabelKey(movement), { division })}</ZonePill>
+        <ZonePill tone={movementTone(movement)}>
+          {t(`recap.movement.${movementLabelKey(movement)}`, { division })}
+        </ZonePill>
         {rank != null && divisionSize != null && (
           <span className="text-[13px] text-cz-2">
             {t("recap.rankLine", { rank, size: divisionSize, division })}

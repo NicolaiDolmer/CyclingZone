@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, Button, ZonePill, XIcon } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
-import { movementTone, nextSeasonGoalKey } from "../lib/seasonRecapCopy.js";
+import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/seasonRecapCopy.js";
 
 // #2752 (design draft, PR pending owner approval) — the ACTIVE season-transition
 // nudge for the dashboard: today a manager "falls into" the next season with no
@@ -37,13 +37,13 @@ export default function SeasonWrapNudgeCard({
 }) {
   const { t } = useTranslation("dashboard");
 
-  const movementLabel = t(`seasonWrap.movement.${movement === "promoted" || movement === "relegated" ? movement : "maintained"}`, { division });
-  const goalKey = nextSeasonGoalKey({
+  const movementLabel = t(`seasonWrap.movement.${movementLabelKey(movement)}`, { division });
+  const goalSuffix = nextSeasonGoalKey({
     movement,
     division,
     minDivision: RULES_NUMBERS.minDivision,
     maxDivision: RULES_NUMBERS.maxDivision,
-  }).replace("recap.goal.", "seasonWrap.goal.");
+  });
 
   return (
     <Section className="mb-4" data-testid="season-wrap-nudge">
@@ -77,7 +77,7 @@ export default function SeasonWrapNudgeCard({
       </p>
 
       <p className="mb-4 border-t border-cz-border pt-3 text-[13px] text-cz-2">
-        {t(goalKey, { nextNumber: nextSeasonNumber, division })}
+        {t(`seasonWrap.goal.${goalSuffix}`, { nextNumber: nextSeasonNumber, division })}
       </p>
 
       <div className="flex justify-end">

@@ -21,31 +21,38 @@ export function movementTone(movement) {
 }
 
 /**
- * i18n-nøgle (under `recap.movement.*`) for en movement-værdi.
+ * i18n-nøgle-SUFFIX (under en caller-valgt `*.movement.*`-gren, fx
+ * `recap.movement.*` i seasonEnd.json eller `seasonWrap.movement.*` i
+ * dashboard.json) for en movement-værdi. Returnerer bevidst kun suffixet, ikke
+ * en fuld sti: to forskellige overflader (recap-heroen, dashboard-nudgen) har
+ * hver deres tekst for samme tre tilstande, og en bare-suffix-funktion kan
+ * genbruges af begge uden en namespace-antagelse indbygget i lib'et.
  * @param {"promoted"|"relegated"|"maintained"|null} movement
+ * @returns {"promoted"|"relegated"|"maintained"}
  */
 export function movementLabelKey(movement) {
-  if (movement === "promoted") return "recap.movement.promoted";
-  if (movement === "relegated") return "recap.movement.relegated";
-  return "recap.movement.maintained";
+  if (movement === "promoted") return "promoted";
+  if (movement === "relegated") return "relegated";
+  return "maintained";
 }
 
 /**
- * Hvilken "sæson {N+1} starter nu"-mål-tekst (under `recap.goal.*`) der bygger bro
- * fra sidste sæsons facit til den nye sæson. Prioriterer FAKTISK bevægelse over
- * position: en spiller der lige er rykket op skal høre "ny division, nyt niveau",
- * ikke "du ligger midt i feltet".
+ * i18n-nøgle-SUFFIX (under en caller-valgt `*.goal.*`-gren) for "sæson {N+1}
+ * starter nu"-mål-teksten der bygger bro fra sidste sæsons facit til den nye
+ * sæson. Prioriterer FAKTISK bevægelse over position: en spiller der lige er
+ * rykket op skal høre "ny division, nyt niveau", ikke "du ligger midt i feltet".
  *
  * @param {object} p
  * @param {"promoted"|"relegated"|"maintained"|null} p.movement
  * @param {number} p.division   division HOLDET SPILLER I NÆSTE sæson
  * @param {number} p.minDivision
  * @param {number} p.maxDivision
+ * @returns {"promoted"|"relegated"|"heldTop"|"heldBottom"|"heldMid"}
  */
 export function nextSeasonGoalKey({ movement, division, minDivision, maxDivision }) {
-  if (movement === "promoted") return "recap.goal.promoted";
-  if (movement === "relegated") return "recap.goal.relegated";
-  if (division === minDivision) return "recap.goal.heldTop";
-  if (division === maxDivision) return "recap.goal.heldBottom";
-  return "recap.goal.heldMid";
+  if (movement === "promoted") return "promoted";
+  if (movement === "relegated") return "relegated";
+  if (division === minDivision) return "heldTop";
+  if (division === maxDivision) return "heldBottom";
+  return "heldMid";
 }
