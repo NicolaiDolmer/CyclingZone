@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, Navigate } from "react-router";
-import { supabase } from "../lib/supabase";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -15,6 +13,11 @@ import { RefreshIcon, DownloadIcon } from "../components/ui/icons";
 // signup-uge-kohorte for RIGTIGE managere (AI/bank/frosne/test-hold ekskluderet —
 // se backend/lib/retentionScorecard.js). Gater #1279's GO/NO-GO for betalt
 // marketing under Touren — tallene skal være korrekte, ikke flotte.
+//
+// #3196: udtrukket fra en tidligere standalone /admin/retention-side til en
+// ren indholds-komponent, genbrugt som "Retention"-fanen i det samlede vækst-
+// dashboard (AdminGrowthPage.jsx). Admin-gating + sideheader ejes nu af
+// forælderen; ingen andre importerer denne komponent.
 const API = import.meta.env.VITE_API_URL;
 
 const WEEKS_OPTIONS = [4, 8, 12, 26];
@@ -69,23 +72,12 @@ function buildCsv(cohorts) {
   return lines.join("\n");
 }
 
-export default function AdminRetentionPage() {
+export function RetentionContent() {
   const { getAuth } = useAdminAuth();
-  const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [weeks, setWeeks] = useState(8);
-
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setAdminStatus("not_admin"); return; }
-      const { data: userData } = await supabase
-        .from("users").select("role").eq("id", session.user.id).single();
-      setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
-    })();
-  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -103,9 +95,7 @@ export default function AdminRetentionPage() {
     }
   }, [getAuth, weeks]);
 
-  useEffect(() => {
-    if (adminStatus === "admin") loadData();
-  }, [adminStatus, loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const cohorts = data?.cohorts ?? [];
 
@@ -123,22 +113,13 @@ export default function AdminRetentionPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (adminStatus === "checking") {
-    return <PageLoader label="Tjekker adgang" minHeight="40vh" />;
-  }
-  if (adminStatus === "not_admin") return <Navigate to="/dashboard" replace />;
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
-          <h1 className="text-cz-1 text-xl font-bold mt-1">Retention</h1>
-          <p className="text-cz-3 text-sm">
-            D1/D7/D30 pr. signup-uge-kohorte for rigtige managere (AI/bank/frosne/test-hold ekskluderet).
-            Data-fundament til #1279 GO/NO-GO for betalt marketing. Refs #2360, afløser #135.
-          </p>
-        </div>
+        <p className="text-cz-3 text-sm">
+          D1/D7/D30 pr. signup-uge-kohorte for rigtige managere (AI/bank/frosne/test-hold ekskluderet).
+          Data-fundament til #1279 GO/NO-GO for betalt marketing. Refs #2360, afløser #135.
+        </p>
         <div className="flex flex-wrap gap-2 items-center">
           <Select size="sm" value={weeks} onChange={e => setWeeks(Number(e.target.value))}>
             {WEEKS_OPTIONS.map(n => <option key={n} value={n}>Seneste {n} uger</option>)}

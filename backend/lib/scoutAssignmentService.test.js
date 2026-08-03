@@ -8,7 +8,7 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
 const {
-  getScoutState, startTargetAssignment, startMission, cancelAssignment,
+  getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScoutHistory,
 } = await import("./scoutAssignmentService.js");
 const { DEFAULT_SCOUT, SCOUT_JOB_CONFIG } = await import("./scoutEngine.js");
 
@@ -383,6 +383,8 @@ test("startTargetAssignment: happy path (level 0→1) inserts + debits travel co
   const tx = supabase.state.finance_transactions[0];
   assert.equal(tx.type, "scout_travel");
   assert.equal(tx.idempotency_key, `scout_travel:team-1:${result.assignment.id}`);
+  // #3198-fund-8: reason_code manglede før denne fix.
+  assert.equal(tx.reason_code, "scout_travel");
   assert.equal(supabase.state.assignments[0].staff_id, null); // default-spejder
 });
 
@@ -469,6 +471,11 @@ test("startMission: happy path inserts flat-cost mission + debits, defaults targ
   assert.deepEqual(supabase.state.assignments[0].mission_criteria, { ...criteria, targetPool: "free_agents" });
   assert.deepEqual(result.assignment.criteria, { ...criteria, targetPool: "free_agents" });
   assert.equal(supabase.state.team.balance, 100_000 - SCOUT_JOB_CONFIG.mission.cost);
+  // #3198-fund-8: reason_code manglede før denne fix (også på mission-varianten
+  // af scout_travel, separat write-site fra startTargetAssignment ovenfor).
+  const tx = supabase.state.finance_transactions[0];
+  assert.equal(tx.type, "scout_travel");
+  assert.equal(tx.reason_code, "scout_travel");
 });
 
 test("startMission: insufficient balance → insufficient_funds", async () => {
@@ -551,4 +558,57 @@ test("cancelAssignment: already completed → not_found (can't cancel a finished
   });
   const result = await cancelAssignment({ teamId: "team-1", assignmentId: "a1" }, supabase);
   assert.deepEqual(result, { ok: false, error: "not_found" });
+});
+
+// ─── loadScoutHistory (#3203) ─────────────────────────────────────────────────
+
+test("loadScoutHistory: returns only this staff's completed target jobs, newest first", async () => {
+  const assignments = [
+    { id: "t1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "target", rider_id: "rider-1", target_level: 1, completed_at: "2026-07-01T00:00:00Z" },
+    { id: "t2", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "target", rider_id: "rider-2", target_level: 2, completed_at: "2026-07-15T00:00:00Z" },
+    // andre kind/status/staff/team — skal alle ekskluderes
+    { id: "t3", team_id: "team-1", staff_id: "staff-1", status: "active", kind: "target", rider_id: "rider-3", completed_at: null },
+    { id: "m1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "mission", completed_at: "2026-07-20T00:00:00Z", result: { shortlist: [] } },
+    { id: "t4", team_id: "team-1", staff_id: "staff-2", status: "completed", kind: "target", rider_id: "rider-4", completed_at: "2026-07-18T00:00:00Z" },
+    { id: "t5", team_id: "team-2", staff_id: "staff-1", status: "completed", kind: "target", rider_id: "rider-5", completed_at: "2026-07-19T00:00:00Z" },
+  ];
+  // hydrateCompletedVisibility behandler en rider_id UDEN kendt riders-række
+  // som skjult (defensivt) — de to forventede synlige ryttere skal derfor
+  // have en visning-fixture, ligesom getScoutState-testene ovenfor.
+  const riders = [
+    { id: "rider-1", team_id: null, pending_team_id: null, is_academy: false, owner_is_ai: false, team: null },
+    { id: "rider-2", team_id: null, pending_team_id: null, is_academy: false, owner_is_ai: false, team: null },
+  ];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const history = await loadScoutHistory({ teamId: "team-1", staffId: "staff-1" }, supabase);
+  assert.deepEqual(history.map((r) => r.id), ["t2", "t1"]); // nyeste først
+  assert.equal(history[0].rider_id, "rider-2");
+  assert.equal(history[0].target_level, 2);
+});
+
+test("loadScoutHistory: unknown/foreign staffId → empty list, no error (no cross-team leak)", async () => {
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: 100_000 },
+    assignments: [{ id: "t1", team_id: "team-1", staff_id: "staff-other", status: "completed", kind: "target", rider_id: "rider-1", completed_at: "2026-07-01T00:00:00Z" }],
+  });
+  const history = await loadScoutHistory({ teamId: "team-1", staffId: "staff-1" }, supabase);
+  assert.deepEqual(history, []);
+});
+
+test("loadScoutHistory: no staffId → empty list without querying", async () => {
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 } });
+  const history = await loadScoutHistory({ teamId: "team-1", staffId: null }, supabase);
+  assert.deepEqual(history, []);
+});
+
+test("loadScoutHistory: hides rider_id if the rider has become unavailable since the report matured (#2644 guard)", async () => {
+  const assignments = [{
+    id: "t1", team_id: "team-1", staff_id: "staff-1", status: "completed", kind: "target",
+    rider_id: "rider-hidden", target_level: 2, completed_at: "2026-07-18T00:00:00Z",
+  }];
+  const riders = [{ id: "rider-hidden", team_id: null, pending_team_id: "team-9", is_academy: false, team: null }];
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: 100_000 }, assignments, riders });
+  const history = await loadScoutHistory({ teamId: "team-1", staffId: "staff-1" }, supabase);
+  assert.equal(history[0].rider_id, null);
+  assert.deepEqual(history[0].riderStatus, {});
 });

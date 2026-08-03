@@ -136,7 +136,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
-import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout } from "../lib/scoutAssignmentService.js";
+import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
@@ -318,6 +318,7 @@ import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
+import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
@@ -7053,6 +7054,131 @@ router.get("/admin/retention", requireAdmin, async (req, res) => {
   }
 });
 
+// ── Samlet vækst-dashboard (#3196, ejer-direktiv 31/7 — subsumerer #2089) ────
+// growth_metric_snapshots er service_role-only (RLS uden policies, se
+// database/2026-08-03-growth-snapshots-3196.sql) — disse tre endpoints er den
+// ENESTE dør ind til historikken/kunde-/NPS-data. Skrives dagligt af
+// backend/cron.js runGrowthSnapshotCron + backfilles én gang af
+// backend/scripts/backfill-growth-snapshots.js.
+
+// GET /api/admin/growth/snapshots — DAU/WAU/MAU/D1/D7/D30 + abonnement/LTV/NPS
+// TREND over valgt periode (7/30/90 dage). Tom tabel (før første cron-kørsel
+// eller backfill) håndteres YNDEFULDT af frontend — IKKE her: vi returnerer
+// blot en tom snapshots-liste, og AdminGrowthPage falder tilbage til
+// get_sprint_metrics (ad hoc, "kun i dag") med en tydelig "ingen historik endnu"-note.
+router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
+  try {
+    const daysParam = parseInt(req.query.days, 10);
+    const days = [7, 30, 90].includes(daysParam) ? daysParam : 30;
+    const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+    const { data, error } = await supabase
+      .from("growth_metric_snapshots")
+      .select("*")
+      .gte("snapshot_date", since)
+      .order("snapshot_date", { ascending: true });
+    if (error) throw error;
+
+    res.json({ days, snapshots: data || [] });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente vækst-snapshots" });
+  }
+});
+
+// GET /api/admin/growth/customers — aktive abonnementer + estimeret LTV pr.
+// kunde + konverteringer. Beta-populationen er lille (håndfulde betalende
+// kunder), så det er trygt at hente ALLE subscriptions-rows og beregne LTV i
+// Node (backend/lib/growthSnapshot.js, unit-testet) frem for en RPC.
+router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
+  try {
+    const { data: subs, error: subsErr } = await supabase
+      .from("subscriptions")
+      .select("team_id, status, plan_interval, is_founder, current_period_end, created_at")
+      .order("created_at", { ascending: false });
+    if (subsErr) throw subsErr;
+
+    const teamIds = (subs || []).map(s => s.team_id);
+    let teamsById = {};
+    if (teamIds.length) {
+      const { data: teams, error: teamsErr } = await supabase
+        .from("teams")
+        .select("id, name, manager_name")
+        .in("id", teamIds);
+      if (teamsErr) throw teamsErr;
+      teamsById = Object.fromEntries((teams || []).map(t => [t.id, t]));
+    }
+
+    const now = new Date();
+    const customers = buildCustomerRows(subs, teamsById, now);
+    const active = customers.filter(c => c.is_active);
+    const ltvTotalCents = customers.reduce((sum, c) => sum + c.ltv_cents, 0);
+
+    // Waitlist-konvertering (samme kilde som AdminWaitlistPage): hvor mange af
+    // dem der SIGNEDE UP på waitlisten er også blevet betalende kunder — join
+    // på discord_handle/email findes ikke i dag (ingen fælles nøgle mellem
+    // founder_supporter_waitlist og subscriptions/teams), så konverterings-
+    // tallet her er simplere: total betalende kunder ude af total registrerede
+    // brugere (samme "conversion"-begreb som ejeren efterspurgte).
+    const { count: totalRegistered } = await supabase
+      .from("users")
+      .select("*", { count: "exact", head: true });
+
+    res.json({
+      customers,
+      summary: {
+        total_customers: customers.length,
+        active_customers: active.length,
+        ltv_total_cents: ltvTotalCents,
+        ltv_avg_cents: customers.length ? Math.round(ltvTotalCents / customers.length) : null,
+        total_registered: totalRegistered || 0,
+        conversion_pct: totalRegistered ? Math.round((customers.length / totalRegistered) * 1000) / 10 : null,
+      },
+    });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente kunde-data" });
+  }
+});
+
+// GET /api/admin/growth/nps — score-udvikling (aggregat) + de enkelte svar
+// nyeste først (subsumerer #2089). nps_responses tillader kun egen-række-læsning
+// for authenticated (database/2026-06-25-nps-responses.sql) — service_role
+// bypasser RLS og ser ALLE svar, hvilket er hele pointen med admin-aggregatet.
+router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+
+    const { data: rows, error } = await supabase
+      .from("nps_responses")
+      .select("id, user_id, score, reason, created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+
+    const userIds = (rows || []).map(r => r.user_id);
+    let teamByUser = {};
+    if (userIds.length) {
+      const { data: teams, error: teamsErr } = await supabase
+        .from("teams")
+        .select("user_id, name")
+        .in("user_id", userIds);
+      if (teamsErr) throw teamsErr;
+      teamByUser = Object.fromEntries((teams || []).map(t => [t.user_id, t]));
+    }
+
+    const responses = (rows || []).map(r => ({
+      ...r,
+      team_name: teamByUser[r.user_id]?.name || null,
+    }));
+
+    res.json({ summary: summarizeNps(rows || []), responses });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente NPS-data" });
+  }
+});
+
 // #2414 — Balance-drift-vagt: 14-dages trend + grøn/gul/rød mod race
 // v3-kalibreringens kanoniske bånd. Læser KUN den natlige jobs persisterede
 // snapshot (race_balance_drift_daily) — ingen genberegning mod race_results her.
@@ -9998,6 +10124,25 @@ router.get("/club/staff/:id", requireAuth, async (req, res) => {
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/:id/scouting-history — #3203: hvilke ryttere har DENNE
+// spejder tidligere afsluttet en målrettet undersøgelse ('target'-kind) på.
+// Mission-shortlists er ikke inkluderet her (se loadScoutHistory-kommentaren).
+// Samme facilities_enabled-gate som søster-routen ovenfor; ejerskabs-scoping
+// sker i selve queryen (team_id+staff_id sammen — et fremmed staff-id giver
+// blot en tom liste, ingen 404 nødvendig for at undgå data-læk).
+router.get("/club/staff/:id/scouting-history", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    if (!facilitiesEnabled) return res.status(403).json({ error: "facilities_disabled" });
+    const history = await loadScoutHistory({ teamId: req.team.id, staffId: req.params.id }, supabase);
+    res.json({ history, maxLevel: SCOUTING_CONFIG.maxLevel });
+  } catch (e) {
+    captureException(e, { tags: { route: "club-staff-scouting-history" } });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
