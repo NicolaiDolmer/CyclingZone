@@ -23,7 +23,9 @@ async function loadTeamBalance(teamId, supabaseClient) {
 }
 
 // Aktivt hyret talentspejder (staff-rollen fra #2216) eller DEFAULT_SCOUT.
-async function loadScout(teamId, supabaseClient) {
+// Eksporteret (#3213): api.js' display-endpoints bruger samme opslag så
+// spejder-ratingen driver bånd-gulvet i buildScoutEstimate/buildTypeCeilingBands.
+export async function loadScout(teamId, supabaseClient) {
   const { data: staffRow, error: staffError } = await supabaseClient
     .from("team_staff")
     .select("id, name, role, tier, salary, status")
