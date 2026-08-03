@@ -621,6 +621,138 @@ test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er å
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800);
 });
 
+// ── #3134: ung-konto-cooldown på store udgående transfers/swaps ───────────────
+
+test("#3134: confirmTransferOffer blokerer en stor betaling fra en helt ny konto og annullerer handlen", async () => {
+  const db = baseDb({ windowStatus: "closed" });
+  db.teams.find((t) => t.id === "buyer").created_at = new Date().toISOString(); // oprettet lige nu
+  db.app_config = [
+    { key: "transfer_cooldown_hours", value: 24 },
+    { key: "transfer_cooldown_amount_czk", value: 100 },
+  ];
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "transfer_cooldown_active");
+  assert.equal(db.transfer_offers[0].status, "withdrawn", "handlen annulleres, ikke bare afvist");
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 1000, "ingen penge flyttet");
+  assert.equal(db.teams.find((t) => t.id === "seller").balance, 500, "ingen penge flyttet");
+  assert.equal(supabase._finance.length, 0, "ingen finance-posteringer");
+});
+
+test("#3134: confirmTransferOffer tillader en betaling UNDER cooldown-tærsklen, selv fra en helt ny konto", async () => {
+  const db = baseDb({ windowStatus: "closed" });
+  db.teams.find((t) => t.id === "buyer").created_at = new Date().toISOString();
+  db.app_config = [
+    { key: "transfer_cooldown_hours", value: 24 },
+    { key: "transfer_cooldown_amount_czk", value: 500 }, // over offer_amount (200) → cooldown gælder ikke
+  ];
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true, "under tærsklen → cooldown blokerer ikke");
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800);
+});
+
+test("#3134: confirmTransferOffer tillader en stor betaling så snart kontoen er ældre end cooldown-vinduet", async () => {
+  const db = baseDb({ windowStatus: "closed" });
+  db.teams.find((t) => t.id === "buyer").created_at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); // 25t gammel
+  db.app_config = [
+    { key: "transfer_cooldown_hours", value: 24 },
+    { key: "transfer_cooldown_amount_czk", value: 100 },
+  ];
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, true, "kontoen er ældre end cooldown-vinduet → tilladt");
+});
+
+test("#3134: confirmSwapOffer blokerer udgående kontantbetaling fra en helt ny konto (proposing betaler)", async () => {
+  const db = baseDb({ windowStatus: "closed" });
+  for (let i = 0; i < 9; i++) {
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null });
+  }
+  db.riders.push({ id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null });
+  db.teams.find((t) => t.id === "seller").created_at = new Date().toISOString(); // proposing = seller her, oprettet lige nu
+  db.app_config = [
+    { key: "transfer_cooldown_hours", value: 24 },
+    { key: "transfer_cooldown_amount_czk", value: 100 },
+  ];
+  db.swap_offers.push({
+    id: "swap-1", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 200, counter_cash: null, status: "awaiting_confirmation", // proposing (seller) betaler 200 kontant
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "transfer_cooldown_active");
+  assert.equal(db.swap_offers[0].status, "withdrawn");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller", "ingen ryttere byttet");
+  assert.equal(supabase._finance.length, 0);
+});
+
+test("#3134: confirmSwapOffer gater den side der FAKTISK betaler (negativ cash → receiving betaler)", async () => {
+  const db = baseDb({ windowStatus: "closed" });
+  for (let i = 0; i < 9; i++) {
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null });
+  }
+  db.riders.push({ id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null });
+  // "buyer" er receiving_team_id her og modtager negativ cash_adjustment → buyer betaler.
+  db.teams.find((t) => t.id === "buyer").created_at = new Date().toISOString();
+  db.app_config = [
+    { key: "transfer_cooldown_hours", value: 24 },
+    { key: "transfer_cooldown_amount_czk", value: 100 },
+  ];
+  db.swap_offers.push({
+    id: "swap-1", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: -200, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "transfer_cooldown_active");
+});
+
 test("#16: confirmSwapOffer registrerer begge ryttere med det samme (altid-åben handel)", async () => {
   const db = baseDb({ windowStatus: "closed" }); // ignoreres — altid-åben
   // Giv modtager-holdet nok ryttere til at afgive én.

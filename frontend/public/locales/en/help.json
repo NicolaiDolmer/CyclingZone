@@ -148,6 +148,10 @@
         "title": "Editing many prices at once",
         "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
       },
+      "valueDeviation": {
+        "title": "The valuation next to the asking price",
+        "text": "The transfer list shows each rider's estimated market value next to the asking price, and the percentage tells you how far the asking price sits below or above it (the same estimate as on Auctions). You can filter the market by this percentage under 'Value deviation % (min-max)' in the filter panel, for example to find riders priced well below their estimated value."
+      },
       "sendOffer": {
         "title": "Send an offer",
         "steps": [
@@ -536,7 +540,7 @@
       },
       "scouting": {
         "title": "Scouting potential",
-        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show no estimate at all. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. A better scout covers more of the pool and returns a sharper shortlist on missions, but that only applies to missions and targets, which only ever search other teams' and free-agent riders, never your own. No scout, however good, ever reports a rider exactly: even a fully scouted rival, and your own squad, always show a narrow range rather than an exact star value. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile collects the full report: the verdict, potential per rider type with a ceiling band, and a value comparison. Potential is always shown as stars and a verdict, never as a number."
+        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show no estimate at all. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, but no scout ever knows a rider exactly: even fully scouted riders, and your own squad, show a narrow range rather than an exact star value. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile collects the full report: the verdict, potential per rider type with a ceiling band, and a value comparison. Potential is always shown as stars and a verdict, never as a number."
       },
       "u25u23": {
         "title": "U25 and U23 riders",
@@ -565,7 +569,7 @@
       },
       "typeGating": {
         "title": "Why doesn't a focus grow for some riders?",
-        "text": "Every rider has a type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds up abilities that suit the rider's type: a Climber's Sprint and Acceleration barely move under a Sprint focus, no matter the intensity, because that type has little natural room to grow there. Check a rider's type badge before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it suits the rider, is limited, or won't develop at all."
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. A training focus only speeds abilities toward their ceiling when the rider's type supports them, and either type counts: a strong match (primary or secondary) reaches close to the full ceiling, a neutral fit reaches roughly 45% of it, and a type actively opposed to the ability reaches only around 12% (still not zero, but slow, and for an older or already well-developed rider it may already be there). Check both of a rider's type badges before picking a focus, and the focus dropdown marks each option so you can see at a glance whether it's a strong fit, limited, or very limited for that rider."
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
@@ -724,7 +728,7 @@
       },
       "hireChiefScout": {
         "title": "Hiring a chief scout",
-        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: on scouting missions that rating covers more of the candidate pool and returns a sharper shortlist, while a single-rider target investigation costs and takes the same regardless of his rating. Once his overall reaches about 80, he can run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
+        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
@@ -876,6 +880,10 @@
       "q": "Can other managers see that I scouted a rider?",
       "a": "The rider's owner can. On their own rider's profile, the Interest tab lists which teams have used scout slots on him, how many, and when. Everyone else only sees anonymous totals (how many rivals scouted him), never which teams."
     },
+    "scoutHistoryFaq": {
+      "q": "Can I see which riders my scout has already scouted?",
+      "a": "Yes. Open your chief scout's profile (View profile on the Scouting page) and use the History tab. It lists every rider your scout has completed a targeted investigation on, most recent first, with a link to each rider's profile and report."
+    },
     "developmentProjectionFaq": {
       "q": "What is the projection on the Development tab?",
       "a": "It is a forecast of where a rider is heading: a dashed line from his current type rating toward a shaded ceiling band, with a rough estimate of how many seasons and at what age he reaches it. It is always a range, never an exact number, because nobody knows a rider's exact ceiling. The band is deliberately fuzzy so it cannot be reverse-engineered into his hidden potential, and it stays hidden for rival riders you have not scouted. Two separate things can both mention age here, and they answer different questions: 'Ceiling age' is when this projection expects his current growth to reach his ceiling band, which can happen well before his career peak (age 27-28) if he still has years of development room left. A rider whose level is still far from his ceiling gets an honest 'Long gap to ceiling' line instead of a false 'Approaching ceiling', reserved for riders who are genuinely close."
@@ -902,7 +910,7 @@
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
-      "a": "No. A better chief scout covers more of the pool and returns a sharper shortlist on scouting missions, and lets him run two jobs at once past an overall of about 80, but missions only ever search other teams' and free-agent riders: a mission's candidate pool never includes riders you already own. A single-rider target investigation costs and takes the same regardless of his rating. Your own riders' potential is always shown as the same narrow, never-exact range no matter who your chief scout is, exactly like a rival you've fully scouted."
+      "a": "Yes, in one specific way. Scouting missions never involve your own riders: a mission's candidate pool only searches other teams' and free-agent riders, and a single-rider investigation costs and takes the same regardless of your scout's rating. But the precision of the potential ranges you see does follow your chief scout: he knows your own squad fully, so his rating decides how narrow the star range and per-type ceiling bands on your own riders are, exactly as for a fully scouted rival. No scout ever reports an exact value: even at the highest rating you see a narrow range, never a precise star value."
     },
     "seasonChangeMoneyFaq": {
       "q": "What happens to my money at the season change?",
@@ -930,7 +938,7 @@
     },
     "sponsorNegotiation": {
       "q": "How do I negotiate my sponsor, and what do the offers mean?",
-      "a": "You choose your sponsor on the Board page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-race-day rate: 1 race day = one stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap), or a season objective that pays out at season end if you finish in the top half of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Finance page under the Sponsor tab; you negotiate again when it expires."
+      "a": "You choose your sponsor on the Board page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-race-day rate: 1 race day = one stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap), or a season objective that pays out at season end if you finish in the top 40 percent of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Finance page under the Sponsor tab; you negotiate again when it expires."
     },
     "sponsorRaceDayUnit": {
       "q": "What exactly is a race day, and how many are there?",
@@ -1147,6 +1155,18 @@
     "staffReleaseFaq": {
       "q": "How do I release staff, and what does it cost?",
       "a": "Open the staff member's profile (or their row on the staff overview list) and use Release staff. The contract ends immediately and the role opens for a new hire right away, but it costs a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit, so there are no surprises. You can only release staff on your own team."
+    },
+    "saveLegsCarryoverFaq": {
+      "q": "Does Save legs actually make my rider fresher later, or does it just move effort around within the same race?",
+      "a": "It's real, and it carries forward: Save legs cuts that stage's fatigue build-up to 70% of Normal (Work instead adds 20% on top), and because fatigue is a persistent stat that's only reset between seasons, a stage ridden on Save legs leaves measurably less fatigue for your rider's next stage, and his next race too. If he's working for the team (Helper or Breakaway hunter), Save legs also halves the placing penalty he pays for that work, without reducing the support your captain gets from him. So yes, it makes sense to set Save legs on a stage where there's genuinely nothing left to win for that rider, like a final stage with no jersey or points on the line: it can only help his own result and leaves him fresher afterwards."
+    },
+    "seasonFormCarryoverFaq": {
+      "q": "Did riders keep their Season 1 form when Season 2 started?",
+      "a": "Yes. At the season change every rider's Fatigue is reset to 0, but Form is not touched by the season transition at all, so whatever Form a rider had at the end of the previous season carries straight over into the new one unchanged. Form then keeps moving day to day exactly as it always does: it rises when a rider trains or races in the 25-60 fatigue \"sweet spot,\" and drops if he's pushed into overload, so a carried-over value will drift over the following days rather than staying fixed."
+    },
+    "sprintCaptainRoleFaq": {
+      "q": "I have two sprinters: one is Captain, one is Sprint captain. Which one does my team actually work for?",
+      "a": "It's decided per stage by the terrain, not by preference: on flat stages your helpers' support goes to the Sprint captain (falling back to the Captain if you haven't set a Sprint captain for that race), and on every other stage type (rolling, hilly, mountain, high mountain, time trial, cobbles, classic), it goes to the Captain only, with no support at all for the Sprint captain. In short: Captain is your protected rider everywhere except flat stages; Sprint captain is protected specifically on flat, bunch-sprint stages. Set both if you want a genuine two-pronged sprint-and-GC team: they never compete for the same helpers on the same stage."
     }
   }
 }

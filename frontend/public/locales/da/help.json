@@ -148,6 +148,10 @@
         "title": "Redigér mange priser på én gang",
         "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
+      "valueDeviation": {
+        "title": "Vurderingen ved siden af udbudsprisen",
+        "text": "Transferlisten viser rytterens estimerede markedsværdi ved siden af udbudsprisen, og procenten fortæller hvor langt udbudsprisen ligger under eller over den (samme estimat som på Auktioner). Du kan filtrere markedet på denne procent under 'Værdi-afvigelse % (min-max)' i filterpanelet, fx for at finde ryttere prissat godt under deres estimerede værdi."
+      },
       "sendOffer": {
         "title": "Send et tilbud",
         "steps": [
@@ -536,7 +540,7 @@
       },
       "scouting": {
         "title": "Scouting af potentiale",
-        "text": "En rytters potentiale er skjult indtil du scouter rytteren: uscoutede ryttere på andre hold viser slet intet estimat. Alle hold har en talentspejder, en rigtig staff-person hvis du har ansat en, ellers en standard-spejder, som tager opgaver fra Spejder-siden eller en rytters profil. En målrettet opgave undersøger én rytter og melder tilbage på cirka 30 minutter, uanset spejder-niveau; en mission dækker en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist, plus én gratis rapport på topfundet. Når du starter en mission vælger du også hvem den målretter: kontraktfrie ryttere (uden kontrakt, anbefalet, hent dem med det samme) eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Opgaver koster rejsepenge, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder dækker mere af puljen og returnerer en skarpere shortlist på missioner, men det gælder kun missioner og målrettede opgaver, som udelukkende søger i andre holds og kontraktfrie ryttere, aldrig dine egne. Ingen spejder, uanset hvor god, melder nogensinde en rytter helt præcist: selv en fuldt scoutet rival, og din egen trup, viser altid et smalt interval frem for en eksakt stjerneværdi. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt, og løbsresultaterne afgør hvem der havde ret. En rapport kan aldrig referere en rytter der siden er blevet utilgængelig (hentet andetsteds, eller midt i en handel): den afspejler altid hvem der faktisk er tilgængelig lige nu, og viser hver rytters nuværende status. Scouting-fanen på rytterprofilen samler den fulde rapport: vurderingen, potentiale pr. ryttertype med et loft-bånd, og en værdi-sammenligning. Potentiale vises altid som stjerner og en vurdering, aldrig som et tal."
+        "text": "En rytters potentiale er skjult indtil du scouter rytteren: uscoutede ryttere på andre hold viser slet intet estimat. Alle hold har en talentspejder, en rigtig staff-person hvis du har ansat en, ellers en standard-spejder, som tager opgaver fra Spejder-siden eller en rytters profil. En målrettet opgave undersøger én rytter og melder tilbage på cirka 30 minutter, uanset spejder-niveau; en mission dækker en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist, plus én gratis rapport på topfundet. Når du starter en mission vælger du også hvem den målretter: kontraktfrie ryttere (uden kontrakt, anbefalet, hent dem med det samme) eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Opgaver koster rejsepenge, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, men ingen spejder kender nogensinde en rytter præcist: selv fuldt scoutede ryttere, og din egen trup, viser et smalt interval frem for en eksakt stjerneværdi. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt, og løbsresultaterne afgør hvem der havde ret. En rapport kan aldrig referere en rytter der siden er blevet utilgængelig (hentet andetsteds, eller midt i en handel): den afspejler altid hvem der faktisk er tilgængelig lige nu, og viser hver rytters nuværende status. Scouting-fanen på rytterprofilen samler den fulde rapport: vurderingen, potentiale pr. ryttertype med et loft-bånd, og en værdi-sammenligning. Potentiale vises altid som stjerner og en vurdering, aldrig som et tal."
       },
       "u25u23": {
         "title": "U25 og U23 ryttere",
@@ -565,7 +569,7 @@
       },
       "typeGating": {
         "title": "Hvorfor rykker et fokus ikke for nogle ryttere?",
-        "text": "Enhver rytter har en type (spurter, klatrer, TT, GC og så videre) og et skjult potentiale pr. evne, begge sat da rytteren blev oprettet. Et træningsfokus fremskynder kun evner der passer til rytterens type: en klatrers Spurt og Acceleration rykker næsten intet under et spurt-fokus, uanset intensitet, fordi den type har ringe naturligt råderum der. Tjek rytterens type-mærkat før du vælger fokus, og brug fokus-dropdownen, som mærker hver mulighed så du kan se med det samme om den passer til rytteren, er begrænset, eller slet ikke udvikles."
+        "text": "Enhver rytter har en primær OG en sekundær type (spurter, klatrer, TT, GC og så videre) og et skjult potentiale pr. evne, begge sat da rytteren blev oprettet. Et træningsfokus fremskynder kun evner mod deres loft når rytterens type understøtter dem, og begge typer tæller: et stærkt match (primær eller sekundær) når tæt på det fulde loft, et neutralt match når omkring 45% af det, og en type der direkte modarbejder evnen når kun omkring 12% (stadig ikke nul, men langsomt, og for en ældre eller allerede veludviklet rytter kan den godt allerede stå der). Tjek begge af rytterens type-mærkater før du vælger fokus, og brug fokus-dropdownen, som mærker hver mulighed så du kan se med det samme om den er et stærkt match, begrænset, eller meget begrænset for netop den rytter."
       },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
@@ -724,7 +728,7 @@
       },
       "hireChiefScout": {
         "title": "Ansæt en chefscout",
-        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: på spejder-missioner dækker den rating mere af kandidat-puljen og giver en skarpere shortlist, mens en enkelt-rytter-undersøgelse koster og tager det samme uanset rating. Når hans rating når omkring 80, kan han køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
+        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
       },
       "coachingGroups": {
         "title": "Trænings-grupper: U23 vs. Senior",
@@ -876,6 +880,10 @@
       "q": "Kan andre managere se at jeg har scoutet en rytter?",
       "a": "Rytterens ejer kan. På egen rytters profil viser Interesse-fanen hvilke hold der har brugt scout-slots på ham, hvor mange og hvornår. Alle andre ser kun anonyme totaler (hvor mange rivaler der har scoutet ham), aldrig hvilke hold."
     },
+    "scoutHistoryFaq": {
+      "q": "Kan jeg se hvilke ryttere min spejder allerede har scoutet?",
+      "a": "Ja. Åbn din chefspejders profil (Se profil på Spejder-siden) og brug Historik-fanen. Den viser hver rytter din spejder har afsluttet en målrettet undersøgelse på, nyeste først, med link til rytterens profil og rapport."
+    },
     "developmentProjectionFaq": {
       "q": "Hvad er projektionen på Udvikling-fanen?",
       "a": "Det er et bud på hvor en rytter er på vej hen: en stiplet linje fra hans nuværende type-rating mod et skraveret loft-bånd, med et cirka-estimat af hvor mange sæsoner og i hvilken alder han når det. Det er altid et interval, aldrig et eksakt tal, for ingen kender en rytters præcise loft. Båndet er bevidst upræcist, så det ikke kan regnes tilbage til hans skjulte potentiale, og det er skjult for fremmede ryttere du ikke har scoutet. To forskellige ting kan begge nævne alder her, og de svarer på forskellige spørgsmål: 'Alder ved loft' er hvornår denne projektion forventer at hans nuværende vækst når loft-båndet, hvilket kan ske længe før hans karrieretop (alder 27-28), hvis han stadig har år med udviklingsrum tilbage. En rytter hvis niveau stadig er langt fra loftet får i stedet en ærlig 'Stort spring til loftet'-linje frem for et forkert 'Nærmer sig loftet', som er forbeholdt ryttere der reelt er tæt på."
@@ -902,7 +910,7 @@
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
-      "a": "Nej. En bedre chefscout dækker mere af puljen og giver en skarpere shortlist på spejder-missioner, og lader ham køre to opgaver ad gangen forbi en samlet rating på omkring 80, men missioner søger udelukkende i andre holds og kontraktfrie ryttere: en missions kandidat-pulje inkluderer aldrig ryttere du allerede ejer. En enkelt-rytter-undersøgelse koster og tager det samme uanset hans rating. Dine egne ryttere vises altid med det samme smalle, aldrig-eksakte interval, uanset hvem din chefscout er, nøjagtig som en rival du har scoutet fuldt ud."
+      "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle stjerne-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig en præcis stjerneværdi."
     },
     "seasonChangeMoneyFaq": {
       "q": "Hvad sker der med min økonomi ved sæsonskiftet?",
@@ -930,7 +938,7 @@
     },
     "sponsorNegotiation": {
       "q": "Hvordan forhandler jeg min sponsor, og hvad betyder tilbuddene?",
-      "a": "Du vælger din sponsor på Bestyrelse-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus dine resultater over de seneste sæsoner, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. løbsdag: 1 løbsdag = én etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i øverste halvdel af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Dit valg låses når den nye sæson starter, og vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Finanser-siden under Sponsor-fanen; du forhandler igen når den udløber."
+      "a": "Du vælger din sponsor på Bestyrelse-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus dine resultater over de seneste sæsoner, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. løbsdag: 1 løbsdag = én etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i top-40 % af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Dit valg låses når den nye sæson starter, og vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Finanser-siden under Sponsor-fanen; du forhandler igen når den udløber."
     },
     "sponsorRaceDayUnit": {
       "q": "Hvad er en løbsdag helt præcist, og hvor mange er der?",
@@ -1147,6 +1155,18 @@
     "staffReleaseFaq": {
       "q": "Hvordan opsiger jeg staff, og hvad koster det?",
       "a": "Åbn staffens profil (eller deres række på personale-oversigten) og brug Opsig staff. Ansættelsen slutter med det samme, og pladsen åbner for ny-hyring med det samme, men det koster et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter, så der er ingen overraskelser. Du kan kun opsige staff på dit eget hold."
+    },
+    "saveLegsCarryoverFaq": {
+      "q": "Hjælper 'Spar kræfter' rytteren senere, eller flytter det bare kræfter rundt i samme løb?",
+      "a": "Det er ægte, og det følger med videre: Spar kræfter sænker etapens trætheds-tilvækst til 70% af Normal (Arbejd lægger i stedet 20% oveni), og fordi træthed er en vedvarende værdi der kun nulstilles ved sæsonskifte, efterlader en etape kørt på Spar kræfter målbart mindre træthed til rytterens næste etape, og hans næste løb. Arbejder han for holdet (hjælper eller udbrudsjæger), halverer Spar kræfter også den pladsstraf han betaler for det arbejde, uden at det svækker den støtte kaptajnen får fra ham. Så ja, det giver mening at sætte Spar kræfter på en etape hvor der reelt ikke er noget tilbage at vinde for den rytter, fx en sidste etape uden trøje eller point i spil: det kan kun forbedre hans eget resultat og gør ham friskere bagefter."
+    },
+    "seasonFormCarryoverFaq": {
+      "q": "Beholdt rytterne deres sæson 1-form, da sæson 2 startede?",
+      "a": "Ja. Ved sæsonskiftet nulstilles alle rytteres Træthed til 0, men Form røres slet ikke af sæsonskiftet, så den form en rytter havde ved forrige sæsons afslutning følger uændret med ind i den nye. Form bevæger sig derefter dag for dag som den plejer: den stiger når en rytter træner eller kører løb i 25-60-trætheds-\"sweet spot\"'en, og falder hvis han presses ud i overbelastning, så en overført værdi vil drifte i dagene efter i stedet for at stå fast."
+    },
+    "sprintCaptainRoleFaq": {
+      "q": "Jeg har to sprintere: én er kaptajn, én er sprint-kaptajn. Hvem arbejder holdet reelt for?",
+      "a": "Det afgøres pr. etape af terrænet, ikke af hvem du helst vil beskytte den dag: på flade etaper går hjælpernes støtte til sprint-kaptajnen (eller til kaptajnen, hvis du ikke har sat en sprint-kaptajn til det løb), og på alle andre etapetyper (kuperet, bakket, bjerge, højbjerge, enkeltstart, brosten, klassiker) går den kun til kaptajnen, uden nogen støtte til sprint-kaptajnen overhovedet. Kort sagt: kaptajnen er din beskyttede rytter overalt undtagen på flade etaper; sprint-kaptajnen er specifikt beskyttet på flade spurt-etaper. Sæt begge, hvis du vil køre et reelt to-sporet sprint-og-GC-hold: de konkurrerer aldrig om de samme hjælpere på samme etape."
     }
   }
 }
