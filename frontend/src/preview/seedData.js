@@ -439,6 +439,34 @@ export const SEED_SEASON_STANDINGS = [
   { id: "hub-standing-3", season_id: ACTIVE_SEASON.id, team_id: "team-ai-preview", total_points: 4990, stage_wins: 2, gc_wins: 0, team: { id: "team-ai-preview", name: "Preview AI Cycling", is_ai: true, division: 2 } },
 ];
 
+// ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
+// global_rank_mv — bevidst UDEN "team-ai-preview" (AI-holdet fra
+// SEED_SEASON_STANDINGS ovenfor): efter #2792 filtrerer selve matview'et
+// AI-hold fra (is_ai=false i base-CTE'ens WHERE), så preview-seedet spejler
+// den faktiske post-fix kontrakt — Global Rank-siden skal ALDRIG kunne vise
+// et AI-hold, uanset hvad andre flader (fx /resultater) gør.
+export const SEED_GLOBAL_RANK = [
+  { team_id: "team-leader-preview", name: "Étoile du Léman", division: 1, banked_points: 8200, season_points: 1950, global_points: 10150, active_recent: true, is_rookie: false, global_rank: 1 },
+  { team_id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, division: RIVAL_TEAM.division, banked_points: 6120, season_points: 1480, global_points: 7600, active_recent: true, is_rookie: false, global_rank: 2 },
+  { team_id: TEST_TEAM.id, name: TEST_TEAM.name, division: TEST_TEAM.division, banked_points: 4980, season_points: 1230, global_points: 6210, active_recent: true, is_rookie: false, global_rank: 3 },
+  { team_id: "team-rookie-preview", name: "Nordkyst CK", division: 3, banked_points: 0, season_points: 2890, global_points: 2890, active_recent: true, is_rookie: true, global_rank: 4 },
+];
+
+// Ugentligt bevægelses-snapshot — giver ▲/▼-pilene på siden noget at vise.
+export const SEED_GLOBAL_RANK_WEEKLY = [
+  { team_id: "team-leader-preview", global_rank: 2 },
+  { team_id: RIVAL_TEAM.id, global_rank: 3 },
+  { team_id: TEST_TEAM.id, global_rank: 3 },
+];
+
+// Sæson-start-snapshot — "Climbers of the season"-panelet.
+export const SEED_GLOBAL_RANK_SEASON_START = [
+  { team_id: "team-leader-preview", global_rank: 3 },
+  { team_id: RIVAL_TEAM.id, global_rank: 4 },
+  { team_id: TEST_TEAM.id, global_rank: 5 },
+  { team_id: "team-rookie-preview", global_rank: 4 },
+];
+
 // rider_rankings_mv — matview'en hubben og RiderRankingsPage læser top-5 fra.
 // rider_id peger på seedede ryttere, så display-joinet mod riders faktisk finder
 // dem (ellers filtreres rækken væk som "pensioneret siden matview-refresh").
