@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router";
 import { supabase } from "../lib/supabase";
 import {
   Card, Button, Select, Table, Tr, Th, Td,
   PageLoader, EmptyState, ErrorState, SkeletonLines,
   DownloadIcon, InfoIcon,
 } from "../components/ui";
+
+// #3196: udtrukket fra en tidligere standalone /admin/sprint-metrics-side til
+// en ren indholds-komponent, genbrugt som "Sprint-metrics"-fanen i det samlede
+// vækst-dashboard (AdminGrowthPage.jsx). Admin-gating + sideheader ejes nu af
+// forælderen; ingen andre importerer denne komponent.
 
 const WINDOW_OPTIONS = [
   { value: "24h",    label: "24 timer" },
@@ -115,24 +119,13 @@ function KpiCard({ label, value, delta, tooltip }) {
   );
 }
 
-export default function AdminSprintMetricsPage() {
-  const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
+export function SprintMetricsContent() {
   const [windowChoice, setWindowChoice] = useState("7d");
   const [metrics, setMetrics] = useState(null);
   const [cohorts, setCohorts] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setAdminStatus("not_admin"); return; }
-      const { data: userData } = await supabase
-        .from("users").select("role").eq("id", session.user.id).single();
-      setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
-    })();
-  }, []);
 
   async function loadMetrics() {
     setLoading(true);
@@ -155,12 +148,11 @@ export default function AdminSprintMetricsPage() {
   }
 
   useEffect(() => {
-    if (adminStatus !== "admin") return;
     loadMetrics();
     const id = setInterval(loadMetrics, REFRESH_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminStatus, windowChoice]);
+  }, [windowChoice]);
 
   const kpis = useMemo(() => {
     if (!metrics) return null;
@@ -195,24 +187,13 @@ export default function AdminSprintMetricsPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (adminStatus === "checking") {
-    return <PageLoader label="Checker adgang" minHeight="40vh" />;
-  }
-  if (adminStatus === "not_admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
-          <h1 className="text-cz-1 text-xl font-bold mt-1">Sprint-metrics</h1>
-          <p className="text-cz-3 text-sm">
-            Live DAU/WAU/MAU/D7/session-length + top-features. Refs sprint-validation #365.
-            {lastFetched && <span className="ms-2">· Sidst opdateret {lastFetched.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (auto-refresh hver 5 min)</span>}
-          </p>
-        </div>
+        <p className="text-cz-3 text-sm">
+          Live DAU/WAU/MAU/D7/session-length + top-features. Refs sprint-validation #365.
+          {lastFetched && <span className="ms-2">· Sidst opdateret {lastFetched.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (auto-refresh hver 5 min)</span>}
+        </p>
         <div className="flex flex-wrap gap-2 items-center">
           <Select value={windowChoice} onChange={e => setWindowChoice(e.target.value)} size="sm">
             {WINDOW_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
