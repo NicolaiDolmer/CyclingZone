@@ -90,7 +90,7 @@ export async function runBackfill({ supabase, from, to, dryRun = true, log = con
 // ── CLI ───────────────────────────────────────────────────────────────────────
 if (process.argv[1] && process.argv[1].endsWith("backfill-growth-snapshots.js")) {
   const __envdir = dirname(fileURLToPath(import.meta.url));
-  dotenv.config({ path: join(__envdir, "../../.env"), quiet: true });
+  dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
   const dryRun = !process.argv.includes("--live"); // default: dry-run
   const fromArg = process.argv.find(a => a.startsWith("--from="))?.split("=")[1];
   const toArg = process.argv.find(a => a.startsWith("--to="))?.split("=")[1];
