@@ -163,6 +163,41 @@ export function maxRiderWinRateLowerBound({
 }
 
 /**
+ * Fold rå `race_results`-rækker til (wins, starts) pr. rytter.
+ *
+ * #2731-FÆLDEN: `rider_id` kan være NULL på auto-fill-/phantom-rækker — 17.071
+ * af 66.408 rækker (25,7 %) med 106 etapesejre i 14-dages-vinduet 20/7-2/8.
+ * En bar `map.set(row.rider_id, …)` samler dem ALLE under nøglen `null` og
+ * behandler dem som ÉN rytter med tusindvis af starter. `observeRace()` har
+ * allerede det tilsvarende værn for `team_id` ("null-ryttere må ALDRIG klumpes
+ * sammen som ét fælles nulhold"); denne sti manglede det.
+ *
+ * En række uden rytter-identitet kan ikke bære en per-rytter-sejrsrate, så den
+ * EKSKLUDERES (ikke bucketes under en fælles nøgle, ikke tildeles en syntetisk
+ * id — begge dele ville opfinde data).
+ *
+ * @param {Array<{rider_id:string|null, rank:number}>} rows
+ * @returns {{winsByRider:Map<string,number>, startsByRider:Map<string,number>, skippedNullRiderRows:number}}
+ */
+export function foldRiderWindowRows(rows = []) {
+  const winsByRider = new Map();
+  const startsByRider = new Map();
+  let skippedNullRiderRows = 0;
+
+  for (const row of rows) {
+    const riderId = row?.rider_id;
+    if (riderId == null || riderId === "") {
+      skippedNullRiderRows++;
+      continue;
+    }
+    startsByRider.set(riderId, (startsByRider.get(riderId) || 0) + 1);
+    if (row.rank === 1) winsByRider.set(riderId, (winsByRider.get(riderId) || 0) + 1);
+  }
+
+  return { winsByRider, startsByRider, skippedNullRiderRows };
+}
+
+/**
  * Pool en dags-rate over de seneste `windowDays` PERSISTEREDE rækker.
  *
  * Rekonstruerer tællere fra (rate × stageInstances) — rækkerne gemmer rater, ikke

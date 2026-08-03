@@ -12,6 +12,7 @@ import {
   wilsonLowerBound,
   maxRiderWinRateLowerBound,
   poolDailyRate,
+  foldRiderWindowRows,
 } from "./balanceDriftMetrics.js";
 
 // ── classifyMetric ───────────────────────────────────────────────────────────
@@ -385,4 +386,38 @@ test("computeDayMetrics: eksponerer maxRiderWinRateLb ved siden af den raa max",
   assert.equal(m.maxRiderWinRate, 5 / 7);
   assert.equal(Number(m.maxRiderWinRateLb.toFixed(4)), 0.3589);
   assert.equal(m.maxRiderWinRateRiders, 1);
+});
+
+test("foldRiderWindowRows: NULL rider_id klumpes IKKE sammen til een phantom-rytter", () => {
+  // Prod-formen: 25,7 pct af raekkerne i 14-dages-vinduet har rider_id=NULL
+  // (auto-fill-raekker) og baerer ogsaa etapesejre. En bar map.set() ville give
+  // dem alle noeglen `null` og skabe een "rytter" med tusindvis af starter.
+  const rows = [
+    { rider_id: null, rank: 1 },
+    { rider_id: null, rank: 1 },
+    { rider_id: null, rank: 7 },
+    { rider_id: "", rank: 1 },
+    { rider_id: "a", rank: 1 },
+    { rider_id: "a", rank: 4 },
+  ];
+  const out = foldRiderWindowRows(rows);
+  assert.equal(out.skippedNullRiderRows, 4);
+  assert.equal(out.startsByRider.size, 1, "kun den identificerede rytter taeller");
+  assert.equal(out.startsByRider.get("a"), 2);
+  assert.equal(out.winsByRider.get("a"), 1);
+  assert.ok(!out.startsByRider.has(null), "ingen null-noegle");
+  assert.ok(!out.startsByRider.has(""), "ingen tom-streng-noegle");
+});
+
+test("foldRiderWindowRows: phantom-raekker forurener ikke maxRiderWinRate", () => {
+  // 60 NULL-raekker med 30 sejre ville som samlet noegle give win-rate 0,50 og
+  // dermed vaere naer baandet — de skal vaere helt vaek fra estimatoren.
+  const rows = [];
+  for (let i = 0; i < 60; i++) rows.push({ rider_id: null, rank: i < 30 ? 1 : 5 });
+  for (let i = 0; i < 10; i++) rows.push({ rider_id: "real", rank: i < 2 ? 1 : 9 });
+  const { winsByRider, startsByRider, skippedNullRiderRows } = foldRiderWindowRows(rows);
+  assert.equal(skippedNullRiderRows, 60);
+  const stats = maxRiderWinRateLowerBound({ winsByRider, startsByRider, minStarts: 5 });
+  assert.equal(stats.riders, 1);
+  assert.equal(stats.leader.riderId, "real");
 });

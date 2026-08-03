@@ -23,6 +23,7 @@ import {
   classifyDay,
   findConsecutiveBreaches,
   evaluateBreachAlert,
+  foldRiderWindowRows,
   BALANCE_DRIFT_TUNING,
 } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
@@ -67,6 +68,7 @@ export async function fetchDayInputs(supabase, dateStr) {
       observations: [], incidentObservations: [],
       winsByRider: new Map(), startsByRider: new Map(),
       jourSansHits: 0, riderStageCount: 0, breakawayWins: 0, breakawayEligibleStages: 0,
+      skippedNullRiderRows: 0,
     };
   }
 
@@ -180,12 +182,9 @@ export async function fetchDayInputs(supabase, dateStr) {
       .lt("imported_at", end)
       .order("rider_id")
   );
-  const winsByRider = new Map();
-  const startsByRider = new Map();
-  for (const row of windowRows) {
-    startsByRider.set(row.rider_id, (startsByRider.get(row.rider_id) || 0) + 1);
-    if (row.rank === 1) winsByRider.set(row.rider_id, (winsByRider.get(row.rider_id) || 0) + 1);
-  }
+  // #2731: NULL-rider_id-værnet ligger i den pure lib (unit-testbar uden
+  // supabase-mock, samme mønster som resten af filen).
+  const { winsByRider, startsByRider, skippedNullRiderRows } = foldRiderWindowRows(windowRows);
 
   return {
     observations,
@@ -196,6 +195,7 @@ export async function fetchDayInputs(supabase, dateStr) {
     riderStageCount,
     breakawayWins,
     breakawayEligibleStages,
+    skippedNullRiderRows,
   };
 }
 
