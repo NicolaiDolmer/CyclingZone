@@ -69,6 +69,15 @@ export const KNOWN_EVENTS = Object.freeze([
   // via logFirstEvent (de-dup pr. bruger). Instrumenteret 2026-06-25 (#940 målebølge).
   "team_drafted",
   "first_race_result_viewed",
+  // first_race_result_shown (#3243): fyrer FØRSTE gang dashboardets
+  // MyLatestResultCard EKSPONERER et usét løbsresultat for brugeren (badge går
+  // fra "Nyt" til set, MyLatestResultCard.jsx's useSeenBadge). Adskilt fra
+  // first_race_result_viewed: det event kræver at brugeren selv åbner holdets
+  // resultat-fane, mens dette blot kræver at dashboardet loader MED resultatet
+  // synligt. Før dette event var trinet "resultat eksponeret" kun aflæseligt
+  // via teams.my_result_seen_race_id (rå kolonne, ikke et queryable event) —
+  // funnel-fund #3243.
+  "first_race_result_shown",
   // Game-events — engagement / retention-signal
   "session_started",
   "auction_view",

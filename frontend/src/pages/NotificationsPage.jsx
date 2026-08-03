@@ -515,8 +515,12 @@ export default function NotificationsPage() {
                           ? `/riders/${n.metadata.riderId}`
                           : n.type === "transfer_interest" && n.related_id
                             ? `/riders/${n.related_id}`
-                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside
-                            : n.type === "race_result" && (n.metadata?.raceId || n.related_id)
+                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside.
+                            // #3243: stage_result bar SAMME metadata.raceId (#2523) men manglede denne
+                            // regel og faldt til den generiske /resultater — ekstra klik lige på det
+                            // trin (første etaperesultat) hvor en ny spiller allerede er tilbøjelig til
+                            // at give op.
+                            : (n.type === "race_result" || n.type === "stage_result") && (n.metadata?.raceId || n.related_id)
                               ? `/races/${n.metadata?.raceId || n.related_id}`
                               // #2832-review (ejer-merge-krav): season_ended bærer den AFSLUTTEDE
                               // sæsons id i related_id (emitSeasonEndedNotifications). Uden dette
