@@ -24,6 +24,7 @@ import {
   findConsecutiveBreaches,
   evaluateBreachAlert,
   foldRiderWindowRows,
+  computeTierBreakdown,
   BALANCE_DRIFT_TUNING,
 } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
@@ -96,6 +97,22 @@ export async function fetchDayInputs(supabase, dateStr) {
       .order("race_id")
   );
 
+  // #2557: tier pr. etape, så dagens metrikker også kan brydes ned pr. tier.
+  // Aggregatet skjulte i 3 uger at tier 3 var for forudsigelig mens tier 1/2/4
+  // var for tilfældig — se computeTierBreakdown()'s header. races.league_division_id
+  // → league_divisions.tier; ukendt/NULL ⇒ tier null (grupperes som "unknown",
+  // aldrig gættet).
+  const raceRows = await fetchAllRows(() =>
+    supabase.from("races").select("id, league_division_id").in("id", raceIds).order("id")
+  );
+  const divisionRows = await fetchAllRows(() =>
+    supabase.from("league_divisions").select("id, tier").order("id")
+  );
+  const tierByPoolId = new Map((divisionRows || []).map((d) => [d.id, d.tier]));
+  const tierByRaceId = new Map(
+    (raceRows || []).map((r) => [r.id, tierByPoolId.get(r.league_division_id) ?? null])
+  );
+
   const teamByKey = new Map(); // `${race_id}:${stage_number}:${rider_id}` -> team_id|null
   const winnerBreakawayByStage = new Map(); // `${race_id}:${stage_number}` -> boolean (rank=1 in_breakaway)
   for (const r of dayResults) {
@@ -127,7 +144,12 @@ export async function fetchDayInputs(supabase, dateStr) {
     }));
     // observeRace importeres bevidst IKKE her — vi bygger kun input-formatet;
     // balanceDriftWatchOrchestrate (nedenfor) kalder den pure lib.
-    observations.push({ ranked, terrain: undefined, __stageKey: stageKey });
+    observations.push({
+      ranked,
+      terrain: undefined,
+      __stageKey: stageKey,
+      tier: tierByRaceId.get(run.race_id) ?? null, // #2557
+    });
 
     for (const s of runScores) {
       riderStageCount++;
@@ -227,7 +249,12 @@ export async function runBalanceDriftWatch({
   // fri af den pure lib's beslutningslogik-overflade — kosmetisk adskillelse,
   // begge lever i samme fil da de deler samme kald-kontekst.
   const { observeRace, observeIncidents } = await import("./raceDominanceMetrics.js");
-  const observations = inputs.observations.map((o) => observeRace({ ranked: o.ranked, terrain: o.terrain }));
+  // #2557: bær `tier` med over på observationen så nedbrydningen kan grupperes.
+  // observeRace ignorerer ukendte felter, så tier'en påvirker ikke aggregatet.
+  const observations = inputs.observations.map((o) => ({
+    ...observeRace({ ranked: o.ranked, terrain: o.terrain }),
+    tier: o.tier ?? null,
+  }));
   const incidentObservations = inputs.incidentObservationsInput.map((o) => observeIncidents(o));
 
   const metrics = computeDayMetrics({
@@ -265,6 +292,11 @@ export async function runBalanceDriftWatch({
   const history = [{ date: targetDate, metrics }, ...priorHistory];
 
   const statuses = classifyDay(metrics, { recentRows: history });
+
+  // #2557: report-only nedbrydning. classifyDay itererer kun BALANCE_DRIFT_BANDS,
+  // så en ekstra nøgle i metrics ændrer hverken status, alarm eller admin-tabellen
+  // (BalanceDriftWatchSection renderer fra sin egen METRIC_LABELS-allowlist).
+  metrics.byTier = computeTierBreakdown(observations);
 
   const { error: upsertError } = await supabase
     .from("race_balance_drift_daily")
