@@ -34,6 +34,7 @@ import {
   rankTeamsGlobally,
   distributeCompression,
   summarizeMovements,
+  buildCountbackByTeam,
 } from "../lib/pyramidCompression.js";
 import { SEASON_END_SKIP_MOVEMENT_FLAG_KEY } from "../lib/seasonEndMovementFlag.js";
 import { UPKEEP_BY_DIVISION } from "../lib/economyConstants.js";
@@ -114,16 +115,30 @@ const standings = await fetchAllRows(() =>
     .eq("season_id", FROM)
     .order("team_id"));
 
+// #3036: countback-kilde for tiebreak-kæden (klassements-/dagssejre → etape-
+// podier → bedste etape → bedste GC), indsat FØR navne-leddet efter 61-61-
+// cutline-hændelsen 26/7. ÉN aggregeret query (races!inner filtrerer på sæson
+// server-side) — IKKE pr.-hold-queries — pagineret som alt andet der kan
+// overstige 1000 rækker. Aggregeringen selv sker i pyramidCompression.js'
+// rene buildCountbackByTeam (ingen I/O der).
+const countbackRows = await fetchAllRows(() =>
+  supabase.from("race_results")
+    .select("team_id, result_type, rank, races!inner(season_id)")
+    .eq("races.season_id", FROM)
+    .not("team_id", "is", null)
+    .order("id"));
+const countback = buildCountbackByTeam(countbackRows);
+
 const { data: pools, error: poolErr } = await supabase
   .from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
 if (poolErr) { console.error(`❌ league_divisions: ${poolErr.message}`); process.exit(1); }
 const poolLabel = new Map(pools.map((p) => [p.id, p.label ?? `T${p.tier}#${p.pool_index}`]));
 
-console.log(`Managerhold: ${managerTeams.length} af ${allTeams.length} hold · standings-rækker: ${standings.length} · puljer: ${pools.length}`);
+console.log(`Managerhold: ${managerTeams.length} af ${allTeams.length} hold · standings-rækker: ${standings.length} · countback-rækker: ${countbackRows.length} · puljer: ${pools.length}`);
 
 // ─── 2 · Rangér + fordel ─────────────────────────────────────────────────────
 
-const ranked = rankTeamsGlobally({ teams: managerTeams, standings });
+const ranked = rankTeamsGlobally({ teams: managerTeams, standings, countback });
 const { assignments, byPool } = distributeCompression(ranked, pools);
 const { promoted, relegated, poolMoves, unchanged } = summarizeMovements(assignments);
 
