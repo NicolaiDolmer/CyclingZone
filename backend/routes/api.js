@@ -6916,11 +6916,14 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
 // ── /api/me — current user's Discord DM preferences ───────────────────────────
 
 router.get("/me/discord-status", requireAuth, async (req, res) => {
-  const { data: user } = await supabase
+  const { data: user, error } = await supabase
     .from("users")
     .select("discord_id, discord_dm_enabled, discord_dm_prefs, discord_disconnected_at")
     .eq("id", req.user.id)
     .single();
+  // #3130: uden dette tjek rapporterede et fejlet opslag brugeren som "aldrig
+  // tilsluttet" i stedet for at fejle — samme tavse mønster som featuren fjerner.
+  if (error) return res.status(500).json({ error: error.message });
   res.json({
     discord_id: user?.discord_id || null,
     dm_enabled: user?.discord_dm_enabled !== false,

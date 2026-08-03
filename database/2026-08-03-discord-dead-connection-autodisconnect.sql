@@ -26,6 +26,10 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS discord_dm_failure_count INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS discord_disconnected_at TIMESTAMPTZ;
 
+-- PostgREST cacher skemaet: uden reload ser backendens Supabase-klient ikke de
+-- nye kolonner, og /me/discord-status + tælleren fejler indtil næste genstart.
+NOTIFY pgrst, 'reload schema';
+
 COMMENT ON COLUMN users.discord_dm_failure_count IS
   'Antal PÅ HINANDEN FØLGENDE permanente Discord-DM-fejl (recipient-blocked). Nulstilles ved leveret DM og ved auto-afkobling. #3130';
 COMMENT ON COLUMN users.discord_disconnected_at IS

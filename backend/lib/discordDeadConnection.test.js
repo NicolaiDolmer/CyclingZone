@@ -39,11 +39,16 @@ function makeSupabaseMock({ user = null, readError = null, writeError = null } =
               builder.filters[`${col}>`] = val;
               return builder;
             },
+            or(expr) {
+              builder.filters.or = expr;
+              return builder;
+            },
             select() {
               writes.updates.push({ values, filters: builder.filters });
               if (writeError) return Promise.resolve({ data: null, error: writeError });
-              // Simulér `WHERE count > 0`: kun rækker der faktisk matcher returneres.
-              const matched = (user?.discord_dm_failure_count ?? 0) > 0;
+              // Simulér OR-filteret: rammer rækker med fejlserie ELLER afkoblings-historik.
+              const matched =
+                (user?.discord_dm_failure_count ?? 0) > 0 || Boolean(user?.discord_disconnected_at);
               return Promise.resolve({ data: matched ? [{ id: user.id }] : [], error: null });
             },
             then(resolve, reject) {
@@ -154,12 +159,31 @@ test("leveret DM nulstiller en igangværende fejlserie", async () => {
   const result = await clearDmFailureCount({ supabase, discordId: DISCORD_ID });
 
   assert.equal(result.reset, true);
-  assert.deepEqual(writes.updates[0].values, { discord_dm_failure_count: 0 });
-  assert.equal(writes.updates[0].filters["discord_dm_failure_count>"], 0, "skal filtrere på > 0 (no-op server-side)");
+  assert.deepEqual(writes.updates[0].values, {
+    discord_dm_failure_count: 0,
+    discord_disconnected_at: null,
+  });
+  assert.match(writes.updates[0].filters.or, /discord_dm_failure_count\.gt\.0/, "skal være no-op server-side");
 });
 
-test("leveret DM uden forudgående fejl rører ingen rækker", async () => {
-  const { supabase } = makeSupabaseMock({ user: { id: "u1", discord_dm_failure_count: 0 } });
+// En leveret DM BEVISER at koblingen virker igen. Ryddede vi ikke tidsstemplet,
+// ville en spiller der genforbandt og senere selv fjernede sit id se
+// genforbind-banneret igen — en besked om noget vi ikke har gjort.
+test("leveret DM rydder afkoblings-historikken, også uden fejlserie", async () => {
+  const { supabase, writes } = makeSupabaseMock({
+    user: { id: "u1", discord_dm_failure_count: 0, discord_disconnected_at: "2026-08-01T10:00:00Z" },
+  });
+  const result = await clearDmFailureCount({ supabase, discordId: DISCORD_ID });
+
+  assert.equal(result.reset, true);
+  assert.equal(writes.updates[0].values.discord_disconnected_at, null);
+  assert.match(writes.updates[0].filters.or, /discord_disconnected_at\.not\.is\.null/);
+});
+
+test("leveret DM uden fejl eller afkoblings-historik rører ingen rækker", async () => {
+  const { supabase } = makeSupabaseMock({
+    user: { id: "u1", discord_dm_failure_count: 0, discord_disconnected_at: null },
+  });
   const result = await clearDmFailureCount({ supabase, discordId: DISCORD_ID });
   assert.equal(result.reset, false);
 });

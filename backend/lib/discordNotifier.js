@@ -318,8 +318,20 @@ export async function sendDM(discordId, payload) {
   if (result.ok) {
     // #3130: en leveret DM gør fejlserien "afbrudt" — tærsklen tæller PÅ HINANDEN
     // FØLGENDE fejl, så en enkelt gammel 403 ikke akkumulerer over måneder.
-    // No-op server-side (WHERE count > 0) for de ~alle brugere uden fejl.
-    await clearDmFailureCount({ supabase, discordId });
+    // No-op server-side for de ~alle brugere uden fejl/afkoblings-historik.
+    const cleared = await clearDmFailureCount({ supabase, discordId });
+    if (cleared.error) {
+      // Slår nulstillingen fejl, akkumulerer tælleren hen over LEVEREDE beskeder
+      // og kan afkoble en bruger hvis kobling er sund — altså præcis den
+      // invariant featuren hviler på. Må ikke fejle tavst.
+      console.error("[discord-dm:reset-failed] kunne ikke nulstille fejltæller", {
+        discordId,
+        error: cleared.error,
+      });
+      sentryCapture(new Error(`Discord DM fejltæller-nulstilling fejlede: ${cleared.error}`), {
+        tags: { component: "discord-dm" },
+      });
+    }
     return true;
   }
 

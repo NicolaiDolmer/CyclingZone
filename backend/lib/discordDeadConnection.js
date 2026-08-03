@@ -90,9 +90,15 @@ export async function recordPermanentDmFailure({
  * Nulstil fejltælleren efter en LEVERET DM — det er dét der gør tærsklen
  * "på hinanden følgende" i stedet for "akkumuleret over al tid".
  *
- * Ét statement uden forudgående læsning: filteret `> 0` gør det til et no-op
- * server-side for de ~alle brugere der ikke har fejlet, så den normale
- * leverings-sti ikke betaler for en ekstra rundtur med et resultat.
+ * Ét statement uden forudgående læsning: filteret gør det til et no-op
+ * server-side for de ~alle brugere der hverken har fejlet eller været afkoblet,
+ * så den normale leverings-sti ikke betaler for en ekstra rundtur med et resultat.
+ *
+ * Rydder samtidig discord_disconnected_at: en leveret DM BEVISER at koblingen
+ * virker igen. Uden det ville en spiller der genforbandt og senere selv fjernede
+ * sit id få genforbind-banneret igen — en besked om noget vi ikke har gjort.
+ * Det skal ske server-side; frontendens kolonne-grant på `users` dækker kun
+ * discord_id, ikke tidsstemplet.
  *
  * @returns {Promise<{reset: boolean, error?: string}>} reset=true hvis en række blev rørt.
  */
@@ -101,9 +107,9 @@ export async function clearDmFailureCount({ supabase, discordId }) {
 
   const { data, error } = await supabase
     .from("users")
-    .update({ discord_dm_failure_count: 0 })
+    .update({ discord_dm_failure_count: 0, discord_disconnected_at: null })
     .eq("discord_id", discordId)
-    .gt("discord_dm_failure_count", 0)
+    .or("discord_dm_failure_count.gt.0,discord_disconnected_at.not.is.null")
     .select("id");
 
   if (error) return { reset: false, error: error.message };
