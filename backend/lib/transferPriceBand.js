@@ -59,6 +59,9 @@ export async function readTransferPriceBandConfig(supabase) {
 
     return { floorPct, capMultiple };
   } catch {
+    // best-effort: config-læsning må aldrig vælte selve transfer/swap/auktions-
+    // requesten den kaldes fra. Fail-safe er DISABLED (se fil-header) — samme
+    // tilstand som "ingen konfiguration sat endnu", ikke et sikkerhedshul.
     return { ...DISABLED_CONFIG };
   }
 }
