@@ -40,7 +40,7 @@ export default function PrivacyPolicyPageEn() {
         </div>
 
         <p className="text-cz-3 text-sm mb-6">
-          Last updated: 4 June 2026. Cycling Zone is an open beta operated by Dolmer Digital (Danish CVR 46524861).
+          Last updated: 3 August 2026. Cycling Zone is an open beta operated by Dolmer Digital (Danish CVR 46524861).
           We process as little data as possible, and you decide what we may measure.
         </p>
 
@@ -69,6 +69,8 @@ export default function PrivacyPolicyPageEn() {
                 <li><strong>Analytics (consent only):</strong> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration) and anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from). Used only to fix bad UX and understand where players find the game.</li>
                 <li><strong>Acquisition source (legitimate interest):</strong> when you create an account we record how you first reached the site (a referring link, any campaign tags in the URL, and the page you landed on) so we can see which channels bring new players. First-party only, no cross-site tracking, and you can object at any time.</li>
                 <li><strong>Aggregate traffic statistics (no consent needed):</strong> we count anonymous, aggregated page views and engagement (e.g. how many visitors a page received and whether they engaged) without cookies and without storing IP addresses or any data that can identify you. Because it cannot be linked to you, this requires no consent.</li>
+                {/* #3132: fair-play telemetry (identity_events, live 31/7) — owner-approved wording 3/8. */}
+                <li><strong>Fair play (legitimate interest):</strong> to detect and document multi-account cheating, we record technical signals when an account is created and when value-bearing actions happen in the game (for example accepted transfers, auction bids and loans taken): IP address, browser information (user agent), language setting and timezone. This data is used solely for fair-play enforcement, is never visible to other players, is not shared with third parties, and is deleted automatically after 180 days. If you delete your account, it is deleted with it. The legal basis is our legitimate interest in a fair game (GDPR art. 6(1)(f)), and you can object at any time.</li>
               </ul>
             </div>
           </Section>
@@ -122,6 +124,7 @@ export default function PrivacyPolicyPageEn() {
                 <li><strong>Account and game data:</strong> as long as your account is active. If you delete your account, personally identifiable data is removed within 30 days; aggregated game history (e.g. past season results) may be retained in anonymised form.</li>
                 <li><strong>Waitlist data:</strong> until you ask to be deleted, or 24 months of inactivity, whichever comes first.</li>
                 <li><strong>Access logs (IP):</strong> automatically deleted after 30 days.</li>
+                <li><strong>Fair-play telemetry (IP and device signals):</strong> deleted automatically after 180 days.</li>
                 <li><strong>Consent proof (consent timestamp + choices):</strong> for as long as the related data is processed, so we can document lawful basis.</li>
               </ul>
             </div>
