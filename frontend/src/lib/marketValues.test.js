@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
   computeBidValueDelta,
+  detectStartPriceTypo,
   formatCz,
   getRiderMarketValue,
   getRiderSalary,
@@ -156,6 +157,62 @@ test("computeBidValueDelta — bud 0 (ingen bud endnu) giver stadig delta", () =
     computeBidValueDelta(0, { market_value: 100000 }),
     { pct: 100, direction: "under", value: 100000 },
   );
+});
+
+// #3184 fair-play/I: tastefejl-værn — begge sager fra fair-play-scan 2026-08-03.
+test("detectStartPriceTypo — Tobias Richter-sagen (211.007 → 21.100, ÷10)", () => {
+  assert.deepEqual(
+    detectStartPriceTypo(21100, { market_value: 211007 }),
+    { suspected: true, pattern: "digit_drop_10", suggestedValue: 211007 },
+  );
+});
+
+test("detectStartPriceTypo — Damien Gauthier-sagen (24.212 → 4.212, foranstillet ciffer mangler)", () => {
+  assert.deepEqual(
+    detectStartPriceTypo(4212, { market_value: 24212 }),
+    { suspected: true, pattern: "missing_leading_digit", suggestedValue: 24212 },
+  );
+});
+
+test("detectStartPriceTypo — ÷100-ciffer-drop (præcis 2 cifre for lidt)", () => {
+  assert.deepEqual(
+    detectStartPriceTypo(2110, { market_value: 211007 }),
+    { suspected: true, pattern: "digit_drop_100", suggestedValue: 211007 },
+  );
+});
+
+// #3136: median for ærlige konkurrenceudsatte auktioner er 0,49×, P10 er 0,17× —
+// et bevidst lavt-listet salg må IKKE flages, kun mønstre der ligner et ciffer-drop.
+test("detectStartPriceTypo — bevidst 0,49× (medianen) flages ikke", () => {
+  assert.equal(detectStartPriceTypo(49000, { market_value: 100000 }).suspected, false);
+});
+
+test("detectStartPriceTypo — bevidst 0,20× flages ikke (ikke et ciffer-drop-mønster)", () => {
+  assert.equal(detectStartPriceTypo(200, { market_value: 1000 }).suspected, false);
+});
+
+test("detectStartPriceTypo — pris == værdi flages ikke", () => {
+  assert.equal(detectStartPriceTypo(100000, { market_value: 100000 }).suspected, false);
+});
+
+test("detectStartPriceTypo — pris over værdi flages ikke", () => {
+  assert.equal(detectStartPriceTypo(150000, { market_value: 100000 }).suspected, false);
+});
+
+test("detectStartPriceTypo — uden for tolerance (6% fra ÷10-målet) flages ikke", () => {
+  // value/10 = 10.000, ±2% tolerance = ±200. 10.600 er 6% fra target → uden for.
+  assert.equal(detectStartPriceTypo(10600, { market_value: 100000 }).suspected, false);
+});
+
+test("detectStartPriceTypo — inden for tolerance (1% fra ÷10-målet) flages", () => {
+  assert.equal(detectStartPriceTypo(10100, { market_value: 100000 }).suspected, true);
+});
+
+test("detectStartPriceTypo — ugyldig pris/værdi giver ingen mistanke", () => {
+  assert.equal(detectStartPriceTypo(0, { market_value: 100000 }).suspected, false);
+  assert.equal(detectStartPriceTypo(-100, { market_value: 100000 }).suspected, false);
+  assert.equal(detectStartPriceTypo("abc", { market_value: 100000 }).suspected, false);
+  assert.equal(detectStartPriceTypo(1000, {}).suspected, false);
 });
 
 // En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når
