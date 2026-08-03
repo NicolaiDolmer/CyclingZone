@@ -52,6 +52,10 @@ open_issues.json
 *.tmp.md
 *.tmp-*.json
 
+# Worker-fremdriftsfiler (batch-orkestrering): per-worktree scratch, maa ALDRIG
+# committes - laekkede 2x ind i main via PR-squashes 2026-08-03 (#3248, #3246).
+.progress.md
+
 # Discord-triage caches — regenererbare via scripts/discord/*.mjs (intet source of truth).
 # .gh-issues.json kan indeholde issue-bodies; hold local. Sandheden er GitHub.
 scripts/discord/.gh-issues.json
