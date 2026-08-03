@@ -12,7 +12,8 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
-import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
+import { getRiderMarketValue, projectYouthSalary, detectStartPriceTypo } from "../lib/marketValues";
+import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
@@ -49,6 +50,10 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
   // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
   const [flash, setFlash] = useState(false);
+  // #3184: tastefejl-værn — ciffer-drop-mønster mellem startpris og Værdi.
+  // { suspected, pattern, suggestedValue } fra detectStartPriceTypo, eller null
+  // når dialogen ikke er vist. Non-blocking: sælgeren kan altid fortsætte.
+  const [typoWarning, setTypoWarning] = useState(null);
   // #1719/#1720: server-beregnede previews (gebyr / ny løn) hentes når fanen
   // åbnes, så manageren ser tallet før bekræftelse.
   const [releaseQuote, setReleaseQuote] = useState(null);
@@ -134,6 +139,15 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     } finally {
       setLoading(false);
     }
+  }
+
+  // #3184: pre-submit-gate på "Start"-knappen. Fanger et formodet ciffer-drop
+  // FØR POST'en — sælgeren ser dialogen, kan rette prisen med ét klik, eller
+  // bekræfte at prisen er med vilje og fortsætte uændret.
+  function handleAuctionSubmit() {
+    const typo = detectStartPriceTypo(auctionPrice, rider);
+    if (typo.suspected) { setTypoWarning(typo); return; }
+    startAuction();
   }
 
   async function startAuction() {
@@ -256,7 +270,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
                   error={auctionPriceError}
                   onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
                   className="flex-1 font-mono" />
-                <Button onClick={startAuction} disabled={loading || auctionPriceError}
+                <Button onClick={handleAuctionSubmit} disabled={loading || auctionPriceError}
                   className={ddActive && flash ? "!bg-cz-danger !text-white hover:brightness-110" : ""}>
                   {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
                 </Button>
@@ -390,6 +404,19 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
           {msg && <p className={`text-sm mt-3 ${msgOk ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}
         </div>
       </div>
+      {/* #3184: tastefejl-værn — separat overlay oven på selve modalen ved
+          formodet ciffer-drop, søskende til (ikke indlejret i) hoved-panelet
+          så vi ikke dobbelt-lægger to bg-black/70-lag. */}
+      <StartPriceTypoGuardModal
+        show={!!typoWarning}
+        riderName={`${rider.firstname} ${rider.lastname}`}
+        price={auctionPrice}
+        marketValue={typoWarning?.suggestedValue ?? riderValue}
+        busy={loading}
+        onDismiss={() => setTypoWarning(null)}
+        onFix={() => { setAuctionPrice(typoWarning?.suggestedValue ?? riderValue); setTypoWarning(null); }}
+        onConfirm={() => { setTypoWarning(null); startAuction(); }}
+      />
     </div>
   );
 }
