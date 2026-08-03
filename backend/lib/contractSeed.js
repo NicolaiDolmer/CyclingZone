@@ -140,6 +140,32 @@ export function maxAllowedContractEndSeason(currentSeason) {
   return (Number(currentSeason) || 1) + CONTRACT.MAX_EXTENSION_SEASONS_AHEAD;
 }
 
+// #3186: loftet var usynligt indtil spilleren blev afvist (Sentry CYCLINGZONE-45,
+// 8 spillere/3 dage) — spillerne skal kunne se en tæller ("Extensions used: 2/3")
+// FØR de handler, ikke kun en forklaring EFTER et afvist forsøg. Udleder "brugte"
+// forlængelser af afstanden fra rytterens NUVÆRENDE contract_end_season til loftet
+// (samme forankring som maxAllowedContractEndSeason: currentSeason, ikke rytterens
+// egen end-sæson) — så tallet er stabilt uanset om afstanden stammer fra tidligere
+// /extend-contract-kald eller fra en kontrakt der blev signeret med flere sæsoner
+// på én gang. Ren funktion, delt af GET /extend-quote (begge grene: tilladt/afvist).
+export function contractExtensionCapInfo(contractEndSeason, currentSeason) {
+  const maxSeason = maxAllowedContractEndSeason(currentSeason);
+  const current = Number(currentSeason) || 1;
+  const end = Number(contractEndSeason);
+  const anchoredEnd = Number.isFinite(end) ? Math.max(end, current) : current;
+  const remainingExtensions = Math.max(0, maxSeason - anchoredEnd);
+  const usedExtensions = Math.max(
+    0,
+    Math.min(CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, CONTRACT.MAX_EXTENSION_SEASONS_AHEAD - remainingExtensions)
+  );
+  return {
+    maxSeason,
+    maxExtensions: CONTRACT.MAX_EXTENSION_SEASONS_AHEAD,
+    usedExtensions,
+    remainingExtensions,
+  };
+}
+
 const WRITE_CONCURRENCY = 25;
 
 // DB-wrapper: sæt kontrakt på alle ejede ryttere. Founders → 2 sæsoner; andre

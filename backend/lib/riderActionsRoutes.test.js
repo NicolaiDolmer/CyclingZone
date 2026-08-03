@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeReleaseBuyoutFee, computeContractExtension, maxAllowedContractEndSeason } from "./contractSeed.js";
+import { computeReleaseBuyoutFee, computeContractExtension, maxAllowedContractEndSeason, contractExtensionCapInfo } from "./contractSeed.js";
 
 // #1719 (fyrings-/opsigelsesknap med buyout-gebyr) + #1720 (kontraktforlængelse)
 // + #2179 (kontraktforlængelse direkte på akademi-ryttere, ingen op-/nedrykning).
@@ -133,6 +133,32 @@ test("contractExtensionCapError-helperen bruger den dedikerede fejlkode + 409", 
 test("extend-quote-routen håndhæver samme loft som POST-routen (preview må ikke love mere end serveren vil give)", () => {
   const block = routeBlock("get", "/riders/:id/extend-quote");
   assert.match(block, /contractExtensionCapError/, "GET /extend-quote skal tjekke samme loft som POST-routen");
+});
+
+// ── Invariant 3c: #3186 — tælleren er synlig FØR spilleren handler ──────────
+// (Sentry CYCLINGZONE-45: 8 spillere/3 dage fik loftet at vide først EFTER
+// afvisning). extend-quote skal levere extensionCap i BEGGE grene (tilladt/
+// afvist), så frontend kan vise "Extensions used: X/3" uden at hente igen.
+
+test("extend-quote-routen sender extensionCap med i svaret i begge grene (tilladt og afvist)", () => {
+  const block = routeBlock("get", "/riders/:id/extend-quote");
+  assert.match(block, /contractExtensionCapInfo/, "GET /extend-quote skal beregne tælleren via contractExtensionCapInfo");
+  assert.match(block, /extensionCap/, "GET /extend-quote skal sende extensionCap med i JSON-svaret");
+  // Begge grene (capError-branch og success-branch) skal referere extensionCap.
+  const capBranchIdx = block.indexOf("if (capError)");
+  const successJsonIdx = block.indexOf("res.json({", capBranchIdx);
+  assert.ok(capBranchIdx !== -1 && successJsonIdx !== -1, "begge grene skal findes i routen");
+  assert.match(block.slice(capBranchIdx, successJsonIdx), /extensionCap/, "den afviste gren (409) skal også indeholde extensionCap");
+});
+
+test("contractExtensionCapInfo udleder brugte/tilbageværende forlængelser fra currentSeason + MAX_EXTENSION_SEASONS_AHEAD (behaviour, spejler contractSeed.test.js)", () => {
+  // Samme statiske-adfærds-dobbelt-bevis-stil som capBehaviour ovenfor.
+  assert.deepEqual(contractExtensionCapInfo(null, 5), {
+    maxSeason: 8, maxExtensions: 3, usedExtensions: 0, remainingExtensions: 3,
+  });
+  assert.deepEqual(contractExtensionCapInfo(8, 5), {
+    maxSeason: 8, maxExtensions: 3, usedExtensions: 3, remainingExtensions: 0,
+  });
 });
 
 test("loft-tjekket sker FØR databaseskrivningen i POST /extend-contract (afvisning, ikke stille clamp)", () => {

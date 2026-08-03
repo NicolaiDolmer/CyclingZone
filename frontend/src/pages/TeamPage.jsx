@@ -74,18 +74,28 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   // errorParams.maxSeason fra den EKSISTERENDE extend-quote-route.
   const [extendCapped, setExtendCapped] = useState(false);
   const [extendCapSeason, setExtendCapSeason] = useState(null);
+  // #3186 (Sentry CYCLINGZONE-45): rytter-profilens ækvivalente knap havde et
+  // race-vindue — fanen startede ENABLED mens tjekket ovenfor stadig var i
+  // flight, så et hurtigt klik kunne stadig nå en dømt-til-afvisning request.
+  // extendCapChecking lukker samme vindue her: fanen er deaktiveret indtil vi
+  // KENDER svaret, ikke kun når loftet er bekræftet. extendCapInfo er tælleren
+  // ("Extensions used: X/3"), vist uanset om loftet er nået.
+  const [extendCapChecking, setExtendCapChecking] = useState(true);
+  const [extendCapInfo, setExtendCapInfo] = useState(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { ok, data } = await fetchRiderQuote(rider.id, "extend-quote");
         if (cancelled) return;
+        if (data?.extensionCap) setExtendCapInfo(data.extensionCap);
         if (ok) setExtendQuote(data);
         else if (data?.errorCode === "contract_extension_cap_reached") {
           setExtendCapped(true);
           setExtendCapSeason(data?.errorParams?.maxSeason ?? null);
         }
       } catch { /* stille — fane-skiftet forsøger igen og viser den rigtige fejl */ }
+      finally { if (!cancelled) setExtendCapChecking(false); }
     })();
     return () => { cancelled = true; };
   }, [rider.id]);
@@ -102,6 +112,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         // som rytter-profilens RiderManageActions, ingen dobbelt token-/fetch-kode.
         const { ok, data } = await fetchRiderQuote(rider.id, path);
         if (cancelled) return;
+        if (path === "extend-quote" && data?.extensionCap) setExtendCapInfo(data.extensionCap);
         if (ok) {
           setter(data);
         } else {
@@ -237,14 +248,15 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
         <div className="p-5">
           <div className="flex gap-2 mb-4 flex-wrap">
             {tabKeys.map(tab => {
-              // #3164: "Forlæng"-fanen deaktiveres FØR klik når rytteren står
-              // på kontrakt-loftet (#3143) — samme stille loft-tjek som
-              // rytter-profilen, se extendCapped ovenfor.
-              const disabled = tab === "extend" && extendCapped;
+              // #3164/#3186: "Forlæng"-fanen deaktiveres FØR klik når rytteren
+              // står på kontrakt-loftet (#3143) — ELLER mens vi endnu ikke ved
+              // det (extendCapChecking, lukker samme race-vindue som #3186
+              // fandt på rytter-profilen). Se extendCapped/extendCapChecking ovenfor.
+              const disabled = tab === "extend" && (extendCapped || extendCapChecking);
               return (
                 <button key={tab} type="button" onClick={() => !disabled && setActiveTab(tab)}
                   disabled={disabled}
-                  title={disabled ? t("actionModal.extend.capped", { season: extendCapSeason }) : undefined}
+                  title={extendCapped && tab === "extend" ? t("actionModal.extend.capped", { season: extendCapSeason }) : undefined}
                   className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border disabled:opacity-40 disabled:pointer-events-none
                     ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
                   {tabLabels[tab]}
@@ -310,6 +322,14 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
               ) : (
                 <>
                   <div className="space-y-1.5 mb-3 text-sm">
+                    {/* #3186: tælleren er synlig FØR bekræftelse, uanset om
+                        loftet er nået — samme begrundelse som rytter-profilen. */}
+                    {extendCapInfo && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-cz-3 text-xs">{t("actionModal.extend.capCounterLabel")}</span>
+                        <span className="text-cz-2 font-mono">{extendCapInfo.usedExtensions}/{extendCapInfo.maxExtensions}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-cz-3 text-xs">{t("actionModal.extend.currentSalaryLabel")}</span>
                       <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>

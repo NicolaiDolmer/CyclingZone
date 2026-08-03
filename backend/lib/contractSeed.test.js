@@ -10,6 +10,7 @@ import {
   computeReleaseBuyoutFee,
   computeContractExtension,
   maxAllowedContractEndSeason,
+  contractExtensionCapInfo,
   runContractSeed,
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -263,6 +264,57 @@ test("gentagne forlængelser kan aldrig flytte contract_end_season forbi current
 
   assert.ok(rider.contract_end_season <= maxEnd, `contract_end_season (${rider.contract_end_season}) overskred loftet (${maxEnd})`);
   assert.equal(rider.contract_end_season, maxEnd); // konvergerer til loftet, ikke forbi det
+});
+
+// ── contractExtensionCapInfo (#3186) ────────────────────────────────────────
+// Loftet var usynligt indtil afvisning (Sentry CYCLINGZONE-45). Denne helper
+// udleder en "X/3 brugt"-tæller UI'et kan vise FØR spilleren handler.
+
+test("contractExtensionCapInfo: kontraktløs/udløbet rytter (NULL end) → 0/3 brugt, 3 tilbage", () => {
+  const info = contractExtensionCapInfo(null, 5);
+  assert.equal(info.maxSeason, 8); // 5 + 3
+  assert.equal(info.maxExtensions, 3);
+  assert.equal(info.usedExtensions, 0);
+  assert.equal(info.remainingExtensions, 3);
+});
+
+test("contractExtensionCapInfo: tæller stiger 1 ad gangen i takt med gentagne forlængelser, konvergerer på 3/3", () => {
+  const currentSeason = 3;
+  let end = null;
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    seen.push(contractExtensionCapInfo(end, currentSeason).usedExtensions);
+    // simulér den næste forlængelse (samme anker-logik som computeContractExtension)
+    const anchor = Number.isFinite(Number(end)) ? Math.max(Number(end), currentSeason) : currentSeason;
+    end = anchor + 1;
+  }
+  assert.deepEqual(seen, [0, 1, 2]);
+  const final = contractExtensionCapInfo(end, currentSeason);
+  assert.equal(final.usedExtensions, 3);
+  assert.equal(final.remainingExtensions, 0);
+  assert.equal(end, maxAllowedContractEndSeason(currentSeason)); // 3 + 3 = 6
+});
+
+test("contractExtensionCapInfo: en frisk flerårig signing kan allerede stå på 2/3 uden et eneste extend-klik", () => {
+  // 3-sæsons kontrakt signeret i indeværende sæson: end = currentSeason + 2.
+  const currentSeason = 10;
+  const info = contractExtensionCapInfo(currentSeason + 2, currentSeason);
+  assert.equal(info.usedExtensions, 2); // maxSeason(13) - end(12) = 1 tilbage → 2 brugt
+  assert.equal(info.remainingExtensions, 1);
+});
+
+test("contractExtensionCapInfo: usedExtensions clampes til [0, maxExtensions] selv forbi loftet", () => {
+  // Data der (i teorien) allerede ligger forbi loftet må ikke give negativ remaining
+  // eller usedExtensions > max — grænserne holder uanset input.
+  const info = contractExtensionCapInfo(999, 1);
+  assert.equal(info.remainingExtensions, 0);
+  assert.equal(info.usedExtensions, 3);
+});
+
+test("contractExtensionCapInfo: NULL/manglende currentSeason → gulv på sæson 1 (samme mønster som maxAllowedContractEndSeason)", () => {
+  const info = contractExtensionCapInfo(null, null);
+  assert.equal(info.maxSeason, 4);
+  assert.equal(info.usedExtensions, 0);
 });
 
 // ── runContractSeed wrapper-tests ──────────────────────────────────────────────
