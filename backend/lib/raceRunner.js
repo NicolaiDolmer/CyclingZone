@@ -1335,6 +1335,20 @@ export async function simulateRace({
     updateStandings,
   });
 
+  // #3193: refresh rangliste-matviews (rider_rankings_mv, team_standings_ext_mv,
+  // team_race_points_mv, global_rank_mv) LIGE EFTER season_standings er opdateret
+  // — IKKE efter processBoardWeekend/notifyDiscord/notifyInApp nedenfor. Diagnose
+  // (execute_sql mod prod 3/8, se PR-beskrivelsen): season_standings.total_points
+  // er live (/standings læser den direkte), mens Global Rank læser global_rank_mv
+  // (periodisk snapshot). Refresh lå tidligere HELT SIDST i denne funktion, efter
+  // board-weekend-beregning + en ekstern Discord-webhook-kald + in-app-notifikation
+  // — alt sammen best-effort-arbejde der intet har med selve refresh'en at gøre,
+  // men som forlængede vinduet hvor /standings viste friske tal og Global Rank
+  // stadig viste løbets FØR-tilstand. Flyttet hertil skærer det vindue ned til
+  // selve REFRESH-statements' egen eksekveringstid. Best-effort (resultaterne ER
+  // allerede skrevet) — en refresh-fejl må ikke vælte afviklingen.
+  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+
   await persistRuns({ supabase, race, runs });
   // Sub-2 (#2770): passage-detalje — data-gated (ikke v3-gated), no-op'er selv
   // ved tom liste (legacy-løb uden rutedata). Scopet til DENNE afviklings etaper
@@ -1440,9 +1454,8 @@ export async function simulateRace({
     }
   }
 
-  // #2175: løbet er afviklet → refresh rangliste-matviews så /standings +
-  // /rider-rankings viser de nye tal. Best-effort (resultaterne er skrevet).
-  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+  // #3193: matview-refresh flyttet tidligere i funktionen (lige efter
+  // applyRaceResults/updateStandings, se kommentaren der) — ingen dublet-kald her.
 
   return {
     rowsImported: applied.rowsImported,
@@ -1953,6 +1966,17 @@ export async function simulateStageByIndex({
     await ensureSeasonStandings(race.season_id);
     await updateStandings(race.season_id, race.id);
 
+    // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
+    // matviews LIGE EFTER season_standings er opdateret, ikke efter board-
+    // weekend/notify-kæden nedenfor (se kommentaren ved den anden call-site for
+    // den fulde diagnose). Kun ved final-etapen: mellem-etaper rammer aldrig
+    // finalization-blokken nedenfor (early-return et par linjer nede), så uden
+    // dette isFinalStage-tjek ville hver mellem-etape trigge en unødig 4x-RPC-
+    // refresh — cron-fallback (10 min) dækker allerede mellem-etaper.
+    if (isFinalStage) {
+      await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+    }
+
     await persistRuns({ supabase, race, runs, source: runSource });
     // Sub-2 (#2770): samme scoping-mønster (denne etape alene) — data-gated,
     // no-op'er ved tom liste (legacy-løb uden rutedata).
@@ -2110,9 +2134,17 @@ export async function simulateStageByIndex({
   // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
   await flushDeferredTransfersSafe({ supabase, race });
 
-  // #2175: etapeløbet er finaliseret → refresh rangliste-matviews. Best-effort;
-  // cron-fallback holder ranglisten fersk under selve etapeløbet (mellem-etaper).
-  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+  // #3193: normal final-etape-afvikling refresher allerede tidligere i denne
+  // funktion (lige efter updateStandings, isFinalStage-gated) — et kald her
+  // ville blot gentage det samme (harmløst, men spildt RPC-arbejde). KUN
+  // recovery-grenen (finalizationPending=true) sprang det tidlige kald over,
+  // fordi hele `if (!finalizationPending)`-blokken (inkl. updateStandings)
+  // ikke køres igen på et allerede-skrevet resultat — recovery skal derfor
+  // stadig refreshe her, ellers forbliver global_rank_mv stale efter en
+  // crash-recovery-genoptagelse indtil næste 10-min cron-tick.
+  if (finalizationPending) {
+    await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+  }
 
   return {
     stageNumber, isFinalStage,

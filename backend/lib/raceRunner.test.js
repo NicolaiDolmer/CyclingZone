@@ -281,6 +281,7 @@ test("#1993 buildRaceResults sets team_name null when entrant lacks it", () => {
 // ── Mock-supabase ─────────────────────────────────────────────────────────────
 function makeSupabase(canned = {}) {
   const writes = [];
+  const rpcCalls = [];
   function from(table) {
     const b = {
       select() { return b; },
@@ -295,6 +296,8 @@ function makeSupabase(canned = {}) {
       range(from, to) { return Promise.resolve({ data: (canned[table] || []).slice(from, to + 1), error: null }); },
       maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
+      // #3193-test: matview_refresh_heartbeat-upsert (refreshRankingMatviewsSafe).
+      upsert(obj) { writes.push({ table, op: "upsert", obj }); return Promise.resolve({ error: null }); },
       update(obj) {
         const rec = { table, op: "update", obj, eqs: [] };
         writes.push(rec);
@@ -311,7 +314,13 @@ function makeSupabase(canned = {}) {
     };
     return b;
   }
-  return { from, __writes: writes };
+  // #3193-test: refreshRankingMatviewsSafe kalder supabase.rpc("refresh_*_mv") —
+  // tracket her så ordre kan verificeres mod DI-callbacks (notifyDiscord m.fl.).
+  function rpc(name, args) {
+    rpcCalls.push({ name, args });
+    return Promise.resolve({ error: null });
+  }
+  return { from, rpc, __writes: writes, __rpcCalls: rpcCalls };
 }
 
 // ── Flag ──────────────────────────────────────────────────────────────────────
@@ -845,6 +854,51 @@ test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", a
   assert.equal(boardCalls[0].season.id, STAGE_RACE.season_id);
   // #1451 · race-kontekst til event-loggen.
   assert.equal(boardCalls[0].race.id, STAGE_RACE.id);
+});
+
+// #3193: matview-refresh (global_rank_mv m.fl.) skal ske LIGE EFTER
+// season_standings er opdateret (applyRaceResults), IKKE efter board-weekend/
+// Discord/in-app-notifikationerne. Diagnose (execute_sql mod prod 3/8, se PR):
+// /standings læser season_standings LIVE, Global Rank læser global_rank_mv
+// (periodisk snapshot) — refresh'en lå tidligere efter en ekstern Discord-
+// webhook-latens, hvilket forlængede vinduet hvor de to sider viste
+// forskellige tal for samme hold. Denne test beviser rækkefølgen er rettet:
+// alle fire refresh-RPC'er er kaldt FØR notifyDiscord/notifyInApp fyrer.
+test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp (#3193)", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  const order = [];
+  const originalRpc = supabase.rpc;
+  supabase.rpc = (name, args) => { order.push(`rpc:${name}`); return originalRpc(name, args); };
+
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => { order.push("applyRaceResults"); return { rowsImported: resultRows.length }; },
+    recomputeRaceDays: async () => { order.push("recomputeRaceDays"); return 1; },
+    notifyDiscord: async () => { order.push("notifyDiscord"); },
+    notifyInApp: async () => { order.push("notifyInApp"); },
+  });
+
+  assert.deepEqual(
+    order,
+    [
+      "applyRaceResults",
+      "rpc:refresh_rider_rankings_mv",
+      "rpc:refresh_team_standings_ext_mv",
+      "rpc:refresh_team_race_points_mv",
+      "rpc:refresh_global_rank_mv",
+      "recomputeRaceDays",
+      "notifyDiscord",
+      "notifyInApp",
+    ],
+    "alle fire matview-refresh skal ske LIGE EFTER applyRaceResults, FØR board-weekend/notify (#3193 rod-årsagsfix)"
+  );
 });
 
 test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", async () => {
