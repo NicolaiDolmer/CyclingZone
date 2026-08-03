@@ -19,7 +19,20 @@
   },
   "tabs": {
     "squad": "Squad ({count})",
+    "stats": "Stats",
     "transfers": "Transfer history"
+  },
+  "stats": {
+    "seasonLabel": "Season {n}",
+    "noActiveSeason": "No active season right now.",
+    "loadError": "Could not load season stats. Please try again.",
+    "retry": "Try again",
+    "headers": {
+      "raceDays": "Race days",
+      "wins": "Wins",
+      "points": "Points",
+      "prize": "Prize money"
+    }
   },
   "squad": {
     "view": {
