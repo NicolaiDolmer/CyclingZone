@@ -4,11 +4,12 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer — dagens pakke, 3/8):**
-> 1. **Klik-pakken (~15 min):** #2892 genaktivér 25 Sentry-monitorer · #2076 UptimeRobot-konto · #419 Carl-bot-invite.
-> 2. **Penge-kæden (#2813-gates):** support-e-mail + moms-tjek i Alunta (`charge_vat`, 4900/26500 øre ekskl. moms!) + sig til når jeg må flippe `CHECKOUT_PAUSED`. En spiller spurgte 31/7 aktivt "Is the pro already active?" — kunden venter. Dernæst #3104 etape D (/pro-indgang) + **#2736 fornyelses-webhook før ~24/8**.
-> 3. **Beslutninger i én runde:** #3120 (dry-run-tal → dit ja) · #3037 make-good · mobil-bundbar A/B (#3102) · privatlivstekst #3132 (telemetri verificeret live 3/8: 581 events/178 brugere) · go til #2758 daglig Discord-automation (design klar på issuet) · #2853 e-mail-tekster.
-> 4. **Discord-svar (jeg drafter, du godkender ordret):** soren1207 (kontraktudløb) · #2889 (løn/sponsor) · smukkethomsen/thelamba (#2883 hul 4) · evt. friisisch (styrt-frustration, #2944).
+> **🎯 Next action (ejer — svar givet 3/8 formiddag):**
+> 1. **Klik-pakken:** ejer bad om at blive spurgt igen **i en session efter i dag** (#2892 · #2076 · #419).
+> 2. **Penge-kæden (#2813):** support-mail-gaten er nu MÅLT: **intet e-mail-domæne** (cyclingzone.org har 0 MX, ingen SPF; Resend-API-nøgle ugyldig). Anbefaling givet 3/8: (a) i dag = dedikeret Gmail som support-adresse i vilkårene, (b) denne uge = Resend-domæne (send+modtag) + DNS i Vercel. Moms-tjek i Alunta + flip-go udestår. **#2736 fornyelses-webhook før ~24/8.**
+> 3. **Leveres af Claude i separat session (ejer-valg 3/8):** privatlivstekst #3132 + de 3 e-mail-tekster #2853 → sendes til ejeren til godkendelse. · **#3120:** C=modregning er valgt; dry-run-tal leveres i #3119-sessionen → derefter ejerens endelige ja.
+> 4. **Discord-svar:** ejeren poster SELV — 3 verificerede svar-forslag leveret i chatten 3/8 (soren1207-kontraktudløb · #2889-pengestrøm (ark-udkastet) · friisisch-styrt). #2883 hul 4-udkastet ligger fra 31/7.
+> 5. **#2758-automation ER SAT OP 3/8 (ejer-ja):** lokal scheduled task `discord-daily-sweep`, dagligt 07:30 (kører når Claude Code-appen er åben; ellers ved næste app-start). Anbefalet: klik "Run now" én gang for at pre-approve tools. Script: `scripts/discord/sweep-daily.mjs` + `.sweep-state.json`.
 
 > **🔴 Ugesweep 3/8 (27/7-3/8, alle kanaler):** 14 nye issues **#3190-#3203** — heraf **7 ejer-direktiver fra #feedback-from-dolmer** (vækst-dashboard #3196 · resultat-defaults #3197 · økonomi-audit #3198 · forum+polls #3199 · spillerbeskeder #3200 · admin-notifikation #3201 · daglig Discord-automation → #2758). Vigtigste bugs: **#3194 mobil-trænings-regression** (sandsynligt PR #3075) · #3193 global rank-mismatch (koordinér m. #2792, nu prio:high). 9 evidens-kommentarer (#2887 #2944 #3115 #2792 #2758 #2813 #2557 #929 #3132) · 3 verificerede closes (#3052 #3130 #3180).
 
@@ -18,7 +19,7 @@
 
 > **📌 Åbne opfølgninger:** #3036 (countback) · #2164 (D3→D4) · #3049-#3051 · #2723 omdømme-synlighed (kandidat til prio-løft, +#3152) · #3172 (CI-flake, 3. gang = rod-årsag) · #3095-kompensation = dry-run i #3174 · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` (verificér/slet) · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** #3119 (+#3122) — stopper #3185-væksten · derefter #3194 (mobil-regression) · #3038 (23/8-blokeren).
+> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** #3119 (+#3122) — stopper #3185-væksten, inkl. #3120-dry-run-tal · derefter #3194 (mobil-regression) · #3038 (23/8-blokeren). **Session efter i dag:** spørg ejeren om klik-pakken (#2892/#2076/#419) + levér #3132-privatlivstekst og #2853-tekster.
 
 ## Standing context (forever-relaunch)
 
