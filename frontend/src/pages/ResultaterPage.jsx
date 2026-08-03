@@ -8,13 +8,16 @@ import RaceArchiveTable from "../components/race/RaceArchiveTable.jsx";
 import CompletedRacesExplorer from "../components/race/CompletedRacesExplorer.jsx";
 import WorldCatalog from "../components/race/WorldCatalog.jsx";
 import { Flag } from "../components/Flag";
-import { formatNumber } from "../lib/intl";
-import { racesForPool } from "../lib/racesByPool";
+import { formatNumber, formatDate } from "../lib/intl";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
+import { filterByDivisionPool, ALL_DIVISIONS_VALUE, ALL_POOLS_VALUE } from "../lib/resultsFilter";
+import { latestScheduledMsByRace } from "../lib/raceCompletionDate";
+import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import {
   Card,
   Button,
+  Select,
   Tabs,
   TabList,
   Tab,
@@ -36,6 +39,14 @@ import {
 const REALTIME_TABLES = ["season_standings", "race_results"];
 
 const VALID_TABS = ["latest", "archive", "points"];
+
+// #3197 — division-vælgerens faste tier-liste (1..4), samme kilde som
+// StandingsPage's ALL_DIVISIONS, så begge flader viser identiske tiers uanset
+// om league_divisions (endnu) har rækker for alle af dem.
+const ALL_DIVISIONS = Array.from(
+  { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
+  (_, i) => RULES_NUMBERS.minDivision + i,
+);
 
 // #3102 etape 2 — hvor mange afsluttede løb "Seneste" viser. 9 = tre fulde
 // rækker i xl-gridet. Dashboardet svarer allerede på "hvordan gik MIT løb" på
@@ -77,10 +88,22 @@ export default function ResultaterPage() {
   const [season, setSeason] = useState(null);
   const [latestRaces, setLatestRaces] = useState([]);
   const [latestResults, setLatestResults] = useState([]);
+  const [raceScheduleMs, setRaceScheduleMs] = useState(() => new Map());
   const [topTeams, setTopTeams] = useState([]);
   const [topRiders, setTopRiders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // #3197 — sæson/division/pulje-vælgernes afledte kontekst (ejerens egen sæson +
+  // division + pulje, fundet ved load). Bruges både til at BYGGE queryen og til
+  // at vise vælgernes nuværende værdi — se loadAllInner.
+  const [availableSeasons, setAvailableSeasons] = useState([]);
+  const [divisions, setDivisions] = useState([]);
+  const [activeSeasonNumber, setActiveSeasonNumber] = useState(null);
+  const [ownTier, setOwnTier] = useState(null);
+  const [ownPoolId, setOwnPoolId] = useState(null);
+  const [selectedTier, setSelectedTier] = useState(null);
+  const [selectedPoolId, setSelectedPoolId] = useState(ALL_POOLS_VALUE);
 
   // URL'en ER fane-tilstanden — ikke en kopi i state der seedes ved mount.
   // Med en useState-kopi skifter fanen ikke når location'en ændrer sig uden en
@@ -88,6 +111,21 @@ export default function ResultaterPage() {
   // flytte URL'en men efterlade indholdet på den gamle fane.
   const tabParam = searchParams.get("tab");
   const tab = VALID_TABS.includes(tabParam) ? tabParam : "latest";
+
+  // #3197 — sæson/division/pulje er, ligesom tab, URL-drevet (delelig/bogmærkbar
+  // visning). Fraværende param = "brug default" (nuværende sæson / egen division+
+  // pulje) — netop derfor er default-kaldet aldrig synligt i URL'en, kun afvigelser.
+  // division: fraværende → undefined (brug egen tier); "all" → null (alle
+  // divisioner); ellers → tier-tal. pool: fraværende → undefined (brug egen
+  // pulje); ellers → rå værdi ("all" eller et pulje-id).
+  const seasonParamRaw = searchParams.get("season");
+  const seasonParam = seasonParamRaw != null && seasonParamRaw !== "" ? Number(seasonParamRaw) : null;
+  const divisionParamRaw = searchParams.get("division");
+  const divisionParam = divisionParamRaw == null
+    ? undefined
+    : divisionParamRaw === ALL_DIVISIONS_VALUE ? null : Number(divisionParamRaw);
+  const poolParamRaw = searchParams.get("pool");
+  const poolParam = poolParamRaw == null ? undefined : poolParamRaw;
 
   // Tab → URL sync (deep-linkbar: /resultater?tab=archive). "latest" er default
   // og skriver ingen param. Opdateringen sker på en KOPI af params — instansen
@@ -98,6 +136,45 @@ export default function ResultaterPage() {
       const params = new URLSearchParams(prev);
       if (next === "latest") params.delete("tab");
       else params.set("tab", next);
+      return params;
+    }, { replace: true });
+  }
+
+  // Sæson-vælger: udelader param når valget matcher den aktive sæson (default).
+  function changeSeason(numberStr) {
+    const n = Number(numberStr);
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (n === activeSeasonNumber) params.delete("season");
+      else params.set("season", String(n));
+      return params;
+    }, { replace: true });
+  }
+
+  // Division-vælger: udelader param når valget matcher egen division (default).
+  // Skifter division nulstiller ALTID pulje-valget (samme mønster som
+  // StandingsPage's divTab→poolTab-reset) — den nye tiers default (egen pulje
+  // hvis det er egen division, ellers "alle puljer") beregnes i loadAllInner.
+  function changeDivision(value) {
+    const isAll = value === ALL_DIVISIONS_VALUE;
+    const tierNum = isAll ? null : Number(value);
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (tierNum === ownTier) params.delete("division");
+      else params.set("division", isAll ? ALL_DIVISIONS_VALUE : String(tierNum));
+      params.delete("pool");
+      return params;
+    }, { replace: true });
+  }
+
+  // Pulje-vælger: udelader param når valget matcher den valgte tiers default
+  // (egen pulje hvis tieren er egen division, ellers "alle puljer").
+  function changePool(value) {
+    const defaultForTier = selectedTier === ownTier ? ownPoolId : ALL_POOLS_VALUE;
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (String(value) === String(defaultForTier)) params.delete("pool");
+      else params.set("pool", value);
       return params;
     }, { replace: true });
   }
@@ -117,11 +194,58 @@ export default function ResultaterPage() {
   }
 
   async function loadAllInner() {
-    const { data: seasonData } = await supabase
-      .from("seasons").select("*").eq("status", "active").single();
-    setSeason(seasonData);
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!seasonData) { return; }
+    // #3197 — sæson-listen, division/pulje-referencedata og holdets egen pulje er
+    // alle uafhængige af hinanden (og af hvilken sæson der ender med at blive
+    // valgt) — hentes parallelt i stedet for sekventielt.
+    const [seasonsRes, divisionsRes, myTeamRes] = await Promise.all([
+      // #2763: sæson 0 (bogførings-sæson, 0 løb) er ikke en rigtig spillesæson.
+      supabase.from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: false }),
+      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+      // #1715: spillerens egen pulje — hubbens default-kontekst (#2182-princippet:
+      // default er spillerens egen verden), ikke en fast forvalgt sæson-visning.
+      user
+        ? supabase.from("teams").select("league_division_id").eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    if (seasonsRes.error) throw seasonsRes.error;
+    if (divisionsRes.error) throw divisionsRes.error;
+
+    const seasons = seasonsRes.data || [];
+    setAvailableSeasons(seasons);
+    const divisionRows = divisionsRes.data || [];
+    setDivisions(divisionRows);
+    const divisionsById = new Map(divisionRows.map(d => [d.id, d]));
+
+    const resolvedOwnPoolId = myTeamRes.data?.league_division_id ?? null;
+    const resolvedOwnTier = resolvedOwnPoolId != null ? (divisionsById.get(resolvedOwnPoolId)?.tier ?? null) : null;
+    setOwnPoolId(resolvedOwnPoolId);
+    setOwnTier(resolvedOwnTier);
+
+    const activeSeasonRow = seasons.find(s => s.status === "active") || null;
+    setActiveSeasonNumber(activeSeasonRow?.number ?? null);
+    const fallbackSeasonRow = activeSeasonRow || seasons[0] || null;
+
+    // season: ?season=N vinder, ellers den aktive sæson, ellers den nyeste
+    // oprettede (fx før S1 er sat aktiv). division: fraværende param → egen
+    // tier; "all" → ingen tier-filter. pool: fraværende param → egen pulje HVIS
+    // den valgte tier er egen division, ellers "alle puljer" (samme reset-regel
+    // som når man skifter division via vælgeren).
+    const resolvedSeasonNumber = Number.isFinite(seasonParam) ? seasonParam : (fallbackSeasonRow?.number ?? null);
+    const seasonRow = seasons.find(s => s.number === resolvedSeasonNumber) || fallbackSeasonRow;
+    setSeason(seasonRow);
+
+    const resolvedTier = divisionParam === undefined ? resolvedOwnTier : divisionParam;
+    setSelectedTier(resolvedTier);
+    const resolvedPoolId = poolParam !== undefined
+      ? poolParam
+      : (resolvedTier === resolvedOwnTier ? (resolvedOwnPoolId ?? ALL_POOLS_VALUE) : ALL_POOLS_VALUE);
+    setSelectedPoolId(resolvedPoolId);
+
+    if (!seasonRow) { return; }
+
+    const selection = { tier: resolvedTier, poolId: resolvedPoolId };
 
     // #2444 · topRiders hentede tidligere ALLE sæsonens races + ALLE deres
     // race_results (paginated fetchAllRows — kunne være titusindvis af rækker)
@@ -129,58 +253,77 @@ export default function ResultaterPage() {
     // (samme matview som RiderRankingsPage/#2175 bruger) har allerede disse tal
     // færdig-aggregeret server-side — én let query mod top-5 + en lille display-
     // join for de 5 rytter-id'er, ingen paginering nødvendig.
-    const { data: { user } } = await supabase.auth.getUser();
-    const [standingsRes, topRiderStatsRes, myTeamRes, finishedRacesRes] = await Promise.all([
+    //
+    // #3197: Topscorere forbliver SÆSON-BREDT (uændret fra før vælgerne) — at
+    // gøre den korrekt pulje-scoped kræver at hente/paginere HELE sæsonens
+    // rider_rankings_mv (samme omfang som RiderRankingsPage), for at undgå at
+    // "top 5 overall" limiteres FØR pulje-filtreringen kan fjerne nogle af dem.
+    // Tophold er billigere at rette rigtigt (season_standings er lille) og er
+    // derfor pulje-scoped nedenfor.
+    const [standingsRes, topRiderStatsRes, finishedRacesRes] = await Promise.all([
       supabase
         .from("season_standings")
-        .select("total_points, stage_wins, gc_wins, team:team_id(id, name, is_ai, division)")
-        .eq("season_id", seasonData.id)
+        .select("total_points, stage_wins, gc_wins, team:team_id(id, name, is_ai, division, league_division_id)")
+        .eq("season_id", seasonRow.id)
         .order("total_points", { ascending: false })
-        .limit(5),
+        .limit(1000),
       supabase
         .from("rider_rankings_mv")
         .select("rider_id, points, stage_wins, gc_wins")
-        .eq("season_id", seasonData.id)
+        .eq("season_id", seasonRow.id)
         .order("points", { ascending: false })
         .limit(5),
-      // #1715: spillerens egen pulje — hubben viser puljens løb, ikke alle syv
-      // puljers (samme diskriminator som kalenderen bruger).
-      user
-        ? supabase.from("teams").select("league_division_id").eq("user_id", user.id).maybeSingle()
-        : Promise.resolve({ data: null }),
       supabase
         .from("races")
         .select("id, name, race_type, race_class, stages, status, league_division_id, pool_race:pool_race_id(date_text)")
-        .eq("season_id", seasonData.id)
+        .eq("season_id", seasonRow.id)
         .eq("status", "completed"),
     ]);
+    if (standingsRes.error) throw standingsRes.error;
+    if (finishedRacesRes.error) throw finishedRacesRes.error;
 
-    setTopTeams((standingsRes.data || []).filter(s => !s.team?.is_ai).slice(0, 3));
+    const matchingTeams = filterByDivisionPool(standingsRes.data || [], s => s.team?.league_division_id, selection, divisionsById);
+    setTopTeams(matchingTeams.filter(s => !s.team?.is_ai).slice(0, 3));
 
-    // #3102 etape 2: de faktiske resultater. racesForPool + sortRacesByDateDesc
-    // er de samme rene funktioner kalenderen bruger, så "seneste" betyder det
-    // samme begge steder.
-    const myPoolId = myTeamRes.data?.league_division_id ?? null;
-    const finished = sortRacesByDateDesc(racesForPool(finishedRacesRes.data || [], myPoolId))
-      .slice(0, LATEST_LIMIT);
+    // #3102 etape 2 / #3197: de faktiske resultater, nu filtreret til den valgte
+    // sæson+division+pulje (default = egen kontekst) i stedet for altid egen
+    // pulje i den aktive sæson. sortRacesByDateDesc er den samme rene funktion
+    // kalenderen bruger, så "seneste" betyder det samme begge steder.
+    const matchingFinishedRaces = filterByDivisionPool(finishedRacesRes.data || [], r => r.league_division_id, selection, divisionsById);
+    const finished = sortRacesByDateDesc(matchingFinishedRaces).slice(0, LATEST_LIMIT);
     setLatestRaces(finished);
 
     if (finished.length) {
       // Kun podiet (rank ≤ 3) hentes, og kun de to klassementer et podie kan
       // komme fra. Uden .lte("rank", 3) ville et etapeløb trække hele feltet
       // for hver etape hjem for at vise tre navne.
-      const { data: resultRows, error: resultsError } = await supabase
-        .from("race_results")
-        .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
-        .in("race_id", finished.map(r => r.id))
-        .in("result_type", ["gc", "stage"])
-        .lte("rank", 3);
+      const [resultsRes, scheduleRes] = await Promise.all([
+        supabase
+          .from("race_results")
+          .select("race_id, result_type, rank, stage_number, rider_id, rider_name, team_name, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .in("race_id", finished.map(r => r.id))
+          .in("result_type", ["gc", "stage"])
+          .lte("rank", 3),
+        // #3197: kortenes dato-meta var race_pool.date_text (rå import-dato uden
+        // årstal, ingen forbindelse til spillets faktiske kalender — se
+        // lib/raceCompletionDate.js). Den rigtige afviklingsdato er seneste
+        // etapes scheduled_at.
+        supabase
+          .from("race_stage_schedule")
+          .select("race_id, scheduled_at")
+          .in("race_id", finished.map(r => r.id)),
+      ]);
       // Kast, ikke tavst `|| []`: en fejlet podie-hentning skal give ErrorState
       // med retry, ikke ni løbskort der ser resultatløse ud.
-      if (resultsError) throw resultsError;
-      setLatestResults(resultRows || []);
+      if (resultsRes.error) throw resultsRes.error;
+      setLatestResults(resultsRes.data || []);
+      // Etape-tider er ren visnings-bonus (datoen på kortet) — en fejl her må
+      // ALDRIG vælte podie-visningen (samme degradér-ærligt-mønster som
+      // RaceDetailPage's passagesPromise/#2770): degraderer til ingen dato.
+      setRaceScheduleMs(scheduleRes.error ? new Map() : latestScheduledMsByRace(scheduleRes.data));
     } else {
       setLatestResults([]);
+      setRaceScheduleMs(new Map());
     }
 
     const topStats = topRiderStatsRes.data || [];
@@ -206,10 +349,16 @@ export default function ResultaterPage() {
           })
           .filter(Boolean)
       );
+    } else {
+      setTopRiders([]);
     }
   }
 
-  useEffect(() => { loadAll(); }, []);
+  // #3197: sæson/division/pulje er nu del af forespørgslen (ikke kun tab) — et
+  // ændret filter skal genindlæse data. tab udelades bevidst: Arkiv/Point ejer
+  // deres egen data-hentning (RaceArchiveTable/RacePointsPage), et fane-skift
+  // alene skal ikke re-fetche denne sides "Seneste"-forespørgsel.
+  useEffect(() => { loadAll(); }, [seasonParam, divisionParam, poolParam]);
   useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (
@@ -230,6 +379,13 @@ export default function ResultaterPage() {
     </div>
   );
 
+  // #3197 — puljer i den valgte tier (til pulje-vælgeren). Kun vist når tieren
+  // reelt har mere end én pulje (samme `hasPoolSubtabs`-regel som StandingsPage).
+  const tierPools = divisions
+    .filter(d => d.tier === selectedTier)
+    .sort((a, b) => a.pool_index - b.pool_index);
+  const hasPoolSubtabs = selectedTier != null && tierPools.length > 1;
+
   return (
     // T2 wide data (PAGE_TEMPLATES.md): to af de tre faner er tabeller (arkivets
     // fem kolonner + point-tabellerne pr. løbsklasse), og skabelonen nævner
@@ -238,7 +394,11 @@ export default function ResultaterPage() {
     <div className="max-w-[1600px] mx-auto">
       <PageHeader
         title={t("title")}
-        subtitle={season ? t("subtitle.active", { number: season.number }) : t("subtitle.noSeason")}
+        subtitle={
+          season
+            ? (season.status === "active" ? t("subtitle.active", { number: season.number }) : t("subtitle.viewing", { number: season.number }))
+            : t("subtitle.noSeason")
+        }
       />
 
       <Tabs value={tab} onChange={changeTab} className="mb-5">
@@ -262,7 +422,57 @@ export default function ResultaterPage() {
             />
           ) : (
             <>
-              {/* Seneste løb i egen pulje — hubbens hovedindhold. */}
+              {/* #3197 — sæson/division/pulje-vælgere (T2 filterbar-slot, PAGE_TEMPLATES.md:
+                  op til 3 Selects). Default = nuværende sæson + spillerens egen
+                  division+pulje (#2182-princippet); vælgerne er URL-synkroniserede
+                  (samme mønster som ?tab= ovenfor), så en filtreret visning kan deles/
+                  bogmærkes. Bevidst ÉN tynd kontrol-række uden Card-ramme — resultat-
+                  kortene nedenunder skal forblive fladens dominerende indhold. */}
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <Select
+                  size="sm"
+                  aria-label={t("filters.seasonLabel")}
+                  value={season?.number ?? ""}
+                  onChange={(e) => changeSeason(e.target.value)}
+                  className="w-32"
+                >
+                  {availableSeasons.map(s => (
+                    <option key={s.id} value={s.number}>
+                      {s.status === "active"
+                        ? t("filters.seasonOptionActive", { number: s.number })
+                        : t("filters.seasonOption", { number: s.number })}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  size="sm"
+                  aria-label={t("filters.divisionLabel")}
+                  value={selectedTier ?? ALL_DIVISIONS_VALUE}
+                  onChange={(e) => changeDivision(e.target.value)}
+                  className="w-40"
+                >
+                  <option value={ALL_DIVISIONS_VALUE}>{t("filters.allDivisions")}</option>
+                  {ALL_DIVISIONS.map(d => (
+                    <option key={d} value={d}>{t("filters.division", { n: d })}</option>
+                  ))}
+                </Select>
+                {hasPoolSubtabs && (
+                  <Select
+                    size="sm"
+                    aria-label={t("filters.poolLabel")}
+                    value={selectedPoolId}
+                    onChange={(e) => changePool(e.target.value)}
+                    className="w-40"
+                  >
+                    <option value={ALL_POOLS_VALUE}>{t("filters.allPools")}</option>
+                    {tierPools.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </Select>
+                )}
+              </div>
+
+              {/* Seneste løb i valgt sæson/division/pulje — hubbens hovedindhold. */}
               {latestRaces.length === 0 ? (
                 <EmptyState
                   icon={<FlagIcon size={32} aria-hidden="true" />}
@@ -272,7 +482,13 @@ export default function ResultaterPage() {
               ) : (
                 <div className="grid gap-[14px] md:grid-cols-2 xl:grid-cols-3">
                   {latestRaces.map(race => (
-                    <RaceResultCard key={race.id} race={race} podium={podiumFor(race, latestResults)} t={t} />
+                    <RaceResultCard
+                      key={race.id}
+                      race={race}
+                      podium={podiumFor(race, latestResults)}
+                      playedAtMs={raceScheduleMs.get(race.id)}
+                      t={t}
+                    />
                   ))}
                 </div>
               )}
@@ -405,8 +621,17 @@ export default function ResultaterPage() {
 // Ét afsluttet løb: navn + dato/klasse som meta, podiet, og vejen videre til
 // hele resultatet (RaceDetailPage). Kortet er ikke helrække-klikbart — podiets
 // rytternavne er selv links, og et link i et link er ikke tilgængeligt.
-function RaceResultCard({ race, podium, t }) {
-  const dateText = race.pool_race?.date_text;
+function RaceResultCard({ race, podium, playedAtMs, t }) {
+  // #3197 — race_pool.date_text (den tidligere meta-dato) er en rå "dd/mm"-dato
+  // importeret fra et real-world løbskalender-regneark til navngivning/sortering
+  // (racePoolImport.js) — den har intet årstal og ingen forbindelse til hvornår
+  // løbet faktisk blev afviklet i spillet. Ejeren flaggede den som uforklarlig
+  // (Discord #feedback-from-dolmer 31/7: "Disse datoer giver ingen mening").
+  // playedAtMs er i stedet løbets faktiske afviklingstidspunkt (seneste etapes
+  // scheduled_at, se lib/raceCompletionDate.js), vist som dansk kalenderdato.
+  const playedText = playedAtMs
+    ? formatDate(new Date(playedAtMs), "medium", { timeZone: "Europe/Copenhagen" })
+    : null;
   const typeText = race.race_type === "stage_race"
     ? t("races:raceType.stageRaceParen", { count: race.stages })
     : t("races:raceType.oneDayShort");
@@ -419,7 +644,7 @@ function RaceResultCard({ race, podium, t }) {
             {race.name}
           </Link>
         }
-        meta={[dateText, typeText].filter(Boolean).join(" · ")}
+        meta={[playedText, typeText].filter(Boolean).join(" · ")}
       />
 
       {podium.length === 0 ? (

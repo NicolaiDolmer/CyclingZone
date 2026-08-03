@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router";
 import { supabase } from "../lib/supabase";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -10,6 +9,11 @@ import PageLoader from "../components/ui/PageLoader";
 import EmptyState from "../components/ui/EmptyState";
 import ErrorState from "../components/ui/ErrorState";
 import { DownloadIcon, InfoIcon, CheckIcon } from "../components/ui/icons";
+
+// #3196: udtrukket fra en tidligere standalone /admin/waitlist-side til en ren
+// indholds-komponent, genbrugt som "Waitlist"-fanen i det samlede vækst-
+// dashboard (AdminGrowthPage.jsx). Admin-gating + sideheader ejes nu af
+// forælderen; ingen andre importerer denne komponent.
 
 const INTEREST_LABELS = {
   very: "Meget interesseret",
@@ -135,8 +139,7 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-export default function AdminWaitlistPage() {
-  const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
+export function WaitlistContent() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -147,16 +150,6 @@ export default function AdminWaitlistPage() {
   const [filterScore, setFilterScore] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sort, setSort] = useState({ key: "intent_score", dir: "desc" });
-
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setAdminStatus("not_admin"); return; }
-      const { data: userData } = await supabase
-        .from("users").select("role").eq("id", session.user.id).single();
-      setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
-    })();
-  }, []);
 
   async function loadRows() {
     setLoading(true);
@@ -170,9 +163,7 @@ export default function AdminWaitlistPage() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    if (adminStatus === "admin") loadRows();
-  }, [adminStatus]);
+  useEffect(() => { loadRows(); }, []);
 
   const sourceOptions = useMemo(() => {
     const unique = new Set(rows.map(r => r.source).filter(Boolean));
@@ -243,21 +234,10 @@ export default function AdminWaitlistPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (adminStatus === "checking") {
-    return <PageLoader label="Tjekker adgang" minHeight="40vh" />;
-  }
-  if (adminStatus === "not_admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
-          <h1 className="text-cz-1 text-xl font-bold mt-1">Founder waitlist</h1>
-          <p className="text-cz-3 text-sm">Intent-scoring + lead-prioritering. Refs sprint-validation #363.</p>
-        </div>
+        <p className="text-cz-3 text-sm">Intent-scoring + lead-prioritering. Refs sprint-validation #363.</p>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={loadRows} loading={loading}>
             Genindlæs
