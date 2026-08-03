@@ -4,9 +4,12 @@ import { useConsent } from "./consent.jsx";
 import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { getAnonymousId } from "./anonymousId.js";
+import { CLARITY_CONSENT_V2_PAYLOAD } from "./clarityConsent.js";
 
-const PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID;
-const ENABLED = import.meta.env.PROD && Boolean(PROJECT_ID);
+// import.meta.env optional-chained så modulet kan importeres i node --test,
+// jf. konventionen i trafficBeacon.js.
+const PROJECT_ID = import.meta.env?.VITE_CLARITY_PROJECT_ID;
+const ENABLED = Boolean(import.meta.env?.PROD) && Boolean(PROJECT_ID);
 
 // #479: Clarity SDK dynamic-importeres så ~10 KB ikke ender i main bundle.
 // Cached i modul-scope efter første load; subsequent re-renders bruger samme ref.
@@ -26,6 +29,9 @@ async function startClarity() {
     const Clarity = await loadClarity();
     if (clarityStarted) return; // re-entry guard
     Clarity.init(PROJECT_ID);
+    // Must fire immediately after init, before any identify/pageview signal
+    // can be recorded, so Clarity never processes a page as "unconsented".
+    Clarity.consentV2(CLARITY_CONSENT_V2_PAYLOAD);
     clarityStarted = true;
   } catch (err) {
     console.error("clarity init failed:", err);
