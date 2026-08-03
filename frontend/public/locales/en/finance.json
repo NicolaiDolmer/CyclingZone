@@ -266,6 +266,8 @@
       "admin_balance_adjustment": "Admin adjustment",
       "admin_force_prize": "Admin prize award",
       "admin_beta_reset": "Beta reset",
+      "facility_purchase": "Facility purchases",
+      "scout_travel": "Scout travel",
       "unknown": "Other"
     }
   }
