@@ -148,6 +148,10 @@
         "title": "Redigér mange priser på én gang",
         "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."
       },
+      "valueDeviation": {
+        "title": "Vurderingen ved siden af udbudsprisen",
+        "text": "Transferlisten viser rytterens estimerede markedsværdi ved siden af udbudsprisen, og procenten fortæller hvor langt udbudsprisen ligger under eller over den (samme estimat som på Auktioner). Du kan filtrere markedet på denne procent under 'Værdi-afvigelse % (min-max)' i filterpanelet, fx for at finde ryttere prissat godt under deres estimerede værdi."
+      },
       "sendOffer": {
         "title": "Send et tilbud",
         "steps": [
@@ -1147,6 +1151,18 @@
     "staffReleaseFaq": {
       "q": "Hvordan opsiger jeg staff, og hvad koster det?",
       "a": "Åbn staffens profil (eller deres række på personale-oversigten) og brug Opsig staff. Ansættelsen slutter med det samme, og pladsen åbner for ny-hyring med det samme, men det koster et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter, så der er ingen overraskelser. Du kan kun opsige staff på dit eget hold."
+    },
+    "saveLegsCarryoverFaq": {
+      "q": "Hjælper 'Spar kræfter' rytteren senere, eller flytter det bare kræfter rundt i samme løb?",
+      "a": "Det er ægte, og det følger med videre: Spar kræfter sænker etapens trætheds-tilvækst til 70% af Normal (Arbejd lægger i stedet 20% oveni), og fordi træthed er en vedvarende værdi der kun nulstilles ved sæsonskifte, efterlader en etape kørt på Spar kræfter målbart mindre træthed til rytterens næste etape, og hans næste løb. Arbejder han for holdet (hjælper eller udbrudsjæger), halverer Spar kræfter også den pladsstraf han betaler for det arbejde, uden at det svækker den støtte kaptajnen får fra ham. Så ja, det giver mening at sætte Spar kræfter på en etape hvor der reelt ikke er noget tilbage at vinde for den rytter, fx en sidste etape uden trøje eller point i spil: det kan kun forbedre hans eget resultat og gør ham friskere bagefter."
+    },
+    "seasonFormCarryoverFaq": {
+      "q": "Beholdt rytterne deres sæson 1-form, da sæson 2 startede?",
+      "a": "Ja. Ved sæsonskiftet nulstilles alle rytteres Træthed til 0, men Form røres slet ikke af sæsonskiftet, så den form en rytter havde ved forrige sæsons afslutning følger uændret med ind i den nye. Form bevæger sig derefter dag for dag som den plejer: den stiger når en rytter træner eller kører løb i 25-60-trætheds-\"sweet spot\"'en, og falder hvis han presses ud i overbelastning, så en overført værdi vil drifte i dagene efter i stedet for at stå fast."
+    },
+    "sprintCaptainRoleFaq": {
+      "q": "Jeg har to sprintere: én er kaptajn, én er sprint-kaptajn. Hvem arbejder holdet reelt for?",
+      "a": "Det afgøres pr. etape af terrænet, ikke af hvem du helst vil beskytte den dag: på flade etaper går hjælpernes støtte til sprint-kaptajnen (eller til kaptajnen, hvis du ikke har sat en sprint-kaptajn til det løb), og på alle andre etapetyper (kuperet, bakket, bjerge, højbjerge, enkeltstart, brosten, klassiker) går den kun til kaptajnen, uden nogen støtte til sprint-kaptajnen overhovedet. Kort sagt: kaptajnen er din beskyttede rytter overalt undtagen på flade etaper; sprint-kaptajnen er specifikt beskyttet på flade spurt-etaper. Sæt begge, hvis du vil køre et reelt to-sporet sprint-og-GC-hold: de konkurrerer aldrig om de samme hjælpere på samme etape."
     }
   }
 }
