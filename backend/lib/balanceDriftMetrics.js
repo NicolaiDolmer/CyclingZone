@@ -22,6 +22,57 @@
 
 import { aggregateObservations, aggregateIncidentObservations, winRateStats } from "./raceDominanceMetrics.js";
 
+// ── #2731: robuste estimatorer (DEFAULT OFF — flip kræver ejer-go) ───────────
+//
+// Auditen 2026-08-03 (docs/audits/2026-08-03-race-balance-2731.md) viste at de
+// tre "røde" metrikker ikke måler motor-dominans, men SAMPLING-STØJ:
+//
+//   maxRiderWinRate = max(wins/starts) over 2.100-4.100 ryttere med ≥5 starter.
+//   Et maksimum over tusindvis af brøker med nævner 5-7 ER højt uanset motor.
+//   Out-of-sample-test mod prod: ryttere der målte ≥0,45 i ét 14-dages vindue
+//   leverede 0,065 i det NÆSTE — nøjagtig samme niveau som ryttere der målte
+//   0,25-0,45. Metrikken har ~nul persistens ⇒ den måler ikke dominans.
+//
+//   favoriteWinRate/favoritePodiumRate/share4PlusSameTeamTop10 klassificeres på
+//   ÉN kalenderdags 31-51 etaper. SE ved p=0,6 og n=41 er 0,077 — båndet
+//   0,55-0,75 brydes rutinemæssigt af ren støj. Poolet over 824 etaper
+//   (16/7-2/8) er favoriteWinRate 0,269 og favoritePodiumRate 0,579 — BEGGE
+//   grønne. Bånd-bruddene findes kun i dags-linsen.
+//
+// De kanoniske BÅND ændres IKKE her — kun ESTIMATOREN der måles mod dem:
+//   1. maxRiderWinRate → Wilson 95 % NEDRE grænse ("kan vi bevise at nogen
+//      vinder over 45 %?"). Mod prod 16/7-2/8 giver den 0,191-0,409 (aldrig
+//      rød), mens en ægte dominator (12 sejre af 17 starter) giver 0,469 → rød.
+//   2. De tre dags-rater → poolet over POOL_WINDOW_DAYS persisterede dage
+//      (n≈290-343 etaper i stedet for 31-51).
+//
+// Flag OFF ⇒ bit-identisk med den nuværende vagt.
+function envFlag(name, fallback) {
+  const raw = process.env?.[name];
+  if (raw == null || raw === "") return fallback;
+  const v = String(raw).trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+function envNum(name, fallback) {
+  const raw = process.env?.[name];
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export const BALANCE_DRIFT_TUNING = Object.freeze({
+  ROBUST_ESTIMATORS: envFlag("BALANCE_DRIFT_ROBUST_ESTIMATORS", false),
+  WILSON_Z: envNum("BALANCE_DRIFT_WILSON_Z", 1.96),
+  POOL_WINDOW_DAYS: envNum("BALANCE_DRIFT_POOL_WINDOW_DAYS", 7),
+});
+
+// Metrikker der klassificeres på et POOLET vindue når robust-mode er ON.
+export const POOLED_RATE_METRICS = Object.freeze([
+  "favoriteWinRate",
+  "favoritePodiumRate",
+  "share4PlusSameTeamTop10",
+]);
+
 // ── Kanoniske bånd ───────────────────────────────────────────────────────────
 // reportOnly:true ⇒ metrikken vises i tabellen/trenden, men deltager ALDRIG i
 // rød-klassifikation eller 3-dages-alarmen. To metrikker er bevidst report-only:
@@ -52,6 +103,145 @@ export const ALARM_ELIGIBLE_METRICS = Object.freeze(
 );
 
 /**
+ * Wilson score-interval, NEDRE grænse (én metrik-værdi, ikke et bånd).
+ *
+ * Svarer på "hvad er den laveste sande sejrsrate der er forenelig med
+ * wins/starts ved konfidensniveau z?" — modsat den rå brøk, som ved nævner 5-7
+ * er en ekstremværdi-magnet. Wilson (ikke Wald) fordi Wald bryder sammen ved
+ * små n og ved p nær 0/1, som er præcis det regime metrikken lever i.
+ *
+ * @param {number} wins
+ * @param {number} starts
+ * @param {number} [z]  z-score (1,96 = 95 % ensidet-nedre-agtig dækning)
+ * @returns {number|null} null hvis starts ≤ 0
+ */
+export function wilsonLowerBound(wins, starts, z = BALANCE_DRIFT_TUNING.WILSON_Z) {
+  const n = Number(starts);
+  const w = Number(wins);
+  if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(w)) return null;
+  const z2 = z * z;
+  const denom = n + z2;
+  const centre = (w + z2 / 2) / denom;
+  const spread = (z / denom) * Math.sqrt((w * (n - w)) / n + z2 / 4);
+  return Math.max(0, centre - spread);
+}
+
+/**
+ * Største Wilson-nedre-grænse over alle ryttere med ≥minStarts starter.
+ *
+ * Læses som: "den højeste sejrsrate vi kan BEVISE at nogen rytter ligger over".
+ * Samme bånd (≤0,45) som den rå maxRiderWinRate — kun estimatoren er skiftet.
+ *
+ * @param {object} args
+ * @param {Map<string, number>} args.winsByRider
+ * @param {Map<string, number>} args.startsByRider
+ * @param {number} [args.minStarts]
+ * @param {number} [args.z]
+ * @returns {{maxLowerBound:number|null, riders:number, leader:{riderId:string, wins:number, starts:number}|null}}
+ */
+export function maxRiderWinRateLowerBound({
+  winsByRider = new Map(),
+  startsByRider = new Map(),
+  minStarts = 5,
+  z = BALANCE_DRIFT_TUNING.WILSON_Z,
+} = {}) {
+  let best = null;
+  let leader = null;
+  let riders = 0;
+  for (const [riderId, starts] of startsByRider.entries()) {
+    if (starts < minStarts) continue;
+    riders++;
+    const wins = winsByRider.get(riderId) || 0;
+    const lb = wilsonLowerBound(wins, starts, z);
+    if (lb == null) continue;
+    if (best == null || lb > best) {
+      best = lb;
+      leader = { riderId, wins, starts };
+    }
+  }
+  return { maxLowerBound: best, riders, leader };
+}
+
+/**
+ * Fold rå `race_results`-rækker til (wins, starts) pr. rytter.
+ *
+ * #2731-FÆLDEN: `rider_id` kan være NULL på auto-fill-/phantom-rækker — 17.071
+ * af 66.408 rækker (25,7 %) med 106 etapesejre i 14-dages-vinduet 20/7-2/8.
+ * En bar `map.set(row.rider_id, …)` samler dem ALLE under nøglen `null` og
+ * behandler dem som ÉN rytter med tusindvis af starter. `observeRace()` har
+ * allerede det tilsvarende værn for `team_id` ("null-ryttere må ALDRIG klumpes
+ * sammen som ét fælles nulhold"); denne sti manglede det.
+ *
+ * En række uden rytter-identitet kan ikke bære en per-rytter-sejrsrate, så den
+ * EKSKLUDERES (ikke bucketes under en fælles nøgle, ikke tildeles en syntetisk
+ * id — begge dele ville opfinde data).
+ *
+ * @param {Array<{rider_id:string|null, rank:number}>} rows
+ * @returns {{winsByRider:Map<string,number>, startsByRider:Map<string,number>, skippedNullRiderRows:number}}
+ */
+export function foldRiderWindowRows(rows = []) {
+  const winsByRider = new Map();
+  const startsByRider = new Map();
+  let skippedNullRiderRows = 0;
+
+  for (const row of rows) {
+    const riderId = row?.rider_id;
+    if (riderId == null || riderId === "") {
+      skippedNullRiderRows++;
+      continue;
+    }
+    startsByRider.set(riderId, (startsByRider.get(riderId) || 0) + 1);
+    if (row.rank === 1) winsByRider.set(riderId, (winsByRider.get(riderId) || 0) + 1);
+  }
+
+  return { winsByRider, startsByRider, skippedNullRiderRows };
+}
+
+/**
+ * Pool en dags-rate over de seneste `windowDays` PERSISTEREDE rækker.
+ *
+ * Rekonstruerer tællere fra (rate × stageInstances) — rækkerne gemmer rater, ikke
+ * counts — og returnerer sum(tællere)/sum(nævnere). Ingen ekstra prod-læsning:
+ * vagten henter allerede de seneste rækker til 3-dages-streaken.
+ *
+ * Rækker uden brugbar rate eller uden stageInstances springes over (et hul i
+ * cron-kørslerne må aldrig gætte en værdi — samme princip som
+ * findConsecutiveBreaches' dato-hul-håndtering).
+ *
+ * @param {Array<{date:string, metrics?:Record<string, number|null>}>} rows  vilkårlig rækkefølge
+ * @param {string} metricKey
+ * @param {number} [windowDays]
+ * @returns {{value:number|null, stages:number, days:number}}
+ */
+export function poolDailyRate(rows = [], metricKey, windowDays = BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS) {
+  const sorted = [...rows]
+    .filter((r) => r && r.date)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, Math.max(1, Math.floor(windowDays)));
+
+  let numerator = 0;
+  let denominator = 0;
+  let days = 0;
+  for (const row of sorted) {
+    // FÆLDEN (#2804-klassen): Number(null) === 0, og 0 ER finit. En dag hvor
+    // metrikken var n/a (null) ville derfor blive poolet ind som "raten var 0"
+    // og trække vinduet kunstigt ned — netop den slags falske bånd-brud denne
+    // ændring skal fjerne. Eksplicit null/'' -check FØR Number().
+    const rawRate = row.metrics?.[metricKey];
+    const rawStages = row.metrics?.stageInstances;
+    if (rawRate == null || rawRate === "" || rawStages == null || rawStages === "") continue;
+    const rate = Number(rawRate);
+    const stages = Number(rawStages);
+    if (!Number.isFinite(rate) || !Number.isFinite(stages) || stages <= 0) continue;
+    numerator += rate * stages;
+    denominator += stages;
+    days++;
+  }
+  if (denominator <= 0) return { value: null, stages: 0, days: 0 };
+  return { value: numerator / denominator, stages: denominator, days };
+}
+
+/**
  * Aggregér ÉN dags rå prod-observationer til scorecard-metrikkerne.
  *
  * @param {object} args
@@ -78,6 +268,10 @@ export function computeDayMetrics({
   const dom = aggregateObservations(observations);
   const inc = aggregateIncidentObservations(incidentObservations);
   const winStats = winRateStats({ winsByRider, startsByRider, minStarts: 5 });
+  // #2731: ALTID beregnet og persisteret (additivt felt i metrics-JSON'en), så
+  // trenden kan sammenlignes historisk uanset om robust-mode er flippet.
+  // Klassifikationen bruger den kun når flaget er ON.
+  const winLb = maxRiderWinRateLowerBound({ winsByRider, startsByRider, minStarts: 5 });
 
   return {
     favoriteWinRate: dom.favoriteWinRate,
@@ -86,6 +280,8 @@ export function computeDayMetrics({
     avgDistinctTeamsTop10: dom.avgDistinctTeamsTop10,
     dnfRatePct: inc.meanDnfRatePct,
     maxRiderWinRate: winStats.maxWinRate,
+    maxRiderWinRateLb: winLb.maxLowerBound,
+    maxRiderWinRateRiders: winLb.riders,
     jourSansSharePct: riderStageCount > 0 ? (100 * jourSansHits) / riderStageCount : null,
     breakawayWinSharePct: breakawayEligibleStages > 0 ? (100 * breakawayWins) / breakawayEligibleStages : null,
     stageInstances: dom.races,
@@ -162,14 +358,52 @@ export function classifyMetric(value, band) {
 /**
  * Klassificér en hel dags metrik-sæt mod BALANCE_DRIFT_BANDS.
  *
+ * #2731: når `robust` er ON byttes ESTIMATOREN (ikke båndet) for fire metrikker:
+ *   - maxRiderWinRate  → Wilson-nedre-grænse (metrics.maxRiderWinRateLb)
+ *   - de tre dags-rater → poolet over de seneste POOL_WINDOW_DAYS rækker
+ * `basis` fortæller hvilken linse cellen blev bedømt på ("day" | "wilson-lb" |
+ * "pooled-Nd"), og `dayValue` bevarer altid den rå dags-værdi så admin-trenden
+ * kan vise begge. Robust OFF ⇒ output er felt-for-felt identisk med før.
+ *
  * @param {Record<string, number|null>} metrics  computeDayMetrics()-output (eller en persisteret række)
- * @returns {Record<string, {value:number|null, band:object, status:string}>}
+ * @param {object} [opts]
+ * @param {Array<{date:string, metrics?:object}>} [opts.recentRows]  persisterede rækker inkl. DAGENS (til pooling)
+ * @param {boolean} [opts.robust]
+ * @param {number} [opts.poolWindowDays]
+ * @returns {Record<string, {value:number|null, band:object, status:string, basis:string, dayValue:number|null}>}
  */
-export function classifyDay(metrics = {}) {
+export function classifyDay(metrics = {}, {
+  recentRows = null,
+  robust = BALANCE_DRIFT_TUNING.ROBUST_ESTIMATORS,
+  poolWindowDays = BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS,
+} = {}) {
   const out = {};
+  const pooledSet = new Set(POOLED_RATE_METRICS);
+
   for (const [key, band] of Object.entries(BALANCE_DRIFT_BANDS)) {
-    const value = metrics[key] ?? null;
-    out[key] = { value, band, status: classifyMetric(value, band) };
+    const dayValue = metrics[key] ?? null;
+    let value = dayValue;
+    let basis = "day";
+
+    if (robust) {
+      if (key === "maxRiderWinRate") {
+        // Ingen LB tilgængelig (gamle rækker / ingen kvalificerede ryttere) ⇒
+        // fald tilbage til dags-værdien frem for at rapportere n/a.
+        const lb = metrics.maxRiderWinRateLb;
+        if (lb != null && Number.isFinite(Number(lb))) {
+          value = Number(lb);
+          basis = "wilson-lb";
+        }
+      } else if (pooledSet.has(key) && Array.isArray(recentRows) && recentRows.length > 0) {
+        const pooled = poolDailyRate(recentRows, key, poolWindowDays);
+        if (pooled.value != null) {
+          value = pooled.value;
+          basis = `pooled-${pooled.days}d`;
+        }
+      }
+    }
+
+    out[key] = { value, band, status: classifyMetric(value, band), basis, dayValue };
   }
   return out;
 }

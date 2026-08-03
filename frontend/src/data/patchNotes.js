@@ -4,6 +4,125 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.88",
+    "date": "2026-08-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Results",
+        "en": {
+          "title": "Results now open in your own world, with dates that make sense",
+          "body": "The results page now has season, division and group selectors, and it opens on the current season and your own division and group by default. The selection is part of the link, so you can share or bookmark a view. We also replaced the confusing dates on the race cards: they were raw calendar strings from the race import with no connection to the game, and they now show the date the race was actually run."
+        },
+        "da": {
+          "title": "Resultater åbner nu i din egen verden, med datoer der giver mening",
+          "body": "Resultatsiden har nu vælgere for sæson, division og gruppe, og den åbner som standard på indeværende sæson og din egen division og gruppe. Valget ligger i linket, så du kan dele eller bogmærke en visning. Vi har samtidig erstattet de forvirrende datoer på løbskortene: de var rå kalenderstrenge fra løbsimporten uden forbindelse til spillet, og de viser nu den dato løbet faktisk blev kørt."
+        },
+        "refs": [3197]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training focus labels now tell the truth",
+          "body": "The Limited and Blocked labels on training focus options were calculated with an outdated model that only looked at a rider's primary type, while the engine also counts the secondary type. Some riders showed Limited on a focus that actually trains close to full effect. The labels now follow the same model as the engine, and the tooltip shows the real numbers: full effect on a primary type match, 82 percent on a secondary match, 45 percent neutral and 12 percent opposite. Training itself was always calculated correctly, only the label was wrong."
+        },
+        "da": {
+          "title": "Træningsfokus-etiketterne taler nu sandt",
+          "body": "Begrænset- og Blokeret-etiketterne på træningsfokus blev beregnet med en forældet model der kun så på rytterens primære type, mens motoren også tæller den sekundære type. Nogle ryttere viste Begrænset på et fokus der reelt træner tæt på fuld effekt. Etiketterne følger nu samme model som motoren, og tooltippet viser de rigtige tal: fuld effekt ved match på primær type, 82 procent ved sekundært match, 45 procent neutralt og 12 procent modsat. Selve træningen har hele tiden været beregnet korrekt, kun etiketten var forkert."
+        },
+        "refs": [3195]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "The transfer list now shows how prices compare with estimated value",
+          "body": "Every rider on the transfer list now carries the same badge you know from auctions, showing how far the asking price sits above or below the estimated value, and you can filter on that percentage. Thanks to the manager who asked for parity between the two sides of the market."
+        },
+        "da": {
+          "title": "Transferlisten viser nu hvordan priserne ligger i forhold til vurderingen",
+          "body": "Hver rytter på transferlisten har nu samme mærke som du kender fra auktionerne, der viser hvor langt udbudsprisen ligger over eller under den estimerede værdi, og du kan filtrere på procenten. Tak til manageren der bad om paritet mellem markedets to sider."
+        },
+        "refs": [3191]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Your chief scout now has a history tab",
+          "body": "The scout's profile now shows which riders they have previously scouted, with the date, the report level and links to both the rider and the report, newest first. This was promised in Discord back in July, and now it is here."
+        },
+        "da": {
+          "title": "Din chefspejder har nu en historik-fane",
+          "body": "Spejderens profil viser nu hvilke ryttere vedkommende tidligere har undersøgt, med dato, rapportniveau og links til både rytteren og rapporten, nyeste først. Det blev lovet i Discord tilbage i juli, og nu er det her."
+        },
+        "refs": [3203]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Taking a sponsor risk now actually pays",
+          "body": "Result-based sponsors used to end up paying about the same as the safe flat ones, so there was no reason to ever take the risk. Future sponsor offers now carry a real risk premium: the ambition archetype pays clearly above flat if you hit a tightened top 40 percent condition, and the results archetype becomes the best deal in the game for teams that finish in the top quarter. Signed contracts keep their current terms. Thanks to the manager who called this out."
+        },
+        "da": {
+          "title": "At tage en sponsor-risiko betaler sig nu faktisk",
+          "body": "Resultatbaserede sponsorer endte før med at betale omtrent det samme som de sikre flade, så der var ingen grund til nogensinde at tage risikoen. Fremtidige sponsortilbud bærer nu en ægte risikopræmie: ambitions-arketypen betaler klart over flad hvis du rammer en strammet top 40 procent-betingelse, og resultat-arketypen bliver spillets bedste aftale for hold der ender i den øverste fjerdedel. Tegnede kontrakter beholder deres nuværende vilkår. Tak til manageren der påpegede det."
+        },
+        "refs": [3192]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race cards are now clickable everywhere on the card",
+          "body": "On the race boards, only the race name used to be a link, while the rest of the card (race day, type, status) looked clickable but did nothing. One recording showed a manager clicking a card 129 times in six minutes. The whole card is now one link with a proper hover state and keyboard support, on both the My races board and the other divisions view."
+        },
+        "da": {
+          "title": "Løbskort kan nu klikkes overalt på kortet",
+          "body": "På løbstavlerne var det før kun løbsnavnet der var et link, mens resten af kortet (løbsdag, type, status) lignede noget klikbart men intet gjorde. En optagelse viste en manager klikke 129 gange på et kort på seks minutter. Hele kortet er nu ét link med tydelig hover-tilstand og tastaturunderstøttelse, både på Mine løb og i visningen af andre divisioner."
+        },
+        "refs": [3187]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "The team page no longer pretends dead spots are buttons",
+          "body": "Your team name at the top of the team page is now a real link to your public team profile with its results and palmares tabs. The active squad tab no longer shows a pointer cursor when clicking it again would do nothing, and the senior and academy filter group got its own container so stray clicks land where you expect."
+        },
+        "da": {
+          "title": "Holdsiden lader ikke længere døde felter ligne knapper",
+          "body": "Dit holdnavn øverst på holdsiden er nu et rigtigt link til din offentlige holdprofil med dens resultat- og palmares-faner. Den aktive trup-fane viser ikke længere klik-markør når endnu et klik intet ville gøre, og senior- og akademi-filtergruppen har fået sin egen ramme så klik lander hvor du forventer."
+        },
+        "refs": [3188]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Three player questions answered in the FAQ, straight from the engine",
+          "body": "Save legs genuinely reduces the fatigue a rider carries into the next stage and the next race, so using it on a last stage with nothing to win makes full sense. Form carries over between seasons today (only fatigue resets), and we treat whether it should as an open design question. And with both a captain and a sprint captain set, flat stages support the sprint captain while every other stage type supports the captain. All three answers were verified in the engine code before they were written."
+        },
+        "da": {
+          "title": "Tre spillerspørgsmål besvaret i FAQ'en, direkte fra motoren",
+          "body": "Spar kræfter reducerer reelt den træthed en rytter tager med til næste etape og næste løb, så det giver fuld mening på en sidste etape uden noget at vinde. Form bæres i dag med mellem sæsoner (kun træthed nulstilles), og om den bør gøre det behandler vi som et åbent designspørgsmål. Og med både en kaptajn og en sprinterkaptajn sat arbejder holdet for sprinterkaptajnen på flade etaper og for kaptajnen på alle andre etapetyper. Alle tre svar er verificeret i motorkoden før de blev skrevet."
+        },
+        "refs": [3202]
+      }
+    ]
+  },
+  {
     "version": "7.87",
     "date": "2026-08-03",
     "label": "Beta",
