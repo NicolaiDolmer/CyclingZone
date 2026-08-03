@@ -21,6 +21,8 @@
 
 > **🤖 Working agent:** Claude Code (Fable-orkestrator, NATBØLGE 3→4/8, AKTIV fra 23:47) — kører parallelt med verdensklasse-batch 3/8-closeout; rører IKKE dens PRs (#3251/#3252/#3255/#3260/#3262) eller worktrees. Spor: verifikationer (#3185/#2731/#2736/#3263) · balance-opfølgninger report-only (drift-vagt, transfer-hul spor A/B gated OFF) · sæsonskifte 23/8 (#2752/#2361/#3114/#3107 + cutover-drejebog) · retention (#2180/#3115/#2356/#3007/#2042A) · økonomi/platform. Morgenrunde ~07:30 (ét samlet dossier). **Næste kode-session:** #1150 udløbs-håndhævelse (design-valg 3/8). **Dedikeret design-session:** #3199+#3200 samlet (ejer-valg 3/8).
 
+> **🟩 D3 race-narrative-pack (worker) FÆRDIG, PR åben ikke merged:** [PR #3289](https://github.com/NicolaiDolmer/CyclingZone/pull/3289) — #3115 (aggression-uden-omkostning-moment + banded effort-tags + help-tekst-fix) + #2356 (race-recap v2: dramaturgisk etaperapport m. variation). Backend 5031/5031 + frontend 1530/1530 + playwright core-smoke (alle 3 projekter) grønne. UI-PR: kræver ejer-visuel-godkendelse før merge.
+
 ## Standing context (forever-relaunch)
 
 - **Liga-struktur (ejer 22/6):** 4-divisions-pyramide 1/2/4/8; ægte managere ind fra bunden. D1 = kun AI. **#1688 er kodens eget HARD-GATE før S3-op/nedrykning.**
