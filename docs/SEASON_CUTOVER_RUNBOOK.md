@@ -146,9 +146,7 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
   `-ToSeasonNumber` (default 2→3), `-SkipTests`, `-SkipGh`.
 - Åbne issues denne cutover skærer ind i: #2164 (D3→D4 eksplicit regel) ·
   #3114 (D1-oprykning game_day-sentinel) · #2840 (løn-mode dagsbaseret) ·
-  form-reset claim-guard (ingen issue-nummer fundet — flagget i
-  `docs/audits/2026-08-03-form-reset-sim-3232.md`s "Åbent spørgsmål", opret et
-  issue hvis det ikke allerede findes).
+  #3266 (form-reset decay-claim-guard).
 - Transition-motor: `backend/lib/seasonTransition.js` · readiness-gate:
   `backend/lib/seasonTransitionReadiness.js` · division-motor (LÆSES, ikke
   rørt): `backend/lib/economyEngine.js` (`processSeasonEnd`→`processDivisionEnd`).
