@@ -177,6 +177,8 @@
     "feedback_not_found": "Feedback ikke fundet",
     "feedback_reply_required": "Svar er påkrævet",
     "feedback_reply_too_long": "Svaret er for langt",
-    "feedback_already_replied": "Denne besked er allerede besvaret"
+    "feedback_already_replied": "Denne besked er allerede besvaret",
+    "transfer_cooldown_active": "Nye hold kan ikke sende {cooldownAmount}+ CZ$ ud i en enkelt transfer eller byttehandel de første {cooldownHours} time(r). Dette låses op om ca. {unlocksInHours} time(r).",
+    "auction_created_before_account": "Jeres hold blev oprettet efter denne auktion startede, så I kan ikke byde på den. Nyere auktioner er åbne for jer med det samme."
   }
 }

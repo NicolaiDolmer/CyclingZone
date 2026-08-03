@@ -14,6 +14,7 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
+import { evaluateLoanGate, getTeamRaceDaysRun, readNewAccountGateConfig } from "./newAccountGates.js";
 
 // #44: hent manager's worst-case commitment fra aktive auktioner (leading +
 // proxies). Bruges af repayLoan + andre lån-paths så manageren ikke kan betale
@@ -120,10 +121,55 @@ export function computeMaxLoanPrincipal({ currentDebt, debtCeiling, originationF
   return { principal, fee, totalDebt: principal + fee, headroom };
 }
 
+// #3134 · ung-konto-lånespærre: bygger den strukturerede Error (samme
+// { code, params }-kontrakt som debtCapReached/repayInsufficient) fra et
+// evaluateLoanGate-afvisnings-resultat. Tre koder — én pr. hvilke betingelser
+// der reelt er aktive — så hver i18n-skabelon kan være fuldt udfyldt uden at
+// skulle håndtere null-params.
+function buildLoanGateError(gate) {
+  const err = new Error(
+    gate.reason === "raceDaysOnly"
+      ? `New teams must run ${gate.minRaceDays} race day(s) before taking a loan (run so far: ${gate.raceDaysRun})`
+      : gate.reason === "accountAgeOnly"
+        ? `New teams must be ${gate.minAccountAgeDays} day(s) old before taking a loan (current age: ${gate.accountAgeDays} day(s))`
+        : `New teams must run ${gate.minRaceDays} race day(s) or be ${gate.minAccountAgeDays} day(s) old before taking a loan (run so far: ${gate.raceDaysRun}, current age: ${gate.accountAgeDays} day(s))`,
+  );
+  err.code =
+    gate.reason === "raceDaysOnly" ? "error.loanGateRaceDaysOnly"
+    : gate.reason === "accountAgeOnly" ? "error.loanGateAccountAgeOnly"
+    : "error.loanGateEither";
+  err.params = {
+    minRaceDays: gate.minRaceDays,
+    minAccountAgeDays: gate.minAccountAgeDays,
+    raceDaysRun: gate.raceDaysRun,
+    accountAgeDays: gate.accountAgeDays,
+  };
+  return err;
+}
+
 // ── Opret lån (manager-initieret: short eller long) ───────────────────────────
 
 export async function createLoan(teamId, loanType, principalAmount, supabaseClient = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+
+  // #3134 · ung-konto-lånespærre — tjekkes FØR config/RPC/insert, server-side,
+  // ikke kun i UI. Kun manager-initierede lån gates; createEmergencyLoan
+  // (automatisk nødlån ved manglende løndækning) er UDENFOR scope — en ny
+  // konto skal stadig kunne betale sine ryttere. 0/0-tærskler (default) skipper
+  // helt uden DB-opslag på team/race-dage.
+  const gateConfig = await readNewAccountGateConfig(client);
+  if (gateConfig.loanMinRaceDays > 0 || gateConfig.loanMinAccountAgeDays > 0) {
+    const { data: team } = await client.from("teams").select("created_at").eq("id", teamId).single();
+    const raceDaysRun = await getTeamRaceDaysRun(client, teamId);
+    const gate = evaluateLoanGate({
+      minRaceDays: gateConfig.loanMinRaceDays,
+      minAccountAgeDays: gateConfig.loanMinAccountAgeDays,
+      raceDaysRun,
+      teamCreatedAt: team?.created_at,
+    });
+    if (!gate.allowed) throw buildLoanGateError(gate);
+  }
+
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === loanType);
   if (!config) throw new Error("Ugyldig låntype");
