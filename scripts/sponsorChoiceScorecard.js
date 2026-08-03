@@ -31,8 +31,14 @@
 //
 // Usage:
 //   node scripts/sponsorChoiceScorecard.js
+//   node scripts/sponsorChoiceScorecard.js --advisory   (rapportér uden at fælde exit-koden)
 //
-// Refs #2948.
+// #3009: HEADLINE GUARD FAIL fælder exit-koden (samme fejlklasse som
+// backend/scripts/moneySupplyScorecard.js + inflationScorecard.js — fundet under
+// #3009's backwards-check: scriptet printede "🔴 GUARD FAIL" uden nogensinde at
+// sætte en non-zero exit-kode).
+//
+// Refs #2948, #3009.
 
 import dotenv from "dotenv";
 import path from "node:path";
@@ -42,6 +48,7 @@ import { createClient } from "@supabase/supabase-js";
 import { renownTarget } from "../backend/lib/renownEngine.js";
 import { ARCHETYPES } from "../backend/lib/sponsorOffers.js";
 import { loadSeasonStageCounts } from "../backend/lib/sponsorContractsService.js";
+import { gateExitCode } from "../backend/scripts/lib/scorecardExitCode.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -314,6 +321,7 @@ function printScenarioRow(label, values, oldTotal, { guarded = false } = {}) {
 }
 
 async function main() {
+  const advisory = process.argv.includes("--advisory");
   console.log("=== #2948 Sponsorvalg 2.0 — scorecard (gammel vs ny model, ægte S1/S2-population) ===\n");
   console.log("READ-ONLY: kun SELECT-kald mod Supabase. Ingen writes.\n");
 
@@ -448,6 +456,10 @@ async function main() {
   console.log(
     `  (d)@70% deltagelse : Δ${fmtPct(delta70VsOld)} vs gammel (informationel — ingen ±10%-guard krævet på dette punkt)\n`
   );
+
+  // #3009: HEADLINE GUARD FAIL skal fælde exit-koden — ellers kan intet CI/
+  // automatiseret job se at guarden er rød. --advisory rapporterer uden at fælde.
+  process.exitCode = gateExitCode(!dRow.guardFail && !eRow.guardFail, { advisory });
 }
 
 main().catch((e) => {

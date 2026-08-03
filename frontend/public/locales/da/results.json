@@ -2,6 +2,7 @@
   "title": "Resultater",
   "subtitle": {
     "active": "Sæson {number} · aktiv",
+    "viewing": "Sæson {number}",
     "noSeason": "Ingen aktiv sæson"
   },
   "tabs": {
@@ -10,10 +11,20 @@
     "points": "Point & præmier"
   },
   "latest": {
-    "empty": "Ingen løb er kørt færdigt i din division endnu",
-    "emptyBody": "Resultater vises her så snart sæsonens første løb er afgjort.",
+    "empty": "Ingen løb er kørt færdigt her endnu",
+    "emptyBody": "Resultater vises her så snart det første løb i dette udvalg er afgjort.",
     "noPodium": "Ingen klassement importeret for dette løb endnu",
     "viewFull": "Hele resultatet"
+  },
+  "filters": {
+    "seasonLabel": "Sæson",
+    "seasonOption": "Sæson {number}",
+    "seasonOptionActive": "Sæson {number} (aktiv)",
+    "divisionLabel": "Division",
+    "allDivisions": "Alle divisioner",
+    "division": "Division {n}",
+    "poolLabel": "Pulje",
+    "allPools": "Alle puljer"
   },
   "hub": {
     "moreTitle": "Mere under Resultater",

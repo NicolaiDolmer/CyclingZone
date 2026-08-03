@@ -2,6 +2,7 @@
   "title": "Results",
   "subtitle": {
     "active": "Season {number} · active",
+    "viewing": "Season {number}",
     "noSeason": "No active season"
   },
   "tabs": {
@@ -10,10 +11,20 @@
     "points": "Points & prizes"
   },
   "latest": {
-    "empty": "No races have finished in your division yet",
-    "emptyBody": "Results appear here as soon as the first race of the season is done.",
+    "empty": "No races have finished here yet",
+    "emptyBody": "Results appear here as soon as the first race in this selection is done.",
     "noPodium": "No classification imported for this race yet",
     "viewFull": "Full result"
+  },
+  "filters": {
+    "seasonLabel": "Season",
+    "seasonOption": "Season {number}",
+    "seasonOptionActive": "Season {number} (active)",
+    "divisionLabel": "Division",
+    "allDivisions": "All divisions",
+    "division": "Division {n}",
+    "poolLabel": "Pool",
+    "allPools": "All pools"
   },
   "hub": {
     "moreTitle": "More in Results",
