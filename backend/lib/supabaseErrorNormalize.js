@@ -62,22 +62,25 @@ function extractMessage(error) {
   return typeof error.message === "string" ? error.message : "";
 }
 
-function looksLikeHtmlErrorPage(message) {
-  if (typeof message !== "string") return false;
-  const head = message.trimStart().slice(0, 200).toLowerCase();
-  return (
-    head.startsWith("<!doctype html") ||
-    head.startsWith("<html") ||
-    message.includes("cf-error-details") ||
-    message.includes("Cloudflare Ray ID")
-  );
-}
-
 // #3052: de fleste call-sites kaster `new Error(\`min-kontekst: ${err.message}\`)`,
 // så HTML-siden ligger EFTER et præfiks i stedet for at udgøre hele beskeden.
 // Find hvor dokumentet starter, så præfikset kan bevares og kun HTML-delen
 // erstattes. Returnerer -1 hvis der ikke er noget dokument-start-tag.
+//
+// Genkendelsen må derfor IKKE være forankret i beskedens start (som den var før
+// #3052): `updateStandings: <!DOCTYPE html>…` blev ellers ikke set som en fejlside
+// overhovedet, og hele nginx/Cloudflare-siden slap uændret ud som Sentry-titel.
+// Dokument-start-tags er utvetydige — en ægte PostgREST-besked indeholder dem ikke.
 const HTML_DOC_START_RE = /<!doctype html|<html[\s>]/i;
+
+function looksLikeHtmlErrorPage(message) {
+  if (typeof message !== "string") return false;
+  return (
+    HTML_DOC_START_RE.test(message) ||
+    message.includes("cf-error-details") ||
+    message.includes("Cloudflare Ray ID")
+  );
+}
 
 // Koger en HTML-fejlside ned til én kort linje. Forudsætter at input ER en side.
 function summarizeHtmlErrorPage(html) {
