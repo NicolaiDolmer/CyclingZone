@@ -145,6 +145,10 @@
       "title": "Nedrykning",
       "message": "Dit hold rykker ned til Division {division}."
     },
+    "poolReseeded": {
+      "title": "Ny pulje til næste sæson",
+      "message": "Dit hold er sat i {pool}, så puljerne er lige stærke."
+    },
     "boardT3Reminder": {
       "title": "Bestyrelsen venter på din {planLabel}",
       "message": "Du har {daysLeft} dage tilbage til at forhandle din {planLabel}. Hvis du ikke gør noget, vælger bestyrelsen selv."

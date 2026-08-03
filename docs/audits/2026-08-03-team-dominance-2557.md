@@ -336,3 +336,49 @@ Fordel: billigt, ingen spil-påvirkning, og forhindrer at næste kalibrering ige
 1. Er "køb dig stærk i en lav division" legitim strategi der bare skal matches af hurtigere oprykning — eller skal den dæmpes? (Afgør om spor A overhovedet skal bygges.)
 2. Må managere skifte pulje mellem sæsoner (bryder spor B en pulje-identitet du vil bevare)?
 3. Skal noget gøres ved den **igangværende** sæson i Div 3 B/C/D, eller lever vi med den og fikser til næste? En midt-sæson-korrektion er en prod-mutation og kræver dit eksplicitte go.
+
+---
+
+## 7. Efterskrift 4/8 — spor B målt mod prod: snaken løser IKKE tier 3
+
+Spor B er nu bygget (motor-wiring bag `season_end_pool_reseed`, default slukket) og
+dry-kørt read-only mod prod 4/8 00:24 CEST. Resultatet ændrer anbefalingen i afsnit 6
+på ét punkt, og det er værd at læse før nogen slår flaget til.
+
+| tier | skævheds-indeks før | projiceret efter snake | sd på pulje-totaler | verdikt |
+|---|---|---|---|---|
+| 1 (1 pulje) | −6 | −6 | 0,0 → 0,0 | ingen reseed mulig |
+| 2 | 0 | 0 | 10,3 → 10,3 | under tærskel |
+| **3** | **14** | **17** | **19,3 → 3,9** | **plan afvist (70 flytninger droppet)** |
+| 4 | 15 | **8** | 110,1 → 67,5 | reseed, 25 af 31 ægte hold flytter |
+
+Snaken gør præcis det den er designet til: den udligner puljernes SAMLEDE styrke
+(sd 19,3 → 3,9 i tier 3). Men `share4PlusSameTeamTop10` brydes ikke af skæve
+totaler — den brydes af dominans-marginen, altså ét holds 4.-bedste RYTTER mod
+puljens 10.-bedste rival. Fordeler man tierens hold ét pr. pulje efter
+gennemsnits-styrke, står hver stakker fortsat alene i toppen af sin pulje, og
+marginen kan endda stige (tier 3: 14 → 17), fordi rivalernes dybde bliver tyndere.
+
+Marginen falder kun når stærke hold står SAMMEN og checker hinanden. Det er derfor
+tier 4 forbedres (15 → 8): dér ligger de ægte hold koncentreret i pulje A/B og bliver
+spredt ud i de AI-tunge puljer, hvor de hæver rival-dybden.
+
+Konsekvenser:
+
+1. Motoren har fået en **forbedrings-guard**: en plan der ikke sænker indekset
+   udføres ikke (`planRealTeamReseed({ requireImprovement: true })`). Uden den ville
+   en aktivering i dag have gjort tier 3 værre og flyttet 70 af 96 hold.
+2. **Spor B lukker ikke #2557 alene.** Med dagens population ville et reseed slet
+   ikke røre tier 3, hvor 75 % af bånd-bruddene ligger. Spor A (transfer-dæmpning /
+   startkarantæne) står dermed endnu stærkere som det første spil-indgreb.
+3. Skal spor B også ramme tier 3, kræver det en **anden fordelingsregel end snake på
+   gennemsnitsstyrke** — fx en der optimerer direkte på dominans-marginen (parrer
+   stakkere sammen) i stedet for på pulje-totaler. Det er et selvstændigt stykke
+   arbejde, ikke en parameterjustering.
+4. Tier 4-reseed'et flytter 25 af 31 ægte hold. Det er et stort identitets-brud for
+   en tier hvis dominans i forvejen er beskeden (share4Plus 0-0,214) — ejer-beslutning,
+   ikke en teknisk.
+
+Reproduktion (read-only): `node backend/scripts/auditPoolBalance.js --engine`. Selve
+skævheds-indekset kan efterprøves i ren SQL med 4.-bedste-mod-10.-bedste-rival-queryen
+i PR-bodyen til spor B.
