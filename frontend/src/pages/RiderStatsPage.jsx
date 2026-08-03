@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
+import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
@@ -15,6 +15,7 @@ import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
 import { BidConfirmModal } from "../components/BidConfirmModal";
+import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { ConfettiModal } from "../components/ConfettiModal";
 import OverbidToast from "../components/OverbidToast";
@@ -632,9 +633,27 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
+  // #3184: tastefejl-værn — ciffer-drop-mønster mellem startpris og Værdi.
+  // Kun relevant for egne ryttere: AI/fri-rytter-gulvet (price >= riderValue,
+  // se priceError herunder) udelukker allerede enhver "for lidt"-pris.
+  const [typoWarning, setTypoWarning] = useState(null);
 
   // Egne ryttere: pris må være mellem 0 og Værdi (ikke over). AI/fri rytter: Værdi er gulvet.
   const priceError      = isOwnRider ? (price > riderValue || price < 0) : (price < riderValue);
+
+  async function submitAuction() {
+    setLoading(true);
+    await onStart(price, flash);
+    setLoading(false);
+  }
+
+  function handleSubmit() {
+    if (isOwnRider) {
+      const typo = detectStartPriceTypo(price, rider);
+      if (typo.suspected) { setTypoWarning(typo); return; }
+    }
+    submitAuction();
+  }
 
   return (
     <div className="contents">
@@ -666,7 +685,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
                   : "border-cz-border focus:border-cz-accent"}`}
             />
             <button
-              onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
+              onClick={handleSubmit}
               disabled={loading || priceError}
               className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-cz text-sm transition-all disabled:opacity-50
                 ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
@@ -680,6 +699,16 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
           )}
         </div>
       )}
+      <StartPriceTypoGuardModal
+        show={!!typoWarning}
+        riderName={rider?.firstname ? `${rider.firstname} ${rider.lastname}` : undefined}
+        price={price}
+        marketValue={typoWarning?.suggestedValue ?? riderValue}
+        busy={loading}
+        onDismiss={() => setTypoWarning(null)}
+        onFix={() => { setPrice(typoWarning?.suggestedValue ?? riderValue); setTypoWarning(null); }}
+        onConfirm={() => { setTypoWarning(null); submitAuction(); }}
+      />
     </div>
   );
 }
