@@ -12,6 +12,7 @@ import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 import { assertDiscordWebhookUrl } from "./urlSafety.js";
 import { attemptDmDelivery } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
+import { recordPermanentDmFailure, clearDmFailureCount } from "./discordDeadConnection.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
 import { isDmTypeEnabled } from "./discordDmPrefs.js";
@@ -314,7 +315,13 @@ export async function sendDM(discordId, payload) {
   }
 
   const result = await attemptDmDelivery({ discordId, payload, botToken });
-  if (result.ok) return true;
+  if (result.ok) {
+    // #3130: en leveret DM gør fejlserien "afbrudt" — tærsklen tæller PÅ HINANDEN
+    // FØLGENDE fejl, så en enkelt gammel 403 ikke akkumulerer over måneder.
+    // No-op server-side (WHERE count > 0) for de ~alle brugere uden fejl.
+    await clearDmFailureCount({ supabase, discordId });
+    return true;
+  }
 
   if (result.failure?.kind === "retryable") {
     console.warn("[discord-dm:outbox] DM kunne ikke leveres nu — lagt i outbox", {
@@ -356,8 +363,40 @@ export async function sendDM(discordId, payload) {
       reason: result.failure?.reason,
       error: result.error,
     });
+    // #3130: 'recipient-blocked' (403/kode 50278) betyder typisk at spilleren har
+    // forladt vores Discord-server. Tæl op og afkobl efter N i træk, så han ser
+    // "genforbind" i indstillingerne i stedet for tavshed — og vi holder op med
+    // at brænde et spildt API-kald pr. notifikation.
+    if (result.failure?.reason === "recipient-blocked") {
+      await recordDeadConnection(discordId);
+    }
   }
   return false;
+}
+
+/**
+ * Tæl en permanent recipient-blocked-fejl op og log en auto-afkobling.
+ * Fælles for direkte sendDM og outbox-drain, som rammer samme tilstand.
+ *
+ * Bevidst kun console.warn ved afkobling — ikke en Sentry-error. #2189 fjernede
+ * netop error-severity på denne fejlklasse, fordi den er forventet og
+ * ikke-actionable pr. bruger. Selve afkoblingen er systemets normale, korrekte
+ * respons, ikke en hændelse der kræver indgriben.
+ */
+async function recordDeadConnection(discordId) {
+  const outcome = await recordPermanentDmFailure({
+    supabase,
+    discordId,
+    captureExceptionFn: sentryCapture,
+  });
+  if (outcome.disconnected) {
+    console.warn("[discord-dm:auto-disconnect] død Discord-kobling nulstillet efter fejl i træk (#3130)", {
+      discordId,
+      userId: outcome.userId,
+      failures: outcome.count,
+    });
+  }
+  return outcome;
 }
 
 /**
@@ -378,6 +417,10 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
     sendWebhookFn: sendOpsWebhook,
     getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
+    // #3130: en outbox-række der dør på recipient-blocked er samme døde kobling
+    // som direkte sendDM ser — tæl den med, ellers når en bruger der kun rammes
+    // via outbox'en aldrig tærsklen.
+    onRecipientBlocked: recordDeadConnection,
     now,
   });
 }

@@ -6918,7 +6918,7 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
 router.get("/me/discord-status", requireAuth, async (req, res) => {
   const { data: user } = await supabase
     .from("users")
-    .select("discord_id, discord_dm_enabled, discord_dm_prefs")
+    .select("discord_id, discord_dm_enabled, discord_dm_prefs, discord_disconnected_at")
     .eq("id", req.user.id)
     .single();
   res.json({
@@ -6926,6 +6926,11 @@ router.get("/me/discord-status", requireAuth, async (req, res) => {
     dm_enabled: user?.discord_dm_enabled !== false,
     dm_prefs: user?.discord_dm_prefs ?? {},
     bot_configured: Boolean(getBotToken()),
+    // #3130: sandt kun når vi selv har afkoblet en død kobling og spilleren
+    // endnu ikke har gemt et nyt id. Gemmer han et, bliver discord_id non-null
+    // og flaget falder af sig selv — tidsstemplet bevares som historik.
+    auto_disconnected: Boolean(user?.discord_disconnected_at && !user?.discord_id),
+    disconnected_at: user?.discord_id ? null : (user?.discord_disconnected_at ?? null),
   });
 });
 

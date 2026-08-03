@@ -588,6 +588,14 @@ export default function ProfilePage() {
                 <span>{t("discord.statusBotMissing")}</span>
               </div>
             )
+          ) : dmStatus.auto_disconnected ? (
+            /* #3130: vi afkoblede selv en død kobling (spilleren havde forladt
+               vores Discord-server, så botten kunne ikke længere skrive til ham).
+               Uden denne besked ligner det bare "du har aldrig tilsluttet". */
+            <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-start gap-2">
+              <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" />
+              <span>{t("discord.statusAutoDisconnected")}</span>
+            </div>
           ) : (
             <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-center gap-2">
               <XIcon size={14} className="shrink-0" />
