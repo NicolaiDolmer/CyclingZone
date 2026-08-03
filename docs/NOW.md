@@ -4,27 +4,26 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer — svar givet 3/8 formiddag):**
-> 1. **Klik-pakken:** ejer bad om at blive spurgt igen **i en session efter i dag** (#2892 · #2076 · #419).
-> 2. **Penge-kæden (#2813):** support-mail-gaten er nu MÅLT: **intet e-mail-domæne** (cyclingzone.org har 0 MX, ingen SPF; Resend-API-nøgle ugyldig). Anbefaling givet 3/8: (a) i dag = dedikeret Gmail som support-adresse i vilkårene, (b) denne uge = Resend-domæne (send+modtag) + DNS i Vercel. Moms-tjek i Alunta + flip-go udestår. **#2736 fornyelses-webhook før ~24/8.**
-> 3. **Leveres af Claude i separat session (ejer-valg 3/8):** privatlivstekst #3132 + de 3 e-mail-tekster #2853 → sendes til ejeren til godkendelse. · **#3120:** C=modregning er valgt; dry-run-tal leveres i #3119-sessionen → derefter ejerens endelige ja.
-> 4. **Discord-svar:** ejeren poster SELV — 3 verificerede svar-forslag leveret i chatten 3/8 (soren1207-kontraktudløb · #2889-pengestrøm (ark-udkastet) · friisisch-styrt). #2883 hul 4-udkastet ligger fra 31/7.
-> 5. **#2758-automation ER SAT OP 3/8 (ejer-ja):** lokal scheduled task `discord-daily-sweep`, dagligt 07:30 (kører når Claude Code-appen er åben; ellers ved næste app-start). Anbefalet: klik "Run now" én gang for at pre-approve tools. Script: `scripts/discord/sweep-daily.mjs` + `.sweep-state.json`.
+> **🎯 Next action (ejer — svar afventes på batch 3/8 eftermiddag):**
+> 1. **Batch-spørgsmål stillet i chatten 3/8:** klik-pakken (#2892/#2076/#419) · #1150-kontraktudløb (frigivelse vs. tvangs-genforhandling) · forum/beskeder-scope (#3199/#3200) · #3120-luk (dry-run viste 0 at modregne) · **PR #3207 visuelt go** (mobil-trænings-fix, screenshots leveret) · gyldig RESEND_API_KEY (DKIM-DNS er live, men nøglen i connector+Railway er ugyldig → blokerer #2853-flip + #3201-webhook).
+> 2. **Godkendelses-udkast leveret i docs/drafts/ 3/8:** [privatlivstekst #3132](drafts/privatlivstekst-3132-2026-08-03.md) + [3 mailtekster #2853 EN+DA](drafts/mailtekster-2853-2026-08-03.md). Dit ja → Claude implementerer/flipper.
+> 3. **Penge-kæden (#2813):** moms-tjek i Alunta + flip-go udestår. **#2736 fornyelses-webhook før ~24/8.**
+> 4. **Discord-svar:** ejeren poster selv — udkast i docs/drafts/discord-svar-2026-08-03.md. #2758-automation kører (lokal task 07:30).
 
-> **🔴 Ugesweep 3/8 (27/7-3/8, alle kanaler):** 14 nye issues **#3190-#3203** — heraf **7 ejer-direktiver fra #feedback-from-dolmer** (vækst-dashboard #3196 · resultat-defaults #3197 · økonomi-audit #3198 · forum+polls #3199 · spillerbeskeder #3200 · admin-notifikation #3201 · daglig Discord-automation → #2758). Vigtigste bugs: **#3194 mobil-trænings-regression** (sandsynligt PR #3075) · #3193 global rank-mismatch (koordinér m. #2792, nu prio:high). 9 evidens-kommentarer (#2887 #2944 #3115 #2792 #2758 #2813 #2557 #929 #3132) · 3 verificerede closes (#3052 #3130 #3180).
+> **🟢 #3185/#3119/#3122 FIXET + POST-VERIFICERET 3/8 (PR #3206 live 12:03):** væksten i CYCLINGZONE-44 var transfer-artefakter (vagten manglede ghost-filter, #1906-semantik) — IKKE sweep-skabte dobbeltbookinger. Sweep binder nu i game_day-rum m. monument-afledte vinduer (#3114 sweep-side). Prod efter første sweep-tick: tomme enheder **553→0** (647 nye entries), konflikter **4 (kun historiske Brutaliste-par), 0 nye**. **Verificér i morgen ~08: CYCLINGZONE-44-tick skal sige count=4** → derefter luk #3185. #3120: dry-run viste 0 point/0 kr at modregne → anbefalet luk uden mutation.
 
-> **🔴 Platform-triage 3/8:** Sentry **CYCLINGZONE-44 er escalating, IKKE historik** — dobbeltbooking vokser 4→7 par på 4 dage ([#3185](https://github.com/NicolaiDolmer/CyclingZone/issues/3185) P0, rodårsag formodet #3119 → **næste kode-session**). Railway sund (0 5xx/7d, deploy grøn). Supabase gul: #3124 matviews · is_admin anon-kaldbar · 3 analytics-RPC'er åbne for alle spillere (lås i #3196) · #929 stadig slået fra. Prod: 189 brugere, WAU 32, DAU 8, 1 abonnement, **83 % af 7-28d-kohorten vender aldrig tilbage efter dag 1**.
+> **🔴 Platform i øvrigt:** Supabase gul: #3124 matviews · is_admin anon-kaldbar · 3 analytics-RPC'er åbne (lås i #3196) · #929 slået fra. Prod: 189 brugere, WAU 32, 83 % af 7-28d-kohorten vender aldrig tilbage efter dag 1 (→ #2853-mailloop venter på Resend-nøgle). Lokal dev-boks: Playwright mobile-webkit crasher ved launch på ALLE specs (miljø, opstået efter 29/7) — CI er webkit-gaten indtil rod-årsag findes.
 
-> **📌 Venter i øvrigt på dig:** beslutnings-arkets 60 resterende sager ([ark](audits/beslutnings-ark-2026-07-30.md)) · #2830 · #3109-#3112 (Sentry-triage) · #2881-datareparation · #2699 (udskudt 30/7) · dedikerede sessioner: #2622 (poll → kan afløses af #3199-forum) · #2675 · #2650 · #2840 (model A, dry-run-harness).
+> **📌 Venter i øvrigt på dig:** beslutnings-arkets 60 resterende sager ([ark](audits/beslutnings-ark-2026-07-30.md)) · #2830 · #3109-#3112 · #2881 · #2699 · dedikerede sessioner: #2622 (kan afløses af #3199) · #2675 · #2650 · #2840.
 
-> **📌 Åbne opfølgninger:** #3036 (countback) · #2164 (D3→D4) · #3049-#3051 · #2723 omdømme-synlighed (kandidat til prio-løft, +#3152) · #3172 (CI-flake, 3. gang = rod-årsag) · #3095-kompensation = dry-run i #3174 · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` (verificér/slet) · ~75 stale lokale branches.
+> **📌 Åbne opfølgninger:** #3036 · #2164 · #3049-#3051 · #2723 (+#3152) · #3172 (CI-flake) · #3193 global rank-mismatch (koordinér m. #2792) · #3114 rest (save-guard-hul åbner ved D1-oprykning efter 23/8 + "Race day 100000"-display → #3107) · identity_events search_path-hærdning (advisor-WARN) · Reddede branches: `feat/2910-fatigue-reset-claim-guard` + `fix/2861-postgrest-in-cap-sweep` · ~75 stale lokale branches.
 
-> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** #3119 (+#3122) — stopper #3185-væksten, inkl. #3120-dry-run-tal · derefter #3194 (mobil-regression) · #3038 (23/8-blokeren). **Session efter i dag:** spørg ejeren om klik-pakken (#2892/#2076/#419) + levér #3132-privatlivstekst og #2853-tekster.
+> **🤖 Working agent:** Ingen aktiv session. **Næste kode-session:** verificér CYCLONE-44-tick=4 + luk #3185 · merge #3207 efter ejer-go · derefter #3038 (23/8-blokeren) · #3193.
 
 ## Standing context (forever-relaunch)
 
 - **Liga-struktur (ejer 22/6):** 4-divisions-pyramide 1/2/4/8; ægte managere ind fra bunden. D1 = kun AI. **#1688 er kodens eget HARD-GATE før S3-op/nedrykning.**
 - **Sikkerhed:** #691 · #929 · #2802/#2803 — åbne. **Skalering:** #323 (~300 brugere).
-- **Overlap intended** (alle divisioner); 1 rytter = 1 løb/dag. Grace afvist. **Pension:** måles på AFSLUTTET sæsons alder.
+- **Overlap intended** (alle divisioner); 1 rytter = 1 løb/dag **inden for puljen** (game_day er pulje-relativt i real-tid — transfer på tværs af puljer kan lovligt give "samme" game_day igen, jf. #3185-forensik). Grace afvist. **Pension:** måles på AFSLUTTET sæsons alder.
 
-_Trimmet 3/8 (ugesweep-close-out; 30/7-31/7-blokkene komprimeret til stadig-åbne fakta. Historik i git-log, issue-tråde + docs/audits/)._
+_Trimmet 3/8 (aften-close-out; #3119-pakken + udkast leveret. Historik i git-log, issue-tråde + docs/audits/)._
