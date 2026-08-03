@@ -2,7 +2,7 @@
 // SEED_CLUB så ejerens gennemklik er ægte (køb hæver tier, ansæt/fyr fylder/tømmer).
 // Konstanterne er en 1:1-spejling af backend/lib/facilityConstants.js (parity-test
 // i clubMock.parity.test.js sikrer de ikke driver fra hinanden — co-SSOT).
-import { SEED_CLUB, TEST_TEAM } from "./seedData.js";
+import { SEED_CLUB, TEST_TEAM, RIDERS } from "./seedData.js";
 
 const PRICE = { 1: 12000, 2: 26000, 3: 50000, 4: 100000, 5: 240000 };
 const UPKEEP = { 0: 0, 1: 1500, 2: 3500, 3: 8000, 4: 15000, 5: 30000 };
@@ -154,6 +154,17 @@ function directoryPayload() {
   return { staff: [...own, ...others] };
 }
 
+// #3203: statisk historik-seed for chefspejderen (staff-scouting) — så ejeren
+// kan se den nye History-fane MED eksempel-rækker i preview uden en fuld
+// "fuldfør target-opgave"-mock-mutation (findes ikke i scoutingMock.js i dag,
+// kun missioner har et statisk afsluttet seed-eksempel, se SEED_COMPLETED
+// der). Andre roller har (endnu) ingen rolle-specifik historik at vise.
+const SEED_SCOUT_HISTORY = [
+  { id: "scout-hist-1", rider_id: RIDERS[0].id, target_level: 3, completed_at: "2026-07-28T10:00:00.000Z" },
+  { id: "scout-hist-2", rider_id: RIDERS[1].id, target_level: 2, completed_at: "2026-07-20T09:00:00.000Z" },
+  { id: "scout-hist-3", rider_id: RIDERS[0].id, target_level: 1, completed_at: "2026-07-05T14:00:00.000Z" },
+];
+
 // Router: (method, pathname, search, body) → { status, body }.
 export function clubMockRoute(method, pathname, search, body) {
   if (pathname.endsWith("/api/staff/directory") && method === "GET") return { status: 200, body: directoryPayload() };
@@ -222,6 +233,14 @@ export function clubMockRoute(method, pathname, search, body) {
     if (!f?.staff) return { status: 404, body: { error: "staff_not_found" } };
     const abilities = abilitiesFor(track, f.staff.tier, f.staff.name);
     return { status: 200, body: { role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier], name: f.staff.name, abilities } };
+  }
+  // #3203: GET /api/club/staff/:id/scouting-history — kun staff-scouting (den
+  // hyrede chefspejder) har et seed; øvrige id'er/roller giver en ægte tom
+  // liste (matcher backendens adfærd for en spejder uden fuldførte opgaver).
+  if (/\/api\/club\/staff\/([^/]+)\/scouting-history$/.test(pathname) && method === "GET") {
+    const id = pathname.match(/\/api\/club\/staff\/([^/]+)\/scouting-history$/)[1];
+    const history = id === "staff-scouting" && state.facilities.scouting.staff ? SEED_SCOUT_HISTORY : [];
+    return { status: 200, body: { history, maxLevel: 3 } };
   }
   return null; // ikke en club-route
 }

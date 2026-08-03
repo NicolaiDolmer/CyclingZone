@@ -136,7 +136,10 @@ export default function SponsorContractPanel() {
                       ? (cap
                         ? t("clause.podiumCapped", { amount, cap: formatNumber(cap.amount) })
                         : t("clause.podium", { amount }))
-                    : clause.type === "season_objective" ? t("clause.seasonObjective", { amount })
+                    : clause.type === "season_objective"
+                      // #3192: nye tilbud bruger "top_40pct"; allerede-tegnede kontrakter kan
+                      // stadig bære det gamle "top_half" (frosset ved pick, uændret retroaktivt).
+                      ? t(clause.objective === "top_40pct" ? "clause.seasonObjectiveTop40" : "clause.seasonObjective", { amount })
                     : null;
                   if (!text) return null;
                   return (
