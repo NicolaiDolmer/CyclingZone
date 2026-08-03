@@ -1123,6 +1123,7 @@ const ALL_CRON_MONITORS = [
   ["discord-role-sync", CRON_MONITOR_24H],
   ["discord-dm-outbox-drain", CRON_MONITOR_5MIN],
   ["training-sweep", CRON_MONITOR_5MIN],
+  ["ai-recovery-sweep", CRON_MONITOR_5MIN],
   ["graduation-sweep", CRON_MONITOR_5MIN],
   ["scout-sweep", CRON_MONITOR_5MIN],
   ["wage-deduction-sweep", CRON_MONITOR_5MIN],

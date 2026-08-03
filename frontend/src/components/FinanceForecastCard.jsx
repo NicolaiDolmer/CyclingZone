@@ -182,6 +182,37 @@ export default function FinanceForecastCard({
             accent="text-cz-danger"
           />
         )}
+        {/* #3236: upkeep + facilitets-/stab-udgifter + akademi-drift — tidligere
+            helt fraværende fra forecastet (audit #3198, fund #1). Skjules når 0
+            (fx D4-upkeep eller intet akademi), samme mønster som loanInterest. */}
+        {forecast.projected_upkeep !== 0 && (
+          <Row
+            label={t("forecast.row.upkeep")}
+            value={forecast.projected_upkeep}
+            accent="text-cz-danger"
+          />
+        )}
+        {forecast.projected_facility_upkeep !== 0 && (
+          <Row
+            label={t("forecast.row.facilityUpkeep")}
+            value={forecast.projected_facility_upkeep}
+            accent="text-cz-danger"
+          />
+        )}
+        {forecast.projected_staff_salary !== 0 && (
+          <Row
+            label={t("forecast.row.staffSalary")}
+            value={forecast.projected_staff_salary}
+            accent="text-cz-danger"
+          />
+        )}
+        {forecast.projected_academy_drift !== 0 && (
+          <Row
+            label={t("forecast.row.academyDrift")}
+            value={forecast.projected_academy_drift}
+            accent="text-cz-danger"
+          />
+        )}
       </div>
 
       {multiSeason && (
