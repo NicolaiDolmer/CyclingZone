@@ -44,7 +44,7 @@ export default function PrivacyPolicyPage() {
         </div>
 
         <p className="text-cz-3 text-sm mb-6">
-          Senest opdateret: 4. juni 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861).
+          Senest opdateret: 3. august 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861).
           Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle.
         </p>
 
@@ -73,6 +73,8 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Analyse (kun med dit samtykke):</strong> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret) og anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.</li>
                 <li><strong>Tilmeldingskilde (legitim interesse):</strong> når du opretter en konto, registrerer vi hvordan du først nåede siden (et henvisende link, eventuelle kampagne-tags i URL&apos;en og den side du landede på), så vi kan se hvilke kanaler der bringer nye spillere. Kun first-party, ingen cross-site-tracking, og du kan til enhver tid gøre indsigelse.</li>
                 <li><strong>Aggregeret trafikstatistik (kræver ikke samtykke):</strong> vi tæller anonyme, aggregerede sidevisninger og engagement (fx hvor mange besøgende en side fik, og om de engagerede sig) uden cookies og uden at gemme IP-adresser eller andre data der kan identificere dig. Da det ikke kan henføres til dig, kræver det ikke samtykke.</li>
+                {/* #3132: fair play-telemetri (identity_events, live 31/7) — ejer-godkendt ordlyd 3/8. */}
+                <li><strong>Fair play (legitim interesse):</strong> for at kunne opdage og dokumentere snyd med flere konti registrerer vi tekniske signaler ved kontooprettelse og ved værdibærende handlinger i spillet (fx accepterede transfers, auktionsbud og optagne lån): IP-adresse, browser-oplysninger (user-agent), sprogindstilling og tidszone. Disse data bruges udelukkende til fair play-håndhævelse, er aldrig synlige for andre spillere, deles ikke med tredjeparter og slettes automatisk efter 180 dage. Sletter du din konto, slettes de sammen med den. Grundlaget er vores legitime interesse i et retfærdigt spil (GDPR art. 6, stk. 1, litra f), og du kan til enhver tid gøre indsigelse.</li>
               </ul>
             </div>
           </Section>
@@ -126,6 +128,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Konto- og spildata:</strong> så længe din konto er aktiv. Sletter du kontoen, fjernes personhenførbare data inden for 30 dage; aggregeret spillehistorik (fx tidligere sæsonresultater) kan bevares anonymiseret.</li>
                 <li><strong>Waitlist-data:</strong> indtil du beder os slette dig, eller 24 måneders inaktivitet, hvad der kommer først.</li>
                 <li><strong>Adgangslogs (IP):</strong> automatisk slettet efter 30 dage.</li>
+                <li><strong>Fair play-telemetri (IP og enhedssignaler):</strong> automatisk slettet efter 180 dage.</li>
                 <li><strong>Samtykke-bevis (consent_given_at + valg):</strong> så længe det relaterede data behandles, så vi kan dokumentere lovligt grundlag.</li>
               </ul>
             </div>
