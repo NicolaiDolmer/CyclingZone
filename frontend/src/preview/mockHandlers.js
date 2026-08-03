@@ -37,6 +37,9 @@ import {
   SEED_MANAGER_TRANSFERS,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
+  SEED_GLOBAL_RANK,
+  SEED_GLOBAL_RANK_WEEKLY,
+  SEED_GLOBAL_RANK_SEASON_START,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -221,6 +224,29 @@ export function restRows(table, requestUrl = "") {
     // #3102 etape 2: rider_rankings_mv (hubbens topscorere + RiderRankingsPage).
     case "rider_rankings_mv":
       return SEED_RIDER_RANKINGS;
+    // #2792/#3193: global_rank_mv — matview'et filtrerer AI-hold fra (se
+    // seedData.js-kommentaren), så preview'et spejler den faktiske post-fix
+    // kontrakt. team_id-scopet for GlobalRankWidget/TeamProfilePage
+    // (.eq("team_id", id).maybeSingle()); uscopet for GlobalRankPage
+    // (.select("*").order("global_rank")).
+    case "global_rank_mv": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_GLOBAL_RANK.filter(r => r.team_id === id);
+      }
+      return SEED_GLOBAL_RANK;
+    }
+    case "global_rank_weekly_snapshot": {
+      const idMatch = url.search.match(/team_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_GLOBAL_RANK_WEEKLY.filter(r => r.team_id === id);
+      }
+      return SEED_GLOBAL_RANK_WEEKLY;
+    }
+    case "global_rank_season_start_snapshot":
+      return SEED_GLOBAL_RANK_SEASON_START;
     // #3102 etape 2: pointtabellen bag Point & præmier-fanen.
     case "race_points":
       return SEED_RACE_POINTS;

@@ -53,7 +53,6 @@ export function useGlobalRank() {
           team_id: row.team_id,
           name: row.name,
           division: row.division,
-          is_ai: row.is_ai,
           banked_points: n(row.banked_points) || 0,
           season_points: n(row.season_points) || 0,
           global_points: n(row.global_points) || 0,
