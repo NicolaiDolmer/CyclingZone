@@ -4,6 +4,111 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.90",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stages now tell their story",
+          "body": "Every finished stage gets a written race report: a headline, how the race unfolded, and the moments that decided it. Riders who emptied the tank get a GAVE EVERYTHING badge, riders who clearly saved their legs are called out too, and when an attack was a free swing on friendly terrain the report says so. Older races keep the previous summary."
+        },
+        "da": {
+          "title": "Etaperne fortæller nu deres historie",
+          "body": "Hver kørt etape får en skrevet løbsrapport: en rubrik, hvordan løbet udviklede sig, og de momenter der afgjorde det. Ryttere der tømte tanken får et GAV ALT-mærke, ryttere der tydeligt sparede benene nævnes også, og når et angreb var et gratis forsøg på venligt terræn, siger rapporten det. Ældre løb beholder det gamle referat."
+        },
+        "refs": [2356, 3115]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See who fits the stage before you pick",
+          "body": "The lineup screen now shows a small info icon per rider explaining how well he matches the stage terrain and what his aggression means for breakaway chances, in plain words. It only appears where it matters for the stage type."
+        },
+        "da": {
+          "title": "Se hvem der passer til etapen, før du udtager",
+          "body": "Udtagelsesskærmen viser nu et lille info-ikon pr. rytter, der med almindelige ord forklarer hvor godt han matcher etapens terræn, og hvad hans aggressivitet betyder for udbruds-chancen. Ikonet vises kun hvor det er relevant for etapetypen."
+        },
+        "refs": [3115]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Your season, wrapped",
+          "body": "The seasons page gets a recap hero for finished seasons showing where you landed and what defined your year, and the dashboard bridges you into the new season with a goal card. The seasons page also opens on the season you just finished instead of an empty new one."
+        },
+        "da": {
+          "title": "Din sæson, pakket ind",
+          "body": "Sæsonsiden får en opsummerings-sektion for afsluttede sæsoner, der viser hvor du endte og hvad der definerede dit år, og dashboardet bygger bro til den nye sæson med et mål-kort. Sæsonsiden åbner nu også på den sæson du lige har afsluttet i stedet for en tom ny."
+        },
+        "refs": [2752]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Help, rules, patch notes and roadmap no longer require login",
+          "body": "Four pages are now open to everyone, so you can link a friend straight to the rules or the roadmap. All game data stays behind login. Result tables across the app also got sortable column headers."
+        },
+        "da": {
+          "title": "Hjælp, regler, patch notes og roadmap kræver ikke længere login",
+          "body": "Fire sider er nu åbne for alle, så du kan sende en ven direkte til reglerne eller roadmappet. Al spildata ligger stadig bag login. Resultattabeller i hele appen fik samtidig sorterbare kolonne-overskrifter."
+        },
+        "refs": [2042, 3188]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Academy economics, finally visible",
+          "body": "Selling a rider you developed in the academy now shows up as a real sale with real profit: the academy page lists the sale, and the transfer history panel pairs the sale with what you originally paid to sign him. Historical signings where the cost could not be traced are honestly marked as unknown."
+        },
+        "da": {
+          "title": "Akademi-økonomien er endelig synlig",
+          "body": "Sælger du en rytter du selv har udviklet i akademiet, vises det nu som et rigtigt salg med rigtig fortjeneste: akademisiden lister salget, og transferhistorikken parrer salget med det du oprindeligt betalte for at signe ham. Historiske signinger hvor prisen ikke kunne spores, er ærligt markeret som ukendt."
+        },
+        "refs": [2793]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "No more Race day 100000",
+          "body": "Monument races used an internal placeholder number that could leak into the race header as an absurd race day. The number now stays internal. The auction tour on desktop also points at the actual bid field again instead of an empty corner."
+        },
+        "da": {
+          "title": "Ikke mere Race day 100000",
+          "body": "Monument-løb brugte et internt pladsholder-tal, der kunne sive ud i løbs-headeren som en absurd løbsdag. Tallet holder sig nu internt. Auktions-rundvisningen på desktop peger også på det rigtige budfelt igen i stedet for et tomt hjørne."
+        },
+        "refs": [3107, 3007]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The dashboard shows your world by default",
+          "body": "Dashboard modules like form and standings now open on your own division and group instead of Division 1. New managers also get a smoother path from signup to their first race result, and sponsor bonus transactions show proper text in both languages."
+        },
+        "da": {
+          "title": "Dashboardet viser din verden som standard",
+          "body": "Dashboard-moduler som form og stillinger åbner nu på din egen division og gruppe i stedet for 1. division. Nye managere får også en glattere vej fra oprettelse til deres første løbsresultat, og sponsorbonus-transaktioner viser ordentlig tekst på begge sprog."
+        },
+        "refs": [2182, 3243]
+      }
+    ]
+  },
+  {
     "version": "7.89",
     "date": "2026-08-04",
     "label": "Beta",
