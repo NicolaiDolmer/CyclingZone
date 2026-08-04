@@ -5,7 +5,8 @@
 ## Aktiv styring
 
 > **🎯 Next action:**
-> 1. **Næste session:** #3145 (BEKRÆFTET ITT-motor-fejl, rapport på issuet) + motor-køen (#3149/#3150/#2944) ELLER #3295 S3-kalender (deadline 23/8). Sekundært: #3112-guard (forslag klar) · design-sessioner #2557/#3199+#3200.
+> 1. **Næste session (anbefalet):** **kalender-blokken før #3295** (deadline 23/8) — #3327 D2-dækning · #3328 klasse↔længde · #3326 etaperækkefølge · #3329 D1-overlap. Derefter tillids-bugs #3333/#3330/#3332 + guard #3331. Alternativ: motor-køen (#3145 bekræftet ITT-fejl, #3149/#3150/#2944).
+> 1b. **Ejer-beslutning der blokerer #3325 (ryttertyper 90 % climber/tt):** vises typen efter nuværende stats eller potentiale? Anbefaling: potentiale for U23, nuværende for seniorer.
 > 2. **Hos ejeren:** Resend-nøgler + mailtekst-godkendelse (#2853, ~15 min, tænder intet — kæden er deep-linket og flip-klar) · #3300's 3 designsvar · Railway MCP re-auth · penge-kæden #2813 · #3147-basekadence (lavtryk nu) · beslutnings-ark 60 sager · logo #481.
 > 3. **Måle-datoer:** ~18/8 payoff-mål (≥60 % ser første resultat, baseline ~34 %) + dag-1-effekt via get_cohort_retention på /admin/growth.
 
