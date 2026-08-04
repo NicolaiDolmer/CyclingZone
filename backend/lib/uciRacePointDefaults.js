@@ -265,23 +265,41 @@ function buildRawUciMenRacePointRows() {
   return rows;
 }
 
-// #3328 (ejer-beslutning 4/8): klasse↔etapeantal-båndet giver WorldTour A/B/C SAMME
-// etapeinterval (6-8) — kun præmie/point skal differentiere klasserne fremover, ikke
-// længde. Ved bånd-midtpunktet (7 etaper) gav OtherWorldTourC's UCI-tro skala LAVERE
-// afkast pr. rytterdag end ProSeries' 3-5-bånd (GC-vinderskala: 300/7 ≈ 42,9 point/dag
-// mod ProSeries 200/4 = 50 point/dag) — det omvendte incitament spillerne fladede
-// ("det længste løb giver det laveste afkast", #3328). OtherWorldTourB (400/7 ≈ 57,1)
-// og OtherWorldTourA (500/7 ≈ 71,4) klarer sig allerede foran ProSeries ved samme
-// bånd-midtpunkt og røres ikke.
+// #3328 kriterium (spiller-citat, Discord 4/8): "the stage races are now longer (up to
+// 8 stages), but about half of the races are still ProSeries... we race longer races
+// versus tougher competition and are barely rewarded." Konkret krav: ÉN WorldTour-uge
+// skal give bedre afkast end TO ProSeries-løb i samme periode, målt pr. RYTTERDAG
+// (præmiepenge + point — de to er proportionale, prize_money = points × PRIZE_PER_POINT
+// (75, uniform på tværs af klasser), så ranking er identisk uanset hvilken man bruger).
 //
-// +25% på OtherWorldTourC lander på ≈53,6 point/rytterdag — mellem ProSeries (50, +7%
-// margin) og OtherWorldTourB (57,1) — bevarer prestige-rækkefølgen
-// B > C > ProSeries og giver C en reel (ikke marginal) fordel over ProSeries.
+// MÅLT (ikke gættet) 4/8 mod to baselines — begge nødvendige fordi de IKKE er enige:
+//   1) `race_points`-tabellen i prod (read-only SELECT) — de FAKTISKE udbetalinger
+//      spillerne ser lige nu. Klassement rank1: ProSeries=260, OtherWorldTourC=390,
+//      OtherWorldTourB=455, OtherWorldTourA=520. (Denne tabel er sidst synkroniseret
+//      2026-06-03 via scripts/seedUciMenRacePoints.js — race_point_cascade/-master
+//      #894 R2-modellen kan siden have finjusteret den. Se PR-body/rapport for det fund.)
+//   2) buildUciMenRacePointRows() (denne fil, multiplier=1) — hvad en fremtidig reseed
+//      VILLE skrive: ProSeries=114, OtherWorldTourC=166, OtherWorldTourB=221,
+//      OtherWorldTourA=277 (flatten 0.5 bagt ind, se længere nede i filen).
 //
-// Ejeren har IKKE specificeret en præcis multiplikator — dette er et konservativt
-// default, bygget tunbart ét sted, til ejer-godkendelse (se PR #3327/#3328-body for
-// før/efter-målingen pr. rytterdag).
-export const OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER = 1.25;
+// GC-krone-beløbet er UAFHÆNGIGT af etapeantal (samme Klassement-skala uanset om løbet
+// har 6, 7 eller 8 etaper) — kun rytterdags-RATEN varierer med det faktiske etapeantal.
+// Kriteriet "1 WT-uge > 2 ProSeries-løb" er derfor etapeantal-uafhængigt: det reducerer
+// til OtherWorldTourC_efter > 2 × ProSeries, som skal holde på BEGGE baselines.
+//
+// +25% (det oprindelige gæt) FEJLER kriteriet på begge: DB 390 vs mål 520 (-25%), kode
+// 208 vs mål 228 (-9%). Selv break-even (×1.333) giver 0% margin på DB og fejler stadig
+// koden (-3%). ×1.5 klarer begge med solid margin: DB 585 vs 520 (+12,5%), kode 249 vs
+// 228 (+9,2%). Se PR #3327/#3328-body for den fulde rytterdag-tabel på tværs af bånd.
+//
+// Bivirkning, IKKE en fejl i denne udregning: ved ×1.5 overhaler OtherWorldTourC
+// OtherWorldTourB i BEGGE baselines (DB 585 > 455, kode 249 > 221). Det er fordi
+// OtherWorldTourB's EGET reelle afkast (455) allerede er under 2×ProSeries (520) —
+// B fejler #3328's brede kriterium ("højere klasse = højere afkast") helt uafhængigt
+// af denne PR. Den tidligere "bevar B > C"-antagelse i denne kommentar var selv bygget
+// på et gæt (den rå UCI-skala, ikke reelle udbetalinger) og holder ikke ved efterprøvning
+// — B/A's egen prissætning er et separat, ikke-scoped follow-up (se PR-body).
+export const OTHER_WORLD_TOUR_C_STAGE_DAY_MULTIPLIER = 1.5;
 
 // Anvend multiplikatoren på ALLE OtherWorldTourC-rækker (alle result_types — GC, etape,
 // trøjer, hold) EFTER flatten, så den serverede kurves interne FORM er uændret (samme
