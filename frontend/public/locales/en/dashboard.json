@@ -101,7 +101,12 @@
       "seasonRaces": "{count, plural, one {# race} other {# races}}",
       "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
       "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",
-      "emptyCta": "Open the race calendar →"
+      "emptyCta": "Open the race calendar →",
+      "firstRaceTitle": "Your first race is in the books",
+      "firstRaceIntro": "Run while you were away. Here is how it went.",
+      "firstRaceIntroAt": "Finished {time} while you were away. Here is how it went.",
+      "firstRaceCta": "Read the full race story",
+      "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}"
     },
     "auctions": {
       "title": "Active Auctions",
