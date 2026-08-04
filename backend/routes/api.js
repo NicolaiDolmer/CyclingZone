@@ -1672,7 +1672,9 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       loadScout(req.team.id, supabase),
       supabase
         .from("riders")
-        .select("id, team_id, potentiale, birthdate, primary_type, market_value")
+        // #3345: valuation_type med — predictBaseValue nedenfor læser den FØR
+        // primary_type (frosset værdisætning, se riderValuation.js).
+        .select("id, team_id, potentiale, birthdate, primary_type, valuation_type, market_value")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -7964,7 +7966,9 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
   const [riders, abilities] = await Promise.all([
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, firstname, lastname, primary_type, base_value, market_value, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
+      // #3345: valuation_type med — predictBaseValue nedenfor læser den FØR
+      // primary_type (frosset værdisætning, se riderValuation.js).
+      .select("id, firstname, lastname, primary_type, valuation_type, base_value, market_value, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
       .order("id")),
     fetchAllRows(() => supabase
       .from("rider_derived_abilities")
@@ -8050,7 +8054,9 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
     const [riders, abilities, potentialeRows] = await Promise.all([
       fetchAllRows(() => supabase
         .from("riders")
-        .select("id, firstname, lastname, primary_type, birthdate, nationality_code, is_retired")
+        // #3345: valuation_type med — predictBaseValue/predictBaseValueV4 nedenfor
+        // læser den FØR primary_type (frosset værdisætning, se riderValuation.js).
+        .select("id, firstname, lastname, primary_type, valuation_type, birthdate, nationality_code, is_retired")
         .order("id")),
       fetchAllRows(() => supabase
         .from("rider_derived_abilities")

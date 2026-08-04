@@ -34,6 +34,14 @@ const WRITE_CONCURRENCY = 25;
 export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
   const { primary, secondary } = computeRiderTypes(typeSource, baseline);
+  // #3345: primary_type/secondary_type overskrives ALTID med den friske
+  // klassifikation ovenfor (de må frit reklassificeres — #3325/#3343). Bemærk at
+  // valuation_type IKKE overskrives her — den flyder ureguleret igennem fra
+  // riderRow via spreadet, så predictBaseValue/currentProductionValue (som læser
+  // valuation_type FØR primary_type, se riderValuation.js) fortsætter med at bruge
+  // den FROSNE type. Mangler riderRow.valuation_type helt (fixtures/tests/en
+  // rytter uden det felt), falder value-funktionerne selv tilbage til
+  // withType.primary_type (den friske type ovenfor) — uændret adfærd.
   const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
   const raw = predictBaseValue(withType, abilities, model);
   const cpv = currentProductionValue(withType, abilities, model);
@@ -103,8 +111,10 @@ export async function refreshChangedRiderValues(supabase, { baseline, model, log
   const seasonNumber = season?.number ?? 1;
 
   const riderQuery = () => {
+    // #3345: valuation_type (den FROSNE type) skal med i selectet — recomputeRiderValue
+    // videresender den uændret til predictBaseValue/currentProductionValue via spread.
     let q = supabase.from("riders")
-      .select("id, primary_type, secondary_type, base_value, current_production_value, birthdate, potentiale")
+      .select("id, primary_type, secondary_type, valuation_type, base_value, current_production_value, birthdate, potentiale")
       .order("id");
     if (teamId) q = q.eq("team_id", teamId);
     return q;
