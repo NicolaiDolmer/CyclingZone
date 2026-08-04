@@ -276,6 +276,93 @@ test("applyRaceResults inserts results and recalculates standings without touchi
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
 });
 
+// #3022: stageNumbers sat → atomisk delete+insert via apply_race_results_batch-RPC'en
+// (raceRunner.js/pcmResultsImport.js's nye kaldeform), IKKE en separat .insert().
+test("applyRaceResults: stageNumbers sat → kalder applyRaceResultsBatch (atomisk), ikke .insert()", async () => {
+  let insertCalled = false;
+  const supabase = {
+    from(table) {
+      if (table === "race_results") {
+        return { insert() { insertCalled = true; return Promise.resolve({ error: null }); } };
+      }
+      throw new Error(`uventet tabel i test-double: ${table}`);
+    },
+  };
+  let batchArgs = null;
+  const result = await applyRaceResults({
+    supabase,
+    race: { id: "race-1", season_id: "season-1" },
+    resultRows: [
+      { rider_id: "rider-1", rider_name: "Rider One", result_type: "stage", rank: 1, stage_number: 2 },
+    ],
+    stageNumbers: [2],
+    applyRaceResultsBatch: async (client, args) => {
+      batchArgs = args;
+      return { rowsDeleted: 3, rowsInserted: 1 };
+    },
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+  });
+
+  assert.equal(insertCalled, false, "en atomisk (stageNumbers-sat) skrivning må IKKE også kalde .insert() direkte");
+  assert.equal(result.rowsImported, 1, "rowsImported skal komme fra RPC'ens rows_inserted");
+  assert.equal(batchArgs.raceId, "race-1");
+  assert.deepEqual(batchArgs.stageNumbers, [2]);
+  assert.equal(batchArgs.resultRows.length, 1);
+});
+
+test("applyRaceResults: stageNumbers UDELADT → ren .insert() (approve-results-formen, uændret)", async () => {
+  const { supabase, state } = createSupabaseDouble();
+  let batchCalled = false;
+  const result = await applyRaceResults({
+    supabase,
+    race: { id: "race-1", season_id: "season-1" },
+    resultRows: [{ rider_id: "rider-1", rider_name: "Rider One", result_type: "gc", rank: 1, stage_number: 1 }],
+    applyRaceResultsBatch: async () => { batchCalled = true; return { rowsInserted: 999 }; },
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+  });
+  assert.equal(batchCalled, false, "uden stageNumbers må RPC-branchen ikke røres");
+  assert.equal(result.rowsImported, 1);
+  assert.equal(state.raceResults.length, 1);
+});
+
+test("applyRaceResults: RPC-fejl (stageNumbers sat) kastes synligt, standings genberegnes ALDRIG", async () => {
+  const standingsCalls = [];
+  const supabase = { from() { throw new Error("må ikke røres — batch-branchen bruger RPC, ikke .from()"); } };
+  await assert.rejects(
+    () => applyRaceResults({
+      supabase,
+      race: { id: "race-1", season_id: "season-1" },
+      resultRows: [{ rider_id: "rider-1", result_type: "stage", rank: 1, stage_number: 1 }],
+      stageNumbers: [1],
+      applyRaceResultsBatch: async () => { throw new Error("apply_race_results_batch: unique_violation"); },
+      ensureSeasonStandings: async (seasonId) => { standingsCalls.push(["ensure", seasonId]); },
+      updateStandings: async (seasonId, raceId) => { standingsCalls.push(["update", seasonId, raceId]); },
+    }),
+    /unique_violation/,
+  );
+  assert.deepEqual(standingsCalls, [], "standings må IKKE genberegnes når resultat-skrivningen fejlede");
+});
+
+// #3022 forward-guard: en række uden gyldig deltager-identitet afvises FØR databasen
+// rammes, uanset hvilken branch (ren insert eller atomisk RPC).
+test("applyRaceResults: afviser en række uden gyldig deltager-identitet (#3022 forward-guard)", async () => {
+  const standingsCalls = [];
+  const supabase = { from() { throw new Error("må ikke røres — valideringen skal fejle FØR noget DB-kald"); } };
+  await assert.rejects(
+    () => applyRaceResults({
+      supabase,
+      race: { id: "race-1", season_id: "season-1" },
+      resultRows: [{ rider_id: null, rider_name: null, team_name: null, result_type: "gc", rank: 1, stage_number: 1 }],
+      ensureSeasonStandings: async (seasonId) => { standingsCalls.push(seasonId); },
+      updateStandings: async () => { standingsCalls.push("update"); },
+    }),
+    /uden gyldig deltager-identitet/,
+  );
+  assert.deepEqual(standingsCalls, []);
+});
+
 // #2898: fuld-sim sletter race_results FØR applyRaceResults kaldes (raceRunner.js).
 // Fejler selve insertet (fx statement timeout), skal det være en synlig fejl —
 // IKKE en tavs succes der lader standings genberegne på et ufuldstændigt

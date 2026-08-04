@@ -16,6 +16,8 @@ function ensureRace(race) {
 import { PRIZE_PER_POINT } from "./economyConstants.js";
 export { PRIZE_PER_POINT };
 import { fetchAllRows } from "./supabasePagination.js";
+import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } from "./stageResultRpc.js";
+import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
@@ -82,8 +84,17 @@ export async function applyRaceResults({
   supabase,
   race,
   resultRows = [],
+  // #3022: array af de etape-numre denne skrivning dækker. Sat → delete+insert
+  // køres ATOMISK via apply_race_results_batch-RPC'en (i stedet for kaldets
+  // eget separate .delete() + dette kalds .insert() som to HTTP-round-trips) —
+  // lukker fejlmode B (crash mellem delete og insert efterlader løbet
+  // resultatløst). Uændret adfærd (ren .insert(), ingen forudgående delete) når
+  // IKKE sat — bruges af /admin/approve-results, der aldrig har en eksisterende
+  // race_results-mængde at erstatte for det løb.
+  stageNumbers = null,
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  applyRaceResultsBatch = applyRaceResultsBatchAtomicDefault,
 } = {}) {
   ensureSupabase(supabase);
   ensureRace(race);
@@ -114,14 +125,29 @@ export async function applyRaceResults({
     bonus_seconds: row.bonus_seconds ?? null,
   }));
 
-  const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
-  if (insertError) throw new Error(insertError.message);
+  // Forward-guard (#3022): afvis rækker uden gyldig deltager-identitet eller en
+  // intern batch-kollision FØR databasen rammes — matcher race_results_entrant_unique.
+  assertValidEntrantRows(normalizedRows);
+
+  let rowsInserted;
+  if (Array.isArray(stageNumbers) && stageNumbers.length) {
+    const { rowsInserted: inserted } = await applyRaceResultsBatch(supabase, {
+      raceId: race.id,
+      stageNumbers,
+      resultRows: normalizedRows,
+    });
+    rowsInserted = inserted;
+  } else {
+    const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
+    if (insertError) throw new Error(insertError.message);
+    rowsInserted = normalizedRows.length;
+  }
 
   await ensureSeasonStandings(race.season_id);
   await updateStandings(race.season_id, race.id);
 
   return {
-    rowsImported: normalizedRows.length,
+    rowsImported: rowsInserted,
   };
 }
 

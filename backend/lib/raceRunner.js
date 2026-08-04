@@ -1305,36 +1305,22 @@ export async function simulateRace({
     };
   }
 
-  // Idempotent PR. ETAPE — spejler pcmResultsImport: slet kun de etaper denne
-  // afvikling faktisk dækker, så en gen-afvikling ikke wiper andre etaper.
-  //
-  // #2898: eksplicit error-tjek er PÅKRÆVET her. Fejler denne delete tavst (fx et
-  // statement timeout under samtidige etaper — netop det Sentry fangede i
-  // CYCLINGZONE-3D/3E), ville applyRaceResults nedenfor indsætte de nye rækker
-  // OVEN PÅ de gamle race_results — dublerede points_earned og dobbelt
-  // prize_money (prizePayoutEngine.js). Abort FØR insert, ingen tavs fortsættelse.
+  // #3022 (afløser #2898's separate delete-tjek her): delete-af-berørte-etaper +
+  // insert køres nu ATOMISK i ÉN DB-transaktion via applyRaceResults' interne
+  // apply_race_results_batch-RPC-kald (stageNumbers sat → RPC-branch, se
+  // raceResultsEngine.js). #2898's pointe (en fejlet delete må IKKE lade et
+  // insert køre oven på de gamle rækker) er dermed en Postgres-transaktions-
+  // garanti i stedet for en JS-level check-og-abort — strengere: den lukker
+  // OGSÅ crash-mellem-de-to-kald-vinduet (#3022 fejlmode B), som #2898 ikke
+  // dækkede. Idempotent PR. ETAPE uændret: kun de etaper denne afvikling faktisk
+  // dækker slettes, så en gen-afvikling ikke wiper andre etaper.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
-  if (stagesInRun.length) {
-    const { error: deleteError } = await supabase
-      .from("race_results")
-      .delete()
-      .eq("race_id", race.id)
-      .in("stage_number", stagesInRun);
-    if (deleteError) {
-      const err = new Error(
-        `race_results delete failed for race ${race.id} (stages ${stagesInRun.join(",")}) — ` +
-          `aborting BEFORE insert to prevent duplicated points/prizes: ${deleteError.message}`,
-      );
-      console.error(`  ⚠️  ${err.message}`);
-      captureException(err, { tags: { flow: "race-run", stage: "race-results-delete" }, raceId: race.id });
-      throw err;
-    }
-  }
 
   const applied = await applyRaceResults({
     supabase,
     race: { ...race },
     resultRows,
+    stageNumbers: stagesInRun,
     ensureSeasonStandings,
     updateStandings,
   });
