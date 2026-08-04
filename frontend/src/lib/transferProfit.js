@@ -8,6 +8,11 @@
 //   • auction/transfer med direction "in"  → køb til `amount`
 //   • auction/transfer med direction "out" → salg til `amount`
 //     (auktion uden bud har amount 0 / ingen vinder — rytteren blev IKKE solgt)
+//   • academy med direction "in" → køb til `amount` (den persisterede
+//     signing-fee, #2793). `amount` er null på ældre rækker fra FØR #2793 —
+//     samme "ukendt købspris"-håndtering som start-trup/swap, men UI'et viser
+//     et mere specifikt "Akademi (kostbasis ukendt)"-hint i det tilfælde
+//     (TeamTransferHistoryTab.jsx, via buyType==="academy").
 //   • swap → ejerskifte uden kendt pr.-rytter-pris: event.rider kom IND
 //     (køb til ukendt pris), event.rider_swapped røg UD (ingen profit-række —
 //     cash_adjustment dækker hele pakken, ikke én rytter)
@@ -21,7 +26,10 @@
 // direction er rytter-centrisk for auction/transfer/loan; for swap er
 // event.rider altid den modtagne rytter og event.rider_swapped den afgivne.
 
-const CASH_TRADE_TYPES = new Set(["auction", "transfer"]);
+// #2793: "academy" tilføjet — akademi-signing er et reelt køb (signing-fee),
+// og skal danne et "in"-ben ligesom auction/transfer, ellers matcher et senere
+// salg af rytteren aldrig et forudgående køb.
+const CASH_TRADE_TYPES = new Set(["auction", "transfer", "academy"]);
 
 function toTime(date) {
   const t = new Date(date).getTime();
@@ -62,7 +70,13 @@ export function computeTransferProfit(events) {
     }
 
     if (!CASH_TRADE_TYPES.has(ev?.type)) continue;
-    const amount = ev.amount ?? 0;
+    // #2793: IKKE `?? 0` her — en null-amount (ukendt akademi-kostbasis på
+    // rækker fra før #2793) skal forblive null igennem hele parringen, så
+    // buyAmount/profit korrekt ender som "ukendt" i stedet for at antage en
+    // gratis signing. auction/transfer har aldrig null her (se kommentarer
+    // ovenfor: noSale-auktioner er allerede filtreret fra på dette punkt for
+    // "in"-retningen, og transfer_offers.offer_amount er NOT NULL).
+    const amount = ev.amount;
 
     if (ev.direction === "in") {
       addLeg(ev.rider, { kind: "in", type: ev.type, amount, date: ev.date, seasonNumber: ev.season_number ?? null });

@@ -59,6 +59,23 @@ export function countdownSegments(parts) {
   return [{ unit: "minutes", count: Math.max(1, minutes) }];
 }
 
+// #3243 — menneskelig countdown-streng til NÆSTE etape/løbs-start ("in 2 days
+// 3 hours" / "om 2 dage 3 timer"), samme tekst-idiom som "Kommende løb"-kortet
+// på dashboardet + StageScheduleCard (#1828). Delt her (i stedet for dupliceret
+// lokalt) så TeamSelectionCtaCard kan vise et nyt holds allerførste løb med
+// samme ægte race_stage_schedule-baserede countdown — IKKE den forvirrende
+// pool_race.date_text (PCM-kalenderdato) som blev fjernet fra "Kommende
+// løb"-kortet i #2171. t er i18next's translate-funktion; kaldes med fuldt
+// kvalificerede races:-nøgler så funktionen virker uanset kalderens eget
+// aktive namespace.
+export function formatCountdown(scheduledMs, nowMs, t) {
+  const parts = countdownParts(scheduledMs - nowMs);
+  if (!parts) return t("races:detail.stageSchedule.startingNow");
+  const segs = countdownSegments(parts).map((s) =>
+    t(`races:detail.stageSchedule.countdown${s.unit[0].toUpperCase()}${s.unit.slice(1)}`, { count: s.count }));
+  return `${t("races:detail.stageSchedule.countdownPrefix")} ${segs.join(" ")}`;
+}
+
 // Hvilken kalenderdag falder scheduled_at på i København-tid, relativt til now?
 // Returnerer "today" | "tomorrow" | null (null = brug fuld dato). Sammenligner
 // på København-kalenderdage via Intl, så midnat-grænsen er korrekt uanset hvor

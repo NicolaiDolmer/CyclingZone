@@ -13,6 +13,8 @@ const {
   buildScoutReportReadyNotification,
   notifyScoutReportReady,
   SCOUT_REPORT_READY_TYPE,
+  buildWelcomeNotification,
+  WELCOME_TYPE,
 } = await import("./notificationService.js");
 
 function createNotificationSupabase({
@@ -642,4 +644,30 @@ test("notifyScoutReportReady: en fejlende fetchRiderName isoleres (fanges, kaste
   const result = await notifyScoutReportReady({ supabase, assignment, fetchRiderName });
   assert.deepEqual(result, { delivered: false, deduped: false, reason: "error" });
   assert.equal(supabase.state.inserts.length, 0);
+});
+
+// ─── Gab 2 (#2822) · buildWelcomeNotification ─────────────────────────────
+
+test("buildWelcomeNotification: korrekt type, ingen related_id, i18n-koder + EN-first fallback-tekst", () => {
+  const payload = buildWelcomeNotification();
+
+  assert.equal(payload.type, WELCOME_TYPE);
+  assert.equal(payload.type, "welcome");
+  assert.equal(payload.relatedId, null, "ikke knyttet til nogen specifik entitet");
+  assert.equal(payload.metadata.titleCode, "notif.welcome.title");
+  assert.equal(payload.metadata.messageCode, "notif.welcome.message");
+  assert.match(payload.title, /Welcome/i);
+  assert.match(payload.message, /auction house/i);
+});
+
+test("buildWelcomeNotification + notifyTeamOwner: leverer via teamId → user_id-opslag (samme sti som route-handleren bruger)", async () => {
+  const supabase = createNotificationSupabase({ teams: [{ id: "team-1", user_id: "user-1" }] });
+  const payload = buildWelcomeNotification();
+
+  const result = await notifyTeamOwner({ supabase, teamId: "team-1", ...payload });
+  assert.deepEqual(result, { delivered: true, deduped: false });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].user_id, "user-1");
+  assert.equal(supabase.state.inserts[0].type, "welcome");
+  assert.equal(supabase.state.inserts[0].related_id, null);
 });

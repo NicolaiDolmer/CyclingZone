@@ -7,6 +7,7 @@ import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
 import { buildRaceRecap } from "../lib/raceRecap.js";
 import { supabase } from "../lib/supabase";
+import { logFirstEvent } from "../lib/logEvent";
 
 // #2466 — "How your team did": resultat-push for holdets seneste finaliserede
 // løb. Modsat "Seneste resultater"-kortet (løbets VINDER) viser dette kort DINE
@@ -64,6 +65,10 @@ function useSeenBadge(race) {
     setIsNew(!race.seen);
     if (race.seen || markedRef.current === raceId) return;
     markedRef.current = raceId;
+    // #3243 — funnel-event: dashboardet EKSPONERER hermed et usét løbsresultat.
+    // logFirstEvent de-dup'er pr. bruger, så kun den allerførste eksponering
+    // logges (samme "first"-idiom som team_drafted/first_bid).
+    logFirstEvent("first_race_result_shown", { race_id: raceId });
     // Fire-and-forget, samme mønster som DashboardPage.dismissOnboarding: lokal
     // badge-visning venter ikke på roundtrippen, og fejl er stille (badgen
     // dukker blot op igen næste besøg — ingen død funktionalitet).

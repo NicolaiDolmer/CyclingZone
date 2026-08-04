@@ -24,6 +24,22 @@ function auctionEvent({ rider, direction, amount, date, season = 1 }) {
   };
 }
 
+// #2793: akademi-signing som "in"-ben. amount=null simulerer en legacy-række
+// fra FØR #2793 hvor kostbasen ikke blev persisteret.
+function academyEvent({ rider, amount, date, season = 1 }) {
+  return {
+    id: `academy:${rider.id}:${date}`,
+    type: "academy",
+    direction: "in",
+    cash_flow: amount != null ? "out" : null,
+    date,
+    rider,
+    counterparty: null,
+    amount,
+    season_number: season,
+  };
+}
+
 function transferEvent({ rider, direction, amount, date, season = 1 }) {
   return {
     id: `transfer:${rider.id}:${date}`,
@@ -200,6 +216,42 @@ test("#1107 · gratis transfer ind (amount 0) er et kendt køb til 0, ikke ukend
   assert.equal(trades[0].buyAmount, 0);
   assert.equal(trades[0].profit, 2_000_000);
   assert.equal(totals.knownTradeCount, 1);
+});
+
+// #2793: akademi-signing → senere auktions-salg skal parres som køb→salg,
+// ligesom auction/transfer. Før #2793 var "academy" ikke i CASH_TRADE_TYPES,
+// så salget fik buyAmount=null ("unknown") selvom kostbasen var kendt.
+test("#2793 · akademi-signing (kendt fee) + senere auktions-salg giver korrekt profit", () => {
+  const { trades, totals } = computeTransferProfit([
+    academyEvent({ rider: RIDER_A, amount: 15_000, date: "2026-06-24T16:48:00Z" }),
+    auctionEvent({ rider: RIDER_A, direction: "out", amount: 65_451, date: "2026-07-21T21:06:00Z" }),
+  ]);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].buyAmount, 15_000);
+  assert.equal(trades[0].buyType, "academy");
+  assert.equal(trades[0].sellAmount, 65_451);
+  assert.equal(trades[0].profit, 50_451);
+  assert.equal(totals.realizedProfit, 50_451);
+  assert.equal(totals.knownTradeCount, 1);
+});
+
+// #2793: en legacy akademi-signing uden persisteret kostbasis (amount: null,
+// rækker fra FØR #2793) skal give en KENDT "ukendt" i stedet for at blive
+// fejlagtigt behandlet som et gratis køb (amount 0) — se transferProfit.js'
+// `?? 0`-fjernelse. buyType er stadig "academy" så UI'et kan vise et
+// specifikt "kostbasis ukendt"-hint i stedet for det generiske "unknown".
+test("#2793 · akademi-signing uden kendt kostbasis (legacy) giver ukendt profit, ikke 'gratis'", () => {
+  const { trades, totals } = computeTransferProfit([
+    academyEvent({ rider: RIDER_A, amount: null, date: "2026-05-01T10:00:00Z" }),
+    auctionEvent({ rider: RIDER_A, direction: "out", amount: 20_000, date: "2026-06-01T10:00:00Z" }),
+  ]);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].buyAmount, null);
+  assert.equal(trades[0].buyType, "academy");
+  assert.equal(trades[0].profit, null); // IKKE 20_000 (ville implicere gratis signing)
+  assert.equal(totals.realizedProfit, 0);
+  assert.equal(totals.knownTradeCount, 0);
+  assert.equal(totals.tradeCount, 1);
 });
 
 test("#1107 · events uden rytter eller tom liste håndteres uden fejl", () => {

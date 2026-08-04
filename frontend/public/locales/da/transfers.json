@@ -156,6 +156,8 @@
     },
     "unknownBuy": "Ukendt",
     "unknownBuyHint": "Intet køb fundet i holdets historik, fx start-trup eller bytte. Gevinst kan ikke beregnes.",
+    "unknownAcademyBuy": "Akademi (kostbasis ukendt)",
+    "unknownAcademyBuyHint": "Rytteren blev signet fra akademiet før kostbasis blev registreret. Gevinst kan ikke beregnes.",
     "total": "Samlet realiseret gevinst",
     "totalExcluded": "{count, plural, one {# salg} other {# salg}} uden kendt købspris, tæller ikke med i totalen."
   },
