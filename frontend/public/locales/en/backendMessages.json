@@ -176,6 +176,10 @@
       "title": "Race result is in",
       "message": "{race} has been run. View the result."
     },
+    "firstRaceResult": {
+      "title": "Your first race is in the books",
+      "message": "{race} has been run. See how your riders did."
+    },
     "stageResult": {
       "title": "Stage result is in",
       "message": "Stage {stage} of {race} is done. Your best: {rider}, position {position}.",
