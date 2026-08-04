@@ -103,8 +103,17 @@
       "useMax": "Brug max",
       "maxZero": "Ikke plads til et nyt lån. Din gæld er på divisionens loft på {ceiling} CZ$.",
       "exceedsMax": "Dette vil skubbe dig over gældsloftet, fordi gebyret tæller med. Max lån lige nu: {value} CZ$.",
+      "costPerSeason": "Rente næste sæson hvis du ikke betaler af: {interest} CZ$ → gælden når {projected} CZ$",
       "submit": "Optag lån",
       "processing": "Behandler..."
+    },
+    "confirmModal": {
+      "title": "Bekræft stort lån",
+      "body": "Du er ved at låne <strong>{principal} CZ$</strong> plus et gebyr på <strong>{fee} CZ$</strong>. Din samlede gæld bliver <strong>{newTotalDebt} CZ$</strong>, {pct}% af divisionens gældsloft på {ceiling} CZ$.",
+      "interestForecast": "Betaler du ikke af, lægger næste sæsons rente alene <strong>{interest} CZ$</strong> oveni, så gælden når <strong>{projected} CZ$</strong>.",
+      "ceilingWarning": "Det er over divisionens loft alene på grund af renten. Er den stadig over ved næste sæsonskifte, spærrer bestyrelsen transfers og kan tvangssælge dine ryttere for at lukke hullet.",
+      "question": "Optag lånet alligevel?",
+      "confirm": "Optag lån"
     },
     "terms": {
       "title": "Lånebetingelser, Division {division}",

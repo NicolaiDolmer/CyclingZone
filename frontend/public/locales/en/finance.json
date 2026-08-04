@@ -103,8 +103,17 @@
       "useMax": "Use max",
       "maxZero": "No room for a new loan. Your debt is at the division cap of {ceiling} CZ$.",
       "exceedsMax": "This would push you over the debt cap, because the fee counts towards it. Max loan right now: {value} CZ$.",
+      "costPerSeason": "Interest next season if you repay nothing: {interest} CZ$ → debt would reach {projected} CZ$",
       "submit": "Take loan",
       "processing": "Processing..."
+    },
+    "confirmModal": {
+      "title": "Confirm large loan",
+      "body": "You're about to borrow <strong>{principal} CZ$</strong> plus a <strong>{fee} CZ$</strong> fee. Your total debt becomes <strong>{newTotalDebt} CZ$</strong>, {pct}% of your division's {ceiling} CZ$ debt cap.",
+      "interestForecast": "If you repay nothing, next season's interest alone adds <strong>{interest} CZ$</strong>, taking your debt to <strong>{projected} CZ$</strong>.",
+      "ceilingWarning": "That's over your division's cap from interest alone. If it's still over at the next season change, the board freezes transfers and can force-sell your riders to close the gap.",
+      "question": "Take out this loan anyway?",
+      "confirm": "Take loan"
     },
     "terms": {
       "title": "Loan terms, Division {division}",
