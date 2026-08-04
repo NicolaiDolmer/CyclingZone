@@ -67,6 +67,7 @@ import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { runAiTeamTrimHealSweep } from "./lib/aiTeamTrimHealSweep.js";
+import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js"; // #3330
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
@@ -768,6 +769,32 @@ async function runAiTeamTrimHealSweepCron() {
   }
 }
 
+// ─── Udskudt-holdskifte heal: flush parkerede ryttere flushen sprang over (#3330) ─
+// Rod-årsag: flushDeferredTransfersForRace (stageRaceTransferDefer.js) kaldes KUN
+// ved et løbs finalisering, og KUN for det løbs egne deltagere. Falder flushen på
+// gulvet dér, er der intet andet i systemet der rører pending_team_id igen — en
+// betalt handel kan blive hængende for evigt (prod: Vasco Fernandes, 22/6→4/8).
+// Denne sweep finder enhver rytter med pending_team_id != null der ikke ER i et
+// aktivt fleretape-løb (getRidersInActiveStageRace — samme diskriminator som
+// flushen selv bruger) og flusher ham. Idempotent (delt TOCTOU-guard via
+// flushParkedRider) → genkørsel = 0 rows. Cadence matcher de andre heal-sweeps.
+
+async function runDeferredTransferHealSweepCron() {
+  const notifyTeamOwner = (teamId, type, title, message, relatedId = null, metadata = null) =>
+    notifyTeamOwnerShared({ supabase, teamId, type, title, message, relatedId, metadata });
+  const result = await runDeferredTransferHealSweep({ supabase, now: new Date(), notifyTeamOwner });
+  if (result.healed) {
+    console.log(`🚚 Udskudt-holdskifte heal-sweep: ${result.healed} parkeret(e) rytter(e) flushet (#3330)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Udskudt-holdskifte heal-sweep: ${result.failed} rytter(e) fejlede (per-rytter try/catch isolerede)`);
+    sentryCapture(new Error(`deferred-transfer heal sweep: ${result.failed} rytter(e) fejlede`), {
+      tags: { cron: "deferred-transfer-heal" },
+      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
+    });
+  }
+}
+
 // ─── Entry-generator sweep (#2375) ───────────────────────────────────────────
 // Rod-årsag: den proaktive entry-generator (raceEntryGenerator.js, #1810) kørte hidtil
 // KUN ved sæson-transition. Løb oprettet/genskabt MIDT i en aktiv sæson (fx admin
@@ -1159,6 +1186,7 @@ const ALL_CRON_MONITORS = [
   ["academy-heal", CRON_MONITOR_5MIN],
   ["rider-derive-heal", CRON_MONITOR_5MIN],
   ["ai-trim-heal", CRON_MONITOR_5MIN],
+  ["deferred-transfer-heal", CRON_MONITOR_5MIN],
   ["auto-prize", CRON_MONITOR_5MIN],
   ["stage-scheduler", CRON_MONITOR_5MIN],
   ["ranking-matview-refresh", CRON_MONITOR_10MIN],
@@ -1337,6 +1365,15 @@ export function startCron() {
   // hold. Cadence matcher de andre heal-sweeps.
   setInterval(
     trackedTick("ai-trim heal sweep", monitorCron("ai-trim-heal", runAiTeamTrimHealSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Udskudt-holdskifte heal: flush parkerede ryttere (pending_team_id) der ikke
+  // (længere) er i et aktivt fleretape-løb (#3330). Diskriminator-gatet
+  // (getRidersInActiveStageRace) → idempotent, rører aldrig en rytter midt i et
+  // løb. Cadence matcher de andre heal-sweeps.
+  setInterval(
+    trackedTick("deferred-transfer heal sweep", monitorCron("deferred-transfer-heal", runDeferredTransferHealSweepCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 

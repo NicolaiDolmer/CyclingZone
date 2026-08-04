@@ -511,11 +511,14 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
+  // #3330: updated_at stemples eksplicit ved parkering (ingen auto-touch-
+  // trigger på riders) så ownershipInvariantWatch's forward-guard kan måle
+  // pending-alder pålideligt i stedet for at læse en tilfældig gammel værdi.
   const movedRider = deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: offer.buyer_team_id, ...transferContractPatch })
+          .update({ pending_team_id: offer.buyer_team_id, updated_at: new Date().toISOString(), ...transferContractPatch })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
           .is("pending_team_id", null)
@@ -755,11 +758,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
+  // #3330: updated_at stemples eksplicit ved parkering (ingen auto-touch-trigger
+  // på riders) — se begrundelse ved single-offer-parkeringen ovenfor.
   const movedOffered = deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.receiving_team_id, ...offeredContractPatch })
+          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .is("pending_team_id", null)
@@ -786,7 +791,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.proposing_team_id, ...requestedContractPatch })
+          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .is("pending_team_id", null)
