@@ -18,7 +18,7 @@
 
 > **📌 Åbne opfølgninger:** **#3306 form-reset aldrig annonceret + modstridende patch note (FØR S2→S3, high)** · #3309 grace-kolonne mangler i auction_timing_config · #3307 unchecked-delete-guard re-apply (reddet branch) · #3290 (RPC-hul, omkring 23/8) · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #2180-rest (frontend-knap + Discord-valg) · #3275 draft = reseed-fundament · #3145/#3146/#3150/#2944/#3149 (motor-kø) · #3189 Clarity-verifikation (+#2041).
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Fable (Claude Code desktop) — design-session: første-sessions-retention (#3310), startet 4/8.
 
 ## Standing context (forever-relaunch)
 
