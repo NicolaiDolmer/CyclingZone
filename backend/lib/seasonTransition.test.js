@@ -563,6 +563,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       emitContractExpiringNotifications: async () => ({ eligible: 0, delivered: 0, deduped: 0, failed: 0 }),
       // #2453: Global Rank-rollover stubbet — egen unit-test dækker RPC-laget (SQL).
       applyGlobalRankSeasonRollover: async () => ({ ok: true }),
+      // #1150: AI-kontrakt-auto-fornyelse stubbet — egen unit-test (aiContractAutoRenewal.test.js)
+      // dækker fornyelses-logikken; dedikerede wiring-tests nedenfor dækker fase-placeringen.
+      renewExpiringAiContracts: async () => ({ candidates: 0, renewed: 0, failed: 0 }),
       // #2744-B: kontraktudløb-frigivelse stubbet — egen unit-test (contractExpiryRelease.test.js)
       // dækker release-logikken; dedikerede wiring-tests nedenfor dækker fase-placeringen.
       releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
@@ -582,8 +585,9 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   // #1836: +contract_expiring_notifications; #2453: +global_rank_decay;
   // #1980: +season_parachute; #2744-B: +contract_expiry_release;
   // #2748: +retirement_release; #2948: +sponsor_season_objectives;
-  // #2916: +manager_setup_carry_over; #3043: +squad_below_minimum_check = 18
-  assert.equal(result.log.length, 18);
+  // #2916: +manager_setup_carry_over; #3043: +squad_below_minimum_check;
+  // #1150: +ai_contract_auto_renewal = 19
+  assert.equal(result.log.length, 19);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -602,33 +606,36 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[5].paid, 0);
   assert.equal(result.log[6].phase, "sponsor_contracts_renewal");
   assert.equal(result.log[6].teams, 1);
-  assert.equal(result.log[7].phase, "contract_expiry_release");
+  // #1150: AI-hold auto-fornyer udløbende kontrakter FØR contract_expiry_release.
+  assert.equal(result.log[7].phase, "ai_contract_auto_renewal");
   assert.equal(result.log[7].candidates, 0);
-  assert.equal(result.log[8].phase, "sponsor_payout");
-  assert.equal(result.log[8].count, 1);
-  assert.equal(result.log[9].phase, "season_payroll");
-  assert.equal(result.log[9].teams_processed, 1);
-  assert.equal(result.log[9].salary_count, 0);
-  assert.equal(result.log[10].phase, "season_parachute");
-  assert.equal(result.log[10].count, 0);
-  assert.equal(result.log[10].total, 0);
-  assert.equal(result.log[11].phase, "retirement_release");
-  assert.equal(result.log[11].candidates, 0);
+  assert.equal(result.log[8].phase, "contract_expiry_release");
+  assert.equal(result.log[8].candidates, 0);
+  assert.equal(result.log[9].phase, "sponsor_payout");
+  assert.equal(result.log[9].count, 1);
+  assert.equal(result.log[10].phase, "season_payroll");
+  assert.equal(result.log[10].teams_processed, 1);
+  assert.equal(result.log[10].salary_count, 0);
+  assert.equal(result.log[11].phase, "season_parachute");
+  assert.equal(result.log[11].count, 0);
+  assert.equal(result.log[11].total, 0);
+  assert.equal(result.log[12].phase, "retirement_release");
+  assert.equal(result.log[12].candidates, 0);
   // #3043 · squad-under-minimum-tjek kører EFTER begge frigivelses-faser
   // (kontraktudløb + pension) og FØR carry-over.
-  assert.equal(result.log[12].phase, "squad_below_minimum_check");
-  assert.equal(result.log[12].belowMinimum, 0);
+  assert.equal(result.log[13].phase, "squad_below_minimum_check");
+  assert.equal(result.log[13].belowMinimum, 0);
   // #2916 · carry-over kører EFTER trup-frigivelserne og FØR admin_log.
-  assert.equal(result.log[13].phase, "manager_setup_carry_over");
-  assert.equal(result.log[13].error, undefined, "carry-over må ikke fejle i en tom mock");
-  assert.deepEqual(result.log[13].handler_drift, []);
-  assert.equal(result.log[13].carried_total, 0);
-  assert.equal(result.log[14].phase, "admin_log");
-  assert.equal(result.log[14].inserted, true);
-  assert.equal(result.log[15].phase, "discord_broadcast");
-  assert.equal(result.log[15].sent, true);
-  assert.equal(result.log[16].phase, "season_started_notifications");
-  assert.equal(result.log[17].phase, "contract_expiring_notifications");
+  assert.equal(result.log[14].phase, "manager_setup_carry_over");
+  assert.equal(result.log[14].error, undefined, "carry-over må ikke fejle i en tom mock");
+  assert.deepEqual(result.log[14].handler_drift, []);
+  assert.equal(result.log[14].carried_total, 0);
+  assert.equal(result.log[15].phase, "admin_log");
+  assert.equal(result.log[15].inserted, true);
+  assert.equal(result.log[16].phase, "discord_broadcast");
+  assert.equal(result.log[16].sent, true);
+  assert.equal(result.log[17].phase, "season_started_notifications");
+  assert.equal(result.log[18].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -692,6 +699,82 @@ test("transitionToNextSeason — kalder releaseExpiredContractRiders med den AFS
   assert.equal(releasePhase.candidates, 196);
   assert.equal(releasePhase.released, 195);
   assert.equal(releasePhase.deferredByRacing, 1);
+});
+
+// #1150 · AI-kontrakt-auto-fornyelse: kører FØR contract_expiry_release, med
+// SAMME afsluttede sæsons-nummer, så en fornyet AI-rytter allerede er "sikker"
+// (contract_end_season > seasonNumber) når release-fasen læser sin <=-gate.
+test("transitionToNextSeason — kalder renewExpiringAiContracts med den AFSLUTTEDE sæsons nummer, FØR contract_expiry_release", async () => {
+  let renewArgs = null;
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => { order.push("sponsorRenew"); },
+      renewExpiringAiContracts: async (args) => {
+        order.push("aiContractRenew");
+        renewArgs = args;
+        return { candidates: 12, renewed: 12, failed: 0 };
+      },
+      releaseExpiredContractRiders: async (args) => {
+        order.push("contractRelease");
+        return { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 };
+      },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    order,
+    ["sponsorRenew", "aiContractRenew", "contractRelease", "seasonStart"],
+    "AI-fornyelse sker EFTER sponsor-fornyelse men FØR kontraktudløb-frigivelsen"
+  );
+  assert.ok(renewArgs, "renewExpiringAiContracts skal kaldes");
+  assert.equal(renewArgs.seasonNumber, 0, "den AFSLUTTEDE sæsons nummer (fromSeason.number), ikke den nye (1)");
+
+  const renewPhase = result.log.find((p) => p.phase === "ai_contract_auto_renewal");
+  assert.ok(renewPhase, "ai_contract_auto_renewal-fasen skal logges");
+  assert.equal(renewPhase.candidates, 12);
+  assert.equal(renewPhase.renewed, 12);
+});
+
+test("transitionToNextSeason — en fejl i ai_contract_auto_renewal isoleres og vælter ALDRIG resten af transitionen", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async () => {},
+      renewExpiringAiContracts: async () => { const e = new Error("simuleret DB-fejl"); e.partialStats = { candidates: 3, renewed: 1, failed: 0 }; throw e; },
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true, "transitionen fejler ikke selvom fasen kaster");
+  const renewPhase = result.log.find((p) => p.phase === "ai_contract_auto_renewal");
+  assert.ok(renewPhase, "fasen logges stadig, med fejl + partielle stats");
+  assert.match(renewPhase.error, /simuleret DB-fejl/);
+  assert.equal(renewPhase.candidates, 3);
+  assert.equal(renewPhase.renewed, 1);
+  assert.ok(result.log.find((p) => p.phase === "contract_expiry_release"), "release-fasen kører stadig efter den isolerede fejl");
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "transitionen fortsætter efter den isolerede fejl");
 });
 
 // #2748 · Pensions-frigivelse. Modsat kontraktudløb (som kører FØR sæson-start, så
