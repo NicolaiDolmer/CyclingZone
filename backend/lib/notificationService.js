@@ -262,6 +262,7 @@ export async function emitRaceResultNotifications({
   race,
   notify = notifyUser,
   fetchParticipatingManagers = defaultFetchParticipatingManagers,
+  fetchFirstTimeManagers = defaultFetchFirstTimeManagers,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id) return stats;
@@ -271,20 +272,28 @@ export async function emitRaceResultNotifications({
   stats.eligible = eligible.length;
 
   const raceName = race.name ?? "your race";
+  // #3310 comeback-buen: managere der får deres FØRSTE resultat her får en
+  // varmere copy-variant på SAMME notifikationstype (ingen ny type). Forskellig
+  // title/message kolliderer ikke med standard-raden i (type,title,message,
+  // related_id)-dedup'en (24t, notifyUser).
+  const firstTimers = await fetchFirstTimeManagers({ supabase, race, userIds: eligible });
   for (const userId of eligible) {
+    const isFirst = firstTimers.has(userId);
     try {
       const res = await notify({
         supabase,
         userId,
         type: RACE_RESULT_TYPE,
-        title: "Race result is in",
-        message: `${raceName} has been run. View the result.`,
+        title: isFirst ? "Your first race is in the books" : "Race result is in",
+        message: isFirst
+          ? `${raceName} has been run. See how your riders did.`
+          : `${raceName} has been run. View the result.`,
         relatedId: race.id,
         metadata: {
           raceId: race.id,
-          titleCode: "notif.raceResult.title",
+          titleCode: isFirst ? "notif.firstRaceResult.title" : "notif.raceResult.title",
           titleParams: {},
-          messageCode: "notif.raceResult.message",
+          messageCode: isFirst ? "notif.firstRaceResult.message" : "notif.raceResult.message",
           messageParams: { race: raceName },
         },
       });
@@ -318,6 +327,32 @@ async function defaultFetchParticipatingManagers({ supabase, raceId }) {
     throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`);
   }
   return (data || []).map((row) => row.rider?.team?.user_id ?? null);
+}
+
+// #3310 comeback-buen: hvilke af løbets deltagende managere fik her deres
+// FØRSTE resultat? Første = holdets eneste race_results-løb er netop dette.
+// Fejl (inkl. et supabase-stub uden .from, fx i tests der ikke bruger denne
+// sti) degraderer til tomt sæt: alle får standard-copy, ingen notifikation
+// tabes. Standard-implementering; injicérbar i test.
+export async function defaultFetchFirstTimeManagers({ supabase, race, userIds }) {
+  if (!userIds?.length) return new Set();
+  try {
+    const { data: teams, error: teamsError } = await supabase
+      .from("teams")
+      .select("id, user_id")
+      .in("user_id", userIds);
+    if (teamsError || !teams?.length) return new Set();
+    const { data: other, error: otherError } = await supabase
+      .from("race_results")
+      .select("team_id")
+      .in("team_id", teams.map((t) => t.id))
+      .neq("race_id", race.id);
+    if (otherError) return new Set();
+    const veteranTeamIds = new Set((other ?? []).map((r) => r.team_id));
+    return new Set(teams.filter((t) => !veteranTeamIds.has(t.id)).map((t) => t.user_id));
+  } catch {
+    return new Set();
+  }
 }
 
 // ─── #2524 · Watchlist-notifikation ved rytter-sletning/-udgang ───────────────
