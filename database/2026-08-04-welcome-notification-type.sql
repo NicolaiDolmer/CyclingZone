@@ -15,13 +15,20 @@
 -- api.js, PUT /api/teams/my, result.created === true).
 --
 -- Idempotent: DROP IF EXISTS + ADD i én transaktion. Ikke-destruktiv (udvider
--- kun den eksisterende liste med ét element). Efterfoelger
--- 2026-07-27-3043-notification-type-constraint.sql.
+-- kun den eksisterende liste). Efterfoelger 2026-07-27-3043-notification-
+-- type-constraint.sql.
+--
+-- MERGE-NOTE (4/8): main fik parallelt #2180's 'selection_warning' via
+-- 2026-08-04-2180-selection-warning-notification-type.sql (samme dag, anden
+-- session). Denne fil er OPDATERET til at vaere den fulde, kanoniske
+-- efterfoelger (indeholder BEGGE nye typer) saa der kun findes ÉT sted der
+-- definerer "det aktuelle sæt" — 2180-filen forbliver i historikken (harmløs,
+-- delmængde) men behøver ikke koeres separat naar denne er applied.
 -- Paritets-guard: backend/lib/notificationTypes.test.js krydstjekker denne fil
--- mod NOTIFICATION_TYPES (MIGRATION_PATH opdateret til at pege paa DENNE fil).
+-- mod NOTIFICATION_TYPES (MIGRATION_PATH peger paa DENNE fil).
 --
 -- Applies post-merge under #2642-rammerne (idempotent, ikke-destruktiv →
--- ikke ejer-gated). INGEN backfill af eksisterende konti i denne migration --
+-- ikke ejer-gated). INGEN backfill af eksisterende konti i denne migration →
 -- kun forslag i PR-beskrivelsen.
 
 begin;
@@ -78,6 +85,7 @@ alter table public.notifications
     'scout_report_ready',
     'contract_expired_release',
     'squad_below_minimum',
+    'selection_warning',
     'welcome'
   ]::text[]));
 

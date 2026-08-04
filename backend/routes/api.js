@@ -147,6 +147,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, classifyBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
@@ -4056,6 +4057,126 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (err?.code === "selection_rider_bound") {
       return res.status(409).json({ error: "selection_rider_bound" });
     }
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
+// knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer
+// holdets trup for DETTE løb med samme motor som Race Hub's dag-scopede "Auto-
+// udfyld" (POST /races/distribution/regenerate, assignTeamAcrossRaces) — bare
+// skalet ned til ét løb, så managerens ANDRE løb den dag ikke røres.
+//
+// Rører ALDRIG en manager-kurateret trup: blokerer med 409 hvis holdet allerede
+// har MINDST ÉN manuel entry for løbet (is_auto_filled=false — samme "mangler
+// udtagelse"-diskriminator som varsel-sweepet og regenerate-endpointets
+// mode=missing). Et rent auto-udfyldt felt (fra den stille time-sweep) MÅ gerne
+// overskrives — det er netop den situation knappen findes til.
+router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
+    if (isRaceLineupFrozen(race)) return res.status(409).json({ error: "selection_race_started" });
+    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+      return res.status(409).json({ error: "selection_wrong_pool" });
+    }
+
+    const { data: withdrawal, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    // Et bevidst fravalg (afmeldt) er ikke "mangler udtagelse" — assistenten skal
+    // ikke tilmelde holdet igen uden om manageren.
+    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+
+    const { data: existingEntries, error: entErr } = await supabase
+      .from("race_entries").select("rider_id, is_auto_filled")
+      .eq("race_id", race.id).eq("team_id", req.team.id);
+    if (entErr) return res.status(500).json({ error: entErr.message });
+    if ((existingEntries || []).some((e) => e.is_auto_filled === false)) {
+      return res.status(409).json({ error: "selection_already_exists" });
+    }
+
+    // #2579/#2637: delt eligibility-filter + skade-udelukkelse — samme regler som
+    // raceRunner.fillMissingTeamEntries og regenerate-endpointet (Spec 6.5, #1306).
+    const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
+      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id)),
+      supabase.from("race_stage_profiles")
+        .select("stage_number, profile_type, finale_type, demand_vector")
+        .eq("race_id", race.id).order("stage_number", { ascending: true }),
+    ]);
+    if (ridersErr) return res.status(500).json({ error: ridersErr.message });
+    if (profErr) return res.status(500).json({ error: profErr.message });
+    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
+
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [{ data: abilities, error: abErr }, { data: conditions, error: condErr }] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
+      supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
+    ]);
+    if (abErr) return res.status(500).json({ error: abErr.message });
+    if (condErr) return res.status(500).json({ error: condErr.message });
+    const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
+    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const todayStr = copenhagenDateString();
+    const injuredIds = new Set(
+      (conditions || []).filter((c) => c.injured_until && c.injured_until >= todayStr).map((c) => c.rider_id)
+    );
+    const candidateRiders = teamRiderIds
+      .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
+      .filter((r) => r.abilities && !injuredIds.has(r.rider_id));
+
+    // #1845/#3070: samme binding-kontekst som PUT /selection — udelukker ryttere der
+    // allerede er committet i et af holdets ANDRE, tidsoverlappende løb (1 rytter =
+    // 1 løb pr. løbsdag). S3-strategien (aChain/captains) genbruges som samme
+    // præference-lag som Race Hub's regenerate-knap, så assistenten er konsistent.
+    const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+    const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
+
+    const picks = pickAutoSelection({
+      candidateRiders, race, stages: stageProfiles || [],
+      thisWindow: binding.thisWindow, lockedWindows: binding.otherRaces, strategy,
+    });
+    if (!picks.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
+
+    // #2599: en eksplicit auto-udtagelse supersederer en evt. tidligere "Ryd dag/alt"-
+    // markering for netop dette (race,team)-par (samme regel som manuel gem/regenerate).
+    const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+      .delete().eq("race_id", race.id).eq("team_id", req.team.id);
+    if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (auto-select): ${clearCleanupErr.message}`));
+
+    const rows = picks.map((p) => ({
+      race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
+    }));
+    // Delete-then-insert (samme mønster + samme atomicitets-afvejning som regenerate-
+    // endpointet ovenfor — se dets kommentar: ægte atomicitet kræver replace_race_selection-
+    // RPC'en, men den er skrevet til manager-input, ikke assistent-genererede picks).
+    const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
+    if (delErr) return res.status(500).json({ error: delErr.message });
+    const { error: insErr } = await supabase.from("race_entries").insert(rows);
+    if (insErr) return res.status(500).json({ error: insErr.message });
+
+    res.json({
+      ok: true,
+      rider_ids: picks.map((p) => p.rider_id),
+      captain_id: picks.find((p) => p.race_role === "captain")?.rider_id ?? null,
+      sprint_captain_id: picks.find((p) => p.race_role === "sprint_captain")?.rider_id ?? null,
+    });
+  } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
   }
