@@ -27,6 +27,62 @@ test("endagsløb (stages udefineret) tæller som 1 dag", () => {
   assert.equal(credits[0].amount, 1500);
 });
 
+// ─── #3316: ingen bagudbetaling for løb completet FØR mid-season-aktivering ────
+
+test("computeRaceDayCredits: springer et hold over hvis kontraktens activated_at er EFTER løbets resultat-tidsstempel (ingen bagudbetaling)", () => {
+  const credits = computeRaceDayCredits({
+    race: { id: "r1", stages: 2 },
+    participatingTeamIds: ["t1"],
+    contractsByTeam: { t1: { per_race_day_rate: 1000, activated_at: "2026-08-04T12:00:00Z" } },
+    resultTimeByTeam: { t1: "2026-08-04T10:00:00Z" }, // løbet blev completet FØR aktiveringen
+  });
+  assert.deepEqual(credits, []);
+});
+
+test("computeRaceDayCredits: krediterer normalt når resultatet er PÅ ELLER EFTER activated_at", () => {
+  const credits = computeRaceDayCredits({
+    race: { id: "r1", stages: 2 },
+    participatingTeamIds: ["t1"],
+    contractsByTeam: { t1: { per_race_day_rate: 1000, activated_at: "2026-08-04T12:00:00Z" } },
+    resultTimeByTeam: { t1: "2026-08-04T12:00:00Z" }, // præcis aktiveringstidspunktet — tæller med
+  });
+  assert.equal(credits.length, 1);
+  assert.equal(credits[0].amount, 2000);
+});
+
+test("computeRaceDayCredits: activated_at=NULL (season-start-aktiveret) filtrerer INTET, uanset resultTimeByTeam", () => {
+  const credits = computeRaceDayCredits({
+    race: { id: "r1", stages: 1 },
+    participatingTeamIds: ["t1"],
+    contractsByTeam: { t1: { per_race_day_rate: 1000, activated_at: null } },
+    resultTimeByTeam: {}, // ukendt/manglende tidsstempel — ligegyldigt uden activated_at
+  });
+  assert.equal(credits.length, 1, "uændret adfærd for de ~200 eksisterende season-start-aktiverede kontrakter");
+});
+
+test("computeRaceDayCredits: activated_at sat men resultTimeByTeam mangler helt → afvises konservativt", () => {
+  const credits = computeRaceDayCredits({
+    race: { id: "r1", stages: 1 },
+    participatingTeamIds: ["t1"],
+    contractsByTeam: { t1: { per_race_day_rate: 1000, activated_at: "2026-08-04T12:00:00Z" } },
+    resultTimeByTeam: {}, // intet tidsstempel for t1
+  });
+  assert.deepEqual(credits, [], "mangler bevis for at løbet er efter aktiveringen → afvis frem for at gætte");
+});
+
+test("computeResultBonusCredits: springer bonus over hvis resultatet er FØR kontraktens activated_at", () => {
+  const credits = computeResultBonusCredits({
+    race: { id: "r1" },
+    stageResults: [{ team_id: "t1", rank: 1 }],
+    contractsByTeam: {
+      t1: { bonus_clauses: [{ type: "stage_win", amount: 6000 }], activated_at: "2026-08-04T12:00:00Z" },
+    },
+    remainingCapByTeam: {},
+    resultTimeByTeam: { t1: "2026-08-04T10:00:00Z" },
+  });
+  assert.deepEqual(credits, []);
+});
+
 // ─── computeResultBonusCredits (#2948, 'results'-arketypen) ───────────────────
 
 test("computeResultBonusCredits: tæller etapesejre (rank=1) og podier (rank 2-3) separat", () => {
@@ -356,6 +412,75 @@ test("payRaceDaySponsorsToDate: opts.actorType overstyrer default SYSTEM", async
 
   assert.equal(supabase.state.rpcCalls.length, 1);
   assert.equal(supabase.state.rpcCalls[0].payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
+});
+
+// ─── #3316: ingen bagudbetaling for et løb completet FØR mid-season-aktivering (I/O-sti) ─
+
+test("payRaceDaySponsorsToDate: BEVIS — et hold der fik sin sponsor-kontrakt aktiveret MIDT i sæsonen får INGEN kredit for et løb der allerede var completet FØR aktiveringen", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r-old", stages: 2, status: "completed" }],
+    // Kontrakten blev aktiveret 4/8 kl. 12:00 (mid-season, #3316) — MEN holdet
+    // havde allerede kørt (og fået resultat i) r-old dagen før, uden kontrakt.
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 2000, activated_at: "2026-08-04T12:00:00Z" }],
+    resultsByRaceId: {
+      "r-old": [{ team_id: "t1", result_type: "stage", imported_at: "2026-08-03T09:00:00Z" }],
+    },
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 0, result_bonuses: 0 }, "INGEN bagudbetaling for et løb kørt før aktiveringen");
+  assert.equal(supabase.state.rpcCalls.length, 0, "intet rpc-kald overhovedet forsøgt for det gamle løb");
+});
+
+test("payRaceDaySponsorsToDate: samme hold krediteres normalt for et løb completet EFTER aktiveringen", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r-new", stages: 2, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 2000, activated_at: "2026-08-04T12:00:00Z" }],
+    resultsByRaceId: {
+      "r-new": [{ team_id: "t1", result_type: "stage", imported_at: "2026-08-05T09:00:00Z" }],
+    },
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.rpcCalls[0].delta, 4000); // 2000 × 2 stages
+});
+
+test("payRaceDaySponsorsToDate: to løb i samme sæson — kun det EFTER aktiveringen krediteres, det gamle springes stille over", async () => {
+  const supabase = makeSupabase({
+    races: [
+      { id: "r-old", stages: 1, status: "completed" },
+      { id: "r-new", stages: 1, status: "completed" },
+    ],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000, activated_at: "2026-08-04T12:00:00Z" }],
+    resultsByRaceId: {
+      "r-old": [{ team_id: "t1", imported_at: "2026-08-01T09:00:00Z" }],
+      "r-new": [{ team_id: "t1", imported_at: "2026-08-04T15:00:00Z" }],
+    },
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.rpcCalls[0].payload.idempotency_key, "sponsor_race_day:r-new:t1");
+});
+
+test("payRaceDaySponsorsToDate: season-start-aktiveret kontrakt (activated_at=NULL) krediterer normalt uden filtrering", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 1, status: "completed" }],
+    // Ingen activated_at-felt overhovedet på rækken (ligesom alle eksisterende
+    // season-start-aktiverede kontrakter FØR #3316-migrationen).
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1" }] }, // ingen imported_at overhovedet — stadig OK uden activated_at
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
 });
 
 // ─── Resultat-bonus-kreditering (#2948, 'results'-arketypen) — I/O-sti ────────

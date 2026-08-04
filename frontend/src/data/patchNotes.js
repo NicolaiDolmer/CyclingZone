@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.91",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "New mid-season teams get a sponsor right away",
+          "body": "Teams created after a season has already started used to play their entire first season with zero sponsor income, since any offer they picked only activated at the next season change. Sponsor offers now appear immediately, and accepting one activates the deal right away: race-day money and bonus clauses count from that moment. The one-time guaranteed base still only pays out at the next real season start, same as usual."
+        },
+        "da": {
+          "title": "Nye hold midt i sæsonen får en sponsor med det samme",
+          "body": "Hold der oprettes efter en sæson allerede er startet, kom tidligere til at spille hele deres første sæson uden sponsorindtægt, fordi et valgt tilbud først aktiverede ved næste sæsonskifte. Sponsor-tilbud dukker nu op med det samme, og accepterer du et, aktiveres aftalen straks: løbsdags-penge og bonusklausuler tæller fra det øjeblik. Den engangs-garanterede base udbetales stadig først ved næste rigtige sæsonstart, som den plejer."
+        },
+        "refs": [3316]
+      }
+    ]
+  },
+  {
     "version": "7.90",
     "date": "2026-08-04",
     "label": "Beta",

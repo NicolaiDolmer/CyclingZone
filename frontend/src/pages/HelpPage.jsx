@@ -341,6 +341,7 @@ const FAQ_KEYS = [
   "divisionBonusFaq",
   "sponsorPayoutTiming",
   "sponsorNegotiation",
+  "sponsorMidSeasonOnboarding",
   "sponsorRaceDayUnit",
   "sponsorBoardModifierScope",
   "seasonFinanceReport",
