@@ -91,7 +91,7 @@ const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
 function RacesLegacyRedirect() {
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab");
-  if (tab === "calendar") return <Navigate to="/planning" replace />;
+  if (tab === "calendar") return <Navigate to="/planning?tab=calendar" replace />;
   if (tab === "world" || tab === "library") return <Navigate to="/resultater?tab=archive" replace />;
   if (tab === "points") return <Navigate to="/resultater?tab=points" replace />;
   return <Navigate to="/resultater" replace />;
