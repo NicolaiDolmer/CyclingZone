@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.94",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Season forecast now includes facility, staff and academy costs",
+          "body": "The Finance page's season forecast used to count only sponsor income and prize money minus rider wages and loan interest, leaving out facility upkeep, staff salaries, upkeep and academy running costs entirely. For teams that had invested in facilities or an academy, the old number was too optimistic by roughly half: it promised a much bigger surplus than teams actually got. The forecast now includes all of those costs, calculated with the exact same formulas as the real season-start charge, and the help text has been rewritten to state precisely what is (and isn't) covered."
+        },
+        "da": {
+          "title": "Sæsonprognosen medregner nu facilitets-, staff- og akademi-omkostninger",
+          "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
+        },
+        "refs": [3236, 3332]
+      }
+    ]
+  },
+  {
     "version": "7.93",
     "date": "2026-08-04",
     "label": "Beta",

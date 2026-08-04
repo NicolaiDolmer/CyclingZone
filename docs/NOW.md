@@ -5,7 +5,7 @@
 ## Aktiv styring
 
 > **🎯 Next action:**
-> 1. **Næste session (anbefalet):** **kalender-blokken før #3295** (deadline 23/8) — #3327 D2-dækning · #3328 klasse↔længde · #3326 etaperækkefølge · #3329 D1-overlap. Derefter tillids-bugs #3333/#3330/#3332 + guard #3331. Alternativ: motor-køen (#3145 bekræftet ITT-fejl, #3149/#3150/#2944).
+> 1. **Næste session (anbefalet):** **kalender-blokken før #3295** (deadline 23/8) — #3327 D2-dækning · #3328 klasse↔længde · #3326 etaperækkefølge · #3329 D1-overlap. Derefter tillids-bugs #3333/#3330 + guard #3331. Alternativ: motor-køen (#3145 bekræftet ITT-fejl, #3149/#3150/#2944). **#3332** (forecast mangler facility-/staff-/akademi-omkostninger): kerne-fix var allerede shipped via #3236/PR #3251 (3/8 aften, FØR sweepet oprettede #3332 som duplikat) — draft-PR tilføjer det manglende forward-guard-krav (ny finance-type uklassificeret i forecast-modellen) + udvider help.json's "ikke medregnet"-liste, afventer ejer-godkendelse (draft, UI-hjælpetekst).
 > 1b. **Ejer-beslutning der blokerer #3325 (ryttertyper 90 % climber/tt):** vises typen efter nuværende stats eller potentiale? Anbefaling: potentiale for U23, nuværende for seniorer.
 > 2. **Hos ejeren:** Resend-nøgler + mailtekst-godkendelse (#2853, ~15 min, tænder intet — kæden er deep-linket og flip-klar) · #3300's 3 designsvar · Railway MCP re-auth · penge-kæden #2813 · #3147-basekadence (lavtryk nu) · beslutnings-ark 60 sager · logo #481.
 > 3. **Måle-datoer:** ~18/8 payoff-mål (≥60 % ser første resultat, baseline ~34 %) + dag-1-effekt via get_cohort_retention på /admin/growth.
