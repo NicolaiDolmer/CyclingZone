@@ -4,6 +4,7 @@ import {
   findLocaleEmDashViolations,
   findProseEmDashViolations,
   findHtmlEmDashViolations,
+  findPatchNotesEmDashViolations,
 } from "./tone-check-em-dash.mjs";
 
 test("locale scanner flags prose em-dashes and allows standalone empty-value glyphs", () => {
@@ -37,6 +38,49 @@ const explanation = "The table used '—' for missing values";
 `;
 
   assert.deepEqual(findProseEmDashViolations(source, "FixturePage.jsx"), []);
+});
+
+test("patch-notes scanner flags em-dashes in entry prose", () => {
+  const patches = [
+    {
+      version: "9.99",
+      changes: [
+        {
+          en: { title: "Clean title", body: "Clean body." },
+          da: { title: "Ren titel", body: "Injiceret — em-dash" },
+        },
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    findPatchNotesEmDashViolations(patches, "frontend/src/data/patchNotes.js"),
+    [
+      'frontend/src/data/patchNotes.js → [0].changes[0].da.body: "Injiceret — em-dash"',
+    ],
+  );
+});
+
+test("patch-notes scanner allows standalone glyphs and quoted glyph citations", () => {
+  const patches = [
+    {
+      version: "9.98",
+      changes: [
+        {
+          en: {
+            title: "Salary column showed '—' for auctioned riders",
+            body: "The table used '—' as its empty-value glyph.",
+          },
+          da: { title: "Tom værdi", body: "—" },
+        },
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    findPatchNotesEmDashViolations(patches, "frontend/src/data/patchNotes.js"),
+    [],
+  );
 });
 
 test("html scanner flags meta-tag em-dashes and ignores HTML comments + middots", () => {
