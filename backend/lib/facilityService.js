@@ -46,6 +46,22 @@ async function loadActiveStaff(teamId, role, supabaseClient) {
   return data;
 }
 
+// #2887: ALLE navne holdet har fyret i denne rolle nogensinde (ikke kun
+// indeværende sæson) — bruges til at udelukke dem fra generateStaffCandidates,
+// så en fyret staff aldrig deterministisk genopstår som (top-)kandidat ved
+// næste refresh/hire. Permanent eksklusion, ikke sæson-scoped: navnet ville
+// ellers kunne genopstå i en senere sæson, hvor seedet igen matcher.
+export async function loadFiredStaffNames(teamId, role, supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from("team_staff")
+    .select("name")
+    .eq("team_id", teamId)
+    .eq("role", role)
+    .eq("status", "fired");
+  if (error) throw new Error(`facilityService: could not load fired staff names for ${teamId}/${role}: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.name).filter(Boolean));
+}
+
 // #2649: opslag på staffId (i stedet for role) TIL ejerskabs-guarden i releaseStaff.
 // .eq("team_id", teamId) håndhæves i APPLIKATIONS-koden her (ikke kun RLS) — en
 // staff-række der findes, men tilhører et andet hold, matcher aldrig denne query
@@ -132,8 +148,10 @@ export async function hireStaff(
   const facilityTier = await loadFacilityTier(teamId, role, supabaseClient);
 
   // Kandidater regenereres SERVER-SIDE (deterministisk seed) og matches på navn —
-  // klienten må aldrig selv levere tier/salary.
-  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier });
+  // klienten må aldrig selv levere tier/salary. #2887: udelukker holdets egne
+  // tidligere fyrede staff i denne rolle (rehire-loop-guard).
+  const firedNames = await loadFiredStaffNames(teamId, role, supabaseClient);
+  const candidates = generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames: firedNames });
   const candidate = candidates.find((c) => c.name === candidateName);
   if (!candidate) return { ok: false, error: "invalid_candidate" };
 

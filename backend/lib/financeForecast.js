@@ -2,8 +2,20 @@
  * Slice 07g · Manager finance-forecast + risk-tier
  *
  * Pure function der projicerer næste sæsons cashflow for ét hold:
- *   indtægter (sponsor + præmie) − udgifter (løn + rente + lejegebyr)
+ *   indtægter (sponsor + præmie)
+ *   − udgifter (løn + rente + upkeep + facilitets-upkeep + staff-løn + akademi-drift)
  * Returnerer 🟢/🟡/🔴 risk-tier + warnings.
+ *
+ * #3236 (økonomi-audit #3198, fund #1): forecastet medregnede tidligere KUN
+ * sponsor+præmie−løn−lånerente. Upkeep, facilitets-/stab-udgifter og akademi-
+ * drift er alle division-/roster-skalerede og kendte på forecast-tidspunktet,
+ * ligesom løn — derfor tilføjet som deterministiske udgifter her, ikke som
+ * estimater. Formlerne spejler economyEngine.processTeamSeasonPayroll (upkeep,
+ * academy_drift) og economyEngine.chargeFacilityCosts (facility_upkeep,
+ * staff_salary) 1:1, så forecast og faktisk sæson-start-opkrævning stemmer
+ * overens. `sponsor_race_day` (den løbende variable sponsor-pulje) er BEVIDST
+ * ikke modelleret her — den er resultatafhængig og kan ikke forudsiges
+ * deterministisk (se audit-rapportens afsnit 3).
  *
  * Inputs er rå tal/arrays — alle DB-queries lever i route-handler. Det holder
  * funktionen testbar uden Supabase-mock og giver os deterministiske unit-tests.
@@ -13,6 +25,9 @@ import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
 } from "./sponsorEngine.js";
+import { UPKEEP_BY_DIVISION, UPKEEP_BEFORE_FIRST_RACE_ENABLED } from "./economyConstants.js";
+import { getFacilityUpkeepTotal } from "./facilityEngine.js";
+import { ACADEMY } from "./academyFlag.js";
 
 const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
@@ -35,6 +50,13 @@ export function computeFinanceForecast({
   realizedSeasonPrize = 0,
   activeContract = null,
   pendingContract = null,
+  // #3236: næste sæsons kendte drift-udgifter — samme kilde-til-sandhed som
+  // economyEngine's sæson-start-opkrævning. Tomme defaults ⇒ 0-bidrag, så
+  // hold uden faciliteter/staff/akademi ikke ser en falsk udgift.
+  facilityTracks = [],
+  activeStaffSalaries = [],
+  academyRiderCount = 0,
+  facilitiesEnabled = true,
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -96,11 +118,43 @@ export function computeFinanceForecast({
     0
   ) || 0;
 
+  // #3236 · Upkeep — flad pr. division (economyEngine.processTeamSeasonPayroll).
+  // #1678: udskudt i sæson 1 (før første løb) medmindre flaget slås til —
+  // forecastet skal ramme samme 0 som den faktiske sæson-1-opkrævning.
+  const upkeepDeferred = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
+  const upkeepForDivision = UPKEEP_BY_DIVISION[team?.division] || 0;
+  const projectedUpkeep = upkeepDeferred ? 0 : (-upkeepForDivision || 0);
+
+  // #3236 · Facilitets-upkeep + staff-sæsonløn — samme runtime-gate
+  // (facilitiesEnabled, app_config "facilities_enabled") som
+  // economyEngine.chargeFacilityCosts. Caller læser flaget; default true her
+  // så unit-tests uden eksplicit flag ikke bliver stille nul-gated.
+  const facilityUpkeepTotal = facilitiesEnabled
+    ? getFacilityUpkeepTotal(facilityTracks)
+    : 0;
+  const projectedFacilityUpkeep = -facilityUpkeepTotal || 0;
+
+  const staffSalaryTotal = facilitiesEnabled
+    ? (activeStaffSalaries || []).reduce((sum, s) => sum + (s?.salary || 0), 0)
+    : 0;
+  const projectedStaffSalary = -staffSalaryTotal || 0;
+
+  // #3236 · Akademi-drift — pr. plads, gated på count > 0 (economyEngine
+  // springer helt over ved 0 akademi-ryttere, uanset flag).
+  const academyCount = Math.max(0, Math.round(Number(academyRiderCount) || 0));
+  const projectedAcademyDrift = academyCount > 0
+    ? -(academyCount * ACADEMY.DRIFT_PER_SEASON)
+    : 0;
+
   const projectedNet =
     projectedSponsor +
     projectedPrize +
     projectedSalary +
-    projectedLoanInterest;
+    projectedLoanInterest +
+    projectedUpkeep +
+    projectedFacilityUpkeep +
+    projectedStaffSalary +
+    projectedAcademyDrift;
 
   // ±20% på prize, der er mest variable input. Sponsor/løn/rente er deterministiske
   // i et givent sæson-perspektiv — usikkerheden bor i hvor meget holdet faktisk
@@ -149,6 +203,11 @@ export function computeFinanceForecast({
     projected_prize: projectedPrize,
     projected_salary: projectedSalary,
     projected_loan_interest: projectedLoanInterest,
+    // #3236: de 4 tidligere fraværende udgiftsstrømme (audit #3198, fund #1).
+    projected_upkeep: projectedUpkeep,
+    projected_facility_upkeep: projectedFacilityUpkeep,
+    projected_staff_salary: projectedStaffSalary,
+    projected_academy_drift: projectedAcademyDrift,
     projected_net: projectedNet,
     confidence_low: confidenceLow,
     confidence_high: confidenceHigh,
@@ -175,6 +234,16 @@ export function computeFinanceForecast({
       active_loan_count: (activeLoans || []).length,
       current_season_number: currentSeasonNumber,
       target_season_number: seasonNumber,
+      // #3236: transparens om de nye udgiftsstrømmes inputs.
+      upkeep_deferred: upkeepDeferred,
+      division_upkeep: upkeepForDivision,
+      facilities_enabled: facilitiesEnabled,
+      facility_track_count: (facilityTracks || []).length,
+      facility_upkeep_total: facilityUpkeepTotal,
+      active_staff_count: (activeStaffSalaries || []).length,
+      staff_salary_total: staffSalaryTotal,
+      academy_rider_count: academyCount,
+      academy_drift_per_slot: ACADEMY.DRIFT_PER_SEASON,
     },
   };
 }
@@ -297,6 +366,9 @@ export const FORECAST_THRESHOLDS = Object.freeze({
  *   - Loan-interest = decay: amount_remaining × 0.75 per sæson som proxy for
  *     gradvis afdrag (manager kan også optage nye lån — ikke modelleret)
  *   - Balance ruller frem: balance_{N+1} = balance_N + projected_net_N
+ *   - #3236: facilities/staff/akademi = uændret (samme "intet ændrer sig"-
+ *     status-quo-antagelse som roster/salary — vi kender ikke fremtidige
+ *     facility-opgraderinger/ansættelser/akademi-optag)
  *
  * Sæson 0 (open-beta): forecast giver kun mening fra sæson 1+. Hvis target
  * er sæson 0 returneres tomt array.
@@ -321,6 +393,11 @@ export function computeMultiSeasonForecast({
   seasonsAhead = 1,
   activeContract = null,
   pendingContract = null,
+  // #3236: status-quo over hele horisonten, ligesom roster/salary.
+  facilityTracks = [],
+  activeStaffSalaries = [],
+  academyRiderCount = 0,
+  facilitiesEnabled = true,
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
   const forecasts = [];
@@ -356,6 +433,11 @@ export function computeMultiSeasonForecast({
       realizedSeasonPrize,
       activeContract,
       pendingContract,
+      // #3236: uændret over hele horisonten (status-quo).
+      facilityTracks,
+      activeStaffSalaries,
+      academyRiderCount,
+      facilitiesEnabled,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;
