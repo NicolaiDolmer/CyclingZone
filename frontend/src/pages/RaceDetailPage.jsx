@@ -1053,6 +1053,14 @@ function WhyPanel({ moments, stageNumber, mode = "full", riderNameById, t }) {
 // som BreakawayMarker). stageNumber=null aggregerer på tværs af HELE løbet
 // (bruges på "samlet"-fanen). Maks 2 badges pr. række — flere ville støje mere
 // end de forklarer.
+//
+// #3336: t()-kaldene sendte INGEN interpolations-variabler, så en ICU-
+// parametreret storyTags-streng (fx tag_favorite_collapse.tooltip's
+// {reason, select, ...}) aldrig kunne modtage sin faktiske værdi — badgen
+// for en favorit-nedtur viste derfor altid den samme jour_sans-tekst uanset
+// tag.params.reason. tag.params (rå moment-params fra raceStageMoments.js)
+// sendes nu med, så enhver fremtidig/eksisterende ICU-parametreret tag-streng
+// interpolerer korrekt.
 const MAX_STORY_TAGS_PER_ROW = 2;
 function StoryTagBadges({ moments, riderId, stageNumber, t }) {
   const tags = storyTagsForRider(moments, riderId, stageNumber).slice(0, MAX_STORY_TAGS_PER_ROW);
@@ -1062,10 +1070,10 @@ function StoryTagBadges({ moments, riderId, stageNumber, t }) {
       {tags.map((tag) => (
         <span
           key={tag.moment_key}
-          title={t(`detail.storyTags.${tag.moment_key}.tooltip`)}
+          title={t(`detail.storyTags.${tag.moment_key}.tooltip`, tag.params || {})}
           className="inline-flex items-center rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide text-cz-3"
         >
-          {t(`detail.storyTags.${tag.moment_key}.label`)}
+          {t(`detail.storyTags.${tag.moment_key}.label`, tag.params || {})}
         </span>
       ))}
     </span>

@@ -134,6 +134,38 @@ test("favorite_off_day: højeste terrain i feltet slutter uden for top 15, årsa
   assert.ok(findMoment(moments, "tag_favorite_collapse"), "jour_sans-forklaret favorit-nedtur giver også tag_favorite_collapse");
 });
 
+// #3336: tag_favorite_collapse ledsager nu favorite_off_day for incident og
+// helper_work (ikke kun jour_sans) — badge-tooltippen skal kunne afspejle DEN
+// FAKTISKE årsag i stedet for altid at antage jour_sans. Selve udvælgelsen
+// (FAVORITE_OFF_DAY_RANK, hvem der bliver favorit) er uændret i disse tests.
+test("favorite_off_day: incident-forklaret favorit-nedtur giver også tag_favorite_collapse med reason=incident", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),
+    riderRow({ id: "r2", rank: 20, components: { terrain: 0.95 } }),
+  ];
+  const incidentsForStage = [{ rider_id: "r2", kind: "crash", outcome: "time_loss", time_loss_seconds: 90 }];
+  const moments = extractStageMoments({ stageNumber: 1, ranked, incidentsForStage });
+  const beat = findMoment(moments, "favorite_off_day");
+  assert.equal(beat.params.reason, "incident");
+  const tag = findMoment(moments, "tag_favorite_collapse");
+  assert.ok(tag, "incident-forklaret favorit-nedtur giver også tag_favorite_collapse");
+  assert.equal(tag.params.reason, "incident");
+});
+
+test("favorite_off_day: helper_work-forklaret favorit-nedtur giver også tag_favorite_collapse med reason=helper_work", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),
+    riderRow({ id: "r2", rank: 20, components: { terrain: 0.95, work_cost: -0.1 } }),
+  ];
+  const roleByRider = new Map([["r2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, roleByRider });
+  const beat = findMoment(moments, "favorite_off_day");
+  assert.equal(beat.params.reason, "helper_work");
+  const tag = findMoment(moments, "tag_favorite_collapse");
+  assert.ok(tag, "helper_work-forklaret favorit-nedtur giver også tag_favorite_collapse");
+  assert.equal(tag.params.reason, "helper_work");
+});
+
 test("favorite_off_day: ingen forklarende komponent → reason=unexplained, ingen tag_favorite_collapse", () => {
   const ranked = [
     riderRow({ id: "r1", rank: 1, components: { terrain: 0.5 } }),

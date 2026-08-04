@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.94",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The Collapse badge now names the real reason",
+          "body": "When your stage favorite finished outside the top 15, the Collapse badge always said \"had an off day\" even when the real reason was a crash or a teammate sacrifice. It now shows the actual reason. Also added to the Help page: this badge can only ever land on the stage's strongest rider on paper, never on a helper."
+        },
+        "da": {
+          "title": "Kollaps-badgen nævner nu den rigtige årsag",
+          "body": "Når din etapefavorit sluttede uden for top 15, sagde Kollaps-badgen altid \"havde en dårlig dag\", selv når den rigtige årsag var et styrt eller en holdkammerat-ofring. Den viser nu den faktiske årsag. Også tilføjet til Hjælp-siden: badgen kan kun ramme etapens stærkeste rytter på papiret, aldrig en hjælperytter."
+        },
+        "refs": [3336]
+      }
+    ]
+  },
+  {
     "version": "7.93",
     "date": "2026-08-04",
     "label": "Beta",

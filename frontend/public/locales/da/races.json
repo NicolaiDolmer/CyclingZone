@@ -653,7 +653,7 @@
       },
       "tag_favorite_collapse": {
         "label": "Kollaps",
-        "tooltip": "Etapens favorit havde en dårlig dag og mistede chancen."
+        "tooltip": "Etapens favorit mistede chancen: {reason, select, jour_sans {han havde en dårlig dag, benene var der bare ikke} incident {et styrt eller en mekanisk defekt kostede ham dagen} helper_work {han brugte kræfterne på at arbejde for en holdkammerat} other {ingen klar årsag}}."
       },
       "tag_crash_ruined": {
         "label": "Styrt",

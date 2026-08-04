@@ -1154,7 +1154,7 @@
     },
     "whyReportFaq": {
       "q": "Hvordan kan jeg se hvorfor et resultat blev som det blev?",
-      "a": "Løbssiderne forklarer markante udfald i almindeligt sprog, ikke bare tal. Små badges ved en rytters navn markerer fx en hjælper der ofrede sin egen placering for kaptajnen, en favorit der havde en dårlig dag, eller en rytter der timede sin formtop perfekt. En 'Det store billede'-boks på etapesiden tilføjer en sætning ved de store udsving, som et lederskifte i sammenlagtstillingen. De præcise tal bag et resultat forbliver skjulte, kun historien vises."
+      "a": "Løbssiderne forklarer markante udfald i almindeligt sprog, ikke bare tal. Små badges ved en rytters navn markerer fx en hjælper der ofrede sin egen placering for kaptajnen, en favorit der havde en dårlig dag, eller en rytter der timede sin formtop perfekt. En 'Det store billede'-boks på etapesiden tilføjer en sætning ved de store udsving, som et lederskifte i sammenlagtstillingen. De præcise tal bag et resultat forbliver skjulte, kun historien vises. 'Dårlig dag'-badgen kan per konstruktion kun ramme etapens stærkeste rytter på papiret (aldrig en hjælperytter der arbejder for en kaptajn), så den siger intet om træthed eller hvor meget hvile en rytter har fået."
     },
     "contractExpiryRetirementFaq": {
       "q": "Hvad sker der med udløbende kontrakter og ældre ryttere ved sæsonskiftet?",

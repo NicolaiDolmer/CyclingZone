@@ -653,7 +653,7 @@
       },
       "tag_favorite_collapse": {
         "label": "Collapse",
-        "tooltip": "The stage favourite had an off day and lost his shot."
+        "tooltip": "The stage favourite lost his shot: {reason, select, jour_sans {he had an off day, his legs just weren't there} incident {a crash or mechanical cost him the day} helper_work {he spent himself working for a teammate} other {no clear reason emerged}}."
       },
       "tag_crash_ruined": {
         "label": "Crash",
