@@ -1090,6 +1090,10 @@ test("expireAndRenewContracts: krediterer signing bonus ved aktivering af 'loyal
   assert.equal(call.payload.type, "sponsor_signing_bonus");
   assert.equal(call.payload.reason_code, FINANCE_REASON.SPONSOR_SIGNING_BONUS);
   assert.equal(call.payload.idempotency_key, "sponsor_signing:p-loyal");
+  // #3198-fund-7b: metadata.code skal findes så FinancePage kan vise oversat
+  // tekst i stedet for den rå engelske description.
+  assert.equal(call.payload.metadata?.code, "tx.sponsor.signingBonus");
+  assert.equal(call.payload.metadata?.params?.sponsorName, loyalOffer.sponsorName);
 });
 
 test("expireAndRenewContracts: 'safe'-default-fornyelse (ingen signing-klausul) krediterer INGEN signing bonus", async () => {
@@ -1136,6 +1140,10 @@ test("evaluateSeasonObjectives: betaler kun hold med rank <= ceil(poolSize/2) (t
   assert.equal(call.payload.type, "sponsor_objective_bonus");
   assert.equal(call.payload.reason_code, FINANCE_REASON.SPONSOR_OBJECTIVE_BONUS);
   assert.equal(call.payload.idempotency_key, "sponsor_objective:c1:2");
+  // #3198-fund-7b: metadata.code skal findes så FinancePage kan vise oversat
+  // tekst i stedet for den rå engelske description.
+  assert.equal(call.payload.metadata?.code, "tx.sponsor.objectiveBonus");
+  assert.equal(call.payload.metadata?.params?.sponsorName, "Larkin Brewing");
 });
 
 test("evaluateSeasonObjectives: idempotent — 23505-skip (allerede betalt) tæller IKKE som paid", async () => {
