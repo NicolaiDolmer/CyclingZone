@@ -392,6 +392,10 @@
         "message": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin.",
         "messageReason": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin: {reason}"
       }
+    },
+    "welcome": {
+      "title": "Velkommen til Cycling Zone",
+      "message": "Dit hold er klar. Byd i auktionshuset for at hente din første rytter."
     }
   },
   "error": {

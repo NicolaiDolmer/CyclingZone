@@ -72,6 +72,9 @@ const TYPE_CONFIG = {
   // #2842: svar på spillerens egen feedback-indsendelse. Bevidst UDEN link —
   // beskeden ER indholdet, og der findes ingen side at sende spilleren hen til.
   admin_notice:              { Icon: InboxIcon,        color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15" },
+  // Gab 2 (#2822): garanteret første notifikation ved holdoprettelse — peger
+  // mod auktionshuset (samme CTA som beskeden selv).
+  welcome:                   { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/auctions" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
