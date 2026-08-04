@@ -21,18 +21,23 @@
  * @param {Array<{rider_id:string, team_id?:string|null, rank:number, components:{terrain:number}}>} args.ranked
  * @param {Map<string, string|null>} [args.teamByRider]  rider_id → team_id|null (fallback til ranked[i].team_id hvis udeladt)
  * @param {string} [args.terrain]  terrænprofil, videreføres uændret i output til brug i aggregering
+ * @param {string|null} [args.raceId]  #2557 klynge-korrektion: løbets id (IKKE etape-nøglen),
+ *   videreføres uændret i output — bruges til at gruppere korrelerede etaper i
+ *   samme etapeløb (se balanceDriftMetrics.js clusterCorrectedRate/computeShare4PlusRaceSnapshot).
+ *   Rører intet eksisterende felt; udeladt raceId ⇒ undefined, samme som før denne ændring.
  * @returns {{
- *   terrain: string|undefined, fieldSize: number, winnerId: string|null,
+ *   terrain: string|undefined, raceId: string|null|undefined, fieldSize: number, winnerId: string|null,
  *   favoriteId: string|null, favoriteRank: number|null, favoriteWon: boolean,
  *   favoritePodium: boolean, maxSameTeamTop10: number, distinctTeamsTop10: number
  * }}
  */
-export function observeRace({ ranked = [], teamByRider, terrain } = {}) {
+export function observeRace({ ranked = [], teamByRider, terrain, raceId } = {}) {
   const fieldSize = ranked.length;
 
   if (fieldSize === 0) {
     return {
       terrain,
+      raceId,
       fieldSize: 0,
       winnerId: null,
       favoriteId: null,
@@ -86,6 +91,7 @@ export function observeRace({ ranked = [], teamByRider, terrain } = {}) {
 
   return {
     terrain,
+    raceId,
     fieldSize,
     winnerId: winner ? winner.rider_id : null,
     favoriteId: favorite ? favorite.rider_id : null,

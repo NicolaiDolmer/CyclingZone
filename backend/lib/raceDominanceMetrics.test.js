@@ -100,6 +100,15 @@ test("observeRace: felt < 10 ryttere — top10-slice dækker hele feltet", () =>
   assert.equal(obs.distinctTeamsTop10, 4);
 });
 
+test("observeRace: raceId videreføres uændret i output (#2557 klynge-korrektion) — udeladt raceId giver undefined", () => {
+  const ranked = [{ rider_id: "r1", rank: 1, components: { terrain: 10 } }];
+  const withRaceId = observeRace({ ranked, terrain: "flat", raceId: "race-42" });
+  assert.equal(withRaceId.raceId, "race-42");
+
+  const withoutRaceId = observeRace({ ranked, terrain: "flat" });
+  assert.equal(withoutRaceId.raceId, undefined);
+});
+
 // ── aggregateObservations ────────────────────────────────────────────────────
 
 test("aggregateObservations: tom liste → races:0 og alle rater null", () => {
