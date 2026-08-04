@@ -154,6 +154,20 @@ export const PATCHES = [
           "body": "Portræt-fixet på trænings-siden bragte træning tilbage til mobilen, men træthed-kolonnen, den du sorterer efter for at se hvem der skal have hvile, var stadig skjult bag de desktop-only kolonne-headers. En sorterings-dropdown lader dig nu vælge træthed (eller form) i portræt, uden at skulle rotere til landskab."
         },
         "refs": [3299, 3194]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy candidate names no longer lead to a dead end",
+          "body": "Clicking a candidate's name on the academy intake screen could show \"rider not found\": the candidate isn't visible in the rider database yet since he hasn't joined your academy. The name is now plain text until you sign or reject him; the signing fee, potential and other details on the card are unchanged."
+        },
+        "da": {
+          "title": "Akademi-kandidatnavne fører ikke længere til en blindgyde",
+          "body": "Klik på en kandidats navn på akademiets intake-skærm kunne vise \"rytter ikke fundet\": kandidaten er endnu ikke synlig i rytterdatabasen, fordi han ikke er optaget i dit akademi. Navnet er nu almindelig tekst, indtil du signer eller afviser ham; signeringspris, potentiale og de øvrige detaljer på kortet er uændret."
+        },
+        "refs": [3142]
       }
     ]
   },
