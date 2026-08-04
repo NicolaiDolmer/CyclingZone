@@ -5,8 +5,8 @@
 ## Aktiv styring
 
 > **🎯 Next action:**
-> 1. **Næste session (anbefalet):** **kalender-blokken før #3295** (deadline 23/8) — #3327 D2-dækning · #3328 klasse↔længde · #3326 etaperækkefølge · #3329 D1-overlap. Derefter tillids-bugs #3333/#3330/#3332 + guard #3331. Alternativ: motor-køen (#3145 bekræftet ITT-fejl, #3149/#3150/#2944).
-> 1b. **Ejer-beslutning der blokerer #3325 (ryttertyper 90 % climber/tt):** vises typen efter nuværende stats eller potentiale? Anbefaling: potentiale for U23, nuværende for seniorer.
+> 1. **Ejer-review af 4 draft-PR'er:** #3341 Resultat-hub (synlig UI, #3102-IA) · #3339 finance-guard · #3343+#3345 ryttertyper+værdi (skal merges SAMMEN, ejer 4/8) · #3344 kalender-mix. Derefter #3331 paginerings-guard (holdt tilbage pga. konflikt).
+> 1b. **Efter #3344-merge:** apply katalog-migrationen (15 race_pool-rækker, ejer-godkendt 4/8) — idempotent + post-verify, ligger i `database/proposals/`.
 > 2. **Hos ejeren:** Resend-nøgler + mailtekst-godkendelse (#2853, ~15 min, tænder intet — kæden er deep-linket og flip-klar) · #3300's 3 designsvar · Railway MCP re-auth · penge-kæden #2813 · #3147-basekadence (lavtryk nu) · beslutnings-ark 60 sager · logo #481.
 > 3. **Måle-datoer:** ~18/8 payoff-mål (≥60 % ser første resultat, baseline ~34 %) + dag-1-effekt via get_cohort_retention på /admin/growth.
 
@@ -15,6 +15,8 @@
 > **🔴 Platform:** Prod 191 brugere, 54 aktive/7d. **Dag-1 ~31 % seneste 2 uger (var ~64 % juni) — last_seen-metode, #3310.** #2853 venter på Resend-nøgle (e-mail-kæden er nu deep-linket og flip-klar). #2736 Alunta-cron: tjek første kørsel ~23:49. Railway MCP kræver re-auth.
 
 > **📌 Åbne opfølgninger:** #3145 ITT-motor-fejl (bekræftet 4/8) · #3112-guard (forslag klar) · de 5 pending-D4-kontrakter (aktiveres ikke automatisk, jf. #3319-PR-body) · #3307-relateret unchecked-delete OK · #3290 lukket · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #3275 draft = reseed-fundament · #3189→#2041-rest.
+
+> **🟢 4/8 aften (Discord-sweep + fix-bølge):** 32t-sweep over alle forums + 42 kanaler → 15 nye issues (#3325-#3337, #3342, #3345) + 6 dedupe-kommentarer. Merged: #3338 (rytter-limbo heal-sweep — Vasco Fernandes leveret til Team Hansen efter 6 uger, 0 parkerede tilbage) · #3340 (off-day-tooltip: badgen manglede helt for 81 % af hændelserne). Draft: #3339, #3341, #3343, #3344. Ejer-beslutninger 4/8: ryttertype = potentiale for alle · D2-kalender ~50/50 · ProSeries 3-5 / WT 6-8 + højere præmie · typer+værdier udgives samtidig · katalog-udvidelse godkendt. Etaperækkefølge-specen er research-forankret i 12 rigtige WT-løb (#3326-kommentar). Sikkerhed: JWT-læk via `get-test-token.mjs` → #3342 (ingen gist oprettet, verificeret).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
