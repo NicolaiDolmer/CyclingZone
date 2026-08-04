@@ -219,6 +219,11 @@ export default function RaceSelectionPanel({
     setStatus("saving");
     setErrorKey(null);
     setErrorDetail(null);
+    // #3310 quality-fix: save() og autoSelect() deler statusvisningen nedenunder,
+    // så et forældet resultat fra DEN ANDEN handler skal ryddes ved start af hver —
+    // ellers kan et gammelt "Could not auto-select" stå tilbage ved siden af et
+    // netop lykkedes manuelt Gem (og omvendt).
+    if (autoStatus !== "idle") setAutoStatus("idle");
     // #2376: round-trip er OBLIGATORISK — panelet har intet UI til at ÆNDRE free_role,
     // men et gem herfra må ikke wipe free_role'r sat af boardet. Filtreret til ryttere
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
@@ -276,6 +281,11 @@ export default function RaceSelectionPanel({
     const headers = await authHeaders();
     if (!headers) return;
     setAutoStatus("loading");
+    // #3310 quality-fix: ryd et evt. forældet manuelt gem-resultat (status/errorKey/
+    // errorDetail) ved start af auto-select, af samme grund som ovenfor i save().
+    if (status !== "idle") setStatus("idle");
+    if (errorKey) setErrorKey(null);
+    if (errorDetail) setErrorDetail(null);
     try {
       const res = await fetch(`${API}/api/races/${raceId}/selection/auto`, { method: "POST", headers });
       if (!res.ok) { setAutoStatus("error"); return; }

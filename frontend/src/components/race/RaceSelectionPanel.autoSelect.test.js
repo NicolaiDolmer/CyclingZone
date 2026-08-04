@@ -58,7 +58,7 @@ test("#3310 busy kombinerer saving OG autoStatus === \"loading\" (ikke kun savin
 test("#3310 autoSelect() genindlæser via loadSelection() efter et vellykket POST i stedet for at sætte state direkte", () => {
   assert.match(
     source,
-    /async function autoSelect\(\) \{[\s\S]{0,400}?await loadSelection\(\);/,
+    /async function autoSelect\(\) \{[\s\S]{0,700}?await loadSelection\(\);/,
     "autoSelect skal genbruge loadSelection() (samme staleness-guard) frem for at duplikere state-opdateringen",
   );
 });
@@ -73,5 +73,26 @@ test("#3310 autoSelect() sætter autoStatus til error ved non-ok svar eller netv
     source,
     /async function autoSelect\(\) \{[\s\S]*?\} catch \{\s*setAutoStatus\("error"\);\s*\}/,
     "netværksfejl under auto-select skal også ramme autoStatus (catch-grenen)",
+  );
+});
+
+// #3310 quality-fix (reviewer-fund): save() og autoSelect() deler statusvisningen
+// (linje ~534-550) men ryddede tidligere aldrig hinandens statusvariabel. Et
+// mislykket manuelt Gem efterlod status="error" stående efter et efterfølgende
+// vellykket Auto-select (og omvendt: et mislykket Auto-select-forsøg efterlod
+// "Could not auto-select" synligt ved siden af et senere vellykket manuelt Gem).
+test("#3310 save() rydder autoStatus ved start, så et forældet auto-select-fejlsvar ikke overlever et nyt manuelt Gem", () => {
+  assert.match(
+    source,
+    /async function save\(\) \{[\s\S]{0,700}?if \(autoStatus !== "idle"\) setAutoStatus\("idle"\);/,
+    "save() skal nulstille autoStatus til idle ved start, ikke kun sin egen status/errorKey/errorDetail",
+  );
+});
+
+test("#3310 autoSelect() rydder status/errorKey/errorDetail ved start, så et forældet manuelt gem-fejlsvar ikke overlever et nyt Auto-select", () => {
+  assert.match(
+    source,
+    /async function autoSelect\(\) \{[\s\S]{0,400}?if \(status !== "idle"\) setStatus\("idle"\);[\s\S]{0,120}?if \(errorKey\) setErrorKey\(null\);[\s\S]{0,120}?if \(errorDetail\) setErrorDetail\(null\);/,
+    "autoSelect() skal nulstille status, errorKey OG errorDetail til deres idle/null-værdier ved start",
   );
 });
