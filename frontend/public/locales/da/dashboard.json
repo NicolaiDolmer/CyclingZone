@@ -39,6 +39,25 @@
       }
     }
   },
+  "seasonWrap": {
+    "title": "Sæson {number} er slut",
+    "dismissAria": "Skjul sæson-opsummeringskortet",
+    "movement": {
+      "promoted": "↑ Rykket op til division {division}",
+      "relegated": "↓ Rykket ned til division {division}",
+      "maintained": "Holdt division {division}"
+    },
+    "rankLine": "Du blev nr. {rank} af {size} i division {division}",
+    "statsLine": "{points} point · {wins, plural, one {# sejr} other {# sejre}}",
+    "cta": "Se din sæson-opsummering",
+    "goal": {
+      "promoted": "Sæson {nextNumber} starter i en ny division. Første mål: hold dig fri af nedrykningszonen.",
+      "relegated": "Sæson {nextNumber} starter nu. Slut i top 2 for at rykke direkte op igen.",
+      "heldTop": "Sæson {nextNumber} starter nu. Forsvar din placering i toppen af division {division}.",
+      "heldBottom": "Sæson {nextNumber} starter nu. Ingen nedrykningsrisiko hernede, så klatr op ad stillingen.",
+      "heldMid": "Sæson {nextNumber} starter nu. Gå efter en top-2-placering og oprykning."
+    }
+  },
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",

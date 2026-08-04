@@ -64,6 +64,10 @@ const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
+// #2752 — draft-only mock preview (see the page file's own header comment for
+// scope). Same /ui convention: public, unlinked, noindex. Remove once the
+// real-wiring follow-up PR mounts these components on their real pages.
+const SeasonExperiencePreviewPage = lazy(() => import("./pages/SeasonExperiencePreviewPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
@@ -234,6 +238,7 @@ export default function App() {
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<FounderSupporterPage />} />
           <Route path="/ui" element={<KitchenSinkPage />} />
+          <Route path="/ui/season-experience" element={<SeasonExperiencePreviewPage />} />
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
