@@ -15,7 +15,7 @@
 
 > **📌 Venter i øvrigt på dig:** beslutnings-arkets 60 sager ([ark](audits/beslutnings-ark-2026-07-30.md)) · #2830 · #3109-#3112 · #2881 · #2699 · #3140 off-season-buffer · #3147 sponsor-udbetalinger · sessioner: #2622/#2675/#2650.
 
-> **📌 Åbne opfølgninger:** **#3306 form-reset aldrig annonceret + modstridende patch note (FØR S2→S3, high)** · #3305 FAQ-fix venter merge · #3307 unchecked-delete-guard re-apply (reddet branch) · #3290 (RPC-hul, omkring 23/8) · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #2180-rest (frontend-knap + Discord-valg) · #3275 draft = reseed-fundament · #3145/#3146/#3150/#2944/#3149 (motor-kø) · #3189 Clarity-verifikation (+#2041).
+> **📌 Åbne opfølgninger:** **#3306 form-reset aldrig annonceret + modstridende patch note (FØR S2→S3, high)** · #3308 venter ejer-go på ordlyd (#3301 auktions-forlængelse) · #3309 grace-kolonne mangler i auction_timing_config · #3307 unchecked-delete-guard re-apply (reddet branch) · #3290 (RPC-hul, omkring 23/8) · #2164 (ved S2→S3) · #3172 (luk ~18/8) · #2180-rest (frontend-knap + Discord-valg) · #3275 draft = reseed-fundament · #3145/#3146/#3150/#2944/#3149 (motor-kø) · #3189 Clarity-verifikation (+#2041).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
