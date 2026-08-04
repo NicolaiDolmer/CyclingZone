@@ -13,14 +13,42 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Races",
         "en": {
-          "title": "Race reports now explain more of why, not just what",
-          "body": "Stage reports call out when a rider attacked without it costing him anything: joining a breakaway is a free gamble in this game, never a penalty on his own finishing position, even if the break gets caught. They also mention when a rider was set to save legs or work at full effort for the day. Finished stages get a proper report instead of a flat list: a headline, a short lede and a handful of beats that walk through how the stage unfolded, with wording that varies from stage to stage instead of repeating the same sentence every time. The breakaway help text now says outright that joining one never costs extra fatigue or your own finish."
+          "title": "A heads-up when a race still needs your lineup",
+          "body": "If a race starts in less than 36 hours and you have not picked your lineup manually, a notification now lands in your inbox. The assistant can also fill in that one race for you in a single click, using the same rules as the race hub's auto-fill, so it never double-books a rider on the same day and never selects someone who is injured."
         },
         "da": {
-          "title": "Løbsrapporter forklarer nu mere af hvorfor, ikke kun hvad",
-          "body": "Etaperapporterne nævner nu når en rytter angreb uden at det kostede ham noget: at komme med i et udbrud er et gratis gamble i dette spil, aldrig en straf på egen placering, selv hvis udbruddet bliver hentet. De nævner også når en rytter var sat til at spare kræfter eller arbejde for fuld kraft den dag. Kørte etaper får en rigtig rapport i stedet for en flad liste: en rubrik, en kort indledning og et par punkter der viser hvordan etapen udfoldede sig, med formuleringer der varierer fra etape til etape i stedet for at gentage samme sætning hver gang. Hjælpeteksten om udbrud siger nu direkte at det aldrig koster ekstra træthed eller egen placering at komme med."
+          "title": "Et praj når et løb stadig mangler din udtagelse",
+          "body": "Hvis et løb starter om mindre end 36 timer og du ikke selv har sat din udtagelse, lander der nu en notifikation i din indbakke. Assistenten kan også udfylde netop dét løb for dig med ét klik, efter samme regler som løbs-hubbens auto-udfyld, så den aldrig dobbeltbooker en rytter samme dag og aldrig vælger en skadet."
         },
-        "refs": [3115, 2356]
+        "refs": [2180]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "New teams get a proper welcome",
+          "body": "Creating your team now drops a welcome note in your inbox that points you straight to the auction house. Until now a brand-new account stared at a completely empty inbox until the first event happened to reach it."
+        },
+        "da": {
+          "title": "Nye hold får en ordentlig velkomst",
+          "body": "Når du opretter dit hold, lander der nu en velkomstbesked i din indbakke der peger dig direkte mod auktionshuset. Indtil nu stirrede en helt ny konto på en tom indbakke, indtil den første hændelse tilfældigvis ramte den."
+        },
+        "refs": [2822]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Club",
+        "en": {
+          "title": "Fired staff no longer sneak back into your candidate list",
+          "body": "When you fired a staff member, the next candidate refresh could offer the exact same person again, often as the top pick. Candidate generation now remembers who you have let go and keeps them out for good."
+        },
+        "da": {
+          "title": "Fyret personale sniger sig ikke længere tilbage på kandidatlisten",
+          "body": "Når du fyrede et personalemedlem, kunne næste kandidat-opdatering tilbyde præcis samme person igen, ofte som topkandidat. Kandidatgenereringen husker nu hvem du har ladet gå, og holder dem ude permanent."
+        },
+        "refs": [2887]
       }
     ]
   },
