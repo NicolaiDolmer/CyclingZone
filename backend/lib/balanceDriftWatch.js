@@ -25,6 +25,9 @@ import {
   evaluateBreachAlert,
   foldRiderWindowRows,
   computeTierBreakdown,
+  computeShare4PlusRaceSnapshot,
+  poolClusterCorrectedShare4Plus,
+  classifyTierBreakdown,
   BALANCE_DRIFT_TUNING,
 } from "./balanceDriftMetrics.js";
 import { withOpsMention } from "./opsWebhook.js";
@@ -149,6 +152,7 @@ export async function fetchDayInputs(supabase, dateStr) {
       terrain: undefined,
       __stageKey: stageKey,
       tier: tierByRaceId.get(run.race_id) ?? null, // #2557
+      raceId: run.race_id, // #2557 afsnit 5b — klynge-enhed til cluster-korrigeret SE
     });
 
     for (const s of runScores) {
@@ -252,7 +256,7 @@ export async function runBalanceDriftWatch({
   // #2557: bær `tier` med over på observationen så nedbrydningen kan grupperes.
   // observeRace ignorerer ukendte felter, så tier'en påvirker ikke aggregatet.
   const observations = inputs.observations.map((o) => ({
-    ...observeRace({ ranked: o.ranked, terrain: o.terrain }),
+    ...observeRace({ ranked: o.ranked, terrain: o.terrain, raceId: o.raceId ?? null }),
     tier: o.tier ?? null,
   }));
   const incidentObservations = inputs.incidentObservationsInput.map((o) => observeIncidents(o));
@@ -297,6 +301,22 @@ export async function runBalanceDriftWatch({
   // så en ekstra nøgle i metrics ændrer hverken status, alarm eller admin-tabellen
   // (BalanceDriftWatchSection renderer fra sin egen METRIC_LABELS-allowlist).
   metrics.byTier = computeTierBreakdown(observations);
+  // #2557/#3250-opfølgning (spor B1, del B): klassificér nedbrydningen mod de
+  // samme kanoniske bånd. Persisteres under statuses.byTier — SAMME jsonb-
+  // kolonne der allerede skrives nedenfor, ingen skema-ændring, ingen ekstra
+  // prod-læsning. IKKE koblet til 3-dages-Discord-alarmen i denne PR (se
+  // findConsecutiveTierBreaches()'s header i balanceDriftMetrics.js) —
+  // forespørgelsesbar via GET /api/admin/balance-drift (tierBreaches).
+  statuses.byTier = classifyTierBreakdown(metrics.byTier);
+
+  // #2557 afsnit 5b: dagens pr.-løb share4Plus-snapshot (klynge-enheden), plus
+  // et ALTID beregnet, POOLET klynge-korrigeret estimat over de seneste
+  // POOL_WINDOW_DAYS rækker (history indeholder allerede dagens egen `metrics`
+  // ved reference, så snapshot'et lige over er med i puljen). Begge er
+  // report-only — se poolClusterCorrectedShare4Plus' header for hvorfor denne
+  // PR ikke ændrer classifyDay/alarmen.
+  metrics.share4PlusByRace = computeShare4PlusRaceSnapshot(observations);
+  metrics.share4PlusClusterSe = poolClusterCorrectedShare4Plus(history, BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS);
 
   const { error: upsertError } = await supabase
     .from("race_balance_drift_daily")
