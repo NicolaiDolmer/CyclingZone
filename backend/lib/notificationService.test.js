@@ -324,7 +324,7 @@ function makeFirstTimeSupabase({ teams = [], otherResults = [], teamsError = nul
               in(column, values) {
                 assert.equal(column, "team_id");
                 return {
-                  neq(column2, value2) {
+                  neq(column2, _value2) {
                     assert.equal(column2, "race_id");
                     const data = otherResults.filter((r) => values.includes(r.team_id));
                     return Promise.resolve({ data, error: null });
