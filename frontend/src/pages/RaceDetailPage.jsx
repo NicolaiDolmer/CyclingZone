@@ -27,6 +27,7 @@ import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
+import { buildRaceReport } from "../lib/raceReport.js";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
@@ -462,6 +463,18 @@ export default function RaceDetailPage() {
     return out;
   }, [results]);
 
+  // #2356 (S2: race-recap v2) — samme opslags-mønster som riderNameById lige
+  // ovenfor, blot for hold (moments refererer kun team_id, aldrig navnet).
+  const teamNameById = useMemo(() => {
+    const out = new Map();
+    for (const r of results) {
+      const id = r.rider?.team?.id ?? r.team_id;
+      const name = r.rider?.team?.name ?? r.team_name;
+      if (id != null && name && !out.has(String(id))) out.set(String(id), name);
+    }
+    return out;
+  }, [results]);
+
   function filterRowsByTeam(rows) {
     if (resolvedTeamFilter == null) return rows;
     return (rows || []).filter(r => String(r.team_id ?? r.rider?.team?.id) === String(resolvedTeamFilter));
@@ -717,7 +730,8 @@ export default function RaceDetailPage() {
               {stageNumbers.map(n => activeTab === `stage-${n}` && (
                 <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
                   filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} incidents={incidents}
-                  moments={moments} riderNameById={riderNameById} passages={passages} t={t} />
+                  moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
+                  raceId={race.id} raceName={race.name} passages={passages} t={t} />
               ))}
             </div>
           )}
@@ -780,6 +794,163 @@ function RaceRecap({ results, scopeType, stageNumber, incidents }) {
           </li>
         ))}
       </ul>
+    </Section>
+  );
+}
+
+// #2356 (S2: race-recap v2) — sekunder → "M:SS", samme afrunding som
+// raceRecap.js's private formatClock (duplikeret bevidst, ren præsentation).
+function formatMarginSeconds(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${String(rem).padStart(2, "0")}`;
+}
+
+// #2356: params pr. moment_key til report.headline.*/lede.*/beat.* — samme
+// switch-mønster som WhyPanel nedenfor, blot for de flere skabelon-familier
+// raceReport.js's plan producerer. Fog-gate: interpolerer UDELUKKENDE navne
+// (opslået lokalt) + de samme allerede-offentlige numeriske felter WhyPanel/
+// StoryTagBadges/raceRecap.js allerede bruger (count, gapSeconds→marginText,
+// rank) — aldrig et rå komponent-tal.
+function headlineParamsFor(moment, { riderName, raceName }) {
+  const p = moment.params || {};
+  switch (moment.moment_key) {
+    case "close_win":
+    case "solo_win":
+      return { rider: riderName(p.riderId), marginText: formatMarginSeconds(p.gapSeconds) };
+    case "final_gc": {
+      const [first] = p.riderIds || [];
+      return { rider: riderName(first), race: raceName || "" };
+    }
+    case "sprint_win":
+    case "breakaway_survived":
+    case "gc_takeover":
+    default:
+      return { rider: riderName(p.riderId) };
+  }
+}
+
+function ledeParamsFor(winMoment, ledeKey, { riderName, teamName }) {
+  const p = winMoment.params || {};
+  const base = { rider: riderName(p.riderId), team: teamName(winMoment.team_ids?.[0]) };
+  return ledeKey === "solo" ? { ...base, marginText: formatMarginSeconds(p.gapSeconds) } : base;
+}
+
+function beatParamsFor(moment, { riderName, teamName }) {
+  const p = moment.params || {};
+  switch (moment.moment_key) {
+    case "breakaway_caught":
+    case "breakaway_survived":
+      return { count: p.count ?? 0 };
+    case "helper_shift":
+      return { team: teamName(p.teamId), captain: riderName(p.captainId), count: p.helperIds?.length ?? 0 };
+    case "gc_takeover":
+      return { rider: riderName(p.riderId), previousLeader: riderName(p.previousLeaderId) };
+    case "team_day":
+      return { team: teamName(p.teamId), count: p.count ?? 0 };
+    case "form_peak":
+    case "favorite_off_day":
+    case "tag_aggression_no_cost":
+    case "tag_saved_effort":
+    case "tag_gave_everything":
+    default:
+      return { rider: riderName(p.riderId) };
+  }
+}
+
+// #2356 (S2: race-recap v2) — dramaturgisk etaperapport oven på de persisterede
+// race_stage_moments (raceReport.js VÆLGER/ORDNER/VARIERER, denne komponent
+// interpolerer). Erstatter v1 (RaceRecap) på etape-fanen NÅR momenter findes for
+// etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
+// spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
+// personalisering — ingen ny persistering, ingen data forlader klienten.
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, t }) {
+  const report = useMemo(
+    () => buildRaceReport({ raceId, stageNumber, moments }),
+    [raceId, stageNumber, moments],
+  );
+
+  const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
+  const teamName = (id) => (id ? teamNameById.get(String(id)) || "—" : "—");
+
+  const myTeamBlock = useMemo(() => {
+    if (myTeamId == null || !report) return null;
+    const stageRows = (results || []).filter((r) =>
+      r.result_type === "stage" && (r.stage_number ?? 1) === stageNumber
+      && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId)
+    );
+    if (!stageRows.length) return { none: true };
+    const best = [...stageRows].sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))[0];
+    const inBreakRow = stageRows.find((r) => r.in_breakaway);
+    const helperShift = (moments || []).find((mo) =>
+      mo.moment_key === "helper_shift" && (mo.stage_number ?? 1) === stageNumber
+      && (mo.team_ids || []).map(String).includes(String(myTeamId))
+    );
+    return {
+      none: false,
+      bestRider: riderName(best.rider_id ?? best.rider?.id),
+      bestRank: best.rank,
+      inBreakRider: inBreakRow ? riderName(inBreakRow.rider_id ?? inBreakRow.rider?.id) : null,
+      helperShift,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- riderName lukker over riderNameById (prop), ikke state
+  }, [results, moments, myTeamId, stageNumber, report]);
+
+  if (!report) {
+    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} />;
+  }
+
+  const ctx = { riderName, teamName, raceName };
+  const headlineKey = report.headline.moment.moment_key;
+  const ledeKey = report.lede.key;
+
+  return (
+    <Section>
+      <SectionHeader title={
+        <span className="inline-flex items-center gap-2">
+          <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
+          {t("detail.report.title", { number: stageNumber })}
+        </span>
+      } />
+      <h3 className="text-cz-1 font-bold text-[15px] leading-snug">
+        {t(`detail.report.headline.${headlineKey}.v${report.headline.variant + 1}`, headlineParamsFor(report.headline.moment, ctx))}
+      </h3>
+      <p className="text-cz-2 text-sm leading-relaxed mt-1">
+        {t(`detail.report.lede.${ledeKey}.v${report.lede.variant + 1}`, ledeParamsFor(report.lede.winMoment, ledeKey, ctx))}
+      </p>
+      {report.beats.length > 0 && (
+        <ul className="space-y-1.5 mt-2">
+          {report.beats.map((b) => (
+            <li key={b.moment.moment_key} className="text-cz-1 text-sm leading-relaxed">
+              {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, beatParamsFor(b.moment, ctx))}
+            </li>
+          ))}
+        </ul>
+      )}
+      {myTeamBlock && (
+        <div className="mt-3 pt-3 border-t border-cz-border space-y-1">
+          <div className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.report.yourTeam.title")}</div>
+          {myTeamBlock.none ? (
+            <p className="text-cz-2 text-sm">{t("detail.report.yourTeam.none")}</p>
+          ) : (
+            <ul className="space-y-1">
+              <li className="text-cz-1 text-sm tabular-nums">{t("detail.report.yourTeam.bestResult", { rider: myTeamBlock.bestRider, rank: myTeamBlock.bestRank })}</li>
+              {myTeamBlock.inBreakRider && (
+                <li className="text-cz-1 text-sm">{t("detail.report.yourTeam.inBreak", { rider: myTeamBlock.inBreakRider })}</li>
+              )}
+              {myTeamBlock.helperShift && (
+                <li className="text-cz-1 text-sm">
+                  {t("detail.report.yourTeam.helperWork", {
+                    count: myTeamBlock.helperShift.params?.helperIds?.length ?? 0,
+                    captain: riderName(myTeamBlock.helperShift.params?.captainId),
+                  })}
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
     </Section>
   );
 }
@@ -938,7 +1109,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, moments }) {
   );
 }
 
-function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, passages, t }) {
+function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
 
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
@@ -984,7 +1155,11 @@ function StageTab({ stage, results, profile, filterRows, myTeamId, incidents, mo
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
-          <RaceRecap results={results} scopeType="stage" stageNumber={stage} incidents={incidents} />
+          <RaceReportPanel
+            raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
+            results={results} incidents={incidents} myTeamId={myTeamId}
+            riderNameById={riderNameById} teamNameById={teamNameById} t={t}
+          />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (

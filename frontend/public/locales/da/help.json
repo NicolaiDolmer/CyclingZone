@@ -759,7 +759,7 @@
       },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn, udbruds-jæger og fri rolle",
-        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe. Holdarbejde har en pris: hjælpere taber placeringer på at arbejde for kaptajnen, og det arbejde er præcis det der køber kaptajnens boost. En rytter i Fri rolle dropper holdarbejdet og kører sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte."
+        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe. Høj aggression er aldrig en ulempe for rytteren selv: at komme med i et udbrud koster intet ekstra, ingen ekstra træthed og ingen straf på egen placering hvis udbruddet bliver hentet, så en aggressiv rytter får kun flere chancer for et resultat, aldrig færre. Holdarbejde har en pris: hjælpere taber placeringer på at arbejde for kaptajnen, og det arbejde er præcis det der køber kaptajnens boost. En rytter i Fri rolle dropper holdarbejdet og kører sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte."
       },
       "stageTactics": {
         "title": "Etapeløb: roller og indsats pr. etape",
@@ -771,7 +771,7 @@
       },
       "breakaway": {
         "title": "Udbrud",
-        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet."
+        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet. At komme med i udbruddet koster rytteren intet ekstra: ingen ekstra træthed og ingen straf på egen placering hvis det bliver hentet. Det er et gratis forsøg på et bedre resultat, aldrig en gambling med en bagside."
       },
       "fatigue": {
         "title": "Træthed betyder noget",

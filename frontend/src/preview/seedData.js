@@ -383,13 +383,24 @@ export const SEED_RACE_INCIDENTS = [
 // tabellen; tag_crash_ruined på den fiktive rider-99 der allerede har en
 // incident-seed ovenfor — han optræder ikke i nogen resultat-række, så tagget
 // forbliver usynligt i UI'et, samme graceful-degradation som DnfSection).
+//
+// D3 2026-08-04 (#3115 + #2356): sprint_win (st1) + solo_win (st2) tilføjet —
+// UDEN et vindermoment falder RaceReportPanel (raceReport.js) tilbage til v1
+// (buildRaceReport → null), så de to var nødvendige for at v2-rapporten rent
+// faktisk kan skærmbilledes. tag_aggression_no_cost/tag_saved_effort/
+// tag_gave_everything demonstrerer de to nye moment-typer.
 export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s1-1", race_id: "race-done-2", stage_number: 1, moment_key: "team_day", params: { teamId: TEST_TEAM.id, count: 2 }, significance: 45, rider_ids: [], team_ids: [TEST_TEAM.id] },
   { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s1-3", race_id: "race-done-2", stage_number: 1, moment_key: "sprint_win", params: { riderId: RIDERS[0].id, gapSeconds: 1 }, significance: 50, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-4", race_id: "race-done-2", stage_number: 1, moment_key: "tag_aggression_no_cost", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
   { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
   { id: "mom-d2-s2-4", race_id: "race-done-2", stage_number: 2, moment_key: "tag_jour_sans", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
+  { id: "mom-d2-s2-5", race_id: "race-done-2", stage_number: 2, moment_key: "solo_win", params: { riderId: RIDERS[1].id, gapSeconds: 45 }, significance: 55, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
+  { id: "mom-d2-s2-6", race_id: "race-done-2", stage_number: 2, moment_key: "tag_gave_everything", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  { id: "mom-d2-s2-7", race_id: "race-done-2", stage_number: 2, moment_key: "tag_saved_effort", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
 ];
 
 // #1997 S1 — Palmarès-fanens rytter-scopede race_results (rider_id=eq.<id>-query,

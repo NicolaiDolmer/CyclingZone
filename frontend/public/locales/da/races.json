@@ -656,6 +656,119 @@
       "tag_crash_ruined": {
         "label": "Styrt",
         "tooltip": "Et sandsynligt topresultat blev ødelagt af et styrt eller en mekanisk defekt."
+      },
+      "tag_aggression_no_cost": {
+        "label": "Gratis forsøg",
+        "tooltip": "Angreb og blev hentet, men det kostede ham intet: at komme med i et udbrud koster aldrig ekstra træthed eller egen placering."
+      },
+      "tag_saved_effort": {
+        "label": "Sparede kræfter",
+        "tooltip": "Sat til at spare kræfter denne etape, som valgt på taktik-siden."
+      },
+      "tag_gave_everything": {
+        "label": "Gav alt",
+        "tooltip": "Sat til at arbejde for fuld kraft denne etape, som valgt på taktik-siden."
+      }
+    },
+    "report": {
+      "title": "Rapport fra {number}. etape",
+      "numbers": {
+        "margin": "Sejrsmargin",
+        "field": "Ryttere til start",
+        "breakaway": "I udbruddet"
+      },
+      "headline": {
+        "sprint_win": {
+          "v1": "{rider} tager spurten",
+          "v2": "{rider} er hurtigst i massespurten",
+          "v3": "Spurten går til {rider}"
+        },
+        "close_win": {
+          "v1": "{rider} vinder med {marginText}",
+          "v2": "{rider} holder hjem og vinder"
+        },
+        "solo_win": {
+          "v1": "{rider} kører fra feltet",
+          "v2": "Ingen kunne følge {rider}",
+          "v3": "Solosejr med {marginText} til {rider}"
+        },
+        "breakaway_survived": {
+          "v1": "Udbruddet holder hjem: {rider} vinder",
+          "v2": "{rider} vinder fra udbruddet"
+        },
+        "gc_takeover": {
+          "v1": "{rider} overtager føringen i løbet",
+          "v2": "Ny løbsfører: {rider}"
+        },
+        "final_gc": {
+          "v1": "{rider} vinder {race}",
+          "v2": "Den samlede sejr i {race} går til {rider}"
+        }
+      },
+      "lede": {
+        "bunch_sprint": {
+          "v1": "Etapen endte i massespurt, og {rider} timede den bedst for {team}.",
+          "v2": "Et samlet felt kom til mål. I spurten var {rider} den hurtigste for {team}."
+        },
+        "reduced_sprint": {
+          "v1": "En hård finale splittede feltet, og {rider} vandt frontgruppens spurt for {team}."
+        },
+        "solo": {
+          "v1": "{rider} efterlod feltet og kom alene over stregen, {marginText} foran.",
+          "v2": "Hullet voksede kun. {rider} tog sejren for {team} med {marginText} til nærmeste forfølger."
+        },
+        "breakaway": {
+          "v1": "Udbruddet blev aldrig hentet. {rider} gjorde arbejdet færdigt for {team}."
+        },
+        "generic": {
+          "v1": "{rider} vandt for {team}."
+        }
+      },
+      "beat": {
+        "breakaway_caught": {
+          "v1": "{count, plural, one {Den udbrudte rytter blev hentet før mål.} other {Udbruddet på # blev hentet før mål.}}",
+          "v2": "{count, plural, one {Feltet lukkede hullet til den udbrudte i tide.} other {Feltet lukkede hullet til de # udbrudte i tide.}}"
+        },
+        "breakaway_survived": {
+          "v1": "{count, plural, one {Den udbrudte rytter blev aldrig hentet.} other {De # udbrudte holdt feltet bag sig helt til stregen.}}"
+        },
+        "helper_shift": {
+          "v1": "{team} satsede alt på {captain}: {count, plural, one {én holdkammerat} other {# holdkammerater}} arbejdede for at bringe ham frem.",
+          "v2": "{count, plural, one {En holdkammerat} other {# holdkammerater}} ofrede egne chancer for {captain} i dag."
+        },
+        "form_peak": {
+          "v1": "{rider} stillede til start i topform, og det kunne ses.",
+          "v2": "Formen gjorde forskellen for {rider} i dag."
+        },
+        "favorite_off_day": {
+          "v1": "På papiret feltets stærkeste, men {rider} sluttede uden for top 15."
+        },
+        "gc_takeover": {
+          "v1": "{rider} overtager den samlede føring fra {previousLeader}.",
+          "v2": "Den samlede føring skifter hænder: {rider} fører nu."
+        },
+        "team_day": {
+          "v1": "Det var en dag for {team}: {count} ryttere i top 10."
+        },
+        "aggression_no_cost": {
+          "v1": "{rider} angreb og blev hentet, men det kostede ham intet. Et udbrudsforsøg koster aldrig ekstra træthed eller egen placering.",
+          "v2": "{rider} prøvede lykken i udbruddet. Hentet før stregen, men ikke ringere stillet af at prøve."
+        },
+        "saved_effort": {
+          "v1": "{rider} var sat til at spare kræfter denne etape og skånede sig for at have noget i reserve.",
+          "v2": "{rider} kørte inden for sine grænser i dag og sparede kræfter til det, der venter."
+        },
+        "gave_everything": {
+          "v1": "{rider} var sat til at arbejde for fuld kraft og gav alt for holdet i dag.",
+          "v2": "Ingen tilbageholdenhed for {rider} i dag: fuld kraft hele vejen."
+        }
+      },
+      "yourTeam": {
+        "title": "Dit hold",
+        "bestResult": "Bedst placeret: {rider}, etapeplacering {rank}.",
+        "inBreak": "{rider} brugte dagen i udbruddet.",
+        "helperWork": "{count, plural, one {En holdkammerat kørte} other {# holdkammerater kørte}} i tjeneste for {captain}.",
+        "none": "Ingen af dine ryttere stillede til start på denne etape."
       }
     },
     "jersey": {
