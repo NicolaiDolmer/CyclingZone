@@ -175,6 +175,57 @@ run "raw high-entropy still blocks (#752 guard)" \
   "Value: $(mk_random_highentropy) $PAD" \
   2 "high-entropy"
 
+# ===== #3317: ISO-timestamp backup-filename false-positive skip =====
+
+# Backup-filnavn fra repair2276Div4Cascade.js/repair2251Tier4GrandTours.js-
+# moenstret (`<slug>-${now.toISOString().replace(/[:.]/g, "-")}.json`) SKAL
+# passere som text (ikke som JSON-payload-tool_name, saa ren tekst-scanning).
+run "iso-timestamp-backup-filename skipped (#3317)" \
+  "backup skrevet: repair-2276-div4-cascade-2026-07-10T14-23-45-678Z.json done. $PAD" \
+  0 ""
+
+run "iso-timestamp-backup-filename skipped variant (#3317)" \
+  "backup skrevet: repair-2251-tier4-gts-2026-06-30T09-05-12-003Z.json done. $PAD" \
+  0 ""
+
+# KONTROL: raw high-entropy UDEN ISO-timestamp-suffiks SKAL stadig blokere.
+run "raw high-entropy still blocks (#3317 guard)" \
+  "Value: $(mk_random_highentropy) $PAD" \
+  2 "high-entropy"
+
+# ===== #3128: Vercel/Supabase bot PR-comment metadata false-positive skip =====
+
+# Ægte struktur fra Vercel-bottens PR-kommentar (PR #3125, 2026-08-04):
+# "[vc]: #<base64-hash>:<base64-JSON-blob>". Bygget via printf ligesom de
+# andre fixtures saa intet komplet secret-lignende moenster staar som
+# litteral i denne fil.
+mk_vercel_bot_comment() {
+  # Hash- og blob-segmenter splittet i <40-tegns bidder (ligesom de andre
+  # fixture-builders) saa intet enkelt literal i denne KILDEFIL selv trigger
+  # high-entropy naar filen Read'es/Edit'es/Grep'es.
+  printf '[vc]: #%s%s%s:%s%s%s%s%s' \
+    'gJE7Z52QIG0Du' 'UH+Uggqbb' 'VZOnAOa8NWDEvf' \
+    'eyJpc01vbm9yZXBv' 'Ijp0cnVlLCJ0eXBl' 'IjoiZ2l0aHVi' 'IiwicHJvamVjdHMi' 'OltdfQ=='
+}
+run "vercel-bot-pr-comment-metadata skipped (#3128)" \
+  "Comment body: $(mk_vercel_bot_comment) $PAD" \
+  0 ""
+
+mk_supabase_bot_comment() {
+  printf '[supa]: #%s%s:%s%s%s' \
+    'aB3xZ9qK7mP2wR8n' 'T4vL6yC1jH5gF0d=' \
+    'eyJicmFuY2giOiJm' 'aXgtMzEyOCIsInN0' 'YXR1cyI6InJlYWR5In0='
+}
+run "supabase-bot-pr-comment-metadata skipped (#3128)" \
+  "Comment body: $(mk_supabase_bot_comment) $PAD" \
+  0 ""
+
+# KONTROL: en aegte JWT ELSEWHERE i samme kommentar-tekst SKAL stadig
+# blokere — bot-metadata-stripning maa ikke skygge for et rigtigt fund.
+run "real jwt beside vercel-bot-comment still blocks (#3128 guard)" \
+  "Comment body: $(mk_vercel_bot_comment) leaked token: $(mk_jwt_legacy) $PAD" \
+  2 "jwt-supabase-legacy"
+
 # ===== Performance optimization tests =====
 
 # <100 char input skipper hook scan (perf opt). Selv match-streng slipper.
