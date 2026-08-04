@@ -64,6 +64,19 @@ test("day1 email (hasResults=false): truthful variant, no invented results claim
   assertNoEmDash(t, "day1 hasResults=false");
 });
 
+test("day1 med latestRaceId deep-linker CTA til løbssiden", () => {
+  const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: "race-42", unsubscribeUrl: UNSUB_URL });
+  assert.ok(t.html.includes("https://cyclingzone.org/races/race-42"));
+  assert.ok(t.text.includes("https://cyclingzone.org/races/race-42"));
+  assertNoEmDash(t, "day1 latestRaceId");
+  assertHasUnsubscribeLink(t);
+});
+
+test("day1 uden latestRaceId falder tilbage til dashboard-URL", () => {
+  const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: null, unsubscribeUrl: UNSUB_URL });
+  assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
+});
+
 test("race_digest email: subject, results link, unsubscribe link, no em-dash", () => {
   const t = buildRaceDigestEmail({
     teamName: "Team Velodrome",

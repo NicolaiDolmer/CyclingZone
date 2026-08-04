@@ -10,14 +10,18 @@
 // any race_results within 24h, so the D1 copy cannot unconditionally claim
 // "your results are already on the board" — that would be an invented claim
 // for up to 2/3 of recipients (house hard rule: no invented content in
-// player-facing copy). Per team we check race_results existence (same
-// exists-style .select("id").eq("team_id", teamId).limit(1) pattern as
-// achievementEngine.js's loadRaceResultStats — race_results.team_id points
-// directly at teams, no riders-join needed) and pass hasResults into
-// buildDay1Email so it renders one of two truthful variants. The check sits
-// inside the existing per-team try/catch, so a failed results lookup for one
-// team is isolated exactly like any other per-team failure (counts as
-// `failed`, does not block the rest of the sweep).
+// player-facing copy). Per team we check race_results existence (an
+// exists-style lookup on race_results.team_id, which points directly at
+// teams, no riders-join needed) and pass hasResults into buildDay1Email so
+// it renders one of two truthful variants. The check sits inside the
+// existing per-team try/catch, so a failed results lookup for one team is
+// isolated exactly like any other per-team failure (counts as `failed`,
+// does not block the rest of the sweep).
+//
+// #3310 (dormant, flag stays off / #2853 unchanged): the same lookup also
+// orders by created_at desc and selects race_id, so the hasResults=true
+// branch can deep-link the CTA straight to the manager's latest race
+// (buildDay1Email's latestRaceId) instead of the generic dashboard.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -69,12 +73,17 @@ export async function runEmailDay1Sweep({
       if (!userRow?.email) { skipped += 1; continue; }
 
       const { data: resultRows, error: resultsError } = await supabase
-        .from("race_results").select("id").eq("team_id", team.id).limit(1);
+        .from("race_results")
+        .select("id, race_id, created_at")
+        .eq("team_id", team.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
       if (resultsError) throw new Error(`race_results lookup: ${resultsError.message}`);
       const hasResults = (resultRows || []).length > 0;
+      const latestRaceId = resultRows?.[0]?.race_id ?? null;
 
       const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
-      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, unsubscribeUrl });
+      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, latestRaceId, unsubscribeUrl });
       const result = await send({
         supabase,
         userId: team.user_id,
