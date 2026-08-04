@@ -51,6 +51,7 @@ export const NOTIFICATION_TYPES = [
   "scout_report_ready",
   "contract_expired_release",
   "squad_below_minimum",
+  "selection_warning",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

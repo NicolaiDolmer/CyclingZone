@@ -190,6 +190,10 @@
       "title": "Trup under løbs-minimum",
       "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb."
     },
+    "selectionWarning": {
+      "title": "Holdudtagelse mangler",
+      "message": "{race} starter om under 36 timer, og du har endnu ikke sat dit hold. Vælg dine ryttere, eller lad assistenten auto-udtage for dig."
+    },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
       "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."
