@@ -59,7 +59,7 @@ Copy-regler: EN først, DA sekundært; ingen em-dash i player-facing copy (`tone
 ## Implementeringsnoter
 
 - **Filer (forventet):** `frontend/src/components/MyLatestResultCard.jsx` (variant), `frontend/src/pages/DashboardPage.jsx` (rækkefølge-gate + CTA-nedgradering), `frontend/src/pages/NotificationsPage.jsx` (`TYPE_CONFIG`: `selection_warning` + `race_result`-deep-link), `backend/lib/notificationService.js` (første-resultat-copy-variant), `backend/lib/emailTemplates.js` + `emailDay1Sweep.js` (deep-link), `frontend/src/pages/RaceDetailPage.jsx` (Auto-select-knap i selection-panelet), admin-sprint-metrics: ny read-only RPC `get_day1_retention_cohorts` (ugekohorter, `last_seen`-metoden fra #3310-kommentaren, ekskl. seneste 2 dage) + række på `/admin/sprint-metrics`.
-- Ingen DB-migrationer. Ingen nye notifikationstyper. i18n en+da for al ny copy.
+- Ingen tabel-/skemaændringer og ingen nye notifikationstyper. Præcisering (4/8, post-godkendelse): admin-rækken kræver dog én idempotent RPC-migration (`get_day1_retention_cohorts`, `CREATE OR REPLACE FUNCTION`, read-only) — Claude applier selv post-merge under #2642-rammerne. i18n en+da for al ny copy.
 - Template-compliance: alle nye elementer komponeres af eksisterende opskrifter (PAGE_TEMPLATES.md); én guld-primær pr. view håndhæves i begge berørte views (dashboard + løbsside).
 - Pre-flight: `verify-local.ps1` + `npm run lint` + alle 3 playwright-projekter (UI-ændringer). Patch notes + `help.json` (en+da) ved ship — kæden er brugerrettet.
 - UI-merge kræver ejer-visuel-godkendelse (memory-regel): preview/screenshots af dashboard-varianten + notifikationsrækken før merge.
