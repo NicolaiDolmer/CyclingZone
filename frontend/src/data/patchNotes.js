@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.93",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Bid buttons lock when the countdown hits zero",
+          "body": "You could click Place bid just after an auction expired and get an error. The bid and auto-bid buttons now disable the moment the countdown reaches zero, and a late click shows a clear auction ended message instead."
+        },
+        "da": {
+          "title": "Byd-knapper låses når nedtællingen rammer nul",
+          "body": "Man kunne klikke Byd lige efter en auktion var udløbet og få en fejl. Byd- og autobud-knapperne deaktiveres nu i samme øjeblik nedtællingen rammer nul, og et sent klik viser en klar besked om at auktionen er slut i stedet."
+        },
+        "refs": [3110]
+      }
+    ]
+  },
+  {
     "version": "7.92",
     "date": "2026-08-04",
     "label": "Beta",
