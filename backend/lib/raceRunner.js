@@ -1969,8 +1969,25 @@ export async function simulateStageByIndex({
     // self-healing, og var aldrig en del af counter↔results-desync'en. Et crash her
     // efterlader korrekte race_results + counter; en næste afvikling/recompute re-deriverer
     // standings. persistRuns (run-snapshot) er ligeledes additiv enrichment.
-    await ensureSeasonStandings(race.season_id);
-    await updateStandings(race.season_id, race.id);
+    //
+    // #2877: FØR denne try/catch væltede en standings-fejl (fx statement timeout
+    // under samtidige etape-afviklinger — se economyEngine.js's withSupabaseRetry-
+    // kommentar) resten af funktionen, OG fordi stages_completed allerede er bumpet
+    // af den atomære apply_stage_result-RPC ovenfor, kører etapen ALDRIG igen (den
+    // reelle udløser: FIX 5-låsen forhindrer re-afvikling af samme stageIndex).
+    // persistRuns/persistIncidents/persistStageMoments/applyFatigue nedenfor er IKKE
+    // self-healende som standings er — de skrives PRÆCIS ÉN gang pr. etape. At lade
+    // en standings-fejl vælte dem gjorde berigelsen gidsel for et recompute den intet
+    // har med at gøre (19 etaper i 14 løb tabt permanent, målt i prod 25/7). Fanget +
+    // Sentry-capturet (synligt, ikke tavst skjult) — standings retter sig selv ved
+    // næste etape/recompute; berigelsen nedenfor skrives uanset udfaldet her.
+    try {
+      await ensureSeasonStandings(race.season_id);
+      await updateStandings(race.season_id, race.id);
+    } catch (err) {
+      console.error(`  ⚠️  standings recompute failed after stage ${stageNumber} (race ${race.id}) — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "standings-recompute" }, raceId: race.id, stageNumber });
+    }
 
     // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
     // matviews LIGE EFTER season_standings er opdateret, ikke efter board-
