@@ -5140,8 +5140,11 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (!["active", "extended"].includes(auction.status)) {
     return res.status(400).json({ error: "Auction is not active" });
   }
+  // #3110: manglede errorCode her — klienten faldt tilbage til den rå,
+  // uoversatte streng i stedet for den lokaliserede errors:api.auction_expired
+  // (samme kode som DB-trigger-grenen længere nede i denne handler bruger).
   if (isAuctionExpired(auction.calculated_end)) {
-    return res.status(400).json({ error: "Auction has ended" });
+    return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
   }
 
   // #3134 · auktions-spærre: en konto oprettet EFTER at auktionen startede kan
@@ -5480,8 +5483,9 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   if (!["active", "extended"].includes(auction.status)) {
     return res.status(400).json({ error: "Auction is not active" });
   }
+  // #3110: samme manglende errorCode som bud-endpointet — se kommentar der.
   if (isAuctionExpired(auction.calculated_end)) {
-    return res.status(400).json({ error: "Auction has ended" });
+    return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
   }
   // #3134 · auktions-spærre — samme håndhævelse som POST /auctions/:id/bid.
   // Et autobud er en anden vej ind i samme auktion og skal gates identisk,

@@ -149,8 +149,10 @@
     "buttonRaiseAria": "Hæv dit bud",
     "sellerLabel": "Du sælger",
     "blockedBelowMin": "Hæv dit bud til mindst {amount} CZ$ for at byde.",
+    "blockedExpired": "Denne auktion er slut. Opdatér for at se resultatet.",
     "proxy": {
       "blockedBelowMin": "Dit autobud-loft skal være mindst {amount} CZ$, som er det aktuelle minimumsbud.",
+      "blockedExpired": "Denne auktion er slut. Opdatér for at se resultatet.",
       "display": "Autobud: max {amount} CZ$",
       "help": "Vi byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
       "set": "Sæt autobud-loft",
