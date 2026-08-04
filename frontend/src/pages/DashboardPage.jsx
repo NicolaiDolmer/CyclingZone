@@ -16,7 +16,7 @@ import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { poolRaceDayTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
-import { countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
+import { formatCountdown } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
@@ -51,16 +51,6 @@ const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
 const REALTIME_TABLES = ["seasons", "race_results"];
-
-// #1828: countdown til næste etape for et igangværende løb. Genbruger de delte rene
-// helpers + races-namespacets countdown-strenge (samme tekst som StageScheduleCard).
-function nextStageCountdown(scheduledMs, nowMs, t) {
-  const parts = countdownParts(scheduledMs - nowMs);
-  if (!parts) return t("races:detail.stageSchedule.startingNow");
-  const segs = countdownSegments(parts).map((s) =>
-    t(`races:detail.stageSchedule.countdown${s.unit[0].toUpperCase()}${s.unit.slice(1)}`, { count: s.count }));
-  return `${t("races:detail.stageSchedule.countdownPrefix")} ${segs.join(" ")}`;
-}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -881,8 +871,15 @@ export default function DashboardPage() {
 
       {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der reelt
           MANGLER udtagelse (squadSelectionMissingRace, #2328 — ikke bare det
-          tidligst scheduled-løb, som kunne være allerede-udtaget). */}
-      <TeamSelectionCtaCard nextRace={squadSelectionMissingRace} />
+          tidligst scheduled-løb, som kunne være allerede-udtaget).
+          #3243: startAtMs/nowMs giver kortet en ægte countdown til løbsstart —
+          et helt nyt hold ved i dag ikke HVORNÅR deres første løb kører, kun AT
+          det gør. Samme race_stage_schedule-kilde som "Kommende løb"-kortet. */}
+      <TeamSelectionCtaCard
+        nextRace={squadSelectionMissingRace}
+        startAtMs={squadSelectionMissingRace ? nextStageByRace[squadSelectionMissingRace.id] : null}
+        nowMs={nowMs}
+      />
 
       {/* #2466: "How your team did" — resultat-push øverst over modul-gridden.
           Kortet renderer intet før endpoint-svaret er landet (myLatestResult
@@ -1029,11 +1026,11 @@ export default function DashboardPage() {
                           )}
                         </span>
                         {nextStageByRace[race.id] && (
-                          <span className="text-3xs text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
+                          <span className="text-3xs text-cz-3 tabular-nums">{formatCountdown(nextStageByRace[race.id], nowMs, t)}</span>
                         )}
                       </span>
                     ) : nextStageByRace[race.id]
-                      ? <p className="text-cz-2 text-sm tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</p>
+                      ? <p className="text-cz-2 text-sm tabular-nums">{formatCountdown(nextStageByRace[race.id], nowMs, t)}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.scheduled")}</p>}
                   </div>
                 </Link>
