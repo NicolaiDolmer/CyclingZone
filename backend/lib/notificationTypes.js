@@ -1,6 +1,6 @@
 // Kanonisk liste over tilladte notifikationstyper — SKAL matche
-// notifications_type_check i prod (senest: database/2026-07-26-3016-
-// notification-type-constraint.sql). Paritet håndhæves af
+// notifications_type_check i prod (senest: database/2026-08-04-welcome-
+// notification-type.sql). Paritet håndhæves af
 // notificationTypes.test.js; en type der kun tilføjes ét af stederne
 // fejler testen i stedet for at fejle tavst i prod (#3016, 3. gentagelse).
 export const NOTIFICATION_TYPES = [
@@ -52,6 +52,7 @@ export const NOTIFICATION_TYPES = [
   "contract_expired_release",
   "squad_below_minimum",
   "selection_warning",
+  "welcome",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);

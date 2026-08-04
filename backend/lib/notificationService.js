@@ -662,3 +662,53 @@ export async function notifyScoutReportReady({
     return { delivered: false, deduped: false, reason: "error" };
   }
 }
+
+// ─── Gab 2 (docs/audits/2026-08-03-product-gap-review.md, #2822) · Velkomst-
+// notifikation ved holdoprettelse ──────────────────────────────────────────
+//
+// PROBLEM: en ny konto havde INGEN notifikation før det første tilfældige
+// event (bud/overbudt/løb/board) ramte den — for konti oprettet mellem to
+// events kan det være dage, og nogle forlader spillet før noget som helst
+// trigger'er. Rod-årsags-analyse mod prod (ghwvkxzhsbbltzfnuhhz, 4/8) af
+// "13% af aktive brugere har 0 notifikationer" (23/7-målingen) fandt INGEN
+// dæknings-/RLS-/opt-in-bug i den eksisterende trigger-kæde: hvert aktivt
+// hold der reelt har budt/vundet/tabt HAR fået sine notifikationer (fx et
+// hold med 120 bud og 52 bud på to andre konti krydsverificeret mod
+// notifications.related_id — auction_outbid/auction_won lander korrekt for
+// ALLE andre bydere på samme auktioner). Nul-tilfældene i det aktuelle
+// snapshot var enten (a) et hold der aldrig blev oprettet (9/14 undersøgte
+// nul-konti havde ingen teams-række, nogle en måned gamle) eller (b) egen
+// sletning via NotificationsPage's "slet læste"/enkelt-sletning (RLS-policy
+// "Users can delete own notifications" tillader det, ingen backend-oprydning
+// findes — et bevidst brugervalg, ikke en fejl).
+//
+// FIX (fremadrettet, ingen backfill): giv hvert NYT hold én garanteret
+// notifikation ved oprettelse, så indbakken aldrig er strukturelt tom fra dag
+// 1 — uafhængigt af om et auktions-/løbs-/board-event tilfældigvis rammer
+// tidligt. Afsendes fra backend/routes/api.js (PUT /api/teams/my,
+// result.created === true) — IKKE herfra, for at holde
+// teamProfileEngine.upsertOwnTeamProfile fri for notifikations-ansvar (samme
+// adskillelse som #679-attribution og #3132-identity-event, som også
+// afsendes fra route-handleren, fire-and-forget, må ALDRIG blokere signup).
+export const WELCOME_TYPE = "welcome";
+
+/**
+ * Byg payloaden for velkomst-notifikationen. Ingen related_id (ikke knyttet
+ * til nogen specifik entitet) og ingen dedup-risiko i praksis (én pr. konto,
+ * afsendt præcis når holdet oprettes — men notifyUser's almindelige
+ * type+title+message-dedup gælder stadig som defensivt andet lag).
+ */
+export function buildWelcomeNotification() {
+  return {
+    type: WELCOME_TYPE,
+    title: "Welcome to Cycling Zone",
+    message: "Your team is ready. Place a bid in the auction house to sign your first rider.",
+    relatedId: null,
+    metadata: {
+      titleCode: "notif.welcome.title",
+      titleParams: {},
+      messageCode: "notif.welcome.message",
+      messageParams: {},
+    },
+  };
+}
