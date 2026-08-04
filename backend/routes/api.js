@@ -190,6 +190,7 @@ import {
   getPendingContract,
   getNegotiationState,
   acceptOffer,
+  acceptOfferImmediately,
   loadSeasonStageCounts,
 } from "../lib/sponsorContractsService.js";
 import {
@@ -10188,8 +10189,10 @@ router.get("/sponsor/offers", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/sponsor/offers/accept — manager vælger et tilbud for den kommende
-// sæson; gemmes som 'pending' og aktiveres ved sæson-skiftet. body: { variant }.
+// POST /api/sponsor/offers/accept — manager vælger et tilbud. body: { variant }.
+// #3316: hold UDEN aktiv kontrakt (state.immediate) aktiveres straks for
+// INDEVÆRENDE sæson; hold der forhandler en fornyelse gemmes stadig som
+// 'pending' og aktiveres først ved sæson-skiftet (uændret semantik).
 router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
@@ -10199,8 +10202,10 @@ router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
     const state = await getNegotiationState({ supabase, teamId: req.team.id, currentSeasonNumber });
     if (!state.negotiable) return res.status(409).json({ error: "Contract is locked — not negotiable this season" });
     if (!state.offers.some((o) => o.variant === variant)) return res.status(400).json({ error: "Unknown variant" });
-    const contract = await acceptOffer({ supabase, teamId: req.team.id, upcomingSeasonNumber: state.upcomingSeasonNumber, variant });
-    res.json({ contract, upcomingSeasonNumber: state.upcomingSeasonNumber });
+    const contract = state.immediate
+      ? await acceptOfferImmediately({ supabase, teamId: req.team.id, seasonNumber: state.upcomingSeasonNumber, variant })
+      : await acceptOffer({ supabase, teamId: req.team.id, upcomingSeasonNumber: state.upcomingSeasonNumber, variant });
+    res.json({ contract, upcomingSeasonNumber: state.upcomingSeasonNumber, immediate: state.immediate === true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

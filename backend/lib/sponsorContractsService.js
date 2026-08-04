@@ -372,39 +372,68 @@ export async function getOffers({ supabase, teamId, seasonNumber }) {
   return generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays });
 }
 
-// Forhandlings-tilstand for nuværende sæson. Et hold kan forhandle for den KOMMENDE
-// sæson (currentSeasonNumber + 1) hvis dets aktive kontrakt udløber ved slutningen af
-// nuværende sæson (expires_after_season <= currentSeasonNumber) ELLER der ingen aktiv
-// kontrakt er. Returnerer de regenererede tilbud + den allerede valgte variant.
+// #2948: varianten persisteres nu på rækken → stabil markering af managerens
+// valg. Legacy pending-rækker (variant IS NULL trods backfill burde ikke
+// findes) falder tilbage til det gamle length+base-match.
+function derivePendingVariant(pending, targetSeasonNumber, offers) {
+  if (!pending || pending.start_season !== targetSeasonNumber) return null;
+  if (pending.variant) return pending.variant;
+  const match = offers.find(
+    (o) =>
+      o.lengthSeasons === pending.length_seasons &&
+      o.guaranteedBase === pending.guaranteed_base,
+  );
+  return match ? match.variant : null;
+}
+
+// Forhandlings-tilstand for nuværende sæson.
+//
+// #3316 (ejer-beslutning 4/8): et hold der INGEN aktiv kontrakt har overhovedet
+// — et nyoprettet hold midt i sæsonen, eller en af de kontraktløse D4-hold
+// audit'en fandt (16 uden nogen sponsor_contracts-række) — skal IKKE vente til
+// næste sæsonskifte. De forhandler for INDEVÆRENDE sæson (immediate: true), og
+// accept aktiverer straks (se acceptOfferImmediately) i stedet for at skrive en
+// 'pending' der først aktiveres ved sæsonskiftet. Ingen separat backfill-sti
+// nødvendig: tilbuddene genereres deterministisk on-demand her, så de 16 hold
+// rammer denne gren automatisk næste gang de henter /sponsor/offers (fx ved
+// Board-side-mount) — se PR-body for begrundelsen.
+//
+// Et hold MED en aktiv kontrakt kan forhandle for den KOMMENDE sæson
+// (currentSeasonNumber + 1) hvis kontrakten udløber ved slutningen af
+// nuværende sæson (expires_after_season <= currentSeasonNumber) — uændret
+// pending-semantik, fornyelser venter stadig til sæsonskiftet.
 export async function getNegotiationState({ supabase, teamId, currentSeasonNumber }) {
-  const upcomingSeasonNumber = currentSeasonNumber + 1;
   const active = await getActiveContract({ supabase, teamId });
-  const negotiable =
-    !active || active.expires_after_season <= currentSeasonNumber;
+
+  if (!active) {
+    const offers = await getOffers({ supabase, teamId, seasonNumber: currentSeasonNumber });
+    const pending = await getPendingContract({ supabase, teamId });
+    // Rører IKKE en pending for en SENERE sæson (fx et af de 5 D4-hold der
+    // allerede har valgt et tilbud for næste sæson under den gamle semantik —
+    // den forbliver urørt og aktiveres normalt ved det sæsonskifte, #3316
+    // PR-scope). Kun en pending der (usædvanligt) allerede peger på
+    // INDEVÆRENDE sæson vises som "valgt" her.
+    const pendingVariant = derivePendingVariant(pending, currentSeasonNumber, offers);
+    return {
+      negotiable: true,
+      upcomingSeasonNumber: currentSeasonNumber,
+      offers,
+      pendingVariant,
+      immediate: true,
+    };
+  }
+
+  const upcomingSeasonNumber = currentSeasonNumber + 1;
+  const negotiable = active.expires_after_season <= currentSeasonNumber;
 
   const offers = negotiable
     ? await getOffers({ supabase, teamId, seasonNumber: upcomingSeasonNumber })
     : [];
 
-  // #2948: varianten persisteres nu på rækken → stabil markering af managerens
-  // valg. Legacy pending-rækker (variant IS NULL trods backfill burde ikke
-  // findes) falder tilbage til det gamle length+base-match.
-  let pendingVariant = null;
   const pending = await getPendingContract({ supabase, teamId });
-  if (pending && pending.start_season === upcomingSeasonNumber) {
-    if (pending.variant) {
-      pendingVariant = pending.variant;
-    } else {
-      const match = offers.find(
-        (o) =>
-          o.lengthSeasons === pending.length_seasons &&
-          o.guaranteedBase === pending.guaranteed_base,
-      );
-      pendingVariant = match ? match.variant : null;
-    }
-  }
+  const pendingVariant = derivePendingVariant(pending, upcomingSeasonNumber, offers);
 
-  return { negotiable, upcomingSeasonNumber, offers, pendingVariant };
+  return { negotiable, upcomingSeasonNumber, offers, pendingVariant, immediate: false };
 }
 
 // Manager vælger et tilbud for den KOMMENDE sæson. Skriver en 'pending' række
@@ -449,6 +478,84 @@ export async function acceptOffer({ supabase, teamId, upcomingSeasonNumber, vari
     .single();
   if (error) throw error;
   return data || row;
+}
+
+// #3316 (ejer-beslutning 4/8, løsning A): manager vælger et tilbud for
+// INDEVÆRENDE sæson — holdet har ingen aktiv kontrakt (nyoprettet midt i
+// sæsonen, eller en af de kontraktløse D4-hold audit'en fandt). Aktiverer
+// straks (status='active', activated_at=now) i stedet for at skrive 'pending'.
+//
+// Rammer (ejer-mandat):
+//   - race-day-rate + bonusklausuler (signing her) gælder fra activated_at —
+//     sponsorRaceDayIncome filtrerer løb completet FØR dette tidspunkt, så
+//     der aldrig sker bagudbetaling for løb holdet allerede kørte uden
+//     kontrakt.
+//   - INGEN guaranteed_base-udbetaling her. Basen krediteres udelukkende af
+//     economyEngine.processSeasonStart ved den næste RIGTIGE sæson-start —
+//     den kører ikke om igen for dette hold nu, så feltet skrives som
+//     kontraktens frosne sandhed (bruges korrekt af næste sæsons ceiling/
+//     payout-beregning) uden at nogen kreditering sker i denne funktion.
+//   - per_race_day_rate genberegnes mod holdets EGEN etape-divisor for
+//     INDEVÆRENDE sæson (samme #2913-mønster som expireAndRenewContracts'
+//     default-fornyelse) — ikke pick-tidens FULL_CALENDAR_DAYS-fallback.
+export async function acceptOfferImmediately({ supabase, teamId, seasonNumber, variant }) {
+  const offers = await getOffers({ supabase, teamId, seasonNumber });
+  const chosen = offers.find((o) => o.variant === variant);
+  if (!chosen) throw new Error(`Ukendt variant: ${variant}`);
+
+  // Flip KUN en eksisterende pending der peger på DENNE sæson (defensiv
+  // oprydning af en usædvanlig dangling række). Rør ALDRIG en pending for en
+  // SENERE sæson — det er præcis de 5 D4-holds allerede-valgte tilbud for
+  // næste sæson, som denne PR bevidst IKKE må røre (se PR-body).
+  const existingPending = await getPendingContract({ supabase, teamId });
+  if (existingPending && existingPending.start_season === seasonNumber) {
+    const { error: updateError } = await supabase
+      .from("sponsor_contracts")
+      .update({ status: "replaced" })
+      .eq("id", existingPending.id);
+    if (updateError) throw updateError;
+  }
+
+  // Samme #2913-mønster som expireAndRenewContracts: bulk .in()-opslag (ikke
+  // .single()) så league_division_id er pålideligt med — resolveStageDivisor
+  // skal kunne ramme holdets EGEN pulje, ikke kun tier-gennemsnittet.
+  const stageCounts = await loadSeasonStageCounts({ supabase, seasonNumber });
+  const { data: teamRows, error: teamError } = await supabase
+    .from("teams")
+    .select("id, division, league_division_id")
+    .in("id", [teamId]);
+  if (teamError) throw teamError;
+  const teamRow = (teamRows || []).find((t) => t.id === teamId) || null;
+  const divisor = resolveStageDivisor(stageCounts, teamRow);
+
+  const target = Math.round(chosen.guaranteedBase / chosen.guaranteedFraction);
+  const perRaceDayRate = Math.round((target * chosen.raceDayShare) / divisor);
+
+  const row = {
+    team_id: teamId,
+    sponsor_name: chosen.sponsorName,
+    guaranteed_base: chosen.guaranteedBase,
+    per_race_day_rate: perRaceDayRate,
+    length_seasons: chosen.lengthSeasons,
+    start_season: seasonNumber,
+    expires_after_season: seasonNumber + chosen.lengthSeasons - 1,
+    status: "active",
+    variant: chosen.variant,
+    guaranteed_fraction: chosen.guaranteedFraction,
+    race_day_share: chosen.raceDayShare,
+    bonus_clauses: chosen.clauses,
+    activated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("sponsor_contracts")
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+
+  const contract = data || row;
+  await creditSigningBonus({ supabase, contract });
+  return contract;
 }
 
 // Signing bonus (#2948): krediteres én gang ved aktivering. Idempotent pr.

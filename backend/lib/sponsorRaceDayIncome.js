@@ -63,14 +63,34 @@ export async function fetchPaidSponsorKeys(seasonId, supabase) {
   return paid;
 }
 
+// #3316: er dette holds resultat i DETTE løb tidsmæssigt kvalificeret til at
+// blive krediteret, givet kontraktens activated_at? NULL activated_at (season-
+// start-aktiveret, langt de fleste kontrakter) → altid kvalificeret, ingen
+// filtrering (uændret adfærd). En sat activated_at (mid-season-aktivering,
+// #3316) kræver at holdets resultat er registreret PÅ ELLER EFTER
+// aktiveringstidspunktet — mangler resultTime helt (bør ikke ske, imported_at
+// har DB-default), afvises konservativt frem for at gætte og risikere
+// bagudbetaling.
+function isEligibleForCredit(contract, resultTime) {
+  const activatedAt = contract?.activated_at;
+  if (!activatedAt) return true;
+  if (!resultTime) return false;
+  return new Date(resultTime) >= new Date(activatedAt);
+}
+
 // Pure: beregn race-day-kreditter for ét løb. stages defaulter til 1 (endagsløb);
-// hold uden aktiv kontrakt eller med rate <= 0 springes over.
-export function computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam }) {
+// hold uden aktiv kontrakt eller med rate <= 0 springes over. resultTimeByTeam
+// (#3316) = { teamId → tidligste imported_at blandt holdets rækker i DETTE løb }
+// — bruges til at udelukke bagudbetaling for en kontrakt aktiveret midt i
+// sæsonen (se isEligibleForCredit).
+export function computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam, resultTimeByTeam = {} }) {
   const stages = Number(race?.stages) || 1;
   const credits = [];
   for (const teamId of participatingTeamIds || []) {
-    const rate = Number(contractsByTeam?.[teamId]?.per_race_day_rate) || 0;
+    const contract = contractsByTeam?.[teamId];
+    const rate = Number(contract?.per_race_day_rate) || 0;
     if (rate <= 0) continue;
+    if (!isEligibleForCredit(contract, resultTimeByTeam?.[teamId])) continue;
     credits.push({
       teamId,
       amount: rate * stages,
@@ -83,7 +103,9 @@ export function computeRaceDayCredits({ race, participatingTeamIds, contractsByT
 // Pure: beregn resultat-bonus for ét løb ud fra etape-resultater. stageResults =
 // rækker med result_type='stage' (rank 1-3 er nok). remainingCapByTeam muterer
 // IKKE — capped beløb returneres så caller kan bogføre og decremente selv.
-export function computeResultBonusCredits({ race, stageResults, contractsByTeam, remainingCapByTeam }) {
+// resultTimeByTeam (#3316): se computeRaceDayCredits — bonusklausuler gælder
+// fra activated_at ligesom race-day-raten (ejer-mandat, ingen bagudbetaling).
+export function computeResultBonusCredits({ race, stageResults, contractsByTeam, remainingCapByTeam, resultTimeByTeam = {} }) {
   const winsByTeam = {};
   const podiumsByTeam = {};
   for (const r of stageResults || []) {
@@ -98,6 +120,7 @@ export function computeResultBonusCredits({ race, stageResults, contractsByTeam,
   for (const teamId of teamIds) {
     const contract = contractsByTeam?.[teamId];
     if (!contract) continue;
+    if (!isEligibleForCredit(contract, resultTimeByTeam?.[teamId])) continue;
     const clauses = contract.bonus_clauses || [];
     const winAmount = Number(clauses.find((c) => c.type === "stage_win")?.amount) || 0;
     const podiumAmount = Number(clauses.find((c) => c.type === "podium")?.amount) || 0;
@@ -166,9 +189,11 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
   if (racesError) throw new Error(racesError.message);
   if (!races?.length) return { credited: 0, result_bonuses: 0 };
 
+  // #3316: activated_at tilføjet — NULL for de ~200 season-start-aktiverede
+  // kontrakter (uændret, ingen filtrering), sat for mid-season-aktiverede.
   const { data: contracts, error: contractsError } = await supabase
     .from("sponsor_contracts")
-    .select("id, team_id, sponsor_name, per_race_day_rate, bonus_clauses, results_bonus_paid")
+    .select("id, team_id, sponsor_name, per_race_day_rate, bonus_clauses, results_bonus_paid, activated_at")
     .eq("status", "active");
   if (contractsError) throw new Error(contractsError.message);
 
@@ -197,16 +222,33 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
     // rækker vilkårligt og undertalte stage_win/podium-bonusser massivt (94%
     // manko for ét ramt hold i prod, verificeret 4/8). .order("id") gør
     // paginering deterministisk (samme mønster som prizePayoutEngine.js).
+    // #3316: imported_at tilføjet til select — bruges til at bygge
+    // resultTimeByTeam (tidligste registrering pr. hold i DETTE løb), så en
+    // mid-season-aktiveret kontrakt ikke kan bagudbetale for et løb der reelt
+    // blev kørt/completet FØR aktiveringen.
     const results = await fetchAllRows(() => supabase
       .from("race_results")
-      .select("team_id, result_type, rank")
+      .select("team_id, result_type, rank, imported_at")
       .eq("race_id", race.id)
       .order("id", { ascending: true }));
 
     const participatingTeamIds = [
       ...new Set((results || []).map((r) => r.team_id).filter(Boolean)),
     ];
-    const credits = computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam });
+
+    // Konservativt MIN pr. hold: er blot ét af holdets resultater i løbet
+    // ældre end aktiveringen, tæller hele løbet som "før" (ingen delvis
+    // bagudbetaling af et løb der var i gang ved aktiveringstidspunktet).
+    const resultTimeByTeam = {};
+    for (const r of results || []) {
+      if (!r.team_id || !r.imported_at) continue;
+      const existing = resultTimeByTeam[r.team_id];
+      if (!existing || new Date(r.imported_at) < new Date(existing)) {
+        resultTimeByTeam[r.team_id] = r.imported_at;
+      }
+    }
+
+    const credits = computeRaceDayCredits({ race, participatingTeamIds, contractsByTeam, resultTimeByTeam });
 
     // #3315 (ejer-godkendt 4/8): akkumulér faktisk krediteret beløb pr. hold for
     // DENNE løbsdag, så vi bagefter kan sende ÉN sponsor_paid-notifikation der
@@ -251,6 +293,7 @@ export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
       stageResults,
       contractsByTeam,
       remainingCapByTeam,
+      resultTimeByTeam,
     });
 
     for (const b of bonusCredits) {

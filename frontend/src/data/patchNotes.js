@@ -13,6 +13,20 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Economy",
         "en": {
+          "title": "New mid-season teams get a sponsor right away",
+          "body": "Teams created after a season has already started used to play their entire first season with zero sponsor income, since any offer they picked only activated at the next season change. Sponsor offers now appear immediately, and accepting one activates the deal right away: race-day money and bonus clauses count from that moment. The one-time guaranteed base still only pays out at the next real season start, same as usual."
+        },
+        "da": {
+          "title": "Nye hold midt i sæsonen får en sponsor med det samme",
+          "body": "Hold der oprettes efter en sæson allerede er startet, kom tidligere til at spille hele deres første sæson uden sponsorindtægt, fordi et valgt tilbud først aktiverede ved næste sæsonskifte. Sponsor-tilbud dukker nu op med det samme, og accepterer du et, aktiveres aftalen straks: løbsdags-penge og bonusklausuler tæller fra det øjeblik. Den engangs-garanterede base udbetales stadig først ved næste rigtige sæsonstart, som den plejer."
+        },
+        "refs": [3316]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
           "title": "Stage race sponsor bonuses now count every result",
           "body": "A pagination bug in the sponsor bonus calculation could silently drop stage wins and podiums for races with more than 1000 results, so multi-stage sponsor contracts sometimes underpaid stage win and podium bonuses. All results are counted correctly now."
         },
