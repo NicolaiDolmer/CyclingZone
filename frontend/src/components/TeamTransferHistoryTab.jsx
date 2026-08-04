@@ -97,9 +97,16 @@ function ProfitAmount({ profit }) {
   return <span className="text-cz-2">0 CZ$</span>;
 }
 
-function TradeLeg({ amount, date }) {
+// #2793: en akademi-signing uden kendt kostbasis (rækker fra FØR #2793, se
+// academyIntake.js/teamTransferHistory.js) er en anden slags "ukendt" end
+// start-trup/swap — vi VED kilden, blot ikke prisen. Eget hint i stedet for
+// det generiske "unknown" så spilleren kan se HVORFOR.
+function TradeLeg({ amount, date, buyType }) {
   const { t } = useTranslation("transfers");
   if (amount == null) {
+    if (buyType === "academy") {
+      return <span className="text-cz-3" title={t("profit.unknownAcademyBuyHint")}>{t("profit.unknownAcademyBuy")}</span>;
+    }
     return <span className="text-cz-3" title={t("profit.unknownBuyHint")}>{t("profit.unknownBuy")}</span>;
   }
   return (
@@ -146,7 +153,7 @@ function TransferProfitPanel({ trades, totals }) {
                     {tr.rider.firstname} {tr.rider.lastname}
                   </RiderLink>
                 </td>
-                <td className="py-2 text-right"><TradeLeg amount={tr.buyAmount} date={tr.buyDate} /></td>
+                <td className="py-2 text-right"><TradeLeg amount={tr.buyAmount} date={tr.buyDate} buyType={tr.buyType} /></td>
                 <td className="py-2 text-right"><TradeLeg amount={tr.sellAmount} date={tr.sellDate} /></td>
                 <td className="py-2 text-right font-mono whitespace-nowrap"><ProfitAmount profit={tr.profit} /></td>
               </tr>
