@@ -30,6 +30,17 @@
 // som guards. Trade-off (delt med guards): et ÆGTE historisk brud forsvinder fra
 // tællingen hvis rytteren efterfølgende sælges/pensioneres.
 //
+// AFVIKLEDE LØB ALARMERER IKKE (ejer-valg 4/8): et par hvor BEGGE løb har status
+// "completed" er dødt — resultaterne er kørt, og bruddet kan hverken nås før afvikling
+// eller rettes med en entry-sletning. De 4 tilbageværende Brutaliste-par fra sæson-
+// auditen 28/7 fyrede derfor CYCLINGZONE-44 hver time i en uge uden at nogen kunne
+// handle på det, hvilket er præcis den støj der får en vagt til at blive ignoreret.
+// Vagten TÆLLER dem stadig (returneres som `historical` + logges dagligt), men
+// Sentry-alarmen kræver mindst ét LEVENDE par. Bevidst konservativt valg af signal:
+// et etapeløb midt i afvikling står som "scheduled" med stages_completed > 0 (prod 4/8:
+// 359 scheduled-løb, heraf nogle med 13 kørte etaper), så et nyt brud på et løb der er
+// i gang alarmerer stadig — kun endeligt afsluttede løb er tavse.
+//
 // READ-ONLY: ingen writes, ingen ny tabel, ingen migration. Én Sentry-capture pr. tick med
 // FAST fingerprint (mirror ownershipInvariantWatch #2647) — ét issue uanset antal fund.
 
@@ -105,15 +116,37 @@ export function findDoubleBookedRiders({ entries = [], windowByRace, withdrawnKe
 }
 
 /**
+ * Del konflikterne i LEVENDE (mindst ét løb ikke endeligt afviklet) og HISTORISKE
+ * (begge løb status "completed"). Kun levende par må fyre Sentry-alarmen — se
+ * modul-kommentaren. Pure + deterministisk; bevarer input-rækkefølgen.
+ *
+ * @param {{ conflicts?: Array<{raceA:string, raceB:string}>,
+ *           raceById: Map<string,{status?:string}> }} args
+ * @returns {{ live: Array<object>, historical: Array<object> }}
+ */
+export function splitLiveConflicts({ conflicts = [], raceById = new Map() } = {}) {
+  const isFinished = (raceId) => raceById.get(raceId)?.status === "completed";
+  const live = [];
+  const historical = [];
+  for (const c of conflicts) {
+    if (isFinished(c.raceA) && isFinished(c.raceB)) historical.push(c);
+    else live.push(c);
+  }
+  return { live, historical };
+}
+
+/**
  * Kør invariant-tjekket for den aktive sæson. INGEN writes.
  *
- * `actionable` = par hvor mindst ét af de to løb endnu ikke er afviklet
+ * `historical` = par hvor BEGGE løb er endeligt afviklet (status "completed") — de
+ * alarmerer ikke (ejer-valg 4/8), men tælles og logges.
+ * `actionable` = levende par hvor mindst ét af de to løb endnu ikke er startet
  * (stages_completed === 0) — dem kan man stadig nå at rette uden at rulle resultater
- * tilbage. Resten er historik og kræver en ejer-gated datareparation.
+ * tilbage. Resten kræver en ejer-gated datareparation.
  *
  * @param {{ supabase: object, captureExceptionFn?: (err:Error, ctx:object)=>void }} args
  * @returns {Promise<{skipped?:string, seasonId?:string, races:number, entries:number,
- *   conflicts:number, actionable:number, alerted:boolean}>}
+ *   conflicts:number, live:number, historical:number, actionable:number, alerted:boolean}>}
  */
 export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -121,13 +154,23 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
   const { data: season, error: seasonErr } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();
   if (seasonErr) throw new Error(`seasons: ${seasonErr.message}`);
-  if (!season) return { skipped: "no_active_season", races: 0, entries: 0, conflicts: 0, actionable: 0, alerted: false };
+  if (!season) {
+    return {
+      skipped: "no_active_season", races: 0, entries: 0,
+      conflicts: 0, live: 0, historical: 0, actionable: 0, alerted: false,
+    };
+  }
 
+  // `status` er med (#3119-opfølgning 4/8): kun endeligt afviklede løb (status
+  // "completed") gør et par historisk og dermed tavst.
   const races = await fetchAllRows(() =>
-    supabase.from("races").select("id, name, stages_completed").eq("season_id", season.id).order("id"));
+    supabase.from("races").select("id, name, stages_completed, status").eq("season_id", season.id).order("id"));
   const raceIds = races.map((r) => r.id);
   if (!raceIds.length) {
-    return { seasonId: season.id, races: 0, entries: 0, conflicts: 0, actionable: 0, alerted: false };
+    return {
+      seasonId: season.id, races: 0, entries: 0,
+      conflicts: 0, live: 0, historical: 0, actionable: 0, alerted: false,
+    };
   }
   const raceById = new Map(races.map((r) => [r.id, r]));
 
@@ -178,16 +221,17 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
   }
 
   const conflicts = findDoubleBookedRiders({ entries, windowByRace, withdrawnKeys });
-  const actionable = conflicts.filter(
+  const { live, historical } = splitLiveConflicts({ conflicts, raceById });
+  const actionable = live.filter(
     (c) => (raceById.get(c.raceA)?.stages_completed ?? 0) === 0 || (raceById.get(c.raceB)?.stages_completed ?? 0) === 0
   );
 
   let alerted = false;
-  if (conflicts.length > 0) {
+  if (live.length > 0) {
     alerted = true;
     captureExceptionFn?.(
       new Error(
-        `Binding-invariant-brud: ${conflicts.length} rytter-par i to overlappende løb i sæson ${season.number} ` +
+        `Binding-invariant-brud: ${live.length} rytter-par i to overlappende løb i sæson ${season.number} ` +
         `(${actionable.length} kan stadig nås før afvikling) — 1 rytter = 1 løb pr. løbsdag (#3119/#3185)`
       ),
       {
@@ -195,9 +239,12 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
         fingerprint: ["rider-double-booked-overlapping-races"],
         extra: {
           seasonId: season.id,
-          count: conflicts.length,
+          count: live.length,
           actionable: actionable.length,
-          sample: (actionable.length ? actionable : conflicts).slice(0, SAMPLE_LIMIT).map((c) => ({
+          // Historik-tælleren følger med i alarmen, så triage kan se om et gammelt,
+          // ikke-reparerbart par stadig ligger i data (det alarmerer ikke selv).
+          historical: historical.length,
+          sample: (actionable.length ? actionable : live).slice(0, SAMPLE_LIMIT).map((c) => ({
             riderId: c.rider_id,
             teamId: c.team_id,
             raceA: raceById.get(c.raceA)?.name ?? c.raceA,
@@ -213,6 +260,8 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn 
     races: raceIds.length,
     entries: (entries || []).length,
     conflicts: conflicts.length,
+    live: live.length,
+    historical: historical.length,
     actionable: actionable.length,
     alerted,
   };
