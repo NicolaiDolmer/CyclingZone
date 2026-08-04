@@ -530,6 +530,10 @@
           ["Tactics", "Race-craft and reading a race", "Team time trials, tactical races"]
         ]
       },
+      "riderType": {
+        "title": "What rider type actually means",
+        "text": "A rider's primary and secondary type (Climber, Sprinter, GC and so on) shows what he can become at his ceiling, not what he happens to be best at today. It's set once and stays the same for the rest of his career, so a young rider's type won't flip every season as his stats develop. That's on purpose: the type is a talent read, not a form report. If you want to know who's best suited for a specific race right now, check the suitability score on the team selection screen; it's calculated fresh from each rider's current abilities and the race's terrain. Type and suitability answer two different questions: type is who a rider is, suitability is who fits this race today."
+      },
       "development": {
         "title": "Development over time",
         "text": "On a rider's stats page there's a 'Development' tab. Here you can pick an ability, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "7.95",
+    "date": "2026-08-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider type now shows what a rider can become, not just today's form",
+          "body": "Rider type (the label shown on the profile and roster, e.g. climber, sprinter, GC) is now based on a rider's long-term ceiling instead of their current stats. This makes the label stable for the rest of a rider's career and fixes a bug where almost every young rider was labelled climber or time trial regardless of what they were actually best suited for. Your riders' stats have not changed, only some of their type labels have."
+        },
+        "da": {
+          "title": "Ryttertype viser nu potentiale, ikke kun dagens form",
+          "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, kun nogle af type-labelerne skifter."
+        },
+        "refs": [3325]
+      }
+    ]
+  },
+  {
     "version": "7.94",
     "date": "2026-08-04",
     "label": "Beta",

@@ -1090,20 +1090,24 @@ router.get("/riders/:id/development", requireAuth, async (req, res) => {
 router.get("/riders/:id/value-trend", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, seasonNumber] = await Promise.all([
+    const [{ data: riderRow, error: riderErr }, { data: history, error: histErr }, { data: abilityRow, error: abilityErr }, seasonNumber] = await Promise.all([
       supabase.from("riders").select("base_value, birthdate, potentiale").eq("id", id).maybeSingle(),
       supabase.from("rider_derived_ability_history")
         .select("snapshot_date, abilities")
         .eq("rider_id", id)
         .order("snapshot_date", { ascending: true }),
+      // #3325: nuværende ability_caps — typen er potentiale-baseret og tidsuafhængig,
+      // så historiske vinduer klassificeres mod DENNE, ikke en historisk snapshot-type.
+      supabase.from("rider_derived_abilities").select("ability_caps").eq("rider_id", id).maybeSingle(),
       getActiveSeasonNumber(),
     ]);
     if (riderErr) throw new Error(riderErr.message);
     if (histErr) throw new Error(histErr.message);
+    if (abilityErr) throw new Error(abilityErr.message);
     if (!riderRow) return res.status(404).json({ error: "rider not found" });
     const windows = computeRiderValueTrend({
       currentBaseValue: riderRow.base_value,
-      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber) },
+      rider: { potentiale: riderRow.potentiale, age: ageForSeason(riderRow.birthdate, seasonNumber), caps: abilityRow?.ability_caps },
       snapshotsAsc: history || [],
       baseline: RIDER_TYPES_BASELINE,
       model: VALUATION_MODEL_V4,
