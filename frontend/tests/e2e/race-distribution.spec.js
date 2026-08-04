@@ -425,10 +425,13 @@ test("legacy-ruterne redirecter til de rigtige hub-faner (#3102 etape 3)", async
 
   await login(page);
 
-  // Holdudtagelses-genvejen → hubben (default-fanen er boardet).
+  // Kalender-genvejen → Kalender-fanen. #3298: tab-parameteren bevares, så
+  // gamle bogmærker lander på kalenderen og ikke på default-fanen (selection).
+  // Assert på den AKTIVE fane (rolle+aria-selected), ikke på fanens data-
+  // indhold — kalender-chips kræver mock-data og gør testen skør.
   await page.goto("/races?tab=calendar");
-  await expect(page).toHaveURL(/\/planning$/);
-  await expect(page.getByTestId("race-hub-board")).toBeVisible();
+  await expect(page).toHaveURL(/\/planning\?tab=calendar$/);
+  await expect(page.getByRole("tab", { selected: true })).toHaveText(/Calendar|Kalender/i);
 
   // Planneren → Formplan-fanen.
   await page.goto("/planner");

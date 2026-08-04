@@ -223,6 +223,23 @@ def looks_like_path_or_identifier(value):
     word_segments = [s for s in re.split(r"[-_+=]", value) if _WORD_SEG.fullmatch(s)]
     return len(word_segments) >= 3
 
+# ISO-timestamp backup-filename suffix detector (#3317). Repair-scripts (fx
+# backend/scripts/repair2276Div4Cascade.js, repair2251Tier4GrandTours.js)
+# navngiver JSON-backups `<slug>-${now.toISOString().replace(/[:.]/g, "-")}.json`,
+# dvs. filnavnet ender paa 'YYYY-MM-DDTHH-mm-ss-sssZ' (fx
+# "repair-2276-div4-cascade-2026-07-10T14-23-45-678Z"). Literal T/Z (2
+# uppercase) + mange cifre + '-'-tegn + laengde >=40 trigger'er high-entropy
+# paa hele filnavnet. Ramte 3x under sponsor-audit 4/8 (grep/Read/Write),
+# ingen reelle secrets involveret (#3317).
+# SIKKERHED: snaevert moenster — FASTE cifer-laengder (4-2-2-2-2-2-3) med
+# literal 'T' og 'Z' paa praecise positioner. En aegte secret rammer denne
+# 24-tegns struktur kun ved et ekstremt usandsynligt sammentraef, og named
+# patterns (sb_secret_/eyJh.../ghp_/AKIA/...) koeres FOER denne fallback
+# alligevel, saa et kendt-praefikset secret indlejret i en filsti fanges stadig.
+ISO_TIMESTAMP_SUFFIX_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z")
+def looks_like_iso_timestamp_filename(value):
+    return bool(ISO_TIMESTAMP_SUFFIX_RE.search(value))
+
 findings = []
 redacted = text
 
@@ -232,11 +249,31 @@ for type_name, pattern in PATTERNS:
         findings.append({"type": type_name, "preview": value[:8] + "..." + value[-4:] if len(value) > 16 else value[:4] + "..."})
         redacted = redacted.replace(value, f"[REDACTED:{type_name}]")
 
+# CI-bot PR-kommentar-metadata (#3128). `gh pr view N --json comments` paa en
+# PR med Vercel-preview indeholder bottens skjulte metadata-header
+# "[vc]: #<hash>:<base64-JSON>" (projectId/inspectorUrl/previewUrl/...).
+# Base64-blob'en starter typisk med "eyJ" (base64 for '{"'), saa den ligner
+# en JWT/high-entropy-token for entropi-detektoren, men er Vercels egen
+# offentlige deployment-metadata — ingen hemmelighed. Samme klasse for
+# Supabase-bottens "[supa]:"-header (samme kommentar-stroem, endnu ikke set
+# trigge men praeventivt daekket). Verificeret mod AEGTE PR-kommentar-data
+# (PR #3125, 2026-08-04) — matcher literal praefiks + sammenhaengende
+# base64-alfabet (inkl. '/' og '=', som ikke er en del af HIGH_ENTROPY's
+# char-class, saa blob'en ellers fragmenterer i mange smaa high-entropy-fund).
+# SIKKERHED: snaevert — kraever det EKSAKTE bot-header-literal foran
+# base64-blob'en; en secret indsat andetsteds i en PR-kommentar blokeres
+# stadig, og named patterns (sb_secret_/ghp_/AKIA/...) koeres FOER dette
+# strip alligevel, saa et kendt-praefikset secret indlejret i headeren
+# stadig fanges.
+BOT_METADATA_RE = re.compile(r"\[(?:vc|supa)\]: #[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+")
+redacted, bot_metadata_skipped = BOT_METADATA_RE.subn("[BOT-METADATA]", redacted)
+
 # High-entropy scan AFTER named patterns (så vi ikke double-flag).
 # Skipped entirely in image-mode to avoid the JPEG/PNG base64 false-positive
 # storm. We still count would-be matches for the forward-guard stats log.
 high_entropy_skipped = 0
 path_like_skipped = 0
+iso_timestamp_skipped = 0
 if image_mode:
     high_entropy_skipped = sum(1 for _ in HIGH_ENTROPY.finditer(redacted))
 else:
@@ -250,8 +287,12 @@ else:
         if looks_like_path_or_identifier(value):
             path_like_skipped += 1
             continue
-        # Skip hvis allerede del af en REDACTED-marker
-        if "[REDACTED:" in value:
+        # Skip ISO-timestamp-suffiksede backup-filnavne (#3317).
+        if looks_like_iso_timestamp_filename(value):
+            iso_timestamp_skipped += 1
+            continue
+        # Skip hvis allerede del af en REDACTED- eller BOT-METADATA-marker
+        if "[REDACTED:" in value or "[BOT-METADATA]" in value:
             continue
         findings.append({"type": "high-entropy", "preview": value[:8] + "..." + value[-4:]})
         redacted = redacted.replace(value, "[REDACTED:high-entropy]")
@@ -265,6 +306,8 @@ result = {
     "image_mode_reason": "tool_name" if is_image_tool else ("marker" if has_image_marker else ""),
     "high_entropy_skipped": high_entropy_skipped,
     "path_like_skipped": path_like_skipped,
+    "iso_timestamp_skipped": iso_timestamp_skipped,
+    "bot_metadata_skipped": bot_metadata_skipped,
     "tool_name": tool_name,
 }
 print(json.dumps(result))
@@ -289,13 +332,15 @@ STATS_FILE="$REPO_ROOT/.claude/secret-leak-stats.log"
 STATS_LINE=$(printf '%s' "$SCAN_RESULT" | "$PY" -c '
 import sys, json
 d = json.load(sys.stdin)
-if not (d.get("image_mode") or d.get("leak_detected") or d.get("path_like_skipped")):
+if not (d.get("image_mode") or d.get("leak_detected") or d.get("path_like_skipped") or d.get("iso_timestamp_skipped") or d.get("bot_metadata_skipped")):
     sys.exit(0)
 fields = [
     "image_mode={}".format(d.get("image_mode", False)),
     "reason={}".format(d.get("image_mode_reason", "") or "-"),
     "skipped_he={}".format(d.get("high_entropy_skipped", 0)),
     "skipped_path={}".format(d.get("path_like_skipped", 0)),
+    "skipped_iso={}".format(d.get("iso_timestamp_skipped", 0)),
+    "skipped_bot={}".format(d.get("bot_metadata_skipped", 0)),
     "leak={}".format(d.get("leak_detected", False)),
     "count={}".format(d.get("count", 0)),
     "tool={}".format(d.get("tool_name", "") or "-"),

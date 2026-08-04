@@ -50,8 +50,10 @@ function makeSupabase({
   racesBySeasonId = {},       // { [seasonId]: [{ league_division_id, stages }] }
   poolsList = [],             // [{ id, tier }] — league_divisions
   skipRpcKeys = new Set(),    // idempotency_keys der skal simulere 23505 (skip)
+  failNotificationForUserIds = [], // #3315: simulerer en fejlende notifications-insert
 } = {}) {
-  const state = { updates: [], inserts: [], rpcCalls: [] };
+  const state = { updates: [], inserts: [], rpcCalls: [], notificationInserts: [] };
+  const failNotify = new Set(failNotificationForUserIds);
   const teamsById = {
     [team.id]: { id: team.id, division: team.division, league_division_id: null },
     ...teamsByIdOverride,
@@ -243,6 +245,28 @@ function makeSupabase({
       if (table === "races") return racesBuilder();
       if (table === "league_divisions") return leagueDivisionsBuilder();
       if (table === "sponsor_contracts") return contractsBuilder();
+      // #3315: sponsor_paid-notifikationen (signing/objective-bonus). notifyUser's
+      // dedup-opslag returnerer altid tomt her — testene skelner kun på insert.
+      if (table === "notifications") {
+        return {
+          select() {
+            return {
+              eq() { return this; },
+              gte() { return this; },
+              is() { return this; },
+              order() { return this; },
+              limit() { return Promise.resolve({ data: [], error: null }); },
+            };
+          },
+          insert(row) {
+            if (failNotify.has(row.user_id)) {
+              return Promise.resolve({ data: null, error: { code: "23514", message: "notifications_type_check violation" } });
+            }
+            state.notificationInserts.push(row);
+            return Promise.resolve({ data: row, error: null });
+          },
+        };
+      }
       throw new Error(`uventet tabel: ${table}`);
     },
   };
@@ -1278,6 +1302,74 @@ test("expireAndRenewContracts: krediterer signing bonus ved aktivering af 'loyal
   assert.equal(call.payload.metadata?.params?.sponsorName, loyalOffer.sponsorName);
 });
 
+test("#3315: expireAndRenewContracts sender ÉN sponsor_paid-notifikation ved signing bonus", async () => {
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const loyalOffer = generateOffers({ teamId: "t1", seasonNumber: 3, renownTargetValue: 400000 })
+    .find((o) => o.variant === "loyal");
+  const signingAmount = loyalOffer.clauses.find((c) => c.type === "signing").amount;
+  const pending = {
+    id: "p-loyal",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    guaranteed_fraction: loyalOffer.guaranteedFraction,
+    race_day_share: loyalOffer.raceDayShare,
+    bonus_clauses: loyalOffer.clauses,
+    sponsor_name: loyalOffer.sponsorName,
+    expires_after_season: 5,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2, user_id: "user-1" },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.notificationInserts.length, 1);
+  const notif = supabase.state.notificationInserts[0];
+  assert.equal(notif.user_id, "user-1");
+  assert.equal(notif.type, "sponsor_paid");
+  assert.match(notif.message, new RegExp(loyalOffer.sponsorName));
+  assert.match(notif.message, new RegExp(String(signingAmount)));
+  assert.equal(notif.metadata.titleCode, "notif.sponsorPaid.signingBonus.title");
+  assert.equal(notif.metadata.messageCode, "notif.sponsorPaid.signingBonus.message");
+  assert.deepEqual(notif.metadata.messageParams, { sponsor: loyalOffer.sponsorName, amount: signingAmount });
+});
+
+test("#3315: expireAndRenewContracts: 23505-idempotent skip på signing bonus sender INGEN notifikation", async () => {
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const loyalOffer = generateOffers({ teamId: "t1", seasonNumber: 3, renownTargetValue: 400000 })
+    .find((o) => o.variant === "loyal");
+  const pending = {
+    id: "p-loyal",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: loyalOffer.lengthSeasons,
+    guaranteed_base: loyalOffer.guaranteedBase,
+    guaranteed_fraction: loyalOffer.guaranteedFraction,
+    race_day_share: loyalOffer.raceDayShare,
+    bonus_clauses: loyalOffer.clauses,
+    sponsor_name: loyalOffer.sponsorName,
+    expires_after_season: 5,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2, user_id: "user-1" },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+    skipRpcKeys: new Set(["sponsor_signing:p-loyal"]),
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.notificationInserts.length, 0, "genkørsel må ikke sende en ny signing-bonus-besked");
+});
+
 test("expireAndRenewContracts: 'safe'-default-fornyelse (ingen signing-klausul) krediterer INGEN signing bonus", async () => {
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
@@ -1326,6 +1418,50 @@ test("evaluateSeasonObjectives: betaler kun hold med rank <= ceil(poolSize/2) (t
   // tekst i stedet for den rå engelske description.
   assert.equal(call.payload.metadata?.code, "tx.sponsor.objectiveBonus");
   assert.equal(call.payload.metadata?.params?.sponsorName, "Larkin Brewing");
+});
+
+test("#3315: evaluateSeasonObjectives sender sponsor_paid-notifikation til holdet der opnåede målet", async () => {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2, user_id: "user-1" },
+    seasonsByNumber: { 2: { id: "s2", number: 2 } },
+    activeContractByTeam: {
+      t1: { id: "c1", team_id: "t1", sponsor_name: "Larkin Brewing", bonus_clauses: [{ type: "season_objective", objective: "top_half", amount: 50000 }] },
+    },
+    standingsBySeasonId: {
+      s2: [{ team_id: "t1", league_division_id: "pool-a", rank_in_division: 1 }],
+    },
+  });
+
+  await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+
+  assert.equal(supabase.state.notificationInserts.length, 1);
+  const notif = supabase.state.notificationInserts[0];
+  assert.equal(notif.user_id, "user-1");
+  assert.equal(notif.type, "sponsor_paid");
+  assert.match(notif.message, /Larkin Brewing/);
+  assert.match(notif.message, /50000/);
+  assert.equal(notif.metadata.titleCode, "notif.sponsorPaid.objectiveBonus.title");
+  assert.equal(notif.metadata.messageCode, "notif.sponsorPaid.objectiveBonus.message");
+  assert.deepEqual(notif.metadata.messageParams, { sponsor: "Larkin Brewing", amount: 50000 });
+});
+
+test("#3315: evaluateSeasonObjectives: en fejlende sponsor_paid-notifikation vælter ikke evalueringen", async () => {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2, user_id: "user-1" },
+    seasonsByNumber: { 2: { id: "s2", number: 2 } },
+    activeContractByTeam: {
+      t1: { id: "c1", team_id: "t1", sponsor_name: "Larkin Brewing", bonus_clauses: [{ type: "season_objective", objective: "top_half", amount: 50000 }] },
+    },
+    standingsBySeasonId: {
+      s2: [{ team_id: "t1", league_division_id: "pool-a", rank_in_division: 1 }],
+    },
+    failNotificationForUserIds: ["user-1"],
+  });
+
+  const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
+
+  assert.equal(result.paid, 1, "kreditering skal stå ved magt selvom notifikationen fejler");
+  assert.equal(supabase.state.notificationInserts.length, 0);
 });
 
 test("evaluateSeasonObjectives: idempotent — 23505-skip (allerede betalt) tæller IKKE som paid", async () => {

@@ -3015,6 +3015,8 @@ function createSeasonStartSupabase({
     activeContract: clone(activeContract),
     financeRows: [],
     usedIdempotencyKeys: new Set(),
+    notifications: [],
+    notificationInserts: [],
   };
   state.teams = teamsOverride
     ? clone(teamsOverride).map(t => ({ ...t, board_profiles: t.board_profiles || [] }))
@@ -3105,6 +3107,24 @@ function createSeasonStartSupabase({
       if (table === "teams") {
         return {
           select(columns) {
+            // #3315: notifyTeamOwner's ejer-opslag — .select("user_id").eq("id", teamId).single()
+            if (columns === "user_id") {
+              let teamId = null;
+              return {
+                eq(col, val) {
+                  assert.equal(col, "id");
+                  teamId = val;
+                  return this;
+                },
+                single: () => {
+                  const found = state.teams.find(t => t.id === teamId) || state.team;
+                  return Promise.resolve({
+                    data: found ? { user_id: found.user_id ?? null } : null,
+                    error: null,
+                  });
+                },
+              };
+            }
             assert.equal(columns, "*, board_profiles(*)");
             // Returnerer en thenable der svarer til .eq("is_ai", false).eq("is_frozen", false)
             const rows = clone(state.teams);
@@ -3126,6 +3146,47 @@ function createSeasonStartSupabase({
             return chain;
           },
         };
+      }
+
+      // #3315: sponsor_paid-notifikationen ved sæson-start (notifyUser's dedup-
+      // opslag + insert).
+      if (table === "notifications") {
+        const filters = {};
+        const q = {
+          select(columns) {
+            assert.equal(columns, "id");
+            return q;
+          },
+          eq(column, value) { filters[column] = value; return q; },
+          gte(column, value) { filters[column] = value; return q; },
+          is(column, value) { filters[column] = value; return q; },
+          order(column, options) {
+            assert.equal(column, "created_at");
+            assert.deepEqual(options, { ascending: false });
+            return q;
+          },
+          limit(value) {
+            assert.equal(value, 1);
+            const data = state.notifications
+              .filter(n => {
+                if (filters.user_id && n.user_id !== filters.user_id) return false;
+                if (filters.type && n.type !== filters.type) return false;
+                if (filters.title && n.title !== filters.title) return false;
+                if (filters.message && n.message !== filters.message) return false;
+                if ("related_id" in filters && n.related_id !== filters.related_id) return false;
+                return true;
+              })
+              .slice(0, 1)
+              .map(n => ({ id: n.id }));
+            return Promise.resolve({ data, error: null });
+          },
+          insert(row) {
+            state.notificationInserts.push(row);
+            state.notifications.unshift({ id: `notification-${state.notificationInserts.length}`, ...row });
+            return Promise.resolve({ error: null });
+          },
+        };
+        return q;
       }
 
       if (table === "board_consequences") {
@@ -4769,6 +4830,54 @@ test("#1678: processSeasonStart udbetaler sponsor normalt i sæson 2 (skip gæld
   const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
   assert.ok(sponsorRow, "Sæson 2 skal stadig udbetale sponsor uanset uberørt balance");
   assert.ok(sponsorRow.amount > 0, "Sæson-2-sponsor skal være positiv");
+});
+
+// ─── #3315 (DEL 2a): sponsor_paid-notifikation ved sæson-start ───────────────
+
+test("#3315: processSeasonStart sender sponsor_paid-notifikation når sponsoren reelt udbetales", async () => {
+  const seasonId = "season-2";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [],
+    team: makeSeason1Team({
+      balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000, user_id: "user-1",
+    }),
+    activeContract: { sponsor_name: "Vesna Robotics", guaranteed_base: 340_000 },
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.ok(sponsorRow, "sponsor skal udbetales");
+
+  assert.equal(supabase.state.notificationInserts.length, 1, "forventede ÉN sponsor_paid-notifikation");
+  const notif = supabase.state.notificationInserts[0];
+  assert.equal(notif.user_id, "user-1");
+  assert.equal(notif.type, "sponsor_paid");
+  assert.match(notif.message, /Vesna Robotics/);
+  assert.match(notif.message, new RegExp(String(sponsorRow.amount)));
+  assert.equal(notif.metadata.titleCode, "notif.sponsorPaid.seasonStart.title");
+  assert.equal(notif.metadata.messageCode, "notif.sponsorPaid.seasonStart.message");
+  assert.deepEqual(notif.metadata.messageParams, { sponsor: "Vesna Robotics", amount: sponsorRow.amount });
+});
+
+test("#3315: processSeasonStart sender INGEN sponsor_paid-notifikation når sponsoren springes over (sæson-1-gate)", async () => {
+  const seasonId = "season-1";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, user_id: "user-1" }),
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  assert.equal(supabase.state.notificationInserts.length, 0, "intet sponsor-beløb blev krediteret — ingen notifikation");
 });
 
 test("#1678: processTeamSeasonPayroll SPRINGER upkeep over i sæson 1 (før første løb)", async () => {

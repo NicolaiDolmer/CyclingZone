@@ -21,6 +21,34 @@ export const PATCHES = [
           "body": "Hold der oprettes efter en sæson allerede er startet, kom tidligere til at spille hele deres første sæson uden sponsorindtægt, fordi et valgt tilbud først aktiverede ved næste sæsonskifte. Sponsor-tilbud dukker nu op med det samme, og accepterer du et, aktiveres aftalen straks: løbsdags-penge og bonusklausuler tæller fra det øjeblik. Den engangs-garanterede base udbetales stadig først ved næste rigtige sæsonstart, som den plejer."
         },
         "refs": [3316]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Stage race sponsor bonuses now count every result",
+          "body": "A pagination bug in the sponsor bonus calculation could silently drop stage wins and podiums for races with more than 1000 results, so multi-stage sponsor contracts sometimes underpaid stage win and podium bonuses. All results are counted correctly now."
+        },
+        "da": {
+          "title": "Etapeløbs-sponsorbonusser tæller nu alle resultater",
+          "body": "En pagineringsfejl i sponsorbonus-beregningen kunne stille droppe etapesejre og podier for løb med over 1000 resultater, så flerdags-sponsorkontrakter nogle gange underbetalte etapesejr- og podiebonusser. Alle resultater tælles korrekt nu."
+        },
+        "refs": [3315]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Get notified when your sponsor pays out",
+          "body": "Sponsor income now sends a notification: season-start payouts, race-day income plus any result bonus (combined into one message per race), signing bonuses, and season objective bonuses all show up in your inbox with the amount."
+        },
+        "da": {
+          "title": "Få besked når din sponsor betaler ud",
+          "body": "Sponsorindtægt sender nu en notifikation: sæsonstart-udbetalinger, løbsdags-indkomst plus evt. resultatbonus (samlet i én besked pr. løb), underskriftsbonusser og sæsonmåls-bonusser vises alle i din indbakke med beløbet."
+        },
+        "refs": [3315]
       }
     ]
   },
@@ -140,6 +168,20 @@ export const PATCHES = [
           "body": "Portræt-fixet på trænings-siden bragte træning tilbage til mobilen, men træthed-kolonnen, den du sorterer efter for at se hvem der skal have hvile, var stadig skjult bag de desktop-only kolonne-headers. En sorterings-dropdown lader dig nu vælge træthed (eller form) i portræt, uden at skulle rotere til landskab."
         },
         "refs": [3299, 3194]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy candidate names no longer lead to a dead end",
+          "body": "Clicking a candidate's name on the academy intake screen could show \"rider not found\": the candidate isn't visible in the rider database yet since he hasn't joined your academy. The name is now plain text until you sign or reject him; the signing fee, potential and other details on the card are unchanged."
+        },
+        "da": {
+          "title": "Akademi-kandidatnavne fører ikke længere til en blindgyde",
+          "body": "Klik på en kandidats navn på akademiets intake-skærm kunne vise \"rytter ikke fundet\": kandidaten er endnu ikke synlig i rytterdatabasen, fordi han ikke er optaget i dit akademi. Navnet er nu almindelig tekst, indtil du signer eller afviser ham; signeringspris, potentiale og de øvrige detaljer på kortet er uændret."
+        },
+        "refs": [3142]
       }
     ]
   },

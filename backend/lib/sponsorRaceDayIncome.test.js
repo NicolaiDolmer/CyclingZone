@@ -193,8 +193,11 @@ function makeSupabase({
   resultsByRaceId = {},     // { [raceId]: [{ team_id, result_type, rank }] }
   skipKeys = new Set(),     // idempotency_keys der skal returnere 23505 (skip)
   paidKeys = [],            // #3123: nøgler der allerede står i finance_transactions
+  teamOwners = {},          // #3315: { [teamId]: userId } — sponsor_paid-notifikation
+  failNotificationForUserIds = [], // #3315: simulerer en fejlende notifications-insert
 } = {}) {
-  const state = { rpcCalls: [], updates: [], keyPages: [] };
+  const state = { rpcCalls: [], updates: [], keyPages: [], notifications: [], notificationInserts: [] };
+  const failNotify = new Set(failNotificationForUserIds);
 
   function thenable(rows) {
     const b = {
@@ -291,10 +294,54 @@ function makeSupabase({
             if (col === "race_id") b._raceId = val;
             return b;
           },
+          order: () => b,
+          range(from, to) {
+            const rows = resultsByRaceId[b._raceId] ?? [];
+            return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
+          },
+          // #3315: uden .range() (dvs. et upagineret kald, som buggen så ud før
+          // fixet) simulerer vi PostgREST's stille 1000-rækkers-loft, så en
+          // regressionstest der lægger et kvalificerende resultat efter række
+          // 1000 rent faktisk fejler mod den upaginerede kode.
           then: (resolve) =>
-            resolve({ data: resultsByRaceId[b._raceId] ?? [], error: null }),
+            resolve({ data: (resultsByRaceId[b._raceId] ?? []).slice(0, 1000), error: null }),
         };
         return b;
+      }
+      // #3315: notifyTeamOwner's ejer-opslag — .select("user_id").eq("id", teamId).single()
+      if (table === "teams") {
+        let teamId = null;
+        const b = {
+          select: () => b,
+          eq(_col, val) {
+            teamId = val;
+            return b;
+          },
+          single: () =>
+            Promise.resolve({ data: { user_id: teamOwners[teamId] ?? null }, error: null }),
+        };
+        return b;
+      }
+      // #3315: notifyUser's dedup-opslag + insert.
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; },
+          gte() { return q; },
+          is() { return q; },
+          order() { return q; },
+          limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) {
+            if (failNotify.has(row.user_id)) {
+              return Promise.resolve({ data: null, error: { code: "23514", message: "notifications_type_check violation" } });
+            }
+            state.notificationInserts.push(row);
+            state.notifications.push({ id: `notification-${state.notificationInserts.length}`, ...row });
+            return Promise.resolve({ data: row, error: null });
+          },
+        };
       }
       throw new Error(`uventet tabel: ${table}`);
     },
@@ -577,6 +624,144 @@ test("payRaceDaySponsorsToDate: hold uden klausuler (safe/racing) ignoreres i re
 
   assert.deepEqual(result, { credited: 1, result_bonuses: 0 });
   assert.equal(supabase.state.updates.length, 0, "ingen results_bonus_paid-opdatering uden klausuler");
+});
+
+// ─── #3315: race_results-pagination ────────────────────────────────────────────
+// Rod-årsag: linje 163-167 hentede race_results UDEN paginering/.order() —
+// PostgREST capper stille ved 1000 rækker, så etapeløb med 5000+ rækker droppede
+// vinder-/podie-rækker vilkårligt og undertalte stage_win/podium-bonusser massivt
+// (94% manko for ét ramt hold i prod, verificeret 4/8).
+
+test("#3315: race_results paginerer forbi PostgREST's 1000-rækkers loft — kvalificerende resultat på side 2 tæller stadig", async () => {
+  // 1005 ikke-kvalificerende fyldrækker (rank 50, intet hold med kontrakt) efterfulgt
+  // af t1's etapesejr som række nr. 1006 — lander på side 2 (range(1000,1999)).
+  // Uden paginering ville .slice(0,1000) afkorte sejrs-rækken væk.
+  const filler = Array.from({ length: 1005 }, () => ({
+    team_id: "t-filler",
+    result_type: "stage",
+    rank: 50,
+  }));
+  const winningRow = { team_id: "t1", result_type: "stage", rank: 1 };
+  const supabase = makeSupabase({
+    races: [{ id: "r1", stages: 1, status: "completed" }],
+    contracts: [
+      {
+        id: "c1",
+        team_id: "t1",
+        per_race_day_rate: 0,
+        bonus_clauses: [{ type: "stage_win", amount: 6000 }],
+      },
+    ],
+    resultsByRaceId: { r1: [...filler, winningRow] },
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.equal(
+    result.result_bonuses, 1,
+    "vinder-rækken efter række 1000 skal tælle med i resultat-bonussen"
+  );
+  const bonusCall = supabase.state.rpcCalls.find((c) => c.payload.type === "sponsor_result_bonus");
+  assert.ok(bonusCall, "forventede en resultat-bonus-kreditering for t1's etapesejr på side 2");
+  assert.equal(bonusCall.delta, 6000);
+  assert.equal(bonusCall.payload.metadata?.params?.wins, 1);
+});
+
+// ─── #3315 (DEL 2b): sponsor_paid-notifikation pr. hold pr. løb ────────────────
+
+test("payRaceDaySponsorsToDate: sender ÉN sponsor_paid-notifikation der dækker race-day + resultat-bonus samlet", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "Vuelta a Castilla", stages: 1, status: "completed" }],
+    contracts: [
+      {
+        id: "c1",
+        team_id: "t1",
+        sponsor_name: "Vesna Robotics",
+        per_race_day_rate: 1000,
+        bonus_clauses: [{ type: "stage_win", amount: 6000 }],
+        results_bonus_paid: 0,
+      },
+    ],
+    resultsByRaceId: {
+      r1: [{ team_id: "t1", result_type: "stage", rank: 1 }],
+    },
+    teamOwners: { t1: "user-1" },
+  });
+
+  await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.equal(
+    supabase.state.notificationInserts.length, 1,
+    "kun ÉN notifikation pr. hold pr. løb — race-day + bonus samlet, ikke to"
+  );
+  const notif = supabase.state.notificationInserts[0];
+  assert.equal(notif.user_id, "user-1");
+  assert.equal(notif.type, "sponsor_paid");
+  assert.equal(notif.related_id, "r1");
+  assert.match(notif.message, /Vesna Robotics/);
+  assert.match(notif.message, /Vuelta a Castilla/);
+  assert.match(notif.message, /7000/, "race-day (1000) + bonus (6000) = 7000 CZ$ samlet");
+  assert.equal(notif.metadata.titleCode, "notif.sponsorPaid.raceDay.title");
+  assert.equal(notif.metadata.messageCode, "notif.sponsorPaid.raceDay.message");
+  assert.deepEqual(notif.metadata.messageParams, {
+    sponsor: "Vesna Robotics",
+    amount: 7000,
+    race: "Vuelta a Castilla",
+  });
+});
+
+test("payRaceDaySponsorsToDate: notifikations-beløbet er kun det FAKTISK krediterede (skipped credits tæller ikke med)", async () => {
+  // t1's race-day-kredit er allerede bogført (idempotent replay) — kun bonussen
+  // krediteres reelt denne gang. Notifikationsbeløbet skal afspejle det.
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "Race", stages: 1, status: "completed" }],
+    contracts: [
+      {
+        id: "c1",
+        team_id: "t1",
+        sponsor_name: "Vesna Robotics",
+        per_race_day_rate: 1000,
+        bonus_clauses: [{ type: "stage_win", amount: 6000 }],
+        results_bonus_paid: 0,
+      },
+    ],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+    skipKeys: new Set(["sponsor_race_day:r1:t1"]),
+    teamOwners: { t1: "user-1" },
+  });
+
+  await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.equal(supabase.state.notificationInserts.length, 1);
+  assert.equal(supabase.state.notificationInserts[0].metadata.messageParams.amount, 6000);
+});
+
+test("payRaceDaySponsorsToDate: ingen kreditering for holdet → ingen notifikation", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "Race", stages: 1, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 0, bonus_clauses: [] }],
+    resultsByRaceId: { r1: [{ team_id: "t1", result_type: "stage", rank: 1 }] },
+    teamOwners: { t1: "user-1" },
+  });
+
+  await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.equal(supabase.state.notificationInserts.length, 0);
+});
+
+test("payRaceDaySponsorsToDate: en fejlende sponsor_paid-notifikation vælter ikke payout-sweepen", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "Race", stages: 1, status: "completed" }],
+    contracts: [{ id: "c1", team_id: "t1", per_race_day_rate: 1000 }],
+    resultsByRaceId: { r1: [{ team_id: "t1" }] },
+    teamOwners: { t1: "user-1" },
+    failNotificationForUserIds: ["user-1"],
+  });
+
+  const result = await payRaceDaySponsorsToDate("season-1", supabase);
+
+  assert.deepEqual(result, { credited: 1, result_bonuses: 0 }, "kreditering skal stå ved magt selvom notifikationen fejler");
+  assert.equal(supabase.state.notificationInserts.length, 0, "den fejlede insert blev ikke registreret");
 });
 
 // ─── #3123: pre-filter på allerede-bogførte nøgler ─────────────────────────────
