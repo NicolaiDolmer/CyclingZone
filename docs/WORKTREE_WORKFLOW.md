@@ -116,6 +116,25 @@ Alle worktrees delte tidligere hardcodet port 4173, og `webServer.reuseExistingS
 
 Når guarden fejler: dræb processen på porten (`netstat -ano | findstr :<port>` → `Stop-Process -Id <PID> -Force`) eller kør med eksplicit fri `PW_PORT`.
 
+### `preview_start` starter serveren i main-checkoutet, ikke i worktreet
+
+> Forward-guard, samme false-green-familie som Playwright-porten ovenfor: dine ændringer vises ikke i browseren, og intet fejler højlydt.
+
+Claude Browser-MCP'ens `preview_start` med et navngivet config fra `.claude/launch.json` (fx `frontend-mock`) spawner dev-serveren med cwd = **det delte main-checkout** (`C:\Dev\CyclingZone`), også når kaldet sker fra en worktree-isoleret session. Serveren serverer altså main-checkoutets filer, og worktreets lokale edits er usynlige. Verificér med `preview_list` — den rapporterer `"cwd": "C:\\Dev\\CyclingZone"`.
+
+Workaround: start dev-serveren manuelt via Bash (`run_in_background: true`) med worktreets egen absolutte sti, og driv derefter URL'en via `navigate`/`computer` (Playwright-MCP'en er mere pålidelig end koordinat-klik til fx login-formularer):
+
+```bash
+VITE_PREVIEW_MOCK=1 npm --prefix "<worktree-sti>/frontend" run dev -- --port <fri-port> --strictPort
+```
+
+Processen tracks ikke af `preview_stop` — dræb den selv til sidst:
+
+```bash
+netstat -ano | grep :<port>   # → PID
+taskkill //PID <pid> //F
+```
+
 ### Delt node_modules — kun når lockfilen matcher main ([#2967](https://github.com/NicolaiDolmer/CyclingZone/issues/2967))
 
 `setup-worktree.ps1` junction-linker `node_modules/` fra main, men **kun hvis worktreets `package-lock.json` er byte-identisk med mains**. Er den ikke, springes junctionen over og scriptet beder dig køre `npm ci --prefix <pkg>` i worktreet.
