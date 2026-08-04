@@ -3,6 +3,9 @@ name: PR user-verification check
 on:
   pull_request:
     types: [opened, edited, synchronize, labeled, unlabeled, reopened]
+  # Merge queue (4/8): PR-body-kravet blev håndhævet på PR'en; en merge group
+  # har ingen body. Jobbet rapporterer grønt via pass-through-steppet.
+  merge_group:
 
 permissions:
   contents: read
@@ -12,9 +15,14 @@ jobs:
   check-verification:
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    if: github.event.pull_request.draft == false
+    if: github.event_name == 'merge_group' || github.event.pull_request.draft == false
     steps:
+      - name: Merge group pass-through
+        if: github.event_name == 'merge_group'
+        run: echo "Brugerverifikation blev valideret paa selve PR'en. Rapporterer groent i koeen."
+
       - name: Validate Brugerverifikation section
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v9
         with:
           script: |

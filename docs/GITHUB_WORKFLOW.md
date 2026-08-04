@@ -63,6 +63,10 @@ Doctoren samler på få linjer:
 
 Brug `-FailOnWarning` i dedikerede DX-sessions hvor warnings skal fail'e lokalt.
 
+## Merge queue (indført 4/8, ejer-godkendt)
+
+Main bruger GitHubs Merge Queue: `gh pr merge --auto --squash` = sæt PR'en i kø. Køen bygger en midlertidig merge-group af op til flere ventende PRs, kører de required checks ÉN gang på den KOMBINEREDE kode og merger bundtet — ingen manuel `gh pr update-branch`, ingen strict-trædemølle, og semantiske kryds-PR-konflikter (to hver-for-sig-grønne PRs der tilsammen er røde) fanges FØR merge. PR-kontekst-afhængige checks (check-verification, dependency-review, tone-krav på PR-body) håndhæves på selve PR'en og rapporterer pass-through-grønt i køen; frontend-smoke og perf-gate kører på PR'en og skipper/stubber i køen. Konfigurationen ligger i repo-ruleset "main-merge-queue" (GitHub Settings → Rules); rollback = slet rulesettet og genaktivér strict på classic branch protection.
+
 ## Risk-labels og auto-merge policy
 
 Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har en af disse labels:
