@@ -92,7 +92,10 @@ export default function CompletedRacesExplorer() {
 
     const [racesRes, racePointsRes, myTeamRes] = await Promise.all([
       // #1715: league_division_id med, så listen kan filtrere til spillerens pulje.
-      supabase.from("races").select("*, league_division_id, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
+      // #3297: season:season_id(number) med, så sortRacesByDateDesc kan sortere
+      // på sæson FØR dato — listen henter afsluttede løb på tværs af sæsoner,
+      // og dato-nøglen alene (dd/mm uden årstal) blander S1- og S2-løb tilfældigt.
+      supabase.from("races").select("*, league_division_id, results:race_results(id), pool_race:pool_race_id(date_text), season:season_id(number)").order("name"),
       supabase.from("race_points").select("race_class, result_type, rank, points"),
       supabase.from("teams").select("league_division_id").eq("user_id", user.id).maybeSingle(),
     ]);
